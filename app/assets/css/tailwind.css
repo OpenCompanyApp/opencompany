@@ -1,0 +1,368 @@
+@import "tailwindcss";
+
+@theme {
+  /* ═══════════════════════════════════════════════════════════════════════════
+     LINEAR-STYLE DESIGN SYSTEM
+     Deep darks, violet accents, glows, glass effects
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Typography Scale */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+
+  /* Spacing */
+  --spacing-0: 0;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --duration-fast: 100ms;
+  --duration-normal: 150ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     COLORS - Linear-inspired deep darks with violet accent
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Backgrounds - Deep with subtle violet undertone */
+  --color-olympus-bg: oklch(0.11 0.015 285);
+  --color-olympus-sidebar: oklch(0.13 0.015 285);
+  --color-olympus-surface: oklch(0.16 0.012 285);
+  --color-olympus-elevated: oklch(0.20 0.012 285);
+
+  /* Glass surfaces */
+  --color-olympus-glass: oklch(0.16 0.015 285 / 0.8);
+  --color-olympus-glass-hover: oklch(0.20 0.015 285 / 0.9);
+
+  /* Borders - Subtle with violet tint */
+  --color-olympus-border: oklch(0.28 0.015 285);
+  --color-olympus-border-subtle: oklch(0.22 0.015 285);
+
+  /* Primary - Vibrant violet-blue */
+  --color-olympus-primary: oklch(0.65 0.25 275);
+  --color-olympus-primary-hover: oklch(0.70 0.23 275);
+  --color-olympus-primary-muted: oklch(0.65 0.20 275 / 0.15);
+  --color-olympus-primary-glow: oklch(0.65 0.25 275 / 0.4);
+
+  /* Accent - For highlights and gradients */
+  --color-olympus-accent: oklch(0.70 0.20 300);
+  --color-olympus-accent-cyan: oklch(0.75 0.15 195);
+
+  /* Text */
+  --color-olympus-text: oklch(0.95 0.01 285);
+  --color-olympus-text-muted: oklch(0.65 0.015 285);
+  --color-olympus-text-subtle: oklch(0.45 0.015 285);
+
+  /* Status - Vibrant */
+  --color-olympus-success: oklch(0.70 0.18 145);
+  --color-olympus-warning: oklch(0.75 0.16 70);
+  --color-olympus-error: oklch(0.65 0.22 25);
+
+  /* Agent status */
+  --color-agent-working: oklch(0.70 0.18 145);
+  --color-agent-idle: oklch(0.55 0.015 285);
+  --color-agent-offline: oklch(0.35 0.015 285);
+
+  /* Agent types - Vibrant, distinctive */
+  --color-agent-manager: oklch(0.70 0.16 50);
+  --color-agent-writer: oklch(0.65 0.20 275);
+  --color-agent-analyst: oklch(0.65 0.18 300);
+  --color-agent-creative: oklch(0.70 0.20 340);
+  --color-agent-researcher: oklch(0.70 0.18 155);
+  --color-agent-coder: oklch(0.70 0.16 195);
+  --color-agent-coordinator: oklch(0.70 0.16 35);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SHADOWS - Colored, with glow effects
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.3);
+  --shadow-md: 0 4px 8px -2px oklch(0 0 0 / 0.4), 0 2px 4px -2px oklch(0 0 0 / 0.3);
+  --shadow-lg: 0 12px 24px -4px oklch(0 0 0 / 0.5), 0 4px 8px -4px oklch(0 0 0 / 0.4);
+  --shadow-xl: 0 24px 48px -8px oklch(0 0 0 / 0.6), 0 8px 16px -8px oklch(0 0 0 / 0.5);
+
+  /* Glow shadows */
+  --shadow-glow-sm: 0 0 20px -5px var(--color-olympus-primary-glow);
+  --shadow-glow-md: 0 0 30px -5px var(--color-olympus-primary-glow);
+  --shadow-glow-lg: 0 0 50px -10px var(--color-olympus-primary-glow);
+
+  /* Focus */
+  --shadow-focus: 0 0 0 2px var(--color-olympus-bg), 0 0 0 4px var(--color-olympus-primary);
+  --shadow-focus-error: 0 0 0 2px var(--color-olympus-bg), 0 0 0 4px var(--color-olympus-error);
+
+  /* Card shadows with colored tint */
+  --shadow-card: 0 4px 12px -2px oklch(0.11 0.02 285 / 0.8), 0 0 0 1px var(--color-olympus-border-subtle);
+  --shadow-card-hover: 0 8px 24px -4px oklch(0.11 0.02 285 / 0.9), 0 0 0 1px var(--color-olympus-border), var(--shadow-glow-sm);
+
+  /* Animations */
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-glow: glow 2s ease-in-out infinite alternate;
+}
+
+/* Glow keyframes */
+@keyframes glow {
+  from {
+    box-shadow: 0 0 20px -10px var(--color-olympus-primary-glow);
+  }
+  to {
+    box-shadow: 0 0 30px -5px var(--color-olympus-primary-glow);
+  }
+}
+
+/* Gradient text utility */
+@utility text-gradient {
+  background: linear-gradient(135deg, var(--color-olympus-primary) 0%, var(--color-olympus-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient border utility - using regular CSS class instead of @utility for pseudo-element support */
+.border-gradient {
+  position: relative;
+  background: var(--color-olympus-surface);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.border-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--color-olympus-primary) 0%, var(--color-olympus-accent) 50%, var(--color-olympus-border) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Glass effect utility */
+@utility glass {
+  background: var(--color-olympus-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Glow effect utility */
+@utility glow {
+  box-shadow: var(--shadow-glow-sm);
+}
+
+@utility glow-md {
+  box-shadow: var(--shadow-glow-md);
+}
+
+@utility glow-lg {
+  box-shadow: var(--shadow-glow-lg);
+}
+
+/* Base styles */
+html {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  letter-spacing: -0.01em;
+}
+
+body {
+  background-color: var(--color-olympus-bg);
+  color: var(--color-olympus-text);
+}
+
+/* Subtle noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-olympus-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-olympus-text-subtle);
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-olympus-primary-muted);
+}
+
+/* Gradient border cards */
+.card-gradient {
+  position: relative;
+  background: var(--color-olympus-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.card-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    oklch(0.65 0.25 275 / 0.5) 0%,
+    oklch(0.70 0.20 300 / 0.3) 50%,
+    oklch(0.28 0.015 285) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Glow on hover for interactive cards */
+.card-interactive {
+  transition: all 200ms var(--ease-out);
+}
+
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES
+   Clean, professional light theme while maintaining Linear aesthetic
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Backgrounds - Clean whites/grays */
+    --color-olympus-bg: oklch(0.985 0.005 285);
+    --color-olympus-sidebar: oklch(0.97 0.005 285);
+    --color-olympus-surface: oklch(1 0 0);
+    --color-olympus-elevated: oklch(0.98 0.005 285);
+
+    /* Glass surfaces */
+    --color-olympus-glass: oklch(1 0 0 / 0.85);
+    --color-olympus-glass-hover: oklch(0.98 0.005 285 / 0.9);
+
+    /* Borders */
+    --color-olympus-border: oklch(0.88 0.01 285);
+    --color-olympus-border-subtle: oklch(0.92 0.008 285);
+
+    /* Primary - Keep vibrant */
+    --color-olympus-primary: oklch(0.55 0.25 275);
+    --color-olympus-primary-hover: oklch(0.50 0.25 275);
+    --color-olympus-primary-muted: oklch(0.55 0.20 275 / 0.12);
+    --color-olympus-primary-glow: oklch(0.55 0.25 275 / 0.25);
+
+    /* Accent */
+    --color-olympus-accent: oklch(0.60 0.20 300);
+    --color-olympus-accent-cyan: oklch(0.65 0.15 195);
+
+    /* Text - Dark on light */
+    --color-olympus-text: oklch(0.15 0.01 285);
+    --color-olympus-text-muted: oklch(0.45 0.015 285);
+    --color-olympus-text-subtle: oklch(0.60 0.01 285);
+
+    /* Status colors - slightly adjusted for light bg */
+    --color-olympus-success: oklch(0.55 0.18 145);
+    --color-olympus-warning: oklch(0.65 0.16 70);
+    --color-olympus-error: oklch(0.55 0.22 25);
+
+    /* Agent status */
+    --color-agent-working: oklch(0.55 0.18 145);
+    --color-agent-idle: oklch(0.65 0.015 285);
+    --color-agent-offline: oklch(0.75 0.01 285);
+
+    /* Shadows - lighter, more subtle */
+    --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.05);
+    --shadow-md: 0 4px 8px -2px oklch(0 0 0 / 0.08), 0 2px 4px -2px oklch(0 0 0 / 0.04);
+    --shadow-lg: 0 12px 24px -4px oklch(0 0 0 / 0.1), 0 4px 8px -4px oklch(0 0 0 / 0.06);
+    --shadow-xl: 0 24px 48px -8px oklch(0 0 0 / 0.12), 0 8px 16px -8px oklch(0 0 0 / 0.08);
+
+    /* Glow shadows - subtler in light mode */
+    --shadow-glow-sm: 0 0 20px -5px oklch(0.55 0.25 275 / 0.2);
+    --shadow-glow-md: 0 0 30px -5px oklch(0.55 0.25 275 / 0.25);
+    --shadow-glow-lg: 0 0 50px -10px oklch(0.55 0.25 275 / 0.3);
+
+    /* Card shadows */
+    --shadow-card: 0 1px 3px 0 oklch(0 0 0 / 0.06), 0 0 0 1px var(--color-olympus-border-subtle);
+    --shadow-card-hover: 0 4px 12px -2px oklch(0 0 0 / 0.1), 0 0 0 1px var(--color-olympus-border), var(--shadow-glow-sm);
+  }
+
+  /* Disable noise texture in light mode */
+  body::before {
+    display: none;
+  }
+
+  /* Scrollbar styling for light mode */
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.85 0.01 285);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.75 0.015 285);
+  }
+
+  /* Selection in light mode */
+  ::selection {
+    background-color: oklch(0.55 0.20 275 / 0.2);
+  }
+
+  /* Gradient cards in light mode */
+  .card-gradient::before {
+    background: linear-gradient(
+      135deg,
+      oklch(0.55 0.25 275 / 0.4) 0%,
+      oklch(0.60 0.20 300 / 0.25) 50%,
+      oklch(0.88 0.01 285) 100%
+    );
+  }
+}
