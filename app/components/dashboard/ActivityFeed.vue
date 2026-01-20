@@ -1,58 +1,369 @@
 <template>
-  <div class="card-gradient bg-olympus-surface rounded-xl overflow-hidden">
-    <div class="p-4 border-b border-olympus-border flex items-center justify-between">
-      <h2 class="font-semibold text-sm">Recent Activity</h2>
-      <button class="text-sm text-olympus-primary hover:text-olympus-primary-hover transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-olympus-primary/50 rounded px-2 py-1 -mr-2">
-        View all
+  <div :class="containerClasses">
+    <!-- Header -->
+    <div :class="headerClasses">
+      <div class="flex items-center gap-2">
+        <div :class="headerIconClasses">
+          <Icon name="ph:pulse-fill" class="w-4 h-4 text-olympus-primary" />
+        </div>
+        <div>
+          <h2 :class="titleClasses">{{ title }}</h2>
+          <p v-if="showCount && activities.length > 0" :class="subtitleClasses">
+            {{ activities.length }} recent {{ activities.length === 1 ? 'event' : 'events' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Filter Dropdown -->
+        <DropdownMenuRoot v-if="showFilter">
+          <DropdownMenuTrigger as-child>
+            <button type="button" :class="filterButtonClasses">
+              <Icon name="ph:funnel" class="w-3.5 h-3.5" />
+              <span v-if="size !== 'sm'">{{ activeFilter === 'all' ? 'All' : filterLabels[activeFilter] }}</span>
+              <Icon name="ph:caret-down" class="w-3 h-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent :class="dropdownClasses" align="end" :side-offset="4">
+              <DropdownMenuItem
+                v-for="filter in filterOptions"
+                :key="filter.value"
+                :class="[dropdownItemClasses, activeFilter === filter.value && 'bg-olympus-surface']"
+                @click="activeFilter = filter.value"
+              >
+                <div :class="['w-2 h-2 rounded-full', filter.color]" />
+                <span>{{ filter.label }}</span>
+                <span v-if="getFilterCount(filter.value) > 0" class="ml-auto text-xs text-olympus-text-subtle">
+                  {{ getFilterCount(filter.value) }}
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
+
+        <!-- View All Button -->
+        <button
+          v-if="showViewAll"
+          type="button"
+          :class="viewAllButtonClasses"
+          @click="emit('viewAll')"
+        >
+          View all
+        </button>
+
+        <!-- Refresh Button -->
+        <TooltipProvider v-if="showRefresh" :delay-duration="300">
+          <TooltipRoot>
+            <TooltipTrigger as-child>
+              <button
+                type="button"
+                :class="refreshButtonClasses"
+                :disabled="refreshing"
+                @click="emit('refresh')"
+              >
+                <Icon
+                  name="ph:arrows-clockwise"
+                  :class="['w-3.5 h-3.5', refreshing && 'animate-spin']"
+                />
+              </button>
+            </TooltipTrigger>
+            <TooltipPortal>
+              <TooltipContent :class="tooltipClasses" side="bottom">
+                Refresh activity
+                <TooltipArrow class="fill-olympus-elevated" />
+              </TooltipContent>
+            </TooltipPortal>
+          </TooltipRoot>
+        </TooltipProvider>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" :class="contentClasses">
+      <ActivityItemSkeleton v-for="i in 5" :key="i" />
+    </div>
+
+    <!-- Activity List -->
+    <div v-else-if="filteredActivities.length > 0" :class="contentClasses">
+      <TransitionGroup :name="animated ? 'activity-list' : ''" tag="div">
+        <div
+          v-for="(activity, index) in displayedActivities"
+          :key="activity.id"
+          :class="activityItemClasses"
+          @click="handleActivityClick(activity)"
+          @mouseenter="hoveredId = activity.id"
+          @mouseleave="hoveredId = null"
+        >
+          <!-- Timeline Connector -->
+          <div v-if="showTimeline && index < displayedActivities.length - 1" :class="timelineConnectorClasses" />
+
+          <!-- Avatar -->
+          <div class="relative shrink-0">
+            <SharedAgentAvatar :user="activity.actor" :size="avatarSize" />
+
+            <!-- Activity Type Indicator -->
+            <div :class="activityIndicatorClasses(activity.type)">
+              <Icon :name="activityIcons[activity.type]" class="w-2.5 h-2.5" />
+            </div>
+          </div>
+
+          <!-- Content -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <!-- Actor Name -->
+                <span :class="actorNameClasses">{{ activity.actor.name }}</span>
+
+                <!-- Action Description -->
+                <span :class="actionTextClasses"> {{ getActionText(activity) }}</span>
+
+                <!-- Target (if any) -->
+                <span v-if="activity.target" :class="targetClasses">
+                  {{ activity.target.name }}
+                </span>
+              </div>
+
+              <!-- Timestamp -->
+              <TooltipProvider :delay-duration="200">
+                <TooltipRoot>
+                  <TooltipTrigger as-child>
+                    <span :class="timestampClasses">
+                      {{ formatRelativeTime(activity.timestamp) }}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipPortal>
+                    <TooltipContent :class="tooltipClasses" side="left">
+                      {{ formatFullDate(activity.timestamp) }}
+                      <TooltipArrow class="fill-olympus-elevated" />
+                    </TooltipContent>
+                  </TooltipPortal>
+                </TooltipRoot>
+              </TooltipProvider>
+            </div>
+
+            <!-- Description (if detailed) -->
+            <p v-if="activity.description && variant === 'detailed'" :class="descriptionClasses">
+              {{ activity.description }}
+            </p>
+
+            <!-- Metadata Row -->
+            <div v-if="showMetadata && (activity.channel || activity.cost)" :class="metadataClasses">
+              <!-- Channel -->
+              <span v-if="activity.channel" class="flex items-center gap-1">
+                <Icon name="ph:hash" class="w-3 h-3" />
+                {{ activity.channel }}
+              </span>
+
+              <!-- Cost -->
+              <span v-if="activity.cost" class="flex items-center gap-1">
+                <Icon name="ph:coins" class="w-3 h-3 text-amber-400" />
+                ${{ activity.cost.toFixed(2) }}
+              </span>
+
+              <!-- Duration -->
+              <span v-if="activity.duration" class="flex items-center gap-1">
+                <Icon name="ph:clock" class="w-3 h-3" />
+                {{ formatDuration(activity.duration) }}
+              </span>
+            </div>
+
+            <!-- Expandable Details -->
+            <Transition name="expand">
+              <div v-if="expandedId === activity.id && activity.details" :class="detailsClasses">
+                <div class="flex items-center justify-between text-xs text-olympus-text-muted mb-2">
+                  <span>Details</span>
+                  <button
+                    type="button"
+                    class="p-0.5 rounded hover:bg-olympus-elevated"
+                    @click.stop="expandedId = null"
+                  >
+                    <Icon name="ph:x" class="w-3 h-3" />
+                  </button>
+                </div>
+                <pre class="text-xs text-olympus-text-subtle whitespace-pre-wrap font-mono">{{ JSON.stringify(activity.details, null, 2) }}</pre>
+              </div>
+            </Transition>
+          </div>
+
+          <!-- Right Side Actions/Indicator -->
+          <div class="flex items-center gap-2 shrink-0">
+            <!-- Activity Type Badge -->
+            <div
+              :class="[
+                'rounded-lg flex items-center justify-center transition-all duration-150',
+                activityBgClasses[activity.type],
+                size === 'sm' ? 'w-7 h-7' : 'w-8 h-8',
+                hoveredId === activity.id && 'scale-110',
+              ]"
+            >
+              <Icon
+                :name="activityIcons[activity.type]"
+                :class="[
+                  activityIconClasses[activity.type],
+                  size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4',
+                ]"
+              />
+            </div>
+
+            <!-- Expand Button (for detailed variant) -->
+            <button
+              v-if="variant === 'detailed' && activity.details"
+              type="button"
+              :class="expandButtonClasses"
+              @click.stop="toggleExpand(activity.id)"
+            >
+              <Icon
+                :name="expandedId === activity.id ? 'ph:caret-up' : 'ph:caret-down'"
+                class="w-3.5 h-3.5"
+              />
+            </button>
+          </div>
+        </div>
+      </TransitionGroup>
+
+      <!-- Load More Button -->
+      <button
+        v-if="showLoadMore && hasMore"
+        type="button"
+        :class="loadMoreButtonClasses"
+        :disabled="loadingMore"
+        @click="emit('loadMore')"
+      >
+        <Icon v-if="loadingMore" name="ph:spinner" class="w-4 h-4 animate-spin" />
+        <span>{{ loadingMore ? 'Loading...' : `Load ${remainingCount} more` }}</span>
       </button>
     </div>
 
-    <div class="divide-y divide-olympus-border">
-      <div
-        v-for="activity in activities"
-        :key="activity.id"
-        class="px-4 py-3 flex items-start gap-3 hover:bg-olympus-elevated/50 transition-colors duration-150 cursor-pointer"
-      >
-        <SharedAgentAvatar :user="activity.actor" size="sm" />
-
-        <div class="flex-1 min-w-0">
-          <p class="text-sm">{{ activity.description }}</p>
-          <p class="text-xs text-olympus-text-subtle mt-0.5">
-            {{ formatTime(activity.timestamp) }}
-          </p>
-        </div>
-
-        <div
-          :class="[
-            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-            activityBgClasses[activity.type]
-          ]"
-        >
-          <Icon
-            :name="activityIcons[activity.type]"
-            :class="['w-4 h-4', activityIconClasses[activity.type]]"
-          />
-        </div>
+    <!-- Empty State -->
+    <div v-else :class="emptyStateClasses">
+      <div :class="emptyIconContainerClasses">
+        <Icon name="ph:check-circle" :class="emptyIconClasses" />
       </div>
+      <p class="font-medium text-sm text-olympus-text">{{ emptyTitle }}</p>
+      <p class="text-xs text-olympus-text-muted mt-1">{{ emptyDescription }}</p>
+
+      <!-- Empty State Action -->
+      <SharedButton
+        v-if="showEmptyAction"
+        size="sm"
+        variant="secondary"
+        class="mt-3"
+        @click="emit('emptyAction')"
+      >
+        <Icon name="ph:arrow-clockwise" class="w-4 h-4" />
+        Refresh
+      </SharedButton>
     </div>
 
-    <div v-if="activities.length === 0" class="p-8 text-center">
-      <div class="w-12 h-12 rounded-xl bg-olympus-elevated flex items-center justify-center mx-auto mb-3">
-        <Icon name="ph:check-circle" class="w-6 h-6 text-olympus-text-subtle" />
-      </div>
-      <p class="font-medium text-sm text-olympus-text">All caught up!</p>
-      <p class="text-xs text-olympus-text-muted mt-1">Your recent activity will appear here</p>
+    <!-- Live Indicator -->
+    <div v-if="isLive" :class="liveIndicatorClasses">
+      <span class="relative flex h-2 w-2">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+      </span>
+      <span class="text-[10px] text-green-400 font-medium">Live</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { h } from 'vue'
+import {
+  TooltipArrow,
+  TooltipContent,
+  TooltipPortal,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+} from 'reka-ui'
 import type { Activity, ActivityType } from '~/types'
 
-defineProps<{
+type ActivityFeedSize = 'sm' | 'md' | 'lg'
+type ActivityFeedVariant = 'default' | 'compact' | 'detailed'
+type FilterType = 'all' | ActivityType
+
+const props = withDefaults(defineProps<{
+  // Core
   activities: Activity[]
+
+  // Appearance
+  size?: ActivityFeedSize
+  variant?: ActivityFeedVariant
+
+  // Display options
+  showFilter?: boolean
+  showViewAll?: boolean
+  showRefresh?: boolean
+  showTimeline?: boolean
+  showMetadata?: boolean
+  showLoadMore?: boolean
+  showCount?: boolean
+  showEmptyAction?: boolean
+
+  // Content
+  title?: string
+  emptyTitle?: string
+  emptyDescription?: string
+
+  // State
+  loading?: boolean
+  loadingMore?: boolean
+  refreshing?: boolean
+  isLive?: boolean
+
+  // Pagination
+  maxItems?: number
+  hasMore?: boolean
+  remainingCount?: number
+
+  // Behavior
+  interactive?: boolean
+  animated?: boolean
+}>(), {
+  size: 'md',
+  variant: 'default',
+  showFilter: true,
+  showViewAll: true,
+  showRefresh: false,
+  showTimeline: false,
+  showMetadata: true,
+  showLoadMore: false,
+  showCount: false,
+  showEmptyAction: true,
+  title: 'Recent Activity',
+  emptyTitle: 'All caught up!',
+  emptyDescription: 'Your recent activity will appear here',
+  loading: false,
+  loadingMore: false,
+  refreshing: false,
+  isLive: false,
+  maxItems: 10,
+  hasMore: false,
+  remainingCount: 0,
+  interactive: true,
+  animated: true,
+})
+
+const emit = defineEmits<{
+  viewAll: []
+  refresh: []
+  loadMore: []
+  activityClick: [activity: Activity]
+  emptyAction: []
 }>()
 
+// State
+const activeFilter = ref<FilterType>('all')
+const hoveredId = ref<string | null>(null)
+const expandedId = ref<string | null>(null)
+
+// Activity icons
 const activityIcons: Record<ActivityType, string> = {
   message: 'ph:chat-circle-fill',
   task_completed: 'ph:check-circle-fill',
@@ -63,6 +374,7 @@ const activityIcons: Record<ActivityType, string> = {
   error: 'ph:x-circle-fill',
 }
 
+// Activity background classes
 const activityBgClasses: Record<ActivityType, string> = {
   message: 'bg-blue-500/20',
   task_completed: 'bg-green-500/20',
@@ -73,6 +385,7 @@ const activityBgClasses: Record<ActivityType, string> = {
   error: 'bg-red-500/20',
 }
 
+// Activity icon classes
 const activityIconClasses: Record<ActivityType, string> = {
   message: 'text-blue-400',
   task_completed: 'text-green-400',
@@ -83,15 +396,349 @@ const activityIconClasses: Record<ActivityType, string> = {
   error: 'text-red-400',
 }
 
-const formatTime = (date: Date) => {
+// Filter options
+const filterOptions: { value: FilterType; label: string; color: string }[] = [
+  { value: 'all', label: 'All activity', color: 'bg-olympus-text-muted' },
+  { value: 'message', label: 'Messages', color: 'bg-blue-400' },
+  { value: 'task_completed', label: 'Completed', color: 'bg-green-400' },
+  { value: 'task_started', label: 'Started', color: 'bg-olympus-primary' },
+  { value: 'agent_spawned', label: 'Agents', color: 'bg-cyan-400' },
+  { value: 'approval_needed', label: 'Approvals', color: 'bg-amber-400' },
+  { value: 'error', label: 'Errors', color: 'bg-red-400' },
+]
+
+const filterLabels: Record<FilterType, string> = {
+  all: 'All',
+  message: 'Messages',
+  task_completed: 'Completed',
+  task_started: 'Started',
+  agent_spawned: 'Agents',
+  approval_needed: 'Approvals',
+  approval_granted: 'Approved',
+  error: 'Errors',
+}
+
+// Size configuration
+const sizeConfig: Record<ActivityFeedSize, {
+  padding: string
+  avatar: 'xs' | 'sm'
+  text: string
+  gap: string
+}> = {
+  sm: {
+    padding: 'px-3 py-2',
+    avatar: 'xs',
+    text: 'text-xs',
+    gap: 'gap-2',
+  },
+  md: {
+    padding: 'px-4 py-3',
+    avatar: 'sm',
+    text: 'text-sm',
+    gap: 'gap-3',
+  },
+  lg: {
+    padding: 'px-5 py-4',
+    avatar: 'sm',
+    text: 'text-sm',
+    gap: 'gap-4',
+  },
+}
+
+// Computed values
+const avatarSize = computed(() => sizeConfig[props.size].avatar)
+
+const filteredActivities = computed(() => {
+  if (activeFilter.value === 'all') return props.activities
+  return props.activities.filter(a => a.type === activeFilter.value)
+})
+
+const displayedActivities = computed(() => {
+  return filteredActivities.value.slice(0, props.maxItems)
+})
+
+const getFilterCount = (filter: FilterType): number => {
+  if (filter === 'all') return props.activities.length
+  return props.activities.filter(a => a.type === filter).length
+}
+
+// Container classes
+const containerClasses = computed(() => [
+  'card-gradient bg-olympus-surface rounded-xl overflow-hidden relative',
+])
+
+// Header classes
+const headerClasses = computed(() => [
+  'p-4 border-b border-olympus-border flex items-center justify-between',
+])
+
+const headerIconClasses = computed(() => [
+  'w-8 h-8 rounded-lg bg-olympus-primary/20 flex items-center justify-center',
+])
+
+const titleClasses = computed(() => [
+  'font-semibold',
+  props.size === 'sm' ? 'text-xs' : 'text-sm',
+])
+
+const subtitleClasses = computed(() => [
+  'text-olympus-text-muted',
+  props.size === 'sm' ? 'text-[10px]' : 'text-xs',
+])
+
+// Filter button classes
+const filterButtonClasses = computed(() => [
+  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs',
+  'bg-olympus-bg border border-olympus-border text-olympus-text-muted',
+  'hover:text-olympus-text hover:border-olympus-text-subtle',
+  'transition-colors duration-150 outline-none',
+  'focus-visible:ring-2 focus-visible:ring-olympus-primary/50',
+])
+
+// View all button classes
+const viewAllButtonClasses = computed(() => [
+  'text-sm text-olympus-primary hover:text-olympus-primary-hover',
+  'transition-colors duration-150 outline-none',
+  'focus-visible:ring-2 focus-visible:ring-olympus-primary/50 rounded px-2 py-1 -mr-2',
+])
+
+// Refresh button classes
+const refreshButtonClasses = computed(() => [
+  'p-1.5 rounded-lg transition-colors duration-150 outline-none',
+  'text-olympus-text-muted hover:text-olympus-text hover:bg-olympus-bg',
+  'focus-visible:ring-2 focus-visible:ring-olympus-primary/50',
+  'disabled:opacity-50 disabled:cursor-not-allowed',
+])
+
+// Dropdown classes
+const dropdownClasses = computed(() => [
+  'min-w-40 bg-olympus-elevated border border-olympus-border rounded-xl',
+  'shadow-xl p-1 z-50',
+  'animate-in fade-in-0 zoom-in-95 duration-150',
+])
+
+const dropdownItemClasses = computed(() => [
+  'flex items-center gap-2 px-3 py-2 text-sm rounded-lg cursor-pointer outline-none',
+  'text-olympus-text-muted hover:bg-olympus-surface hover:text-olympus-text',
+  'focus:bg-olympus-surface focus:text-olympus-text transition-colors duration-150',
+])
+
+// Tooltip classes
+const tooltipClasses = computed(() => [
+  'z-50 bg-olympus-elevated border border-olympus-border rounded-lg',
+  'px-2 py-1 text-xs shadow-lg',
+  'animate-in fade-in-0 zoom-in-95 duration-100',
+])
+
+// Content classes
+const contentClasses = computed(() => [
+  'divide-y divide-olympus-border',
+])
+
+// Activity item classes
+const activityItemClasses = computed(() => [
+  'relative flex items-start',
+  sizeConfig[props.size].padding,
+  sizeConfig[props.size].gap,
+  'hover:bg-olympus-elevated/50 transition-colors duration-150',
+  props.interactive && 'cursor-pointer',
+])
+
+// Timeline connector classes
+const timelineConnectorClasses = computed(() => [
+  'absolute left-6 top-10 w-0.5 h-full -bottom-3 bg-olympus-border',
+  props.size === 'sm' && 'left-5',
+])
+
+// Activity indicator classes
+const activityIndicatorClasses = (type: ActivityType) => [
+  'absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-olympus-surface',
+  'flex items-center justify-center',
+  activityBgClasses[type],
+]
+
+// Text classes
+const actorNameClasses = computed(() => [
+  'font-medium text-olympus-text',
+  sizeConfig[props.size].text,
+])
+
+const actionTextClasses = computed(() => [
+  'text-olympus-text-muted',
+  sizeConfig[props.size].text,
+])
+
+const targetClasses = computed(() => [
+  'font-medium text-olympus-primary',
+  sizeConfig[props.size].text,
+])
+
+const timestampClasses = computed(() => [
+  'text-olympus-text-subtle whitespace-nowrap',
+  props.size === 'sm' ? 'text-[10px]' : 'text-xs',
+])
+
+const descriptionClasses = computed(() => [
+  'mt-1 text-olympus-text-muted line-clamp-2',
+  props.size === 'sm' ? 'text-[10px]' : 'text-xs',
+])
+
+const metadataClasses = computed(() => [
+  'mt-1.5 flex items-center gap-3 text-olympus-text-subtle',
+  props.size === 'sm' ? 'text-[10px]' : 'text-xs',
+])
+
+const detailsClasses = computed(() => [
+  'mt-3 p-3 rounded-lg bg-olympus-bg border border-olympus-border',
+])
+
+const expandButtonClasses = computed(() => [
+  'p-1.5 rounded-lg transition-colors duration-150',
+  'text-olympus-text-subtle hover:text-olympus-text hover:bg-olympus-surface',
+])
+
+// Load more button classes
+const loadMoreButtonClasses = computed(() => [
+  'w-full py-3 text-sm text-olympus-text-muted',
+  'hover:text-olympus-text hover:bg-olympus-elevated/50',
+  'transition-colors duration-150 flex items-center justify-center gap-2',
+  'disabled:opacity-50 disabled:cursor-not-allowed',
+])
+
+// Empty state classes
+const emptyStateClasses = computed(() => [
+  'p-8 text-center',
+])
+
+const emptyIconContainerClasses = computed(() => [
+  'w-12 h-12 rounded-xl bg-olympus-elevated flex items-center justify-center mx-auto mb-3',
+])
+
+const emptyIconClasses = computed(() => [
+  'w-6 h-6 text-olympus-text-subtle',
+])
+
+// Live indicator classes
+const liveIndicatorClasses = computed(() => [
+  'absolute top-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded-full',
+  'bg-green-500/10 border border-green-500/30',
+])
+
+// Helper functions
+const getActionText = (activity: Activity): string => {
+  const actionMap: Record<ActivityType, string> = {
+    message: 'sent a message in',
+    task_completed: 'completed task',
+    task_started: 'started working on',
+    agent_spawned: 'spawned agent',
+    approval_needed: 'requested approval for',
+    approval_granted: 'approved',
+    error: 'encountered an error in',
+  }
+  return actionMap[activity.type] || 'performed action'
+}
+
+const formatRelativeTime = (date: Date): string => {
   const now = new Date()
   const diff = now.getTime() - new Date(date).getTime()
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
+  const seconds = Math.floor(diff / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
 
-  if (minutes < 1) return 'Just now'
+  if (seconds < 60) return 'Just now'
   if (minutes < 60) return `${minutes}m ago`
   if (hours < 24) return `${hours}h ago`
+  if (days < 7) return `${days}d ago`
   return new Date(date).toLocaleDateString()
 }
+
+const formatFullDate = (date: Date): string => {
+  return new Date(date).toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+const formatDuration = (seconds: number): string => {
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  return `${hours}h ${minutes % 60}m`
+}
+
+// Actions
+const toggleExpand = (id: string) => {
+  expandedId.value = expandedId.value === id ? null : id
+}
+
+const handleActivityClick = (activity: Activity) => {
+  if (props.interactive) {
+    emit('activityClick', activity)
+  }
+}
+
+// Activity Item Skeleton component
+const ActivityItemSkeleton = defineComponent({
+  name: 'ActivityItemSkeleton',
+  setup() {
+    return () => h('div', {
+      class: 'px-4 py-3 flex items-start gap-3 animate-pulse',
+    }, [
+      h(resolveComponent('SharedSkeleton'), { variant: 'avatar' }),
+      h('div', { class: 'flex-1 space-y-2' }, [
+        h('div', { class: 'flex items-center gap-2' }, [
+          h(resolveComponent('SharedSkeleton'), { customClass: 'h-3 w-20' }),
+          h(resolveComponent('SharedSkeleton'), { customClass: 'h-3 w-32' }),
+        ]),
+        h(resolveComponent('SharedSkeleton'), { customClass: 'h-2 w-16' }),
+      ]),
+      h(resolveComponent('SharedSkeleton'), { customClass: 'w-8 h-8 rounded-lg' }),
+    ])
+  },
+})
 </script>
+
+<style scoped>
+/* Activity list transitions */
+.activity-list-enter-active,
+.activity-list-leave-active {
+  transition: all 0.3s ease;
+}
+
+.activity-list-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.activity-list-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.activity-list-move {
+  transition: transform 0.3s ease;
+}
+
+/* Expand transition */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+
+.expand-enter-to,
+.expand-leave-from {
+  max-height: 200px;
+}
+</style>
