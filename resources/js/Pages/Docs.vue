@@ -1,0 +1,577 @@
+<template>
+  <div class="h-full flex">
+    <!-- Document List Sidebar -->
+    <aside class="w-72 bg-white border-r border-gray-200 flex flex-col shrink-0">
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold text-gray-900">Documents</h2>
+          <button
+            class="p-1.5 rounded-lg hover:bg-gray-50 text-gray-900 transition-colors"
+            @click="handleCreateDocument"
+          >
+            <Icon name="ph:plus" class="w-5 h-5" />
+          </button>
+        </div>
+
+        <!-- Search -->
+        <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200">
+          <Icon name="ph:magnifying-glass" class="w-4 h-4 text-gray-500" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search docs..."
+            class="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-500"
+          />
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-3">
+        <DocsDocList
+          :documents="filteredDocuments"
+          :selected="selectedDoc"
+          @select="handleSelectDocument"
+        />
+      </div>
+    </aside>
+
+    <!-- Document Viewer -->
+    <DocsDocViewer
+      :document="selectedDoc"
+      :comments="comments"
+      :is-editing="isEditing"
+      :has-changes="hasChanges"
+      :saving="saving"
+      class="flex-1"
+      @edit="isEditing = true"
+      @cancel="handleCancelEdit"
+      @save="handleSaveDocument"
+      @content-change="handleContentChange"
+      @version-history="showVersionHistory = true"
+    />
+
+    <!-- Version History Panel -->
+    <Transition name="slide-left">
+      <aside v-if="showVersionHistory" class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0">
+        <div class="p-4 border-b border-gray-200">
+          <div class="flex items-center justify-between">
+            <h3 class="font-semibold text-gray-900">Version History</h3>
+            <button
+              class="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors"
+              @click="showVersionHistory = false"
+            >
+              <Icon name="ph:x" class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Compare Button -->
+        <div v-if="versions.length >= 1" class="p-3 border-b border-gray-200">
+          <button
+            class="w-full px-3 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+            @click="showDiffViewer = true"
+          >
+            <Icon name="ph:git-diff" class="w-4 h-4" />
+            Compare Versions
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-2">
+          <div
+            v-for="version in versions"
+            :key="version.id"
+            class="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-200"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-gray-700">
+                Version {{ version.versionNumber }}
+              </span>
+              <span class="text-xs text-gray-500">
+                {{ formatDate(version.createdAt) }}
+              </span>
+            </div>
+            <div v-if="version.author" class="flex items-center gap-2 mb-2">
+              <SharedAgentAvatar :user="version.author" size="xs" />
+              <span class="text-xs text-gray-500">{{ version.author.name }}</span>
+            </div>
+            <p v-if="version.changeDescription" class="text-xs text-gray-500 line-clamp-2 mb-2">
+              {{ version.changeDescription }}
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                class="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                @click="handleCompareVersion(version)"
+              >
+                Compare
+              </button>
+              <span class="text-gray-300">|</span>
+              <button
+                class="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                @click="handleRestoreVersion(version)"
+              >
+                Restore
+              </button>
+            </div>
+          </div>
+
+          <div v-if="versions.length === 0" class="text-center py-8 text-gray-500 text-sm">
+            No version history yet
+          </div>
+        </div>
+      </aside>
+    </Transition>
+
+    <!-- Diff Viewer Modal -->
+    <DocsDocumentDiffViewer
+      v-if="selectedDoc"
+      :open="showDiffViewer"
+      :versions="versions"
+      :current-document="selectedDoc"
+      @update:open="showDiffViewer = $event"
+      @restore="handleRestoreFromDiff"
+    />
+
+    <!-- Attachments Sidebar -->
+    <Transition name="slide-left">
+      <aside v-if="showAttachmentsSidebar && selectedDoc" class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0">
+        <DocsDocumentAttachments
+          :document-id="selectedDoc.id"
+          @close="showAttachmentsSidebar = false"
+          @change="loadAttachmentCount"
+        />
+      </aside>
+    </Transition>
+
+    <!-- Comment Sidebar -->
+    <Transition name="slide-left">
+      <aside v-if="showCommentsSidebar" class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0">
+        <div class="p-4 border-b border-gray-200">
+          <div class="flex items-center justify-between">
+            <h3 class="font-semibold text-gray-900">
+              Comments
+              <span class="ml-1 text-sm text-gray-500">({{ comments.length }})</span>
+            </h3>
+            <button
+              class="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors"
+              @click="showCommentsSidebar = false"
+            >
+              <Icon name="ph:x" class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Add Comment Form -->
+        <div class="p-4 border-b border-gray-200">
+          <textarea
+            v-model="newCommentContent"
+            placeholder="Add a comment..."
+            class="w-full bg-gray-50 rounded-lg p-3 text-sm resize-none outline-none border border-gray-200 focus:border-gray-300"
+            rows="3"
+          />
+          <button
+            class="mt-2 w-full btn-primary"
+            :disabled="!newCommentContent.trim()"
+            @click="handleAddComment"
+          >
+            Add Comment
+          </button>
+        </div>
+
+        <!-- Comments List -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+          <DocsCommentThread
+            v-for="comment in comments"
+            :key="comment.id"
+            :comment="comment"
+            @reply="handleReplyToComment"
+            @resolve="handleResolveComment"
+            @delete="handleDeleteComment"
+          />
+
+          <div v-if="comments.length === 0" class="text-center py-8 text-gray-500 text-sm">
+            No comments yet
+          </div>
+        </div>
+      </aside>
+    </Transition>
+
+    <!-- Floating Actions -->
+    <div class="fixed bottom-6 right-6 flex items-center gap-2">
+      <button
+        v-if="selectedDoc"
+        class="p-3 rounded-full bg-gray-100 shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors relative"
+        title="Attachments"
+        @click="showAttachmentsSidebar = !showAttachmentsSidebar"
+      >
+        <Icon name="ph:paperclip" class="w-5 h-5 text-gray-700" />
+        <span v-if="attachmentCount > 0" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center">
+          {{ attachmentCount }}
+        </span>
+      </button>
+      <button
+        v-if="selectedDoc"
+        class="p-3 rounded-full bg-gray-100 shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors relative"
+        title="Comments"
+        @click="showCommentsSidebar = !showCommentsSidebar"
+      >
+        <Icon name="ph:chat-circle" class="w-5 h-5 text-gray-700" />
+        <span v-if="comments.length > 0" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center">
+          {{ comments.length }}
+        </span>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import type { Document, User } from '@/types'
+import DocsDocList from '@/Components/docs/DocList.vue'
+import DocsDocViewer from '@/Components/docs/DocViewer.vue'
+import DocsDocumentDiffViewer from '@/Components/docs/DocumentDiffViewer.vue'
+import DocsDocumentAttachments from '@/Components/docs/DocumentAttachments.vue'
+import DocsCommentThread from '@/Components/docs/CommentThread.vue'
+import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
+import { useApi } from '@/composables/useApi'
+import { useRealtime } from '@/composables/useRealtime'
+
+interface DocumentComment {
+  id: string
+  documentId: string
+  authorId: string
+  content: string
+  parentId: string | null
+  resolved: boolean
+  resolvedById: string | null
+  resolvedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+  author?: User
+  resolvedBy?: User
+  replies?: DocumentComment[]
+}
+
+interface DocumentVersion {
+  id: string
+  documentId: string
+  title: string
+  content: string
+  authorId: string
+  versionNumber: number
+  changeDescription: string | null
+  createdAt: Date
+  author?: User
+}
+
+const {
+  fetchDocuments,
+  createDocument,
+  updateDocument,
+  fetchDocumentComments,
+  addDocumentComment,
+  updateDocumentComment,
+  deleteDocumentComment,
+  fetchDocumentVersions,
+  restoreDocumentVersion,
+  fetchDocumentAttachments,
+} = useApi()
+const { on } = useRealtime()
+
+// Fetch documents from API
+const { data: documentsData, refresh: refreshDocuments } = fetchDocuments()
+
+const documents = computed<Document[]>(() => documentsData.value ?? [])
+
+// Select the first actual document (not a folder)
+const selectedDoc = ref<Document | null>(null)
+const searchQuery = ref('')
+const isEditing = ref(false)
+const hasChanges = ref(false)
+const saving = ref(false)
+const editedContent = ref('')
+const showVersionHistory = ref(false)
+const showCommentsSidebar = ref(false)
+const showAttachmentsSidebar = ref(false)
+const showDiffViewer = ref(false)
+const newCommentContent = ref('')
+const attachmentCount = ref(0)
+
+// Comments and versions for selected document
+const comments = ref<DocumentComment[]>([])
+const versions = ref<DocumentVersion[]>([])
+
+// Initialize selected document
+watch(documents, (docs) => {
+  if (!selectedDoc.value && docs.length > 0) {
+    const firstDocument = docs.find(doc => !doc.isFolder)
+    selectedDoc.value = firstDocument ?? docs[0]
+  }
+}, { immediate: true })
+
+// Fetch comments, versions, and attachment count when document changes
+watch(selectedDoc, async (doc) => {
+  if (doc) {
+    await Promise.all([
+      loadComments(doc.id),
+      loadVersions(doc.id),
+      loadAttachmentCount(doc.id),
+    ])
+  } else {
+    comments.value = []
+    versions.value = []
+    attachmentCount.value = 0
+  }
+}, { immediate: true })
+
+const loadComments = async (documentId: string) => {
+  try {
+    const { data } = await fetchDocumentComments(documentId)
+    comments.value = data.value ?? []
+  } catch {
+    comments.value = []
+  }
+}
+
+const loadVersions = async (documentId: string) => {
+  try {
+    const { data } = await fetchDocumentVersions(documentId)
+    versions.value = data.value ?? []
+  } catch {
+    versions.value = []
+  }
+}
+
+const loadAttachmentCount = async (documentId?: string) => {
+  const docId = documentId || selectedDoc.value?.id
+  if (!docId) {
+    attachmentCount.value = 0
+    return
+  }
+  try {
+    const { data } = await fetchDocumentAttachments(docId)
+    attachmentCount.value = (data.value ?? []).length
+  } catch {
+    attachmentCount.value = 0
+  }
+}
+
+const filteredDocuments = computed(() =>
+  documents.value.filter(doc =>
+    doc.title.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+)
+
+const handleSelectDocument = async (doc: Document) => {
+  if (isEditing.value && hasChanges.value) {
+    if (!confirm('You have unsaved changes. Discard them?')) {
+      return
+    }
+  }
+  selectedDoc.value = doc
+  isEditing.value = false
+  hasChanges.value = false
+}
+
+const handleCreateDocument = async () => {
+  const newDoc = await createDocument({
+    title: 'Untitled Document',
+    content: '# New Document\n\nStart writing here...',
+    authorId: 'h1',
+  })
+  await refreshDocuments()
+  if (newDoc) {
+    selectedDoc.value = newDoc as Document
+  }
+}
+
+const handleContentChange = (content: string) => {
+  editedContent.value = content
+  hasChanges.value = content !== selectedDoc.value?.content
+}
+
+const handleSaveDocument = async () => {
+  if (!selectedDoc.value || !hasChanges.value) return
+
+  saving.value = true
+  try {
+    await updateDocument(selectedDoc.value.id, {
+      content: editedContent.value,
+      changeDescription: 'Content updated',
+    })
+    await refreshDocuments()
+    await loadVersions(selectedDoc.value.id)
+
+    // Update selected doc with new content
+    const updatedDoc = documents.value.find(d => d.id === selectedDoc.value?.id)
+    if (updatedDoc) {
+      selectedDoc.value = updatedDoc
+    }
+
+    hasChanges.value = false
+    isEditing.value = false
+  } finally {
+    saving.value = false
+  }
+}
+
+const handleCancelEdit = () => {
+  isEditing.value = false
+  hasChanges.value = false
+  editedContent.value = selectedDoc.value?.content ?? ''
+}
+
+const handleRestoreVersion = async (version: DocumentVersion) => {
+  if (!selectedDoc.value) return
+  if (!confirm(`Restore to version ${version.versionNumber}? This will create a snapshot of the current state.`)) {
+    return
+  }
+
+  try {
+    await restoreDocumentVersion(selectedDoc.value.id, version.id, 'h1')
+    await refreshDocuments()
+    await loadVersions(selectedDoc.value.id)
+
+    // Update selected doc
+    const updatedDoc = documents.value.find(d => d.id === selectedDoc.value?.id)
+    if (updatedDoc) {
+      selectedDoc.value = updatedDoc
+    }
+  } catch (error) {
+    console.error('Failed to restore version:', error)
+  }
+}
+
+const handleCompareVersion = (version: DocumentVersion) => {
+  showDiffViewer.value = true
+}
+
+const handleRestoreFromDiff = async (versionId: string) => {
+  if (!selectedDoc.value) return
+
+  const version = versions.value.find(v => v.id === versionId)
+  if (!version) return
+
+  if (!confirm(`Restore to version ${version.versionNumber}? This will create a snapshot of the current state.`)) {
+    return
+  }
+
+  try {
+    await restoreDocumentVersion(selectedDoc.value.id, versionId, 'h1')
+    await refreshDocuments()
+    await loadVersions(selectedDoc.value.id)
+
+    // Update selected doc
+    const updatedDoc = documents.value.find(d => d.id === selectedDoc.value?.id)
+    if (updatedDoc) {
+      selectedDoc.value = updatedDoc
+    }
+
+    showDiffViewer.value = false
+  } catch (error) {
+    console.error('Failed to restore version:', error)
+  }
+}
+
+// Comment handlers
+const handleAddComment = async () => {
+  if (!selectedDoc.value || !newCommentContent.value.trim()) return
+
+  try {
+    await addDocumentComment(selectedDoc.value.id, {
+      content: newCommentContent.value.trim(),
+      authorId: 'h1',
+    })
+    newCommentContent.value = ''
+    await loadComments(selectedDoc.value.id)
+  } catch (error) {
+    console.error('Failed to add comment:', error)
+  }
+}
+
+const handleReplyToComment = async (parentId: string, content: string) => {
+  if (!selectedDoc.value) return
+
+  try {
+    await addDocumentComment(selectedDoc.value.id, {
+      content,
+      parentId,
+      authorId: 'h1',
+    })
+    await loadComments(selectedDoc.value.id)
+  } catch (error) {
+    console.error('Failed to reply to comment:', error)
+  }
+}
+
+const handleResolveComment = async (commentId: string, resolved: boolean) => {
+  if (!selectedDoc.value) return
+
+  try {
+    await updateDocumentComment(selectedDoc.value.id, commentId, {
+      resolved,
+      resolvedById: resolved ? 'h1' : undefined,
+    })
+    await loadComments(selectedDoc.value.id)
+  } catch (error) {
+    console.error('Failed to resolve comment:', error)
+  }
+}
+
+const handleDeleteComment = async (commentId: string) => {
+  if (!selectedDoc.value) return
+  if (!confirm('Delete this comment?')) return
+
+  try {
+    await deleteDocumentComment(selectedDoc.value.id, commentId)
+    await loadComments(selectedDoc.value.id)
+  } catch (error) {
+    console.error('Failed to delete comment:', error)
+  }
+}
+
+const formatDate = (date: Date | string) => {
+  const d = new Date(date)
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+// Real-time updates
+let unsubscribeComment: (() => void) | null = null
+let unsubscribeUpdate: (() => void) | null = null
+
+onMounted(() => {
+  unsubscribeComment = on('document:comment:new', (data: { documentId: string }) => {
+    if (data.documentId === selectedDoc.value?.id) {
+      loadComments(data.documentId)
+    }
+  })
+
+  unsubscribeUpdate = on('document:updated', (data: { documentId: string }) => {
+    if (data.documentId === selectedDoc.value?.id) {
+      refreshDocuments()
+      loadVersions(data.documentId)
+    }
+  })
+})
+
+onUnmounted(() => {
+  unsubscribeComment?.()
+  unsubscribeUpdate?.()
+})
+</script>
+
+<style scoped>
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-left-enter-from,
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+</style>

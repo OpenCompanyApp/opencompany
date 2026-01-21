@@ -1,26 +1,35 @@
 {
-  "name": "olympus",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
-    "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
-  },
-  "dependencies": {
-    "@nuxt/fonts": "0.12.1",
-    "@nuxt/icon": "2.2.1",
-    "@nuxt/image": "2.0.0",
-    "@tailwindcss/vite": "^4.1.18",
-    "@vueuse/core": "^14.1.0",
-    "canvas-confetti": "^1.9.4",
-    "gsap": "^3.14.2",
-    "nuxt": "^4.2.2",
-    "reka-ui": "^2.7.0",
-    "tailwindcss": "^4.1.18",
-    "vue": "^3.5.27",
-    "vue-router": "^4.6.4"
-  }
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "build:typecheck": "vue-tsc && vite build",
+        "typecheck": "vue-tsc --noEmit",
+        "dev": "vite"
+    },
+    "devDependencies": {
+        "@inertiajs/vue3": "^2.0.0",
+        "@tailwindcss/forms": "^0.5.3",
+        "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-vue": "^5.2.0",
+        "autoprefixer": "^10.4.12",
+        "axios": "^1.11.0",
+        "concurrently": "^9.0.1",
+        "laravel-vite-plugin": "^1.2.0",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^4.0.0",
+        "typescript": "^5.6.3",
+        "vite": "^6.0.0",
+        "vue": "^3.5.0",
+        "vue-tsc": "^2.0.24"
+    },
+    "dependencies": {
+        "@iconify-json/ph": "^1.2.0",
+        "@iconify/vue": "^4.1.0",
+        "@vueuse/core": "^11.0.0",
+        "reka-ui": "^2.0.0",
+        "laravel-echo": "^1.19.0",
+        "pusher-js": "^8.4.0"
+    }
 }
