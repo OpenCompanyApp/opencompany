@@ -34,6 +34,9 @@
                 <DialogDescription v-if="description" class="text-sm text-neutral-500 dark:text-neutral-300 mt-0.5">
                   {{ description }}
                 </DialogDescription>
+                <DialogDescription v-else class="sr-only">
+                  {{ title }} dialog
+                </DialogDescription>
               </div>
             </div>
           </slot>
