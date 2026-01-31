@@ -1,4 +1,4 @@
-# Olympus Business Strategy & Monetization
+# OpenCompany Business Strategy & Monetization
 
 > **Vision**: Become the de facto platform for AI agent collaboration and orchestration, enabling teams to build, deploy, and manage AI-powered workflows at scale.
 
@@ -19,7 +19,7 @@
 
 ## Executive Summary
 
-Olympus is an AI agent collaboration platform that enables teams to orchestrate, communicate with, and manage autonomous AI agents. Following the proven **open-core model** (similar to n8n, GitLab, and Supabase), Olympus will:
+OpenCompany is an AI agent collaboration platform that enables teams to orchestrate, communicate with, and manage autonomous AI agents. Following the proven **open-core model** (similar to n8n, GitLab, and Supabase), OpenCompany will:
 
 - **Open source the core platform** to drive adoption and community trust
 - **Monetize through cloud hosting** and enterprise features
@@ -31,9 +31,9 @@ Olympus is an AI agent collaboration platform that enables teams to orchestrate,
 
 ## Product Positioning
 
-### What Makes Olympus Unique
+### What Makes OpenCompany Unique
 
-| Feature | Olympus | Competitors |
+| Feature | OpenCompany | Competitors |
 |---------|---------|-------------|
 | Multi-agent collaboration | Real-time chat, task handoffs | Single agent focus |
 | Human-in-the-loop | Approval workflows, intervention | Fully autonomous only |
@@ -72,7 +72,7 @@ Olympus is an AI agent collaboration platform that enables teams to orchestrate,
 
 ## Open Core Model
 
-Following the n8n/GitLab model, Olympus uses a **source-available open core** approach:
+Following the n8n/GitLab model, OpenCompany uses a **source-available open core** approach:
 
 ### Community Edition (Open Source)
 
@@ -190,9 +190,9 @@ Beyond included executions:
 
 **Viral Loops Built Into Product**:
 
-1. **"Powered by Olympus" Badge**
+1. **"Powered by OpenCompany" Badge**
    - Free users display badge in shared agents
-   - Links back to Olympus signup
+   - Links back to OpenCompany signup
 
 2. **Shareable Agent Templates**
    - Create agent → Share public link
@@ -209,13 +209,13 @@ Beyond included executions:
 
 5. **Embeddable Agents**
    - Embed agent chat on any website
-   - "Chat powered by Olympus" attribution
+   - "Chat powered by OpenCompany" attribution
 
 ### 3. Content Marketing Flywheel
 
 **SEO Strategy**:
 - Target: "AI agent platform", "multi-agent orchestration", "LLM workflow automation"
-- Comparison pages: "Olympus vs AutoGPT", "Olympus vs LangChain"
+- Comparison pages: "OpenCompany vs AutoGPT", "OpenCompany vs LangChain"
 - Use case pages: "AI agents for customer support", "AI agents for code review"
 
 **Content Types**:
@@ -296,14 +296,14 @@ Beyond included executions:
 
 ### Certification Program
 
-**Olympus Certified Developer**:
+**OpenCompany Certified Developer**:
 - Online course + exam
 - $199 certification fee
 - Listed in certified directory
 - Badge for LinkedIn/portfolio
 - Priority for contract opportunities
 
-**Olympus Certified Partner**:
+**OpenCompany Certified Partner**:
 - For agencies and consultancies
 - Training on implementation
 - Lead referrals
@@ -439,14 +439,14 @@ Beyond included executions:
 
 ## Summary
 
-Olympus has a clear path to building a sustainable business:
+OpenCompany has a clear path to building a sustainable business:
 
 1. **Open source builds trust** and drives developer adoption
 2. **Cloud hosting provides convenience** and recurring revenue
 3. **Enterprise features capture** high-value customers
 4. **Marketplace creates ecosystem** lock-in and additional revenue
 
-The n8n model has proven that open-core can work for developer tools. With AI agents being the next major platform shift, Olympus is positioned to be the collaboration layer that connects humans and AI.
+The n8n model has proven that open-core can work for developer tools. With AI agents being the next major platform shift, OpenCompany is positioned to be the collaboration layer that connects humans and AI.
 
 **Next Steps**:
 1. Finalize open source license

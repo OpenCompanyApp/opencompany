@@ -1,9 +1,9 @@
-# Olympus Project Rules
+# OpenCompany Project Rules
 
 ## Local Development
 
-- **Local URL**: `http://olympus.test` (Laravel Valet domain, no SSL)
-- When testing or navigating to the app locally, always use `http://olympus.test`
+- **Local URL**: `http://opencompany.test` (Laravel Valet domain, no SSL)
+- When testing or navigating to the app locally, always use `http://opencompany.test`
 
 ## Tech Stack
 
