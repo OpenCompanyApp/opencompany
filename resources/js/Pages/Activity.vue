@@ -177,6 +177,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import type { User, Activity } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
 

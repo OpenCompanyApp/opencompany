@@ -222,7 +222,7 @@
     </div>
 
     <!-- Create Template Modal -->
-    <SharedModal v-model:open="showCreateTemplate" title="Create Task Template">
+    <Modal v-model:open="showCreateTemplate" title="Create Task Template">
       <form class="space-y-4" @submit.prevent="handleSaveTemplate">
         <div>
           <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Template Name</label>
@@ -320,10 +320,10 @@
           </button>
         </div>
       </form>
-    </SharedModal>
+    </Modal>
 
     <!-- Create Rule Modal -->
-    <SharedModal v-model:open="showCreateRule" title="Create Automation Rule">
+    <Modal v-model:open="showCreateRule" title="Create Automation Rule">
       <form class="space-y-4" @submit.prevent="handleSaveRule">
         <div>
           <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Rule Name</label>
@@ -401,7 +401,7 @@
           </button>
         </div>
       </form>
-    </SharedModal>
+    </Modal>
   </div>
 </template>
 
@@ -409,7 +409,8 @@
 import { ref, computed, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import type { User } from '@/types'
-import SharedModal from '@/Components/shared/Modal.vue'
+import Icon from '@/Components/shared/Icon.vue'
+import Modal from '@/Components/shared/Modal.vue'
 import { useApi } from '@/composables/useApi'
 
 interface TaskTemplate {
