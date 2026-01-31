@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen bg-white p-6">
+  <div class="min-h-screen bg-white dark:bg-neutral-900 p-6">
     <div class="max-w-4xl mx-auto">
       <!-- Back button -->
       <button
         type="button"
-        class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6 transition-colors"
+        class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white mb-6 transition-colors"
         @click="goBack"
       >
         <Icon name="ph:arrow-left" class="w-4 h-4" />
@@ -25,7 +25,7 @@
 
       <template v-else-if="user">
         <!-- Profile Header -->
-        <div class="bg-gray-50 rounded-xl p-6 border border-gray-200 mb-6">
+        <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-6 border border-neutral-200 dark:border-neutral-700 mb-6">
           <div class="flex items-start gap-6">
             <!-- Avatar -->
             <div class="relative">
@@ -48,7 +48,7 @@
               <span
                 v-if="user.type === 'agent'"
                 :class="[
-                  'absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-gray-50',
+                  'absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-neutral-50 dark:border-neutral-800',
                   statusColorMap[user.status || 'offline'],
                 ]"
               />
@@ -57,7 +57,7 @@
             <!-- Info -->
             <div class="flex-1">
               <div class="flex items-center gap-3 mb-2">
-                <h1 class="text-2xl font-bold text-gray-900">{{ user.name }}</h1>
+                <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">{{ user.name }}</h1>
                 <span
                   v-if="user.type === 'agent'"
                   :class="[
@@ -74,14 +74,14 @@
                   Temporary
                 </span>
               </div>
-              <p v-if="user.email" class="text-sm text-gray-500 mb-2">
+              <p v-if="user.email" class="text-sm text-neutral-500 dark:text-neutral-300 mb-2">
                 {{ user.email }}
               </p>
-              <p v-if="user.currentTask" class="text-sm text-gray-500">
+              <p v-if="user.currentTask" class="text-sm text-neutral-500 dark:text-neutral-300">
                 <Icon name="ph:play-circle" class="w-4 h-4 inline mr-1 text-green-400" />
                 {{ user.currentTask }}
               </p>
-              <p v-if="user.type === 'human'" class="text-sm text-gray-500">
+              <p v-if="user.type === 'human'" class="text-sm text-neutral-500 dark:text-neutral-300">
                 <Icon name="ph:user" class="w-4 h-4 inline mr-1" />
                 Human Team Member
               </p>
@@ -89,7 +89,7 @@
                 <Link
                   v-if="user.id !== 'h1'"
                   :href="`/messages/${user.id}`"
-                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-50 border border-gray-200 text-gray-900 hover:bg-white transition-colors"
+                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-neutral-900 dark:text-white hover:bg-white dark:hover:bg-neutral-600 transition-colors"
                 >
                   <Icon name="ph:chat-circle" class="w-4 h-4" />
                   Send Message
@@ -97,7 +97,7 @@
                 <Link
                   v-if="user.type === 'agent'"
                   :href="`/agent/${user.id}`"
-                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-900 hover:bg-gray-200 transition-colors"
+                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
                 >
                   <Icon name="ph:gear" class="w-4 h-4" />
                   Manage Agent
@@ -107,13 +107,13 @@
 
             <!-- Quick Stats -->
             <div class="grid grid-cols-2 gap-4">
-              <div class="text-center p-3 bg-white rounded-lg">
-                <p class="text-2xl font-bold text-gray-900">{{ activityData?.stats?.completedTasks || 0 }}</p>
-                <p class="text-xs text-gray-500">Tasks Done</p>
+              <div class="text-center p-3 bg-white dark:bg-neutral-700 rounded-lg">
+                <p class="text-2xl font-bold text-neutral-900 dark:text-white">{{ activityData?.stats?.completedTasks || 0 }}</p>
+                <p class="text-xs text-neutral-500 dark:text-neutral-300">Tasks Done</p>
               </div>
-              <div class="text-center p-3 bg-white rounded-lg">
-                <p class="text-2xl font-bold text-gray-900">{{ formatCredits(activityData?.stats?.totalCreditsUsed || 0) }}</p>
-                <p class="text-xs text-gray-500">Credits Used</p>
+              <div class="text-center p-3 bg-white dark:bg-neutral-700 rounded-lg">
+                <p class="text-2xl font-bold text-neutral-900 dark:text-white">{{ formatCredits(activityData?.stats?.totalCreditsUsed || 0) }}</p>
+                <p class="text-xs text-neutral-500 dark:text-neutral-300">Credits Used</p>
               </div>
             </div>
           </div>
@@ -128,8 +128,8 @@
             :class="[
               'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
               activeTab === tab.id
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-50 text-gray-500 hover:text-gray-900',
+                ? 'bg-neutral-900 text-white'
+                : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
             ]"
             @click="activeTab = tab.id"
           >
@@ -143,25 +143,25 @@
           <div
             v-for="step in activityData?.steps"
             :key="step.id"
-            class="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200"
+            class="flex items-start gap-4 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700"
           >
             <div
               :class="[
                 'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-                step.status === 'completed' ? 'bg-green-500/20' : step.status === 'in_progress' ? 'bg-blue-500/20' : 'bg-gray-500/20',
+                step.status === 'completed' ? 'bg-green-500/20' : step.status === 'in_progress' ? 'bg-blue-500/20' : 'bg-neutral-500/20',
               ]"
             >
               <Icon
                 :name="step.status === 'completed' ? 'ph:check' : step.status === 'in_progress' ? 'ph:play' : 'ph:clock'"
                 :class="[
                   'w-4 h-4',
-                  step.status === 'completed' ? 'text-green-400' : step.status === 'in_progress' ? 'text-blue-400' : 'text-gray-400',
+                  step.status === 'completed' ? 'text-green-400' : step.status === 'in_progress' ? 'text-blue-400' : 'text-neutral-400',
                 ]"
               />
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900">{{ step.description }}</p>
-              <p class="text-xs text-gray-500 mt-1">
+              <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ step.description }}</p>
+              <p class="text-xs text-neutral-500 dark:text-neutral-300 mt-1">
                 {{ formatDateTime(step.startedAt) }}
                 <span v-if="step.completedAt"> - {{ formatDateTime(step.completedAt) }}</span>
               </p>
@@ -169,13 +169,13 @@
             <span
               :class="[
                 'px-2 py-1 rounded text-xs font-medium capitalize',
-                step.status === 'completed' ? 'bg-green-500/20 text-green-400' : step.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400',
+                step.status === 'completed' ? 'bg-green-500/20 text-green-400' : step.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' : 'bg-neutral-500/20 text-neutral-400',
               ]"
             >
               {{ step.status.replace('_', ' ') }}
             </span>
           </div>
-          <div v-if="!activityData?.steps?.length" class="text-center py-8 text-gray-500">
+          <div v-if="!activityData?.steps?.length" class="text-center py-8 text-neutral-500 dark:text-neutral-300">
             No activity steps recorded
           </div>
         </div>
@@ -185,30 +185,30 @@
           <div
             v-for="task in activityData?.tasks"
             :key="task.id"
-            class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200"
+            class="flex items-center gap-4 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700"
           >
             <div
               :class="[
                 'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-                task.status === 'done' ? 'bg-green-500/20' : task.status === 'in_progress' ? 'bg-blue-500/20' : 'bg-gray-500/20',
+                task.status === 'done' ? 'bg-green-500/20' : task.status === 'in_progress' ? 'bg-blue-500/20' : 'bg-neutral-500/20',
               ]"
             >
-              <Icon name="ph:check-square" :class="['w-4 h-4', task.status === 'done' ? 'text-green-400' : 'text-gray-400']" />
+              <Icon name="ph:check-square" :class="['w-4 h-4', task.status === 'done' ? 'text-green-400' : 'text-neutral-400']" />
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900">{{ task.title }}</p>
-              <p class="text-xs text-gray-500 mt-1 line-clamp-1">{{ task.description }}</p>
+              <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ task.title }}</p>
+              <p class="text-xs text-neutral-500 dark:text-neutral-300 mt-1 line-clamp-1">{{ task.description }}</p>
             </div>
             <span
               :class="[
                 'px-2 py-1 rounded text-xs font-medium capitalize',
-                task.status === 'done' ? 'bg-green-500/20 text-green-400' : task.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400',
+                task.status === 'done' ? 'bg-green-500/20 text-green-400' : task.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' : 'bg-neutral-500/20 text-neutral-400',
               ]"
             >
               {{ task.status.replace('_', ' ') }}
             </span>
           </div>
-          <div v-if="!activityData?.tasks?.length" class="text-center py-8 text-gray-500">
+          <div v-if="!activityData?.tasks?.length" class="text-center py-8 text-neutral-500 dark:text-neutral-300">
             No tasks assigned
           </div>
         </div>
@@ -218,7 +218,7 @@
           <div
             v-for="transaction in activityData?.creditTransactions"
             :key="transaction.id"
-            class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200"
+            class="flex items-center gap-4 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700"
           >
             <div
               :class="[
@@ -232,8 +232,8 @@
               />
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900">{{ transaction.description }}</p>
-              <p class="text-xs text-gray-500 mt-1">{{ formatDateTime(transaction.createdAt) }}</p>
+              <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ transaction.description }}</p>
+              <p class="text-xs text-neutral-500 dark:text-neutral-300 mt-1">{{ formatDateTime(transaction.createdAt) }}</p>
             </div>
             <span
               :class="[
@@ -244,7 +244,7 @@
               {{ transaction.amount > 0 ? '+' : '' }}{{ formatCredits(transaction.amount) }}
             </span>
           </div>
-          <div v-if="!activityData?.creditTransactions?.length" class="text-center py-8 text-gray-500">
+          <div v-if="!activityData?.creditTransactions?.length" class="text-center py-8 text-neutral-500 dark:text-neutral-300">
             No credit transactions
           </div>
         </div>
@@ -252,9 +252,9 @@
 
       <!-- Not Found -->
       <div v-else class="text-center py-20">
-        <Icon name="ph:user-circle" class="w-16 h-16 mx-auto text-gray-500 mb-4" />
-        <h2 class="text-xl font-semibold text-gray-900 mb-2">User not found</h2>
-        <p class="text-sm text-gray-500">The user you're looking for doesn't exist.</p>
+        <Icon name="ph:user-circle" class="w-16 h-16 mx-auto text-neutral-500 mb-4" />
+        <h2 class="text-xl font-semibold text-neutral-900 dark:text-white mb-2">User not found</h2>
+        <p class="text-sm text-neutral-500 dark:text-neutral-300">The user you're looking for doesn't exist.</p>
       </div>
     </div>
   </div>
@@ -263,6 +263,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import Icon from '@/Components/shared/Icon.vue'
 import SharedSkeleton from '@/Components/shared/Skeleton.vue'
 
 interface User {
@@ -335,7 +336,7 @@ const agentColorMap: Record<string, string> = {
   researcher: 'bg-amber-500',
   coder: 'bg-indigo-500',
   coordinator: 'bg-teal-500',
-  default: 'bg-gray-500',
+  default: 'bg-neutral-500',
 }
 
 const agentBgMap: Record<string, string> = {
@@ -346,13 +347,13 @@ const agentBgMap: Record<string, string> = {
   researcher: 'bg-amber-500/20 text-amber-400',
   coder: 'bg-indigo-500/20 text-indigo-400',
   coordinator: 'bg-teal-500/20 text-teal-400',
-  default: 'bg-gray-500/20 text-gray-400',
+  default: 'bg-neutral-500/20 text-neutral-400',
 }
 
 const statusColorMap: Record<string, string> = {
   working: 'bg-green-400',
   idle: 'bg-amber-400',
-  offline: 'bg-gray-400',
+  offline: 'bg-neutral-400',
 }
 
 const goBack = () => {

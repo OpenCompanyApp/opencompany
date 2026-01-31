@@ -2,8 +2,12 @@
   <CollapsibleRoot v-if="collapsible" v-model:open="isOpen" :class="wrapperClasses">
     <!-- Header -->
     <div v-if="showHeader" class="flex items-center justify-between gap-4 mb-3">
-      <CollapsibleTrigger
-        class="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors duration-150 group outline-none focus-visible:ring-1 focus-visible:ring-gray-400 rounded"
+      <Button
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        class="flex items-center gap-2 text-sm font-medium text-neutral-900 dark:text-white hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors duration-150 group"
+        @click="isOpen = !isOpen"
       >
         <Icon
           name="ph:caret-right"
@@ -11,59 +15,36 @@
           :class="{ 'rotate-90': isOpen }"
         />
         <span>{{ title }}</span>
-        <SharedBadge
+        <Badge
           v-if="showCount"
           :label="filteredSteps.length.toString()"
           size="xs"
-          variant="default"
+          variant="subtle"
+          color="neutral"
         />
-      </CollapsibleTrigger>
+      </Button>
 
       <!-- Actions -->
       <div class="flex items-center gap-2">
         <!-- Filter dropdown -->
-        <DropdownMenuRoot v-if="filterable">
-          <DropdownMenuTrigger
-            class="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-gray-400"
-          >
-            <Icon name="ph:funnel" class="w-4 h-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              class="min-w-40 bg-white border border-gray-200 rounded-lg p-1.5 shadow-md z-50 animate-in fade-in-0 duration-150"
-              :side-offset="4"
-            >
-              <DropdownMenuLabel class="px-2 py-1 text-xs text-gray-500">
-                Filter by status
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator class="h-px bg-gray-200 my-1" />
-              <DropdownMenuCheckboxItem
-                v-for="status in statusOptions"
-                :key="status.value"
-                :checked="activeFilters.includes(status.value)"
-                class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-gray-900 hover:bg-gray-50 cursor-pointer outline-none focus:bg-gray-50"
-                @click="toggleFilter(status.value)"
-              >
-                <div
-                  class="w-3 h-3 rounded border flex items-center justify-center"
-                  :class="activeFilters.includes(status.value) ? 'bg-gray-900 border-gray-900' : 'border-gray-300'"
-                >
-                  <Icon v-if="activeFilters.includes(status.value)" name="ph:check" class="w-2 h-2 text-white" />
-                </div>
-                <span>{{ status.label }}</span>
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+        <DropdownMenu v-if="filterable" :items="filterDropdownItems">
+          <Button
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            icon="ph:funnel"
+            class="p-1.5"
+          />
+        </DropdownMenu>
 
         <!-- View mode toggle -->
-        <div v-if="showViewToggle" class="flex items-center bg-gray-100 rounded-md p-0.5">
+        <div v-if="showViewToggle" class="flex items-center bg-neutral-100 dark:bg-neutral-700 rounded-md p-0.5">
           <button
             v-for="mode in viewModes"
             :key="mode.value"
             type="button"
             class="p-1 rounded transition-colors duration-150"
-            :class="viewMode === mode.value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'"
+            :class="viewMode === mode.value ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'"
             @click="viewMode = mode.value"
           >
             <Icon :name="mode.icon" class="w-4 h-4" />
@@ -74,7 +55,7 @@
         <button
           v-if="groupByDate"
           type="button"
-          class="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150"
+          class="p-1.5 rounded-md text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors duration-150"
           @click="toggleAllGroups"
         >
           <Icon :name="allExpanded ? 'ph:arrows-in' : 'ph:arrows-out'" class="w-4 h-4" />
@@ -84,7 +65,7 @@
         <button
           v-if="refreshable"
           type="button"
-          class="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150"
+          class="p-1.5 rounded-md text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors duration-150"
           :class="{ 'animate-spin': isRefreshing }"
           @click="handleRefresh"
         >
@@ -104,7 +85,7 @@
     </div>
 
     <!-- Content -->
-    <CollapsibleContent :class="contentClasses">
+    <div v-show="isOpen" :class="contentClasses">
       <!-- Loading state -->
       <div v-if="loading" class="space-y-3">
         <div v-for="i in 3" :key="i" class="flex items-start gap-3">
@@ -131,7 +112,7 @@
           <div v-for="group in groupedSteps" :key="group.date" class="space-y-2">
             <button
               type="button"
-              class="flex items-center gap-2 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors duration-150"
+              class="flex items-center gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors duration-150"
               @click="toggleGroup(group.date)"
             >
               <Icon
@@ -140,7 +121,7 @@
                 :class="{ 'rotate-90': expandedGroups.includes(group.date) }"
               />
               <span>{{ group.label }}</span>
-              <span class="text-gray-400">({{ group.steps.length }})</span>
+              <span class="text-neutral-400 dark:text-neutral-400">({{ group.steps.length }})</span>
             </button>
 
             <Transition
@@ -151,7 +132,7 @@
               leave-from-class="opacity-100 max-h-[2000px]"
               leave-to-class="opacity-0 max-h-0"
             >
-              <div v-show="expandedGroups.includes(group.date)" class="pl-5 border-l-2 border-gray-200 space-y-2 overflow-hidden">
+              <div v-show="expandedGroups.includes(group.date)" class="pl-5 border-l-2 border-neutral-200 dark:border-neutral-700 space-y-2 overflow-hidden">
                 <ActivityStep
                   v-for="(step, index) in group.steps"
                   :key="step.id"
@@ -189,7 +170,7 @@
 
       <!-- List View -->
       <template v-else-if="viewMode === 'list'">
-        <div class="divide-y divide-gray-200">
+        <div class="divide-y divide-neutral-200 dark:divide-neutral-700">
           <ActivityStep
             v-for="step in filteredSteps"
             :key="step.id"
@@ -208,31 +189,26 @@
       <!-- Compact View -->
       <template v-else-if="viewMode === 'compact'">
         <div class="flex flex-wrap gap-1.5">
-          <TooltipProvider v-for="step in filteredSteps" :key="step.id" :delay-duration="200">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  class="p-1 rounded transition-colors duration-150"
-                  :class="stepCompactClasses[step.status]"
-                  @click="handleStepClick(step)"
-                >
-                  <Icon :name="stepIcons[step.status]" class="w-3 h-3" />
-                </button>
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent
-                  side="top"
-                  :side-offset="4"
-                  class="z-50 px-2 py-1.5 text-xs bg-white border border-gray-200 rounded-md shadow-md max-w-48 animate-in fade-in-0 duration-150"
-                >
-                  <p class="font-medium text-gray-900">{{ step.description }}</p>
-                  <p class="text-gray-500 mt-0.5">{{ formatDuration(step) }}</p>
-                  <TooltipArrow class="fill-white" />
-                </TooltipContent>
-              </TooltipPortal>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip
+            v-for="step in filteredSteps"
+            :key="step.id"
+            :delay-duration="200"
+            side="top"
+            :side-offset="4"
+          >
+            <template #content>
+              <p class="font-medium text-neutral-900 dark:text-white">{{ step.description }}</p>
+              <p class="text-neutral-500 dark:text-neutral-300 mt-0.5">{{ formatDuration(step) }}</p>
+            </template>
+            <button
+              type="button"
+              class="p-1 rounded transition-colors duration-150"
+              :class="stepCompactClasses[step.status]"
+              @click="handleStepClick(step)"
+            >
+              <Icon :name="stepIcons[step.status]" class="w-3 h-3" />
+            </button>
+          </Tooltip>
         </div>
       </template>
 
@@ -240,12 +216,12 @@
       <button
         v-if="hasMore && !loading"
         type="button"
-        class="mt-3 w-full py-2 text-xs text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-150"
+        class="mt-3 w-full py-2 text-xs text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-md transition-colors duration-150"
         @click="$emit('loadMore')"
       >
         Load more activity
       </button>
-    </CollapsibleContent>
+    </div>
   </CollapsibleRoot>
 
   <!-- Non-collapsible version -->
@@ -253,61 +229,38 @@
     <!-- Header -->
     <div v-if="showHeader" class="flex items-center justify-between gap-4 mb-3">
       <div class="flex items-center gap-2">
-        <Icon v-if="icon" :name="icon" class="w-4 h-4 text-gray-500" />
-        <span class="text-sm font-medium text-gray-900">{{ title }}</span>
-        <SharedBadge
+        <Icon v-if="icon" :name="icon" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+        <span class="text-sm font-medium text-neutral-900 dark:text-white">{{ title }}</span>
+        <Badge
           v-if="showCount"
           :label="filteredSteps.length.toString()"
           size="xs"
-          variant="default"
+          variant="subtle"
+          color="neutral"
         />
       </div>
 
       <!-- Actions -->
       <div class="flex items-center gap-2">
         <!-- Filter dropdown -->
-        <DropdownMenuRoot v-if="filterable">
-          <DropdownMenuTrigger
-            class="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-gray-400"
-          >
-            <Icon name="ph:funnel" class="w-4 h-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              class="min-w-40 bg-white border border-gray-200 rounded-lg p-1.5 shadow-md z-50 animate-in fade-in-0 duration-150"
-              :side-offset="4"
-            >
-              <DropdownMenuLabel class="px-2 py-1 text-xs text-gray-500">
-                Filter by status
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator class="h-px bg-gray-200 my-1" />
-              <DropdownMenuCheckboxItem
-                v-for="status in statusOptions"
-                :key="status.value"
-                :checked="activeFilters.includes(status.value)"
-                class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-gray-900 hover:bg-gray-50 cursor-pointer outline-none focus:bg-gray-50"
-                @click="toggleFilter(status.value)"
-              >
-                <div
-                  class="w-3 h-3 rounded border flex items-center justify-center"
-                  :class="activeFilters.includes(status.value) ? 'bg-gray-900 border-gray-900' : 'border-gray-300'"
-                >
-                  <Icon v-if="activeFilters.includes(status.value)" name="ph:check" class="w-2 h-2 text-white" />
-                </div>
-                <span>{{ status.label }}</span>
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+        <DropdownMenu v-if="filterable" :items="filterDropdownItems">
+          <Button
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            icon="ph:funnel"
+            class="p-1.5"
+          />
+        </DropdownMenu>
 
         <!-- View mode toggle -->
-        <div v-if="showViewToggle" class="flex items-center bg-gray-100 rounded-md p-0.5">
+        <div v-if="showViewToggle" class="flex items-center bg-neutral-100 dark:bg-neutral-700 rounded-md p-0.5">
           <button
             v-for="mode in viewModes"
             :key="mode.value"
             type="button"
             class="p-1 rounded transition-colors duration-150"
-            :class="viewMode === mode.value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'"
+            :class="viewMode === mode.value ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'"
             @click="viewMode = mode.value"
           >
             <Icon :name="mode.icon" class="w-4 h-4" />
@@ -318,7 +271,7 @@
         <button
           v-if="groupByDate"
           type="button"
-          class="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150"
+          class="p-1.5 rounded-md text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors duration-150"
           @click="toggleAllGroups"
         >
           <Icon :name="allExpanded ? 'ph:arrows-in' : 'ph:arrows-out'" class="w-4 h-4" />
@@ -328,7 +281,7 @@
         <button
           v-if="refreshable"
           type="button"
-          class="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150"
+          class="p-1.5 rounded-md text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors duration-150"
           :class="{ 'animate-spin': isRefreshing }"
           @click="handleRefresh"
         >
@@ -375,7 +328,7 @@
           <div v-for="group in groupedSteps" :key="group.date" class="space-y-2">
             <button
               type="button"
-              class="flex items-center gap-2 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors duration-150"
+              class="flex items-center gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors duration-150"
               @click="toggleGroup(group.date)"
             >
               <Icon
@@ -384,7 +337,7 @@
                 :class="{ 'rotate-90': expandedGroups.includes(group.date) }"
               />
               <span>{{ group.label }}</span>
-              <span class="text-gray-400">({{ group.steps.length }})</span>
+              <span class="text-neutral-400 dark:text-neutral-400">({{ group.steps.length }})</span>
             </button>
 
             <Transition
@@ -395,7 +348,7 @@
               leave-from-class="opacity-100 max-h-[2000px]"
               leave-to-class="opacity-0 max-h-0"
             >
-              <div v-show="expandedGroups.includes(group.date)" class="pl-5 border-l-2 border-gray-200 space-y-2 overflow-hidden">
+              <div v-show="expandedGroups.includes(group.date)" class="pl-5 border-l-2 border-neutral-200 dark:border-neutral-700 space-y-2 overflow-hidden">
                 <ActivityStep
                   v-for="(step, index) in group.steps"
                   :key="step.id"
@@ -433,7 +386,7 @@
 
       <!-- List View -->
       <template v-else-if="viewMode === 'list'">
-        <div class="divide-y divide-gray-200">
+        <div class="divide-y divide-neutral-200 dark:divide-neutral-700">
           <ActivityStep
             v-for="step in filteredSteps"
             :key="step.id"
@@ -452,31 +405,26 @@
       <!-- Compact View -->
       <template v-else-if="viewMode === 'compact'">
         <div class="flex flex-wrap gap-1.5">
-          <TooltipProvider v-for="step in filteredSteps" :key="step.id" :delay-duration="200">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  class="p-1 rounded transition-colors duration-150"
-                  :class="stepCompactClasses[step.status]"
-                  @click="handleStepClick(step)"
-                >
-                  <Icon :name="stepIcons[step.status]" class="w-3 h-3" />
-                </button>
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent
-                  side="top"
-                  :side-offset="4"
-                  class="z-50 px-2 py-1.5 text-xs bg-white border border-gray-200 rounded-md shadow-md max-w-48 animate-in fade-in-0 duration-150"
-                >
-                  <p class="font-medium text-gray-900">{{ step.description }}</p>
-                  <p class="text-gray-500 mt-0.5">{{ formatDuration(step) }}</p>
-                  <TooltipArrow class="fill-white" />
-                </TooltipContent>
-              </TooltipPortal>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip
+            v-for="step in filteredSteps"
+            :key="step.id"
+            :delay-duration="200"
+            side="top"
+            :side-offset="4"
+          >
+            <template #content>
+              <p class="font-medium text-neutral-900 dark:text-white">{{ step.description }}</p>
+              <p class="text-neutral-500 dark:text-neutral-300 mt-0.5">{{ formatDuration(step) }}</p>
+            </template>
+            <button
+              type="button"
+              class="p-1 rounded transition-colors duration-150"
+              :class="stepCompactClasses[step.status]"
+              @click="handleStepClick(step)"
+            >
+              <Icon :name="stepIcons[step.status]" class="w-3 h-3" />
+            </button>
+          </Tooltip>
         </div>
       </template>
 
@@ -484,7 +432,7 @@
       <button
         v-if="hasMore && !loading"
         type="button"
-        class="mt-3 w-full py-2 text-xs text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors duration-150"
+        class="mt-3 w-full py-2 text-xs text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-md transition-colors duration-150"
         @click="$emit('loadMore')"
       >
         Load more activity
@@ -494,27 +442,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, defineComponent, h, resolveComponent, type PropType } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  CollapsibleContent,
-  CollapsibleRoot,
-  CollapsibleTrigger,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
+import { ref, computed, onMounted, defineComponent, h, type PropType } from 'vue'
+import { CollapsibleRoot } from 'reka-ui'
 import type { ActivityStep as ActivityStepType } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
+import Badge from '@/Components/shared/Badge.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import SharedSearchInput from '@/Components/shared/SearchInput.vue'
+import SharedSkeleton from '@/Components/shared/Skeleton.vue'
+import SharedEmptyState from '@/Components/shared/EmptyState.vue'
 
 type ViewMode = 'timeline' | 'list' | 'compact'
 type StepVariant = 'default' | 'minimal' | 'detailed' | 'list'
@@ -612,11 +550,11 @@ const statusOptions = [
 
 // Status classes
 const stepCompactClasses: Record<string, string> = {
-  completed: 'bg-green-50 text-green-600 hover:bg-green-100',
-  in_progress: 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-  pending: 'bg-gray-50 text-gray-500 hover:bg-gray-100',
-  failed: 'bg-red-50 text-red-600 hover:bg-red-100',
-  skipped: 'bg-gray-50 text-gray-400 hover:bg-gray-100',
+  completed: 'bg-green-50 dark:bg-green-900/30 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50',
+  in_progress: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-600',
+  pending: 'bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  failed: 'bg-red-50 dark:bg-red-900/30 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50',
+  skipped: 'bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700',
 }
 
 // Status icons
@@ -638,7 +576,7 @@ const contentClasses = computed(() => [
 ])
 
 const timelineClasses = computed(() => [
-  'pl-5 border-l-2 border-gray-200 space-y-2',
+  'pl-5 border-l-2 border-neutral-200 dark:border-neutral-700 space-y-2',
 ])
 
 // Filtered steps
@@ -685,6 +623,20 @@ const groupedSteps = computed(() => {
 const allExpanded = computed(() => {
   return groupedSteps.value.every(g => expandedGroups.value.includes(g.date))
 })
+
+// Filter dropdown items for DropdownMenu
+const filterDropdownItems = computed(() => [
+  [{
+    label: 'Filter by status',
+    slot: 'header',
+    disabled: true,
+  }],
+  statusOptions.map(status => ({
+    label: status.label,
+    icon: activeFilters.value.includes(status.value) ? 'ph:check-square' : 'ph:square',
+    click: () => toggleFilter(status.value),
+  })),
+])
 
 // Format date label
 const formatDateLabel = (date: Date): string => {
@@ -769,6 +721,14 @@ onMounted(() => {
   }
 })
 
+// Icon class mapping for iconify in render functions
+const stepIconClasses: Record<string, string> = {
+  completed: 'i-ph:check',
+  in_progress: 'i-ph:spinner',
+  failed: 'i-ph:x',
+  skipped: 'i-ph:minus',
+}
+
 // Activity Step Component
 const ActivityStep = defineComponent({
   name: 'ActivityStep',
@@ -784,11 +744,11 @@ const ActivityStep = defineComponent({
   emits: ['click'],
   setup(stepProps, { emit: stepEmit }) {
     const statusClasses: Record<string, string> = {
-      completed: 'bg-green-50 text-green-600',
-      in_progress: 'bg-gray-100 text-gray-600',
-      pending: 'bg-gray-50 text-gray-500',
-      failed: 'bg-red-50 text-red-600',
-      skipped: 'bg-gray-50 text-gray-400',
+      completed: 'bg-green-50 dark:bg-green-900/30 text-green-600',
+      in_progress: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200',
+      pending: 'bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300',
+      failed: 'bg-red-50 dark:bg-red-900/30 text-red-600',
+      skipped: 'bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-400',
     }
 
     const formatTime = (date: Date) => {
@@ -799,7 +759,7 @@ const ActivityStep = defineComponent({
       class: [
         'flex items-start gap-3 text-xs',
         stepProps.animate && 'animate-in fade-in-0 slide-in-from-left-2 duration-150',
-        stepProps.clickable && 'cursor-pointer hover:bg-gray-50 rounded-md p-1 -m-1 transition-colors duration-150',
+        stepProps.clickable && 'cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-md p-1 -m-1 transition-colors duration-150',
         stepProps.variant === 'list' && 'items-center',
       ],
       onClick: () => stepEmit('click'),
@@ -812,21 +772,17 @@ const ActivityStep = defineComponent({
           statusClasses[stepProps.step.status],
         ],
       }, [
-        stepProps.step.status === 'completed' && h(resolveComponent('Icon'), {
-          name: 'ph:check',
-          class: 'w-3 h-3',
+        stepProps.step.status === 'completed' && h('span', {
+          class: ['w-3 h-3', stepIconClasses.completed],
         }),
-        stepProps.step.status === 'in_progress' && h(resolveComponent('Icon'), {
-          name: 'ph:spinner',
-          class: 'w-3 h-3 animate-spin',
+        stepProps.step.status === 'in_progress' && h('span', {
+          class: ['w-3 h-3 animate-spin', stepIconClasses.in_progress],
         }),
-        stepProps.step.status === 'failed' && h(resolveComponent('Icon'), {
-          name: 'ph:x',
-          class: 'w-3 h-3',
+        stepProps.step.status === 'failed' && h('span', {
+          class: ['w-3 h-3', stepIconClasses.failed],
         }),
-        stepProps.step.status === 'skipped' && h(resolveComponent('Icon'), {
-          name: 'ph:minus',
-          class: 'w-3 h-3',
+        stepProps.step.status === 'skipped' && h('span', {
+          class: ['w-3 h-3', stepIconClasses.skipped],
         }),
         stepProps.step.status === 'pending' && h('span', {
           class: 'w-1.5 h-1.5 rounded-full bg-current',
@@ -840,13 +796,13 @@ const ActivityStep = defineComponent({
         h('p', {
           class: [
             stepProps.step.status === 'completed' || stepProps.step.status === 'skipped'
-              ? 'text-gray-500'
-              : 'text-gray-900',
+              ? 'text-neutral-500 dark:text-neutral-300'
+              : 'text-neutral-900 dark:text-white',
             stepProps.step.status === 'failed' && 'text-red-600',
           ],
         }, stepProps.step.description),
         (stepProps.showDuration || stepProps.showTimestamp) && h('p', {
-          class: 'text-gray-400 mt-0.5 flex items-center gap-2',
+          class: 'text-neutral-400 dark:text-neutral-400 mt-0.5 flex items-center gap-2',
         }, [
           stepProps.showDuration && formatDuration(stepProps.step),
           stepProps.showTimestamp && stepProps.showDuration && '·',

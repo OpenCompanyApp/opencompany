@@ -9,7 +9,7 @@
     <form class="space-y-6" @submit.prevent="handleSpawn">
       <!-- Agent Type Selection -->
       <div class="space-y-3">
-        <label class="block text-sm font-medium text-gray-900">Agent Type</label>
+        <label class="block text-sm font-medium text-neutral-900 dark:text-white">Agent Type</label>
         <div class="grid grid-cols-2 gap-3">
           <button
             v-for="type in agentTypes"
@@ -18,8 +18,8 @@
             :class="[
               'p-4 rounded-xl border-2 text-left transition-all',
               selectedType === type.id
-                ? 'border-gray-900 bg-gray-900/10'
-                : 'border-gray-200 hover:border-gray-900/50 bg-gray-50',
+                ? 'border-neutral-900 bg-neutral-900/10'
+                : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-900/50 bg-neutral-50 dark:bg-neutral-800',
             ]"
             @click="selectedType = type.id"
           >
@@ -28,15 +28,15 @@
                 :class="[
                   'w-10 h-10 rounded-xl flex items-center justify-center',
                   selectedType === type.id
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-900-muted',
+                    ? 'bg-neutral-900 text-white'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900-muted',
                 ]"
               >
                 <Icon :name="type.icon" class="w-5 h-5" />
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-gray-900">{{ type.label }}</p>
-                <p class="text-xs text-gray-900-muted mt-0.5">{{ type.description }}</p>
+                <p class="font-semibold text-neutral-900 dark:text-white">{{ type.label }}</p>
+                <p class="text-xs text-neutral-900-muted mt-0.5">{{ type.description }}</p>
               </div>
             </div>
           </button>
@@ -45,32 +45,32 @@
 
       <!-- Agent Name -->
       <div class="space-y-2">
-        <label class="block text-sm font-medium text-gray-900">Agent Name</label>
+        <label class="block text-sm font-medium text-neutral-900 dark:text-white">Agent Name</label>
         <input
           v-model="agentName"
           type="text"
           placeholder="Enter a name for this agent"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-900-muted focus:border-gray-900 focus:ring-1 focus:ring-gray-900 outline-none transition-colors"
+          class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white placeholder:text-neutral-900-muted focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 outline-none transition-colors"
         />
       </div>
 
       <!-- Initial Task -->
       <div class="space-y-2">
-        <label class="block text-sm font-medium text-gray-900">Initial Task (Optional)</label>
+        <label class="block text-sm font-medium text-neutral-900 dark:text-white">Initial Task (Optional)</label>
         <textarea
           v-model="initialTask"
           rows="3"
           placeholder="Describe the first task for this agent..."
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-900-muted focus:border-gray-900 focus:ring-1 focus:ring-gray-900 outline-none transition-colors resize-none"
+          class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white placeholder:text-neutral-900-muted focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 outline-none transition-colors resize-none"
         />
       </div>
 
       <!-- Agent Behavior -->
       <div class="space-y-2">
-        <label class="block text-sm font-medium text-gray-900">Behavior Mode</label>
+        <label class="block text-sm font-medium text-neutral-900 dark:text-white">Behavior Mode</label>
         <select
           v-model="behavior"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 outline-none transition-colors"
+          class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 outline-none transition-colors"
         >
           <option value="autonomous">Autonomous (minimal supervision)</option>
           <option value="supervised">Supervised (ask before actions)</option>
@@ -79,16 +79,16 @@
       </div>
 
       <!-- Temporary Agent Toggle -->
-      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+      <div class="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
         <div>
-          <p class="font-medium text-gray-900">Temporary Agent</p>
-          <p class="text-xs text-gray-900-muted mt-0.5">Agent will be deleted after task completion</p>
+          <p class="font-medium text-neutral-900 dark:text-white">Temporary Agent</p>
+          <p class="text-xs text-neutral-900-muted mt-0.5">Agent will be deleted after task completion</p>
         </div>
         <button
           type="button"
           :class="[
             'relative w-11 h-6 rounded-full transition-colors',
-            isTemporary ? 'bg-gray-900' : 'bg-gray-100',
+            isTemporary ? 'bg-neutral-900' : 'bg-neutral-100 dark:bg-neutral-700',
           ]"
           @click="isTemporary = !isTemporary"
         >
@@ -102,15 +102,15 @@
       </div>
 
       <!-- Estimated Cost -->
-      <div class="p-4 bg-gray-900/10 border border-gray-900/20 rounded-xl">
+      <div class="p-4 bg-neutral-900/10 border border-neutral-900/20 rounded-xl">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <Icon name="ph:coin" class="w-5 h-5 text-gray-900" />
-            <span class="text-sm text-gray-900">Estimated Cost</span>
+            <Icon name="ph:coin" class="w-5 h-5 text-neutral-900 dark:text-white" />
+            <span class="text-sm text-neutral-900 dark:text-white">Estimated Cost</span>
           </div>
-          <span class="font-semibold text-gray-900">{{ estimatedCost }} credits</span>
+          <span class="font-semibold text-neutral-900 dark:text-white">{{ estimatedCost }} credits</span>
         </div>
-        <p class="text-xs text-gray-900-muted mt-2">
+        <p class="text-xs text-neutral-900-muted mt-2">
           Cost may vary based on agent activity and task complexity
         </p>
       </div>

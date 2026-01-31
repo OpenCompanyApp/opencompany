@@ -1,11 +1,11 @@
 <template>
   <div class="h-full flex flex-col">
     <!-- Header -->
-    <header class="shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
+    <header class="shrink-0 px-6 py-4 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-xl font-semibold text-gray-900">Automation</h1>
-          <p class="text-sm text-gray-500 mt-1">
+          <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Automation</h1>
+          <p class="text-sm text-neutral-500 dark:text-neutral-300 mt-1">
             Create task templates and automation rules for your workflows
           </p>
         </div>
@@ -19,8 +19,8 @@
           :class="[
             'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
             activeTab === tab.id
-              ? 'bg-gray-900 text-white'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              ? 'bg-neutral-900 text-white'
+              : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800'
           ]"
           @click="activeTab = tab.id"
         >
@@ -36,7 +36,7 @@
       <div v-if="activeTab === 'templates'" class="space-y-6">
         <!-- Create Template Button -->
         <div class="flex justify-between items-center">
-          <h2 class="text-lg font-medium text-gray-900">Task Templates</h2>
+          <h2 class="text-lg font-medium text-neutral-900 dark:text-white">Task Templates</h2>
           <button class="btn-primary" @click="showCreateTemplate = true">
             <Icon name="ph:plus" class="w-4 h-4 mr-2" />
             Create Template
@@ -48,27 +48,27 @@
           <div
             v-for="template in templates"
             :key="template.id"
-            class="p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors"
+            class="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors"
           >
             <div class="flex items-start justify-between">
               <div class="flex-1">
                 <div class="flex items-center gap-2">
-                  <h3 class="font-medium text-gray-900">{{ template.name }}</h3>
+                  <h3 class="font-medium text-neutral-900 dark:text-white">{{ template.name }}</h3>
                   <span
                     :class="[
                       'px-2 py-0.5 text-xs rounded-full',
                       template.isActive
                         ? 'bg-green-500/20 text-green-400'
-                        : 'bg-gray-50 text-gray-500'
+                        : 'bg-neutral-50 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-300'
                     ]"
                   >
                     {{ template.isActive ? 'Active' : 'Inactive' }}
                   </span>
                 </div>
-                <p v-if="template.description" class="text-sm text-gray-500 mt-1">
+                <p v-if="template.description" class="text-sm text-neutral-500 dark:text-neutral-300 mt-1">
                   {{ template.description }}
                 </p>
-                <div class="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                <div class="flex items-center gap-4 mt-3 text-xs text-neutral-500 dark:text-neutral-300">
                   <span class="flex items-center gap-1">
                     <Icon name="ph:text-t" class="w-3.5 h-3.5" />
                     {{ template.defaultTitle }}
@@ -90,7 +90,7 @@
                   <span
                     v-for="tag in template.tags"
                     :key="tag"
-                    class="px-2 py-0.5 text-xs bg-gray-100 rounded-full text-gray-500"
+                    class="px-2 py-0.5 text-xs bg-neutral-100 dark:bg-neutral-700 rounded-full text-neutral-500 dark:text-neutral-300"
                   >
                     {{ tag }}
                   </span>
@@ -98,19 +98,19 @@
               </div>
               <div class="flex items-center gap-2">
                 <button
-                  class="p-2 rounded-lg hover:bg-gray-100 text-gray-900 transition-colors"
+                  class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white transition-colors"
                   @click="handleCreateTaskFromTemplate(template)"
                 >
                   <Icon name="ph:play" class="w-4 h-4" />
                 </button>
                 <button
-                  class="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+                  class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-300 transition-colors"
                   @click="handleEditTemplate(template)"
                 >
                   <Icon name="ph:pencil" class="w-4 h-4" />
                 </button>
                 <button
-                  class="p-2 rounded-lg hover:bg-gray-100 text-red-400 transition-colors"
+                  class="p-2 rounded-lg hover:bg-neutral-100 text-red-400 transition-colors"
                   @click="handleDeleteTemplate(template.id)"
                 >
                   <Icon name="ph:trash" class="w-4 h-4" />
@@ -119,7 +119,7 @@
             </div>
           </div>
 
-          <div v-if="templates.length === 0" class="text-center py-12 text-gray-500">
+          <div v-if="templates.length === 0" class="text-center py-12 text-neutral-500 dark:text-neutral-300">
             <Icon name="ph:file-dashed" class="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No task templates yet</p>
             <p class="text-sm mt-1">Create a template to get started</p>
@@ -131,7 +131,7 @@
       <div v-if="activeTab === 'rules'" class="space-y-6">
         <!-- Create Rule Button -->
         <div class="flex justify-between items-center">
-          <h2 class="text-lg font-medium text-gray-900">Automation Rules</h2>
+          <h2 class="text-lg font-medium text-neutral-900 dark:text-white">Automation Rules</h2>
           <button class="btn-primary" @click="showCreateRule = true">
             <Icon name="ph:plus" class="w-4 h-4 mr-2" />
             Create Rule
@@ -143,41 +143,41 @@
           <div
             v-for="rule in rules"
             :key="rule.id"
-            class="p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors"
+            class="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors"
           >
             <div class="flex items-start justify-between">
               <div class="flex-1">
                 <div class="flex items-center gap-2">
-                  <h3 class="font-medium text-gray-900">{{ rule.name }}</h3>
+                  <h3 class="font-medium text-neutral-900 dark:text-white">{{ rule.name }}</h3>
                   <span
                     :class="[
                       'px-2 py-0.5 text-xs rounded-full',
                       rule.isActive
                         ? 'bg-green-500/20 text-green-400'
-                        : 'bg-gray-50 text-gray-500'
+                        : 'bg-neutral-50 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-300'
                     ]"
                   >
                     {{ rule.isActive ? 'Active' : 'Inactive' }}
                   </span>
                 </div>
-                <p v-if="rule.description" class="text-sm text-gray-500 mt-1">
+                <p v-if="rule.description" class="text-sm text-neutral-500 dark:text-neutral-300 mt-1">
                   {{ rule.description }}
                 </p>
                 <div class="flex items-center gap-4 mt-3">
-                  <span class="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-100 text-xs text-gray-700">
+                  <span class="flex items-center gap-1 px-2 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-700 text-xs text-neutral-700 dark:text-neutral-200">
                     <Icon name="ph:lightning" class="w-3.5 h-3.5 text-yellow-400" />
                     {{ formatTriggerType(rule.triggerType) }}
                   </span>
-                  <Icon name="ph:arrow-right" class="w-4 h-4 text-gray-500" />
-                  <span class="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-100 text-xs text-gray-700">
-                    <Icon name="ph:gear" class="w-3.5 h-3.5 text-gray-900" />
+                  <Icon name="ph:arrow-right" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+                  <span class="flex items-center gap-1 px-2 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-700 text-xs text-neutral-700 dark:text-neutral-200">
+                    <Icon name="ph:gear" class="w-3.5 h-3.5 text-neutral-900 dark:text-white" />
                     {{ formatActionType(rule.actionType) }}
                   </span>
                 </div>
-                <div v-if="rule.template" class="mt-2 text-xs text-gray-500">
-                  Using template: <span class="text-gray-700">{{ rule.template.name }}</span>
+                <div v-if="rule.template" class="mt-2 text-xs text-neutral-500 dark:text-neutral-300">
+                  Using template: <span class="text-neutral-700 dark:text-neutral-200">{{ rule.template.name }}</span>
                 </div>
-                <div v-if="rule.triggerCount > 0" class="mt-2 text-xs text-gray-500">
+                <div v-if="rule.triggerCount > 0" class="mt-2 text-xs text-neutral-500 dark:text-neutral-300">
                   Triggered {{ rule.triggerCount }} times
                   <span v-if="rule.lastTriggeredAt">
                     - Last: {{ formatDate(rule.lastTriggeredAt) }}
@@ -189,21 +189,21 @@
                   :class="[
                     'p-2 rounded-lg transition-colors',
                     rule.isActive
-                      ? 'hover:bg-gray-100 text-green-400'
-                      : 'hover:bg-gray-100 text-gray-500'
+                      ? 'hover:bg-neutral-100 text-green-400'
+                      : 'hover:bg-neutral-100 text-neutral-500'
                   ]"
                   @click="handleToggleRule(rule)"
                 >
                   <Icon :name="rule.isActive ? 'ph:toggle-right-fill' : 'ph:toggle-left'" class="w-5 h-5" />
                 </button>
                 <button
-                  class="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+                  class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-300 transition-colors"
                   @click="handleEditRule(rule)"
                 >
                   <Icon name="ph:pencil" class="w-4 h-4" />
                 </button>
                 <button
-                  class="p-2 rounded-lg hover:bg-gray-100 text-red-400 transition-colors"
+                  class="p-2 rounded-lg hover:bg-neutral-100 text-red-400 transition-colors"
                   @click="handleDeleteRule(rule.id)"
                 >
                   <Icon name="ph:trash" class="w-4 h-4" />
@@ -212,7 +212,7 @@
             </div>
           </div>
 
-          <div v-if="rules.length === 0" class="text-center py-12 text-gray-500">
+          <div v-if="rules.length === 0" class="text-center py-12 text-neutral-500 dark:text-neutral-300">
             <Icon name="ph:robot" class="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No automation rules yet</p>
             <p class="text-sm mt-1">Create a rule to automate your workflows</p>
@@ -225,49 +225,49 @@
     <SharedModal v-model:open="showCreateTemplate" title="Create Task Template">
       <form class="space-y-4" @submit.prevent="handleSaveTemplate">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Template Name</label>
           <input
             v-model="templateForm.name"
             type="text"
-            class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+            class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
             placeholder="e.g., Bug Report, Feature Request"
             required
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Description</label>
           <textarea
             v-model="templateForm.description"
-            class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300 resize-none"
+            class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500 resize-none"
             rows="2"
             placeholder="Describe when to use this template"
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Default Task Title</label>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Default Task Title</label>
           <input
             v-model="templateForm.defaultTitle"
             type="text"
-            class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+            class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
             placeholder="e.g., [Bug] {summary}"
             required
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Default Description</label>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Default Description</label>
           <textarea
             v-model="templateForm.defaultDescription"
-            class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300 resize-none"
+            class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500 resize-none"
             rows="3"
             placeholder="Default task description..."
           />
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Default Priority</label>
+            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Default Priority</label>
             <select
               v-model="templateForm.defaultPriority"
-              class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+              class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -276,21 +276,21 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Estimated Cost</label>
+            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Estimated Cost</label>
             <input
               v-model.number="templateForm.estimatedCost"
               type="number"
               step="0.01"
-              class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+              class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
               placeholder="0.00"
             />
           </div>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Default Assignee</label>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Default Assignee</label>
           <select
             v-model="templateForm.defaultAssigneeId"
-            class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+            class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
           >
             <option value="">No default assignee</option>
             <option v-for="user in users" :key="user.id" :value="user.id">
@@ -299,18 +299,18 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Tags (comma separated)</label>
           <input
             v-model="templateForm.tagsString"
             type="text"
-            class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+            class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
             placeholder="bug, frontend, urgent"
           />
         </div>
         <div class="flex justify-end gap-3 pt-4">
           <button
             type="button"
-            class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            class="px-4 py-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
             @click="showCreateTemplate = false"
           >
             Cancel
@@ -326,30 +326,30 @@
     <SharedModal v-model:open="showCreateRule" title="Create Automation Rule">
       <form class="space-y-4" @submit.prevent="handleSaveRule">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Rule Name</label>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Rule Name</label>
           <input
             v-model="ruleForm.name"
             type="text"
-            class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+            class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
             placeholder="e.g., Auto-assign bug reports"
             required
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Description</label>
           <textarea
             v-model="ruleForm.description"
-            class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300 resize-none"
+            class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500 resize-none"
             rows="2"
             placeholder="Describe what this rule does"
           />
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Trigger</label>
+            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Trigger</label>
             <select
               v-model="ruleForm.triggerType"
-              class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+              class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
               required
             >
               <option value="">Select trigger...</option>
@@ -361,10 +361,10 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Action</label>
+            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Action</label>
             <select
               v-model="ruleForm.actionType"
-              class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+              class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
               required
             >
               <option value="">Select action...</option>
@@ -377,10 +377,10 @@
           </div>
         </div>
         <div v-if="ruleForm.actionType === 'create_task'">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Task Template</label>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">Task Template</label>
           <select
             v-model="ruleForm.templateId"
-            class="w-full bg-white rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+            class="w-full bg-white dark:bg-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none border border-neutral-200 dark:border-neutral-600 focus:border-neutral-300 dark:focus:border-neutral-500"
           >
             <option value="">Select template...</option>
             <option v-for="template in templates" :key="template.id" :value="template.id">
@@ -391,7 +391,7 @@
         <div class="flex justify-end gap-3 pt-4">
           <button
             type="button"
-            class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            class="px-4 py-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
             @click="showCreateRule = false"
           >
             Cancel

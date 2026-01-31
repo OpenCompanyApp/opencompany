@@ -178,53 +178,53 @@ export const agentIcons: Record<AgentType, string> = {
 
 // Agent background colors - all neutral gray
 export const agentBgColors: Record<AgentType, string> = {
-  manager: 'bg-gray-600',
-  writer: 'bg-gray-600',
-  analyst: 'bg-gray-600',
-  creative: 'bg-gray-600',
-  researcher: 'bg-gray-600',
-  coder: 'bg-gray-600',
-  coordinator: 'bg-gray-600',
+  manager: 'bg-neutral-600',
+  writer: 'bg-neutral-600',
+  analyst: 'bg-neutral-600',
+  creative: 'bg-neutral-600',
+  researcher: 'bg-neutral-600',
+  coder: 'bg-neutral-600',
+  coordinator: 'bg-neutral-600',
 }
 
 // Agent background colors for soft variant - all neutral
 export const agentSoftBgColors: Record<AgentType, string> = {
-  manager: 'bg-gray-100',
-  writer: 'bg-gray-100',
-  analyst: 'bg-gray-100',
-  creative: 'bg-gray-100',
-  researcher: 'bg-gray-100',
-  coder: 'bg-gray-100',
-  coordinator: 'bg-gray-100',
+  manager: 'bg-neutral-100',
+  writer: 'bg-neutral-100',
+  analyst: 'bg-neutral-100',
+  creative: 'bg-neutral-100',
+  researcher: 'bg-neutral-100',
+  coder: 'bg-neutral-100',
+  coordinator: 'bg-neutral-100',
 }
 
 // Agent text colors for soft variant - all neutral
 export const agentSoftTextColors: Record<AgentType, string> = {
-  manager: 'text-gray-600',
-  writer: 'text-gray-600',
-  analyst: 'text-gray-600',
-  creative: 'text-gray-600',
-  researcher: 'text-gray-600',
-  coder: 'text-gray-600',
-  coordinator: 'text-gray-600',
+  manager: 'text-neutral-600',
+  writer: 'text-neutral-600',
+  analyst: 'text-neutral-600',
+  creative: 'text-neutral-600',
+  researcher: 'text-neutral-600',
+  coder: 'text-neutral-600',
+  coordinator: 'text-neutral-600',
 }
 
 // Agent border colors for outline variant - all neutral
 export const agentBorderColors: Record<AgentType, string> = {
-  manager: 'border-gray-400',
-  writer: 'border-gray-400',
-  analyst: 'border-gray-400',
-  creative: 'border-gray-400',
-  researcher: 'border-gray-400',
-  coder: 'border-gray-400',
-  coordinator: 'border-gray-400',
+  manager: 'border-neutral-400',
+  writer: 'border-neutral-400',
+  analyst: 'border-neutral-400',
+  creative: 'border-neutral-400',
+  researcher: 'border-neutral-400',
+  coder: 'border-neutral-400',
+  coordinator: 'border-neutral-400',
 }
 
 // Status colors - simple green for working, gray for others
 export const statusColors: Record<AgentStatus, string> = {
-  idle: 'bg-gray-400',
+  idle: 'bg-neutral-400',
   working: 'bg-green-500',
-  offline: 'bg-gray-300',
+  offline: 'bg-neutral-300',
 }
 
 // Presence colors - for all user types
@@ -232,7 +232,7 @@ export const presenceColors: Record<PresenceStatus, string> = {
   online: 'bg-green-500',
   away: 'bg-amber-400',
   busy: 'bg-red-500',
-  offline: 'bg-gray-300',
+  offline: 'bg-neutral-300',
 }
 
 // Status glow colors - removed
@@ -244,54 +244,55 @@ export const statusGlowColors: Record<AgentStatus, string> = {
 
 // Human avatar colors - all neutral gray
 export const humanColors: string[] = [
-  'bg-gray-500',
-  'bg-gray-600',
-  'bg-gray-500',
-  'bg-gray-600',
-  'bg-gray-500',
-  'bg-gray-600',
-  'bg-gray-500',
-  'bg-gray-600',
-  'bg-gray-500',
-  'bg-gray-600',
-  'bg-gray-500',
-  'bg-gray-600',
+  'bg-neutral-500',
+  'bg-neutral-600',
+  'bg-neutral-500',
+  'bg-neutral-600',
+  'bg-neutral-500',
+  'bg-neutral-600',
+  'bg-neutral-500',
+  'bg-neutral-600',
+  'bg-neutral-500',
+  'bg-neutral-600',
+  'bg-neutral-500',
+  'bg-neutral-600',
 ]
 
 // Human soft colors - all neutral
 export const humanSoftColors: string[] = [
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
-  'bg-gray-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
+  'bg-neutral-100',
 ]
 
 // Human text colors for soft variant - all neutral
 export const humanTextColors: string[] = [
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
-  'text-gray-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
+  'text-neutral-600',
 ]
 
 // Get color index from name
 export const getColorIndex = (name: string): number => {
+  if (!name) return 0
   let hash = 0
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash)
@@ -301,6 +302,7 @@ export const getColorIndex = (name: string): number => {
 
 // Get initials from name
 export const getInitials = (name: string, maxChars: number = 2): string => {
+  if (!name) return '?'
   const parts = name.trim().split(/\s+/)
   if (parts.length === 1) {
     return parts[0].substring(0, maxChars).toUpperCase()
@@ -317,19 +319,19 @@ export const presenceIndicators = {
   typing: {
     icon: 'ph:chat-dots',
     animation: '',
-    bgColor: 'bg-gray-100',
-    iconColor: 'text-gray-600',
+    bgColor: 'bg-neutral-100',
+    iconColor: 'text-neutral-600',
   },
   editing: {
     icon: 'ph:pencil-simple',
     animation: '',
-    bgColor: 'bg-gray-100',
-    iconColor: 'text-gray-600',
+    bgColor: 'bg-neutral-100',
+    iconColor: 'text-neutral-600',
   },
   viewing: {
     icon: 'ph:eye',
     animation: '',
-    bgColor: 'bg-gray-100',
-    iconColor: 'text-gray-600',
+    bgColor: 'bg-neutral-100',
+    iconColor: 'text-neutral-600',
   },
 }

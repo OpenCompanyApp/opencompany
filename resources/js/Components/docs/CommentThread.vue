@@ -1,14 +1,14 @@
 <template>
-  <div :class="['p-3 rounded-lg border', comment.resolved ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200']">
+  <div :class="['p-3 rounded-lg border', comment.resolved ? 'bg-neutral-50 border-neutral-100' : 'bg-white border-neutral-200']">
     <!-- Comment Header -->
     <div class="flex items-start gap-2 mb-2">
       <SharedAgentAvatar v-if="comment.author" :user="comment.author" size="sm" />
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between">
-          <span class="text-sm font-medium text-gray-700">
+          <span class="text-sm font-medium text-neutral-700">
             {{ comment.author?.name ?? 'Unknown' }}
           </span>
-          <span class="text-xs text-gray-500">
+          <span class="text-xs text-neutral-500">
             {{ formatTimeAgo(comment.createdAt) }}
           </span>
         </div>
@@ -16,7 +16,7 @@
     </div>
 
     <!-- Comment Content -->
-    <p :class="['text-sm mb-3', comment.resolved ? 'text-gray-500 line-through' : 'text-gray-700']">
+    <p :class="['text-sm mb-3', comment.resolved ? 'text-neutral-500 line-through' : 'text-neutral-700']">
       {{ comment.content }}
     </p>
 
@@ -30,21 +30,21 @@
     <div class="flex items-center gap-2">
       <button
         v-if="!comment.resolved"
-        class="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+        class="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
         @click="showReplyForm = !showReplyForm"
       >
         <Icon name="ph:arrow-bend-up-left" class="w-3.5 h-3.5 inline mr-1" />
         Reply
       </button>
       <button
-        class="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+        class="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
         @click="emit('resolve', comment.id, !comment.resolved)"
       >
         <Icon :name="comment.resolved ? 'ph:arrow-counter-clockwise' : 'ph:check'" class="w-3.5 h-3.5 inline mr-1" />
         {{ comment.resolved ? 'Unresolve' : 'Resolve' }}
       </button>
       <button
-        class="text-xs text-gray-500 hover:text-red-400 transition-colors"
+        class="text-xs text-neutral-500 hover:text-red-400 transition-colors"
         @click="emit('delete', comment.id)"
       >
         <Icon name="ph:trash" class="w-3.5 h-3.5 inline mr-1" />
@@ -54,22 +54,22 @@
 
     <!-- Reply Form -->
     <Transition name="slide-down">
-      <div v-if="showReplyForm" class="mt-3 pt-3 border-t border-gray-200">
+      <div v-if="showReplyForm" class="mt-3 pt-3 border-t border-neutral-200">
         <textarea
           v-model="replyContent"
           placeholder="Write a reply..."
-          class="w-full bg-white rounded-lg p-2 text-sm resize-none outline-none border border-gray-200 focus:border-gray-300"
+          class="w-full bg-white rounded-lg p-2 text-sm resize-none outline-none border border-neutral-200 focus:border-neutral-300"
           rows="2"
         />
         <div class="flex items-center justify-end gap-2 mt-2">
           <button
-            class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+            class="px-3 py-1.5 text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
             @click="showReplyForm = false; replyContent = ''"
           >
             Cancel
           </button>
           <button
-            class="px-3 py-1.5 text-xs bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+            class="px-3 py-1.5 text-xs bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50"
             :disabled="!replyContent.trim()"
             @click="handleReply"
           >
@@ -80,7 +80,7 @@
     </Transition>
 
     <!-- Replies -->
-    <div v-if="comment.replies?.length" class="mt-3 pl-4 border-l-2 border-gray-100 space-y-3">
+    <div v-if="comment.replies?.length" class="mt-3 pl-4 border-l-2 border-neutral-100 space-y-3">
       <div
         v-for="reply in comment.replies"
         :key="reply.id"
@@ -90,16 +90,16 @@
           <SharedAgentAvatar v-if="reply.author" :user="reply.author" size="xs" />
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
-              <span class="text-xs font-medium text-gray-700">
+              <span class="text-xs font-medium text-neutral-700">
                 {{ reply.author?.name ?? 'Unknown' }}
               </span>
-              <span class="text-[10px] text-gray-500">
+              <span class="text-[10px] text-neutral-500">
                 {{ formatTimeAgo(reply.createdAt) }}
               </span>
             </div>
           </div>
         </div>
-        <p class="text-xs text-gray-700">{{ reply.content }}</p>
+        <p class="text-xs text-neutral-700">{{ reply.content }}</p>
       </div>
     </div>
   </div>
@@ -107,8 +107,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
 import type { User } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
 
 interface DocumentComment {
   id: string

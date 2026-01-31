@@ -12,7 +12,7 @@
           :status="author.status"
           size="xs"
         />
-        <span class="text-xs text-gray-500">
+        <span class="text-xs text-neutral-500 dark:text-neutral-300">
           {{ formatTime(timestamp) }}
         </span>
       </div>
@@ -44,7 +44,7 @@
                   {{ request.priority }}
                 </SharedBadge>
               </div>
-              <p class="text-xs text-gray-500 capitalize flex items-center gap-1.5">
+              <p class="text-xs text-neutral-500 dark:text-neutral-300 capitalize flex items-center gap-1.5">
                 <Icon :name="typeIcon" class="w-3 h-3" />
                 {{ request.type }} request
                 <span v-if="request.expiresAt" class="flex items-center gap-1">
@@ -79,8 +79,8 @@
             <!-- Amount -->
             <div v-if="request.amount" :class="detailRowClasses">
               <div class="flex items-center gap-2">
-                <Icon name="ph:currency-circle-dollar" class="w-4 h-4 text-gray-500" />
-                <span class="text-sm text-gray-500">Amount requested</span>
+                <Icon name="ph:currency-circle-dollar" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+                <span class="text-sm text-neutral-500 dark:text-neutral-300">Amount requested</span>
               </div>
               <span :class="amountClasses">
                 {{ formatCurrency(request.amount) }}
@@ -90,10 +90,10 @@
             <!-- Resource -->
             <div v-if="request.resource" :class="detailRowClasses">
               <div class="flex items-center gap-2">
-                <Icon name="ph:database" class="w-4 h-4 text-gray-500" />
-                <span class="text-sm text-gray-500">Resource</span>
+                <Icon name="ph:database" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+                <span class="text-sm text-neutral-500 dark:text-neutral-300">Resource</span>
               </div>
-              <span class="text-sm font-medium text-gray-900">
+              <span class="text-sm font-medium text-neutral-900 dark:text-white">
                 {{ request.resource }}
               </span>
             </div>
@@ -101,10 +101,10 @@
             <!-- Duration -->
             <div v-if="request.duration" :class="detailRowClasses">
               <div class="flex items-center gap-2">
-                <Icon name="ph:timer" class="w-4 h-4 text-gray-500" />
-                <span class="text-sm text-gray-500">Duration</span>
+                <Icon name="ph:timer" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+                <span class="text-sm text-neutral-500 dark:text-neutral-300">Duration</span>
               </div>
-              <span class="text-sm font-medium text-gray-900">
+              <span class="text-sm font-medium text-neutral-900 dark:text-white">
                 {{ request.duration }}
               </span>
             </div>
@@ -112,8 +112,8 @@
             <!-- Scope -->
             <div v-if="request.scope" :class="detailRowClasses">
               <div class="flex items-center gap-2">
-                <Icon name="ph:shield" class="w-4 h-4 text-gray-500" />
-                <span class="text-sm text-gray-500">Scope</span>
+                <Icon name="ph:shield" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+                <span class="text-sm text-neutral-500 dark:text-neutral-300">Scope</span>
               </div>
               <SharedBadge variant="secondary" size="xs">
                 {{ request.scope }}
@@ -185,26 +185,11 @@
             </button>
 
             <!-- More Actions -->
-            <DropdownMenuRoot v-if="showMoreActions">
-              <DropdownMenuTrigger as-child>
-                <button :class="moreButtonClasses" :disabled="loading">
-                  <Icon name="ph:dots-three" class="w-4 h-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuPortal>
-                <DropdownMenuContent :class="menuContentClasses" :side-offset="5">
-                  <DropdownMenuItem
-                    v-for="action in moreActions"
-                    :key="action.label"
-                    :class="menuItemClasses(action)"
-                    @click="handleMoreAction(action)"
-                  >
-                    <Icon v-if="action.icon" :name="action.icon" class="w-4 h-4" />
-                    {{ action.label }}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenuPortal>
-            </DropdownMenuRoot>
+            <DropdownMenu v-if="showMoreActions" :items="moreActionsItems" :side-offset="5">
+              <button :class="moreButtonClasses" :disabled="loading">
+                <Icon name="ph:dots-three" class="w-4 h-4" />
+              </button>
+            </DropdownMenu>
           </div>
 
           <!-- Status Display (Resolved) -->
@@ -221,8 +206,8 @@
 
           <!-- Response Note -->
           <div v-if="request.responseNote" :class="responseNoteClasses">
-            <Icon name="ph:note" class="w-4 h-4 shrink-0 text-gray-500" />
-            <p class="text-sm text-gray-500 italic">
+            <Icon name="ph:note" class="w-4 h-4 shrink-0 text-neutral-500 dark:text-neutral-300" />
+            <p class="text-sm text-neutral-500 dark:text-neutral-300 italic">
               "{{ request.responseNote }}"
             </p>
           </div>
@@ -230,7 +215,7 @@
 
         <!-- Footer (metadata) -->
         <div v-if="showFooter" :class="footerClasses">
-          <div class="flex items-center gap-4 text-xs text-gray-400">
+          <div class="flex items-center gap-4 text-xs text-neutral-400 dark:text-neutral-400">
             <span v-if="request.requestedAt" class="flex items-center gap-1">
               <Icon name="ph:calendar" class="w-3 h-3" />
               Requested {{ formatRelativeTime(request.requestedAt) }}
@@ -252,13 +237,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from 'reka-ui'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 import type { ApprovalRequest, User } from '@/types'
 
 type ApprovalCardSize = 'sm' | 'md' | 'lg'
@@ -462,16 +441,16 @@ const wrapperClasses = computed(() => [
 
 // Card classes
 const cardClasses = computed(() => [
-  'group/card bg-white border border-gray-200 rounded-lg overflow-hidden',
+  'group/card bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden',
   'transition-colors duration-150',
-  'hover:border-gray-300',
+  'hover:border-neutral-300 dark:hover:border-neutral-600',
   sizeConfig[props.size].card,
 ])
 
 // Header classes
 const headerClasses = computed(() => {
   return [
-    'px-4 py-3 border-b border-gray-200 bg-gray-50',
+    'px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800',
   ]
 })
 
@@ -479,7 +458,7 @@ const headerClasses = computed(() => {
 const iconContainerClasses = computed(() => {
   return [
     'relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-    'bg-gray-100',
+    'bg-neutral-100 dark:bg-neutral-700',
   ]
 })
 
@@ -487,20 +466,20 @@ const iconContainerClasses = computed(() => {
 const iconClasses = computed(() => {
   return [
     sizeConfig[props.size].icon,
-    'text-gray-600',
+    'text-neutral-600 dark:text-neutral-200',
   ]
 })
 
 // Icon ring classes
 const iconRingClasses = computed(() => [
-  'absolute inset-0 rounded-lg ring-2 ring-gray-300',
+  'absolute inset-0 rounded-lg ring-2 ring-neutral-300 dark:ring-neutral-600',
 ])
 
 // Status indicator classes
 const statusIndicatorClasses = computed(() => {
   return [
     'w-8 h-8 rounded-lg flex items-center justify-center',
-    'bg-gray-100 text-gray-600',
+    'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200',
   ]
 })
 
@@ -512,18 +491,18 @@ const contentClasses = computed(() => [
 
 // Title classes
 const titleClasses = computed(() => [
-  'font-medium mb-2 text-gray-900',
+  'font-medium mb-2 text-neutral-900 dark:text-white',
   sizeConfig[props.size].title,
 ])
 
 // Description classes
 const descriptionClasses = computed(() => [
-  'text-sm text-gray-500 mb-4 leading-relaxed',
+  'text-sm text-neutral-500 dark:text-neutral-300 mb-4 leading-relaxed',
 ])
 
 // Details section classes
 const detailsSectionClasses = computed(() => [
-  'space-y-2 p-3 bg-gray-50 rounded-lg mb-4',
+  'space-y-2 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg mb-4',
 ])
 
 // Detail row classes
@@ -533,28 +512,28 @@ const detailRowClasses = computed(() => [
 
 // Amount classes
 const amountClasses = computed(() => [
-  'font-bold text-lg text-gray-900',
+  'font-bold text-lg text-neutral-900 dark:text-white',
 ])
 
 // Expand button classes
 const expandButtonClasses = computed(() => [
-  'flex items-center gap-1.5 text-xs text-gray-500',
+  'flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-300',
   'transition-colors duration-150',
-  'hover:text-gray-900',
+  'hover:text-neutral-900 dark:hover:text-white',
 ])
 
 // Details code classes
 const detailsCodeClasses = computed(() => [
-  'text-xs font-mono p-3 bg-gray-50 rounded-lg',
-  'text-gray-500 overflow-x-auto',
-  'border border-gray-200',
+  'text-xs font-mono p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg',
+  'text-neutral-500 dark:text-neutral-300 overflow-x-auto',
+  'border border-neutral-200 dark:border-neutral-700',
 ])
 
 // Risk warning classes
 const riskWarningClasses = computed(() => {
   return [
     'flex items-start gap-2 p-3 rounded-lg border mb-4',
-    'bg-gray-50 border-gray-200 text-gray-600',
+    'bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-200',
   ]
 })
 
@@ -566,35 +545,35 @@ const actionsClasses = computed(() => [
 // Approve button classes
 const approveButtonClasses = computed(() => [
   'flex-1 flex items-center justify-center gap-2 px-4 py-2.5',
-  'bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg',
+  'bg-neutral-900 dark:bg-neutral-100 hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 font-medium rounded-lg',
   'transition-colors duration-150',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
   'disabled:opacity-50 disabled:cursor-not-allowed',
 ])
 
 // Reject button classes
 const rejectButtonClasses = computed(() => [
   'flex-1 flex items-center justify-center gap-2 px-4 py-2.5',
-  'bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-lg',
-  'border border-gray-200 hover:border-gray-300',
+  'bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white font-medium rounded-lg',
+  'border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600',
   'transition-colors duration-150',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
   'disabled:opacity-50 disabled:cursor-not-allowed',
 ])
 
 // More button classes
 const moreButtonClasses = computed(() => [
   'p-2.5 rounded-lg',
-  'bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-900',
-  'border border-gray-200 hover:border-gray-300',
+  'bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
+  'border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600',
   'transition-colors duration-150',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
   'disabled:opacity-50 disabled:cursor-not-allowed',
 ])
 
 // Menu content classes
 const menuContentClasses = computed(() => [
-  'min-w-40 bg-white border border-gray-200 rounded-lg',
+  'min-w-40 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
   'shadow-lg p-1 z-50',
   'animate-in fade-in-0 duration-150',
 ])
@@ -604,26 +583,26 @@ const menuItemClasses = (action: MoreAction) => [
   'flex items-center gap-2 px-3 py-2 text-sm rounded-lg cursor-pointer outline-none',
   'transition-colors duration-150',
   action.variant === 'danger'
-    ? 'text-red-600 hover:bg-red-50 focus:bg-red-50'
-    : 'text-gray-500 hover:bg-gray-50 focus:bg-gray-50 hover:text-gray-900 focus:text-gray-900',
+    ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-950 focus:bg-red-50 dark:focus:bg-red-950'
+    : 'text-neutral-500 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:bg-neutral-50 dark:focus:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white focus:text-neutral-900 dark:focus:text-white',
 ]
 
 // Resolved status classes
 const resolvedStatusClasses = computed(() => {
   return [
     'flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium',
-    'bg-gray-100 text-gray-600',
+    'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200',
   ]
 })
 
 // Response note classes
 const responseNoteClasses = computed(() => [
-  'flex items-start gap-2 mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200',
+  'flex items-start gap-2 mt-3 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700',
 ])
 
 // Footer classes
 const footerClasses = computed(() => [
-  'px-4 py-2 border-t border-gray-200 bg-gray-50',
+  'px-4 py-2 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800',
 ])
 
 // Format time
@@ -659,6 +638,16 @@ const formatCurrency = (amount: number) => {
     maximumFractionDigits: 2,
   }).format(amount)
 }
+
+// More actions items for UDropdownMenu
+const moreActionsItems = computed(() => [
+  props.moreActions.map(action => ({
+    label: action.label,
+    icon: action.icon,
+    color: action.variant === 'danger' ? 'error' as const : undefined,
+    click: () => handleMoreAction(action),
+  })),
+])
 
 // Handlers
 const handleApprove = () => {

@@ -1,17 +1,17 @@
 <template>
   <div class="h-full flex flex-col">
     <!-- Header -->
-    <header class="shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
+    <header class="shrink-0 px-6 py-4 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-xl font-semibold text-gray-900">Activity Feed</h1>
-          <p class="text-sm text-gray-500 mt-1">
+          <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Activity Feed</h1>
+          <p class="text-sm text-neutral-500 dark:text-neutral-300 mt-1">
             Track all activities across your organization
           </p>
         </div>
         <div class="flex items-center gap-3">
           <button
-            class="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+            class="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors"
             @click="refreshActivities"
           >
             <Icon name="ph:arrows-clockwise" class="w-4 h-4" />
@@ -22,15 +22,15 @@
       <!-- Filters -->
       <div class="flex items-center gap-3 mt-4">
         <!-- Type Filter -->
-        <div class="flex items-center gap-1 p-1 bg-gray-50 rounded-lg">
+        <div class="flex items-center gap-1 p-1 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
           <button
             v-for="type in activityTypes"
             :key="type.value"
             :class="[
               'px-3 py-1.5 text-sm rounded-md transition-colors',
               selectedType === type.value
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-neutral-900 text-white'
+                : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200'
             ]"
             @click="selectedType = type.value"
           >
@@ -41,7 +41,7 @@
         <!-- User Filter -->
         <select
           v-model="selectedUserId"
-          class="bg-gray-50 rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+          class="bg-neutral-50 dark:bg-neutral-800 rounded-lg px-3 py-2 text-sm outline-none border border-neutral-200 dark:border-neutral-700 focus:border-neutral-300 dark:text-white"
         >
           <option value="">All users</option>
           <option v-for="user in users" :key="user.id" :value="user.id">
@@ -52,7 +52,7 @@
         <!-- Date Filter -->
         <select
           v-model="selectedDateRange"
-          class="bg-gray-50 rounded-lg px-3 py-2 text-sm outline-none border border-gray-200 focus:border-gray-300"
+          class="bg-neutral-50 dark:bg-neutral-800 rounded-lg px-3 py-2 text-sm outline-none border border-neutral-200 dark:border-neutral-700 focus:border-neutral-300 dark:text-white"
         >
           <option value="today">Today</option>
           <option value="week">This Week</option>
@@ -63,7 +63,7 @@
         <!-- Clear Filters -->
         <button
           v-if="hasActiveFilters"
-          class="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          class="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
           @click="clearFilters"
         >
           Clear filters
@@ -77,7 +77,7 @@
         <!-- Activity Timeline -->
         <div class="relative">
           <!-- Timeline line -->
-          <div class="absolute left-[19px] top-0 bottom-0 w-0.5 bg-gray-200" />
+          <div class="absolute left-[19px] top-0 bottom-0 w-0.5 bg-neutral-200 dark:bg-neutral-700" />
 
           <!-- Activity Items -->
           <div class="space-y-4">
@@ -98,47 +98,47 @@
 
               <!-- Activity Content -->
               <div class="flex-1 min-w-0 pb-4">
-                <div class="p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+                <div class="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors">
                   <div class="flex items-start justify-between gap-3">
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 mb-1">
                         <Link
                           v-if="activity.actor"
                           :href="activity.actor.type === 'agent' ? `/agent/${activity.actor.id}` : `/profile/${activity.actor.id}`"
-                          class="font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                          class="font-medium text-neutral-700 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-colors"
                         >
                           {{ activity.actor.name }}
                         </Link>
-                        <span class="text-gray-500">{{ getActivityVerb(activity.type) }}</span>
+                        <span class="text-neutral-500 dark:text-neutral-300">{{ getActivityVerb(activity.type) }}</span>
                       </div>
-                      <p class="text-sm text-gray-700">
+                      <p class="text-sm text-neutral-700 dark:text-neutral-200">
                         {{ activity.description }}
                       </p>
                       <div v-if="activity.metadata" class="mt-2">
                         <div
                           v-if="activity.metadata.taskTitle"
-                          class="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-500"
+                          class="inline-flex items-center gap-1.5 px-2 py-1 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-xs text-neutral-500 dark:text-neutral-300"
                         >
                           <Icon name="ph:check-square" class="w-3.5 h-3.5" />
                           {{ activity.metadata.taskTitle }}
                         </div>
                         <div
                           v-if="activity.metadata.amount"
-                          class="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-500"
+                          class="inline-flex items-center gap-1.5 px-2 py-1 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-xs text-neutral-500 dark:text-neutral-300"
                         >
                           <Icon name="ph:coins" class="w-3.5 h-3.5" />
                           ${{ activity.metadata.amount }}
                         </div>
                         <div
                           v-if="activity.metadata.channelName"
-                          class="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-500"
+                          class="inline-flex items-center gap-1.5 px-2 py-1 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-xs text-neutral-500 dark:text-neutral-300"
                         >
                           <Icon name="ph:hash" class="w-3.5 h-3.5" />
                           {{ activity.metadata.channelName }}
                         </div>
                       </div>
                     </div>
-                    <span class="text-xs text-gray-500 whitespace-nowrap">
+                    <span class="text-xs text-neutral-500 dark:text-neutral-300 whitespace-nowrap">
                       {{ formatTimeAgo(activity.timestamp) }}
                     </span>
                   </div>
@@ -149,7 +149,7 @@
             <!-- Load More -->
             <div v-if="hasMore" class="flex justify-center pt-4">
               <button
-                class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                class="px-4 py-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors"
                 :disabled="loadingMore"
                 @click="loadMore"
               >
@@ -160,9 +160,9 @@
 
             <!-- Empty State -->
             <div v-if="filteredActivities.length === 0" class="text-center py-12">
-              <Icon name="ph:activity" class="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p class="text-gray-500">No activities found</p>
-              <p class="text-sm text-gray-400 mt-1">
+              <Icon name="ph:activity" class="w-12 h-12 mx-auto mb-4 text-neutral-400 dark:text-neutral-400" />
+              <p class="text-neutral-500 dark:text-neutral-300">No activities found</p>
+              <p class="text-sm text-neutral-400 dark:text-neutral-400 mt-1">
                 {{ hasActiveFilters ? 'Try adjusting your filters' : 'Activities will appear here' }}
               </p>
             </div>
@@ -297,7 +297,7 @@ const getActivityIconBg = (type: string): string => {
     approval_granted: 'bg-green-500',
     error: 'bg-red-500',
   }
-  return colors[type] || 'bg-gray-500'
+  return colors[type] || 'bg-neutral-500'
 }
 
 const getActivityVerb = (type: string): string => {

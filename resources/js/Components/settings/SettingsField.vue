@@ -2,11 +2,11 @@
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-4">
       <div>
-        <label class="block text-sm font-medium text-gray-900">
+        <label class="block text-sm font-medium text-neutral-900 dark:text-white">
           {{ label }}
           <span v-if="required" class="text-red-500 ml-0.5">*</span>
         </label>
-        <p v-if="description" class="text-xs text-gray-500 mt-0.5">
+        <p v-if="description" class="text-xs text-neutral-500 dark:text-neutral-300 mt-0.5">
           {{ description }}
         </p>
       </div>
@@ -37,7 +37,7 @@
     >
       <p
         v-if="hint && !error"
-        class="text-xs text-gray-400 flex items-center gap-1"
+        class="text-xs text-neutral-400 dark:text-neutral-400 flex items-center gap-1"
       >
         <Icon name="ph:info" class="w-3.5 h-3.5" />
         {{ hint }}
@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
+import Icon from '@/Components/shared/Icon.vue'
 
 withDefaults(defineProps<{
   label: string

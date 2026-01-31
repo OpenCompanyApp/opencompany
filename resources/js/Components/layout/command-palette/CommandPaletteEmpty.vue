@@ -8,32 +8,32 @@
     <!-- Animated icon -->
     <div
       :class="[
-        'group/icon relative mb-4 rounded-2xl bg-gray-100 flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-105 hover:bg-gray-200 cursor-default',
+        'group/icon relative mb-4 rounded-2xl bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-105 hover:bg-neutral-200 dark:hover:bg-neutral-600 cursor-default',
         sizeConfig[size].iconContainer
       ]"
     >
       <Icon
         :name="icon"
         :class="[
-          'text-gray-400 transition-all duration-300 group-hover/icon:scale-110 group-hover/icon:text-gray-500',
+          'text-neutral-400 dark:text-neutral-400 transition-all duration-300 group-hover/icon:scale-110 group-hover/icon:text-neutral-500 dark:group-hover/icon:text-neutral-400',
           sizeConfig[size].icon
         ]"
       />
 
       <!-- Decorative rings -->
-      <div class="absolute inset-0 rounded-2xl border border-gray-200/50 animate-ping opacity-20" />
-      <div class="absolute -inset-2 rounded-3xl border border-dashed border-gray-200/30 transition-all duration-300 group-hover/icon:border-gray-200/50 group-hover/icon:scale-105" />
+      <div class="absolute inset-0 rounded-2xl border border-neutral-200/50 dark:border-neutral-600/50 animate-ping opacity-20" />
+      <div class="absolute -inset-2 rounded-3xl border border-dashed border-neutral-200/30 dark:border-neutral-600/30 transition-all duration-300 group-hover/icon:border-neutral-200/50 dark:group-hover/icon:border-neutral-600/50 group-hover/icon:scale-105" />
     </div>
 
     <!-- Title -->
-    <h3 :class="['font-semibold text-gray-900 mb-1', sizeConfig[size].title]">
+    <h3 :class="['font-semibold text-neutral-900 dark:text-white mb-1', sizeConfig[size].title]">
       {{ title }}
     </h3>
 
     <!-- Description -->
-    <p :class="['text-gray-500 max-w-xs mx-auto', sizeConfig[size].description]">
+    <p :class="['text-neutral-500 dark:text-neutral-300 max-w-xs mx-auto', sizeConfig[size].description]">
       <template v-if="query">
-        No results for "<span class="text-gray-900 font-medium">{{ query }}</span>"
+        No results for "<span class="text-neutral-900 dark:text-white font-medium">{{ query }}</span>"
       </template>
       <template v-else>
         {{ description }}
@@ -42,7 +42,7 @@
 
     <!-- Suggestions -->
     <div v-if="suggestions && suggestions.length > 0" class="mt-4">
-      <p :class="['text-gray-400 mb-2', sizeConfig[size].suggestionsLabel]">
+      <p :class="['text-neutral-400 dark:text-neutral-400 mb-2', sizeConfig[size].suggestionsLabel]">
         Try these:
       </p>
       <div class="flex flex-wrap justify-center gap-2">
@@ -50,7 +50,7 @@
           v-for="(suggestion, index) in suggestions"
           :key="index"
           :class="[
-            'group/suggestion flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.98]',
+            'group/suggestion flex items-center gap-1.5 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-lg transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.98]',
             sizeConfig[size].suggestion
           ]"
           :style="{ animationDelay: `${index * 50}ms` }"
@@ -59,11 +59,11 @@
           <Icon
             name="ph:arrow-bend-up-right"
             :class="[
-              'text-gray-400 group-hover/suggestion:text-gray-900 transition-all duration-300 group-hover/suggestion:translate-x-0.5 group-hover/suggestion:-translate-y-0.5',
+              'text-neutral-400 dark:text-neutral-400 group-hover/suggestion:text-neutral-900 dark:group-hover/suggestion:text-white transition-all duration-300 group-hover/suggestion:translate-x-0.5 group-hover/suggestion:-translate-y-0.5',
               sizeConfig[size].suggestionIcon
             ]"
           />
-          <span class="text-gray-500 group-hover/suggestion:text-gray-900 transition-colors duration-300">
+          <span class="text-neutral-500 dark:text-neutral-300 group-hover/suggestion:text-neutral-900 dark:group-hover/suggestion:text-white transition-colors duration-300">
             {{ suggestion }}
           </span>
         </button>
@@ -71,8 +71,8 @@
     </div>
 
     <!-- Tips section -->
-    <div v-if="showTips" class="mt-6 pt-4 border-t border-gray-200 w-full">
-      <p :class="['text-gray-400 mb-3', sizeConfig[size].tipsLabel]">
+    <div v-if="showTips" class="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700 w-full">
+      <p :class="['text-neutral-400 dark:text-neutral-400 mb-3', sizeConfig[size].tipsLabel]">
         Search tips
       </p>
       <div class="flex flex-wrap justify-center gap-3">
@@ -83,13 +83,13 @@
         >
           <kbd
             :class="[
-              'font-mono bg-gray-100 border border-gray-200 rounded',
+              'font-mono bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded',
               sizeConfig[size].tipKbd
             ]"
           >
             {{ tip.prefix }}
           </kbd>
-          <span class="text-gray-500">{{ tip.description }}</span>
+          <span class="text-neutral-500 dark:text-neutral-300">{{ tip.description }}</span>
         </div>
       </div>
     </div>
@@ -99,7 +99,7 @@
       <button
         v-if="actionLabel"
         :class="[
-          'group/action mt-4 flex items-center gap-2 bg-gray-900 text-white rounded-xl hover:bg-gray-900/90 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] font-medium hover:scale-105 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-gray-900/30 active:scale-[0.98] active:translate-y-0',
+          'group/action mt-4 flex items-center gap-2 bg-neutral-900 text-white rounded-xl hover:bg-neutral-900/90 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] font-medium hover:scale-105 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-neutral-900/30 active:scale-[0.98] active:translate-y-0',
           sizeConfig[size].action
         ]"
         @click="$emit('action')"
@@ -112,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
+import Icon from '@/Components/shared/Icon.vue'
 
 // Types
 type EmptySize = 'sm' | 'md' | 'lg'

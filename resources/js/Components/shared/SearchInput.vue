@@ -4,7 +4,7 @@
     <label
       v-if="label && !floatingLabel"
       :for="inputId"
-      class="block text-sm font-medium text-gray-700 mb-1.5"
+      class="block text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1.5"
     >
       {{ label }}
       <span v-if="required" class="text-red-500 ml-0.5">*</span>
@@ -28,14 +28,14 @@
           <Icon
             v-if="loading"
             name="ph:spinner"
-            :class="[iconSizeClasses[size], 'text-gray-400 animate-spin']"
+            :class="[iconSizeClasses[size], 'text-neutral-400 dark:text-neutral-400 animate-spin']"
           />
           <Icon
             v-else
             :name="prefixIcon"
             :class="[
               iconSizeClasses[size],
-              isFocused ? 'text-gray-600' : 'text-gray-400',
+              isFocused ? 'text-neutral-600 dark:text-neutral-200' : 'text-neutral-400 dark:text-neutral-400',
               'transition-colors duration-150',
             ]"
           />
@@ -82,51 +82,44 @@
         <!-- Results Count -->
         <span
           v-if="showResultsCount && resultsCount !== undefined && model"
-          class="text-xs text-gray-500 tabular-nums mr-1"
+          class="text-xs text-neutral-500 dark:text-neutral-300 tabular-nums mr-1"
         >
           {{ resultsCount }} {{ resultsCount === 1 ? 'result' : 'results' }}
         </span>
 
         <!-- Clear Button -->
-        <button
+        <Button
           v-if="clearable && model && !disabled && !readonly"
-          type="button"
-          :class="clearButtonClasses"
+          icon="ph:x"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          :padded="false"
           :aria-label="clearLabel"
           @click="handleClear"
-        >
-          <Icon name="ph:x" :class="clearIconSizeClasses[size]" />
-        </button>
+        />
 
         <!-- Voice Input Button -->
-        <button
+        <Button
           v-if="voiceInput && !disabled && !readonly"
-          type="button"
-          :class="[
-            'p-1.5 rounded-md transition-colors duration-150',
-            isListening
-              ? 'text-red-500 bg-red-50'
-              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
-          ]"
+          :icon="isListening ? 'ph:microphone-fill' : 'ph:microphone'"
+          :color="isListening ? 'error' : 'neutral'"
+          variant="ghost"
+          size="xs"
           :aria-label="isListening ? 'Stop listening' : 'Start voice search'"
           @click="toggleVoiceInput"
-        >
-          <Icon
-            :name="isListening ? 'ph:microphone-fill' : 'ph:microphone'"
-            :class="iconSizeClasses[size]"
-          />
-        </button>
+        />
 
         <!-- Search/Submit Button -->
-        <button
+        <Button
           v-if="showSearchButton && model && !disabled"
-          type="button"
-          :class="searchButtonClasses"
+          icon="ph:arrow-right"
+          color="neutral"
+          variant="solid"
+          size="xs"
           :aria-label="searchButtonLabel"
           @click="handleSearch"
-        >
-          <Icon name="ph:arrow-right" :class="iconSizeClasses[size]" />
-        </button>
+        />
 
         <!-- Custom suffix slot -->
         <slot name="suffix" />
@@ -138,7 +131,7 @@
       v-if="helperText || error"
       :class="[
         'mt-1.5 text-xs',
-        error ? 'text-red-500' : 'text-gray-500',
+        error ? 'text-red-500' : 'text-neutral-500 dark:text-neutral-300',
       ]"
     >
       <Icon
@@ -152,16 +145,12 @@
     <!-- Keyboard Hints -->
     <div
       v-if="showKeyboardHints && isFocused && !disabled"
-      class="absolute right-3 top-full mt-2 flex items-center gap-2 text-xs text-gray-500 z-10"
+      class="absolute right-3 top-full mt-2 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-300 z-10"
     >
-      <span class="flex items-center gap-1">
-        <kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-[10px] font-mono">Enter</kbd>
-        <span>to search</span>
-      </span>
-      <span class="flex items-center gap-1">
-        <kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-[10px] font-mono">Esc</kbd>
-        <span>to clear</span>
-      </span>
+      <kbd class="px-1.5 py-0.5 text-xs font-mono bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded">Enter</kbd>
+      <span>to search</span>
+      <kbd class="px-1.5 py-0.5 text-xs font-mono bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded">Esc</kbd>
+      <span>to clear</span>
     </div>
 
     <!-- Recent Searches Dropdown -->
@@ -173,17 +162,18 @@
     >
       <div
         v-if="showRecentSearches && recentSearches.length > 0 && isFocused && !model"
-        class="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-md z-20 overflow-hidden"
+        class="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-md z-20 overflow-hidden"
       >
-        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent Searches</span>
-          <button
-            type="button"
-            class="text-xs text-gray-500 hover:text-red-500 transition-colors duration-150"
+        <div class="px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
+          <span class="text-xs font-semibold text-neutral-500 dark:text-neutral-300 uppercase tracking-wider">Recent Searches</span>
+          <Button
+            color="neutral"
+            variant="link"
+            size="xs"
             @click="$emit('clearRecentSearches')"
           >
             Clear all
-          </button>
+          </Button>
         </div>
         <ul class="py-2 max-h-48 overflow-y-auto">
           <li
@@ -192,8 +182,8 @@
             :class="[
               'px-4 py-2.5 flex items-center gap-3 cursor-pointer transition-colors duration-150',
               highlightedIndex === index
-                ? 'bg-gray-100 text-gray-900'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white'
+                : 'text-neutral-600 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white',
             ]"
             @click="selectRecentSearch(search)"
             @mouseenter="highlightedIndex = index"
@@ -211,6 +201,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
 
 type SearchInputSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 type SearchInputVariant = 'default' | 'ghost' | 'filled' | 'outlined' | 'pill' | 'minimal'
@@ -382,7 +373,7 @@ const containerClasses = computed(() => [
 const inputClasses = computed(() => {
   const classes = [
     'w-full transition-colors duration-150',
-    'placeholder:text-gray-400',
+    'placeholder:text-neutral-400 dark:placeholder:text-neutral-500',
     'focus:outline-none',
     'disabled:opacity-50 disabled:cursor-not-allowed',
     '[appearance:textfield]',
@@ -397,42 +388,42 @@ const inputClasses = computed(() => {
   switch (props.variant) {
     case 'ghost':
       classes.push(
-        'bg-transparent border border-transparent text-gray-900',
-        'hover:bg-gray-50',
-        'focus:bg-gray-50 focus:border-gray-200',
+        'bg-transparent border border-transparent text-neutral-900 dark:text-white',
+        'hover:bg-neutral-50 dark:hover:bg-neutral-800',
+        'focus:bg-neutral-50 dark:focus:bg-neutral-800 focus:border-neutral-200 dark:focus:border-neutral-700',
       )
       break
     case 'filled':
       classes.push(
-        'bg-gray-100 border border-transparent text-gray-900',
-        'hover:bg-gray-50',
-        'focus:bg-white focus:border-gray-300',
+        'bg-neutral-100 dark:bg-neutral-700 border border-transparent text-neutral-900 dark:text-white',
+        'hover:bg-neutral-50 dark:hover:bg-neutral-800',
+        'focus:bg-white dark:focus:bg-neutral-900 focus:border-neutral-300 dark:focus:border-neutral-600',
       )
       break
     case 'outlined':
       classes.push(
-        'bg-transparent border border-gray-300 text-gray-900',
-        'hover:border-gray-400',
-        'focus:border-gray-900',
+        'bg-transparent border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white',
+        'hover:border-neutral-400 dark:hover:border-neutral-500',
+        'focus:border-neutral-900 dark:focus:border-neutral-400',
       )
       break
     case 'pill':
       classes.push(
-        'bg-gray-100 border border-gray-200 text-gray-900',
-        'focus:border-gray-300',
+        'bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white',
+        'focus:border-neutral-300 dark:focus:border-neutral-600',
       )
       break
     case 'minimal':
       classes.push(
-        'bg-transparent border-b border-gray-300 text-gray-900',
-        'focus:border-gray-600',
+        'bg-transparent border-b border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white',
+        'focus:border-neutral-600 dark:focus:border-neutral-400',
         'rounded-none',
       )
       break
     default:
       classes.push(
-        'bg-white border border-gray-300 text-gray-900',
-        'focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20',
+        'bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white',
+        'focus:border-neutral-900 dark:focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/20',
       )
   }
 
@@ -455,9 +446,9 @@ const floatingLabelClasses = computed(() => {
 
   return [
     'absolute left-3 transition-all duration-150 pointer-events-none',
-    'text-gray-500',
+    'text-neutral-500 dark:text-neutral-300',
     hasValue
-      ? 'top-1 text-[10px] text-gray-600'
+      ? 'top-1 text-[10px] text-neutral-600 dark:text-neutral-200'
       : 'top-1/2 -translate-y-1/2 text-sm',
   ]
 })
@@ -465,17 +456,17 @@ const floatingLabelClasses = computed(() => {
 // Clear button classes
 const clearButtonClasses = computed(() => [
   'p-1 rounded-md transition-colors duration-150',
-  'text-gray-400 hover:text-gray-600',
-  'hover:bg-gray-100',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/50',
+  'text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/50',
 ])
 
 // Search button classes
 const searchButtonClasses = computed(() => [
   'p-1.5 rounded-md transition-colors duration-150',
-  'bg-gray-900 text-white',
-  'hover:bg-gray-700',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/50',
+  'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900',
+  'hover:bg-neutral-700 dark:hover:bg-neutral-200',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/50',
 ])
 
 // Debounced search

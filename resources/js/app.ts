@@ -1,5 +1,9 @@
 import '../css/app.css';
+import 'highlight.js/styles/github-dark.css';
 import './bootstrap';
+
+// Initialize color mode (handles dark/light mode)
+import './composables/useColorMode';
 
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';

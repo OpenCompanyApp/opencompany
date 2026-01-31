@@ -5,40 +5,36 @@
       sizeConfig[size].container
     ]"
   >
-    <!-- Group header -->
-    <component
-      :is="collapsible ? CollapsibleRoot : 'div'"
-      v-model:open="isOpen"
-    >
-      <component
-        :is="collapsible ? CollapsibleTrigger : 'div'"
+    <!-- Group header - Collapsible version -->
+    <CollapsibleRoot v-if="collapsible" v-model:open="isOpen">
+      <CollapsibleTrigger
         :class="[
           'w-full flex items-center justify-between group/header',
           sizeConfig[size].header,
-          collapsible && 'cursor-pointer hover:bg-gray-50 rounded-lg transition-colors duration-150'
+          'cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors duration-150'
         ]"
-        @click="collapsible && $emit('toggle')"
+        @click="$emit('toggle')"
       >
         <div class="flex items-center gap-2">
           <!-- Group icon -->
           <div
             v-if="icon"
             :class="[
-              'flex items-center justify-center rounded-md bg-gray-100 transition-colors duration-150',
+              'flex items-center justify-center rounded-md bg-neutral-100 dark:bg-neutral-700 transition-colors duration-150',
               sizeConfig[size].iconContainer,
-              collapsible && 'group-hover/header:bg-gray-200'
+              'group-hover/header:bg-neutral-200 dark:group-hover/header:bg-neutral-600'
             ]"
           >
             <Icon
               :name="icon"
-              :class="['text-gray-500', sizeConfig[size].icon]"
+              :class="['text-neutral-500 dark:text-neutral-300', sizeConfig[size].icon]"
             />
           </div>
 
           <!-- Group label -->
           <span
             :class="[
-              'font-semibold text-gray-500 uppercase tracking-wider',
+              'font-semibold text-neutral-500 dark:text-neutral-300 uppercase tracking-wider',
               sizeConfig[size].label
             ]"
           >
@@ -55,7 +51,7 @@
             <span
               v-if="showCount && count !== undefined"
               :class="[
-                'font-medium bg-gray-100 text-gray-400 rounded-full',
+                'font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-400 rounded-full',
                 sizeConfig[size].count
               ]"
             >
@@ -69,43 +65,91 @@
           <slot name="actions" />
 
           <!-- Collapse chevron -->
+          <Icon
+            name="ph:caret-down"
+            :class="[
+              'text-neutral-400 dark:text-neutral-400 transition-transform duration-150',
+              sizeConfig[size].chevron,
+              !isOpen && '-rotate-90',
+              'group-hover/header:text-neutral-900 dark:group-hover/header:text-white'
+            ]"
+          />
+        </div>
+      </CollapsibleTrigger>
+
+      <!-- Group content -->
+      <CollapsibleContent :class="sizeConfig[size].content">
+        <div class="space-y-0.5">
+          <slot />
+        </div>
+      </CollapsibleContent>
+    </CollapsibleRoot>
+
+    <!-- Group header - Non-collapsible version -->
+    <div v-else>
+      <div
+        :class="[
+          'w-full flex items-center justify-between group/header',
+          sizeConfig[size].header
+        ]"
+      >
+        <div class="flex items-center gap-2">
+          <!-- Group icon -->
+          <div
+            v-if="icon"
+            :class="[
+              'flex items-center justify-center rounded-md bg-neutral-100 dark:bg-neutral-700 transition-colors duration-150',
+              sizeConfig[size].iconContainer
+            ]"
+          >
+            <Icon
+              :name="icon"
+              :class="['text-neutral-500 dark:text-neutral-300', sizeConfig[size].icon]"
+            />
+          </div>
+
+          <!-- Group label -->
+          <span
+            :class="[
+              'font-semibold text-neutral-500 dark:text-neutral-300 uppercase tracking-wider',
+              sizeConfig[size].label
+            ]"
+          >
+            {{ label }}
+          </span>
+
+          <!-- Item count badge -->
           <Transition
             enter-active-class="transition-opacity duration-150 ease-out"
             leave-active-class="transition-opacity duration-100 ease-out"
             enter-from-class="opacity-0"
             leave-to-class="opacity-0"
           >
-            <Icon
-              v-if="collapsible"
-              name="ph:caret-down"
+            <span
+              v-if="showCount && count !== undefined"
               :class="[
-                'text-gray-400 transition-transform duration-150',
-                sizeConfig[size].chevron,
-                !isOpen && '-rotate-90',
-                'group-hover/header:text-gray-900'
+                'font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-400 rounded-full',
+                sizeConfig[size].count
               ]"
-            />
+            >
+              {{ count }}
+            </span>
           </Transition>
         </div>
-      </component>
+
+        <div class="flex items-center gap-2">
+          <!-- Custom actions slot -->
+          <slot name="actions" />
+        </div>
+      </div>
 
       <!-- Group content -->
-      <component
-        :is="collapsible ? CollapsibleContent : 'div'"
-        :class="sizeConfig[size].content"
-      >
-        <Transition
-          enter-active-class="transition-opacity duration-150 ease-out"
-          leave-active-class="transition-opacity duration-100 ease-out"
-          enter-from-class="opacity-0"
-          leave-to-class="opacity-0"
-        >
-          <div v-if="collapsible ? isOpen : true" class="space-y-0.5">
-            <slot />
-          </div>
-        </Transition>
-      </component>
-    </component>
+      <div :class="sizeConfig[size].content">
+        <div class="space-y-0.5">
+          <slot />
+        </div>
+      </div>
+    </div>
 
     <!-- Loading state -->
     <div v-if="loading" class="space-y-2 mt-2">
@@ -117,10 +161,10 @@
           sizeConfig[size].skeleton
         ]"
       >
-        <div :class="['rounded-lg bg-gray-100', sizeConfig[size].skeletonIcon]" />
+        <div :class="['rounded-lg bg-neutral-100 dark:bg-neutral-700', sizeConfig[size].skeletonIcon]" />
         <div class="flex-1 space-y-1.5">
-          <div class="h-4 w-28 bg-gray-100 rounded" />
-          <div class="h-3 w-40 bg-gray-50 rounded" />
+          <div class="h-4 w-28 bg-neutral-100 dark:bg-neutral-700 rounded" />
+          <div class="h-3 w-40 bg-neutral-50 dark:bg-neutral-800 rounded" />
         </div>
       </div>
     </div>
@@ -135,21 +179,17 @@
     >
       <Icon
         :name="emptyIcon"
-        :class="['text-gray-400 mb-2', sizeConfig[size].emptyIcon]"
+        :class="['text-neutral-400 dark:text-neutral-400 mb-2', sizeConfig[size].emptyIcon]"
       />
-      <p class="text-sm text-gray-500">{{ emptyText }}</p>
+      <p class="text-sm text-neutral-500 dark:text-neutral-300">{{ emptyText }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Icon } from '@iconify/vue'
-import {
-  CollapsibleContent,
-  CollapsibleRoot,
-  CollapsibleTrigger,
-} from 'reka-ui'
+import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui'
+import Icon from '@/Components/shared/Icon.vue'
 
 // Types
 type GroupSize = 'sm' | 'md' | 'lg'

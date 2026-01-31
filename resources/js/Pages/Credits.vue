@@ -1,19 +1,19 @@
 <template>
-  <div class="min-h-screen bg-white p-6">
-    <div class="max-w-6xl mx-auto">
+  <div class="h-full overflow-y-auto">
+    <div class="max-w-4xl mx-auto p-6">
       <!-- Header -->
-      <div class="flex items-center justify-between mb-8">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Credits & Usage</h1>
-          <p class="text-sm text-gray-500 mt-1">
+      <div class="flex items-center justify-between mb-6">
+        <header>
+          <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Credits & Usage</h1>
+          <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
             Track credit consumption and manage your budget
           </p>
-        </div>
+        </header>
         <button
           type="button"
-          class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium transition-colors"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors duration-150"
         >
-          <Icon name="ph:plus" class="w-5 h-5" />
+          <Icon name="ph:plus" class="w-4 h-4" />
           Add Credits
         </button>
       </div>
@@ -29,53 +29,53 @@
       <template v-else>
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div class="bg-gray-50 rounded-xl p-5 border border-gray-200">
+          <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-5 border border-neutral-200 dark:border-neutral-700">
             <div class="flex items-center justify-between mb-3">
-              <span class="text-sm text-gray-500">Available Credits</span>
+              <span class="text-sm text-neutral-500 dark:text-neutral-300">Available Credits</span>
               <div class="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
                 <Icon name="ph:coins" class="w-5 h-5 text-green-400" />
               </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">
+            <p class="text-3xl font-bold text-neutral-900 dark:text-white">
               {{ formatNumber(creditsData?.stats?.creditsRemaining || 0) }}
             </p>
-            <div class="mt-3 h-2 bg-white rounded-full overflow-hidden">
+            <div class="mt-3 h-2 bg-white dark:bg-neutral-700 rounded-full overflow-hidden">
               <div
-                class="h-full bg-gradient-to-r from-gray-700 to-gray-500 rounded-full transition-all"
+                class="h-full bg-gradient-to-r from-neutral-700 to-neutral-500 rounded-full transition-all"
                 :style="{ width: `${creditPercentage}%` }"
               />
             </div>
-            <p class="text-xs text-gray-500 mt-2">
+            <p class="text-xs text-neutral-500 dark:text-neutral-300 mt-2">
               {{ creditPercentage }}% of {{ formatNumber(3000) }} total
             </p>
           </div>
 
-          <div class="bg-gray-50 rounded-xl p-5 border border-gray-200">
+          <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-5 border border-neutral-200 dark:border-neutral-700">
             <div class="flex items-center justify-between mb-3">
-              <span class="text-sm text-gray-500">Credits Used</span>
+              <span class="text-sm text-neutral-500 dark:text-neutral-300">Credits Used</span>
               <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
                 <Icon name="ph:chart-line-up" class="w-5 h-5 text-amber-400" />
               </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">
+            <p class="text-3xl font-bold text-neutral-900 dark:text-white">
               {{ formatNumber(creditsData?.stats?.creditsUsed || 0) }}
             </p>
-            <p class="text-xs text-gray-500 mt-2">
+            <p class="text-xs text-neutral-500 dark:text-neutral-300 mt-2">
               This billing period
             </p>
           </div>
 
-          <div class="bg-gray-50 rounded-xl p-5 border border-gray-200">
+          <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-5 border border-neutral-200 dark:border-neutral-700">
             <div class="flex items-center justify-between mb-3">
-              <span class="text-sm text-gray-500">Today's Usage</span>
+              <span class="text-sm text-neutral-500 dark:text-neutral-300">Today's Usage</span>
               <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
                 <Icon name="ph:clock" class="w-5 h-5 text-blue-400" />
               </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">
+            <p class="text-3xl font-bold text-neutral-900 dark:text-white">
               {{ formatNumber(todayUsage) }}
             </p>
-            <p class="text-xs text-gray-500 mt-2">
+            <p class="text-xs text-neutral-500 dark:text-neutral-300 mt-2">
               {{ creditsData?.transactions?.filter((t: Transaction) => isToday(t.createdAt)).length || 0 }} transactions
             </p>
           </div>
@@ -84,8 +84,8 @@
         <!-- Charts Row -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <!-- Daily Usage Chart -->
-          <div class="bg-gray-50 rounded-xl p-5 border border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Daily Usage (Last 7 Days)</h2>
+          <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-5 border border-neutral-200 dark:border-neutral-700">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Daily Usage (Last 7 Days)</h2>
             <div class="h-48 flex items-end gap-2">
               <div
                 v-for="day in creditsData?.dailyUsage"
@@ -93,10 +93,10 @@
                 class="flex-1 flex flex-col items-center gap-2"
               >
                 <div
-                  class="w-full bg-gray-700 rounded-t transition-all hover:bg-gray-900"
+                  class="w-full bg-neutral-700 rounded-t transition-all hover:bg-neutral-900"
                   :style="{ height: `${(day.amount / maxDailyUsage) * 100}%`, minHeight: day.amount > 0 ? '4px' : '0' }"
                 />
-                <span class="text-[10px] text-gray-500">
+                <span class="text-[10px] text-neutral-500 dark:text-neutral-300">
                   {{ formatDayLabel(day.date) }}
                 </span>
               </div>
@@ -104,8 +104,8 @@
           </div>
 
           <!-- Usage by Agent -->
-          <div class="bg-gray-50 rounded-xl p-5 border border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Usage by Agent</h2>
+          <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-5 border border-neutral-200 dark:border-neutral-700">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Usage by Agent</h2>
             <div class="space-y-3">
               <div
                 v-for="agent in creditsData?.agentUsage?.slice(0, 5)"
@@ -115,19 +115,19 @@
                 <div
                   :class="[
                     'w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold',
-                    agentColorMap[agent.agentType || 'default'] || 'bg-gray-500',
+                    agentColorMap[agent.agentType || 'default'] || 'bg-neutral-500',
                   ]"
                 >
                   {{ agent.name.charAt(0) }}
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center justify-between mb-1">
-                    <Link :href="`/profile/${agent.userId}`" class="text-sm font-medium text-gray-900 truncate hover:text-gray-900 transition-colors">{{ agent.name }}</Link>
-                    <span class="text-sm text-gray-500">{{ formatNumber(agent.amount) }}</span>
+                    <Link :href="`/profile/${agent.userId}`" class="text-sm font-medium text-neutral-900 dark:text-white truncate hover:text-neutral-900 dark:hover:text-white transition-colors">{{ agent.name }}</Link>
+                    <span class="text-sm text-neutral-500 dark:text-neutral-300">{{ formatNumber(agent.amount) }}</span>
                   </div>
-                  <div class="h-1.5 bg-white rounded-full overflow-hidden">
+                  <div class="h-1.5 bg-white dark:bg-neutral-700 rounded-full overflow-hidden">
                     <div
-                      class="h-full bg-gray-900 rounded-full transition-all"
+                      class="h-full bg-neutral-900 rounded-full transition-all"
                       :style="{ width: `${(agent.amount / totalAgentUsage) * 100}%` }"
                     />
                   </div>
@@ -138,12 +138,12 @@
         </div>
 
         <!-- Recent Transactions -->
-        <div class="bg-gray-50 rounded-xl border border-gray-200">
-          <div class="flex items-center justify-between p-5 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Recent Transactions</h2>
+        <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+          <div class="flex items-center justify-between p-5 border-b border-neutral-200 dark:border-neutral-700">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">Recent Transactions</h2>
             <select
               v-model="transactionFilter"
-              class="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              class="px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-neutral-300"
             >
               <option value="all">All Types</option>
               <option value="usage">Usage</option>
@@ -151,11 +151,11 @@
             </select>
           </div>
 
-          <div class="divide-y divide-gray-200">
+          <div class="divide-y divide-neutral-200 dark:divide-neutral-700">
             <div
               v-for="transaction in filteredTransactions"
               :key="transaction.id"
-              class="flex items-center gap-4 p-4 hover:bg-white/50 transition-colors"
+              class="flex items-center gap-4 p-4 hover:bg-white/50 dark:hover:bg-neutral-700/50 transition-colors"
             >
               <div
                 :class="[
@@ -170,11 +170,11 @@
               </div>
 
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">
+                <p class="text-sm font-medium text-neutral-900 dark:text-white truncate">
                   {{ transaction.description }}
                 </p>
-                <p class="text-xs text-gray-500">
-                  <Link v-if="transaction.userId" :href="`/profile/${transaction.userId}`" class="hover:text-gray-900 transition-colors">{{ transaction.user?.name || 'Unknown' }}</Link>
+                <p class="text-xs text-neutral-500 dark:text-neutral-300">
+                  <Link v-if="transaction.userId" :href="`/profile/${transaction.userId}`" class="hover:text-neutral-900 dark:hover:text-white transition-colors">{{ transaction.user?.name || 'Unknown' }}</Link>
                   <span v-else>System</span>
                   &bull; {{ formatDateTime(transaction.createdAt) }}
                 </p>
@@ -191,8 +191,8 @@
             </div>
 
             <div v-if="filteredTransactions.length === 0" class="p-8 text-center">
-              <Icon name="ph:receipt" class="w-12 h-12 mx-auto text-gray-500 mb-3" />
-              <p class="text-sm text-gray-500">No transactions found</p>
+              <Icon name="ph:receipt" class="w-12 h-12 mx-auto text-neutral-500 dark:text-neutral-300 mb-3" />
+              <p class="text-sm text-neutral-500 dark:text-neutral-300">No transactions found</p>
             </div>
           </div>
         </div>
@@ -254,7 +254,7 @@ const agentColorMap: Record<string, string> = {
   researcher: 'bg-amber-500',
   coder: 'bg-indigo-500',
   coordinator: 'bg-teal-500',
-  default: 'bg-gray-500',
+  default: 'bg-neutral-500',
 }
 
 const creditPercentage = computed(() => {

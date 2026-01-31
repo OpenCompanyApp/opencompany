@@ -4,19 +4,19 @@
     <Transition name="slide-up">
       <div v-if="replyTo" :class="replyPreviewClasses">
         <div class="flex items-center gap-2 flex-1 min-w-0">
-          <div class="w-0.5 h-full bg-gray-900 rounded-full shrink-0" />
+          <div class="w-0.5 h-full bg-neutral-900 dark:bg-neutral-100 rounded-full shrink-0" />
           <div class="flex-1 min-w-0">
-            <p class="text-xs font-medium text-gray-900">
+            <p class="text-xs font-medium text-neutral-900 dark:text-white">
               Replying to {{ replyTo.author.name }}
             </p>
-            <p class="text-xs text-gray-500 truncate">
+            <p class="text-xs text-neutral-500 dark:text-neutral-300 truncate">
               {{ replyTo.content }}
             </p>
           </div>
         </div>
         <button
           type="button"
-          class="p-1.5 rounded-lg text-gray-500 transition-colors duration-150 hover:text-gray-900 hover:bg-gray-100"
+          class="p-1.5 rounded-lg text-neutral-500 dark:text-neutral-300 transition-colors duration-150 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700"
           @click="emit('cancelReply')"
         >
           <Icon name="ph:x" class="w-4 h-4" />
@@ -28,12 +28,12 @@
     <Transition name="slide-up">
       <div v-if="editMessage" :class="editBannerClasses">
         <div class="flex items-center gap-2">
-          <Icon name="ph:pencil-simple" class="w-4 h-4 text-gray-600" />
-          <span class="text-xs font-medium text-gray-600">Editing message</span>
+          <Icon name="ph:pencil-simple" class="w-4 h-4 text-neutral-600 dark:text-neutral-200" />
+          <span class="text-xs font-medium text-neutral-600 dark:text-neutral-200">Editing message</span>
         </div>
         <button
           type="button"
-          class="px-2 py-1 text-xs text-gray-500 rounded-lg transition-colors duration-150 hover:text-gray-900 hover:bg-gray-100"
+          class="px-2 py-1 text-xs text-neutral-500 dark:text-neutral-300 rounded-lg transition-colors duration-150 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700"
           @click="handleCancelEdit"
         >
           Cancel
@@ -63,7 +63,7 @@
             <template v-else>
               <div class="flex flex-col items-center justify-center h-full p-2">
                 <Icon :name="getFileIcon(attachment.type)" :class="fileIconClasses(attachment.type)" />
-                <span class="text-[10px] text-gray-500 truncate w-full text-center mt-1">
+                <span class="text-[10px] text-neutral-500 dark:text-neutral-300 truncate w-full text-center mt-1">
                   {{ attachment.name }}
                 </span>
               </div>
@@ -72,7 +72,7 @@
             <!-- Upload Progress -->
             <div
               v-if="attachment.uploading"
-              class="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center"
+              class="absolute inset-0 bg-white/80 dark:bg-neutral-900/80 rounded-lg flex items-center justify-center"
             >
               <div class="w-8 h-8 relative">
                 <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
@@ -83,7 +83,7 @@
                     fill="none"
                     stroke="currentColor"
                     stroke-width="3"
-                    class="text-gray-200"
+                    class="text-neutral-200 dark:text-neutral-600"
                   />
                   <circle
                     cx="18"
@@ -93,12 +93,12 @@
                     stroke="currentColor"
                     stroke-width="3"
                     stroke-linecap="round"
-                    class="text-gray-900"
+                    class="text-neutral-900 dark:text-white"
                     :stroke-dasharray="100"
                     :stroke-dashoffset="100 - (attachment.progress || 0)"
                   />
                 </svg>
-                <span class="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-900">
+                <span class="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-neutral-900 dark:text-white">
                   {{ attachment.progress || 0 }}%
                 </span>
               </div>
@@ -108,7 +108,7 @@
             <button
               v-if="!attachment.uploading"
               type="button"
-              class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-500 shadow-sm transition-colors duration-150 hover:text-red-600 hover:border-red-300 hover:bg-red-50"
+              class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-full flex items-center justify-center text-neutral-500 dark:text-neutral-300 shadow-sm transition-colors duration-150 hover:text-red-600 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950"
               @click="removeAttachment(index)"
             >
               <Icon name="ph:x" class="w-3 h-3" />
@@ -133,26 +133,17 @@
       <!-- Left Actions -->
       <div class="flex items-end gap-0.5 shrink-0">
         <!-- Attach File -->
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="actionButtonClasses"
-                :disabled="sending || attachments.length >= maxAttachments"
-                @click="openFilePicker"
-              >
-                <Icon name="ph:plus-circle" class="w-5 h-5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="top" :side-offset="5">
-                Attach file
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip :delay-duration="300" side="top" :side-offset="5">
+          <template #content>Attach file</template>
+          <button
+            type="button"
+            :class="actionButtonClasses"
+            :disabled="sending || attachments.length >= maxAttachments"
+            @click="openFilePicker"
+          >
+            <Icon name="ph:plus-circle" class="w-5 h-5" />
+          </button>
+        </Tooltip>
       </div>
 
       <!-- Input Container -->
@@ -206,8 +197,8 @@
             >
               <SharedAgentAvatar :user="user" size="xs" />
               <div class="flex-1 min-w-0">
-                <span class="text-sm text-gray-900 truncate block">{{ user.name }}</span>
-                <span v-if="user.type === 'agent'" class="text-xs text-gray-500">Agent</span>
+                <span class="text-sm text-neutral-900 dark:text-white truncate block">{{ user.name }}</span>
+                <span v-if="user.type === 'agent'" class="text-xs text-neutral-500 dark:text-neutral-300">Agent</span>
               </div>
             </button>
           </div>
@@ -216,11 +207,11 @@
         <!-- Slash Commands Popup -->
         <Transition name="fade-scale">
           <div
-            v-if="showCommands && commandResults.length > 0"
+            v-if="showCommandsPopup && commandResults.length > 0"
             ref="commandsPopup"
             :class="commandsPopupClasses"
           >
-            <div class="text-xs font-medium text-gray-500 uppercase tracking-wider px-3 py-2">
+            <div class="text-xs font-medium text-neutral-500 dark:text-neutral-300 uppercase tracking-wider px-3 py-2">
               Commands
             </div>
             <button
@@ -231,10 +222,10 @@
               @click="selectCommand(command)"
               @mouseenter="selectedCommandIndex = index"
             >
-              <Icon :name="command.icon" class="w-4 h-4 text-gray-500" />
+              <Icon :name="command.icon" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
               <div class="flex-1 min-w-0">
-                <span class="text-sm text-gray-900 font-medium">{{ command.name }}</span>
-                <span class="text-xs text-gray-500 ml-2">{{ command.description }}</span>
+                <span class="text-sm text-neutral-900 dark:text-white font-medium">{{ command.name }}</span>
+                <span class="text-xs text-neutral-500 dark:text-neutral-300 ml-2">{{ command.description }}</span>
               </div>
             </button>
           </div>
@@ -244,78 +235,47 @@
       <!-- Right Actions -->
       <div class="flex items-end gap-0.5 shrink-0">
         <!-- Emoji Picker -->
-        <PopoverRoot v-model:open="emojiPickerOpen">
-          <PopoverTrigger as-child>
-            <TooltipProvider :delay-duration="300">
-              <TooltipRoot>
-                <TooltipTrigger as-child>
-                  <button
-                    type="button"
-                    :class="actionButtonClasses"
-                    :disabled="sending"
-                  >
-                    <Icon name="ph:smiley" class="w-5 h-5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipPortal>
-                  <TooltipContent :class="tooltipClasses" side="top" :side-offset="5">
-                    Add emoji
-                    <TooltipArrow class="fill-white" />
-                  </TooltipContent>
-                </TooltipPortal>
-              </TooltipRoot>
-            </TooltipProvider>
-          </PopoverTrigger>
-          <PopoverPortal>
-            <PopoverContent :class="emojiPickerClasses" side="top" :side-offset="8" align="end">
-              <EmojiPicker @select="insertEmoji" />
-            </PopoverContent>
-          </PopoverPortal>
-        </PopoverRoot>
+        <Popover v-model:open="emojiPickerOpen" :side-offset="8" side="top" align="end">
+          <Tooltip :delay-duration="300" side="top" :side-offset="5">
+            <template #content>Add emoji</template>
+            <button
+              type="button"
+              :class="actionButtonClasses"
+              :disabled="sending"
+            >
+              <Icon name="ph:smiley" class="w-5 h-5" />
+            </button>
+          </Tooltip>
+          <template #content>
+            <EmojiPicker @select="insertEmoji" />
+          </template>
+        </Popover>
 
         <!-- Mention -->
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="actionButtonClasses"
-                :disabled="sending"
-                @click="insertMention"
-              >
-                <Icon name="ph:at" class="w-5 h-5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="top" :side-offset="5">
-                Mention someone
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip :delay-duration="300" side="top" :side-offset="5">
+          <template #content>Mention someone</template>
+          <button
+            type="button"
+            :class="actionButtonClasses"
+            :disabled="sending"
+            @click="insertMention"
+          >
+            <Icon name="ph:at" class="w-5 h-5" />
+          </button>
+        </Tooltip>
 
         <!-- Voice Recording (if enabled) -->
-        <TooltipProvider v-if="showVoiceRecording" :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="[actionButtonClasses, isRecording && 'text-red-600']"
-                :disabled="sending"
-                @click="toggleRecording"
-              >
-                <Icon :name="isRecording ? 'ph:stop-circle-fill' : 'ph:microphone'" class="w-5 h-5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="top" :side-offset="5">
-                {{ isRecording ? 'Stop recording' : 'Voice message' }}
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip v-if="showVoiceRecording" :delay-duration="300" side="top" :side-offset="5">
+          <template #content>{{ isRecording ? 'Stop recording' : 'Voice message' }}</template>
+          <button
+            type="button"
+            :class="[actionButtonClasses, isRecording && 'text-red-600']"
+            :disabled="sending"
+            @click="toggleRecording"
+          >
+            <Icon :name="isRecording ? 'ph:stop-circle-fill' : 'ph:microphone'" class="w-5 h-5" />
+          </button>
+        </Tooltip>
 
         <!-- Send Button -->
         <button
@@ -335,7 +295,7 @@
     <div :class="footerClasses">
       <div class="flex items-center gap-3">
         <!-- Keyboard Hints -->
-        <span v-if="showKeyboardHints" class="text-xs text-gray-400">
+        <span v-if="showKeyboardHints" class="text-xs text-neutral-400 dark:text-neutral-400">
           <kbd :class="kbdClasses">Enter</kbd> to send,
           <kbd :class="kbdClasses">Shift+Enter</kbd> for new line
         </span>
@@ -356,7 +316,7 @@
         <Transition name="fade">
           <span
             v-if="hasDraft && !message"
-            class="text-xs text-gray-500 flex items-center gap-1"
+            class="text-xs text-neutral-500 dark:text-neutral-300 flex items-center gap-1"
           >
             <Icon name="ph:note-pencil" class="w-3 h-3" />
             Draft saved
@@ -380,18 +340,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, h, defineComponent } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-  PopoverRoot,
-  PopoverTrigger,
-  PopoverPortal,
-  PopoverContent,
-} from 'reka-ui'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import Popover from '@/Components/shared/Popover.vue'
+import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import type { Channel, User, Message } from '@/types'
 
 type MessageInputSize = 'sm' | 'md' | 'lg'
@@ -597,7 +548,7 @@ watch(() => props.editMessage, (editMsg) => {
 // Container classes
 const containerClasses = computed(() => {
   const classes = [
-    'border-t border-gray-200 shrink-0 bg-white',
+    'border-t border-neutral-200 dark:border-neutral-700 shrink-0 bg-white dark:bg-neutral-900',
     sizeConfig[props.size].container,
   ]
 
@@ -610,51 +561,51 @@ const containerClasses = computed(() => {
 
 // Reply preview classes
 const replyPreviewClasses = computed(() => [
-  'flex items-center gap-2 mb-2 px-3 py-2 bg-gray-50 rounded-lg',
+  'flex items-center gap-2 mb-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 rounded-lg',
 ])
 
 // Edit banner classes
 const editBannerClasses = computed(() => [
-  'flex items-center justify-between mb-2 px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg',
+  'flex items-center justify-between mb-2 px-3 py-2 bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg',
 ])
 
 // Attachments preview classes
 const attachmentsPreviewClasses = computed(() => [
-  'mb-3 px-3 py-2 bg-gray-50 rounded-lg',
+  'mb-3 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 rounded-lg',
 ])
 
 // Attachment item classes
 const attachmentItemClasses = computed(() => [
-  'group/attach relative w-20 h-20 bg-white rounded-lg shrink-0 overflow-hidden',
-  'border border-gray-200',
+  'group/attach relative w-20 h-20 bg-white dark:bg-neutral-900 rounded-lg shrink-0 overflow-hidden',
+  'border border-neutral-200 dark:border-neutral-700',
   'transition-colors duration-150',
-  'hover:border-gray-300',
+  'hover:border-neutral-300 dark:hover:border-neutral-600',
 ])
 
 // Add attachment button classes
 const addAttachmentButtonClasses = computed(() => [
   'group/addattach w-20 h-20 flex items-center justify-center shrink-0',
-  'bg-gray-50 rounded-lg',
-  'border-2 border-dashed border-gray-200',
-  'text-gray-500',
+  'bg-neutral-50 dark:bg-neutral-800 rounded-lg',
+  'border-2 border-dashed border-neutral-200 dark:border-neutral-700',
+  'text-neutral-500 dark:text-neutral-300',
   'transition-colors duration-150',
-  'hover:bg-gray-100 hover:border-gray-300 hover:text-gray-900',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:text-neutral-900 dark:hover:text-white',
 ])
 
 // Input area classes
 const inputAreaClasses = computed(() => {
   const classes = [
-    'flex items-end gap-3 bg-white rounded-lg border',
+    'flex items-end gap-3 bg-white dark:bg-neutral-900 rounded-lg border',
     'transition-colors duration-150',
     sizeConfig[props.size].input,
   ]
 
   if (isFocused.value) {
     classes.push(
-      'border-gray-400 ring-1 ring-gray-200',
+      'border-neutral-400 dark:border-neutral-500 ring-1 ring-neutral-200 dark:ring-neutral-700',
     )
   } else {
-    classes.push('border-gray-200 hover:border-gray-300')
+    classes.push('border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600')
   }
 
   if (props.sending) {
@@ -667,7 +618,7 @@ const inputAreaClasses = computed(() => {
 // Formatting toolbar classes
 const formattingToolbarClasses = computed(() => [
   'absolute bottom-full left-0 mb-2 flex items-center gap-1 px-2 py-1.5',
-  'bg-white border border-gray-200 rounded-lg',
+  'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
   'shadow-md',
 ])
 
@@ -675,24 +626,24 @@ const formattingToolbarClasses = computed(() => [
 const formatButtonClasses = (active: boolean) => [
   'p-1.5 rounded-lg transition-colors duration-150',
   active
-    ? 'bg-gray-100 text-gray-900'
-    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
+    ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white'
+    : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800',
 ]
 
 // Textarea classes
 const textareaClasses = computed(() => [
-  'w-full bg-transparent outline-none text-gray-900',
-  'placeholder:text-gray-400 resize-none max-h-32',
+  'w-full bg-transparent outline-none text-neutral-900 dark:text-white',
+  'placeholder:text-neutral-400 dark:placeholder:text-neutral-500 resize-none max-h-32',
   'disabled:opacity-50 disabled:cursor-not-allowed',
   props.size === 'lg' ? 'text-base' : 'text-sm',
 ])
 
 // Action button classes
 const actionButtonClasses = computed(() => [
-  'rounded-lg text-gray-500',
+  'rounded-lg text-neutral-500 dark:text-neutral-300',
   'transition-colors duration-150',
-  'hover:text-gray-900 hover:bg-gray-100',
-  'outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  'outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
   'disabled:opacity-50 disabled:cursor-not-allowed',
   sizeConfig[props.size].button,
 ])
@@ -702,16 +653,16 @@ const sendButtonClasses = computed(() => {
   const classes = [
     'ml-2 rounded-lg font-medium outline-none',
     'transition-colors duration-150',
-    'focus-visible:ring-1 focus-visible:ring-gray-400',
+    'focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
     sizeConfig[props.size].sendButton,
   ]
 
   if (canSend.value) {
     classes.push(
-      'bg-gray-900 hover:bg-gray-800 text-white',
+      'bg-neutral-900 dark:bg-neutral-100 hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-neutral-900',
     )
   } else {
-    classes.push('bg-gray-100 text-gray-400 cursor-not-allowed')
+    classes.push('bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-400 cursor-not-allowed')
   }
 
   return classes
@@ -720,7 +671,7 @@ const sendButtonClasses = computed(() => {
 // Mentions popup classes
 const mentionsPopupClasses = computed(() => [
   'absolute bottom-full left-0 mb-2 w-64 max-h-64 overflow-y-auto',
-  'bg-white border border-gray-200 rounded-lg',
+  'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
   'shadow-lg',
   'z-50',
 ])
@@ -730,14 +681,14 @@ const mentionItemClasses = (selected: boolean) => [
   'w-full flex items-center gap-2 px-3 py-2',
   'transition-colors duration-150',
   selected
-    ? 'bg-gray-100 text-gray-900'
-    : 'text-gray-500 hover:bg-gray-50',
+    ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white'
+    : 'text-neutral-500 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800',
 ]
 
 // Commands popup classes
 const commandsPopupClasses = computed(() => [
   'absolute bottom-full left-0 mb-2 w-72 max-h-64 overflow-y-auto',
-  'bg-white border border-gray-200 rounded-lg',
+  'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
   'shadow-lg',
   'z-50',
 ])
@@ -747,20 +698,20 @@ const commandItemClasses = (selected: boolean) => [
   'w-full flex items-center gap-3 px-3 py-2',
   'transition-colors duration-150',
   selected
-    ? 'bg-gray-100'
-    : 'hover:bg-gray-50',
+    ? 'bg-neutral-100 dark:bg-neutral-700'
+    : 'hover:bg-neutral-50 dark:hover:bg-neutral-800',
 ]
 
 // Tooltip classes
 const tooltipClasses = computed(() => [
-  'z-50 bg-white border border-gray-200 rounded-lg',
+  'z-50 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
   'px-2.5 py-1.5 text-xs shadow-md',
   'animate-in fade-in-0 duration-150',
 ])
 
 // Emoji picker classes
 const emojiPickerClasses = computed(() => [
-  'bg-white border border-gray-200 rounded-lg',
+  'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
   'shadow-lg',
   'animate-in fade-in-0 duration-150',
 ])
@@ -772,7 +723,7 @@ const footerClasses = computed(() => [
 
 // Kbd classes
 const kbdClasses = computed(() => [
-  'inline-flex px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-[10px] font-mono text-gray-500',
+  'inline-flex px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded text-[10px] font-mono text-neutral-500 dark:text-neutral-300',
 ])
 
 // Character count classes
@@ -785,7 +736,7 @@ const characterCountClasses = computed(() => {
   } else if (percentage >= 0.9) {
     classes.push('text-amber-600')
   } else {
-    classes.push('text-gray-400')
+    classes.push('text-neutral-400 dark:text-neutral-400')
   }
 
   return classes
@@ -805,7 +756,7 @@ const getFileIcon = (type: string): string => {
 }
 
 const fileIconClasses = (type: string) => {
-  const baseClasses = 'w-8 h-8 text-gray-500'
+  const baseClasses = 'w-8 h-8 text-neutral-500 dark:text-neutral-300'
   return [baseClasses]
 }
 
@@ -1105,13 +1056,13 @@ const EmojiPicker = defineComponent({
 
     return () => h('div', { class: 'w-72 max-h-64 overflow-y-auto p-2' },
       categories.map(category => h('div', { key: category.name, class: 'mb-3' }, [
-        h('p', { class: 'text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 px-1' }, category.name),
+        h('p', { class: 'text-xs font-medium text-neutral-500 dark:text-neutral-300 uppercase tracking-wider mb-2 px-1' }, category.name),
         h('div', { class: 'grid grid-cols-8 gap-1' },
           category.emojis.map(emoji =>
             h('button', {
               key: emoji,
               type: 'button',
-              class: 'w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded transition-colors duration-150',
+              class: 'w-8 h-8 flex items-center justify-center text-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors duration-150',
               onClick: () => pickerEmit('select', emoji),
             }, emoji),
           ),

@@ -1,253 +1,137 @@
 <template>
   <div
     :class="[
-      'border-t border-gray-200 transition-colors duration-150',
+      'border-t border-neutral-200 dark:border-neutral-800 transition-colors duration-150',
       sizeConfig[size].padding,
       collapsed && 'px-2'
     ]"
   >
-    <DropdownMenuRoot>
-      <TooltipProvider :delay-duration="300">
-        <TooltipRoot :disabled="!collapsed">
-          <TooltipTrigger as-child>
-          <DropdownMenuTrigger
-            :class="[
-              'w-full flex items-center rounded-lg transition-colors duration-150 cursor-pointer outline-none group relative overflow-hidden',
-              sizeConfig[size].trigger,
-              collapsed && 'justify-center p-2',
-              'hover:bg-gray-100',
-              'focus-visible:ring-1 focus-visible:ring-gray-400'
-            ]"
-          >
-            <!-- User avatar -->
-            <div
-              :class="[
-                'relative shrink-0',
-                sizeConfig[size].avatar
-              ]"
-            >
-              <!-- Avatar with solid background -->
-              <div
-                v-if="!currentUser.avatar"
-                :class="[
-                  'w-full h-full rounded-full flex items-center justify-center text-white font-semibold bg-gray-600',
-                  sizeConfig[size].avatarText
-                ]"
-              >
-                {{ getInitials(currentUser.name) }}
-              </div>
-              <img
-                v-else
-                :src="currentUser.avatar"
-                :alt="currentUser.name"
-                :class="[
-                  'w-full h-full rounded-full object-cover ring-2 ring-gray-200'
-                ]"
-              />
-
-              <!-- Status indicator -->
-              <span
-                :class="[
-                  'absolute rounded-full ring-2 ring-white',
-                  statusColors[userStatusValue],
-                  sizeConfig[size].statusIndicator
-                ]"
-              />
-            </div>
-
-            <!-- User info (hidden when collapsed) -->
-            <Transition
-              enter-active-class="transition-opacity duration-150 ease-out"
-              leave-active-class="transition-opacity duration-100 ease-out"
-              enter-from-class="opacity-0"
-              leave-to-class="opacity-0"
-            >
-              <div v-if="!collapsed" class="flex-1 text-left min-w-0 ml-3">
-                <div class="flex items-center gap-2">
-                  <p :class="['font-medium truncate text-gray-900', sizeConfig[size].name]">
-                    {{ currentUser.name }}
-                  </p>
-                  <span
-                    v-if="userRoleValue === 'admin'"
-                    class="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-gray-100 text-gray-600 rounded"
-                  >
-                    Admin
-                  </span>
-                </div>
-                <p :class="['text-gray-500 truncate', sizeConfig[size].status]">
-                  {{ statusLabels[userStatusValue] }}
-                </p>
-              </div>
-            </Transition>
-
-            <!-- Dropdown chevron -->
-            <Icon
-              v-if="!collapsed"
-              name="ph:caret-up-down"
-              class="w-4 h-4 text-gray-400 shrink-0 transition-colors duration-150 group-hover:text-gray-600"
-            />
-          </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent
-              side="right"
-              :side-offset="12"
-              class="bg-white border border-gray-200 px-3 py-2.5 rounded-lg shadow-md animate-in fade-in-0 duration-150"
-            >
-              <div class="font-medium text-sm text-gray-900">{{ currentUser.name }}</div>
-              <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
-                <span
-                  :class="['w-2 h-2 rounded-full', statusColors[userStatusValue]]"
-                />
-                {{ statusLabels[userStatusValue] }}
-              </div>
-              <TooltipArrow class="fill-white" />
-            </TooltipContent>
-          </TooltipPortal>
-        </TooltipRoot>
-      </TooltipProvider>
-
-      <DropdownMenuPortal>
-        <DropdownMenuContent
+    <Popover v-if="collapsed" mode="hover" :open-delay="300">
+      <DropdownMenu :items="dropdownItems">
+        <button
           :class="[
-            'bg-white border border-gray-200 rounded-lg shadow-md z-50 overflow-hidden',
-            'animate-in fade-in-0 duration-150',
-            sizeConfig[size].dropdown
+            'w-full flex items-center rounded-lg transition-colors duration-150 cursor-pointer outline-none group relative overflow-hidden',
+            sizeConfig[size].trigger,
+            'justify-center p-2',
+            'hover:bg-neutral-200 dark:hover:bg-neutral-800',
+            'focus-visible:ring-1 focus-visible:ring-neutral-400'
           ]"
-          :side-offset="8"
-          side="top"
         >
-          <!-- User header in dropdown -->
-          <div class="px-3 py-3 border-b border-gray-200">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white font-semibold text-sm">
-                {{ getInitials(currentUser.name) }}
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="font-medium truncate text-gray-900">{{ currentUser.name }}</p>
-                <p class="text-xs text-gray-500 truncate">{{ currentUser.email || 'user@example.com' }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Status selector -->
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger
-              class="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer outline-none transition-colors duration-150 text-sm focus:bg-gray-50"
-            >
-              <span
-                :class="['w-2.5 h-2.5 rounded-full', statusColors[userStatusValue]]"
-              />
-              <span class="flex-1 text-gray-900">{{ statusLabels[userStatusValue] }}</span>
-              <Icon name="ph:caret-right" class="w-4 h-4 text-gray-400" />
-            </DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent
-                class="bg-white border border-gray-200 rounded-lg p-1.5 shadow-md z-50 animate-in fade-in-0 duration-150 min-w-40"
-                :side-offset="8"
-              >
-                <DropdownMenuItem
-                  v-for="status in statusOptions"
-                  :key="status.value"
-                  :class="[
-                    'flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer outline-none transition-colors duration-150 text-sm',
-                    userStatusValue === status.value ? 'bg-gray-100' : 'hover:bg-gray-50 focus:bg-gray-50'
-                  ]"
-                  @click="setStatus(status.value)"
-                >
-                  <span :class="['w-2.5 h-2.5 rounded-full', statusColors[status.value as UserStatus]]" />
-                  <span class="flex-1 text-gray-900">{{ status.label }}</span>
-                  <Icon
-                    v-if="userStatusValue === status.value"
-                    name="ph:check"
-                    class="w-4 h-4 text-gray-600"
-                  />
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-
-          <DropdownMenuSeparator class="h-px bg-gray-200 my-1" />
-
-          <!-- Menu items -->
-          <DropdownMenuItem
-            v-for="item in menuItems"
-            :key="item.id"
+          <!-- User avatar -->
+          <div
             :class="[
-              'flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer outline-none transition-colors duration-150 text-sm',
-              'hover:bg-gray-50 focus:bg-gray-50'
+              'relative shrink-0',
+              sizeConfig[size].avatar
             ]"
-            @click="handleMenuAction(item.id)"
           >
             <div
+              v-if="!currentUser.avatar"
               :class="[
-                'w-8 h-8 rounded-lg flex items-center justify-center',
-                'bg-gray-100'
+                'w-full h-full rounded-full flex items-center justify-center text-white font-semibold bg-neutral-600 dark:bg-neutral-500',
+                sizeConfig[size].avatarText
               ]"
             >
-              <Icon :name="item.icon" class="w-4 h-4 text-gray-500" />
+              {{ getInitials(currentUser.name) }}
             </div>
-            <div class="flex-1">
-              <span class="text-gray-900">{{ item.label }}</span>
-              <p v-if="item.description" class="text-xs text-gray-500 mt-0.5">
-                {{ item.description }}
-              </p>
-            </div>
-            <kbd
-              v-if="item.shortcut"
-              class="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-mono"
-            >
-              {{ item.shortcut }}
-            </kbd>
-            <Icon
-              v-if="item.external"
-              name="ph:arrow-square-out"
-              class="w-3.5 h-3.5 text-gray-400"
+            <img
+              v-else
+              :src="currentUser.avatar"
+              :alt="currentUser.name"
+              :class="[
+                'w-full h-full rounded-full object-cover ring-2 ring-neutral-200 dark:ring-neutral-700'
+              ]"
             />
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator class="h-px bg-gray-200 my-1" />
-
-          <!-- Theme toggle -->
-          <div class="px-3 py-2">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <Icon
-                  :name="isDark ? 'ph:moon-fill' : 'ph:sun-fill'"
-                  class="w-4 h-4 text-gray-500"
-                />
-                <span class="text-sm text-gray-900">{{ isDark ? 'Dark' : 'Light' }} mode</span>
-              </div>
-              <button
-                class="relative w-11 h-6 rounded-full transition-colors duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400"
-                :class="isDark ? 'bg-gray-900' : 'bg-gray-200'"
-                @click="toggleTheme"
-              >
-                <span
-                  :class="[
-                    'absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-150',
-                    isDark ? 'left-6' : 'left-1'
-                  ]"
-                />
-              </button>
-            </div>
+            <span
+              :class="[
+                'absolute rounded-full ring-2 ring-white dark:ring-neutral-950',
+                statusColors[userStatusValue],
+                sizeConfig[size].statusIndicator
+              ]"
+            />
           </div>
+        </button>
+      </DropdownMenu>
 
-          <DropdownMenuSeparator class="h-px bg-gray-200 my-1" />
+      <template #content>
+        <div class="px-3 py-2.5">
+          <div class="font-medium text-sm text-neutral-900 dark:text-white">{{ currentUser.name }}</div>
+          <div class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 flex items-center gap-2">
+            <span
+              :class="['w-2 h-2 rounded-full', statusColors[userStatusValue]]"
+            />
+            {{ statusLabels[userStatusValue] }}
+          </div>
+        </div>
+      </template>
+    </Popover>
 
-          <!-- Sign out -->
-          <DropdownMenuItem
-            class="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-red-50 cursor-pointer outline-none transition-colors duration-150 text-sm text-red-600 focus:bg-red-50 mx-1.5 mb-1.5"
-            @click="handleSignOut"
+    <DropdownMenu v-else :items="dropdownItems">
+      <button
+        :class="[
+          'w-full flex items-center rounded-lg transition-colors duration-150 cursor-pointer outline-none group relative overflow-hidden',
+          sizeConfig[size].trigger,
+          'hover:bg-neutral-200 dark:hover:bg-neutral-800',
+          'focus-visible:ring-1 focus-visible:ring-neutral-400'
+        ]"
+      >
+        <!-- User avatar -->
+        <div
+          :class="[
+            'relative shrink-0',
+            sizeConfig[size].avatar
+          ]"
+        >
+          <div
+            v-if="!currentUser.avatar"
+            :class="[
+              'w-full h-full rounded-full flex items-center justify-center text-white font-semibold bg-neutral-600 dark:bg-neutral-500',
+              sizeConfig[size].avatarText
+            ]"
           >
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50">
-              <Icon name="ph:sign-out" class="w-4 h-4" />
-            </div>
-            <span class="font-medium">Sign out</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenuPortal>
-    </DropdownMenuRoot>
+            {{ getInitials(currentUser.name) }}
+          </div>
+          <img
+            v-else
+            :src="currentUser.avatar"
+            :alt="currentUser.name"
+            :class="[
+              'w-full h-full rounded-full object-cover ring-2 ring-neutral-200 dark:ring-neutral-700'
+            ]"
+          />
+          <span
+            :class="[
+              'absolute rounded-full ring-2 ring-white dark:ring-neutral-950',
+              statusColors[userStatusValue],
+              sizeConfig[size].statusIndicator
+            ]"
+          />
+        </div>
+
+        <!-- User info -->
+        <div class="flex-1 text-left min-w-0 ml-3">
+          <div class="flex items-center gap-2">
+            <p :class="['font-medium truncate text-neutral-900 dark:text-white', sizeConfig[size].name]">
+              {{ currentUser.name }}
+            </p>
+            <span
+              v-if="userRoleValue === 'admin'"
+              class="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded"
+            >
+              Admin
+            </span>
+          </div>
+          <p :class="['text-neutral-500 dark:text-neutral-400 truncate', sizeConfig[size].status]">
+            {{ statusLabels[userStatusValue] }}
+          </p>
+        </div>
+
+        <!-- Dropdown chevron -->
+        <Icon
+          name="ph:caret-up-down"
+          class="w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-colors duration-150 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+        />
+      </button>
+    </DropdownMenu>
 
     <!-- Sign Out Confirmation Dialog -->
     <ConfirmDialog
@@ -263,22 +147,21 @@
     />
 
     <!-- Set custom status dialog -->
-    <AlertDialogRoot v-model:open="customStatusDialogOpen">
-      <AlertDialogPortal>
-        <AlertDialogOverlay class="fixed inset-0 bg-black/50 z-50 animate-in fade-in-0 duration-150" />
-        <AlertDialogContent class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white border border-gray-200 rounded-lg p-6 shadow-lg z-50 animate-in fade-in-0 duration-150">
-          <AlertDialogTitle class="text-lg font-semibold mb-2 text-gray-900">
+    <Modal v-model:open="customStatusDialogOpen">
+      <template #content>
+        <div class="p-6">
+          <h3 class="text-lg font-semibold mb-2 text-neutral-900 dark:text-white">
             Set custom status
-          </AlertDialogTitle>
-          <AlertDialogDescription class="text-sm text-gray-500 mb-4">
+          </h3>
+          <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
             Let others know what you're up to
-          </AlertDialogDescription>
+          </p>
 
           <div class="space-y-4">
             <!-- Emoji picker trigger -->
             <div class="flex items-center gap-3">
               <button
-                class="w-12 h-12 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-150 flex items-center justify-center text-2xl"
+                class="w-12 h-12 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors duration-150 flex items-center justify-center text-2xl"
               >
                 {{ customStatusEmoji || '&#128522;' }}
               </button>
@@ -286,7 +169,7 @@
                 v-model="customStatusText"
                 type="text"
                 placeholder="What's your status?"
-                class="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+                class="flex-1 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 transition-colors duration-150"
               />
             </div>
 
@@ -295,7 +178,7 @@
               <button
                 v-for="quick in quickStatuses"
                 :key="quick.text"
-                class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-150"
+                class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-lg transition-colors duration-150"
                 @click="setQuickStatus(quick)"
               >
                 <span>{{ quick.emoji }}</span>
@@ -305,10 +188,10 @@
 
             <!-- Clear after selector -->
             <div class="flex items-center justify-between text-sm">
-              <span class="text-gray-500">Clear after</span>
+              <span class="text-neutral-500 dark:text-neutral-400">Clear after</span>
               <select
                 v-model="clearAfter"
-                class="bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-colors duration-150 cursor-pointer"
+                class="bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 transition-colors duration-150 cursor-pointer"
               >
                 <option value="never">Don't clear</option>
                 <option value="30m">30 minutes</option>
@@ -320,54 +203,34 @@
           </div>
 
           <div class="flex justify-end gap-3 mt-6">
-            <AlertDialogCancel
-              class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+            <Button
+              variant="ghost"
+              @click="customStatusDialogOpen = false"
             >
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              class="px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors duration-150"
+            </Button>
+            <Button
               @click="saveCustomStatus"
             >
               Save
-            </AlertDialogAction>
+            </Button>
           </div>
-        </AlertDialogContent>
-      </AlertDialogPortal>
-    </AlertDialogRoot>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogOverlay,
-  AlertDialogPortal,
-  AlertDialogRoot,
-  AlertDialogTitle,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
+import Icon from '@/Components/shared/Icon.vue'
+import Popover from '@/Components/shared/Popover.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import Button from '@/Components/shared/Button.vue'
+import Modal from '@/Components/shared/Modal.vue'
+import { useColorMode } from '@/composables/useColorMode'
 
 // Types
 type UserMenuSize = 'sm' | 'md' | 'lg'
@@ -465,7 +328,7 @@ const statusColors: Record<UserStatus, string> = {
   online: 'bg-green-500',
   away: 'bg-amber-500',
   dnd: 'bg-red-500',
-  offline: 'bg-gray-400',
+  offline: 'bg-neutral-400',
 }
 
 const statusLabels: Record<UserStatus, string> = {
@@ -475,15 +338,8 @@ const statusLabels: Record<UserStatus, string> = {
   offline: 'Offline',
 }
 
-const statusOptions = [
-  { value: 'online', label: 'Online' },
-  { value: 'away', label: 'Away' },
-  { value: 'dnd', label: 'Do not disturb' },
-  { value: 'offline', label: 'Appear offline' },
-]
-
 // Menu items
-const menuItems: MenuItem[] = [
+const menuItemsData: MenuItem[] = [
   { id: 'profile', label: 'Profile', description: 'View and edit your profile', icon: 'ph:user' },
   { id: 'settings', label: 'Settings', icon: 'ph:gear-six', shortcut: 'Cmd+,' },
   { id: 'shortcuts', label: 'Keyboard shortcuts', icon: 'ph:keyboard', shortcut: '?' },
@@ -499,11 +355,13 @@ const quickStatuses: QuickStatus[] = [
   { emoji: '&#127958;&#65039;', text: 'On vacation' },
 ]
 
+// Color mode
+const { isDark, toggleDark } = useColorMode()
+
 // State
 const currentUser = computed<User>(() => props.user)
 const userStatusValue = ref<UserStatus>(props.userStatus)
 const userRoleValue = ref<UserRole>(props.userRole)
-const isDark = ref(true)
 const customStatusDialogOpen = ref(false)
 const customStatusEmoji = ref('')
 const customStatusText = ref('')
@@ -521,6 +379,45 @@ const confirmDialogOptions = ref({
 })
 let confirmDialogResolve: ((value: boolean) => void) | null = null
 
+// Dropdown items for UDropdownMenu
+const dropdownItems = computed(() => [
+  // User header
+  [{
+    slot: 'header',
+    disabled: true,
+  }],
+  // Status options
+  [{
+    label: statusLabels[userStatusValue.value],
+    icon: userStatusValue.value === 'online' ? 'ph:circle-fill' : userStatusValue.value === 'away' ? 'ph:circle-half-fill' : userStatusValue.value === 'dnd' ? 'ph:minus-circle-fill' : 'ph:circle',
+    children: [
+      { label: 'Online', icon: userStatusValue.value === 'online' ? 'ph:check' : undefined, click: () => setStatus('online') },
+      { label: 'Away', icon: userStatusValue.value === 'away' ? 'ph:check' : undefined, click: () => setStatus('away') },
+      { label: 'Do not disturb', icon: userStatusValue.value === 'dnd' ? 'ph:check' : undefined, click: () => setStatus('dnd') },
+      { label: 'Appear offline', icon: userStatusValue.value === 'offline' ? 'ph:check' : undefined, click: () => setStatus('offline') },
+    ],
+  }],
+  // Menu items
+  menuItemsData.map(item => ({
+    label: item.label,
+    icon: item.icon,
+    click: () => handleMenuAction(item.id),
+  })),
+  // Theme toggle
+  [{
+    label: isDark.value ? 'Light mode' : 'Dark mode',
+    icon: isDark.value ? 'ph:sun-fill' : 'ph:moon-fill',
+    click: toggleTheme,
+  }],
+  // Sign out
+  [{
+    label: 'Sign out',
+    icon: 'ph:sign-out',
+    color: 'error' as const,
+    click: handleSignOut,
+  }],
+])
+
 // Methods
 const getInitials = (name: string): string => {
   return name
@@ -536,7 +433,7 @@ const setStatus = async (status: string) => {
 }
 
 const toggleTheme = () => {
-  isDark.value = !isDark.value
+  toggleDark()
 }
 
 const handleMenuAction = (actionId: string) => {

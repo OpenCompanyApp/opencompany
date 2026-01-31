@@ -1,49 +1,43 @@
 <template>
-  <TooltipProvider v-if="showTooltip && tooltipContent" :delay-duration="tooltipDelay">
-    <TooltipRoot>
-      <TooltipTrigger as-child>
-        <component
-          :is="interactive ? 'button' : 'span'"
-          :type="interactive ? 'button' : undefined"
-          :class="badgeClasses"
-          @click="handleClick"
-        >
-          <BadgeContent />
-        </component>
-      </TooltipTrigger>
-      <TooltipPortal>
-        <TooltipContent
-          :side="tooltipSide"
-          :side-offset="5"
-          class="z-50 bg-white border border-gray-200 rounded-lg px-3 py-2.5 shadow-md max-w-xs"
-        >
-          <div class="space-y-1.5">
-            <div class="flex items-center gap-2">
-              <span
-                :class="[
-                  'w-2.5 h-2.5 rounded-full shrink-0',
-                  dotColors[status],
-                ]"
-              />
-              <p class="font-semibold text-gray-900 text-sm">{{ labels[status] }}</p>
-            </div>
-            <p v-if="statusDescriptions[status]" class="text-gray-500 text-xs leading-relaxed">
-              {{ statusDescriptions[status] }}
-            </p>
-            <p v-if="lastActivity" class="text-gray-500 text-xs mt-2 pt-2 border-t border-gray-200 flex items-center gap-1.5">
-              <Icon name="ph:clock" class="w-3 h-3 text-gray-400" />
-              Last activity: {{ lastActivity }}
-            </p>
-            <p v-if="currentTask && status === 'working'" class="text-gray-500 text-xs mt-1.5 line-clamp-2 flex items-start gap-1.5">
-              <Icon name="ph:arrow-right" class="w-3 h-3 text-gray-500 shrink-0 mt-0.5" />
-              {{ currentTask }}
-            </p>
-          </div>
-          <TooltipArrow class="fill-white" />
-        </TooltipContent>
-      </TooltipPortal>
-    </TooltipRoot>
-  </TooltipProvider>
+  <Tooltip
+    v-if="showTooltip && tooltipContent"
+    :side="tooltipSide"
+    :delay-duration="tooltipDelay"
+  >
+    <template #content>
+      <div class="space-y-1.5 max-w-xs">
+        <div class="flex items-center gap-2">
+          <span
+            :class="[
+              'w-2.5 h-2.5 rounded-full shrink-0',
+              dotColors[status],
+            ]"
+          />
+          <p class="font-semibold text-neutral-900 dark:text-white text-sm">{{ labels[status] }}</p>
+        </div>
+        <p v-if="statusDescriptions[status]" class="text-neutral-500 dark:text-neutral-300 text-xs leading-relaxed">
+          {{ statusDescriptions[status] }}
+        </p>
+        <p v-if="lastActivity" class="text-neutral-500 dark:text-neutral-300 text-xs mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700 flex items-center gap-1.5">
+          <Icon name="ph:clock" class="w-3 h-3 text-neutral-400 dark:text-neutral-400" />
+          Last activity: {{ lastActivity }}
+        </p>
+        <p v-if="currentTask && status === 'working'" class="text-neutral-500 dark:text-neutral-300 text-xs mt-1.5 line-clamp-2 flex items-start gap-1.5">
+          <Icon name="ph:arrow-right" class="w-3 h-3 text-neutral-500 dark:text-neutral-300 shrink-0 mt-0.5" />
+          {{ currentTask }}
+        </p>
+      </div>
+    </template>
+
+    <component
+      :is="interactive ? 'button' : 'span'"
+      :type="interactive ? 'button' : undefined"
+      :class="badgeClasses"
+      @click="handleClick"
+    >
+      <BadgeContent />
+    </component>
+  </Tooltip>
 
   <component
     v-else
@@ -57,17 +51,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, resolveComponent, type VNode } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
+import { computed, h, type VNode } from 'vue'
 import type { AgentStatus } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
 
 type StatusBadgeSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 type StatusBadgeVariant = 'filled' | 'soft' | 'outline' | 'ghost' | 'dot-only' | 'minimal'
@@ -153,24 +140,24 @@ const iconSizes: Record<StatusBadgeSize, string> = {
 // Variant + Status combinations - neutral palette
 const variantStatusClasses: Record<StatusBadgeVariant, Record<AgentStatus, string>> = {
   filled: {
-    idle: 'bg-gray-500 text-white',
-    working: 'bg-gray-600 text-white',
-    offline: 'bg-gray-400 text-gray-100',
+    idle: 'bg-neutral-500 text-white',
+    working: 'bg-neutral-600 text-white',
+    offline: 'bg-neutral-400 text-neutral-100',
   },
   soft: {
-    idle: 'bg-gray-100 text-gray-600',
-    working: 'bg-gray-100 text-gray-700',
-    offline: 'bg-gray-100 text-gray-500',
+    idle: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200',
+    working: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200',
+    offline: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-300',
   },
   outline: {
-    idle: 'bg-transparent border border-gray-300 text-gray-600',
-    working: 'bg-transparent border border-gray-400 text-gray-700',
-    offline: 'bg-transparent border border-gray-300 text-gray-500',
+    idle: 'bg-transparent border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-200',
+    working: 'bg-transparent border border-neutral-400 dark:border-neutral-500 text-neutral-700 dark:text-neutral-200',
+    offline: 'bg-transparent border border-neutral-300 dark:border-neutral-600 text-neutral-500 dark:text-neutral-300',
   },
   ghost: {
-    idle: 'bg-transparent text-gray-600 hover:bg-gray-100',
-    working: 'bg-transparent text-gray-700 hover:bg-gray-100',
-    offline: 'bg-transparent text-gray-500 hover:bg-gray-100',
+    idle: 'bg-transparent text-neutral-600 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700',
+    working: 'bg-transparent text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700',
+    offline: 'bg-transparent text-neutral-500 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700',
   },
   'dot-only': {
     idle: '',
@@ -178,17 +165,17 @@ const variantStatusClasses: Record<StatusBadgeVariant, Record<AgentStatus, strin
     offline: '',
   },
   minimal: {
-    idle: 'text-gray-600',
-    working: 'text-gray-700',
-    offline: 'text-gray-500',
+    idle: 'text-neutral-600 dark:text-neutral-200',
+    working: 'text-neutral-700 dark:text-neutral-200',
+    offline: 'text-neutral-500 dark:text-neutral-300',
   },
 }
 
 // Dot colors - simple green for working, gray for others
 const dotColors: Record<AgentStatus, string> = {
-  idle: 'bg-gray-400',
+  idle: 'bg-neutral-400',
   working: 'bg-green-500',
-  offline: 'bg-gray-300',
+  offline: 'bg-neutral-300',
 }
 
 // Status icons
@@ -242,7 +229,7 @@ const badgeClasses = computed(() => {
   // Interactive
   if (props.interactive && !props.disabled) {
     classes.push('cursor-pointer')
-    classes.push('focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/50 focus-visible:ring-offset-1 focus-visible:ring-offset-white')
+    classes.push('focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/50 dark:focus-visible:ring-white/50 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900')
   }
 
   // Disabled
@@ -272,9 +259,8 @@ const BadgeContent = () => {
   // Loading spinner
   if (props.loading) {
     elements.push(
-      h(resolveComponent('Icon'), {
-        name: 'ph:spinner',
-        class: ['animate-spin', iconSizes[props.size]],
+      h('span', {
+        class: ['i-ph:spinner animate-spin', iconSizes[props.size]],
       })
     )
   } else {
@@ -303,9 +289,8 @@ const BadgeContent = () => {
       }
 
       elements.push(
-        h(resolveComponent('Icon'), {
-          name: statusIcons[props.status],
-          class: iconClasses,
+        h('span', {
+          class: [statusIconClasses[props.status], ...iconClasses],
         })
       )
     }
@@ -319,5 +304,12 @@ const BadgeContent = () => {
   }
 
   return elements
+}
+
+// Status icon classes for iconify
+const statusIconClasses: Record<AgentStatus, string> = {
+  idle: 'i-ph:pause-circle',
+  working: 'i-ph:spinner',
+  offline: 'i-ph:prohibit',
 }
 </script>

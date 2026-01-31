@@ -23,3 +23,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Nuxt UI auto-generated files
+auto-imports.d.ts
+components.d.ts
+
+# Inspiration repos
+/inspiration

@@ -1,73 +1,63 @@
 <template>
-  <TooltipProvider v-if="showTooltip" :delay-duration="tooltipDelay">
-    <TooltipRoot>
-      <TooltipTrigger as-child>
-        <component
-          :is="interactive ? 'button' : 'span'"
-          :type="interactive ? 'button' : undefined"
-          :class="badgeClasses"
-          :style="badgeStyles"
-          @click="handleClick"
-        >
-          <BadgeContent />
-        </component>
-      </TooltipTrigger>
-      <TooltipPortal>
-        <TooltipContent
-          :side="tooltipSide"
-          :side-offset="5"
-          class="z-50 bg-white border border-gray-200 rounded-lg px-3.5 py-3 shadow-md max-w-xs animate-in fade-in-0 duration-150"
-        >
-          <div class="space-y-2.5">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <Icon :name="getIcon" class="w-4 h-4 text-gray-500" />
-              </div>
-              <div>
-                <p class="font-semibold text-gray-900 text-sm">
-                  {{ variant === 'estimated' ? 'Estimated Cost' : 'Actual Cost' }}
-                </p>
-                <p class="text-gray-900 text-lg font-bold tabular-nums">
-                  {{ formattedCost }}
-                </p>
-              </div>
-            </div>
-            <div v-if="breakdown && breakdown.length > 0" class="pt-2.5 border-t border-gray-200 space-y-1.5">
-              <p class="text-gray-500 text-[10px] font-medium uppercase tracking-wider mb-2">Breakdown</p>
-              <div
-                v-for="(item, index) in breakdown"
-                :key="item.label"
-                class="flex items-center justify-between text-xs hover:bg-gray-50 -mx-1 px-1 py-0.5 rounded transition-colors duration-150"
-                :style="{ animationDelay: `${index * 50}ms` }"
-              >
-                <span class="text-gray-500">{{ item.label }}</span>
-                <span class="text-gray-900 font-medium tabular-nums">{{ formatCurrency(item.value) }}</span>
-              </div>
-            </div>
-            <div v-if="budget" class="pt-2.5 border-t border-gray-200">
-              <div class="flex items-center justify-between text-xs mb-1.5">
-                <span class="text-gray-500">Budget</span>
-                <span :class="['font-semibold', budgetPercentage > 90 ? 'text-red-600' : budgetPercentage > 70 ? 'text-amber-600' : 'text-green-600']">
-                  {{ budgetPercentage.toFixed(0) }}% used
-                </span>
-              </div>
-              <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  :class="['h-full rounded-full transition-all duration-150', budgetBarColor]"
-                  :style="{ width: `${Math.min(budgetPercentage, 100)}%` }"
-                />
-              </div>
-            </div>
-            <p v-if="timestamp" class="text-gray-400 text-[10px] pt-2 border-t border-gray-200 flex items-center gap-1">
-              <Icon name="ph:clock" class="w-3 h-3" />
-              {{ timestamp }}
+  <Popover v-if="showTooltip" mode="hover" :open-delay="tooltipDelay" :close-delay="0">
+    <component
+      :is="interactive ? 'button' : 'span'"
+      :type="interactive ? 'button' : undefined"
+      :class="badgeClasses"
+      :style="badgeStyles"
+      @click="handleClick"
+    >
+      <BadgeContent />
+    </component>
+
+    <template #content>
+      <div class="space-y-2.5 p-3.5 max-w-xs">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center">
+            <Icon :name="getIcon" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+          </div>
+          <div>
+            <p class="font-semibold text-neutral-900 dark:text-white text-sm">
+              {{ variant === 'estimated' ? 'Estimated Cost' : 'Actual Cost' }}
+            </p>
+            <p class="text-neutral-900 dark:text-white text-lg font-bold tabular-nums">
+              {{ formattedCost }}
             </p>
           </div>
-          <TooltipArrow class="fill-white" />
-        </TooltipContent>
-      </TooltipPortal>
-    </TooltipRoot>
-  </TooltipProvider>
+        </div>
+        <div v-if="breakdown && breakdown.length > 0" class="pt-2.5 border-t border-neutral-200 dark:border-neutral-700 space-y-1.5">
+          <p class="text-neutral-500 dark:text-neutral-300 text-[10px] font-medium uppercase tracking-wider mb-2">Breakdown</p>
+          <div
+            v-for="(item, index) in breakdown"
+            :key="item.label"
+            class="flex items-center justify-between text-xs hover:bg-neutral-50 dark:hover:bg-neutral-800 -mx-1 px-1 py-0.5 rounded transition-colors duration-150"
+            :style="{ animationDelay: `${index * 50}ms` }"
+          >
+            <span class="text-neutral-500 dark:text-neutral-300">{{ item.label }}</span>
+            <span class="text-neutral-900 dark:text-white font-medium tabular-nums">{{ formatCurrency(item.value) }}</span>
+          </div>
+        </div>
+        <div v-if="budget" class="pt-2.5 border-t border-neutral-200 dark:border-neutral-700">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="text-neutral-500 dark:text-neutral-300">Budget</span>
+            <span :class="['font-semibold', budgetPercentage > 90 ? 'text-red-600' : budgetPercentage > 70 ? 'text-amber-600' : 'text-green-600']">
+              {{ budgetPercentage.toFixed(0) }}% used
+            </span>
+          </div>
+          <div class="h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
+            <div
+              :class="['h-full rounded-full transition-all duration-150', budgetBarColor]"
+              :style="{ width: `${Math.min(budgetPercentage, 100)}%` }"
+            />
+          </div>
+        </div>
+        <p v-if="timestamp" class="text-neutral-400 dark:text-neutral-400 text-[10px] pt-2 border-t border-neutral-200 dark:border-neutral-700 flex items-center gap-1">
+          <Icon name="ph:clock" class="w-3 h-3" />
+          {{ timestamp }}
+        </p>
+      </div>
+    </template>
+  </Popover>
 
   <component
     v-else
@@ -82,16 +72,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, resolveComponent, type VNode } from 'vue'
+import { computed, h, type VNode } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
+import Popover from '@/Components/shared/Popover.vue'
 
 type CostBadgeSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 type CostBadgeVariant = 'actual' | 'estimated' | 'budget' | 'savings'
@@ -189,10 +172,13 @@ const currencySuffixes: Record<CurrencyFormat, string> = {
 }
 
 // Format currency
-const formatCurrency = (value: number): string => {
+const formatCurrency = (value: number | string | null | undefined): string => {
   const symbol = currencySymbols[props.currency]
   const suffix = currencySuffixes[props.currency]
-  const formatted = value.toFixed(props.precision)
+
+  // Convert to number, defaulting to 0 if invalid
+  const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0
+  const formatted = numValue.toFixed(props.precision)
 
   if (props.currency === 'credits') {
     return `${formatted}${suffix}`
@@ -207,10 +193,15 @@ const formattedCost = computed(() => {
   return `${prefix}${formatCurrency(props.cost)}`
 })
 
+// Get numeric cost value
+const numericCost = computed(() => {
+  return typeof props.cost === 'number' ? props.cost : parseFloat(String(props.cost)) || 0
+})
+
 // Budget percentage
 const budgetPercentage = computed(() => {
   if (!props.budget || props.budget <= 0) return 0
-  return (props.cost / props.budget) * 100
+  return (numericCost.value / props.budget) * 100
 })
 
 // Budget bar color
@@ -250,32 +241,32 @@ const paddingClasses: Record<CostBadgeSize, string> = {
 // Style + Variant combinations
 const styleVariantClasses: Record<CostBadgeStyle, Record<CostBadgeVariant, string>> = {
   default: {
-    actual: 'text-gray-900',
-    estimated: 'text-gray-500',
+    actual: 'text-neutral-900 dark:text-white',
+    estimated: 'text-neutral-500 dark:text-neutral-300',
     budget: 'text-amber-600',
     savings: 'text-green-600',
   },
   soft: {
-    actual: 'bg-gray-100 text-gray-900',
-    estimated: 'bg-gray-50 text-gray-500',
-    budget: 'bg-amber-50 text-amber-600',
-    savings: 'bg-green-50 text-green-600',
+    actual: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white',
+    estimated: 'bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300',
+    budget: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600',
+    savings: 'bg-green-50 dark:bg-green-900/30 text-green-600',
   },
   outline: {
-    actual: 'border border-gray-300 text-gray-900',
-    estimated: 'border border-gray-200 text-gray-500',
-    budget: 'border border-amber-200 text-amber-600',
-    savings: 'border border-green-200 text-green-600',
+    actual: 'border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white',
+    estimated: 'border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-300',
+    budget: 'border border-amber-200 dark:border-amber-800 text-amber-600',
+    savings: 'border border-green-200 dark:border-green-800 text-green-600',
   },
   ghost: {
-    actual: 'text-gray-900 hover:bg-gray-50',
-    estimated: 'text-gray-500 hover:bg-gray-50',
-    budget: 'text-amber-600 hover:bg-amber-50',
-    savings: 'text-green-600 hover:bg-green-50',
+    actual: 'text-neutral-900 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800',
+    estimated: 'text-neutral-500 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800',
+    budget: 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30',
+    savings: 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30',
   },
   filled: {
-    actual: 'bg-gray-900 text-white',
-    estimated: 'bg-gray-600 text-gray-200',
+    actual: 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900',
+    estimated: 'bg-neutral-600 text-neutral-200',
     budget: 'bg-amber-600 text-white',
     savings: 'bg-green-600 text-white',
   },
@@ -312,7 +303,7 @@ const badgeClasses = computed(() => {
   // Interactive
   if (props.interactive && !props.disabled) {
     classes.push('cursor-pointer')
-    classes.push('focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400')
+    classes.push('focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400')
   }
 
   // Disabled
@@ -348,6 +339,19 @@ const changeIcon = computed(() => {
   return props.change > 0 ? 'ph:trend-up' : 'ph:trend-down'
 })
 
+// Get icon class (for render function)
+const getIconClass = computed(() => {
+  const iconName = getIcon.value.replace(':', '-')
+  return `i-${iconName}`
+})
+
+// Change icon class (for render function)
+const changeIconClass = computed(() => {
+  if (!props.change) return ''
+  const iconName = changeIcon.value.replace(':', '-')
+  return `i-${iconName}`
+})
+
 // Badge Content Component
 const BadgeContent = () => {
   const elements: VNode[] = []
@@ -355,9 +359,8 @@ const BadgeContent = () => {
   // Loading state
   if (props.loading) {
     elements.push(
-      h(resolveComponent('Icon'), {
-        name: 'ph:spinner',
-        class: ['animate-spin', iconSizes[props.size]],
+      h('span', {
+        class: ['i-ph-spinner animate-spin', iconSizes[props.size]],
       })
     )
     elements.push(
@@ -369,9 +372,8 @@ const BadgeContent = () => {
   // Icon
   if (props.showIcon) {
     elements.push(
-      h(resolveComponent('Icon'), {
-        name: getIcon.value,
-        class: [iconSizes[props.size]],
+      h('span', {
+        class: [getIconClass.value, iconSizes[props.size]],
       })
     )
   }
@@ -387,9 +389,8 @@ const BadgeContent = () => {
       h('span', {
         class: ['inline-flex items-center gap-0.5 ml-1', changeColor.value],
       }, [
-        h(resolveComponent('Icon'), {
-          name: changeIcon.value,
-          class: iconSizes[props.size],
+        h('span', {
+          class: [changeIconClass.value, iconSizes[props.size]],
         }),
         !props.compact && h('span', { class: 'text-[0.85em]' }, `${Math.abs(props.change)}%`),
       ])

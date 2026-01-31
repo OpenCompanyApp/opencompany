@@ -1,35 +1,21 @@
 <template>
-  <DialogRoot :open="isOpen" @update:open="isOpen = $event">
-    <DialogPortal>
-      <!-- Backdrop -->
-      <DialogOverlay
-        :class="[
-          'fixed inset-0 z-50',
-          'bg-black/50',
-          'data-[state=open]:animate-in data-[state=closed]:animate-out',
-          'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-          'duration-150'
-        ]"
-      />
-
-      <!-- Dialog container -->
-      <DialogContent
-        :class="[
-          'fixed top-[15%] left-1/2 -translate-x-1/2 z-50',
-          'w-full overflow-hidden',
-          sizeConfig[size].container,
-          'bg-white border border-gray-200 rounded-lg',
-          'shadow-lg',
-          'data-[state=open]:animate-in data-[state=closed]:animate-out',
-          'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-          'duration-150'
-        ]"
-        @escape-key-down="handleClose"
-      >
+  <Modal
+    v-model:open="isOpen"
+    :ui="{
+      width: sizeConfig[size].container,
+      padding: 'p-0',
+      rounded: 'rounded-lg',
+      background: 'bg-white dark:bg-neutral-900',
+      ring: 'ring-1 ring-neutral-200 dark:ring-neutral-700',
+      shadow: 'shadow-lg',
+    }"
+  >
+    <template #content>
+      <div class="overflow-hidden rounded-lg">
         <!-- Search header -->
         <div
           :class="[
-            'flex items-center gap-3 border-b border-gray-200 relative',
+            'flex items-center gap-3 border-b border-neutral-200 dark:border-neutral-700 relative',
             sizeConfig[size].searchPadding
           ]"
         >
@@ -38,7 +24,7 @@
             <Icon
               name="ph:magnifying-glass"
               :class="[
-                'text-gray-400 transition-colors duration-150',
+                'text-neutral-400 dark:text-neutral-400 transition-colors duration-150',
                 sizeConfig[size].searchIcon,
                 isSearching && 'opacity-0'
               ]"
@@ -54,7 +40,7 @@
                 v-if="isSearching"
                 class="absolute inset-0 flex items-center justify-center"
               >
-                <div class="w-4 h-4 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+                <div class="w-4 h-4 border-2 border-neutral-200 dark:border-neutral-700 border-t-neutral-600 dark:border-t-neutral-300 rounded-full animate-spin" />
               </div>
             </Transition>
           </div>
@@ -66,7 +52,7 @@
             type="text"
             :placeholder="placeholder"
             :class="[
-              'flex-1 bg-transparent text-gray-900 placeholder:text-gray-400 outline-none',
+              'flex-1 bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none',
               sizeConfig[size].searchInput
             ]"
             @keydown.down.prevent="selectNext"
@@ -85,15 +71,15 @@
           >
             <div
               v-if="searchScope"
-              class="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded-lg"
+              class="flex items-center gap-2 px-2 py-1 bg-neutral-100 dark:bg-neutral-700 rounded-lg"
             >
-              <Icon :name="searchScope.icon" class="w-3.5 h-3.5 text-gray-600" />
-              <span class="text-xs text-gray-600 font-medium">{{ searchScope.label }}</span>
+              <Icon :name="searchScope.icon" class="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-200" />
+              <span class="text-xs text-neutral-600 dark:text-neutral-200 font-medium">{{ searchScope.label }}</span>
               <button
-                class="hover:bg-gray-200 rounded p-0.5 transition-colors duration-150"
+                class="hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded p-0.5 transition-colors duration-150"
                 @click="clearScope"
               >
-                <Icon name="ph:x" class="w-3 h-3 text-gray-500" />
+                <Icon name="ph:x" class="w-3 h-3 text-neutral-500 dark:text-neutral-300" />
               </button>
             </div>
           </Transition>
@@ -101,7 +87,7 @@
           <!-- Close hint -->
           <kbd
             :class="[
-              'bg-gray-50 border border-gray-200 rounded text-gray-400 font-mono shrink-0',
+              'bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-neutral-400 dark:text-neutral-400 font-mono shrink-0',
               sizeConfig[size].kbd
             ]"
           >
@@ -112,7 +98,7 @@
         <!-- Mode tabs -->
         <div
           v-if="showModeTabs"
-          class="flex items-center gap-1 px-3 py-2 border-b border-gray-200 bg-gray-50"
+          class="flex items-center gap-1 px-3 py-2 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800"
         >
           <button
             v-for="mode in modes"
@@ -120,8 +106,8 @@
             :class="[
               'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150',
               currentMode === mode.id
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700'
             ]"
             @click="setMode(mode.id)"
           >
@@ -132,8 +118,8 @@
               :class="[
                 'ml-1 text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors duration-150',
                 currentMode === mode.id
-                  ? 'bg-white/20 text-white/80'
-                  : 'bg-white text-gray-400'
+                  ? 'bg-white/20 text-white/80 dark:bg-neutral-900/20 dark:text-neutral-900/80'
+                  : 'bg-white dark:bg-neutral-800 text-neutral-400 dark:text-neutral-400'
               ]"
             >
               {{ mode.shortcut }}
@@ -150,14 +136,14 @@
         >
           <div
             v-if="showRecentSearches && recentSearches.length > 0 && !searchQuery"
-            class="px-3 py-2 border-b border-gray-200"
+            class="px-3 py-2 border-b border-neutral-200 dark:border-neutral-700"
           >
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <span class="text-xs font-medium text-neutral-500 dark:text-neutral-300 uppercase tracking-wider">
                 Recent
               </span>
               <button
-                class="text-xs text-gray-400 hover:text-gray-900 transition-colors duration-150"
+                class="text-xs text-neutral-400 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors duration-150"
                 @click="clearRecentSearches"
               >
                 Clear all
@@ -167,19 +153,19 @@
               <button
                 v-for="(search, index) in recentSearches"
                 :key="index"
-                class="group/recent flex items-center gap-1.5 px-2.5 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-150"
+                class="group/recent flex items-center gap-1.5 px-2.5 py-1 text-sm bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-lg transition-colors duration-150"
                 @click="applyRecentSearch(search)"
               >
-                <Icon name="ph:clock-counter-clockwise" class="w-3.5 h-3.5 text-gray-400" />
-                <span class="text-gray-500 group-hover/recent:text-gray-900 transition-colors duration-150">{{ search }}</span>
+                <Icon name="ph:clock-counter-clockwise" class="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-400" />
+                <span class="text-neutral-500 dark:text-neutral-300 group-hover/recent:text-neutral-900 dark:group-hover/recent:text-white transition-colors duration-150">{{ search }}</span>
                 <span
                   role="button"
                   tabindex="0"
-                  class="opacity-0 group-hover/recent:opacity-100 hover:bg-gray-300 rounded p-0.5 transition-opacity duration-150 cursor-pointer"
+                  class="opacity-0 group-hover/recent:opacity-100 hover:bg-neutral-300 dark:hover:bg-neutral-500 rounded p-0.5 transition-opacity duration-150 cursor-pointer"
                   @click.stop="removeRecentSearch(index)"
                   @keydown.enter.stop="removeRecentSearch(index)"
                 >
-                  <Icon name="ph:x" class="w-3 h-3 text-gray-400" />
+                  <Icon name="ph:x" class="w-3 h-3 text-neutral-400 dark:text-neutral-400" />
                 </span>
               </button>
             </div>
@@ -190,17 +176,17 @@
         <div
           ref="resultsContainer"
           :class="[
-            'overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent',
+            'overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent',
             sizeConfig[size].results
           ]"
         >
           <!-- Loading state -->
           <div v-if="isSearching && searchQuery" class="p-4">
             <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-gray-100" />
+              <div class="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-700" />
               <div class="flex-1 space-y-2">
-                <div class="h-4 w-32 bg-gray-100 rounded" />
-                <div class="h-3 w-48 bg-gray-50 rounded" />
+                <div class="h-4 w-32 bg-neutral-100 dark:bg-neutral-700 rounded" />
+                <div class="h-3 w-48 bg-neutral-50 dark:bg-neutral-800 rounded" />
               </div>
             </div>
           </div>
@@ -270,15 +256,15 @@
         >
           <div
             v-if="showPreview && selectedItemData?.preview"
-            class="absolute right-0 top-0 bottom-0 w-80 border-l border-gray-200 bg-gray-50 p-4 overflow-y-auto"
+            class="absolute right-0 top-0 bottom-0 w-80 border-l border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-4 overflow-y-auto"
           >
             <div class="mb-3 flex items-center justify-between">
-              <span class="text-sm font-medium text-gray-500">Preview</span>
+              <span class="text-sm font-medium text-neutral-500 dark:text-neutral-300">Preview</span>
               <button
-                class="p-1 hover:bg-gray-200 rounded-lg transition-colors duration-150"
+                class="p-1 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-lg transition-colors duration-150"
                 @click="showPreview = false"
               >
-                <Icon name="ph:x" class="w-4 h-4 text-gray-500" />
+                <Icon name="ph:x" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
               </button>
             </div>
             <component :is="selectedItemData.preview" v-bind="selectedItemData.previewProps" />
@@ -294,20 +280,20 @@
           @clear-selection="clearSelection"
           @bulk-action="handleBulkAction"
         />
-      </DialogContent>
-    </DialogPortal>
-  </DialogRoot>
+      </div>
+    </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, type Component, type ComponentPublicInstance } from 'vue'
 import { router } from '@inertiajs/vue3'
-import Icon from '@/Components/shared/Icon.vue'
-import { DialogContent, DialogOverlay, DialogPortal, DialogRoot } from 'reka-ui'
 import CommandPaletteGroup from '@/Components/layout/command-palette/CommandPaletteGroup.vue'
 import CommandPaletteItem from '@/Components/layout/command-palette/CommandPaletteItem.vue'
 import CommandPaletteEmpty from '@/Components/layout/command-palette/CommandPaletteEmpty.vue'
 import CommandPaletteFooter from '@/Components/layout/command-palette/CommandPaletteFooter.vue'
+import Icon from '@/Components/shared/Icon.vue'
+import Modal from '@/Components/shared/Modal.vue'
 
 // Types
 type PaletteSize = 'sm' | 'md' | 'lg'
@@ -461,7 +447,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         label: 'Dashboard',
         description: 'Go to dashboard overview',
         icon: 'ph:house-fill',
-        iconColor: 'text-gray-500',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
         shortcut: 'G H',
         action: () => router.visit('/'),
       },
@@ -470,7 +456,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         label: 'Chat',
         description: 'Open chat workspace',
         icon: 'ph:chat-circle-fill',
-        iconColor: 'text-gray-500',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
         shortcut: 'G C',
         badge: '15',
         badgeVariant: 'default',
@@ -481,7 +467,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         label: 'Tasks',
         description: 'View and manage tasks',
         icon: 'ph:check-square-fill',
-        iconColor: 'text-gray-500',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
         shortcut: 'G T',
         action: () => router.visit('/tasks'),
       },
@@ -490,7 +476,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         label: 'Documents',
         description: 'Browse documents',
         icon: 'ph:file-text-fill',
-        iconColor: 'text-gray-500',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
         shortcut: 'G D',
         action: () => router.visit('/docs'),
       },
@@ -505,7 +491,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
       label: `#${channel.name}`,
       description: channel.description,
       icon: channel.type === 'agent' ? 'ph:robot' : 'ph:hash',
-      iconColor: 'text-gray-500',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
       meta: channel.unreadCount ? `${channel.unreadCount} unread` : undefined,
       action: () => router.visit(`/chat?channel=${channel.id}`),
     })),
@@ -534,7 +520,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         label: 'New Task',
         description: 'Create a new task',
         icon: 'ph:plus-circle',
-        iconColor: 'text-gray-600',
+        iconColor: 'text-neutral-600 dark:text-neutral-200',
         shortcut: 'N T',
         action: () => {},
       },
@@ -543,7 +529,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         label: 'Spawn Agent',
         description: 'Deploy a new AI agent',
         icon: 'ph:robot',
-        iconColor: 'text-gray-600',
+        iconColor: 'text-neutral-600 dark:text-neutral-200',
         shortcut: 'N A',
         action: () => {},
       },
@@ -552,7 +538,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         label: 'New Channel',
         description: 'Create a new channel',
         icon: 'ph:chats-circle',
-        iconColor: 'text-gray-500',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
         action: () => {},
       },
       {
@@ -560,7 +546,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         label: 'New Document',
         description: 'Create a new document',
         icon: 'ph:file-plus',
-        iconColor: 'text-gray-500',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
         action: () => {},
       },
     ],
@@ -574,7 +560,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         label: 'Toggle Theme',
         description: 'Switch between light and dark mode',
         icon: 'ph:moon',
-        iconColor: 'text-gray-500',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
         action: () => {},
       },
       {

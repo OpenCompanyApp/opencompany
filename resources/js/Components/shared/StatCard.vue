@@ -8,8 +8,8 @@
   >
     <!-- Loading State -->
     <template v-if="loading">
-      <div class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg z-10">
-        <Icon name="ph:spinner" class="w-6 h-6 animate-spin text-gray-400" />
+      <div class="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-neutral-900/80 rounded-lg z-10">
+        <Icon name="ph:spinner" class="w-6 h-6 animate-spin text-neutral-400 dark:text-neutral-400" />
       </div>
     </template>
 
@@ -23,7 +23,7 @@
             <span :class="labelClasses">{{ label }}</span>
             <Badge v-if="badge" variant="default" size="xs">{{ badge }}</Badge>
           </div>
-          <p v-if="description" class="text-gray-500 text-xs mt-0.5 line-clamp-1">
+          <p v-if="description" class="text-neutral-500 dark:text-neutral-300 text-xs mt-0.5 line-clamp-1">
             {{ description }}
           </p>
         </div>
@@ -37,7 +37,7 @@
       <!-- Value Section -->
       <div class="flex items-baseline gap-2 flex-wrap">
         <span :class="valueClasses">
-          <span v-if="prefix" class="text-gray-500 mr-0.5">{{ prefix }}</span>
+          <span v-if="prefix" class="text-neutral-500 dark:text-neutral-300 mr-0.5">{{ prefix }}</span>
           <Transition
             v-if="animated"
             name="value-change"
@@ -46,9 +46,9 @@
             <span :key="formattedValue" class="tabular-nums">{{ formattedValue }}</span>
           </Transition>
           <span v-else class="tabular-nums">{{ formattedValue }}</span>
-          <span v-if="suffix" class="text-gray-500 ml-0.5 text-[0.65em]">{{ suffix }}</span>
+          <span v-if="suffix" class="text-neutral-500 dark:text-neutral-300 ml-0.5 text-[0.65em]">{{ suffix }}</span>
         </span>
-        <span v-if="subValue" class="text-sm text-gray-500">{{ subValue }}</span>
+        <span v-if="subValue" class="text-sm text-neutral-500 dark:text-neutral-300">{{ subValue }}</span>
       </div>
 
       <!-- Trend Indicator -->
@@ -64,13 +64,13 @@
             {{ Math.abs(trend) }}%
           </span>
         </div>
-        <span v-if="trendLabel" class="text-gray-500 text-xs">
+        <span v-if="trendLabel" class="text-neutral-500 dark:text-neutral-300 text-xs">
           {{ trendLabel }}
         </span>
       </div>
 
       <!-- Sparkline Chart -->
-      <div v-if="sparklineData && sparklineData.length > 0" class="mt-3 pt-3 border-t border-gray-100">
+      <div v-if="sparklineData && sparklineData.length > 0" class="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
         <svg
           class="w-full h-8"
           :viewBox="`0 0 ${sparklineData.length * 10} 32`"
@@ -107,12 +107,12 @@
       </div>
 
       <!-- Progress Bar -->
-      <div v-if="progress !== undefined" class="mt-3 pt-3 border-t border-gray-100">
+      <div v-if="progress !== undefined" class="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
         <div class="flex items-center justify-between text-xs mb-1.5">
-          <span class="text-gray-500">{{ progressLabel || 'Progress' }}</span>
+          <span class="text-neutral-500 dark:text-neutral-300">{{ progressLabel || 'Progress' }}</span>
           <span :class="progressValueClasses">{{ progress }}%</span>
         </div>
-        <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div class="h-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
           <div
             :class="progressBarClasses"
             :style="{ width: `${Math.min(Math.max(progress, 0), 100)}%` }"
@@ -121,12 +121,12 @@
       </div>
 
       <!-- Footer / Actions -->
-      <div v-if="$slots.footer || action" class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+      <div v-if="$slots.footer || action" class="mt-3 pt-3 border-t border-neutral-100 flex items-center justify-between">
         <slot name="footer" />
         <button
           v-if="action"
           type="button"
-          class="text-xs text-gray-900 hover:text-gray-700 font-medium transition-colors duration-150 flex items-center gap-1 rounded-md px-2 py-1 -mx-2 hover:bg-gray-50"
+          class="text-xs text-neutral-900 dark:text-white hover:text-neutral-700 dark:hover:text-neutral-200 font-medium transition-colors duration-150 flex items-center gap-1 rounded-md px-2 py-1 -mx-2 hover:bg-neutral-50 dark:hover:bg-neutral-800"
           @click.stop="handleAction"
         >
           {{ action }}
@@ -135,10 +135,10 @@
       </div>
 
       <!-- Comparison -->
-      <div v-if="comparison" class="mt-3 pt-3 border-t border-gray-100">
+      <div v-if="comparison" class="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
         <div class="flex items-center justify-between text-xs">
-          <span class="text-gray-500">{{ comparison.label }}</span>
-          <span class="text-gray-900 font-medium">{{ formatValue(comparison.value) }}</span>
+          <span class="text-neutral-500 dark:text-neutral-300">{{ comparison.label }}</span>
+          <span class="text-neutral-900 dark:text-white font-medium">{{ formatValue(comparison.value) }}</span>
         </div>
       </div>
     </div>
@@ -149,6 +149,7 @@
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
+import Badge from '@/Components/shared/Badge.vue'
 
 type StatCardSize = 'sm' | 'md' | 'lg'
 type StatCardVariant = 'default' | 'elevated' | 'outlined'
@@ -301,9 +302,9 @@ const sizeConfig = {
 
 // Variant classes
 const variantClasses: Record<StatCardVariant, string> = {
-  default: 'bg-white border border-gray-200',
-  elevated: 'bg-white border border-gray-200 shadow-sm',
-  outlined: 'bg-transparent border border-gray-300',
+  default: 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700',
+  elevated: 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 shadow-sm',
+  outlined: 'bg-transparent border border-neutral-300 dark:border-neutral-600',
 }
 
 // Card classes
@@ -318,8 +319,8 @@ const cardClasses = computed(() => {
   if ((props.interactive || props.href) && !props.disabled) {
     classes.push(
       'cursor-pointer',
-      'hover:border-gray-300 hover:shadow-sm',
-      'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white'
+      'hover:border-neutral-300 dark:hover:border-neutral-600 hover:shadow-sm',
+      'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900'
     )
   }
 
@@ -333,26 +334,26 @@ const cardClasses = computed(() => {
 
 // Label classes
 const labelClasses = computed(() => [
-  'text-gray-500 font-medium',
+  'text-neutral-500 dark:text-neutral-300 font-medium',
   sizeConfig[props.size].label,
 ])
 
 // Value classes
 const valueClasses = computed(() => [
-  'font-bold tracking-tight text-gray-900',
+  'font-bold tracking-tight text-neutral-900 dark:text-white',
   sizeConfig[props.size].value,
 ])
 
 // Icon container classes
 const iconContainerClasses = computed(() => [
-  'rounded-lg flex items-center justify-center bg-gray-100',
+  'rounded-lg flex items-center justify-center bg-neutral-100 dark:bg-neutral-700',
   sizeConfig[props.size].icon,
 ])
 
 // Icon classes
 const iconClasses = computed(() => [
   sizeConfig[props.size].iconInner,
-  'text-gray-600',
+  'text-neutral-600 dark:text-neutral-200',
 ])
 
 // Trend container classes
@@ -370,7 +371,7 @@ const trendIconContainerClasses = computed(() => {
   if (trendDirection.value === 'down') {
     return `${baseClasses} bg-red-100`
   }
-  return `${baseClasses} bg-gray-100`
+  return `${baseClasses} bg-neutral-100 dark:bg-neutral-700`
 })
 
 // Trend icon classes
@@ -383,7 +384,7 @@ const trendIconClasses = computed(() => {
   if (trendDirection.value === 'down') {
     return `${baseClasses} text-red-600`
   }
-  return `${baseClasses} text-gray-500`
+  return `${baseClasses} text-neutral-500 dark:text-neutral-300`
 })
 
 // Trend value classes
@@ -396,20 +397,20 @@ const trendValueClasses = computed(() => {
   if (trendDirection.value === 'down') {
     return `${baseClasses} text-red-600`
   }
-  return `${baseClasses} text-gray-500`
+  return `${baseClasses} text-neutral-500 dark:text-neutral-300`
 })
 
 // Progress value classes
 const progressValueClasses = computed(() => {
   const progress = props.progress || 0
   if (progress >= 100) return 'text-green-600 font-medium'
-  if (progress >= 75) return 'text-gray-900 font-medium'
-  return 'text-gray-500'
+  if (progress >= 75) return 'text-neutral-900 dark:text-white font-medium'
+  return 'text-neutral-500 dark:text-neutral-300'
 })
 
 // Progress bar classes
 const progressBarClasses = computed(() => {
-  return 'h-full rounded-full transition-all duration-300 bg-gray-600'
+  return 'h-full rounded-full transition-all duration-300 bg-neutral-600'
 })
 
 // Sparkline calculations
@@ -452,7 +453,7 @@ const sparklineLineColor = computed(() => {
     const last = props.sparklineData[props.sparklineData.length - 1]
     return last >= first ? '#16a34a' : '#dc2626' // green-600 or red-600
   }
-  return '#6b7280' // gray-500 default
+  return '#6b7280' // neutral-500 default
 })
 
 const sparklineGradientStart = computed(() => sparklineLineColor.value)

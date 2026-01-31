@@ -11,46 +11,26 @@
 
       <div class="flex items-center gap-1">
         <!-- Filter Toggle -->
-        <TooltipProvider v-if="showFilterButton" :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="headerButtonClasses(filterOpen)"
-                @click="filterOpen = !filterOpen"
-              >
-                <Icon name="ph:funnel" class="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="bottom" :side-offset="5">
-                Filter channels
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip v-if="showFilterButton" text="Filter channels" :delay-open="300" side="bottom" :side-offset="5">
+          <button
+            type="button"
+            :class="headerButtonClasses(filterOpen)"
+            @click="filterOpen = !filterOpen"
+          >
+            <Icon name="ph:funnel" class="w-4 h-4" />
+          </button>
+        </Tooltip>
 
         <!-- Create Channel -->
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="headerButtonClasses(false)"
-                @click="handleCreateChannel"
-              >
-                <Icon name="ph:plus" class="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="bottom" :side-offset="5">
-                Create channel
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip text="Create channel" :delay-open="300" side="bottom" :side-offset="5">
+          <button
+            type="button"
+            :class="headerButtonClasses(false)"
+            @click="handleCreateChannel"
+          >
+            <Icon name="ph:plus" class="w-4 h-4" />
+          </button>
+        </Tooltip>
       </div>
     </div>
 
@@ -88,7 +68,7 @@
       <div v-if="filterOpen" :class="filterPanelClasses">
         <div class="space-y-3">
           <div>
-            <label class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 block">
+            <label class="text-xs font-medium text-neutral-500 dark:text-neutral-300 uppercase tracking-wider mb-2 block">
               Channel Type
             </label>
             <div class="flex flex-wrap gap-1">
@@ -106,7 +86,7 @@
           </div>
 
           <div>
-            <label class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 block">
+            <label class="text-xs font-medium text-neutral-500 dark:text-neutral-300 uppercase tracking-wider mb-2 block">
               Status
             </label>
             <div class="flex flex-wrap gap-1">
@@ -122,15 +102,15 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+          <div class="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700">
             <button
               type="button"
-              class="text-xs text-gray-500 hover:text-gray-900 transition-colors"
+              class="text-xs text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
               @click="clearFilters"
             >
               Clear all
             </button>
-            <span class="text-xs text-gray-400">
+            <span class="text-xs text-neutral-400 dark:text-neutral-400">
               {{ filteredChannelsCount }} channels
             </span>
           </div>
@@ -269,7 +249,7 @@
           <template #action>
             <button
               type="button"
-              class="text-sm text-gray-900 hover:text-gray-600 transition-colors"
+              class="text-sm text-neutral-900 dark:text-white hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
               @click="clearSearch"
             >
               Clear search
@@ -308,11 +288,11 @@
       </button>
 
       <!-- Show Archived Toggle -->
-      <label v-if="archivedChannels.length > 0" class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer mt-2">
+      <label v-if="archivedChannels.length > 0" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-300 cursor-pointer mt-2">
         <input
           v-model="showArchived"
           type="checkbox"
-          class="w-3.5 h-3.5 rounded text-gray-900 bg-white border-gray-300 focus:ring-gray-400/50"
+          class="w-3.5 h-3.5 rounded text-neutral-900 dark:text-white bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 focus:ring-neutral-400/50 dark:focus:ring-neutral-500/50"
         >
         Show archived ({{ archivedChannels.length }})
       </label>
@@ -321,19 +301,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, defineComponent, resolveComponent } from 'vue'
+import { ref, computed, h, defineComponent } from 'vue'
+import { CollapsibleRoot, CollapsibleContent } from 'reka-ui'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-  CollapsibleRoot,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from 'reka-ui'
+import SharedBadge from '@/Components/shared/Badge.vue'
+import Skeleton from '@/Components/shared/Skeleton.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import SharedSearchInput from '@/Components/shared/SearchInput.vue'
+import SharedEmptyState from '@/Components/shared/EmptyState.vue'
+import SharedButton from '@/Components/shared/Button.vue'
+import ChatChannelItem from '@/Components/chat/ChannelItem.vue'
 import type { Channel } from '@/types'
 
 type ChannelListSize = 'sm' | 'md' | 'lg'
@@ -555,7 +532,7 @@ const emptySearchDescription = computed(() => {
 // Container classes
 const containerClasses = computed(() => {
   const classes = [
-    'bg-white border-r border-gray-200 flex flex-col shrink-0',
+    'bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0',
     props.width || sizeConfig[props.size].container,
   ]
 
@@ -572,7 +549,7 @@ const containerClasses = computed(() => {
 
 // Header classes
 const headerClasses = computed(() => [
-  'flex items-center justify-between border-b border-gray-200',
+  'flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700',
   sizeConfig[props.size].header,
 ])
 
@@ -583,16 +560,16 @@ const headerTitleClasses = computed(() => {
     md: 'text-base',
     lg: 'text-lg',
   }
-  return ['font-semibold text-gray-900', sizeMap[props.size]]
+  return ['font-semibold text-neutral-900 dark:text-white', sizeMap[props.size]]
 })
 
 // Header button classes
 const headerButtonClasses = (active: boolean) => [
   'p-1.5 rounded-lg transition-colors duration-150',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
   active
-    ? 'bg-gray-100 text-gray-900'
-    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
+    ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white'
+    : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800',
 ]
 
 // Search container classes
@@ -605,13 +582,13 @@ const quickFilterClasses = (filter: QuickFilter) => [
   'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium',
   'transition-colors duration-150',
   activeQuickFilters.value.includes(filter)
-    ? 'bg-gray-100 text-gray-900'
-    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
+    ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white'
+    : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800',
 ]
 
 // Filter panel classes
 const filterPanelClasses = computed(() => [
-  'border-b border-gray-200',
+  'border-b border-neutral-200 dark:border-neutral-700',
   sizeConfig[props.size].search,
 ])
 
@@ -620,36 +597,29 @@ const filterChipClasses = (active: boolean) => [
   'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs',
   'transition-colors duration-150',
   active
-    ? 'bg-gray-100 text-gray-900'
-    : 'bg-gray-50 text-gray-500 hover:text-gray-900 hover:bg-gray-100',
+    ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white'
+    : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700',
 ]
 
 // List container classes
 const listContainerClasses = computed(() => [
-  'flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent',
+  'flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 dark:scrollbar-thumb-neutral-600 scrollbar-track-transparent',
   sizeConfig[props.size].list,
 ])
 
 // Footer classes
 const footerClasses = computed(() => [
-  'border-t border-gray-200',
+  'border-t border-neutral-200 dark:border-neutral-700',
   sizeConfig[props.size].footer,
 ])
 
 // Footer button classes
 const footerButtonClasses = computed(() => [
   'w-full flex items-center gap-2 px-3 py-2.5 rounded-lg group',
-  'text-sm text-gray-500',
-  'hover:text-gray-900 hover:bg-gray-50',
+  'text-sm text-neutral-500 dark:text-neutral-300',
+  'hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800',
   'transition-colors duration-150',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
-])
-
-// Tooltip classes
-const tooltipClasses = computed(() => [
-  'z-50 bg-white border border-gray-200 rounded-lg',
-  'px-3 py-1.5 text-xs shadow-md',
-  'animate-in fade-in-0 duration-150',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
 ])
 
 // Filter functions
@@ -734,17 +704,17 @@ const ChannelSection = defineComponent({
 
     const headerContent = () => [
       h('div', { class: 'flex items-center gap-2' }, [
-        sectionProps.icon && h(resolveComponent('Icon'), {
+        sectionProps.icon && h(Icon, {
           name: sectionProps.icon,
-          class: ['w-3.5 h-3.5', sectionProps.muted ? 'text-gray-400' : 'text-gray-500'],
+          class: ['w-3.5 h-3.5', sectionProps.muted ? 'text-neutral-400 dark:text-neutral-400' : 'text-neutral-500 dark:text-neutral-300'],
         }),
         h('span', {
-          class: ['text-xs font-semibold uppercase tracking-wider', sectionProps.muted ? 'text-gray-400' : 'text-gray-500'],
+          class: ['text-xs font-semibold uppercase tracking-wider', sectionProps.muted ? 'text-neutral-400 dark:text-neutral-400' : 'text-neutral-500 dark:text-neutral-300'],
         }, sectionProps.title),
         sectionProps.showCount && h('span', {
-          class: 'text-xs text-gray-400',
+          class: 'text-xs text-neutral-400 dark:text-neutral-400',
         }, `(${sectionProps.channels.length})`),
-        unreadCount.value > 0 && h(resolveComponent('SharedBadge'), {
+        unreadCount.value > 0 && h(SharedBadge, {
           size: 'xs',
           variant: 'primary',
         }, () => unreadCount.value > 99 ? '99+' : unreadCount.value),
@@ -760,8 +730,8 @@ const ChannelSection = defineComponent({
           type: 'button',
           class: [
             'p-1 rounded-md transition-colors duration-150',
-            'text-gray-500 hover:text-gray-900 hover:bg-gray-100',
-            'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+            'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700',
+            'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
             'opacity-0 group-hover:opacity-100',
           ],
           onClick: (e: Event) => {
@@ -769,12 +739,12 @@ const ChannelSection = defineComponent({
             sectionProps.action?.onClick()
           },
         }, [
-          h(resolveComponent('Icon'), { name: sectionProps.action.icon, class: 'w-3.5 h-3.5' }),
+          h(Icon, { name: sectionProps.action.icon, class: 'w-3.5 h-3.5' }),
         ]),
-        sectionProps.collapsible && h(resolveComponent('Icon'), {
+        sectionProps.collapsible && h(Icon, {
           name: 'ph:caret-down',
           class: [
-            'w-3.5 h-3.5 text-gray-500 transition-transform duration-150',
+            'w-3.5 h-3.5 text-neutral-500 dark:text-neutral-300 transition-transform duration-150',
             isOpen.value ? 'rotate-180' : '',
           ],
         }),
@@ -783,7 +753,7 @@ const ChannelSection = defineComponent({
 
     const channelList = () => h('div', { class: 'space-y-0.5 mt-1' },
       sectionProps.channels.map(channel =>
-        h(resolveComponent('ChatChannelItem'), {
+        h(ChatChannelItem, {
           key: channel.id,
           channel,
           selected: sectionProps.selectedId === channel.id,
@@ -804,19 +774,15 @@ const ChannelSection = defineComponent({
     }
 
     return () => h(CollapsibleRoot, {
-      'modelValue': isOpen.value,
-      'onUpdate:modelValue': (val: boolean) => { isOpen.value = val },
+      'open': isOpen.value,
+      'onUpdate:open': (val: boolean) => { isOpen.value = val },
       'class': 'mb-4 group',
     }, () => [
-      h(CollapsibleTrigger, {
-        class: [
-          'w-full flex items-center justify-between py-1',
-          'focus:outline-none',
-        ],
-      }, () => headerContent()),
-      h(CollapsibleContent, {
-        class: 'overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up',
-      }, () => channelList()),
+      h('div', {
+        class: 'w-full flex items-center justify-between py-1 cursor-pointer',
+        onClick: () => { isOpen.value = !isOpen.value },
+      }, headerContent()),
+      h(CollapsibleContent, {}, () => channelList()),
     ])
   },
 })
@@ -828,24 +794,24 @@ const ChannelListSkeleton = defineComponent({
     return () => h('div', { class: 'space-y-4' }, [
       // Section 1
       h('div', {}, [
-        h(resolveComponent('SharedSkeleton'), { class: 'h-3 w-24 mb-3 ml-2' }),
+        h(Skeleton, { class: 'h-3 w-24 mb-3 ml-2' }),
         h('div', { class: 'space-y-1' },
           [1, 2, 3].map(i =>
             h('div', { key: `agent-${i}`, class: 'flex items-center gap-2 px-2 py-2' }, [
-              h(resolveComponent('SharedSkeleton'), { variant: 'avatar', class: 'w-6 h-6' }),
-              h(resolveComponent('SharedSkeleton'), { class: 'h-3 w-28' }),
+              h(Skeleton, { class: 'w-6 h-6 rounded-full' }),
+              h(Skeleton, { class: 'h-3 w-28' }),
             ]),
           ),
         ),
       ]),
       // Section 2
       h('div', {}, [
-        h(resolveComponent('SharedSkeleton'), { class: 'h-3 w-20 mb-3 ml-2' }),
+        h(Skeleton, { class: 'h-3 w-20 mb-3 ml-2' }),
         h('div', { class: 'space-y-1' },
           [1, 2, 3, 4].map(i =>
             h('div', { key: `pub-${i}`, class: 'flex items-center gap-2 px-2 py-2' }, [
-              h(resolveComponent('SharedSkeleton'), { class: 'w-5 h-5 rounded-md' }),
-              h(resolveComponent('SharedSkeleton'), { class: 'h-3 w-24' }),
+              h(Skeleton, { class: 'w-5 h-5 rounded-md' }),
+              h(Skeleton, { class: 'h-3 w-24' }),
             ]),
           ),
         ),

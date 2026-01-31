@@ -8,7 +8,7 @@
         </div>
         <div class="flex-1 min-w-0">
           <h3 :class="titleClasses">{{ channel.name }}</h3>
-          <p v-if="channel.private" class="text-xs text-gray-500 flex items-center gap-1">
+          <p v-if="channel.private" class="text-xs text-neutral-500 dark:text-neutral-300 flex items-center gap-1">
             <Icon name="ph:lock-simple" class="w-3 h-3" />
             Private channel
           </p>
@@ -17,50 +17,30 @@
 
       <!-- Header Actions -->
       <div class="flex items-center gap-1">
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="headerActionButtonClasses"
-                @click="handleEditChannel"
-              >
-                <Icon name="ph:pencil-simple" class="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="bottom" :side-offset="5">
-                Edit channel
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip text="Edit channel" :delay-open="300" side="bottom" :side-offset="5">
+          <button
+            type="button"
+            :class="headerActionButtonClasses"
+            @click="handleEditChannel"
+          >
+            <Icon name="ph:pencil-simple" class="w-4 h-4" />
+          </button>
+        </Tooltip>
 
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="headerActionButtonClasses"
-                @click="emit('close')"
-              >
-                <Icon name="ph:x" class="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="bottom" :side-offset="5">
-                Close panel
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip text="Close panel" :delay-open="300" side="bottom" :side-offset="5">
+          <button
+            type="button"
+            :class="headerActionButtonClasses"
+            @click="emit('close')"
+          >
+            <Icon name="ph:x" class="w-4 h-4" />
+          </button>
+        </Tooltip>
       </div>
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+    <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-200 dark:scrollbar-thumb-neutral-600 scrollbar-track-transparent">
       <!-- Presence Row -->
       <Transition name="fade">
         <div v-if="viewers.length > 0" :class="sectionClasses">
@@ -94,19 +74,19 @@
             <button
               v-else
               type="button"
-              class="text-sm text-gray-600 hover:text-gray-900 transition-colors duration-150"
+              class="text-sm text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-colors duration-150"
               @click="handleEditChannel"
             >
               Add a description
             </button>
 
             <!-- Channel Meta -->
-            <div class="mt-3 pt-3 border-t border-gray-200 space-y-2">
-              <div class="flex items-center gap-2 text-xs text-gray-500">
+            <div class="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700 space-y-2">
+              <div class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-300">
                 <Icon name="ph:calendar" class="w-3.5 h-3.5" />
-                <span>Created {{ formatDate(channel.createdAt) }}</span>
+                <span>Created {{ formatDate(channelCreatedAt) }}</span>
               </div>
-              <div v-if="channel.createdBy" class="flex items-center gap-2 text-xs text-gray-500">
+              <div v-if="channel.createdBy" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-300">
                 <Icon name="ph:user" class="w-3.5 h-3.5" />
                 <span>Created by {{ channel.createdBy.name }}</span>
               </div>
@@ -127,7 +107,7 @@
           <div v-if="loading" class="space-y-2">
             <SharedSkeleton v-for="i in 2" :key="i" class="h-12 w-full" />
           </div>
-          <div v-else-if="pinnedMessages.length === 0" class="text-sm text-gray-500 text-center py-4">
+          <div v-else-if="pinnedMessages.length === 0" class="text-sm text-neutral-500 dark:text-neutral-300 text-center py-4">
             No pinned messages
           </div>
           <div v-else class="space-y-2">
@@ -140,14 +120,14 @@
             >
               <div class="flex items-center gap-2 mb-1">
                 <SharedAgentAvatar :user="message.author" size="xs" />
-                <span class="text-xs font-medium text-gray-900 truncate">
+                <span class="text-xs font-medium text-neutral-900 dark:text-white truncate">
                   {{ message.author.name }}
                 </span>
-                <span class="text-xs text-gray-400 ml-auto">
+                <span class="text-xs text-neutral-400 dark:text-neutral-400 ml-auto">
                   {{ formatRelativeTime(message.timestamp) }}
                 </span>
               </div>
-              <p class="text-xs text-gray-500 line-clamp-2">
+              <p class="text-xs text-neutral-500 dark:text-neutral-300 line-clamp-2">
                 {{ message.content }}
               </p>
             </button>
@@ -155,7 +135,7 @@
             <button
               v-if="pinnedMessages.length > maxPinnedMessages"
               type="button"
-              class="w-full text-xs text-gray-600 hover:text-gray-600-hover transition-colors py-2"
+              class="w-full text-xs text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-colors py-2"
               @click="handleViewAllPinned"
             >
               View all {{ pinnedMessages.length }} pinned messages
@@ -176,7 +156,7 @@
           <div v-if="loading" class="space-y-2">
             <SharedSkeleton v-for="i in 3" :key="i" class="h-10 w-full" />
           </div>
-          <div v-else-if="sharedFiles.length === 0" class="text-sm text-gray-500 text-center py-4">
+          <div v-else-if="sharedFiles.length === 0" class="text-sm text-neutral-500 dark:text-neutral-300 text-center py-4">
             No shared files
           </div>
           <div v-else class="space-y-1">
@@ -191,15 +171,15 @@
                 <Icon :name="getFileIcon(file.type)" class="w-4 h-4" />
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm text-gray-900 truncate">{{ file.name }}</p>
-                <p class="text-xs text-gray-400">
+                <p class="text-sm text-neutral-900 dark:text-white truncate">{{ file.name }}</p>
+                <p class="text-xs text-neutral-400 dark:text-neutral-400">
                   {{ formatFileSize(file.size) }} · {{ formatRelativeTime(file.uploadedAt) }}
                 </p>
               </div>
               <span
                 role="button"
                 tabindex="0"
-                class="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                class="p-1 rounded text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                 @click.stop="handleFileDownload(file)"
                 @keydown.enter.stop="handleFileDownload(file)"
               >
@@ -210,7 +190,7 @@
             <button
               v-if="sharedFiles.length > maxSharedFiles"
               type="button"
-              class="w-full text-xs text-gray-600 hover:text-gray-600-hover transition-colors py-2"
+              class="w-full text-xs text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-colors py-2"
               @click="handleViewAllFiles"
             >
               View all {{ sharedFiles.length }} files
@@ -227,25 +207,15 @@
         :class="sectionClasses"
       >
         <template #header-action>
-          <TooltipProvider :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  :class="addMemberButtonClasses"
-                  @click="handleAddMember"
-                >
-                  <Icon name="ph:user-plus" class="w-3.5 h-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent :class="tooltipClasses" side="left" :side-offset="5">
-                  Add members
-                  <TooltipArrow class="fill-white" />
-                </TooltipContent>
-              </TooltipPortal>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip text="Add members" :delay-open="300" side="left" :side-offset="5">
+            <button
+              type="button"
+              :class="addMemberButtonClasses"
+              @click="handleAddMember"
+            >
+              <Icon name="ph:user-plus" class="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
         </template>
 
         <template #content>
@@ -283,7 +253,7 @@
           <div v-if="loading" class="space-y-2">
             <SharedSkeleton v-for="i in 4" :key="i" class="h-12 w-full" />
           </div>
-          <div v-else-if="filteredMembers.length === 0" class="text-sm text-gray-500 text-center py-4">
+          <div v-else-if="filteredMembers.length === 0" class="text-sm text-neutral-500 dark:text-neutral-300 text-center py-4">
             <template v-if="memberSearch">
               No members matching "{{ memberSearch }}"
             </template>
@@ -313,7 +283,7 @@
           <button
             v-if="filteredMembers.length > maxVisibleMembers && !showAllMembers"
             type="button"
-            class="w-full text-xs text-gray-600 hover:text-gray-600-hover transition-colors py-2 mt-2"
+            class="w-full text-xs text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-colors py-2 mt-2"
             @click="showAllMembers = true"
           >
             Show {{ filteredMembers.length - maxVisibleMembers }} more members
@@ -337,8 +307,8 @@
                 'w-full flex items-center gap-3 p-3 rounded-lg',
                 'transition-colors duration-150',
                 notificationSetting === option.value
-                  ? 'bg-gray-100 border border-gray-300'
-                  : 'bg-white border border-transparent hover:bg-gray-50 hover:border-gray-200',
+                  ? 'bg-neutral-100 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600'
+                  : 'bg-white dark:bg-neutral-900 border border-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:border-neutral-200 dark:hover:border-neutral-700',
               ]"
               @click="notificationSetting = option.value"
             >
@@ -346,8 +316,8 @@
                 :class="[
                   'flex items-center justify-center w-8 h-8 rounded-lg',
                   notificationSetting === option.value
-                    ? 'bg-gray-200 text-gray-900'
-                    : 'bg-gray-100 text-gray-500',
+                    ? 'bg-neutral-200 dark:bg-neutral-600 text-neutral-900 dark:text-white'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-300',
                 ]"
               >
                 <Icon :name="option.icon" class="w-4 h-4" />
@@ -356,27 +326,27 @@
                 <p
                   :class="[
                     'text-sm font-medium',
-                    notificationSetting === option.value ? 'text-gray-900' : 'text-gray-500',
+                    notificationSetting === option.value ? 'text-neutral-900 dark:text-white' : 'text-neutral-500 dark:text-neutral-300',
                   ]"
                 >
                   {{ option.label }}
                 </p>
-                <p class="text-xs text-gray-400">{{ option.description }}</p>
+                <p class="text-xs text-neutral-400 dark:text-neutral-400">{{ option.description }}</p>
               </div>
               <div
                 :class="[
                   'w-5 h-5 rounded-full border-2 flex items-center justify-center',
                   'transition-colors duration-150',
                   notificationSetting === option.value
-                    ? 'border-gray-900 bg-gray-900'
-                    : 'border-gray-300',
+                    ? 'border-neutral-900 dark:border-white bg-neutral-900 dark:bg-white'
+                    : 'border-neutral-300 dark:border-neutral-600',
                 ]"
               >
                 <Transition name="check-scale">
                   <Icon
                     v-if="notificationSetting === option.value"
                     name="ph:check-bold"
-                    class="w-3 h-3 text-white"
+                    class="w-3 h-3 text-white dark:text-neutral-900"
                   />
                 </Transition>
               </div>
@@ -389,45 +359,25 @@
     <!-- Footer Actions -->
     <div :class="footerClasses">
       <div class="flex items-center gap-2">
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="footerSecondaryButtonClasses"
-                @click="$emit('mute')"
-              >
-                <Icon name="ph:bell-slash" class="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="top" :side-offset="5">
-                Mute channel
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip text="Mute channel" :delay-open="300" side="top" :side-offset="5">
+          <button
+            type="button"
+            :class="footerSecondaryButtonClasses"
+            @click="$emit('mute')"
+          >
+            <Icon name="ph:bell-slash" class="w-4 h-4" />
+          </button>
+        </Tooltip>
 
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="footerSecondaryButtonClasses"
-                @click="$emit('pin')"
-              >
-                <Icon name="ph:push-pin" class="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="top" :side-offset="5">
-                Pin channel
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip text="Pin channel" :delay-open="300" side="top" :side-offset="5">
+          <button
+            type="button"
+            :class="footerSecondaryButtonClasses"
+            @click="$emit('pin')"
+          >
+            <Icon name="ph:push-pin" class="w-4 h-4" />
+          </button>
+        </Tooltip>
       </div>
 
       <button
@@ -443,24 +393,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, h, defineComponent, resolveComponent } from 'vue'
+import { ref, computed, watch, h, defineComponent } from 'vue'
+import { CollapsibleRoot, CollapsibleContent } from 'reka-ui'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-  CollapsibleRoot,
-  CollapsibleTrigger,
-  CollapsibleContent,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-  DropdownMenuPortal,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from 'reka-ui'
+import Badge from '@/Components/shared/Badge.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import SharedPresenceRow from '@/Components/shared/PresenceRow.vue'
+import SharedSkeleton from '@/Components/shared/Skeleton.vue'
+import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
+import SharedStatusBadge from '@/Components/shared/StatusBadge.vue'
+import SharedSearchInput from '@/Components/shared/SearchInput.vue'
 import type { Channel, User, Message } from '@/types'
 
 type ChannelInfoSize = 'sm' | 'md' | 'lg'
@@ -487,7 +430,7 @@ interface PinnedMessage {
 const props = withDefaults(defineProps<{
   // Core
   channel: Channel
-  viewers: User[]
+  viewers?: User[]
 
   // Appearance
   size?: ChannelInfoSize
@@ -513,6 +456,7 @@ const props = withDefaults(defineProps<{
   size: 'md',
   variant: 'default',
   width: 'w-72',
+  viewers: () => [],
   pinnedMessages: () => [],
   sharedFiles: () => [],
   showAllSections: false,
@@ -657,7 +601,7 @@ const getMemberCountByFilter = (filter: MemberFilter): number => {
 // Container classes
 const containerClasses = computed(() => {
   const classes = [
-    'h-full bg-white border-l border-gray-200 flex flex-col shrink-0',
+    'h-full bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0',
     props.width || sizeConfig[props.size].container,
   ]
 
@@ -674,24 +618,24 @@ const containerClasses = computed(() => {
 
 // Header classes
 const headerClasses = computed(() => [
-  'flex items-center justify-between border-b border-gray-200',
+  'flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700',
   sizeConfig[props.size].header,
 ])
 
 // Channel icon container classes
 const channelIconContainerClasses = computed(() => [
   'flex items-center justify-center w-10 h-10 rounded-lg',
-  'bg-gray-100',
+  'bg-neutral-100 dark:bg-neutral-700',
 ])
 
 // Channel icon classes
 const channelIconClasses = computed(() => [
-  'w-5 h-5 text-gray-500',
+  'w-5 h-5 text-neutral-500 dark:text-neutral-300',
 ])
 
 // Title classes
 const titleClasses = computed(() => [
-  'font-semibold text-gray-900 truncate',
+  'font-semibold text-neutral-900 dark:text-white truncate',
   sizeConfig[props.size].title,
 ])
 
@@ -699,36 +643,29 @@ const titleClasses = computed(() => [
 const headerActionButtonClasses = computed(() => [
   'p-2 rounded-lg',
   'transition-colors duration-150',
-  'text-gray-400 hover:text-gray-600',
-  'hover:bg-gray-100',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/20',
+  'text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 dark:focus-visible:ring-neutral-500/50',
 ])
 
 // Section classes
 const sectionClasses = computed(() => [
-  'border-b border-gray-200',
+  'border-b border-neutral-200 dark:border-neutral-700',
   sizeConfig[props.size].section,
 ])
 
 // Description classes
 const descriptionClasses = computed(() => [
-  'text-sm text-gray-500 leading-relaxed',
-])
-
-// Tooltip classes
-const tooltipClasses = computed(() => [
-  'z-50 bg-white border border-gray-200 rounded-lg',
-  'px-2.5 py-1.5 text-xs shadow-lg',
-  'animate-in fade-in-0 duration-150',
+  'text-sm text-neutral-500 dark:text-neutral-300 leading-relaxed',
 ])
 
 // Add member button classes
 const addMemberButtonClasses = computed(() => [
   'p-1.5 rounded-md',
   'transition-colors duration-150',
-  'text-gray-400 hover:text-gray-600',
-  'hover:bg-gray-100',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/20',
+  'text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 dark:focus-visible:ring-neutral-500/50',
 ])
 
 // Member filter classes
@@ -736,37 +673,37 @@ const memberFilterClasses = (filter: MemberFilter) => [
   'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium',
   'transition-colors duration-150 whitespace-nowrap',
   activeMemberFilter.value === filter
-    ? 'bg-gray-900 text-white'
-    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100',
+    ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+    : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700',
 ]
 
 // Pinned message classes
 const pinnedMessageClasses = computed(() => [
   'w-full text-left p-3 rounded-lg',
   'transition-colors duration-150',
-  'hover:bg-gray-50',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/20',
+  'hover:bg-neutral-50 dark:hover:bg-neutral-800',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 dark:focus-visible:ring-neutral-500/50',
 ])
 
 // Shared file classes
 const sharedFileClasses = computed(() => [
   'w-full flex items-center gap-3 p-2.5 rounded-lg group',
   'transition-colors duration-150',
-  'hover:bg-gray-50',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/20',
+  'hover:bg-neutral-50 dark:hover:bg-neutral-800',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 dark:focus-visible:ring-neutral-500/50',
 ])
 
 // File icon container classes
 const fileIconContainerClasses = (_file: SharedFile) => {
   return [
     'flex items-center justify-center w-8 h-8 rounded-lg shrink-0',
-    'bg-gray-100 text-gray-500',
+    'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-300',
   ]
 }
 
 // Footer classes
 const footerClasses = computed(() => [
-  'flex items-center justify-between border-t border-gray-200',
+  'flex items-center justify-between border-t border-neutral-200 dark:border-neutral-700',
   sizeConfig[props.size].padding,
 ])
 
@@ -774,9 +711,9 @@ const footerClasses = computed(() => [
 const footerSecondaryButtonClasses = computed(() => [
   'p-2 rounded-lg',
   'transition-colors duration-150',
-  'text-gray-400 hover:text-gray-600',
-  'hover:bg-gray-100',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/20',
+  'text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 dark:focus-visible:ring-neutral-500/50',
 ])
 
 // Footer action classes
@@ -786,8 +723,8 @@ const footerActionClasses = (variant: 'default' | 'danger') => [
   'transition-colors duration-150',
   'focus:outline-none focus-visible:ring-2',
   variant === 'danger'
-    ? 'text-red-600 hover:bg-red-50 focus-visible:ring-red-500/50'
-    : 'text-gray-500 hover:bg-gray-100 focus-visible:ring-gray-900/20',
+    ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-950 focus-visible:ring-red-500/50'
+    : 'text-neutral-500 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 focus-visible:ring-neutral-900/20 dark:focus-visible:ring-neutral-500/50',
 ]
 
 // Get file icon
@@ -825,13 +762,22 @@ const formatFileSize = (bytes: number): string => {
 }
 
 // Format date
-const formatDate = (date: Date): string => {
-  return new Date(date).toLocaleDateString('en-US', {
+const formatDate = (date: Date | string | null | undefined): string => {
+  if (!date) return 'Unknown'
+  const parsed = new Date(date)
+  if (isNaN(parsed.getTime())) return 'Unknown'
+  return parsed.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })
 }
+
+// Get channel creation date (handles both camelCase and snake_case)
+const channelCreatedAt = computed(() => {
+  const channel = props.channel as any
+  return channel.createdAt || channel.created_at || null
+})
 
 // Format relative time
 const formatRelativeTime = (date: Date): string => {
@@ -909,41 +855,36 @@ const CollapsibleSection = defineComponent({
     const isOpen = ref(sectionProps.defaultOpen)
 
     return () => h(CollapsibleRoot, {
-      'modelValue': isOpen.value,
-      'onUpdate:modelValue': (val: boolean) => { isOpen.value = val },
+      'open': isOpen.value,
+      'onUpdate:open': (val: boolean) => { isOpen.value = val },
+      'class': 'group',
     }, () => [
-      h(CollapsibleTrigger, {
-        class: [
-          'w-full flex items-center justify-between py-2 group',
-          'focus:outline-none',
-        ],
-      }, () => [
+      h('div', {
+        class: 'w-full flex items-center justify-between py-2 cursor-pointer',
+        onClick: () => { isOpen.value = !isOpen.value },
+      }, [
         h('div', { class: 'flex items-center gap-2' }, [
           h('h4', {
-            class: 'text-xs font-semibold text-gray-500 uppercase tracking-wider',
+            class: 'text-xs font-semibold text-neutral-500 dark:text-neutral-300 uppercase tracking-wider',
           }, sectionProps.title),
           sectionProps.count !== undefined && h('span', {
-            class: 'text-xs text-gray-400',
+            class: 'text-xs text-neutral-400 dark:text-neutral-400',
           }, `(${sectionProps.count})`),
         ]),
         h('div', { class: 'flex items-center gap-1' }, [
           slots['header-action']?.(),
-          h(resolveComponent('Icon'), {
+          h(Icon, {
             name: 'ph:caret-down',
             class: [
-              'w-4 h-4 text-gray-400',
+              'w-4 h-4 text-neutral-400 dark:text-neutral-400',
               'transition-transform duration-150',
-              'group-hover:text-gray-600',
+              'group-hover:text-neutral-600 dark:group-hover:text-neutral-300',
               isOpen.value ? 'rotate-180' : '',
             ],
           }),
         ]),
       ]),
-      h(CollapsibleContent, {
-        class: 'overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up',
-      }, () => [
-        h('div', { class: 'pt-2' }, slots.content?.()),
-      ]),
+      h(CollapsibleContent, {}, () => h('div', { class: 'pt-2' }, slots.content?.())),
     ])
   },
 })
@@ -965,106 +906,64 @@ const MemberItem = defineComponent({
       class: [
         'flex items-center gap-3 p-2 rounded-lg cursor-pointer group',
         'transition-colors duration-150',
-        'hover:bg-gray-50',
+        'hover:bg-neutral-50 dark:hover:bg-neutral-800',
       ],
       onMouseenter: () => { isHovered.value = true },
       onMouseleave: () => { isHovered.value = false },
       onClick: () => memberEmit('click'),
     }, [
-      h(resolveComponent('SharedAgentAvatar'), {
+      h(SharedAgentAvatar, {
         user: memberProps.member,
         size: memberProps.size === 'sm' ? 'xs' : 'sm',
       }),
       h('div', { class: 'flex-1 min-w-0' }, [
         h('div', { class: 'flex items-center gap-1.5' }, [
           h('p', {
-            class: 'text-sm font-medium truncate text-gray-900',
+            class: 'text-sm font-medium truncate text-neutral-900 dark:text-white',
           }, memberProps.member.name),
-          memberProps.isOwner && h(resolveComponent('SharedBadge'), {
+          memberProps.isOwner && h(Badge, {
             size: 'xs',
             variant: 'secondary',
           }, () => 'Owner'),
         ]),
         memberProps.member.type === 'agent'
           ? h('p', {
-              class: 'text-xs text-gray-500 truncate',
+              class: 'text-xs text-neutral-500 dark:text-neutral-300 truncate',
             }, memberProps.member.status === 'working' ? memberProps.member.currentTask : 'Ready')
           : h('p', {
-              class: 'text-xs text-gray-500 capitalize',
+              class: 'text-xs text-neutral-500 dark:text-neutral-300 capitalize',
             }, memberProps.member.type),
       ]),
       // Status badge for agents
-      memberProps.member.type === 'agent' && memberProps.member.status && h(resolveComponent('SharedStatusBadge'), {
+      memberProps.member.type === 'agent' && memberProps.member.status && h(SharedStatusBadge, {
         status: memberProps.member.status,
         size: 'xs',
         showLabel: false,
       }),
       // Actions dropdown
-      h(DropdownMenuRoot, {
-        'modelValue': menuOpen.value,
-        'onUpdate:modelValue': (val: boolean) => { menuOpen.value = val },
-      }, () => [
-        h(DropdownMenuTrigger, { asChild: true }, () =>
-          h('button', {
-            type: 'button',
-            class: [
-              'p-1.5 rounded-md',
-              'transition-colors duration-150',
-              'text-gray-400 hover:text-gray-600',
-              'hover:bg-gray-100',
-              'opacity-0 group-hover:opacity-100',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/20',
-            ],
-            onClick: (e: Event) => e.stopPropagation(),
-          }, [
-            h(resolveComponent('Icon'), { name: 'ph:dots-three', class: 'w-4 h-4' }),
-          ]),
-        ),
-        h(DropdownMenuPortal, () =>
-          h(DropdownMenuContent, {
-            class: [
-              'min-w-40 bg-white border border-gray-200 rounded-lg',
-              'shadow-lg p-1 z-50',
-              'animate-in fade-in-0 duration-150',
-            ],
-            sideOffset: 5,
-          }, () => [
-            h(DropdownMenuItem, {
-              class: [
-                'flex items-center gap-2 px-3 py-2 text-sm rounded-md cursor-pointer outline-none',
-                'transition-colors duration-150',
-                'text-gray-500 hover:bg-gray-50 hover:text-gray-900',
-              ],
-              onSelect: () => memberEmit('message'),
-            }, () => [
-              h(resolveComponent('Icon'), { name: 'ph:chat-circle', class: 'w-4 h-4' }),
-              h('span', 'Message'),
-            ]),
-            h(DropdownMenuItem, {
-              class: [
-                'flex items-center gap-2 px-3 py-2 text-sm rounded-md cursor-pointer outline-none',
-                'transition-colors duration-150',
-                'text-gray-500 hover:bg-gray-50 hover:text-gray-900',
-              ],
-              onSelect: () => memberEmit('click'),
-            }, () => [
-              h(resolveComponent('Icon'), { name: 'ph:user', class: 'w-4 h-4' }),
-              h('span', 'View profile'),
-            ]),
-            h(DropdownMenuItem, {
-              class: [
-                'flex items-center gap-2 px-3 py-2 text-sm rounded-md cursor-pointer outline-none',
-                'transition-colors duration-150',
-                'text-red-600 hover:bg-red-50',
-              ],
-              onSelect: () => memberEmit('remove'),
-            }, () => [
-              h(resolveComponent('Icon'), { name: 'ph:user-minus', class: 'w-4 h-4' }),
-              h('span', 'Remove'),
-            ]),
-          ]),
-        ),
-      ]),
+      h(DropdownMenu, {
+        items: [[
+          { label: 'Message', icon: 'ph:chat-circle', click: () => memberEmit('message') },
+          { label: 'View profile', icon: 'ph:user', click: () => memberEmit('click') },
+          { label: 'Remove', icon: 'ph:user-minus', color: 'error', click: () => memberEmit('remove') },
+        ]],
+        sideOffset: 5,
+      }, {
+        default: () => h('button', {
+          type: 'button',
+          class: [
+            'p-1.5 rounded-md',
+            'transition-colors duration-150',
+            'text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300',
+            'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+            'opacity-0 group-hover:opacity-100',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 dark:focus-visible:ring-neutral-500/50',
+          ],
+          onClick: (e: Event) => e.stopPropagation(),
+        }, [
+          h(Icon, { name: 'ph:dots-three', class: 'w-4 h-4' }),
+        ]),
+      }),
     ])
   },
 })

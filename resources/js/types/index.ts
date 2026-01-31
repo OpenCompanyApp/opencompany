@@ -181,3 +181,152 @@ export interface CommandItem {
   category: 'navigation' | 'channels' | 'actions' | 'settings'
   action: () => void
 }
+
+// Agent Identity & Configuration (OpenClaw-inspired)
+export interface AgentIdentity {
+  name: string
+  emoji?: string
+  type: AgentType
+  avatar?: string
+  description?: string
+}
+
+export interface AgentPersonality {
+  content: string  // Markdown content for behavior guidelines
+  updatedAt: Date
+}
+
+export interface AgentInstructions {
+  content: string  // Markdown content for operating manual
+  updatedAt: Date
+}
+
+export interface AgentCapability {
+  id: string
+  name: string
+  description?: string
+  enabled: boolean
+  requiresApproval: boolean
+  notes?: string
+  icon?: string
+}
+
+export interface AgentSession {
+  id: string
+  startedAt: Date
+  messageCount: number
+  tokenCount: number
+  maxTokens: number
+  lastActivityAt?: Date
+}
+
+export interface AgentMemoryEntry {
+  id: string
+  content: string
+  createdAt: Date
+  source?: string
+  category?: 'fact' | 'preference' | 'context' | 'note'
+}
+
+export type AgentBehaviorMode = 'autonomous' | 'supervised' | 'strict'
+export type SessionResetMode = 'daily' | 'idle' | 'manual'
+
+export interface AgentSettings {
+  behaviorMode: AgentBehaviorMode
+  costLimit: number
+  resetPolicy: {
+    mode: SessionResetMode
+    dailyHour?: number
+    idleMinutes?: number
+  }
+}
+
+export interface Agent extends User {
+  identity: AgentIdentity
+  personality?: AgentPersonality
+  instructions?: AgentInstructions
+  capabilities: AgentCapability[]
+  currentSession?: AgentSession
+  memoryEntries?: AgentMemoryEntry[]
+  settings: AgentSettings
+  stats?: {
+    tasksCompleted: number
+    efficiency: number
+    creditsUsed: number
+    totalSessions: number
+  }
+}
+
+// Calendar Types
+export type CalendarAttendeeStatus = 'pending' | 'accepted' | 'declined' | 'tentative'
+
+export interface CalendarEventAttendee {
+  id: string
+  eventId: string
+  userId: string
+  status: CalendarAttendeeStatus
+  user: User
+}
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  description?: string
+  startAt: string
+  endAt?: string
+  allDay: boolean
+  location?: string
+  color?: string
+  recurrenceRule?: string
+  createdBy: string
+  creator?: User
+  attendees: CalendarEventAttendee[]
+}
+
+// Data Tables Types
+export type DataTableColumnType = 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'checkbox' | 'url' | 'email' | 'user' | 'attachment'
+export type DataTableViewType = 'grid' | 'kanban' | 'gallery' | 'calendar'
+
+export interface DataTableColumn {
+  id: string
+  tableId: string
+  name: string
+  type: DataTableColumnType
+  options?: Record<string, unknown>
+  order: number
+  required: boolean
+}
+
+export interface DataTableRow {
+  id: string
+  tableId: string
+  data: Record<string, unknown>
+  createdBy: string
+  creator?: User
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface DataTableView {
+  id: string
+  tableId: string
+  name: string
+  type: DataTableViewType
+  filters?: Record<string, unknown>[]
+  sorts?: { columnId: string; direction: 'asc' | 'desc' }[]
+  hiddenColumns?: string[]
+}
+
+export interface DataTable {
+  id: string
+  name: string
+  description?: string
+  icon?: string
+  createdBy: string
+  creator?: User
+  columns: DataTableColumn[]
+  views?: DataTableView[]
+  rowsCount?: number
+  createdAt?: string
+  updatedAt?: string
+}

@@ -12,15 +12,8 @@ const props = defineProps<Props>()
 
 // Support both 'name' and 'icon' props for backwards compatibility
 const iconName = computed(() => props.icon || props.name || '')
-
-// Normalize class to string
-const normalizedClass = computed(() => {
-  if (!props.class) return ''
-  if (typeof props.class === 'string') return props.class
-  return props.class.filter(Boolean).join(' ')
-})
 </script>
 
 <template>
-  <IconifyIcon :icon="iconName" :class="normalizedClass" />
+  <IconifyIcon :icon="iconName" :class="props.class" />
 </template>

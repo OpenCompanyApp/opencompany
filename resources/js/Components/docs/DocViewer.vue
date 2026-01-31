@@ -37,84 +37,57 @@
         <div v-if="isEditing && showToolbar" :class="toolbarClasses">
           <div class="flex items-center gap-1">
             <!-- Text Formatting -->
-            <div class="flex items-center gap-0.5 pr-2 border-r border-gray-200">
-              <TooltipProvider v-for="action in textFormattingActions" :key="action.id" :delay-duration="200">
-                <TooltipRoot>
-                  <TooltipTrigger as-child>
-                    <button
-                      type="button"
-                      :class="toolbarButtonClasses"
-                      @click="emit('format', action.id)"
-                    >
-                      <Icon :name="action.icon" class="w-4 h-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipPortal>
-                    <TooltipContent :class="tooltipClasses" side="bottom">
-                      {{ action.label }}
-                      <span v-if="action.shortcut" class="ml-1 text-gray-400">{{ action.shortcut }}</span>
-                      <TooltipArrow class="fill-white" />
-                    </TooltipContent>
-                  </TooltipPortal>
-                </TooltipRoot>
-              </TooltipProvider>
+            <div class="flex items-center gap-0.5 pr-2 border-r border-neutral-200">
+              <Tooltip
+                v-for="action in textFormattingActions"
+                :key="action.id"
+                :text="action.label + (action.shortcut ? ' ' + action.shortcut : '')"
+                :delay-open="200"
+              >
+                <button
+                  type="button"
+                  :class="toolbarButtonClasses"
+                  @click="emit('format', action.id)"
+                >
+                  <Icon :name="action.icon" class="w-4 h-4" />
+                </button>
+              </Tooltip>
             </div>
 
             <!-- Heading Dropdown -->
-            <DropdownMenuRoot>
-              <DropdownMenuTrigger as-child>
-                <button type="button" :class="toolbarButtonClasses">
-                  <span class="text-xs">Heading</span>
-                  <Icon name="ph:caret-down" class="w-3 h-3 ml-1" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuPortal>
-                <DropdownMenuContent :class="dropdownContentClasses" :side-offset="4">
-                  <DropdownMenuItem
-                    v-for="heading in headingOptions"
-                    :key="heading.value"
-                    :class="dropdownItemClasses"
-                    @select="emit('format', heading.value)"
-                  >
-                    <component :is="heading.value" class="text-gray-700">
-                      {{ heading.label }}
-                    </component>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenuPortal>
-            </DropdownMenuRoot>
+            <DropdownMenu :items="headingDropdownItems">
+              <Button variant="ghost" :class="toolbarButtonClasses">
+                <span class="text-xs">Heading</span>
+                <Icon name="ph:caret-down" class="w-3 h-3 ml-1" />
+              </Button>
+            </DropdownMenu>
 
             <!-- Insert Actions -->
-            <div class="flex items-center gap-0.5 pl-2 border-l border-gray-200">
-              <TooltipProvider v-for="action in insertActions" :key="action.id" :delay-duration="200">
-                <TooltipRoot>
-                  <TooltipTrigger as-child>
-                    <button
-                      type="button"
-                      :class="toolbarButtonClasses"
-                      @click="emit('insert', action.id)"
-                    >
-                      <Icon :name="action.icon" class="w-4 h-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipPortal>
-                    <TooltipContent :class="tooltipClasses" side="bottom">
-                      {{ action.label }}
-                      <TooltipArrow class="fill-white" />
-                    </TooltipContent>
-                  </TooltipPortal>
-                </TooltipRoot>
-              </TooltipProvider>
+            <div class="flex items-center gap-0.5 pl-2 border-l border-neutral-200">
+              <Tooltip
+                v-for="action in insertActions"
+                :key="action.id"
+                :text="action.label"
+                :delay-open="200"
+              >
+                <button
+                  type="button"
+                  :class="toolbarButtonClasses"
+                  @click="emit('insert', action.id)"
+                >
+                  <Icon :name="action.icon" class="w-4 h-4" />
+                </button>
+              </Tooltip>
             </div>
           </div>
 
           <!-- Right Side Actions -->
           <div class="flex items-center gap-2">
-            <span v-if="autoSaving" class="flex items-center gap-1.5 text-xs text-gray-500">
+            <span v-if="autoSaving" class="flex items-center gap-1.5 text-xs text-neutral-500">
               <Icon name="ph:spinner" class="w-3.5 h-3.5 animate-spin" />
               Saving...
             </span>
-            <span v-else-if="lastSaved" class="text-xs text-gray-400">
+            <span v-else-if="lastSaved" class="text-xs text-neutral-400">
               Saved {{ formatTimeAgo(lastSaved) }}
             </span>
 
@@ -142,7 +115,7 @@
       <Transition name="slide-right">
         <aside v-if="showTableOfContents && tableOfContents.length > 0" :class="tocSidebarClasses">
           <div class="sticky top-6">
-            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <h3 class="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
               On this page
             </h3>
             <nav class="space-y-1">
@@ -152,7 +125,7 @@
                 type="button"
                 :class="[
                   tocItemClasses,
-                  activeSection === item.id && 'text-gray-900 border-gray-900',
+                  activeSection === item.id && 'text-neutral-900 border-neutral-900',
                 ]"
                 :style="{ paddingLeft: `${8 + item.level * 12}px` }"
                 @click="scrollToSection(item.id)"
@@ -180,16 +153,16 @@
         <aside v-if="showComments && comments.length > 0" :class="commentsSidebarClasses">
           <div class="sticky top-6">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-sm font-semibold text-gray-900">
+              <h3 class="text-sm font-semibold text-neutral-900">
                 Comments
-                <span class="ml-1 text-xs text-gray-500">({{ comments.length }})</span>
+                <span class="ml-1 text-xs text-neutral-500">({{ comments.length }})</span>
               </h3>
               <button
                 type="button"
-                class="p-1 rounded hover:bg-gray-100 transition-colors"
+                class="p-1 rounded hover:bg-neutral-100 transition-colors"
                 @click="showComments = false"
               >
-                <Icon name="ph:x" class="w-4 h-4 text-gray-500" />
+                <Icon name="ph:x" class="w-4 h-4 text-neutral-500" />
               </button>
             </div>
             <div class="space-y-4">
@@ -201,15 +174,15 @@
                 <div class="flex items-start gap-2 mb-2">
                   <SharedAgentAvatar :user="comment.author" size="xs" />
                   <div class="flex-1 min-w-0">
-                    <p class="text-xs font-medium text-gray-700">{{ comment.author.name }}</p>
-                    <p class="text-[10px] text-gray-400">{{ formatTimeAgo(comment.createdAt) }}</p>
+                    <p class="text-xs font-medium text-neutral-700">{{ comment.author.name }}</p>
+                    <p class="text-[10px] text-neutral-400">{{ formatTimeAgo(comment.createdAt) }}</p>
                   </div>
                 </div>
-                <p class="text-sm text-gray-700">{{ comment.content }}</p>
-                <div v-if="comment.replies?.length" class="mt-2 pl-4 border-l border-gray-100 space-y-2">
+                <p class="text-sm text-neutral-700">{{ comment.content }}</p>
+                <div v-if="comment.replies?.length" class="mt-2 pl-4 border-l border-neutral-100 space-y-2">
                   <div v-for="reply in comment.replies" :key="reply.id" class="text-xs">
-                    <span class="font-medium text-gray-700">{{ reply.author.name }}</span>
-                    <span class="text-gray-500 ml-1">{{ reply.content }}</span>
+                    <span class="font-medium text-neutral-700">{{ reply.author.name }}</span>
+                    <span class="text-neutral-500 ml-1">{{ reply.content }}</span>
                   </div>
                 </div>
               </div>
@@ -221,15 +194,15 @@
       <!-- Footer Stats -->
       <footer v-if="showFooter" :class="footerClasses">
         <div class="flex items-center gap-4">
-          <span v-if="document.wordCount" class="flex items-center gap-1.5 text-xs text-gray-500">
+          <span v-if="document.wordCount" class="flex items-center gap-1.5 text-xs text-neutral-500">
             <Icon name="ph:text-aa" class="w-3.5 h-3.5" />
             {{ formatNumber(document.wordCount) }} words
           </span>
-          <span v-if="document.characterCount" class="flex items-center gap-1.5 text-xs text-gray-500">
+          <span v-if="document.characterCount" class="flex items-center gap-1.5 text-xs text-neutral-500">
             <Icon name="ph:text-t" class="w-3.5 h-3.5" />
             {{ formatNumber(document.characterCount) }} characters
           </span>
-          <span v-if="document.readTime" class="flex items-center gap-1.5 text-xs text-gray-500">
+          <span v-if="document.readTime" class="flex items-center gap-1.5 text-xs text-neutral-500">
             <Icon name="ph:book-open" class="w-3.5 h-3.5" />
             {{ document.readTime }} min read
           </span>
@@ -239,7 +212,7 @@
           <button
             v-if="!showComments && comments.length > 0"
             type="button"
-            class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
             @click="showComments = true"
           >
             <Icon name="ph:chat-circle" class="w-3.5 h-3.5" />
@@ -249,7 +222,7 @@
           <button
             v-if="!showTableOfContents && tableOfContents.length > 0"
             type="button"
-            class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
             @click="showTableOfContents = true"
           >
             <Icon name="ph:list" class="w-3.5 h-3.5" />
@@ -261,11 +234,11 @@
 
     <!-- Empty State -->
     <div v-else :class="emptyStateClasses">
-      <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
-        <Icon name="ph:file-dashed" class="w-8 h-8 text-gray-400" />
+      <div class="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
+        <Icon name="ph:file-dashed" class="w-8 h-8 text-neutral-400" />
       </div>
-      <h3 class="text-base font-medium text-gray-700 mb-1">No document selected</h3>
-      <p class="text-sm text-gray-500 text-center max-w-[250px]">
+      <h3 class="text-base font-medium text-neutral-700 mb-1">No document selected</h3>
+      <p class="text-sm text-neutral-500 text-center max-w-[250px]">
         Select a document from the list to view its contents
       </p>
     </div>
@@ -274,21 +247,14 @@
 
 <script setup lang="ts">
 import { h, defineComponent, resolveComponent, ref, computed, watch } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
 import type { Document, User } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import DocsDocViewerHeader from '@/Components/docs/doc-viewer/DocViewerHeader.vue'
+import DocsDocViewerContent from '@/Components/docs/doc-viewer/DocViewerContent.vue'
+import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
 
 type DocViewerSize = 'sm' | 'md' | 'lg'
 
@@ -428,6 +394,14 @@ const insertActions = [
   { id: 'divider', icon: 'ph:minus', label: 'Divider' },
 ]
 
+// Heading dropdown items
+const headingDropdownItems = computed(() => [
+  headingOptions.map(heading => ({
+    label: heading.label,
+    click: () => emit('format', heading.value),
+  })),
+])
+
 // Container classes
 const containerClasses = computed(() => [
   'flex-1 bg-white flex flex-col h-full overflow-hidden relative',
@@ -436,18 +410,18 @@ const containerClasses = computed(() => [
 // Toolbar classes
 const toolbarClasses = computed(() => [
   'sticky top-0 z-20 flex items-center justify-between px-8 py-2',
-  'bg-white border-b border-gray-200',
+  'bg-white border-b border-neutral-200',
 ])
 
 const toolbarButtonClasses = computed(() => [
-  'p-2 rounded-lg text-gray-500 hover:text-gray-700',
-  'hover:bg-gray-100 transition-colors duration-150',
-  'outline-none focus-visible:ring-2 focus-visible:ring-gray-300',
+  'p-2 rounded-lg text-neutral-500 hover:text-neutral-700',
+  'hover:bg-neutral-100 transition-colors duration-150',
+  'outline-none focus-visible:ring-2 focus-visible:ring-neutral-300',
 ])
 
 const saveButtonClasses = computed(() => [
   'px-4 py-2 rounded-lg font-medium text-sm',
-  'bg-gray-900 text-white hover:bg-gray-800',
+  'bg-neutral-900 text-white hover:bg-neutral-800',
   'transition-colors duration-150',
   'disabled:opacity-50 disabled:cursor-not-allowed',
 ])
@@ -455,29 +429,29 @@ const saveButtonClasses = computed(() => [
 // TOC sidebar classes
 const tocSidebarClasses = computed(() => [
   'absolute right-0 top-0 bottom-0 w-64 p-6',
-  'bg-white border-l border-gray-200 overflow-y-auto',
+  'bg-white border-l border-neutral-200 overflow-y-auto',
 ])
 
 const tocItemClasses = computed(() => [
   'block w-full text-left text-sm py-1 pr-2 border-l-2 border-transparent',
-  'text-gray-500 hover:text-gray-700',
+  'text-neutral-500 hover:text-neutral-700',
   'transition-colors duration-150',
 ])
 
 // Comments sidebar classes
 const commentsSidebarClasses = computed(() => [
   'absolute right-0 top-0 bottom-0 w-80 p-6',
-  'bg-white border-l border-gray-200 overflow-y-auto',
+  'bg-white border-l border-neutral-200 overflow-y-auto',
 ])
 
 const commentClasses = computed(() => [
-  'p-3 rounded-lg bg-gray-50 border border-gray-100',
+  'p-3 rounded-lg bg-neutral-50 border border-neutral-100',
 ])
 
 // Footer classes
 const footerClasses = computed(() => [
   'sticky bottom-0 flex items-center justify-between px-8 py-2',
-  'bg-white border-t border-gray-200',
+  'bg-white border-t border-neutral-200',
 ])
 
 // Empty state classes
@@ -487,21 +461,21 @@ const emptyStateClasses = computed(() => [
 
 // Dropdown classes
 const dropdownContentClasses = computed(() => [
-  'z-50 min-w-[160px] bg-white border border-gray-200 rounded-lg',
+  'z-50 min-w-[160px] bg-white border border-neutral-200 rounded-lg',
   'p-1 shadow-lg',
   'animate-in fade-in-0 duration-150',
 ])
 
 const dropdownItemClasses = computed(() => [
   'flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer',
-  'text-gray-700 hover:bg-gray-50',
+  'text-neutral-700 hover:bg-neutral-50',
   'transition-colors duration-150 outline-none',
-  'data-[highlighted]:bg-gray-50',
+  'data-[highlighted]:bg-neutral-50',
 ])
 
 // Tooltip classes
 const tooltipClasses = computed(() => [
-  'z-50 bg-white border border-gray-200 rounded-lg',
+  'z-50 bg-white border border-neutral-200 rounded-lg',
   'px-2 py-1 text-xs shadow-md',
   'animate-in fade-in-0 duration-150',
 ])
@@ -569,7 +543,7 @@ const DocViewerSkeleton = defineComponent({
   setup() {
     return () => h('div', { class: 'flex-1 animate-pulse' }, [
       // Header skeleton
-      h('div', { class: 'border-b border-gray-200 px-8 py-4' }, [
+      h('div', { class: 'border-b border-neutral-200 px-8 py-4' }, [
         h('div', { class: 'flex items-center justify-between' }, [
           h('div', { class: 'space-y-2' }, [
             h(resolveComponent('SharedSkeleton'), { customClass: 'h-8 w-64' }),

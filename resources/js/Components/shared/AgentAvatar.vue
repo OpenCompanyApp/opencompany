@@ -1,61 +1,58 @@
 <template>
-  <TooltipProvider v-if="showTooltip && tooltipContent" :delay-duration="tooltipDelay">
-    <TooltipRoot>
-      <TooltipTrigger as-child>
-        <component
-          :is="interactive ? 'button' : 'div'"
-          :type="interactive ? 'button' : undefined"
-          class="relative outline-none transition-colors duration-150 group"
-          :class="[
-            containerSizes[size],
-            interactive && 'cursor-pointer focus-visible:ring-1 focus-visible:ring-gray-400 rounded-full',
-          ]"
-          @click="handleClick"
-        >
-          <AvatarContent />
-        </component>
-      </TooltipTrigger>
-      <TooltipPortal>
-        <TooltipContent
-          :side="tooltipSide"
-          :side-offset="tooltipOffset"
-          class="z-50 bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-md max-w-64 animate-in fade-in-0 duration-150"
-        >
-          <div class="flex items-center gap-2">
-            <span
-              v-if="user.type === 'agent' && user.status"
-              :class="[
-                'w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white',
-                statusColors[user.status],
-              ]"
-            />
-            <span
-              v-else-if="user.presence"
-              :class="[
-                'w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white',
-                presenceColors[user.presence],
-              ]"
-            />
-            <p class="font-semibold text-gray-900 text-sm">{{ user.name }}</p>
-          </div>
-          <p v-if="user.type === 'agent' && user.agentType" class="text-gray-500 text-xs mt-1 capitalize flex items-center gap-1.5">
-            <Icon :name="agentIcons[user.agentType || 'manager']" class="w-3 h-3" />
-            {{ user.agentType }} Agent
-          </p>
-          <p v-if="user.type === 'agent' && user.currentTask" class="text-gray-400 text-xs mt-2 line-clamp-2 italic">
-            "{{ user.currentTask }}"
-          </p>
-          <p v-if="user.type === 'human' && user.presence" class="text-gray-500 text-xs mt-1 capitalize">
-            {{ user.presence }}
-          </p>
-          <p v-if="user.type === 'human' && customTooltip" class="text-gray-500 text-xs mt-1">
-            {{ customTooltip }}
-          </p>
-          <TooltipArrow class="fill-white" />
-        </TooltipContent>
-      </TooltipPortal>
-    </TooltipRoot>
-  </TooltipProvider>
+  <Tooltip
+    v-if="showTooltip && tooltipContent"
+    :side="tooltipSide"
+    :side-offset="tooltipOffset"
+    :delay-duration="tooltipDelay"
+  >
+    <template #content>
+      <div class="max-w-64">
+        <div class="flex items-center gap-2">
+          <span
+            v-if="user.type === 'agent' && user.status"
+            :class="[
+              'w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white dark:ring-neutral-900',
+              statusColors[user.status],
+            ]"
+          />
+          <span
+            v-else-if="user.presence"
+            :class="[
+              'w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white dark:ring-neutral-900',
+              presenceColors[user.presence],
+            ]"
+          />
+          <p class="font-semibold text-neutral-900 dark:text-white text-sm">{{ user.name }}</p>
+        </div>
+        <p v-if="user.type === 'agent' && user.agentType" class="text-neutral-500 dark:text-neutral-300 text-xs mt-1 capitalize flex items-center gap-1.5">
+          <Icon :name="agentIcons[user.agentType || 'manager']" class="w-3 h-3" />
+          {{ user.agentType }} Agent
+        </p>
+        <p v-if="user.type === 'agent' && user.currentTask" class="text-neutral-400 dark:text-neutral-400 text-xs mt-2 line-clamp-2 italic">
+          "{{ user.currentTask }}"
+        </p>
+        <p v-if="user.type === 'human' && user.presence" class="text-neutral-500 dark:text-neutral-300 text-xs mt-1 capitalize">
+          {{ user.presence }}
+        </p>
+        <p v-if="user.type === 'human' && customTooltip" class="text-neutral-500 dark:text-neutral-300 text-xs mt-1">
+          {{ customTooltip }}
+        </p>
+      </div>
+    </template>
+
+    <component
+      :is="interactive ? 'button' : 'div'"
+      :type="interactive ? 'button' : undefined"
+      class="relative outline-none transition-colors duration-150 group"
+      :class="[
+        containerSizes[size],
+        interactive && 'cursor-pointer focus-visible:ring-1 focus-visible:ring-neutral-400 rounded-full',
+      ]"
+      @click="handleClick"
+    >
+      <AvatarContent />
+    </component>
+  </Tooltip>
 
   <component
     v-else
@@ -64,7 +61,7 @@
     class="relative outline-none transition-colors duration-150 group"
     :class="[
       containerSizes[size],
-      interactive && 'cursor-pointer focus-visible:ring-1 focus-visible:ring-gray-400 rounded-full',
+      interactive && 'cursor-pointer focus-visible:ring-1 focus-visible:ring-neutral-400 rounded-full',
     ]"
     @click="handleClick"
   >
@@ -73,17 +70,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, resolveComponent } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
+import { ref, computed, h } from 'vue'
 import type { User } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
 import {
   containerSizes,
   avatarSizes,
@@ -196,10 +186,10 @@ const emit = defineEmits<{
 }>()
 
 // Color index for human users
-const colorIndex = computed(() => getColorIndex(props.user.name))
+const colorIndex = computed(() => getColorIndex(props.user?.name || ''))
 
 // Initials for human users
-const initials = computed(() => getInitials(props.user.name))
+const initials = computed(() => getInitials(props.user?.name || ''))
 
 // Agent type helper
 const agentType = computed(() => props.user.agentType || 'manager')
@@ -232,7 +222,7 @@ const avatarBgClasses = computed(() => {
       case 'soft':
         return humanSoftColors[colorIndex.value]
       case 'outline':
-        return 'bg-transparent border-2 border-gray-400'
+        return 'bg-transparent border-2 border-neutral-400'
       case 'filled':
       default:
         return humanColors[colorIndex.value]
@@ -279,7 +269,7 @@ const stackedStyles = computed(() => {
 // Badge color classes
 const badgeColorClasses = computed(() => {
   const colors: Record<string, string> = {
-    primary: 'bg-gray-600',
+    primary: 'bg-neutral-600',
     success: 'bg-green-600',
     warning: 'bg-amber-600',
     danger: 'bg-red-600',
@@ -306,6 +296,23 @@ const showImage = computed(() => {
   return props.src && !imageError.value && !props.loading
 })
 
+// Icon class mapping for iconify
+const agentIconClasses: Record<string, string> = {
+  manager: 'i-ph:user-circle-gear',
+  writer: 'i-ph:pencil-simple',
+  analyst: 'i-ph:chart-line-up',
+  creative: 'i-ph:paint-brush',
+  researcher: 'i-ph:magnifying-glass',
+  coder: 'i-ph:code',
+  coordinator: 'i-ph:users-three',
+}
+
+const presenceIconClasses: Record<string, string> = {
+  typing: 'i-ph:cursor-text',
+  editing: 'i-ph:pencil-simple',
+  viewing: 'i-ph:eye',
+}
+
 // Avatar Content Component
 const AvatarContent = () => {
   return h('div', {
@@ -328,9 +335,8 @@ const AvatarContent = () => {
       ],
     }, [
       // Loading state
-      props.loading && h(resolveComponent('Icon'), {
-        name: 'ph:spinner',
-        class: ['animate-spin', iconSizes[props.size], 'text-gray-400'],
+      props.loading && h('span', {
+        class: ['i-ph:spinner animate-spin', iconSizes[props.size], 'text-neutral-400 dark:text-neutral-400'],
       }),
 
       // Image
@@ -349,9 +355,8 @@ const AvatarContent = () => {
       }),
 
       // Agent icon
-      !showImage.value && !props.loading && props.user.type === 'agent' && h(resolveComponent('Icon'), {
-        name: agentIcons[agentType.value],
-        class: [iconSizes[props.size], avatarContentClasses.value],
+      !showImage.value && !props.loading && props.user.type === 'agent' && h('span', {
+        class: [agentIconClasses[agentType.value] || 'i-ph:user-circle-gear', iconSizes[props.size], avatarContentClasses.value],
       }),
 
       // Human initials
@@ -372,7 +377,7 @@ const AvatarContent = () => {
           ? statusColors[props.user.status]
           : props.user.presence
             ? presenceColors[props.user.presence]
-            : 'bg-gray-300', // Default to offline/unknown
+            : 'bg-neutral-300 dark:bg-neutral-600', // Default to offline/unknown
       ],
     }),
 
@@ -396,9 +401,8 @@ const AvatarContent = () => {
         presenceIndicators[props.presence].animation,
       ],
     }, [
-      h(resolveComponent('Icon'), {
-        name: presenceIndicators[props.presence].icon,
-        class: ['w-2.5 h-2.5', presenceIndicators[props.presence].iconColor],
+      h('span', {
+        class: [presenceIconClasses[props.presence] || 'i-ph:cursor-text', 'w-2.5 h-2.5', presenceIndicators[props.presence].iconColor],
       }),
     ]),
   ])

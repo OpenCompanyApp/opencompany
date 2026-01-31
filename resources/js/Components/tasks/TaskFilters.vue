@@ -12,9 +12,9 @@
         <Icon
           name="ph:magnifying-glass"
           :class="[
-            'absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors',
+            'absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors',
             sizeConfig[size].searchIcon,
-            searchFocused && 'text-gray-600'
+            searchFocused && 'text-neutral-600'
           ]"
         />
         <input
@@ -22,10 +22,10 @@
           type="text"
           placeholder="Search tasks..."
           :class="[
-            'bg-white border border-gray-200 rounded-lg pl-9 pr-3 outline-none',
+            'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg pl-9 pr-3 outline-none',
             'transition-colors duration-150',
-            'placeholder:text-gray-400',
-            'focus:border-gray-400 focus:ring-1 focus:ring-gray-200',
+            'placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-neutral-900 dark:text-white',
+            'focus:border-neutral-400 dark:focus:border-neutral-500 focus:ring-1 focus:ring-neutral-200 dark:focus:ring-neutral-700',
             sizeConfig[size].searchInput
           ]"
           @focus="searchFocused = true"
@@ -43,193 +43,48 @@
             :class="[
               'absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full',
               'transition-colors duration-150',
-              'hover:bg-gray-100',
+              'hover:bg-neutral-100 dark:hover:bg-neutral-700',
               sizeConfig[size].clearButton
             ]"
             @click="searchQuery = ''"
           >
-            <Icon name="ph:x" :class="['text-gray-500', sizeConfig[size].clearIcon]" />
+            <Icon name="ph:x" :class="['text-neutral-500 dark:text-neutral-300', sizeConfig[size].clearIcon]" />
           </button>
         </Transition>
       </div>
 
       <!-- Divider -->
-      <div :class="['w-px bg-gray-200', sizeConfig[size].divider]" />
+      <div :class="['w-px bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].divider]" />
 
       <!-- Status Filter -->
-      <SelectRoot v-model="selectedFilter">
-        <SelectTrigger
-          :class="[
-            'inline-flex items-center bg-white border border-gray-200 rounded-lg',
-            'transition-colors duration-150',
-            'hover:border-gray-300',
-            'focus:border-gray-400 focus:ring-1 focus:ring-gray-200',
-            'data-[state=open]:border-gray-400',
-            sizeConfig[size].select
-          ]"
-        >
-          <Icon name="ph:funnel" :class="['text-gray-500 transition-colors duration-150', sizeConfig[size].selectIcon]" />
-          <SelectValue placeholder="All tasks" />
-          <Icon name="ph:caret-down" :class="['text-gray-500 transition-transform duration-150 data-[state=open]:rotate-180', sizeConfig[size].selectIcon]" />
-        </SelectTrigger>
-
-        <SelectPortal>
-          <SelectContent
-            :class="[
-              'bg-white border border-gray-200 rounded-lg shadow-lg z-50',
-              'animate-in fade-in-0 duration-150',
-              sizeConfig[size].selectContent
-            ]"
-            position="popper"
-            :side-offset="8"
-          >
-            <SelectViewport>
-              <SelectItem
-                v-for="option in filterOptions"
-                :key="option.value"
-                :value="option.value"
-                :class="[
-                  'flex items-center rounded-md cursor-pointer outline-none',
-                  'transition-colors duration-150',
-                  'hover:bg-gray-50 data-[highlighted]:bg-gray-50',
-                  sizeConfig[size].selectItem
-                ]"
-              >
-                <SelectItemIndicator class="w-4 shrink-0">
-                  <Icon name="ph:check" :class="['text-gray-900', sizeConfig[size].checkIcon]" />
-                </SelectItemIndicator>
-                <Icon :name="option.icon" :class="['text-gray-500 mr-2', sizeConfig[size].optionIcon]" />
-                <SelectItemText>{{ option.label }}</SelectItemText>
-                <span
-                  v-if="option.count !== undefined"
-                  :class="[
-                    'ml-auto text-gray-400 bg-gray-100 rounded-full',
-                    sizeConfig[size].optionCount
-                  ]"
-                >
-                  {{ option.count }}
-                </span>
-              </SelectItem>
-            </SelectViewport>
-          </SelectContent>
-        </SelectPortal>
-      </SelectRoot>
+      <Select
+        v-model="selectedFilter"
+        :items="filterOptionsForSelect"
+        value-key="value"
+        placeholder="All tasks"
+        icon="ph:funnel"
+        :size="size"
+      />
 
       <!-- Priority Filter -->
-      <SelectRoot v-model="selectedPriority">
-        <SelectTrigger
-          :class="[
-            'inline-flex items-center bg-white border border-gray-200 rounded-lg',
-            'transition-colors duration-150',
-            'hover:border-gray-300',
-            'focus:border-gray-400 focus:ring-1 focus:ring-gray-200',
-            'data-[state=open]:border-gray-400',
-            sizeConfig[size].select
-          ]"
-        >
-          <Icon name="ph:flag" :class="['text-gray-500 transition-colors duration-150', sizeConfig[size].selectIcon]" />
-          <SelectValue placeholder="Any priority" />
-          <Icon name="ph:caret-down" :class="['text-gray-500 transition-transform duration-150 data-[state=open]:rotate-180', sizeConfig[size].selectIcon]" />
-        </SelectTrigger>
-
-        <SelectPortal>
-          <SelectContent
-            :class="[
-              'bg-white border border-gray-200 rounded-lg shadow-lg z-50',
-              'animate-in fade-in-0 duration-150',
-              sizeConfig[size].selectContent
-            ]"
-            position="popper"
-            :side-offset="8"
-          >
-            <SelectViewport>
-              <SelectItem
-                v-for="option in priorityOptions"
-                :key="option.value"
-                :value="option.value"
-                :class="[
-                  'flex items-center rounded-md cursor-pointer outline-none',
-                  'transition-colors duration-150',
-                  'hover:bg-gray-50 data-[highlighted]:bg-gray-50',
-                  sizeConfig[size].selectItem
-                ]"
-              >
-                <SelectItemIndicator class="w-4 shrink-0">
-                  <Icon name="ph:check" :class="['text-gray-900', sizeConfig[size].checkIcon]" />
-                </SelectItemIndicator>
-                <span
-                  v-if="option.color"
-                  :class="['w-2 h-2 rounded-full mr-2', option.color]"
-                />
-                <SelectItemText>{{ option.label }}</SelectItemText>
-              </SelectItem>
-            </SelectViewport>
-          </SelectContent>
-        </SelectPortal>
-      </SelectRoot>
+      <Select
+        v-model="selectedPriority"
+        :items="priorityOptionsForSelect"
+        value-key="value"
+        placeholder="Any priority"
+        icon="ph:flag"
+        :size="size"
+      />
 
       <!-- Assignee Filter -->
-      <SelectRoot v-model="selectedAssignee">
-        <SelectTrigger
-          :class="[
-            'inline-flex items-center bg-white border border-gray-200 rounded-lg',
-            'transition-colors duration-150',
-            'hover:border-gray-300',
-            'focus:border-gray-400 focus:ring-1 focus:ring-gray-200',
-            'data-[state=open]:border-gray-400',
-            sizeConfig[size].select
-          ]"
-        >
-          <Icon name="ph:user" :class="['text-gray-500 transition-colors duration-150', sizeConfig[size].selectIcon]" />
-          <SelectValue placeholder="Anyone" />
-          <Icon name="ph:caret-down" :class="['text-gray-500 transition-transform duration-150 data-[state=open]:rotate-180', sizeConfig[size].selectIcon]" />
-        </SelectTrigger>
-
-        <SelectPortal>
-          <SelectContent
-            :class="[
-              'bg-white border border-gray-200 rounded-lg shadow-lg z-50',
-              'animate-in fade-in-0 duration-150',
-              sizeConfig[size].selectContent
-            ]"
-            position="popper"
-            :side-offset="8"
-          >
-            <SelectViewport>
-              <SelectItem
-                v-for="option in assigneeOptions"
-                :key="option.value"
-                :value="option.value"
-                :class="[
-                  'flex items-center rounded-md cursor-pointer outline-none',
-                  'transition-colors duration-150',
-                  'hover:bg-gray-50 data-[highlighted]:bg-gray-50',
-                  sizeConfig[size].selectItem
-                ]"
-              >
-                <SelectItemIndicator class="w-4 shrink-0">
-                  <Icon name="ph:check" :class="['text-gray-900', sizeConfig[size].checkIcon]" />
-                </SelectItemIndicator>
-                <div
-                  v-if="option.avatar"
-                  :class="[
-                    'rounded-full bg-gray-900 text-white flex items-center justify-center font-medium mr-2',
-                    sizeConfig[size].avatar
-                  ]"
-                >
-                  {{ option.avatar }}
-                </div>
-                <Icon
-                  v-else
-                  name="ph:users"
-                  :class="['text-gray-500 mr-2', sizeConfig[size].optionIcon]"
-                />
-                <SelectItemText>{{ option.label }}</SelectItemText>
-              </SelectItem>
-            </SelectViewport>
-          </SelectContent>
-        </SelectPortal>
-      </SelectRoot>
+      <Select
+        v-model="selectedAssignee"
+        :items="assigneeOptionsForSelect"
+        value-key="value"
+        placeholder="Anyone"
+        icon="ph:user"
+        :size="size"
+      />
 
       <!-- Active Filters -->
       <TransitionGroup
@@ -244,9 +99,9 @@
           v-for="filter in activeFilters"
           :key="filter.key"
           :class="[
-            'flex items-center bg-gray-100 text-gray-700 rounded-lg',
+            'flex items-center bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-lg',
             'transition-colors duration-150',
-            'hover:bg-gray-200',
+            'hover:bg-neutral-200 dark:hover:bg-neutral-700',
             sizeConfig[size].filterChip
           ]"
           @click="clearFilter(filter.key)"
@@ -259,9 +114,9 @@
         <button
           v-if="activeFilters.length > 1"
           :class="[
-            'text-gray-500 font-medium',
+            'text-neutral-500 dark:text-neutral-300 font-medium',
             'transition-colors duration-150',
-            'hover:text-gray-900',
+            'hover:text-neutral-900 dark:hover:text-white',
             sizeConfig[size].clearAll
           ]"
           @click="clearAllFilters"
@@ -274,158 +129,56 @@
     <!-- Right side: View options + Actions -->
     <div :class="['flex items-center', sizeConfig[size].actionsGap]">
       <!-- Sort Options -->
-      <SelectRoot v-model="selectedSort">
-        <SelectTrigger
-          :class="[
-            'inline-flex items-center bg-white border border-gray-200 rounded-lg',
-            'transition-colors duration-150',
-            'hover:border-gray-300',
-            'data-[state=open]:border-gray-400',
-            sizeConfig[size].sortSelect
-          ]"
-        >
-          <Icon name="ph:sort-ascending" :class="['text-gray-500 transition-colors duration-150', sizeConfig[size].selectIcon]" />
-          <SelectValue placeholder="Sort by" />
-        </SelectTrigger>
-
-        <SelectPortal>
-          <SelectContent
-            :class="[
-              'bg-white border border-gray-200 rounded-lg shadow-lg z-50',
-              'animate-in fade-in-0 duration-150',
-              sizeConfig[size].selectContent
-            ]"
-            position="popper"
-            :side-offset="8"
-          >
-            <SelectViewport>
-              <SelectItem
-                v-for="option in sortOptions"
-                :key="option.value"
-                :value="option.value"
-                :class="[
-                  'flex items-center rounded-md cursor-pointer outline-none',
-                  'transition-colors duration-150',
-                  'hover:bg-gray-50 data-[highlighted]:bg-gray-50',
-                  sizeConfig[size].selectItem
-                ]"
-              >
-                <SelectItemIndicator class="w-4 shrink-0">
-                  <Icon name="ph:check" :class="['text-gray-900', sizeConfig[size].checkIcon]" />
-                </SelectItemIndicator>
-                <Icon :name="option.icon" :class="['text-gray-500 mr-2', sizeConfig[size].optionIcon]" />
-                <SelectItemText>{{ option.label }}</SelectItemText>
-              </SelectItem>
-            </SelectViewport>
-          </SelectContent>
-        </SelectPortal>
-      </SelectRoot>
+      <Select
+        v-model="selectedSort"
+        :items="sortOptionsForSelect"
+        value-key="value"
+        placeholder="Sort by"
+        icon="ph:sort-ascending"
+        :size="size"
+      />
 
       <!-- View Toggle -->
       <div
         :class="[
-          'flex items-center bg-gray-100 border border-gray-200 rounded-lg p-1',
+          'flex items-center bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-1',
           sizeConfig[size].viewToggle
         ]"
       >
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot v-for="view in viewOptions" :key="view.value">
-            <TooltipTrigger as-child>
-              <button
-                :class="[
-                  'rounded-md transition-colors duration-150',
-                  sizeConfig[size].viewButton,
-                  selectedView === view.value
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                ]"
-                @click="selectedView = view.value"
-              >
-                <Icon :name="view.icon" :class="sizeConfig[size].viewIcon" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent
-                class="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs shadow-md z-50 animate-in fade-in-0 duration-150"
-                :side-offset="8"
-              >
-                {{ view.label }}
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip
+          v-for="view in viewOptions"
+          :key="view.value"
+          :text="view.label"
+          :delay-open="300"
+        >
+          <button
+            :class="[
+              'rounded-md transition-colors duration-150',
+              sizeConfig[size].viewButton,
+              selectedView === view.value
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-700'
+            ]"
+            @click="selectedView = view.value"
+          >
+            <Icon :name="view.icon" :class="sizeConfig[size].viewIcon" />
+          </button>
+        </Tooltip>
       </div>
 
       <!-- Divider -->
-      <div :class="['w-px bg-gray-200', sizeConfig[size].divider]" />
+      <div :class="['w-px bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].divider]" />
 
       <!-- New Task Button -->
-      <button
-        :class="[
-          'group/newtask flex items-center bg-gray-900 text-white rounded-lg font-medium',
-          'transition-colors duration-150',
-          'hover:bg-gray-800',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2',
-          sizeConfig[size].newTaskButton
-        ]"
-        @click="$emit('newTask')"
-      >
+      <Button :size="size" @click="$emit('newTask')">
         <Icon name="ph:plus-bold" :class="sizeConfig[size].newTaskIcon" />
         <span v-if="!compact">New Task</span>
-      </button>
+      </Button>
 
       <!-- More Options -->
-      <DropdownMenuRoot>
-        <DropdownMenuTrigger
-          :class="[
-            'p-2 rounded-lg bg-white border border-gray-200',
-            'transition-colors duration-150',
-            'hover:border-gray-300 hover:bg-gray-50',
-            'data-[state=open]:border-gray-400',
-            sizeConfig[size].moreButton
-          ]"
-        >
-          <Icon name="ph:dots-three" :class="['text-gray-500', sizeConfig[size].moreIcon]" />
-        </DropdownMenuTrigger>
-
-        <DropdownMenuPortal>
-          <DropdownMenuContent
-            :class="[
-              'bg-white border border-gray-200 rounded-lg shadow-lg z-50',
-              'animate-in fade-in-0 duration-150',
-              sizeConfig[size].dropdownContent
-            ]"
-            :side-offset="8"
-            align="end"
-          >
-            <DropdownMenuItem
-              v-for="action in moreActions"
-              :key="action.id"
-              :class="[
-                'flex items-center rounded-md cursor-pointer outline-none',
-                'transition-colors duration-150',
-                'focus:bg-gray-50',
-                action.variant === 'danger' ? 'text-red-600 hover:bg-red-50' : 'hover:bg-gray-50',
-                sizeConfig[size].dropdownItem
-              ]"
-              @click="$emit('action', action.id)"
-            >
-              <Icon :name="action.icon" :class="['mr-2', sizeConfig[size].dropdownIcon]" />
-              <span>{{ action.label }}</span>
-              <kbd
-                v-if="action.shortcut"
-                :class="[
-                  'ml-auto text-gray-400 bg-gray-100 rounded font-mono',
-                  sizeConfig[size].shortcut
-                ]"
-              >
-                {{ action.shortcut }}
-              </kbd>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenuPortal>
-      </DropdownMenuRoot>
+      <DropdownMenu :items="moreActionsDropdown" :size="size">
+        <Button variant="outline" :size="size" icon="ph:dots-three" />
+      </DropdownMenu>
     </div>
   </div>
 </template>
@@ -433,32 +186,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectPortal,
-  SelectRoot,
-  SelectTrigger,
-  SelectValue,
-  SelectViewport,
-} from 'reka-ui'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from 'reka-ui'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
+import Button from '@/Components/shared/Button.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import Select from '@/Components/shared/Select.vue'
 
 // Types
 type FilterSize = 'sm' | 'md' | 'lg'
@@ -773,7 +504,7 @@ const priorityOptions: PriorityOption[] = [
   { value: 'urgent', label: 'Urgent', color: 'bg-red-500' },
   { value: 'high', label: 'High', color: 'bg-amber-500' },
   { value: 'medium', label: 'Medium', color: 'bg-blue-500' },
-  { value: 'low', label: 'Low', color: 'bg-gray-400' },
+  { value: 'low', label: 'Low', color: 'bg-neutral-400' },
 ]
 
 const assigneeOptions: AssigneeOption[] = [
@@ -801,4 +532,32 @@ const moreActions: MoreAction[] = [
   { id: 'archive', label: 'View archived', icon: 'ph:archive' },
   { id: 'settings', label: 'Board settings', icon: 'ph:gear' },
 ]
+
+// Computed options for USelectMenu
+const filterOptionsForSelect = computed(() =>
+  filterOptions.map(opt => ({ ...opt, icon: opt.icon }))
+)
+
+const priorityOptionsForSelect = computed(() =>
+  priorityOptions.map(opt => ({ ...opt, chip: opt.color ? { color: opt.color } : undefined }))
+)
+
+const assigneeOptionsForSelect = computed(() =>
+  assigneeOptions.map(opt => ({ ...opt }))
+)
+
+const sortOptionsForSelect = computed(() =>
+  sortOptions.map(opt => ({ ...opt, icon: opt.icon }))
+)
+
+// Computed dropdown items for UDropdownMenu
+const moreActionsDropdown = computed(() => [
+  moreActions.map(action => ({
+    label: action.label,
+    icon: action.icon,
+    kbds: action.shortcut ? [action.shortcut] : undefined,
+    color: action.variant === 'danger' ? 'error' as const : undefined,
+    click: () => emit('action', action.id),
+  })),
+])
 </script>

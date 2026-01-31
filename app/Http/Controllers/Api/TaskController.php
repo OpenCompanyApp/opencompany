@@ -12,14 +12,14 @@ class TaskController extends Controller
 {
     public function index()
     {
-        return Task::with(['assignee', 'creator', 'collaborators.user', 'channel'])
+        return Task::with(['assignee', 'creator', 'collaborators', 'channel'])
             ->orderBy('position')
             ->get();
     }
 
     public function show(string $id)
     {
-        return Task::with(['assignee', 'creator', 'collaborators.user', 'channel', 'comments.author'])
+        return Task::with(['assignee', 'creator', 'collaborators', 'channel', 'comments.author'])
             ->findOrFail($id);
     }
 
@@ -51,7 +51,7 @@ class TaskController extends Controller
             }
         }
 
-        return $task->load(['assignee', 'creator', 'collaborators.user', 'channel']);
+        return $task->load(['assignee', 'creator', 'collaborators', 'channel']);
     }
 
     public function update(Request $request, string $id)
@@ -108,7 +108,7 @@ class TaskController extends Controller
             }
         }
 
-        return $task->load(['assignee', 'creator', 'collaborators.user', 'channel']);
+        return $task->load(['assignee', 'creator', 'collaborators', 'channel']);
     }
 
     public function destroy(string $id)

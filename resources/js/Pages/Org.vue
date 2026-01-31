@@ -1,47 +1,39 @@
 <template>
-  <div class="min-h-screen bg-white p-6">
+  <div class="min-h-screen bg-white dark:bg-neutral-900 p-6">
     <div class="max-w-7xl mx-auto">
       <!-- Header -->
       <div class="flex items-center justify-between mb-8">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Organization</h1>
-          <p class="text-sm text-gray-500 mt-1">
+          <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Organization</h1>
+          <p class="text-sm text-neutral-500 dark:text-neutral-300 mt-1">
             View and manage your organizational hierarchy
           </p>
         </div>
-        <div class="flex items-center gap-3">
-          <button
-            type="button"
-            :class="[
-              'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-              viewMode === 'tree'
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-50 text-gray-500 hover:text-gray-900',
-            ]"
+        <div class="flex items-center gap-2">
+          <Button
+            :variant="viewMode === 'tree' ? 'primary' : 'secondary'"
+            size="sm"
             @click="viewMode = 'tree'"
           >
-            <Icon name="ph:tree-structure" class="w-4 h-4 mr-1.5 inline" />
+            <Icon name="ph:tree-structure" class="w-4 h-4 mr-1.5" />
             Tree View
-          </button>
-          <button
-            type="button"
-            :class="[
-              'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-              viewMode === 'chart'
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-50 text-gray-500 hover:text-gray-900',
-            ]"
+          </Button>
+          <Button
+            :variant="viewMode === 'chart' ? 'primary' : 'secondary'"
+            size="sm"
             @click="viewMode = 'chart'"
           >
-            <Icon name="ph:chart-bar-horizontal" class="w-4 h-4 mr-1.5 inline" />
+            <Icon name="ph:chart-bar-horizontal" class="w-4 h-4 mr-1.5" />
             Chart View
-          </button>
+          </Button>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-20">
-        <Icon name="ph:spinner" class="w-8 h-8 animate-spin text-gray-900" />
+      <div v-if="loading" class="py-8">
+        <div class="space-y-4">
+          <Skeleton v-for="i in 4" :key="i" preset="avatar-text" />
+        </div>
       </div>
 
       <!-- Tree View -->
@@ -69,51 +61,27 @@
       </div>
 
       <!-- Stats -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-gray-200">
-        <div class="bg-gray-50 rounded-xl p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <Icon name="ph:users" class="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.totalMembers }}</p>
-              <p class="text-xs text-gray-500">Total Members</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-gray-50 rounded-xl p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-              <Icon name="ph:user" class="w-5 h-5 text-green-400" />
-            </div>
-            <div>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.humans }}</p>
-              <p class="text-xs text-gray-500">Humans</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-gray-50 rounded-xl p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <Icon name="ph:robot" class="w-5 h-5 text-purple-400" />
-            </div>
-            <div>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.agents }}</p>
-              <p class="text-xs text-gray-500">Agents</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-gray-50 rounded-xl p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-              <Icon name="ph:activity" class="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.activeAgents }}</p>
-              <p class="text-xs text-gray-500">Active Agents</p>
-            </div>
-          </div>
-        </div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-neutral-200 dark:border-neutral-700">
+        <StatCard
+          label="Total Members"
+          :value="stats.totalMembers"
+          icon="ph:users"
+        />
+        <StatCard
+          label="Humans"
+          :value="stats.humans"
+          icon="ph:user"
+        />
+        <StatCard
+          label="Agents"
+          :value="stats.agents"
+          icon="ph:robot"
+        />
+        <StatCard
+          label="Active Agents"
+          :value="stats.activeAgents"
+          icon="ph:activity"
+        />
       </div>
     </div>
   </div>
@@ -121,6 +89,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
+import Skeleton from '@/Components/shared/Skeleton.vue'
+import StatCard from '@/Components/shared/StatCard.vue'
 import OrgTreeNode from '@/Components/org/TreeNode.vue'
 import OrgChartNode from '@/Components/org/ChartNode.vue'
 
@@ -165,11 +137,48 @@ const stats = computed(() => {
 const fetchHierarchy = async () => {
   loading.value = true
   try {
-    const response = await fetch('/api/org/hierarchy')
-    const data = await response.json()
-    hierarchy.value = data
+    const response = await fetch('/api/users')
+    const users = await response.json()
+
+    // Build hierarchy from flat user list
+    // Users with managerId = null are root nodes
+    const buildHierarchy = (users: any[]): OrgNode[] => {
+      const nodeMap = new Map<string, OrgNode>()
+
+      // First pass: create all nodes
+      users.forEach((user: any) => {
+        nodeMap.set(user.id, {
+          id: user.id,
+          name: user.name,
+          avatar: user.avatar || null,
+          type: user.type || (user.isAI ? 'agent' : 'human'),
+          agentType: user.agentType || user.role || null,
+          status: user.status || null,
+          currentTask: user.currentTask || null,
+          email: user.email || null,
+          isTemporary: user.isTemporary || false,
+          managerId: user.managerId || null,
+          children: [],
+        })
+      })
+
+      // Second pass: build tree
+      const roots: OrgNode[] = []
+      nodeMap.forEach((node) => {
+        if (node.managerId && nodeMap.has(node.managerId)) {
+          nodeMap.get(node.managerId)!.children.push(node)
+        } else {
+          roots.push(node)
+        }
+      })
+
+      return roots
+    }
+
+    hierarchy.value = buildHierarchy(users)
   } catch (error) {
     console.error('Failed to fetch hierarchy:', error)
+    hierarchy.value = []
   } finally {
     loading.value = false
   }

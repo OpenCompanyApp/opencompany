@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Channel;
+use App\Models\DirectMessage;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageReaction;
+use App\Models\User;
+use App\Services\AgentChatService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -37,6 +41,7 @@ class MessageController extends Controller
             'channel_id' => $request->input('channelId'),
             'author_id' => $request->input('authorId'),
             'reply_to_id' => $request->input('replyToId'),
+            'timestamp' => now(),
         ]);
 
         // Attach any pre-uploaded attachments
@@ -49,7 +54,63 @@ class MessageController extends Controller
         Channel::where('id', $request->input('channelId'))
             ->update(['last_message_at' => now()]);
 
+        // Broadcast user's message
+        broadcast(new MessageSent($message))->toOthers();
+
+        // Check if this is a DM with an agent and respond
+        $this->handleAgentResponse($message);
+
         return $message->load(['author', 'reactions.user', 'attachments', 'replyTo.author']);
+    }
+
+    private function handleAgentResponse(Message $message): void
+    {
+        // Check if this is a DM channel
+        $channel = Channel::find($message->channel_id);
+        if ($channel->type !== 'direct') {
+            return;
+        }
+
+        // Find the DirectMessage record
+        $dm = DirectMessage::where('channel_id', $message->channel_id)->first();
+        if (!$dm) {
+            return;
+        }
+
+        // Determine the other participant
+        $otherUserId = $dm->user1_id === $message->author_id
+            ? $dm->user2_id
+            : $dm->user1_id;
+
+        $otherUser = User::find($otherUserId);
+
+        // Check if other user is an agent
+        if ($otherUser->type !== 'agent') {
+            return;
+        }
+
+        // Generate agent response
+        $responseText = app(AgentChatService::class)
+            ->respond($otherUser, $message->channel_id, $message->content);
+
+        // Create agent's response message
+        $agentMessage = Message::create([
+            'id' => Str::uuid()->toString(),
+            'content' => $responseText,
+            'channel_id' => $message->channel_id,
+            'author_id' => $otherUser->id,
+            'timestamp' => now(),
+        ]);
+
+        // Update channel's last_message_at
+        Channel::where('id', $message->channel_id)
+            ->update(['last_message_at' => now()]);
+
+        // Update DM's last_message_at
+        $dm->update(['last_message_at' => now()]);
+
+        // Broadcast agent's response
+        broadcast(new MessageSent($agentMessage));
     }
 
     public function destroy(string $id)
@@ -91,7 +152,7 @@ class MessageController extends Controller
             ->get();
 
         return [
-            'parent' => $parentMessage,
+            'parentMessage' => $parentMessage,
             'replies' => $replies,
         ];
     }

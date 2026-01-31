@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'flex items-center justify-between border-t border-gray-200 bg-gray-50',
+      'flex items-center justify-between border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800',
       sizeConfig[size].container
     ]"
   >
@@ -11,7 +11,7 @@
       <div class="flex items-center gap-1 cursor-default">
         <kbd
           :class="[
-            'bg-white border border-gray-200 rounded font-mono text-gray-500',
+            'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded font-mono text-neutral-500 dark:text-neutral-300',
             sizeConfig[size].kbd
           ]"
         >
@@ -19,64 +19,64 @@
         </kbd>
         <kbd
           :class="[
-            'bg-white border border-gray-200 rounded font-mono text-gray-500',
+            'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded font-mono text-neutral-500 dark:text-neutral-300',
             sizeConfig[size].kbd
           ]"
         >
           down
         </kbd>
-        <span :class="['text-gray-400', sizeConfig[size].hintText]">
+        <span :class="['text-neutral-400 dark:text-neutral-400', sizeConfig[size].hintText]">
           navigate
         </span>
       </div>
 
-      <div :class="['w-px h-4 bg-gray-200', sizeConfig[size].divider]" />
+      <div :class="['w-px h-4 bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].divider]" />
 
       <!-- Select hint -->
       <div class="flex items-center gap-1 cursor-default">
         <kbd
           :class="[
-            'bg-white border border-gray-200 rounded font-mono text-gray-500',
+            'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded font-mono text-neutral-500 dark:text-neutral-300',
             sizeConfig[size].kbd
           ]"
         >
           enter
         </kbd>
-        <span :class="['text-gray-400', sizeConfig[size].hintText]">
+        <span :class="['text-neutral-400 dark:text-neutral-400', sizeConfig[size].hintText]">
           select
         </span>
       </div>
 
-      <div :class="['w-px h-4 bg-gray-200', sizeConfig[size].divider]" />
+      <div :class="['w-px h-4 bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].divider]" />
 
       <!-- Close hint -->
       <div class="flex items-center gap-1 cursor-default">
         <kbd
           :class="[
-            'bg-white border border-gray-200 rounded font-mono text-gray-500',
+            'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded font-mono text-neutral-500 dark:text-neutral-300',
             sizeConfig[size].kbd
           ]"
         >
           esc
         </kbd>
-        <span :class="['text-gray-400', sizeConfig[size].hintText]">
+        <span :class="['text-neutral-400 dark:text-neutral-400', sizeConfig[size].hintText]">
           close
         </span>
       </div>
 
       <!-- Tab hint -->
       <template v-if="showTabHint">
-        <div :class="['w-px h-4 bg-gray-200', sizeConfig[size].divider]" />
+        <div :class="['w-px h-4 bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].divider]" />
         <div class="flex items-center gap-1 cursor-default">
           <kbd
             :class="[
-              'bg-white border border-gray-200 rounded font-mono text-gray-500',
+              'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded font-mono text-neutral-500 dark:text-neutral-300',
               sizeConfig[size].kbd
             ]"
           >
             tab
           </kbd>
-          <span :class="['text-gray-400', sizeConfig[size].hintText]">
+          <span :class="['text-neutral-400 dark:text-neutral-400', sizeConfig[size].hintText]">
             autocomplete
           </span>
         </div>
@@ -94,53 +94,30 @@
         v-if="showActions && selectedCount > 0"
         class="flex items-center gap-2"
       >
-        <span :class="['text-gray-900 font-medium', sizeConfig[size].selectedText]">
+        <span :class="['text-neutral-900 dark:text-white font-medium', sizeConfig[size].selectedText]">
           {{ selectedCount }} selected
         </span>
         <button
           :class="[
-            'text-gray-500 hover:text-gray-900 transition-colors duration-150',
+            'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors duration-150',
             sizeConfig[size].actionButton
           ]"
           @click="$emit('clearSelection')"
         >
           Clear
         </button>
-        <div class="w-px h-4 bg-gray-200" />
-        <DropdownMenuRoot>
-          <DropdownMenuTrigger
+        <div class="w-px h-4 bg-neutral-200 dark:bg-neutral-700" />
+        <DropdownMenu :items="dropdownItems">
+          <button
             :class="[
-              'group/actions flex items-center gap-1 text-gray-600 hover:text-gray-900 transition-colors duration-150',
+              'group/actions flex items-center gap-1 text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-colors duration-150',
               sizeConfig[size].actionButton
             ]"
           >
             <span>Actions</span>
             <Icon name="ph:caret-down" class="w-3 h-3 transition-transform duration-150 group-data-[state=open]/actions:rotate-180" />
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              class="bg-white border border-gray-200 rounded-lg p-1.5 shadow-md z-50 animate-in fade-in-0 duration-150 min-w-36"
-              :side-offset="8"
-              side="top"
-            >
-              <DropdownMenuItem
-                v-for="action in bulkActions"
-                :key="action.id"
-                class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer outline-none transition-colors duration-150 text-sm focus:bg-gray-50"
-                @click="$emit('bulkAction', action.id)"
-              >
-                <Icon :name="action.icon" class="w-4 h-4 text-gray-500" />
-                <span class="text-gray-900">{{ action.label }}</span>
-                <kbd
-                  v-if="action.shortcut"
-                  class="ml-auto text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-mono"
-                >
-                  {{ action.shortcut }}
-                </kbd>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+          </button>
+        </DropdownMenu>
       </div>
     </Transition>
 
@@ -150,7 +127,7 @@
       <span
         v-if="showVersion"
         :class="[
-          'text-gray-400 bg-gray-100 rounded-full',
+          'text-neutral-400 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-700 rounded-full',
           sizeConfig[size].version
         ]"
       >
@@ -162,13 +139,13 @@
         <div
           v-if="showLogo"
           :class="[
-            'rounded bg-gray-900 flex items-center justify-center',
+            'rounded bg-neutral-900 dark:bg-white flex items-center justify-center',
             sizeConfig[size].logo
           ]"
         >
-          <Icon name="ph:lightning-fill" :class="['text-white', sizeConfig[size].logoIcon]" />
+          <Icon name="ph:lightning-fill" :class="['text-white dark:text-neutral-900', sizeConfig[size].logoIcon]" />
         </div>
-        <span :class="['text-gray-400 font-medium', sizeConfig[size].title]">
+        <span :class="['text-neutral-400 dark:text-neutral-400 font-medium', sizeConfig[size].title]">
           {{ title }}
         </span>
       </div>
@@ -177,14 +154,9 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from 'reka-ui'
+import { computed } from 'vue'
+import Icon from '@/Components/shared/Icon.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 
 // Types
 type FooterSize = 'sm' | 'md' | 'lg'
@@ -232,7 +204,7 @@ withDefaults(defineProps<{
 })
 
 // Emits
-defineEmits<{
+const emit = defineEmits<{
   clearSelection: []
   bulkAction: [actionId: string]
 }>()
@@ -287,4 +259,14 @@ const bulkActions: BulkAction[] = [
   { id: 'share', label: 'Share', icon: 'ph:share', shortcut: 'Cmd+S' },
   { id: 'archive', label: 'Archive', icon: 'ph:archive' },
 ]
+
+// Dropdown items for UDropdownMenu
+const dropdownItems = computed(() => [
+  bulkActions.map(action => ({
+    label: action.label,
+    icon: action.icon,
+    kbds: action.shortcut ? action.shortcut.split('+') : undefined,
+    click: () => emit('bulkAction', action.id),
+  })),
+])
 </script>

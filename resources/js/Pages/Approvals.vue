@@ -1,165 +1,104 @@
 <template>
-  <div class="min-h-screen bg-white p-6">
-    <div class="max-w-4xl mx-auto">
+  <div class="h-full overflow-y-auto">
+    <div class="max-w-3xl mx-auto p-6">
       <!-- Header -->
-      <div class="flex items-center justify-between mb-8">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Approvals</h1>
-          <p class="text-sm text-gray-500 mt-1">
-            Review and manage pending requests from agents
-          </p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button
-            v-for="filter in filters"
-            :key="filter.value"
-            type="button"
-            :class="[
-              'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-              activeFilter === filter.value
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-50 text-gray-500 hover:text-gray-900',
-            ]"
-            @click="activeFilter = filter.value"
-          >
-            {{ filter.label }}
-            <span
-              v-if="filter.count > 0"
-              :class="[
-                'ml-1.5 px-1.5 py-0.5 rounded text-xs',
-                activeFilter === filter.value ? 'bg-white/20' : 'bg-white',
-              ]"
-            >
-              {{ filter.count }}
-            </span>
-          </button>
-        </div>
+      <header class="mb-6">
+        <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Approvals</h1>
+        <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+          Review and manage pending requests
+        </p>
+      </header>
+
+      <!-- Filters -->
+      <div class="flex items-center gap-1 mb-6">
+        <button
+          v-for="filter in filters"
+          :key="filter.value"
+          type="button"
+          :class="[
+            'px-3 py-1.5 rounded-lg text-sm transition-colors duration-150',
+            activeFilter === filter.value
+              ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+              : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800',
+          ]"
+          @click="activeFilter = filter.value"
+        >
+          {{ filter.label }}
+          <span v-if="filter.count > 0" class="ml-1 opacity-60">{{ filter.count }}</span>
+        </button>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="space-y-4">
-        <SharedSkeleton v-for="i in 3" :key="i" custom-class="h-32 rounded-xl" />
+      <div v-if="loading" class="space-y-3">
+        <div v-for="i in 3" :key="i" class="h-20 rounded-lg bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
       </div>
 
       <!-- Empty State -->
-      <div
-        v-else-if="filteredApprovals.length === 0"
-        class="flex flex-col items-center justify-center py-20 text-center"
-      >
-        <div class="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
-          <Icon name="ph:check-circle" class="w-8 h-8 text-gray-500" />
-        </div>
-        <h2 class="text-lg font-semibold text-gray-900">
-          {{ activeFilter === 'pending' ? 'All caught up!' : 'No approvals found' }}
-        </h2>
-        <p class="text-sm text-gray-500 mt-1">
-          {{ activeFilter === 'pending' ? 'There are no pending requests to review.' : 'No approvals match this filter.' }}
+      <div v-else-if="filteredApprovals.length === 0" class="py-16 text-center">
+        <Icon name="ph:check-circle" class="w-10 h-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+        <p class="text-sm text-neutral-500 dark:text-neutral-400">
+          {{ activeFilter === 'pending' ? 'All caught up' : 'No approvals found' }}
         </p>
       </div>
 
       <!-- Approvals List -->
-      <div v-else class="space-y-4">
+      <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
         <div
           v-for="approval in filteredApprovals"
           :key="approval.id"
-          :class="[
-            'bg-gray-50 rounded-xl p-5 border transition-all',
-            approval.status === 'pending'
-              ? 'border-gray-200 shadow-lg shadow-gray-50'
-              : 'border-gray-200',
-          ]"
+          class="px-4 py-4"
         >
-          <!-- Header -->
-          <div class="flex items-start justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <div
+          <div class="flex items-start gap-3">
+            <!-- Content -->
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ approval.title }}</p>
+              <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                {{ approval.requester?.name || 'Unknown' }}
+                <span v-if="formatTimeAgo(approval.createdAt)"> · {{ formatTimeAgo(approval.createdAt) }}</span>
+              </p>
+              <p v-if="approval.description" class="text-sm text-neutral-500 dark:text-neutral-400 mt-2 line-clamp-2">
+                {{ approval.description }}
+              </p>
+              <p v-if="approval.amount" class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mt-2">
+                {{ formatCurrency(approval.amount) }}
+              </p>
+
+              <!-- Responded info -->
+              <p v-if="approval.status !== 'pending' && approval.respondedBy" class="text-xs text-neutral-400 dark:text-neutral-500 mt-2">
+                {{ approval.status === 'approved' ? 'Approved' : 'Rejected' }} by {{ approval.respondedBy.name }}
+              </p>
+            </div>
+
+            <!-- Status or Actions -->
+            <div class="shrink-0">
+              <div v-if="approval.status === 'pending'" class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="px-3 py-1.5 text-xs font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors duration-150 disabled:opacity-50"
+                  :disabled="processing === approval.id"
+                  @click="handleApproval(approval.id, 'approved')"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-1.5 text-xs font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150 disabled:opacity-50"
+                  :disabled="processing === approval.id"
+                  @click="handleApproval(approval.id, 'rejected')"
+                >
+                  Reject
+                </button>
+              </div>
+              <span
+                v-else
                 :class="[
-                  'w-10 h-10 rounded-xl flex items-center justify-center',
-                  typeConfig[approval.type]?.bgClass || 'bg-gray-500/20',
+                  'text-xs',
+                  approval.status === 'approved' ? 'text-green-600 dark:text-green-400' : 'text-neutral-400 dark:text-neutral-500',
                 ]"
               >
-                <Icon
-                  :name="typeConfig[approval.type]?.icon || 'ph:question'"
-                  :class="['w-5 h-5', typeConfig[approval.type]?.colorClass || 'text-gray-400']"
-                />
-              </div>
-              <div>
-                <h3 class="font-semibold text-gray-900">{{ approval.title }}</h3>
-                <p class="text-xs text-gray-500">
-                  Requested by
-                  <Link
-                    v-if="approval.requester"
-                    :href="`/profile/${approval.requesterId}`"
-                    class="hover:text-gray-900 transition-colors"
-                  >
-                    {{ approval.requester.name }}
-                  </Link>
-                  &bull; {{ formatTimeAgo(approval.createdAt) }}
-                </p>
-              </div>
+                {{ approval.status === 'approved' ? 'Approved' : 'Rejected' }}
+              </span>
             </div>
-            <span
-              :class="[
-                'px-2 py-1 rounded-lg text-xs font-medium',
-                statusConfig[approval.status]?.class || 'bg-gray-500/20 text-gray-400',
-              ]"
-            >
-              {{ statusConfig[approval.status]?.label || approval.status }}
-            </span>
-          </div>
-
-          <!-- Description -->
-          <p class="text-sm text-gray-500 mb-4">{{ approval.description }}</p>
-
-          <!-- Amount (for budget requests) -->
-          <div
-            v-if="approval.type === 'budget' && approval.amount"
-            class="flex items-center gap-2 mb-4 p-3 rounded-lg bg-white"
-          >
-            <Icon name="ph:coins" class="w-5 h-5 text-amber-400" />
-            <span class="text-sm text-gray-500">Requested amount:</span>
-            <span class="font-semibold text-gray-900">{{ formatCurrency(approval.amount) }}</span>
-          </div>
-
-          <!-- Responded info (for non-pending) -->
-          <div
-            v-if="approval.status !== 'pending' && approval.respondedBy"
-            class="flex items-center gap-2 mb-4 p-3 rounded-lg bg-white text-sm"
-          >
-            <span class="text-gray-500">
-              {{ approval.status === 'approved' ? 'Approved' : 'Rejected' }} by
-            </span>
-            <Link :href="`/profile/${approval.respondedById}`" class="font-medium text-gray-900 hover:text-gray-900 transition-colors">
-              {{ approval.respondedBy.name }}
-            </Link>
-            <span class="text-gray-500">
-              {{ formatTimeAgo(approval.respondedAt) }}
-            </span>
-          </div>
-
-          <!-- Actions (for pending) -->
-          <div v-if="approval.status === 'pending'" class="flex items-center gap-3 pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium transition-colors"
-              :disabled="processing === approval.id"
-              @click="handleApproval(approval.id, 'approved')"
-            >
-              <Icon
-                :name="processing === approval.id ? 'ph:spinner' : 'ph:check'"
-                :class="['w-5 h-5', processing === approval.id && 'animate-spin']"
-              />
-              Approve
-            </button>
-            <button
-              type="button"
-              class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 font-medium transition-colors"
-              :disabled="processing === approval.id"
-              @click="handleApproval(approval.id, 'rejected')"
-            >
-              <Icon name="ph:x" class="w-5 h-5" />
-              Reject
-            </button>
           </div>
         </div>
       </div>
@@ -169,19 +108,16 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Link } from '@inertiajs/vue3'
-import SharedSkeleton from '@/Components/shared/Skeleton.vue'
+import Icon from '@/Components/shared/Icon.vue'
 
 interface User {
   id: string
   name: string
-  type: 'human' | 'agent'
-  agentType?: string
 }
 
 interface ApprovalRequest {
   id: string
-  type: 'budget' | 'action' | 'spawn' | 'access'
+  type: string
   title: string
   description: string
   requesterId: string
@@ -198,19 +134,6 @@ const activeFilter = ref<'all' | 'pending' | 'approved' | 'rejected'>('pending')
 const loading = ref(true)
 const processing = ref<string | null>(null)
 const approvals = ref<ApprovalRequest[]>([])
-
-const typeConfig: Record<string, { icon: string; bgClass: string; colorClass: string }> = {
-  budget: { icon: 'ph:coins', bgClass: 'bg-amber-500/20', colorClass: 'text-amber-400' },
-  action: { icon: 'ph:play-circle', bgClass: 'bg-blue-500/20', colorClass: 'text-blue-400' },
-  spawn: { icon: 'ph:robot', bgClass: 'bg-purple-500/20', colorClass: 'text-purple-400' },
-  access: { icon: 'ph:key', bgClass: 'bg-green-500/20', colorClass: 'text-green-400' },
-}
-
-const statusConfig: Record<string, { label: string; class: string }> = {
-  pending: { label: 'Pending', class: 'bg-amber-500/20 text-amber-400' },
-  approved: { label: 'Approved', class: 'bg-green-500/20 text-green-400' },
-  rejected: { label: 'Rejected', class: 'bg-red-500/20 text-red-400' },
-}
 
 const filters = computed(() => [
   { value: 'all' as const, label: 'All', count: approvals.value.length },
@@ -253,19 +176,18 @@ const handleApproval = async (id: string, status: 'approved' | 'rejected') => {
   }
 }
 
-const formatTimeAgo = (dateString: string) => {
+const formatTimeAgo = (dateString: string): string => {
   const date = new Date(dateString)
-  const now = new Date()
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-  if (seconds < 60) return 'Just now'
+  if (isNaN(date.getTime())) return ''
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return 'just now'
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
   return date.toLocaleDateString()
 }
 
-const formatCurrency = (amount: number) => {
+const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',

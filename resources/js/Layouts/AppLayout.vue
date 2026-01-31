@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
+import { TooltipProvider } from 'reka-ui'
 import AppSidebar from '@/Components/layout/AppSidebar.vue'
 import CommandPalette from '@/Components/layout/CommandPalette.vue'
 import RealtimeProvider from '@/Components/RealtimeProvider.vue'
@@ -26,13 +27,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <RealtimeProvider>
-    <div class="flex h-screen bg-white text-gray-900 overflow-hidden">
-      <AppSidebar />
-      <main class="flex-1 flex flex-col overflow-hidden">
-        <slot />
-      </main>
-      <CommandPalette />
-    </div>
-  </RealtimeProvider>
+  <TooltipProvider :delay-duration="300">
+    <RealtimeProvider>
+      <div class="flex h-screen bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white overflow-hidden">
+        <AppSidebar />
+        <main class="flex-1 flex flex-col overflow-hidden">
+          <slot />
+        </main>
+        <CommandPalette />
+      </div>
+    </RealtimeProvider>
+  </TooltipProvider>
 </template>

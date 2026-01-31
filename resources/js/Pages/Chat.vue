@@ -21,6 +21,7 @@
       @send="handleSendMessage"
       @react="handleReaction"
       @open-thread="handleOpenThread"
+      @close-thread="activeThread = null"
       @thread-reply="handleThreadReply"
       @pin="handlePinMessage"
       @typing="handleTyping"
@@ -80,7 +81,8 @@ const showCreateChannelModal = ref(false)
 // Channels data
 const channels = ref<Channel[]>([])
 const refreshChannels = async () => {
-  const result = await fetchChannels()
+  const result = fetchChannels()
+  await result.promise
   channels.value = result.data.value ?? []
 }
 
@@ -114,7 +116,8 @@ watch(() => {
 const messages = ref<Message[]>([])
 const refreshMessages = async () => {
   if (selectedChannel.value) {
-    const result = await fetchMessages(selectedChannel.value.id)
+    const result = fetchMessages(selectedChannel.value.id)
+    await result.promise
     messages.value = result.data.value ?? []
   }
 }
@@ -148,8 +151,9 @@ const handleTyping = () => {
 
 const refreshPinnedMessages = async () => {
   if (selectedChannel.value) {
-    const { data } = await fetchPinnedMessages(selectedChannel.value.id)
-    pinnedMessagesData.value = data.value ?? []
+    const result = fetchPinnedMessages(selectedChannel.value.id)
+    await result.promise
+    pinnedMessagesData.value = result.data.value ?? []
   }
 }
 
@@ -165,7 +169,9 @@ watch(selectedChannel, async (channel) => {
 
 const channelMessages = computed<Message[]>(() => {
   if (!selectedChannel.value) return []
-  return messages.value.filter(m => m.channelId === selectedChannel.value?.id)
+  // Messages are already filtered by channelId on the API side
+  // Use channel_id (snake_case) since that's what Laravel returns
+  return messages.value.filter(m => (m as any).channel_id === selectedChannel.value?.id || m.channelId === selectedChannel.value?.id)
 })
 
 // Get first few members as viewers
@@ -233,11 +239,12 @@ const handleReaction = async (message: Message, emoji: string) => {
 
 const handleOpenThread = async (message: Message) => {
   try {
-    const { data } = await fetchMessageThread(message.id)
-    if (data.value) {
+    const result = fetchMessageThread(message.id)
+    await result.promise
+    if (result.data.value) {
       activeThread.value = {
-        parentMessage: data.value.parentMessage as Message,
-        replies: data.value.replies as Message[],
+        parentMessage: result.data.value.parentMessage as Message,
+        replies: result.data.value.replies as Message[],
       }
     }
   } catch (error) {

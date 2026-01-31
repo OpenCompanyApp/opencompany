@@ -1,6 +1,5 @@
 <template>
-  <TooltipProvider :delay-duration="400">
-    <component
+  <component
       :is="draggable ? 'div' : 'button'"
       :class="rowClasses"
       :style="rowStyles"
@@ -96,13 +95,13 @@
             v-if="isLocked"
             class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white flex items-center justify-center"
           >
-            <Icon name="ph:lock-fill" class="w-2 h-2 text-gray-500" />
+            <Icon name="ph:lock-fill" class="w-2 h-2 text-neutral-500" />
           </div>
           <div
             v-else-if="isShared"
             class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white flex items-center justify-center"
           >
-            <Icon name="ph:users-fill" class="w-2 h-2 text-gray-500" />
+            <Icon name="ph:users-fill" class="w-2 h-2 text-neutral-500" />
           </div>
         </Transition>
       </div>
@@ -114,7 +113,7 @@
           <!-- Path (optional) -->
           <span
             v-if="showPath && path"
-            class="text-gray-400 shrink-0"
+            class="text-neutral-400 shrink-0"
             :class="metaTextClasses"
           >
             {{ path }} /
@@ -126,7 +125,7 @@
               <template v-for="(part, index) in highlightedTitle" :key="index">
                 <mark
                   v-if="part.highlight"
-                  class="bg-yellow-100 text-gray-900 rounded px-0.5"
+                  class="bg-yellow-100 text-neutral-900 rounded px-0.5"
                 >{{ part.text }}</mark>
                 <span v-else>{{ part.text }}</span>
               </template>
@@ -136,27 +135,17 @@
 
           <!-- Badges -->
           <div v-if="hasBadges" class="flex items-center gap-1 shrink-0">
-            <TooltipRoot v-if="isPinned">
-              <TooltipTrigger as-child>
-                <span class="flex">
-                  <Icon name="ph:push-pin-fill" class="w-3 h-3 text-gray-500" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" :side-offset="4">
-                <p class="text-xs">Pinned</p>
-              </TooltipContent>
-            </TooltipRoot>
+            <Tooltip v-if="isPinned" text="Pinned" :delay-open="400">
+              <span class="flex">
+                <Icon name="ph:push-pin-fill" class="w-3 h-3 text-neutral-500" />
+              </span>
+            </Tooltip>
 
-            <TooltipRoot v-if="isStarred">
-              <TooltipTrigger as-child>
-                <span class="flex">
-                  <Icon name="ph:star-fill" class="w-3 h-3 text-gray-500" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" :side-offset="4">
-                <p class="text-xs">Starred</p>
-              </TooltipContent>
-            </TooltipRoot>
+            <Tooltip v-if="isStarred" text="Starred" :delay-open="400">
+              <span class="flex">
+                <Icon name="ph:star-fill" class="w-3 h-3 text-neutral-500" />
+              </span>
+            </Tooltip>
           </div>
         </div>
 
@@ -178,18 +167,18 @@
 
           <!-- Tags -->
           <template v-if="tags && tags.length > 0">
-            <span class="text-gray-200">&middot;</span>
+            <span class="text-neutral-200">&middot;</span>
             <div class="flex items-center gap-1">
               <span
                 v-for="tag in displayTags"
                 :key="tag"
-                class="px-1.5 py-0.5 rounded-md text-[10px] bg-gray-100 text-gray-500"
+                class="px-1.5 py-0.5 rounded-md text-[10px] bg-neutral-100 text-neutral-500"
               >
                 {{ tag }}
               </span>
               <span
                 v-if="tags.length > maxDisplayTags"
-                class="text-gray-400"
+                class="text-neutral-400"
                 :class="metaTextClasses"
               >
                 +{{ tags.length - maxDisplayTags }}
@@ -211,116 +200,47 @@
           @click.stop
         >
           <!-- Star button -->
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="actionButtonClasses"
-                :aria-label="isStarred ? 'Remove from starred' : 'Add to starred'"
-                @click.stop="$emit('star')"
-              >
-                <Icon
-                  :name="isStarred ? 'ph:star-fill' : 'ph:star'"
-                  :class="[isStarred ? 'text-gray-500' : 'text-gray-400']"
-                  :style="actionIconSizeStyle"
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" :side-offset="4">
-              <p class="text-xs">{{ isStarred ? 'Unstar' : 'Star' }}</p>
-            </TooltipContent>
-          </TooltipRoot>
+          <Tooltip :text="isStarred ? 'Unstar' : 'Star'" :delay-open="400">
+            <button
+              type="button"
+              :class="actionButtonClasses"
+              :aria-label="isStarred ? 'Remove from starred' : 'Add to starred'"
+              @click.stop="$emit('star')"
+            >
+              <Icon
+                :name="isStarred ? 'ph:star-fill' : 'ph:star'"
+                :class="[isStarred ? 'text-neutral-500' : 'text-neutral-400']"
+                :style="actionIconSizeStyle"
+              />
+            </button>
+          </Tooltip>
 
           <!-- More options dropdown -->
-          <DropdownMenuRoot>
-            <DropdownMenuTrigger as-child>
-              <button
-                type="button"
-                :class="actionButtonClasses"
-                aria-label="More options"
-              >
-                <Icon
-                  name="ph:dots-three"
-                  class="text-gray-500"
-                  :style="actionIconSizeStyle"
-                />
-              </button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuPortal>
-              <DropdownMenuContent
-                :side-offset="4"
-                align="end"
-                class="min-w-[160px] bg-white rounded-lg border border-gray-200 shadow-lg p-1.5 z-50 animate-in fade-in-0 duration-150"
-              >
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('rename')"
-                >
-                  <Icon name="ph:pencil-simple" class="w-4 h-4 text-gray-500" />
-                  <span>Rename</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('duplicate')"
-                >
-                  <Icon name="ph:copy" class="w-4 h-4 text-gray-500" />
-                  <span>Duplicate</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('pin')"
-                >
-                  <Icon
-                    :name="isPinned ? 'ph:push-pin-slash' : 'ph:push-pin'"
-                    class="w-4 h-4 text-gray-500"
-                  />
-                  <span>{{ isPinned ? 'Unpin' : 'Pin' }}</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('move')"
-                >
-                  <Icon name="ph:folder-simple" class="w-4 h-4 text-gray-500" />
-                  <span>Move to...</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator class="h-px bg-gray-200 my-1.5" />
-
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 rounded-md cursor-pointer outline-none hover:bg-red-50 focus:bg-red-50 transition-colors duration-150"
-                  @select="$emit('delete')"
-                >
-                  <Icon name="ph:trash" class="w-4 h-4" />
-                  <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenuRoot>
+          <DropdownMenu :items="moreOptionsDropdown">
+            <Button
+              variant="ghost"
+              :class="actionButtonClasses"
+              aria-label="More options"
+              @click.stop
+            >
+              <Icon
+                name="ph:dots-three"
+                class="text-neutral-500"
+                :style="actionIconSizeStyle"
+              />
+            </Button>
+          </DropdownMenu>
         </div>
       </Transition>
-    </component>
-  </TooltipProvider>
+  </component>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  TooltipRoot,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from 'reka-ui'
+import Button from '@/Components/shared/Button.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 
 // ============================================================================
 // Types
@@ -403,18 +323,18 @@ const documentTypeIcons: Record<string, string> = {
 }
 
 const documentTypeColors: Record<string, string> = {
-  folder: 'text-gray-500',
-  'folder-open': 'text-gray-500',
-  document: 'text-gray-500',
-  markdown: 'text-gray-500',
-  code: 'text-gray-500',
-  image: 'text-gray-500',
-  pdf: 'text-gray-500',
-  spreadsheet: 'text-gray-500',
-  presentation: 'text-gray-500',
-  archive: 'text-gray-500',
-  video: 'text-gray-500',
-  audio: 'text-gray-500',
+  folder: 'text-neutral-500',
+  'folder-open': 'text-neutral-500',
+  document: 'text-neutral-500',
+  markdown: 'text-neutral-500',
+  code: 'text-neutral-500',
+  image: 'text-neutral-500',
+  pdf: 'text-neutral-500',
+  spreadsheet: 'text-neutral-500',
+  presentation: 'text-neutral-500',
+  archive: 'text-neutral-500',
+  video: 'text-neutral-500',
+  audio: 'text-neutral-500',
 }
 
 // ============================================================================
@@ -469,7 +389,7 @@ const props = withDefaults(defineProps<{
   showMetadata: true,
 })
 
-defineEmits<{
+const emit = defineEmits<{
   click: []
   toggle: []
   select: []
@@ -502,14 +422,14 @@ const config = computed(() => sizeConfig[props.size])
 const rowClasses = computed(() => [
   'w-full flex items-start rounded-lg text-left group outline-none relative overflow-hidden',
   'transition-all duration-150 ease-out',
-  'focus-visible:ring-2 focus-visible:ring-gray-900/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+  'focus-visible:ring-2 focus-visible:ring-neutral-900/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
   config.value.gap,
   props.selected
-    ? 'bg-gray-100 text-gray-900 border-l-2 border-gray-900'
-    : 'hover:bg-gray-50 text-gray-900',
+    ? 'bg-neutral-100 text-neutral-900 border-l-2 border-neutral-900'
+    : 'hover:bg-neutral-50 text-neutral-900',
   props.disabled && 'opacity-50 cursor-not-allowed',
-  props.isDragging && 'opacity-60 shadow-lg ring-2 ring-gray-300',
-  props.isLocked && !props.selected && 'bg-gray-50',
+  props.isDragging && 'opacity-60 shadow-lg ring-2 ring-neutral-300',
+  props.isLocked && !props.selected && 'bg-neutral-50',
 ])
 
 const rowStyles = computed(() => ({
@@ -524,8 +444,8 @@ const checkboxClasses = computed(() => [
   'transition-colors duration-150 ease-out',
   config.value.toggleSize,
   props.isSelected
-    ? 'bg-gray-900 border-gray-900'
-    : 'border-gray-200 hover:border-gray-400',
+    ? 'bg-neutral-900 border-neutral-900'
+    : 'border-neutral-200 hover:border-neutral-400',
 ])
 
 const checkIconClasses = computed(() => [
@@ -536,7 +456,7 @@ const checkIconClasses = computed(() => [
 const toggleButtonClasses = computed(() => [
   'flex items-center justify-center shrink-0 -ml-1 rounded',
   'transition-colors duration-150 ease-out',
-  'hover:bg-gray-100',
+  'hover:bg-neutral-100',
   config.value.toggleSize,
 ])
 
@@ -548,7 +468,7 @@ const togglePlaceholderClasses = computed(() => [
 const toggleIconClasses = computed(() => [
   'transition-transform duration-150 ease-out',
   props.expanded ? 'rotate-90' : '',
-  props.selected ? 'text-gray-900' : 'text-gray-500',
+  props.selected ? 'text-neutral-900' : 'text-neutral-500',
   props.size === 'sm' ? 'w-2.5 h-2.5' : props.size === 'lg' ? 'w-3.5 h-3.5' : 'w-3 h-3',
 ])
 
@@ -557,8 +477,8 @@ const iconContainerClasses = computed(() => [
   'transition-colors duration-150 ease-out',
   config.value.iconContainer,
   props.selected
-    ? 'bg-gray-200'
-    : 'bg-gray-100',
+    ? 'bg-neutral-200'
+    : 'bg-neutral-100',
 ])
 
 const iconSizeStyle = computed(() => {
@@ -567,8 +487,8 @@ const iconSizeStyle = computed(() => {
 })
 
 const iconColorClasses = computed(() => {
-  if (props.selected) return 'text-gray-700'
-  return documentTypeColors[effectiveDocType.value] || 'text-gray-500'
+  if (props.selected) return 'text-neutral-700'
+  return documentTypeColors[effectiveDocType.value] || 'text-neutral-500'
 })
 
 const documentIconClasses = computed(() => [
@@ -579,7 +499,7 @@ const documentIconClasses = computed(() => [
 const titleClasses = computed(() => [
   'font-medium truncate',
   config.value.titleSize,
-  props.disabled && 'text-gray-500',
+  props.disabled && 'text-neutral-500',
 ])
 
 const metadataRowClasses = computed(() => [
@@ -589,14 +509,14 @@ const metadataRowClasses = computed(() => [
 const metaTextClasses = computed(() => [
   'truncate',
   config.value.metaSize,
-  props.selected ? 'text-gray-500' : 'text-gray-400',
+  props.selected ? 'text-neutral-500' : 'text-neutral-400',
 ])
 
 const actionButtonClasses = computed(() => [
   'flex items-center justify-center rounded-md',
   'transition-colors duration-150 ease-out',
-  'hover:bg-gray-100',
-  'focus-visible:ring-2 focus-visible:ring-gray-900/50 focus-visible:ring-offset-1 focus-visible:ring-offset-white',
+  'hover:bg-neutral-100',
+  'focus-visible:ring-2 focus-visible:ring-neutral-900/50 focus-visible:ring-offset-1 focus-visible:ring-offset-white',
   config.value.actionSize,
 ])
 
@@ -670,6 +590,18 @@ const ariaLabel = computed(() => {
   if (props.isStarred) parts.push('starred')
   return parts.join(', ')
 })
+
+const moreOptionsDropdown = computed(() => [
+  [
+    { label: 'Rename', icon: 'ph:pencil-simple', click: () => emit('rename') },
+    { label: 'Duplicate', icon: 'ph:copy', click: () => emit('duplicate') },
+    { label: props.isPinned ? 'Unpin' : 'Pin', icon: props.isPinned ? 'ph:push-pin-slash' : 'ph:push-pin', click: () => emit('pin') },
+    { label: 'Move to...', icon: 'ph:folder-simple', click: () => emit('move') },
+  ],
+  [
+    { label: 'Delete', icon: 'ph:trash', color: 'error' as const, click: () => emit('delete') },
+  ],
+])
 
 // ============================================================================
 // Methods

@@ -17,7 +17,7 @@
     <Transition name="drop-indicator">
       <div
         v-if="isDragOver && dropPosition === 'above'"
-        class="absolute left-0 right-0 top-0 h-0.5 bg-gray-900 z-10 rounded-full"
+        class="absolute left-0 right-0 top-0 h-0.5 bg-neutral-900 z-10 rounded-full"
         :style="{ marginLeft: `${8 + level * 20}px` }"
       />
     </Transition>
@@ -91,7 +91,7 @@
           class="py-2"
           :style="{ paddingLeft: `${8 + (level + 1) * 20}px` }"
         >
-          <div class="flex items-center gap-2 text-gray-500">
+          <div class="flex items-center gap-2 text-neutral-500">
             <Icon name="ph:spinner" class="w-4 h-4 animate-spin" />
             <span class="text-xs">Loading...</span>
           </div>
@@ -103,7 +103,7 @@
           class="py-3"
           :style="{ paddingLeft: `${8 + (level + 1) * 20}px` }"
         >
-          <div class="flex items-center gap-2 text-gray-400">
+          <div class="flex items-center gap-2 text-neutral-400">
             <Icon name="ph:folder-dashed" class="w-4 h-4" />
             <span class="text-xs italic">Empty folder</span>
           </div>
@@ -161,7 +161,7 @@
     <Transition name="drop-indicator">
       <div
         v-if="isDragOver && dropPosition === 'below'"
-        class="absolute left-0 right-0 bottom-0 h-0.5 bg-gray-900 z-10 rounded-full"
+        class="absolute left-0 right-0 bottom-0 h-0.5 bg-neutral-900 z-10 rounded-full"
         :style="{ marginLeft: `${8 + level * 20}px` }"
       />
     </Transition>
@@ -170,7 +170,7 @@
     <Transition name="drop-inside">
       <div
         v-if="isDragOver && dropPosition === 'inside' && item.isFolder"
-        class="absolute inset-0 rounded-lg border-2 border-dashed border-gray-900 bg-gray-50 pointer-events-none z-5"
+        class="absolute inset-0 rounded-lg border-2 border-dashed border-neutral-900 bg-neutral-50 pointer-events-none z-5"
         :style="{ marginLeft: `${level * 20}px` }"
       />
     </Transition>
@@ -179,8 +179,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
 import type { Document } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
 
 // ============================================================================
 // Types

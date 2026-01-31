@@ -1,30 +1,26 @@
 <template>
-  <TooltipProvider v-if="showTooltip" :delay-duration="tooltipDelay">
-    <TooltipRoot>
-      <TooltipTrigger as-child>
-        <component
-          :is="componentType"
-          :class="containerClasses"
-          :type="componentType === 'button' ? 'button' : undefined"
-          :href="to"
-          @click="handleClick"
-          @contextmenu="handleContextMenu"
-        >
-          <ChannelItemContent />
-        </component>
-      </TooltipTrigger>
-      <TooltipPortal>
-        <TooltipContent
-          :class="tooltipClasses"
-          :side="tooltipSide"
-          :side-offset="8"
-        >
-          <ChannelTooltipContent />
-          <TooltipArrow class="fill-white" />
-        </TooltipContent>
-      </TooltipPortal>
-    </TooltipRoot>
-  </TooltipProvider>
+  <Tooltip
+    v-if="showTooltip"
+    :delay-open="tooltipDelay"
+    :side="tooltipSide"
+    :side-offset="8"
+  >
+    <component
+      :is="componentType"
+      :class="containerClasses"
+      :type="componentType === 'button' ? 'button' : undefined"
+      :href="to"
+      @click="handleClick"
+      @contextmenu="handleContextMenu"
+    >
+      <ChannelItemContent />
+    </component>
+    <template #content>
+      <div :class="tooltipClasses">
+        <ChannelTooltipContent />
+      </div>
+    </template>
+  </Tooltip>
 
   <!-- Without tooltip -->
   <component
@@ -40,56 +36,21 @@
   </component>
 
   <!-- Context Menu -->
-  <DropdownMenuRoot v-model:open="contextMenuOpen">
-    <DropdownMenuPortal>
-      <DropdownMenuContent
-        ref="contextMenuRef"
-        :class="contextMenuClasses"
-        :style="contextMenuStyle"
-        @interact-outside="contextMenuOpen = false"
-      >
-        <DropdownMenuItem
-          v-for="item in contextMenuItems"
-          :key="item.label"
-          :class="contextMenuItemClasses(item)"
-          :disabled="item.disabled"
-          class="group/item"
-          @click="handleContextAction(item)"
-        >
-          <Icon
-            v-if="item.icon"
-            :name="item.icon"
-            class="w-4 h-4 transition-transform duration-300 group-hover/item:scale-110"
-          />
-          <span class="flex-1">{{ item.label }}</span>
-          <span
-            v-if="item.shortcut"
-            class="ml-auto text-[10px] opacity-50 bg-gray-100 px-1.5 py-0.5 rounded font-mono transition-colors duration-150 group-hover/item:bg-gray-200"
-          >
-            {{ item.shortcut }}
-          </span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenuPortal>
-  </DropdownMenuRoot>
+  <ContextMenu v-model:open="contextMenuOpen" :items="contextMenuDropdownItems">
+    <div
+      ref="contextMenuRef"
+      :style="contextMenuStyle"
+      class="fixed w-px h-px pointer-events-none"
+    />
+  </ContextMenu>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, defineComponent, resolveComponent } from 'vue'
+import { ref, computed, h, defineComponent } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-} from 'reka-ui'
+import Badge from '@/Components/shared/Badge.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
 import type { Channel, User } from '@/types'
 
 type ChannelItemSize = 'sm' | 'md' | 'lg'
@@ -172,6 +133,18 @@ const contextMenuOpen = ref(false)
 const contextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuRef = ref<HTMLElement | null>(null)
 
+// Context menu items in UContextMenu format
+const contextMenuDropdownItems = computed(() => [
+  props.contextMenuItems.map(item => ({
+    label: item.label,
+    icon: item.icon,
+    shortcut: item.shortcut,
+    color: item.variant === 'danger' ? 'error' as const : undefined,
+    disabled: item.disabled,
+    click: () => handleContextAction(item),
+  })),
+])
+
 // Component type based on navigation
 const componentType = computed(() => {
   if (props.to) return Link
@@ -219,10 +192,10 @@ const channelIcon = computed(() => {
 
 // Icon color based on channel type and state
 const iconColorClass = computed(() => {
-  if (props.selected) return 'text-gray-900'
-  if (props.channel.type === 'agent') return 'text-gray-600'
-  if (props.muted) return 'text-gray-400'
-  return 'text-gray-500 group-hover:text-gray-900'
+  if (props.selected) return 'text-neutral-900 dark:text-white'
+  if (props.channel.type === 'agent') return 'text-neutral-600 dark:text-neutral-200'
+  if (props.muted) return 'text-neutral-400 dark:text-neutral-400'
+  return 'text-neutral-500 dark:text-neutral-300 group-hover:text-neutral-900 dark:group-hover:text-white'
 })
 
 // Has unread messages
@@ -235,7 +208,7 @@ const isTyping = computed(() => (props.typingUsers?.length || 0) > 0)
 const containerClasses = computed(() => {
   const classes = [
     'w-full flex items-center rounded-lg transition-colors duration-150 text-left group outline-none',
-    'focus-visible:ring-1 focus-visible:ring-gray-400',
+    'focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
     sizeConfig[props.size].container,
     sizeConfig[props.size].gap,
   ]
@@ -243,12 +216,12 @@ const containerClasses = computed(() => {
   // Selected state
   if (props.selected) {
     classes.push(
-      'bg-gray-100 text-gray-900',
-      'border-l-2 border-gray-900 pl-[10px]',
+      'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white',
+      'border-l-2 border-neutral-900 dark:border-white pl-[10px]',
     )
   } else {
     classes.push(
-      'hover:bg-gray-50 text-gray-500 hover:text-gray-900',
+      'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
     )
   }
 
@@ -261,7 +234,7 @@ const containerClasses = computed(() => {
   if (props.variant === 'compact') {
     classes.push('py-1')
   } else if (props.variant === 'prominent') {
-    classes.push('py-3 bg-gray-50 hover:bg-gray-100')
+    classes.push('py-3 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700')
   }
 
   return classes
@@ -276,27 +249,10 @@ const contextMenuStyle = computed(() => ({
 
 // Tooltip classes
 const tooltipClasses = computed(() => [
-  'z-50 bg-white border border-gray-200 rounded-lg',
+  'z-50 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
   'px-3 py-2.5 text-sm shadow-md max-w-64',
   'animate-in fade-in-0 duration-150',
 ])
-
-// Context menu classes
-const contextMenuClasses = computed(() => [
-  'min-w-48 bg-white border border-gray-200 rounded-lg',
-  'shadow-lg p-1.5 z-50',
-  'animate-in fade-in-0 duration-150',
-])
-
-// Context menu item classes
-const contextMenuItemClasses = (item: ContextMenuItem) => [
-  'flex items-center gap-2 px-3 py-2 text-sm rounded-md cursor-pointer outline-none',
-  'transition-colors duration-150',
-  item.variant === 'danger'
-    ? 'text-red-600 hover:bg-red-50 focus:bg-red-50'
-    : 'text-gray-500 hover:bg-gray-50 focus:bg-gray-50 hover:text-gray-900 focus:text-gray-900',
-  item.disabled && 'opacity-50 cursor-not-allowed',
-]
 
 // Channel Item Content component
 const ChannelItemContent = defineComponent({
@@ -307,10 +263,10 @@ const ChannelItemContent = defineComponent({
       props.showIcon && h('div', {
         class: [
           'flex items-center justify-center shrink-0 transition-colors duration-150',
-          props.variant === 'prominent' && 'w-8 h-8 rounded-lg bg-gray-50 group-hover:bg-gray-100',
+          props.variant === 'prominent' && 'w-8 h-8 rounded-lg bg-neutral-50 dark:bg-neutral-800 group-hover:bg-neutral-100 dark:group-hover:bg-neutral-700',
         ],
       }, [
-        h(resolveComponent('Icon'), {
+        h(Icon, {
           name: channelIcon.value,
           class: [sizeConfig[props.size].icon, iconColorClass.value, 'transition-colors duration-150'],
         }),
@@ -324,42 +280,42 @@ const ChannelItemContent = defineComponent({
             class: [
               'truncate font-medium transition-colors duration-150',
               sizeConfig[props.size].text,
-              hasUnread.value && !props.selected && 'font-semibold text-gray-900',
+              hasUnread.value && !props.selected && 'font-semibold text-neutral-900 dark:text-white',
             ],
           }, props.channel.name),
 
           // Pinned icon
-          props.pinned && h(resolveComponent('Icon'), {
+          props.pinned && h(Icon, {
             name: 'ph:push-pin-fill',
-            class: 'w-3 h-3 text-gray-400 shrink-0',
+            class: 'w-3 h-3 text-neutral-400 dark:text-neutral-400 shrink-0',
           }),
 
           // Muted icon
-          props.muted && props.showMutedIcon && h(resolveComponent('Icon'), {
+          props.muted && props.showMutedIcon && h(Icon, {
             name: 'ph:speaker-x-fill',
-            class: 'w-3 h-3 text-gray-400 shrink-0',
+            class: 'w-3 h-3 text-neutral-400 dark:text-neutral-400 shrink-0',
           }),
         ]),
 
         // Typing indicator or last message
         isTyping.value && props.showTypingIndicator
           ? h('span', {
-              class: 'text-xs text-gray-500 truncate flex items-center gap-1',
+              class: 'text-xs text-neutral-500 dark:text-neutral-300 truncate flex items-center gap-1',
             }, [
               h('span', { class: 'flex gap-0.5' }, [
-                h('span', { class: 'w-1 h-1 bg-gray-500 rounded-full animate-bounce', style: 'animation-delay: 0ms' }),
-                h('span', { class: 'w-1 h-1 bg-gray-500 rounded-full animate-bounce', style: 'animation-delay: 150ms' }),
-                h('span', { class: 'w-1 h-1 bg-gray-500 rounded-full animate-bounce', style: 'animation-delay: 300ms' }),
+                h('span', { class: 'w-1 h-1 bg-neutral-500 dark:bg-neutral-400 rounded-full animate-bounce', style: 'animation-delay: 0ms' }),
+                h('span', { class: 'w-1 h-1 bg-neutral-500 dark:bg-neutral-400 rounded-full animate-bounce', style: 'animation-delay: 150ms' }),
+                h('span', { class: 'w-1 h-1 bg-neutral-500 dark:bg-neutral-400 rounded-full animate-bounce', style: 'animation-delay: 300ms' }),
               ]),
               props.typingUsers![0].name.split(' ')[0] + ' is typing...',
             ])
           : props.draft
-            ? h('span', { class: 'text-xs text-gray-600 truncate flex items-center gap-1' }, [
-                h(resolveComponent('Icon'), { name: 'ph:pencil-simple', class: 'w-3 h-3' }),
+            ? h('span', { class: 'text-xs text-neutral-600 dark:text-neutral-200 truncate flex items-center gap-1' }, [
+                h(Icon, { name: 'ph:pencil-simple', class: 'w-3 h-3' }),
                 'Draft',
               ])
             : props.channel.lastMessage && h('span', {
-                class: 'text-xs text-gray-400 truncate transition-colors duration-150 group-hover:text-gray-500',
+                class: 'text-xs text-neutral-400 dark:text-neutral-400 truncate transition-colors duration-150 group-hover:text-neutral-500 dark:group-hover:text-neutral-400',
               }, props.channel.lastMessage),
       ]),
 
@@ -367,7 +323,7 @@ const ChannelItemContent = defineComponent({
       h('div', { class: 'flex items-center gap-1.5 shrink-0' }, [
         // Presence indicator
         props.showPresence && props.channel.onlineCount && h('span', {
-          class: 'text-xs text-gray-400 flex items-center gap-1',
+          class: 'text-xs text-neutral-400 dark:text-neutral-400 flex items-center gap-1',
         }, [
           h('span', { class: 'w-1.5 h-1.5 rounded-full bg-green-600' }),
           `${props.channel.onlineCount}`,
@@ -379,18 +335,18 @@ const ChannelItemContent = defineComponent({
             ? h('span', {
                 class: [
                   'rounded-full font-semibold text-center transition-colors duration-150',
-                  'bg-gray-100 text-gray-900',
+                  'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white',
                   sizeConfig[props.size].badge,
                 ],
               }, (props.channel.unreadCount || 0) > 99 ? '99+' : props.channel.unreadCount)
             : props.showUnreadDot && h('span', {
-                class: 'w-2 h-2 rounded-full bg-gray-900 shrink-0',
+                class: 'w-2 h-2 rounded-full bg-neutral-900 dark:bg-white shrink-0',
               })
         ),
 
         // Timestamp
         props.channel.lastMessageAt && !hasUnread.value && h('span', {
-          class: 'text-xs text-gray-400 transition-colors duration-150 group-hover:text-gray-500',
+          class: 'text-xs text-neutral-400 dark:text-neutral-400 transition-colors duration-150 group-hover:text-neutral-500 dark:group-hover:text-neutral-400',
         }, formatRelativeTime(props.channel.lastMessageAt)),
       ]),
     ])
@@ -404,12 +360,12 @@ const ChannelTooltipContent = defineComponent({
     return () => h('div', { class: 'space-y-2' }, [
       // Channel name and type
       h('div', { class: 'flex items-center gap-2' }, [
-        h(resolveComponent('Icon'), {
+        h(Icon, {
           name: channelIcon.value,
-          class: 'w-4 h-4 text-gray-500',
+          class: 'w-4 h-4 text-neutral-500 dark:text-neutral-300',
         }),
-        h('span', { class: 'font-semibold text-gray-900' }, props.channel.name),
-        props.channel.private && h(resolveComponent('SharedBadge'), {
+        h('span', { class: 'font-semibold text-neutral-900 dark:text-white' }, props.channel.name),
+        props.channel.private && h(Badge, {
           size: 'xs',
           variant: 'secondary',
         }, () => 'Private'),
@@ -417,15 +373,15 @@ const ChannelTooltipContent = defineComponent({
 
       // Description
       props.channel.description && h('p', {
-        class: 'text-xs text-gray-500 leading-relaxed',
+        class: 'text-xs text-neutral-500 dark:text-neutral-300 leading-relaxed',
       }, props.channel.description),
 
       // Stats
-      h('div', { class: 'flex items-center gap-3 text-xs text-gray-400 pt-2 mt-2 border-t border-gray-200' }, [
+      h('div', { class: 'flex items-center gap-3 text-xs text-neutral-400 dark:text-neutral-400 pt-2 mt-2 border-t border-neutral-200 dark:border-neutral-700' }, [
         props.channel.members?.length && h('span', {
           class: 'flex items-center gap-1.5',
         }, [
-          h(resolveComponent('Icon'), { name: 'ph:users', class: 'w-3.5 h-3.5' }),
+          h(Icon, { name: 'ph:users', class: 'w-3.5 h-3.5' }),
           `${props.channel.members.length} members`,
         ]),
         props.channel.onlineCount && h('span', {

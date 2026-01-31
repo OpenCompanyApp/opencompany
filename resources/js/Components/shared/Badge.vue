@@ -1,66 +1,139 @@
 <template>
-  <TooltipProvider v-if="tooltip" :delay-duration="200">
-    <TooltipRoot>
-      <TooltipTrigger as-child>
-        <component
-          :is="computedComponent"
-          ref="badgeRef"
-          :type="computedType"
-          :href="href"
-          :to="to"
-          :disabled="disabled || loading"
-          :aria-disabled="disabled || loading"
-          :aria-busy="loading"
-          :aria-label="ariaLabel"
-          :class="badgeClasses"
-          @click="handleClick"
-        >
-          <BadgeContent />
-        </component>
-      </TooltipTrigger>
-      <TooltipPortal>
-        <TooltipContent
-          :side="tooltipSide"
-          :side-offset="4"
-          class="z-50 px-2.5 py-1.5 text-xs font-medium bg-white border border-gray-200 rounded-lg shadow-md"
-        >
-          {{ tooltip }}
-          <TooltipArrow class="fill-white" />
-        </TooltipContent>
-      </TooltipPortal>
-    </TooltipRoot>
-  </TooltipProvider>
+  <Tooltip v-if="tooltip" :text="tooltip" :side="tooltipSide">
+    <span
+      :class="[
+        // Base styles
+        'inline-flex items-center gap-1.5 font-medium',
+        // Size
+        sizeClasses[size],
+        // Shape
+        shapeClasses[shape],
+        // Variant colors
+        variantClasses[variant][badgeStyle],
+        // States
+        interactive && !disabled && 'cursor-pointer',
+        disabled && 'opacity-50 cursor-not-allowed',
+        uppercase && 'uppercase tracking-wider',
+      ]"
+      @click="handleClick"
+    >
+      <!-- Loading spinner -->
+      <Icon v-if="loading" name="ph:spinner" class="animate-spin" :class="iconSizeClasses[size]" />
 
-  <component
+      <!-- Dot indicator (left) -->
+      <span
+        v-if="!loading && dot && dotPosition === 'left'"
+        :class="['rounded-full shrink-0', dotSizeClasses[size], dotColorClasses[variant]]"
+      />
+
+      <!-- Avatar -->
+      <img
+        v-if="!loading && avatar"
+        :src="avatar"
+        :alt="avatarFallback || ''"
+        :class="['rounded-full object-cover shrink-0', avatarSizeClasses[size]]"
+      />
+
+      <!-- Left icon -->
+      <Icon v-if="!loading && icon" :name="icon" :class="iconSizeClasses[size]" />
+
+      <!-- Label or count -->
+      <span v-if="!iconOnly" :class="truncate ? 'truncate' : ''">
+        <slot>{{ label || displayCount }}</slot>
+      </span>
+
+      <!-- Right icon -->
+      <Icon v-if="!loading && iconRight && !removable" :name="iconRight" :class="iconSizeClasses[size]" />
+
+      <!-- Dot indicator (right) -->
+      <span
+        v-if="!loading && dot && dotPosition === 'right'"
+        :class="['rounded-full shrink-0', dotSizeClasses[size], dotColorClasses[variant]]"
+      />
+
+      <!-- Remove button -->
+      <button
+        v-if="removable && !loading"
+        type="button"
+        class="ml-0.5 -mr-1 p-0.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none"
+        aria-label="Remove"
+        @click.stop="handleRemove"
+      >
+        <Icon name="ph:x" class="w-3 h-3" />
+      </button>
+    </span>
+  </Tooltip>
+
+  <!-- Badge without tooltip -->
+  <span
     v-else
-    :is="computedComponent"
-    ref="badgeRef"
-    :type="computedType"
-    :href="href"
-    :to="to"
-    :disabled="disabled || loading"
-    :aria-disabled="disabled || loading"
-    :aria-busy="loading"
-    :aria-label="ariaLabel"
-    :class="badgeClasses"
+    :class="[
+      // Base styles
+      'inline-flex items-center gap-1.5 font-medium',
+      // Size
+      sizeClasses[size],
+      // Shape
+      shapeClasses[shape],
+      // Variant colors
+      variantClasses[variant][badgeStyle],
+      // States
+      interactive && !disabled && 'cursor-pointer',
+      disabled && 'opacity-50 cursor-not-allowed',
+      uppercase && 'uppercase tracking-wider',
+    ]"
     @click="handleClick"
   >
-    <BadgeContent />
-  </component>
+    <!-- Loading spinner -->
+    <Icon v-if="loading" name="ph:spinner" class="animate-spin" :class="iconSizeClasses[size]" />
+
+    <!-- Dot indicator (left) -->
+    <span
+      v-if="!loading && dot && dotPosition === 'left'"
+      :class="['rounded-full shrink-0', dotSizeClasses[size], dotColorClasses[variant]]"
+    />
+
+    <!-- Avatar -->
+    <img
+      v-if="!loading && avatar"
+      :src="avatar"
+      :alt="avatarFallback || ''"
+      :class="['rounded-full object-cover shrink-0', avatarSizeClasses[size]]"
+    />
+
+    <!-- Left icon -->
+    <Icon v-if="!loading && icon" :name="icon" :class="iconSizeClasses[size]" />
+
+    <!-- Label or count -->
+    <span v-if="!iconOnly" :class="truncate ? 'truncate' : ''">
+      <slot>{{ label || displayCount }}</slot>
+    </span>
+
+    <!-- Right icon -->
+    <Icon v-if="!loading && iconRight && !removable" :name="iconRight" :class="iconSizeClasses[size]" />
+
+    <!-- Dot indicator (right) -->
+    <span
+      v-if="!loading && dot && dotPosition === 'right'"
+      :class="['rounded-full shrink-0', dotSizeClasses[size], dotColorClasses[variant]]"
+    />
+
+    <!-- Remove button -->
+    <button
+      v-if="removable && !loading"
+      type="button"
+      class="ml-0.5 -mr-1 p-0.5 rounded-full transition-colors hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none"
+      aria-label="Remove"
+      @click.stop="handleRemove"
+    >
+      <Icon name="ph:x" class="w-3 h-3" />
+    </button>
+  </span>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, resolveComponent } from 'vue'
-import { Link } from '@inertiajs/vue3'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
-import type { RouteLocationRaw } from 'vue-router'
+import { computed } from 'vue'
+import Icon from './Icon.vue'
+import Tooltip from './Tooltip.vue'
 
 type BadgeVariant = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info'
 type BadgeStyle = 'soft' | 'solid' | 'outline' | 'ghost'
@@ -69,52 +142,28 @@ type BadgeShape = 'rounded' | 'pill' | 'square'
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left'
 
 const props = withDefaults(defineProps<{
-  // Variant & Style
   variant?: BadgeVariant
   badgeStyle?: BadgeStyle
   size?: BadgeSize
   shape?: BadgeShape
-
-  // Content
   label?: string
   count?: number
   maxCount?: number
-
-  // Icons
   icon?: string
   iconRight?: string
   iconOnly?: boolean
-
-  // Avatar
   avatar?: string
   avatarFallback?: string
-
-  // Dot indicator
   dot?: boolean
   dotPosition?: 'left' | 'right'
-
-  // Interactive
   interactive?: boolean
   removable?: boolean
   disabled?: boolean
   loading?: boolean
-
-  // Link/Button
-  as?: 'span' | 'button' | 'a' | 'div'
-  href?: string
-  to?: RouteLocationRaw
-
-  // Visual effects
   uppercase?: boolean
   truncate?: boolean
-  maxWidth?: string
-
-  // Tooltip
   tooltip?: string
   tooltipSide?: TooltipSide
-
-  // Accessibility
-  ariaLabel?: string
 }>(), {
   variant: 'default',
   badgeStyle: 'soft',
@@ -125,7 +174,6 @@ const props = withDefaults(defineProps<{
   removable: false,
   disabled: false,
   loading: false,
-  as: 'span',
   uppercase: false,
   truncate: false,
   maxCount: 99,
@@ -137,30 +185,6 @@ const emit = defineEmits<{
   remove: []
 }>()
 
-const badgeRef = ref<HTMLElement | null>(null)
-
-// Computed component
-const computedComponent = computed(() => {
-  if (props.to) {
-    return Link
-  }
-  if (props.href) {
-    return 'a'
-  }
-  if (props.interactive || props.removable) {
-    return 'button'
-  }
-  return props.as
-})
-
-const computedType = computed(() => {
-  if ((props.interactive || props.removable) && !props.to && !props.href) {
-    return 'button'
-  }
-  return undefined
-})
-
-// Display count
 const displayCount = computed(() => {
   if (props.count === undefined) return null
   if (props.count > props.maxCount) return `${props.maxCount}+`
@@ -169,38 +193,19 @@ const displayCount = computed(() => {
 
 // Size classes
 const sizeClasses: Record<BadgeSize, string> = {
-  xs: 'h-4 px-1 text-[10px] gap-0.5',
-  sm: 'h-5 px-1.5 text-xs gap-1',
-  md: 'h-6 px-2 text-xs gap-1.5',
-  lg: 'h-7 px-2.5 text-sm gap-1.5',
-  xl: 'h-8 px-3 text-sm gap-2',
+  xs: 'text-[10px] px-1.5 py-0.5',
+  sm: 'text-xs px-2 py-0.5',
+  md: 'text-sm px-2.5 py-1',
+  lg: 'text-sm px-3 py-1.5',
+  xl: 'text-base px-3.5 py-1.5',
 }
 
-// Icon size classes
 const iconSizeClasses: Record<BadgeSize, string> = {
-  xs: 'w-2.5 h-2.5',
-  sm: 'w-3 h-3',
-  md: 'w-3.5 h-3.5',
+  xs: 'w-3 h-3',
+  sm: 'w-3.5 h-3.5',
+  md: 'w-4 h-4',
   lg: 'w-4 h-4',
-  xl: 'w-4.5 h-4.5',
-}
-
-// Avatar size classes
-const avatarSizeClasses: Record<BadgeSize, string> = {
-  xs: 'w-3 h-3 -ml-0.5',
-  sm: 'w-4 h-4 -ml-0.5',
-  md: 'w-5 h-5 -ml-1',
-  lg: 'w-5 h-5 -ml-1',
-  xl: 'w-6 h-6 -ml-1',
-}
-
-// Dot size classes
-const dotSizeClasses: Record<BadgeSize, string> = {
-  xs: 'w-1 h-1',
-  sm: 'w-1.5 h-1.5',
-  md: 'w-2 h-2',
-  lg: 'w-2 h-2',
-  xl: 'w-2.5 h-2.5',
+  xl: 'w-5 h-5',
 }
 
 // Shape classes
@@ -210,129 +215,81 @@ const shapeClasses: Record<BadgeShape, string> = {
   square: 'rounded-sm',
 }
 
-// Soft variant classes - neutral palette
-const softVariantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-gray-100 text-gray-700 border border-gray-200',
-  primary: 'bg-gray-100 text-gray-900 border border-gray-200',
-  secondary: 'bg-gray-100 text-gray-600 border border-gray-200',
-  success: 'bg-gray-100 text-gray-700 border border-gray-200',
-  warning: 'bg-gray-100 text-gray-700 border border-gray-200',
-  error: 'bg-gray-100 text-gray-700 border border-gray-200',
-  info: 'bg-gray-100 text-gray-700 border border-gray-200',
+// Variant colors for each style
+const variantClasses: Record<BadgeVariant, Record<BadgeStyle, string>> = {
+  default: {
+    soft: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200',
+    solid: 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900',
+    outline: 'border border-neutral-300 text-neutral-700 dark:border-neutral-600 dark:text-neutral-200',
+    ghost: 'text-neutral-700 dark:text-neutral-200',
+  },
+  primary: {
+    soft: 'bg-neutral-100 text-neutral-900 dark:bg-neutral-700 dark:text-white',
+    solid: 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900',
+    outline: 'border border-neutral-900 text-neutral-900 dark:border-white dark:text-white',
+    ghost: 'text-neutral-900 dark:text-white',
+  },
+  secondary: {
+    soft: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300',
+    solid: 'bg-neutral-500 text-white',
+    outline: 'border border-neutral-400 text-neutral-600 dark:border-neutral-500 dark:text-neutral-300',
+    ghost: 'text-neutral-600 dark:text-neutral-300',
+  },
+  success: {
+    soft: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    solid: 'bg-green-600 text-white',
+    outline: 'border border-green-500 text-green-700 dark:text-green-400',
+    ghost: 'text-green-700 dark:text-green-400',
+  },
+  warning: {
+    soft: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    solid: 'bg-amber-500 text-white',
+    outline: 'border border-amber-500 text-amber-700 dark:text-amber-400',
+    ghost: 'text-amber-700 dark:text-amber-400',
+  },
+  error: {
+    soft: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    solid: 'bg-red-600 text-white',
+    outline: 'border border-red-500 text-red-700 dark:text-red-400',
+    ghost: 'text-red-700 dark:text-red-400',
+  },
+  info: {
+    soft: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    solid: 'bg-blue-600 text-white',
+    outline: 'border border-blue-500 text-blue-700 dark:text-blue-400',
+    ghost: 'text-blue-700 dark:text-blue-400',
+  },
 }
 
-// Solid variant classes
-const solidVariantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-gray-200 text-gray-800 border border-gray-300',
-  primary: 'bg-gray-900 text-white border border-gray-900',
-  secondary: 'bg-gray-500 text-white border border-gray-500',
-  success: 'bg-gray-600 text-white border border-gray-600',
-  warning: 'bg-gray-600 text-white border border-gray-600',
-  error: 'bg-gray-600 text-white border border-gray-600',
-  info: 'bg-gray-600 text-white border border-gray-600',
+// Dot sizes
+const dotSizeClasses: Record<BadgeSize, string> = {
+  xs: 'w-1 h-1',
+  sm: 'w-1.5 h-1.5',
+  md: 'w-2 h-2',
+  lg: 'w-2 h-2',
+  xl: 'w-2.5 h-2.5',
 }
 
-// Outline variant classes
-const outlineVariantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-transparent text-gray-600 border border-gray-300',
-  primary: 'bg-transparent text-gray-900 border border-gray-900',
-  secondary: 'bg-transparent text-gray-600 border border-gray-400',
-  success: 'bg-transparent text-gray-600 border border-gray-400',
-  warning: 'bg-transparent text-gray-600 border border-gray-400',
-  error: 'bg-transparent text-gray-600 border border-gray-400',
-  info: 'bg-transparent text-gray-600 border border-gray-400',
+// Avatar sizes
+const avatarSizeClasses: Record<BadgeSize, string> = {
+  xs: 'w-3 h-3 -ml-0.5',
+  sm: 'w-4 h-4 -ml-0.5',
+  md: 'w-5 h-5 -ml-1',
+  lg: 'w-5 h-5 -ml-1',
+  xl: 'w-6 h-6 -ml-1',
 }
 
-// Ghost variant classes
-const ghostVariantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-transparent text-gray-600 border-0',
-  primary: 'bg-transparent text-gray-900 border-0',
-  secondary: 'bg-transparent text-gray-500 border-0',
-  success: 'bg-transparent text-gray-600 border-0',
-  warning: 'bg-transparent text-gray-600 border-0',
-  error: 'bg-transparent text-gray-600 border-0',
-  info: 'bg-transparent text-gray-600 border-0',
-}
-
-// Interactive hover classes
-const interactiveHoverClasses: Record<BadgeVariant, string> = {
-  default: 'hover:bg-gray-200 hover:border-gray-300',
-  primary: 'hover:bg-gray-200 hover:border-gray-300',
-  secondary: 'hover:bg-gray-200 hover:border-gray-300',
-  success: 'hover:bg-gray-200 hover:border-gray-300',
-  warning: 'hover:bg-gray-200 hover:border-gray-300',
-  error: 'hover:bg-gray-200 hover:border-gray-300',
-  info: 'hover:bg-gray-200 hover:border-gray-300',
-}
-
-// Dot color classes - neutral
+// Dot colors
 const dotColorClasses: Record<BadgeVariant, string> = {
-  default: 'bg-gray-400',
-  primary: 'bg-gray-900',
-  secondary: 'bg-gray-400',
-  success: 'bg-gray-500',
-  warning: 'bg-gray-500',
-  error: 'bg-gray-500',
-  info: 'bg-gray-500',
+  default: 'bg-neutral-400 dark:bg-neutral-500',
+  primary: 'bg-neutral-900 dark:bg-white',
+  secondary: 'bg-neutral-400 dark:bg-neutral-500',
+  success: 'bg-green-500',
+  warning: 'bg-amber-500',
+  error: 'bg-red-500',
+  info: 'bg-blue-500',
 }
 
-// Get variant classes based on style
-const getVariantClasses = computed(() => {
-  const styleMap: Record<BadgeStyle, Record<BadgeVariant, string>> = {
-    soft: softVariantClasses,
-    solid: solidVariantClasses,
-    outline: outlineVariantClasses,
-    ghost: ghostVariantClasses,
-  }
-  return styleMap[props.badgeStyle][props.variant]
-})
-
-// Badge classes
-const badgeClasses = computed(() => [
-  // Base
-  'inline-flex items-center justify-center font-medium transition-colors duration-150 whitespace-nowrap',
-
-  // Size
-  sizeClasses[props.size],
-
-  // Shape
-  shapeClasses[props.shape],
-
-  // Variant & Style
-  getVariantClasses.value,
-
-  // Interactive
-  (props.interactive || props.removable || props.href || props.to) && !props.disabled && [
-    'cursor-pointer outline-none',
-    'focus-visible:ring-2 focus-visible:ring-gray-900/50 focus-visible:ring-offset-1 focus-visible:ring-offset-white',
-    interactiveHoverClasses[props.variant],
-  ],
-
-  // Disabled
-  props.disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
-
-  // Loading
-  props.loading && 'cursor-wait',
-
-  // Uppercase
-  props.uppercase && 'uppercase tracking-wider',
-
-  // Truncate
-  props.truncate && 'overflow-hidden',
-
-  // Icon only padding adjustment
-  props.iconOnly && 'px-0 aspect-square',
-])
-
-// Max width style
-const maxWidthStyle = computed(() => {
-  if (props.maxWidth) {
-    return { maxWidth: props.maxWidth }
-  }
-  return {}
-})
-
-// Handle click
 const handleClick = (event: MouseEvent) => {
   if (props.disabled || props.loading) {
     event.preventDefault()
@@ -341,107 +298,8 @@ const handleClick = (event: MouseEvent) => {
   emit('click', event)
 }
 
-// Handle remove
-const handleRemove = (event: MouseEvent) => {
-  event.stopPropagation()
+const handleRemove = () => {
   if (props.disabled || props.loading) return
   emit('remove')
 }
-
-// Badge Content Component
-const BadgeContent = () => {
-  return h('span', {
-    class: 'inline-flex items-center gap-inherit',
-    style: maxWidthStyle.value,
-  }, [
-    // Loading spinner
-    props.loading && h(resolveComponent('Icon'), {
-      name: 'ph:spinner',
-      class: ['animate-spin', iconSizeClasses[props.size]],
-    }),
-
-    // Dot indicator (left)
-    !props.loading && props.dot && props.dotPosition === 'left' && h('span', {
-      class: [
-        'rounded-full shrink-0',
-        dotSizeClasses[props.size],
-        dotColorClasses[props.variant],
-      ],
-    }),
-
-    // Avatar
-    !props.loading && props.avatar && h('img', {
-      src: props.avatar,
-      alt: props.avatarFallback || '',
-      class: ['rounded-full object-cover shrink-0', avatarSizeClasses[props.size]],
-    }),
-
-    // Avatar fallback (if no avatar image)
-    !props.loading && !props.avatar && props.avatarFallback && h('span', {
-      class: [
-        'flex items-center justify-center rounded-full bg-gray-200 text-gray-600 shrink-0 text-[0.6em] font-semibold uppercase',
-        avatarSizeClasses[props.size],
-      ],
-    }, props.avatarFallback.charAt(0)),
-
-    // Left icon
-    !props.loading && props.icon && h(resolveComponent('Icon'), {
-      name: props.icon,
-      class: [iconSizeClasses[props.size], 'shrink-0'],
-    }),
-
-    // Label or count or slot
-    !props.iconOnly && h('span', {
-      class: props.truncate ? 'truncate' : undefined,
-    }, [
-      // Default slot or label or count
-      props.label || displayCount.value || h('slot'),
-    ]),
-
-    // Right icon
-    !props.loading && props.iconRight && !props.removable && h(resolveComponent('Icon'), {
-      name: props.iconRight,
-      class: [iconSizeClasses[props.size], 'shrink-0'],
-    }),
-
-    // Dot indicator (right)
-    !props.loading && props.dot && props.dotPosition === 'right' && h('span', {
-      class: [
-        'rounded-full shrink-0',
-        dotSizeClasses[props.size],
-        dotColorClasses[props.variant],
-      ],
-    }),
-
-    // Remove button
-    props.removable && !props.loading && h('button', {
-      type: 'button',
-      class: [
-        'ml-0.5 -mr-1 p-0.5 rounded-full transition-colors duration-150',
-        'hover:bg-gray-300',
-        'focus:outline-none focus-visible:ring-1 focus-visible:ring-current',
-      ],
-      'aria-label': 'Remove',
-      onClick: handleRemove,
-    }, [
-      h(resolveComponent('Icon'), {
-        name: 'ph:x',
-        class: iconSizeClasses[props.size],
-      }),
-    ]),
-  ])
-}
-
-// Expose methods
-defineExpose({
-  focus: () => badgeRef.value?.focus(),
-  blur: () => badgeRef.value?.blur(),
-})
 </script>
-
-<style scoped>
-/* Inherit gap from parent */
-.gap-inherit {
-  gap: inherit;
-}
-</style>

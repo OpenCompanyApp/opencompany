@@ -20,6 +20,7 @@ class Task extends Model
         'description',
         'status',
         'assignee_id',
+        'creator_id',
         'priority',
         'cost',
         'estimated_cost',
@@ -34,12 +35,37 @@ class Task extends Model
             'cost' => 'decimal:2',
             'estimated_cost' => 'decimal:2',
             'completed_at' => 'datetime',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Override toArray to add camelCase versions for frontend compatibility
+     */
+    public function toArray()
+    {
+        $array = parent::toArray();
+
+        // Add camelCase versions of snake_case fields
+        $array['createdAt'] = $this->created_at;
+        $array['completedAt'] = $this->completed_at;
+        $array['estimatedCost'] = $this->estimated_cost;
+        $array['assigneeId'] = $this->assignee_id;
+        $array['creatorId'] = $this->creator_id;
+        $array['channelId'] = $this->channel_id;
+
+        return $array;
     }
 
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assignee_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'creator_id');
     }
 
     public function channel(): BelongsTo

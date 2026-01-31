@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
     plugins: [
+        tailwindcss(),
         laravel({
             input: 'resources/js/app.ts',
             refresh: true,
@@ -17,7 +18,6 @@ export default defineConfig({
                 },
             },
         }),
-        tailwindcss(),
     ],
     resolve: {
         alias: {

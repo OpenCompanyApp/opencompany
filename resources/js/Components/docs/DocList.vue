@@ -10,7 +10,7 @@
           <h2 :class="titleClasses">{{ title }}</h2>
           <p v-if="!loading" :class="subtitleClasses">
             {{ totalCount }} {{ totalCount === 1 ? 'document' : 'documents' }}
-            <span v-if="selectedCount > 0" class="text-gray-900">
+            <span v-if="selectedCount > 0" class="text-neutral-900 dark:text-white">
               · {{ selectedCount }} selected
             </span>
           </p>
@@ -21,98 +21,35 @@
       <!-- Header Actions -->
       <div class="flex items-center gap-2">
         <!-- Search Toggle -->
-        <TooltipProvider v-if="showSearch" :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="[headerButtonClasses, searchExpanded && 'bg-gray-100 text-gray-900']"
-                @click="searchExpanded = !searchExpanded"
-              >
-                <Icon name="ph:magnifying-glass" class="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent :class="tooltipClasses" side="bottom">
-                Search
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip v-if="showSearch" text="Search" :delay-open="300">
+          <button
+            type="button"
+            :class="[headerButtonClasses, searchExpanded && 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white']"
+            @click="searchExpanded = !searchExpanded"
+          >
+            <Icon name="ph:magnifying-glass" class="w-4 h-4" />
+          </button>
+        </Tooltip>
 
         <!-- Filter Dropdown -->
-        <DropdownMenuRoot v-if="showFilter">
-          <DropdownMenuTrigger as-child>
-            <button type="button" :class="headerButtonClasses">
-              <Icon name="ph:funnel" class="w-4 h-4" />
-              <span v-if="activeFilter !== 'all'" class="ml-1 text-xs">
-                {{ filterOptions.find(f => f.value === activeFilter)?.label }}
-              </span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent :class="dropdownContentClasses" :side-offset="8">
-              <DropdownMenuLabel class="px-2 py-1.5 text-xs text-gray-500">
-                Filter by
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup v-model="activeFilter">
-                <DropdownMenuRadioItem
-                  v-for="option in filterOptions"
-                  :key="option.value"
-                  :value="option.value"
-                  :class="dropdownItemClasses"
-                >
-                  <DropdownMenuItemIndicator class="absolute left-2">
-                    <Icon name="ph:check" class="w-3.5 h-3.5" />
-                  </DropdownMenuItemIndicator>
-                  <Icon v-if="option.icon" :name="option.icon" class="w-4 h-4 mr-2 ml-5" />
-                  <span :class="!option.icon && 'pl-5'">{{ option.label }}</span>
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+        <DropdownMenu v-if="showFilter" :items="filterDropdownItems">
+          <Button variant="ghost" :class="headerButtonClasses">
+            <Icon name="ph:funnel" class="w-4 h-4" />
+            <span v-if="activeFilter !== 'all'" class="ml-1 text-xs">
+              {{ filterOptions.find(f => f.value === activeFilter)?.label }}
+            </span>
+          </Button>
+        </DropdownMenu>
 
         <!-- Sort Dropdown -->
-        <DropdownMenuRoot v-if="showSort">
-          <DropdownMenuTrigger as-child>
-            <button type="button" :class="headerButtonClasses">
-              <Icon :name="sortDirection === 'asc' ? 'ph:sort-ascending' : 'ph:sort-descending'" class="w-4 h-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent :class="dropdownContentClasses" :side-offset="8">
-              <DropdownMenuLabel class="px-2 py-1.5 text-xs text-gray-500">
-                Sort by
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup v-model="activeSort">
-                <DropdownMenuRadioItem
-                  v-for="option in sortOptions"
-                  :key="option.value"
-                  :value="option.value"
-                  :class="dropdownItemClasses"
-                >
-                  <DropdownMenuItemIndicator class="absolute left-2">
-                    <Icon name="ph:check" class="w-3.5 h-3.5" />
-                  </DropdownMenuItemIndicator>
-                  <span class="pl-5">{{ option.label }}</span>
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator class="h-px bg-gray-200 my-1" />
-              <DropdownMenuItem
-                :class="dropdownItemClasses"
-                @select="sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'"
-              >
-                <Icon :name="sortDirection === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'" class="w-4 h-4 mr-2" />
-                {{ sortDirection === 'asc' ? 'Ascending' : 'Descending' }}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+        <DropdownMenu v-if="showSort" :items="sortDropdownItems">
+          <Button variant="ghost" :class="headerButtonClasses">
+            <Icon :name="sortDirection === 'asc' ? 'ph:sort-ascending' : 'ph:sort-descending'" class="w-4 h-4" />
+          </Button>
+        </DropdownMenu>
 
         <!-- View Toggle -->
-        <div v-if="showViewToggle" class="flex items-center gap-0.5 p-0.5 rounded-lg bg-gray-100 border border-gray-200">
+        <div v-if="showViewToggle" class="flex items-center gap-0.5 p-0.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
           <button
             v-for="view in viewOptions"
             :key="view.value"
@@ -121,8 +58,8 @@
               'p-1.5 rounded-md',
               'transition-all duration-150 ease-out',
               currentView === view.value
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-700',
             ]"
             @click="currentView = view.value"
           >
@@ -163,12 +100,12 @@
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="p-1 rounded transition-all duration-150 ease-out hover:bg-gray-100"
+            class="p-1 rounded transition-all duration-150 ease-out hover:bg-neutral-100 dark:hover:bg-neutral-700"
             @click="emit('clearSelection')"
           >
-            <Icon name="ph:x" class="w-4 h-4 text-gray-500" />
+            <Icon name="ph:x" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
           </button>
-          <span class="text-sm text-gray-700">
+          <span class="text-sm text-neutral-700 dark:text-neutral-200">
             {{ selectedCount }} selected
           </span>
         </div>
@@ -297,13 +234,13 @@
 
     <!-- Footer Stats -->
     <div v-if="showFooter && !loading && documents.length > 0" :class="footerClasses">
-      <div class="flex items-center gap-4 text-xs text-gray-500">
+      <div class="flex items-center gap-4 text-xs text-neutral-500 dark:text-neutral-300">
         <span>{{ displayedDocuments.length }} of {{ totalCount }} documents</span>
         <span v-if="activeFilter !== 'all'">
           Filtered by: {{ filterOptions.find(f => f.value === activeFilter)?.label }}
         </span>
       </div>
-      <div v-if="lastUpdated" class="text-xs text-gray-400">
+      <div v-if="lastUpdated" class="text-xs text-neutral-400 dark:text-neutral-400">
         Updated {{ formatTimeAgo(lastUpdated) }}
       </div>
     </div>
@@ -312,26 +249,16 @@
 
 <script setup lang="ts">
 import { h, defineComponent, resolveComponent, type PropType, ref, computed } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuItemIndicator,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRoot,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
 import type { Document } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import SharedSkeleton from '@/Components/shared/Skeleton.vue'
+import SharedSearchInput from '@/Components/shared/SearchInput.vue'
+import SharedEmptyState from '@/Components/shared/EmptyState.vue'
+import DocsDocTreeItem from '@/Components/docs/DocTreeItem.vue'
+import DocsDocItem from '@/Components/docs/DocItem.vue'
 
 type DocListSize = 'sm' | 'md' | 'lg'
 type DocListView = 'list' | 'grid' | 'tree'
@@ -538,6 +465,30 @@ const rootDocuments = computed(() =>
   displayedDocuments.value.filter(doc => !doc.parentId)
 )
 
+// Dropdown items
+const filterDropdownItems = computed(() => [
+  filterOptions.map(option => ({
+    label: option.label,
+    icon: option.icon || (activeFilter.value === option.value ? 'ph:check' : undefined),
+    click: () => { activeFilter.value = option.value },
+  })),
+])
+
+const sortDropdownItems = computed(() => [
+  sortOptions.map(option => ({
+    label: option.label,
+    icon: activeSort.value === option.value ? 'ph:check' : undefined,
+    click: () => { activeSort.value = option.value },
+  })),
+  [
+    {
+      label: sortDirection.value === 'asc' ? 'Ascending' : 'Descending',
+      icon: sortDirection.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down',
+      click: () => { sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc' },
+    },
+  ],
+])
+
 // Container classes
 const containerClasses = computed(() => [
   'flex flex-col h-full',
@@ -545,61 +496,61 @@ const containerClasses = computed(() => [
 
 // Header classes
 const headerClasses = computed(() => [
-  'flex items-center justify-between border-b border-gray-200 sticky top-0 bg-white z-10',
+  'flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700 sticky top-0 bg-white dark:bg-neutral-900 z-10',
   sizeConfig[props.size].headerPadding,
 ])
 
 const headerIconClasses = computed(() => [
-  'rounded-lg flex items-center justify-center bg-gray-100',
+  'rounded-lg flex items-center justify-center bg-neutral-100 dark:bg-neutral-800',
   sizeConfig[props.size].iconContainer,
   'transition-all duration-150 ease-out',
 ])
 
 const headerIconInnerClasses = computed(() => [
-  'text-gray-600',
+  'text-neutral-600 dark:text-neutral-200',
   sizeConfig[props.size].iconSize,
 ])
 
 const titleClasses = computed(() => [
-  'font-semibold text-gray-900',
+  'font-semibold text-neutral-900 dark:text-white',
   sizeConfig[props.size].titleSize,
 ])
 
 const subtitleClasses = computed(() => [
-  'text-gray-500',
+  'text-neutral-500 dark:text-neutral-300',
   sizeConfig[props.size].subtitleSize,
 ])
 
 const headerButtonClasses = computed(() => [
   'flex items-center gap-1 px-2.5 py-1.5 rounded-lg',
   'transition-all duration-150 ease-out',
-  'text-gray-500 hover:text-gray-900',
-  'hover:bg-gray-100',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300',
+  'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-800',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-600',
 ])
 
 const createButtonClasses = computed(() => [
   'flex items-center gap-1.5 px-3 py-1.5 rounded-lg group',
-  'bg-gray-900 text-white hover:bg-gray-800',
+  'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100',
   'transition-all duration-150 ease-out',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
 ])
 
 // Search container classes
 const searchContainerClasses = computed(() => [
-  'px-4 py-2 border-b border-gray-200',
+  'px-4 py-2 border-b border-neutral-200 dark:border-neutral-700',
 ])
 
 // Bulk actions classes
 const bulkActionsClasses = computed(() => [
   'flex items-center justify-between px-4 py-2',
-  'bg-gray-50 border-b border-gray-200',
+  'bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700',
 ])
 
 const bulkActionButtonClasses = computed(() => [
   'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs',
-  'text-gray-500 hover:text-gray-900',
-  'hover:bg-gray-100',
+  'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
   'transition-all duration-150 ease-out',
 ])
 
@@ -613,34 +564,34 @@ const contentClasses = computed(() => [
 // Load more button classes
 const loadMoreButtonClasses = computed(() => [
   'w-full flex items-center justify-center gap-2 py-3.5 mt-2 group',
-  'text-sm text-gray-500 hover:text-gray-900',
-  'rounded-lg hover:bg-gray-50',
+  'text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
+  'rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800',
   'transition-all duration-150 ease-out',
   'disabled:opacity-50 disabled:cursor-not-allowed',
 ])
 
 // Footer classes
 const footerClasses = computed(() => [
-  'flex items-center justify-between px-4 py-2 border-t border-gray-200',
+  'flex items-center justify-between px-4 py-2 border-t border-neutral-200 dark:border-neutral-700',
 ])
 
 // Dropdown classes
 const dropdownContentClasses = computed(() => [
-  'z-50 min-w-[180px] bg-white border border-gray-200 rounded-lg',
+  'z-50 min-w-[180px] bg-white border border-neutral-200 rounded-lg',
   'p-1.5 shadow-lg',
   'animate-in fade-in-0 duration-150',
 ])
 
 const dropdownItemClasses = computed(() => [
   'relative flex items-center px-3 py-2 text-sm rounded-md cursor-pointer',
-  'text-gray-700 hover:bg-gray-50',
+  'text-neutral-700 hover:bg-neutral-50',
   'transition-colors duration-150 ease-out outline-none',
-  'data-[highlighted]:bg-gray-50',
+  'data-[highlighted]:bg-neutral-50',
 ])
 
 // Tooltip classes
 const tooltipClasses = computed(() => [
-  'z-50 bg-white border border-gray-200 rounded-lg',
+  'z-50 bg-white border border-neutral-200 rounded-lg',
   'px-3 py-1.5 text-xs shadow-md',
   'animate-in fade-in-0 duration-150',
 ])
@@ -684,7 +635,7 @@ const DocListSkeleton = defineComponent({
       if (props.view === 'grid') {
         return h('div', { class: 'grid grid-cols-2 lg:grid-cols-3 gap-3' },
           Array.from({ length: props.count }).map((_, i) =>
-            h('div', { key: i, class: 'p-4 rounded-xl border border-gray-100 animate-pulse' }, [
+            h('div', { key: i, class: 'p-4 rounded-xl border border-neutral-100 animate-pulse' }, [
               h('div', { class: 'flex items-center gap-3 mb-3' }, [
                 h(resolveComponent('SharedSkeleton'), { customClass: 'w-10 h-10 rounded-xl' }),
                 h('div', { class: 'flex-1 space-y-2' }, [

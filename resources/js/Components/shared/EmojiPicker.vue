@@ -1,22 +1,16 @@
 <template>
-  <PopoverRoot v-model:open="isOpen">
-    <PopoverTrigger as-child>
-      <slot />
-    </PopoverTrigger>
-    <PopoverPortal>
-      <PopoverContent
-        class="w-72 bg-white border border-gray-200 rounded-xl shadow-lg p-3 z-50 animate-in fade-in-0 zoom-in-95 duration-150"
-        :side="side"
-        :side-offset="8"
-        :align="align"
-      >
+  <Popover v-model:open="isOpen">
+    <slot />
+
+    <template #content>
+      <div class="w-72 p-3">
         <!-- Quick Reactions -->
-        <div class="flex items-center gap-1 pb-3 border-b border-gray-100">
+        <div class="flex items-center gap-1 pb-3 border-b border-neutral-100 dark:border-neutral-800">
           <button
             v-for="emoji in quickReactions"
             :key="emoji"
             type="button"
-            class="w-8 h-8 flex items-center justify-center text-xl rounded-lg hover:bg-gray-100 transition-colors"
+            class="w-8 h-8 flex items-center justify-center text-xl rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
             @click="selectEmoji(emoji)"
           >
             {{ emoji }}
@@ -24,14 +18,14 @@
         </div>
 
         <!-- Category Tabs -->
-        <div class="flex items-center gap-1 py-2 border-b border-gray-100">
+        <div class="flex items-center gap-1 py-2 border-b border-neutral-100 dark:border-neutral-800">
           <button
             v-for="cat in categories"
             :key="cat.id"
             type="button"
             :class="[
-              'p-1.5 rounded-lg transition-colors text-gray-500',
-              activeCategory === cat.id ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'
+              'p-1.5 rounded-lg transition-colors text-neutral-500 dark:text-neutral-300',
+              activeCategory === cat.id ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800'
             ]"
             :title="cat.name"
             @click="activeCategory = cat.id"
@@ -47,29 +41,21 @@
               v-for="emoji in currentEmojis"
               :key="emoji"
               type="button"
-              class="w-8 h-8 flex items-center justify-center text-xl rounded hover:bg-gray-100 transition-colors"
+              class="w-8 h-8 flex items-center justify-center text-xl rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
               @click="selectEmoji(emoji)"
             >
               {{ emoji }}
             </button>
           </div>
         </div>
-
-        <PopoverArrow class="fill-white" />
-      </PopoverContent>
-    </PopoverPortal>
-  </PopoverRoot>
+      </div>
+    </template>
+  </Popover>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import {
-  PopoverArrow,
-  PopoverContent,
-  PopoverPortal,
-  PopoverRoot,
-  PopoverTrigger,
-} from 'reka-ui'
+import Popover from '@/Components/shared/Popover.vue'
 
 withDefaults(defineProps<{
   side?: 'top' | 'right' | 'bottom' | 'left'

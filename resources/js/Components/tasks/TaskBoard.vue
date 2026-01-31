@@ -10,18 +10,18 @@
     <div
       v-if="showHeader"
       :class="[
-        'flex items-center justify-between border-b border-gray-200',
+        'flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700',
         sizeConfig[size].header
       ]"
     >
       <div class="flex items-center gap-3">
-        <h2 :class="['font-semibold text-gray-900', sizeConfig[size].title]">
+        <h2 :class="['font-semibold text-neutral-900 dark:text-white', sizeConfig[size].title]">
           {{ title }}
         </h2>
         <span
           v-if="totalTasks > 0"
           :class="[
-            'font-medium bg-gray-100 text-gray-500 rounded-full',
+            'font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 rounded-full',
             sizeConfig[size].badge
           ]"
         >
@@ -37,7 +37,7 @@
           :class="['flex items-center', sizeConfig[size].stat]"
         >
           <span :class="['w-2 h-2 rounded-full mr-1.5', stat.color]" />
-          <span class="text-gray-500">{{ stat.count }}</span>
+          <span class="text-neutral-500 dark:text-neutral-300">{{ stat.count }}</span>
         </div>
       </div>
     </div>
@@ -61,7 +61,7 @@
       >
         <div
           v-if="showLeftShadow"
-          class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent pointer-events-none z-10"
+          class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-neutral-900 to-transparent pointer-events-none z-10"
         />
       </Transition>
 
@@ -99,8 +99,8 @@
         <div
           v-if="allowAddColumn"
           :class="[
-            'flex flex-col items-center justify-center shrink-0 border-2 border-dashed border-gray-200 rounded-lg',
-            'hover:border-gray-400 hover:bg-gray-50 transition-colors duration-150 cursor-pointer group',
+            'flex flex-col items-center justify-center shrink-0 border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-lg',
+            'hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors duration-150 cursor-pointer group',
             sizeConfig[size].addColumn
           ]"
           @click="$emit('addColumn')"
@@ -108,13 +108,13 @@
           <Icon
             name="ph:plus"
             :class="[
-              'text-gray-400 group-hover:text-gray-600 transition-colors',
+              'text-neutral-400 dark:text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300 transition-colors',
               sizeConfig[size].addColumnIcon
             ]"
           />
           <span
             :class="[
-              'text-gray-400 group-hover:text-gray-600 transition-colors font-medium mt-2',
+              'text-neutral-400 dark:text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300 transition-colors font-medium mt-2',
               sizeConfig[size].addColumnText
             ]"
           >
@@ -132,7 +132,7 @@
       >
         <div
           v-if="showRightShadow"
-          class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none z-10"
+          class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-neutral-900 to-transparent pointer-events-none z-10"
         />
       </Transition>
     </div>
@@ -146,14 +146,14 @@
     >
       <div
         v-if="loading"
-        class="absolute inset-0 bg-white/80 flex items-center justify-center z-20"
+        class="absolute inset-0 bg-white/80 dark:bg-neutral-900/80 flex items-center justify-center z-20"
       >
         <div class="flex flex-col items-center gap-3">
           <div class="relative">
-            <div class="w-10 h-10 border-3 border-gray-200 rounded-full" />
-            <div class="absolute inset-0 w-10 h-10 border-3 border-gray-600 border-t-transparent rounded-full animate-spin" />
+            <div class="w-10 h-10 border-3 border-neutral-200 dark:border-neutral-700 rounded-full" />
+            <div class="absolute inset-0 w-10 h-10 border-3 border-neutral-600 dark:border-neutral-400 border-t-transparent rounded-full animate-spin" />
           </div>
-          <span class="text-sm text-gray-500">Loading tasks...</span>
+          <span class="text-sm text-neutral-500 dark:text-neutral-300">Loading tasks...</span>
         </div>
       </div>
     </Transition>
@@ -168,31 +168,31 @@
       <div
         v-if="!loading && totalTasks === 0"
         :class="[
-          'absolute inset-0 flex flex-col items-center justify-center text-center',
+          'absolute inset-0 flex flex-col items-center justify-center text-center bg-white dark:bg-neutral-900 z-30',
           sizeConfig[size].emptyState
         ]"
       >
         <div
           :class="[
-            'relative mb-4 rounded-lg bg-gray-100 flex items-center justify-center',
+            'relative mb-4 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center',
             sizeConfig[size].emptyIcon
           ]"
         >
           <Icon
             name="ph:kanban"
-            :class="['text-gray-400', sizeConfig[size].emptyIconSize]"
+            :class="['text-neutral-400 dark:text-neutral-400', sizeConfig[size].emptyIconSize]"
           />
         </div>
-        <h3 :class="['font-semibold text-gray-900 mb-1', sizeConfig[size].emptyTitle]">
+        <h3 :class="['font-semibold text-neutral-900 dark:text-white mb-1', sizeConfig[size].emptyTitle]">
           No tasks yet
         </h3>
-        <p :class="['text-gray-500 max-w-sm', sizeConfig[size].emptyDescription]">
+        <p :class="['text-neutral-500 dark:text-neutral-300 max-w-sm', sizeConfig[size].emptyDescription]">
           Create your first task to get started with your project board
         </p>
         <button
           :class="[
-            'mt-4 flex items-center gap-2 bg-gray-900 text-white rounded-lg font-medium',
-            'hover:bg-gray-800 transition-colors',
+            'mt-4 flex items-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg font-medium',
+            'hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors',
             sizeConfig[size].emptyButton
           ]"
           @click="$emit('addTask', 'backlog')"
@@ -213,25 +213,25 @@
       <div
         v-if="showKeyboardHints && !loading"
         :class="[
-          'absolute flex items-center gap-4 bg-white border border-gray-200 rounded-lg shadow-sm',
+          'absolute flex items-center gap-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-sm',
           sizeConfig[size].keyboardHints
         ]"
       >
         <div class="flex items-center gap-1.5">
           <kbd
             :class="[
-              'font-mono bg-gray-50 border border-gray-200 rounded',
+              'font-mono bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded text-neutral-700 dark:text-neutral-200',
               sizeConfig[size].kbd
             ]"
           >
             N
           </kbd>
-          <span class="text-gray-500">New task</span>
+          <span class="text-neutral-500 dark:text-neutral-300">New task</span>
         </div>
         <div class="flex items-center gap-1.5">
           <kbd
             :class="[
-              'font-mono bg-gray-50 border border-gray-200 rounded',
+              'font-mono bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded text-neutral-700 dark:text-neutral-200',
               sizeConfig[size].kbd
             ]"
           >
@@ -239,24 +239,24 @@
           </kbd>
           <kbd
             :class="[
-              'font-mono bg-gray-50 border border-gray-200 rounded',
+              'font-mono bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded text-neutral-700 dark:text-neutral-200',
               sizeConfig[size].kbd
             ]"
           >
             →
           </kbd>
-          <span class="text-gray-500">Move task</span>
+          <span class="text-neutral-500 dark:text-neutral-300">Move task</span>
         </div>
         <div class="flex items-center gap-1.5">
           <kbd
             :class="[
-              'font-mono bg-gray-50 border border-gray-200 rounded',
+              'font-mono bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded text-neutral-700 dark:text-neutral-200',
               sizeConfig[size].kbd
             ]"
           >
             /
           </kbd>
-          <span class="text-gray-500">Search</span>
+          <span class="text-neutral-500 dark:text-neutral-300">Search</span>
         </div>
       </div>
     </Transition>
@@ -278,10 +278,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
 import type { Task, TaskStatus } from '@/types'
 import TaskColumn from '@/Components/tasks/TaskColumn.vue'
 import TaskCard from '@/Components/tasks/TaskCard.vue'
+import Icon from '@/Components/shared/Icon.vue'
 
 // Types
 type BoardSize = 'sm' | 'md' | 'lg'
@@ -421,9 +421,9 @@ const sizeConfig: Record<BoardSize, SizeConfig> = {
 
 // Columns configuration
 const columns: Column[] = [
-  { status: 'backlog', title: 'Backlog', icon: 'ph:circle-dashed', color: 'bg-gray-400' },
-  { status: 'in_progress', title: 'In Progress', icon: 'ph:circle-half', color: 'bg-gray-600' },
-  { status: 'done', title: 'Done', icon: 'ph:check-circle', color: 'bg-gray-800' },
+  { status: 'backlog', title: 'Backlog', icon: 'ph:circle-dashed', color: 'bg-neutral-400' },
+  { status: 'in_progress', title: 'In Progress', icon: 'ph:circle-half', color: 'bg-neutral-600' },
+  { status: 'done', title: 'Done', icon: 'ph:check-circle', color: 'bg-neutral-800' },
 ]
 
 // State

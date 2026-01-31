@@ -1,159 +1,145 @@
 <template>
-  <TooltipProvider :delay-duration="tooltipDelay">
-    <TooltipRoot>
-      <TooltipTrigger as-child>
-        <component
-          :is="interactive ? 'button' : 'div'"
-          :type="interactive ? 'button' : undefined"
-          :class="containerClasses"
-          @click="handleClick"
+  <Tooltip
+    :delay-duration="tooltipDelay"
+    :side="tooltipSide"
+    :side-offset="5"
+  >
+    <template #content>
+      <!-- Tooltip Header -->
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs text-neutral-500 dark:text-neutral-300 font-medium uppercase tracking-wider">
+          {{ tooltipTitle }}
+        </p>
+        <Badge v-if="users.length > 0" size="xs" variant="soft">
+          {{ users.length }}
+        </Badge>
+      </div>
+
+      <!-- User List -->
+      <ul :class="tooltipListClasses">
+        <li
+          v-for="user in tooltipUsers"
+          :key="user.id"
+          :class="tooltipUserClasses"
         >
-          <!-- Avatar Stack -->
-          <div :class="avatarStackClasses">
-            <TransitionGroup name="avatar-stack" tag="div" class="flex -space-x-2">
-              <div
-                v-for="(user, index) in displayUsers"
-                :key="user.id"
-                :class="avatarWrapperClasses"
-                :style="{ zIndex: displayUsers.length - index }"
-              >
-                <SharedAgentAvatar
-                  :user="user"
-                  :size="avatarSize"
-                  :show-status="showStatus"
-                  :stacked="true"
-                  :stack-index="index"
-                />
-                <!-- Presence indicator ring -->
-                <div
-                  v-if="showPresenceRing && user.presence"
-                  :class="presenceRingClasses(user.presence)"
-                />
-              </div>
-            </TransitionGroup>
-
-            <!-- Overflow Badge -->
-            <Transition name="scale">
-              <div
-                v-if="remaining > 0"
-                :class="overflowBadgeClasses"
-              >
-                +{{ remaining > 99 ? '99' : remaining }}
-              </div>
-            </Transition>
-          </div>
-
-          <!-- Label Section -->
-          <div v-if="showLabel || showNames" :class="labelSectionClasses">
-            <!-- Names -->
-            <span v-if="showNames && displayNames" :class="namesClasses">
-              {{ displayNames }}
-            </span>
-
-            <!-- Label -->
-            <span v-if="showLabel" :class="labelClasses">
-              {{ computedLabel }}
+          <SharedAgentAvatar
+            :user="user"
+            size="xs"
+            :show-status="true"
+            :show-tooltip="false"
+          />
+          <div class="flex-1 min-w-0">
+            <span class="text-sm text-neutral-900 dark:text-white truncate block">{{ user.name }}</span>
+            <span v-if="getUserPresence(user)" class="text-xs text-neutral-500 dark:text-neutral-300">
+              {{ getPresenceLabel(getUserPresence(user)!) }}
             </span>
           </div>
-
-          <!-- Activity Indicator -->
-          <div v-if="showActivity && activityType" :class="activityIndicatorClasses">
-            <Icon :name="activityIcon" :class="activityIconClasses" />
-            <span v-if="activityText" class="text-xs text-gray-500">
-              {{ activityText }}
-            </span>
-          </div>
-
-          <!-- Live Indicator -->
-          <div
-            v-if="live"
-            class="flex items-center gap-1.5 ml-2 px-2 py-1 rounded-full bg-green-50 border border-green-200 transition-colors duration-150"
-          >
-            <span class="relative flex h-2 w-2">
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
-            </span>
-            <span class="text-[10px] text-green-600 font-semibold tracking-wide">LIVE</span>
-          </div>
-        </component>
-      </TooltipTrigger>
-
-      <!-- Tooltip -->
-      <TooltipPortal>
-        <TooltipContent
-          :class="tooltipContentClasses"
-          :side="tooltipSide"
-          :side-offset="5"
-        >
-          <!-- Tooltip Header -->
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">
-              {{ tooltipTitle }}
-            </p>
-            <SharedBadge v-if="users.length > 0" size="xs" variant="default">
-              {{ users.length }}
-            </SharedBadge>
-          </div>
-
-          <!-- User List -->
-          <ul :class="tooltipListClasses">
-            <li
-              v-for="user in tooltipUsers"
-              :key="user.id"
-              :class="tooltipUserClasses"
-            >
-              <SharedAgentAvatar
-                :user="user"
-                size="xs"
-                :show-status="true"
-                :show-tooltip="false"
-              />
-              <div class="flex-1 min-w-0">
-                <span class="text-sm text-gray-900 truncate block">{{ user.name }}</span>
-                <span v-if="getUserPresence(user)" class="text-xs text-gray-500">
-                  {{ getPresenceLabel(getUserPresence(user)!) }}
-                </span>
-              </div>
-              <!-- User-specific action in tooltip -->
-              <button
-                v-if="userAction"
-                type="button"
-                class="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150"
-                @click.stop="handleUserAction(user)"
-              >
-                <Icon :name="userAction.icon" class="w-3.5 h-3.5" />
-              </button>
-            </li>
-          </ul>
-
-          <!-- View All Link -->
+          <!-- User-specific action in tooltip -->
           <button
-            v-if="users.length > maxTooltipUsers && viewAllAction"
+            v-if="userAction"
             type="button"
-            class="w-full mt-2 pt-2 border-t border-gray-200 text-xs text-gray-600 font-medium hover:text-gray-900 transition-colors duration-150 text-center"
-            @click="viewAllAction"
+            class="p-1.5 rounded-lg text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors duration-150"
+            @click.stop="handleUserAction(user)"
           >
-            View all {{ users.length }} users
+            <Icon :name="userAction.icon" class="w-3.5 h-3.5" />
           </button>
+        </li>
+      </ul>
 
-          <TooltipArrow class="fill-white" />
-        </TooltipContent>
-      </TooltipPortal>
-    </TooltipRoot>
-  </TooltipProvider>
+      <!-- View All Link -->
+      <button
+        v-if="users.length > maxTooltipUsers && viewAllAction"
+        type="button"
+        class="w-full mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-200 font-medium hover:text-neutral-900 dark:hover:text-white transition-colors duration-150 text-center"
+        @click="viewAllAction"
+      >
+        View all {{ users.length }} users
+      </button>
+    </template>
+
+    <component
+      :is="interactive ? 'button' : 'div'"
+      :type="interactive ? 'button' : undefined"
+      :class="containerClasses"
+      @click="handleClick"
+    >
+      <!-- Avatar Stack -->
+      <div :class="avatarStackClasses">
+        <TransitionGroup name="avatar-stack" tag="div" class="flex -space-x-2">
+          <div
+            v-for="(user, index) in displayUsers"
+            :key="user.id"
+            :class="avatarWrapperClasses"
+            :style="{ zIndex: displayUsers.length - index }"
+          >
+            <SharedAgentAvatar
+              :user="user"
+              :size="avatarSize"
+              :show-status="showStatus"
+              :stacked="true"
+              :stack-index="index"
+            />
+            <!-- Presence indicator ring -->
+            <div
+              v-if="showPresenceRing && user.presence"
+              :class="presenceRingClasses(user.presence)"
+            />
+          </div>
+        </TransitionGroup>
+
+        <!-- Overflow Badge -->
+        <Transition name="scale">
+          <div
+            v-if="remaining > 0"
+            :class="overflowBadgeClasses"
+          >
+            +{{ remaining > 99 ? '99' : remaining }}
+          </div>
+        </Transition>
+      </div>
+
+      <!-- Label Section -->
+      <div v-if="showLabel || showNames" :class="labelSectionClasses">
+        <!-- Names -->
+        <span v-if="showNames && displayNames" :class="namesClasses">
+          {{ displayNames }}
+        </span>
+
+        <!-- Label -->
+        <span v-if="showLabel" :class="labelClasses">
+          {{ computedLabel }}
+        </span>
+      </div>
+
+      <!-- Activity Indicator -->
+      <div v-if="showActivity && activityType" :class="activityIndicatorClasses">
+        <Icon :name="activityIcon" :class="activityIconClasses" />
+        <span v-if="activityText" class="text-xs text-neutral-500 dark:text-neutral-300">
+          {{ activityText }}
+        </span>
+      </div>
+
+      <!-- Live Indicator -->
+      <div
+        v-if="live"
+        class="flex items-center gap-1.5 ml-2 px-2 py-1 rounded-full bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 transition-colors duration-150"
+      >
+        <span class="relative flex h-2 w-2">
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
+        </span>
+        <span class="text-[10px] text-green-600 font-semibold tracking-wide">LIVE</span>
+      </div>
+    </component>
+  </Tooltip>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
 import type { User } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import Badge from '@/Components/shared/Badge.vue'
+import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
 
 type PresenceRowSize = 'xs' | 'sm' | 'md' | 'lg'
 type PresenceRowVariant = 'default' | 'compact' | 'inline' | 'card'
@@ -310,10 +296,10 @@ const getPresenceLabel = (presence: ActivityType): string => {
 const presenceRingClasses = (presence: ActivityType) => {
   const baseClasses = 'absolute inset-0 rounded-full pointer-events-none border-2'
   const colorClasses: Record<ActivityType, string> = {
-    typing: 'border-gray-400',
+    typing: 'border-neutral-400',
     editing: 'border-amber-400',
     viewing: 'border-blue-400',
-    idle: 'border-gray-300',
+    idle: 'border-neutral-300',
   }
   return [baseClasses, colorClasses[presence]]
 }
@@ -336,9 +322,9 @@ const containerClasses = computed(() => {
       break
     case 'card':
       classes.push(
-        'p-2.5 rounded-lg bg-gray-50',
+        'p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800',
         'border border-transparent',
-        'hover:bg-gray-100 hover:border-gray-200',
+        'hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:border-neutral-200 dark:hover:border-neutral-600',
       )
       break
     default:
@@ -349,7 +335,7 @@ const containerClasses = computed(() => {
   if (props.interactive) {
     classes.push(
       'cursor-pointer',
-      'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400 rounded-full',
+      'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 rounded-full',
     )
   }
 
@@ -377,10 +363,10 @@ const overflowBadgeClasses = computed(() => {
 
   return [
     'rounded-full flex items-center justify-center',
-    'bg-gray-100 border-2 border-white',
-    'font-medium text-gray-500',
+    'bg-neutral-100 dark:bg-neutral-700 border-2 border-white dark:border-neutral-900',
+    'font-medium text-neutral-500 dark:text-neutral-300',
     'transition-colors duration-150',
-    'hover:bg-gray-200 hover:text-gray-900',
+    'hover:bg-neutral-200 dark:hover:bg-neutral-600 hover:text-neutral-900 dark:hover:text-white',
     sizeMap[props.size],
   ]
 })
@@ -393,13 +379,13 @@ const labelSectionClasses = computed(() => [
 
 // Names classes
 const namesClasses = computed(() => [
-  'text-gray-900 font-medium truncate',
+  'text-neutral-900 dark:text-white font-medium truncate',
   sizeClasses[props.size].text,
 ])
 
 // Label classes
 const labelClasses = computed(() => [
-  'text-gray-400',
+  'text-neutral-400 dark:text-neutral-400',
   sizeClasses[props.size].text,
 ])
 
@@ -412,17 +398,17 @@ const activityIndicatorClasses = computed(() => [
 const activityIconClasses = computed(() => {
   const baseClasses = 'w-3.5 h-3.5'
   const colorClasses: Record<ActivityType, string> = {
-    typing: 'text-gray-600',
+    typing: 'text-neutral-600 dark:text-neutral-200',
     editing: 'text-amber-600',
     viewing: 'text-blue-600',
-    idle: 'text-gray-400',
+    idle: 'text-neutral-400 dark:text-neutral-400',
   }
   return [baseClasses, colorClasses[props.activityType || 'viewing']]
 })
 
 // Tooltip content classes
 const tooltipContentClasses = computed(() => [
-  'bg-white border border-gray-200 rounded-lg',
+  'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
   'px-4 py-3 text-sm shadow-md max-w-xs z-50',
   'animate-in fade-in-0 duration-150',
 ])
@@ -437,7 +423,7 @@ const tooltipUserClasses = computed(() => [
   'flex items-center gap-2',
   'p-1 -mx-1 rounded-lg',
   'transition-colors duration-150',
-  'hover:bg-gray-50',
+  'hover:bg-neutral-50 dark:hover:bg-neutral-800',
 ])
 
 // Handlers

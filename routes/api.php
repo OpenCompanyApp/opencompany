@@ -18,12 +18,20 @@ use App\Http\Controllers\Api\TaskCommentController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TaskTemplateController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\CalendarEventController;
+use App\Http\Controllers\Api\CalendarEventAttendeeController;
+use App\Http\Controllers\Api\DataTableController;
+use App\Http\Controllers\Api\DataTableColumnController;
+use App\Http\Controllers\Api\DataTableRowController;
+use App\Http\Controllers\Api\DataTableViewController;
+use App\Http\Controllers\Api\DmController;
 use Illuminate\Support\Facades\Route;
 
 // Users
 Route::get('/users', [UserController::class, 'index']);
 Route::get('/users/agents', [UserController::class, 'agents']);
 Route::get('/users/{id}', [UserController::class, 'show']);
+Route::get('/users/{id}/activity', [UserController::class, 'activity']);
 Route::patch('/users/{id}', [UserController::class, 'update']);
 Route::patch('/users/{id}/presence', [UserController::class, 'updatePresence']);
 
@@ -124,5 +132,51 @@ Route::get('/direct-messages/unread-count', [DirectMessageController::class, 'un
 Route::get('/direct-messages/{id}', [DirectMessageController::class, 'show']);
 Route::post('/direct-messages/{id}/read', [DirectMessageController::class, 'markRead']);
 
+// DM Conversation API (for frontend)
+Route::get('/dm/{userId}', [DmController::class, 'show']);
+Route::post('/dm/{userId}', [DmController::class, 'store']);
+Route::post('/dm/{userId}/read', [DmController::class, 'markRead']);
+
 // Search
 Route::get('/search', [SearchController::class, 'index']);
+
+// Calendar Events
+Route::get('/calendar/events', [CalendarEventController::class, 'index']);
+Route::post('/calendar/events', [CalendarEventController::class, 'store']);
+Route::get('/calendar/events/{id}', [CalendarEventController::class, 'show']);
+Route::patch('/calendar/events/{id}', [CalendarEventController::class, 'update']);
+Route::delete('/calendar/events/{id}', [CalendarEventController::class, 'destroy']);
+
+// Calendar Event Attendees
+Route::post('/calendar/events/{eventId}/attendees', [CalendarEventAttendeeController::class, 'store']);
+Route::patch('/calendar/events/{eventId}/attendees/{attendeeId}', [CalendarEventAttendeeController::class, 'update']);
+Route::delete('/calendar/events/{eventId}/attendees/{attendeeId}', [CalendarEventAttendeeController::class, 'destroy']);
+
+// Data Tables
+Route::get('/tables', [DataTableController::class, 'index']);
+Route::post('/tables', [DataTableController::class, 'store']);
+Route::get('/tables/{id}', [DataTableController::class, 'show']);
+Route::patch('/tables/{id}', [DataTableController::class, 'update']);
+Route::delete('/tables/{id}', [DataTableController::class, 'destroy']);
+
+// Data Table Columns
+Route::get('/tables/{tableId}/columns', [DataTableColumnController::class, 'index']);
+Route::post('/tables/{tableId}/columns', [DataTableColumnController::class, 'store']);
+Route::patch('/tables/{tableId}/columns/{columnId}', [DataTableColumnController::class, 'update']);
+Route::delete('/tables/{tableId}/columns/{columnId}', [DataTableColumnController::class, 'destroy']);
+Route::post('/tables/{tableId}/columns/reorder', [DataTableColumnController::class, 'reorder']);
+
+// Data Table Rows
+Route::get('/tables/{tableId}/rows', [DataTableRowController::class, 'index']);
+Route::post('/tables/{tableId}/rows', [DataTableRowController::class, 'store']);
+Route::get('/tables/{tableId}/rows/{rowId}', [DataTableRowController::class, 'show']);
+Route::patch('/tables/{tableId}/rows/{rowId}', [DataTableRowController::class, 'update']);
+Route::delete('/tables/{tableId}/rows/{rowId}', [DataTableRowController::class, 'destroy']);
+Route::post('/tables/{tableId}/rows/bulk', [DataTableRowController::class, 'bulkCreate']);
+Route::post('/tables/{tableId}/rows/bulk-delete', [DataTableRowController::class, 'bulkDelete']);
+
+// Data Table Views
+Route::get('/tables/{tableId}/views', [DataTableViewController::class, 'index']);
+Route::post('/tables/{tableId}/views', [DataTableViewController::class, 'store']);
+Route::patch('/tables/{tableId}/views/{viewId}', [DataTableViewController::class, 'update']);
+Route::delete('/tables/{tableId}/views/{viewId}', [DataTableViewController::class, 'destroy']);

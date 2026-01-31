@@ -1,14 +1,14 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="p-4 border-b border-gray-200">
+    <div class="p-4 border-b border-neutral-200">
       <div class="flex items-center justify-between">
-        <h3 class="font-semibold text-gray-900">
+        <h3 class="font-semibold text-neutral-900">
           Attachments
-          <span class="ml-1 text-sm text-gray-500">({{ attachments.length }})</span>
+          <span class="ml-1 text-sm text-neutral-500">({{ attachments.length }})</span>
         </h3>
         <button
-          class="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors"
+          class="p-1.5 rounded-lg hover:bg-neutral-50 text-neutral-500 transition-colors"
           @click="$emit('close')"
         >
           <Icon name="ph:x" class="w-4 h-4" />
@@ -17,14 +17,14 @@
     </div>
 
     <!-- Upload Area -->
-    <div class="p-4 border-b border-gray-200">
+    <div class="p-4 border-b border-neutral-200">
       <div
         ref="dropZoneRef"
         :class="[
           'relative border-2 border-dashed rounded-lg p-4 text-center transition-colors',
           isDragging
-            ? 'border-gray-400 bg-gray-50'
-            : 'border-gray-200 hover:border-gray-300'
+            ? 'border-neutral-400 bg-neutral-50'
+            : 'border-neutral-200 hover:border-neutral-300'
         ]"
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
@@ -37,24 +37,24 @@
           class="hidden"
           @change="handleFileSelect"
         />
-        <Icon name="ph:cloud-arrow-up" class="w-8 h-8 mx-auto text-gray-400 mb-2" />
-        <p class="text-sm text-gray-500">
+        <Icon name="ph:cloud-arrow-up" class="w-8 h-8 mx-auto text-neutral-400 mb-2" />
+        <p class="text-sm text-neutral-500">
           Drag & drop files or
           <button
             type="button"
-            class="text-gray-900 font-medium hover:underline"
+            class="text-neutral-900 font-medium hover:underline"
             @click="fileInputRef?.click()"
           >
             browse
           </button>
         </p>
-        <p class="text-xs text-gray-400 mt-1">Max 10MB per file</p>
+        <p class="text-xs text-neutral-400 mt-1">Max 10MB per file</p>
 
         <!-- Upload progress -->
         <div v-if="uploading" class="absolute inset-0 bg-white/80 flex items-center justify-center rounded-lg">
           <div class="flex flex-col items-center gap-2">
-            <div class="w-8 h-8 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-            <span class="text-sm text-gray-600">Uploading...</span>
+            <div class="w-8 h-8 border-2 border-neutral-300 border-t-neutral-600 rounded-full animate-spin" />
+            <span class="text-sm text-neutral-600">Uploading...</span>
           </div>
         </div>
       </div>
@@ -70,7 +70,7 @@
         <div
           v-for="attachment in attachments"
           :key="attachment.id"
-          class="group flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+          class="group flex items-center gap-3 p-3 rounded-lg bg-neutral-50 hover:bg-neutral-100 transition-colors"
         >
           <!-- File icon -->
           <div
@@ -87,13 +87,13 @@
             <a
               :href="attachment.url"
               target="_blank"
-              class="text-sm font-medium text-gray-900 hover:text-gray-600 truncate block"
+              class="text-sm font-medium text-neutral-900 hover:text-neutral-600 truncate block"
             >
               {{ attachment.originalName }}
             </a>
-            <div class="flex items-center gap-2 text-xs text-gray-500">
+            <div class="flex items-center gap-2 text-xs text-neutral-500">
               <span>{{ formatFileSize(attachment.size) }}</span>
-              <span class="text-gray-300">|</span>
+              <span class="text-neutral-300">|</span>
               <span>{{ formatDate(attachment.createdAt) }}</span>
             </div>
           </div>
@@ -103,14 +103,14 @@
             <a
               :href="attachment.url"
               download
-              class="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 transition-colors"
+              class="p-1.5 rounded-lg hover:bg-neutral-200 text-neutral-500 transition-colors"
               title="Download"
             >
               <Icon name="ph:download-simple" class="w-4 h-4" />
             </a>
             <button
               type="button"
-              class="p-1.5 rounded-lg hover:bg-red-100 text-gray-500 hover:text-red-600 transition-colors"
+              class="p-1.5 rounded-lg hover:bg-red-100 text-neutral-500 hover:text-red-600 transition-colors"
               title="Delete"
               @click="handleDelete(attachment)"
             >
@@ -121,13 +121,13 @@
       </TransitionGroup>
 
       <!-- Empty state -->
-      <div v-if="attachments.length === 0 && !loading" class="text-center py-8 text-gray-500 text-sm">
+      <div v-if="attachments.length === 0 && !loading" class="text-center py-8 text-neutral-500 text-sm">
         No attachments yet
       </div>
 
       <!-- Loading state -->
       <div v-if="loading" class="flex items-center justify-center py-8">
-        <div class="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+        <div class="w-6 h-6 border-2 border-neutral-300 border-t-neutral-600 rounded-full animate-spin" />
       </div>
     </div>
   </div>
@@ -135,8 +135,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
 import type { User } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
 
 interface Attachment {
   id: string
@@ -265,8 +265,8 @@ const getFileTypeColor = (mimeType: string): string => {
   if (mimeType.includes('word') || mimeType.includes('document')) return 'bg-blue-100 text-blue-600'
   if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'bg-green-100 text-green-600'
   if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'bg-amber-100 text-amber-600'
-  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bg-gray-200 text-gray-600'
-  return 'bg-gray-100 text-gray-600'
+  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bg-neutral-200 text-neutral-600'
+  return 'bg-neutral-100 text-neutral-600'
 }
 
 const formatFileSize = (bytes: number): string => {

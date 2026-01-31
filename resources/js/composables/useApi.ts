@@ -38,9 +38,10 @@ function useFetch<T>(url: string) {
     }
   }
 
-  execute()
+  // Start fetching and return promise along with reactive refs
+  const promise = execute()
 
-  return { data, error, loading, refresh: execute }
+  return { data, error, loading, refresh: execute, promise }
 }
 
 export const useApi = () => {

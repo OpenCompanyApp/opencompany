@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Configure dark mode to use class-based selector */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* ═══════════════════════════════════════════════════════════════════════════
      NOTION/SLACK-INSPIRED DESIGN SYSTEM
@@ -208,10 +211,11 @@ body {
 /* ═══════════════════════════════════════════════════════════════════════════
    DARK MODE OVERRIDES
    Clean darks, same minimal aesthetic
+   Supports both class-based (.dark) and system preference
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
+/* Class-based dark mode (for manual toggle) */
+.dark {
     /* Backgrounds - Clean darks */
     --color-olympus-bg: oklch(0.13 0 0);
     --color-olympus-sidebar: oklch(0.11 0 0);
@@ -259,14 +263,66 @@ body {
 
     --shadow-card: 0 0 0 1px var(--color-olympus-border-subtle);
     --shadow-card-hover: 0 0 0 1px var(--color-olympus-border), 0 2px 4px 0 oklch(0 0 0 / 0.2);
-  }
+}
 
-  /* Scrollbar styling for dark mode */
-  ::-webkit-scrollbar-thumb {
-    background: oklch(0.30 0 0);
-  }
+/* Dark mode scrollbar styling */
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.30 0 0);
+}
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.40 0 0);
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.40 0 0);
+}
+
+/* System preference dark mode (when 'system' is selected and no class override) */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    /* Backgrounds - Clean darks */
+    --color-olympus-bg: oklch(0.13 0 0);
+    --color-olympus-sidebar: oklch(0.11 0 0);
+    --color-olympus-surface: oklch(0.16 0 0);
+    --color-olympus-elevated: oklch(0.18 0 0);
+
+    /* Glass surfaces */
+    --color-olympus-glass: oklch(0.16 0 0 / 0.98);
+    --color-olympus-glass-hover: oklch(0.20 0 0);
+
+    /* Borders */
+    --color-olympus-border: oklch(0.28 0 0);
+    --color-olympus-border-subtle: oklch(0.22 0 0);
+
+    /* Primary - Same blue */
+    --color-olympus-primary: oklch(0.60 0.15 250);
+    --color-olympus-primary-hover: oklch(0.65 0.15 250);
+    --color-olympus-primary-muted: oklch(0.60 0.15 250 / 0.12);
+    --color-olympus-primary-glow: oklch(0.60 0.15 250 / 0.2);
+
+    /* Text - White hierarchy */
+    --color-olympus-text: oklch(0.95 0 0);
+    --color-olympus-text-muted: oklch(0.70 0 0);
+    --color-olympus-text-subtle: oklch(0.50 0 0);
+
+    /* Status colors */
+    --color-olympus-success: oklch(0.60 0.12 145);
+    --color-olympus-warning: oklch(0.65 0.10 70);
+    --color-olympus-error: oklch(0.60 0.14 25);
+
+    /* Agent status */
+    --color-agent-working: oklch(0.60 0.12 145);
+    --color-agent-idle: oklch(0.50 0 0);
+    --color-agent-offline: oklch(0.35 0 0);
+
+    /* Shadows - Darker */
+    --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.2);
+    --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.3), 0 2px 4px -2px oklch(0 0 0 / 0.2);
+    --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.35), 0 4px 6px -4px oklch(0 0 0 / 0.2);
+    --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 0.4), 0 8px 10px -6px oklch(0 0 0 / 0.25);
+
+    --shadow-glow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.25);
+    --shadow-glow-md: 0 4px 6px -1px oklch(0 0 0 / 0.3);
+    --shadow-glow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.35);
+
+    --shadow-card: 0 0 0 1px var(--color-olympus-border-subtle);
+    --shadow-card-hover: 0 0 0 1px var(--color-olympus-border), 0 2px 4px 0 oklch(0 0 0 / 0.2);
   }
 }

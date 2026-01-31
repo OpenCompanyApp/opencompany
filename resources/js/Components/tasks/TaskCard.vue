@@ -4,7 +4,7 @@
       'relative group overflow-hidden transition-all duration-150',
       sizeConfig[size].container,
       variantClasses[variant],
-      selected && 'ring-2 ring-gray-900 ring-offset-2 ring-offset-white',
+      selected && 'ring-2 ring-neutral-900 dark:ring-white ring-offset-2 ring-offset-white dark:ring-offset-neutral-900',
       task.status === 'done' && 'opacity-75',
       dragging && 'opacity-50',
       !disabled && 'cursor-grab active:cursor-grabbing',
@@ -34,8 +34,8 @@
           :class="[
             'flex items-center justify-center rounded-md border-2 transition-all duration-150',
             selected
-              ? 'bg-gray-900 border-gray-900'
-              : 'bg-white border-gray-300 hover:border-gray-900'
+              ? 'bg-neutral-900 dark:bg-white border-neutral-900 dark:border-white'
+              : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 hover:border-neutral-900 dark:hover:border-white'
           ]"
           @click.stop="$emit('select')"
         >
@@ -80,7 +80,7 @@
         <span
           v-if="task.type"
           :class="[
-            'rounded-md bg-gray-100 text-gray-500 flex items-center gap-1',
+            'rounded-md bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-300 flex items-center gap-1',
             sizeConfig[size].typeBadge
           ]"
         >
@@ -96,73 +96,31 @@
           sizeConfig[size].actionsGap
         ]"
       >
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                :class="[
-                  'rounded transition-colors duration-150',
-                  'hover:bg-gray-100 hover:text-gray-900',
-                  sizeConfig[size].actionButton
-                ]"
-                @click.stop="$emit('edit')"
-              >
-                <Icon name="ph:pencil-simple" :class="['text-gray-500 transition-colors', sizeConfig[size].actionIcon]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent
-                class="bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs shadow-md z-50 animate-in fade-in-0 duration-150"
-                :side-offset="5"
-              >
-                Edit task
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip text="Edit task" :delay-open="300">
+          <button
+            :class="[
+              'rounded transition-colors duration-150',
+              'hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:text-neutral-900 dark:hover:text-white',
+              sizeConfig[size].actionButton
+            ]"
+            @click.stop="$emit('edit')"
+          >
+            <Icon name="ph:pencil-simple" :class="['text-neutral-500 dark:text-neutral-400 transition-colors', sizeConfig[size].actionIcon]" />
+          </button>
+        </Tooltip>
 
-        <DropdownMenuRoot>
-          <DropdownMenuTrigger as-child>
-            <button
-              :class="[
-                'rounded transition-colors duration-150',
-                'hover:bg-gray-100',
-                sizeConfig[size].actionButton
-              ]"
-              @click.stop
-            >
-              <Icon name="ph:dots-three" :class="['text-gray-500 transition-colors', sizeConfig[size].actionIcon]" />
-            </button>
-          </DropdownMenuTrigger>
-
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              :class="[
-                'bg-white border border-gray-200 rounded-lg shadow-lg z-50',
-                'animate-in fade-in-0 duration-150',
-                sizeConfig[size].dropdownContent
-              ]"
-              :side-offset="5"
-              align="end"
-            >
-              <DropdownMenuItem
-                v-for="action in taskActions"
-                :key="action.id"
-                :class="[
-                  'flex items-center rounded-md cursor-pointer outline-none transition-colors duration-150',
-                  'focus:bg-gray-50',
-                  action.variant === 'danger' ? 'text-red-600 hover:bg-red-50' : 'hover:bg-gray-50',
-                  sizeConfig[size].dropdownItem
-                ]"
-                @click="$emit('action', action.id)"
-              >
-                <Icon :name="action.icon" :class="['mr-2', sizeConfig[size].dropdownIcon]" />
-                <span>{{ action.label }}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+        <DropdownMenu :items="taskDropdownItems">
+          <button
+            :class="[
+              'rounded transition-colors duration-150',
+              'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+              sizeConfig[size].actionButton
+            ]"
+            @click.stop
+          >
+            <Icon name="ph:dots-three" :class="['text-neutral-500 dark:text-neutral-400 transition-colors', sizeConfig[size].actionIcon]" />
+          </button>
+        </DropdownMenu>
       </div>
     </div>
 
@@ -170,7 +128,7 @@
     <span
       v-if="showId && task.id"
       :class="[
-        'text-gray-400 font-mono bg-gray-100 rounded',
+        'text-neutral-400 dark:text-neutral-500 font-mono bg-neutral-100 dark:bg-neutral-700 rounded',
         sizeConfig[size].idBadge
       ]"
     >
@@ -180,9 +138,9 @@
     <!-- Title -->
     <h4
       :class="[
-        'font-medium leading-snug text-gray-900',
+        'font-medium leading-snug text-neutral-900 dark:text-white',
         sizeConfig[size].title,
-        task.status === 'done' && 'line-through text-gray-500'
+        task.status === 'done' && 'line-through text-neutral-500 dark:text-neutral-400'
       ]"
     >
       {{ task.title }}
@@ -192,7 +150,7 @@
     <p
       v-if="task.description"
       :class="[
-        'text-gray-500 line-clamp-2',
+        'text-neutral-500 dark:text-neutral-400 line-clamp-2',
         sizeConfig[size].description
       ]"
     >
@@ -221,7 +179,7 @@
       <span
         v-if="task.labels.length > maxLabels"
         :class="[
-          'rounded-full bg-gray-100 text-gray-500 cursor-default',
+          'rounded-full bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 cursor-default',
           sizeConfig[size].label
         ]"
       >
@@ -232,16 +190,16 @@
     <!-- Progress bar -->
     <div v-if="task.progress !== undefined" :class="sizeConfig[size].progressContainer">
       <div class="flex items-center justify-between mb-1">
-        <span :class="['text-gray-500', sizeConfig[size].progressLabel]">
+        <span :class="['text-neutral-500 dark:text-neutral-400', sizeConfig[size].progressLabel]">
           Progress
         </span>
-        <span :class="['font-medium text-gray-900', sizeConfig[size].progressValue]">
+        <span :class="['font-medium text-neutral-900 dark:text-white', sizeConfig[size].progressValue]">
           {{ task.progress }}%
         </span>
       </div>
-      <div :class="['bg-gray-200 rounded-full overflow-hidden', sizeConfig[size].progressBar]">
+      <div :class="['bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden', sizeConfig[size].progressBar]">
         <div
-          class="h-full bg-gray-600 rounded-full transition-all duration-300"
+          class="h-full bg-neutral-600 dark:bg-neutral-400 rounded-full transition-all duration-300"
           :style="{ width: `${task.progress}%` }"
         />
       </div>
@@ -252,13 +210,13 @@
       v-if="task.subtasks && task.subtasks.length > 0"
       :class="['flex items-center group/subtasks', sizeConfig[size].subtasks]"
     >
-      <Icon name="ph:list-checks" :class="['text-gray-500 mr-1.5', sizeConfig[size].subtaskIcon]" />
-      <span :class="['text-gray-500', sizeConfig[size].subtaskText]">
+      <Icon name="ph:list-checks" :class="['text-neutral-500 dark:text-neutral-400 mr-1.5', sizeConfig[size].subtaskIcon]" />
+      <span :class="['text-neutral-500 dark:text-neutral-400', sizeConfig[size].subtaskText]">
         {{ completedSubtasks }}/{{ task.subtasks.length }} subtasks
       </span>
-      <div :class="['flex-1 bg-gray-200 rounded-full overflow-hidden ml-2', sizeConfig[size].subtaskBar]">
+      <div :class="['flex-1 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden ml-2', sizeConfig[size].subtaskBar]">
         <div
-          class="h-full bg-green-600 rounded-full transition-all duration-300"
+          class="h-full bg-green-600 dark:bg-green-500 rounded-full transition-all duration-300"
           :style="{ width: `${subtaskProgress}%` }"
         />
       </div>
@@ -273,7 +231,7 @@
             <AgentAvatar
               :user="task.assignee"
               :size="avatarSize"
-              class="ring-2 ring-white hover:ring-gray-400 transition-all"
+              class="ring-2 ring-white dark:ring-neutral-800 hover:ring-neutral-400 dark:hover:ring-neutral-500 transition-all"
             />
           </Link>
           <Link
@@ -285,13 +243,13 @@
             <AgentAvatar
               :user="collab"
               :size="avatarSize"
-              class="ring-2 ring-white hover:ring-gray-400 transition-all"
+              class="ring-2 ring-white dark:ring-neutral-800 hover:ring-neutral-400 dark:hover:ring-neutral-500 transition-all"
             />
           </Link>
         </div>
         <span
           v-if="task.collaborators && task.collaborators.length > maxCollaborators"
-          :class="['text-gray-500 ml-1', sizeConfig[size].moreCount]"
+          :class="['text-neutral-500 dark:text-neutral-400 ml-1', sizeConfig[size].moreCount]"
         >
           +{{ task.collaborators.length - maxCollaborators }}
         </span>
@@ -304,9 +262,9 @@
           v-if="task.dueDate"
           :class="[
             'flex items-center rounded-md px-1.5 py-0.5 -mx-1.5 transition-colors duration-150',
-            'hover:bg-gray-50 cursor-default',
+            'hover:bg-neutral-50 dark:hover:bg-neutral-700 cursor-default',
             sizeConfig[size].metaItem,
-            isOverdue ? 'text-red-600 hover:bg-red-50' : isPastDue ? 'text-amber-600 hover:bg-amber-50' : 'text-gray-500'
+            isOverdue ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30' : isPastDue ? 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30' : 'text-neutral-500 dark:text-neutral-400'
           ]"
         >
           <Icon name="ph:calendar" :class="['mr-1', sizeConfig[size].metaIcon]" />
@@ -317,8 +275,8 @@
         <div
           v-if="task.commentsCount"
           :class="[
-            'flex items-center text-gray-500 rounded-md px-1.5 py-0.5 -mx-1.5 transition-colors duration-150',
-            'hover:bg-gray-50 hover:text-gray-900 cursor-default',
+            'flex items-center text-neutral-500 dark:text-neutral-400 rounded-md px-1.5 py-0.5 -mx-1.5 transition-colors duration-150',
+            'hover:bg-neutral-50 dark:hover:bg-neutral-700 hover:text-neutral-900 dark:hover:text-white cursor-default',
             sizeConfig[size].metaItem
           ]"
         >
@@ -330,8 +288,8 @@
         <div
           v-if="task.attachmentsCount"
           :class="[
-            'flex items-center text-gray-500 rounded-md px-1.5 py-0.5 -mx-1.5 transition-colors duration-150',
-            'hover:bg-gray-50 hover:text-gray-900 cursor-default',
+            'flex items-center text-neutral-500 dark:text-neutral-400 rounded-md px-1.5 py-0.5 -mx-1.5 transition-colors duration-150',
+            'hover:bg-neutral-50 dark:hover:bg-neutral-700 hover:text-neutral-900 dark:hover:text-white cursor-default',
             sizeConfig[size].metaItem
           ]"
         >
@@ -359,17 +317,17 @@
       <div
         v-if="task.status === 'done' && task.completedAt"
         :class="[
-          'flex items-center border-t border-gray-200',
+          'flex items-center border-t border-neutral-200 dark:border-neutral-700',
           sizeConfig[size].completionBar
         ]"
       >
-        <Icon name="ph:check-circle-fill" :class="['text-green-600 mr-2', sizeConfig[size].completionIcon]" />
-        <span :class="['text-gray-500', sizeConfig[size].completionText]">
+        <Icon name="ph:check-circle-fill" :class="['text-green-600 dark:text-green-500 mr-2', sizeConfig[size].completionIcon]" />
+        <span :class="['text-neutral-500 dark:text-neutral-400', sizeConfig[size].completionText]">
           Completed {{ formatDate(task.completedAt) }}
         </span>
         <span
           v-if="task.completedBy"
-          :class="['text-gray-400 ml-1', sizeConfig[size].completionText]"
+          :class="['text-neutral-400 dark:text-neutral-500 ml-1', sizeConfig[size].completionText]"
         >
           by {{ task.completedBy.name }}
         </span>
@@ -386,7 +344,7 @@
       <div
         v-if="task.isAIWorking"
         :class="[
-          'absolute inset-0 bg-gray-50 pointer-events-none'
+          'absolute inset-0 bg-neutral-50 dark:bg-neutral-800 pointer-events-none'
         ]"
       />
     </Transition>
@@ -395,12 +353,12 @@
     <div
       v-if="task.isAIWorking"
       :class="[
-        'absolute flex items-center gap-1.5 text-gray-600',
+        'absolute flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300',
         sizeConfig[size].workingIndicator
       ]"
     >
       <span class="relative flex h-2 w-2">
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-gray-600" />
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-neutral-600 dark:bg-neutral-400" />
       </span>
       <span :class="['font-medium', sizeConfig[size].workingText]">AI Working</span>
     </div>
@@ -410,25 +368,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import Icon from '@/Components/shared/Icon.vue'
 import type { Task, Priority } from '@/types'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import CostBadge from '@/Components/shared/CostBadge.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from 'reka-ui'
-import {
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
+import Icon from '@/Components/shared/Icon.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 
 // Types
 type CardSize = 'sm' | 'md' | 'lg'
@@ -504,7 +449,7 @@ const props = withDefaults(defineProps<{
 })
 
 // Emits
-defineEmits<{
+const emit = defineEmits<{
   click: []
   open: []
   edit: []
@@ -517,7 +462,7 @@ defineEmits<{
 // Size configuration
 const sizeConfig: Record<CardSize, SizeConfig> = {
   sm: {
-    container: 'bg-white rounded-lg p-3 border border-gray-200',
+    container: 'bg-white dark:bg-neutral-800 rounded-lg p-3 border border-neutral-200 dark:border-neutral-700',
     checkbox: 'top-2 left-2 w-4 h-4',
     checkIcon: 'w-2.5 h-2.5',
     header: 'gap-2 mb-2',
@@ -543,7 +488,7 @@ const sizeConfig: Record<CardSize, SizeConfig> = {
     subtaskIcon: 'w-3 h-3',
     subtaskText: 'text-[10px]',
     subtaskBar: 'h-1',
-    footer: 'mt-2 pt-2 border-t border-gray-100',
+    footer: 'mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-700',
     avatarStack: '-space-x-1.5',
     moreCount: 'text-[10px]',
     metaGap: 'gap-2',
@@ -556,7 +501,7 @@ const sizeConfig: Record<CardSize, SizeConfig> = {
     workingText: 'text-[10px]',
   },
   md: {
-    container: 'bg-white rounded-lg p-4 border border-gray-200',
+    container: 'bg-white dark:bg-neutral-800 rounded-lg p-4 border border-neutral-200 dark:border-neutral-700',
     checkbox: 'top-3 left-3 w-5 h-5',
     checkIcon: 'w-3 h-3',
     header: 'gap-2 mb-3',
@@ -582,7 +527,7 @@ const sizeConfig: Record<CardSize, SizeConfig> = {
     subtaskIcon: 'w-3.5 h-3.5',
     subtaskText: 'text-xs',
     subtaskBar: 'h-1',
-    footer: 'mt-3 pt-3 border-t border-gray-100',
+    footer: 'mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-700',
     avatarStack: '-space-x-2',
     moreCount: 'text-xs',
     metaGap: 'gap-3',
@@ -595,7 +540,7 @@ const sizeConfig: Record<CardSize, SizeConfig> = {
     workingText: 'text-xs',
   },
   lg: {
-    container: 'bg-white rounded-lg p-5 border border-gray-200',
+    container: 'bg-white dark:bg-neutral-800 rounded-lg p-5 border border-neutral-200 dark:border-neutral-700',
     checkbox: 'top-4 left-4 w-6 h-6',
     checkIcon: 'w-4 h-4',
     header: 'gap-3 mb-4',
@@ -621,7 +566,7 @@ const sizeConfig: Record<CardSize, SizeConfig> = {
     subtaskIcon: 'w-4 h-4',
     subtaskText: 'text-sm',
     subtaskBar: 'h-1.5',
-    footer: 'mt-4 pt-4 border-t border-gray-100',
+    footer: 'mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-700',
     avatarStack: '-space-x-2.5',
     moreCount: 'text-sm',
     metaGap: 'gap-4',
@@ -637,31 +582,31 @@ const sizeConfig: Record<CardSize, SizeConfig> = {
 
 // Variant classes
 const variantClasses: Record<CardVariant, string> = {
-  default: 'hover:border-gray-300 hover:shadow-sm',
-  outlined: 'border-2 hover:border-gray-400 hover:shadow-sm',
+  default: 'hover:border-neutral-300 dark:hover:border-neutral-600 hover:shadow-sm',
+  outlined: 'border-2 hover:border-neutral-400 dark:hover:border-neutral-500 hover:shadow-sm',
   elevated: 'shadow-sm hover:shadow-md',
 }
 
 // Priority styling
 const priorityClasses: Record<Priority, string> = {
-  low: 'bg-gray-100 text-gray-600',
-  medium: 'bg-gray-100 text-gray-600',
-  high: 'bg-gray-100 text-gray-600',
-  urgent: 'bg-gray-100 text-gray-600',
+  low: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
+  medium: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
+  high: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
+  urgent: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
 }
 
 const priorityColorMap: Record<Priority, string> = {
-  low: 'bg-gray-300',
-  medium: 'bg-gray-400',
-  high: 'bg-gray-500',
-  urgent: 'bg-gray-600',
+  low: 'bg-neutral-300',
+  medium: 'bg-neutral-400',
+  high: 'bg-neutral-500',
+  urgent: 'bg-neutral-600',
 }
 
 const priorityDotClasses: Record<Priority, string> = {
-  low: 'bg-gray-400',
-  medium: 'bg-gray-500',
-  high: 'bg-gray-600',
-  urgent: 'bg-gray-700',
+  low: 'bg-neutral-400',
+  medium: 'bg-neutral-500',
+  high: 'bg-neutral-600',
+  urgent: 'bg-neutral-700',
 }
 
 const priorityLabels: Record<Priority, string> = {
@@ -722,6 +667,15 @@ const isPastDue = computed(() => {
   const diffDays = diffTime / (1000 * 60 * 60 * 24)
   return diffDays <= 1 && diffDays > 0
 })
+
+const taskDropdownItems = computed(() => [
+  taskActions.map(action => ({
+    label: action.label,
+    icon: action.icon,
+    color: action.variant === 'danger' ? 'error' as const : undefined,
+    click: () => emit('action', action.id),
+  })),
+])
 
 // State
 const dragging = ref(false)

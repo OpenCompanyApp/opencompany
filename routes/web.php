@@ -26,6 +26,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 
+    // Dashboard alias for direct URL access
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    });
+
     // Chat
     Route::get('/chat', function () {
         return Inertia::render('Chat');
@@ -76,14 +81,37 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Workload');
     })->name('workload');
 
+    // Integrations
+    Route::get('/integrations', function () {
+        return Inertia::render('Integrations');
+    })->name('integrations');
+
+    // Calendar
+    Route::get('/calendar', function () {
+        return Inertia::render('Calendar');
+    })->name('calendar');
+
+    // Tables
+    Route::get('/tables', function () {
+        return Inertia::render('Tables');
+    })->name('tables');
+
+    Route::get('/tables/{id}', function (string $id) {
+        return Inertia::render('Tables/Show', ['tableId' => $id]);
+    })->name('tables.show');
+
     // Agent detail
     Route::get('/agent/{id}', function (string $id) {
         return Inertia::render('Agent/Show', ['id' => $id]);
     })->name('agent.show');
 
     // Messages (DM)
+    Route::get('/messages', function () {
+        return Inertia::render('Messages/Index');
+    })->name('messages.index');
+
     Route::get('/messages/{id}', function (string $id) {
-        return Inertia::render('Messages/Show', ['id' => $id]);
+        return Inertia::render('Messages/Show', ['userId' => $id]);
     })->name('messages.show');
 
     // Profile pages

@@ -21,11 +21,11 @@ class StatsController extends Controller
         );
 
         // Calculate dynamic stats
-        $agentsOnline = User::where('is_agent', true)
-            ->where('presence', 'online')
+        $agentsOnline = User::where('type', 'agent')
+            ->whereIn('status', ['working', 'idle'])
             ->count();
 
-        $totalAgents = User::where('is_agent', true)->count();
+        $totalAgents = User::where('type', 'agent')->count();
 
         $tasksCompleted = Task::where('status', 'completed')->count();
         $tasksToday = Task::where('status', 'completed')

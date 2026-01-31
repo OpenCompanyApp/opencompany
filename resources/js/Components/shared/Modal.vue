@@ -1,83 +1,81 @@
 <template>
   <DialogRoot v-model:open="isOpen">
     <DialogPortal>
-      <DialogOverlay
-        class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-150"
-      />
+      <DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
       <DialogContent
         :class="[
           'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2',
-          'bg-white border border-gray-200 rounded-lg',
-          'shadow-lg',
+          'w-full bg-white dark:bg-neutral-800 shadow-lg',
+          'border border-neutral-200 dark:border-neutral-700 rounded-lg',
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
           'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-          'duration-150 ease-out',
+          'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+          'data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]',
+          'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
+          'duration-200',
           sizeClasses[size],
         ]"
-        @escape-key-down="handleEscape"
+        @escape-key-down="closeOnEscape ? undefined : $event.preventDefault()"
       >
         <!-- Header -->
-        <div
-          v-if="title || $slots.header"
-          class="flex items-center justify-between px-6 py-4 border-b border-gray-200"
-        >
+        <div v-if="icon || $slots.header || title" class="px-6 pt-6 pb-4">
           <slot name="header">
             <div class="flex items-center gap-3">
               <div
                 v-if="icon"
-                class="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100 text-gray-600"
+                class="w-10 h-10 rounded-lg flex items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200"
               >
                 <Icon :name="icon" class="w-5 h-5" />
               </div>
               <div>
-                <DialogTitle class="text-lg font-semibold text-gray-900">
+                <DialogTitle class="text-lg font-semibold text-neutral-900 dark:text-white">
                   {{ title }}
                 </DialogTitle>
-                <DialogDescription v-if="description" class="text-sm text-gray-500 mt-0.5">
+                <DialogDescription v-if="description" class="text-sm text-neutral-500 dark:text-neutral-300 mt-0.5">
                   {{ description }}
                 </DialogDescription>
               </div>
             </div>
           </slot>
-          <DialogClose
-            class="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-150"
-          >
-            <Icon name="ph:x" class="w-5 h-5" />
-          </DialogClose>
         </div>
 
         <!-- Content -->
-        <div class="p-6" :class="{ 'pt-0': !title && !$slots.header }">
+        <div class="px-6 pb-6" :class="{ 'pt-6': !icon && !$slots.header && !title }">
           <slot />
         </div>
 
         <!-- Footer -->
-        <div
-          v-if="$slots.footer"
-          class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50"
-        >
+        <div v-if="$slots.footer" class="px-6 pb-6 pt-2 border-t border-neutral-200 dark:border-neutral-700">
           <slot name="footer" />
         </div>
+
+        <!-- Close button -->
+        <DialogClose
+          class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 disabled:pointer-events-none dark:ring-offset-neutral-800"
+        >
+          <Icon name="ph:x" class="h-4 w-4 text-neutral-500 dark:text-neutral-300" />
+          <span class="sr-only">Close</span>
+        </DialogClose>
       </DialogContent>
     </DialogPortal>
   </DialogRoot>
 </template>
 
 <script setup lang="ts">
-import Icon from '@/Components/shared/Icon.vue'
 import {
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
   DialogRoot,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
   DialogTitle,
+  DialogDescription,
+  DialogClose,
 } from 'reka-ui'
+import Icon from './Icon.vue'
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   title?: string
   description?: string
   icon?: string
@@ -88,23 +86,17 @@ const props = withDefaults(defineProps<{
   closeOnEscape: true,
 })
 
-const emit = defineEmits<{
+defineEmits<{
   close: []
 }>()
 
 const isOpen = defineModel<boolean>('open', { default: false })
 
 const sizeClasses: Record<ModalSize, string> = {
-  sm: 'w-full max-w-sm',
-  md: 'w-full max-w-lg',
-  lg: 'w-full max-w-2xl',
-  xl: 'w-full max-w-4xl',
-  full: 'w-[calc(100%-2rem)] h-[calc(100%-2rem)]',
-}
-
-const handleEscape = (event: Event) => {
-  if (!props.closeOnEscape) {
-    event.preventDefault()
-  }
+  sm: 'max-w-sm',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  full: 'max-w-[calc(100%-2rem)] h-[calc(100%-2rem)]',
 }
 </script>

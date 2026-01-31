@@ -13,14 +13,27 @@ class ChannelController extends Controller
 {
     public function index()
     {
-        return Channel::with(['members.user', 'creator'])
+        $channels = Channel::with(['users', 'creator'])
             ->orderBy('updated_at', 'desc')
             ->get();
+
+        // Map members to return users directly instead of channel_members pivot
+        return $channels->map(function ($channel) {
+            $channelArray = $channel->toArray();
+            $channelArray['members'] = $channel->users->toArray();
+            unset($channelArray['users']);
+            return $channelArray;
+        });
     }
 
     public function show(string $id)
     {
-        return Channel::with(['members.user', 'creator'])->findOrFail($id);
+        $channel = Channel::with(['users', 'creator'])->findOrFail($id);
+
+        $channelArray = $channel->toArray();
+        $channelArray['members'] = $channel->users->toArray();
+        unset($channelArray['users']);
+        return $channelArray;
     }
 
     public function store(Request $request)
@@ -55,7 +68,11 @@ class ChannelController extends Controller
             }
         }
 
-        return $channel->load(['members.user', 'creator']);
+        $channel->load(['users', 'creator']);
+        $channelArray = $channel->toArray();
+        $channelArray['members'] = $channel->users->toArray();
+        unset($channelArray['users']);
+        return $channelArray;
     }
 
     public function addMember(Request $request, string $channelId)

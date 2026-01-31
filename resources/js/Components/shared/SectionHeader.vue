@@ -28,7 +28,7 @@
       >
         <Icon
           :name="icon"
-          :class="[iconSizeClasses[size], iconColor || 'text-gray-600']"
+          :class="[iconSizeClasses[size], iconColor || 'text-neutral-600 dark:text-neutral-200']"
         />
       </div>
 
@@ -62,7 +62,7 @@
       <Icon
         v-if="loading"
         name="ph:spinner"
-        :class="[iconSizeClasses[size], 'text-gray-500 animate-spin ml-1']"
+        :class="[iconSizeClasses[size], 'text-neutral-500 dark:text-neutral-300 animate-spin ml-1']"
       />
     </component>
 
@@ -87,7 +87,7 @@
             v-model="searchModel"
             type="text"
             :placeholder="searchPlaceholder"
-            class="w-32 h-7 px-2 text-xs bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-colors duration-150"
+            class="w-32 h-7 px-2 text-xs bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 focus:ring-1 focus:ring-neutral-400 transition-colors duration-150"
             @keydown.escape="collapseSearch"
             @blur="handleSearchBlur"
           />
@@ -106,14 +106,14 @@
       <button
         v-if="filterable"
         type="button"
-        :class="[actionButtonClasses, hasActiveFilters && 'text-gray-900 bg-gray-100']"
+        :class="[actionButtonClasses, hasActiveFilters && 'text-neutral-900 dark:text-white bg-neutral-100 dark:bg-neutral-700']"
         :aria-label="filterLabel"
         @click="$emit('filter')"
       >
         <Icon name="ph:funnel" :class="actionIconClasses" />
         <span
           v-if="hasActiveFilters && filterCount"
-          class="absolute -top-1 -right-1 w-4 h-4 bg-gray-900 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+          class="absolute -top-1 -right-1 w-4 h-4 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-[10px] font-bold rounded-full flex items-center justify-center"
         >
           {{ filterCount > 9 ? '9+' : filterCount }}
         </span>
@@ -131,7 +131,7 @@
       </button>
 
       <!-- View toggle -->
-      <div v-if="viewModes && viewModes.length > 1" class="flex items-center bg-gray-100 rounded-lg p-0.5">
+      <div v-if="viewModes && viewModes.length > 1" class="flex items-center bg-neutral-100 dark:bg-neutral-700 rounded-lg p-0.5">
         <button
           v-for="mode in viewModes"
           :key="mode.value"
@@ -139,8 +139,8 @@
           :class="[
             'p-1 rounded-md transition-colors duration-150',
             currentViewMode === mode.value
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-900',
+              ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm'
+              : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
           ]"
           :aria-label="mode.label"
           @click="$emit('update:viewMode', mode.value)"
@@ -155,7 +155,7 @@
         type="button"
         :class="[
           actionButtonClasses,
-          action.variant === 'primary' && 'text-gray-900 hover:bg-gray-100',
+          action.variant === 'primary' && 'text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700',
         ]"
         :aria-label="action.label || 'Action'"
         @click="handleAction"
@@ -167,38 +167,15 @@
       </button>
 
       <!-- More Actions Menu -->
-      <DropdownMenuRoot v-if="moreActions && moreActions.length > 0">
-        <DropdownMenuTrigger as-child>
-          <button
-            type="button"
-            :class="actionButtonClasses"
-            aria-label="More actions"
-          >
-            <Icon name="ph:dots-three" :class="actionIconClasses" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuPortal>
-          <DropdownMenuContent
-            class="min-w-40 bg-white border border-gray-200 rounded-lg shadow-md p-1 z-50 animate-in fade-in-0 duration-150"
-            :side-offset="5"
-          >
-            <DropdownMenuItem
-              v-for="item in moreActions"
-              :key="item.label"
-              :class="[
-                'flex items-center gap-2 px-3 py-2 text-sm rounded-md cursor-pointer outline-none transition-colors duration-150',
-                item.variant === 'danger'
-                  ? 'text-red-600 hover:bg-red-50 focus:bg-red-50'
-                  : 'text-gray-500 hover:bg-gray-50 focus:bg-gray-50 hover:text-gray-900 focus:text-gray-900',
-              ]"
-              @click="item.onClick"
-            >
-              <Icon :name="item.icon" class="w-4 h-4" />
-              {{ item.label }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenuPortal>
-      </DropdownMenuRoot>
+      <DropdownMenu v-if="moreActions && moreActions.length > 0" :items="moreActionsDropdown">
+        <Button
+          variant="ghost"
+          :class="actionButtonClasses"
+          aria-label="More actions"
+        >
+          <Icon name="ph:dots-three" :class="actionIconClasses" />
+        </Button>
+      </DropdownMenu>
 
       <!-- Slot for custom actions -->
       <slot name="actions" />
@@ -209,13 +186,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from 'reka-ui'
+import Button from '@/Components/shared/Button.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import SharedBadge from '@/Components/shared/Badge.vue'
 
 type SectionHeaderSize = 'sm' | 'md' | 'lg'
 type CountVariant = 'default' | 'primary' | 'success' | 'warning' | 'error'
@@ -376,52 +349,65 @@ const formattedCount = computed(() => {
 
 // Icon color classes
 const iconColorClasses = computed(() => {
-  if (props.collapsed) return 'text-gray-500'
-  return 'text-gray-400'
+  if (props.collapsed) return 'text-neutral-500 dark:text-neutral-300'
+  return 'text-neutral-400 dark:text-neutral-400'
 })
 
 // Container classes
 const containerClasses = computed(() => [
   'flex items-center justify-between',
   paddingClasses[props.size],
-  props.sticky && 'sticky top-0 z-10 bg-white/80 backdrop-blur-sm',
-  props.bordered && 'border-b border-gray-200 mb-2',
+  props.sticky && 'sticky top-0 z-10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm',
+  props.bordered && 'border-b border-neutral-200 dark:border-neutral-700 mb-2',
 ])
 
 // Title container classes
 const titleContainerClasses = computed(() => [
   'flex items-center gap-1.5',
   props.collapsible && 'cursor-pointer group',
-  props.collapsible && 'outline-none focus-visible:ring-1 focus-visible:ring-gray-400 rounded',
+  props.collapsible && 'outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 rounded',
   'transition-colors duration-150',
-  props.collapsible && 'hover:text-gray-900',
+  props.collapsible && 'hover:text-neutral-900 dark:hover:text-white',
 ])
 
 // Custom icon container classes
 const customIconContainerClasses = computed(() => [
   'w-5 h-5 rounded flex items-center justify-center',
-  'bg-gray-100',
+  'bg-neutral-100 dark:bg-neutral-700',
 ])
 
 // Title classes
 const titleClasses = computed(() => [
-  'font-semibold text-gray-500 tracking-wider',
+  'font-semibold text-neutral-500 dark:text-neutral-300 tracking-wider',
   titleSizeClasses[props.size],
   props.uppercase && 'uppercase',
-  props.collapsible && 'group-hover:text-gray-900 transition-colors duration-150',
+  props.collapsible && 'group-hover:text-neutral-900 dark:group-hover:text-white transition-colors duration-150',
 ])
 
 // Action button classes
 const actionButtonClasses = computed(() => [
   'relative p-1.5 rounded-md transition-colors duration-150',
-  'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
-  'outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800',
+  'outline-none focus-visible:ring-1 focus-visible:ring-neutral-400',
 ])
 
 // Action icon classes
 const actionIconClasses = computed(() => [
   iconSizeClasses[props.size],
 ])
+
+// More actions dropdown items
+const moreActionsDropdown = computed(() => {
+  if (!props.moreActions) return []
+  return [
+    props.moreActions.map(item => ({
+      label: item.label,
+      icon: item.icon,
+      color: item.variant === 'danger' ? 'error' as const : undefined,
+      click: item.onClick,
+    })),
+  ]
+})
 
 // Handlers
 const handleToggle = () => {

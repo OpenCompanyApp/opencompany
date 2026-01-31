@@ -4,10 +4,10 @@
     <!-- Avatar with Text Layout -->
     <template v-if="preset === 'avatar-text'">
       <div class="flex items-center gap-3">
-        <SkeletonItem variant="avatar" :size="avatarSize" :animation="animation" />
+        <div :class="[baseSkeletonClasses, avatarSizeClasses[avatarSize], 'rounded-full']" />
         <div class="flex-1 space-y-2">
-          <SkeletonItem variant="text" width="60%" :animation="animation" :delay="50" />
-          <SkeletonItem variant="text" width="40%" :animation="animation" :delay="100" />
+          <div :class="[baseSkeletonClasses, 'h-3 w-[60%]']" />
+          <div :class="[baseSkeletonClasses, 'h-3 w-[40%]']" />
         </div>
       </div>
     </template>
@@ -15,11 +15,11 @@
     <!-- Card Layout -->
     <template v-else-if="preset === 'card'">
       <div class="space-y-4">
-        <SkeletonItem variant="image" :aspectRatio="imageAspect" :animation="animation" />
+        <div :class="[baseSkeletonClasses, aspectClasses[imageAspect], 'w-full rounded-lg']" />
         <div class="space-y-2 px-1">
-          <SkeletonItem variant="heading" :animation="animation" :delay="50" />
-          <SkeletonItem variant="text" width="80%" :animation="animation" :delay="100" />
-          <SkeletonItem variant="text" width="60%" :animation="animation" :delay="150" />
+          <div :class="[baseSkeletonClasses, 'h-6 w-1/2']" />
+          <div :class="[baseSkeletonClasses, 'h-3 w-[80%]']" />
+          <div :class="[baseSkeletonClasses, 'h-3 w-[60%]']" />
         </div>
       </div>
     </template>
@@ -27,11 +27,11 @@
     <!-- Card Horizontal Layout -->
     <template v-else-if="preset === 'card-horizontal'">
       <div class="flex gap-4">
-        <SkeletonItem variant="square" size="lg" :animation="animation" class="shrink-0" />
+        <div :class="[baseSkeletonClasses, 'h-12 w-12 shrink-0']" />
         <div class="flex-1 space-y-2">
-          <SkeletonItem variant="heading" width="70%" :animation="animation" :delay="50" />
-          <SkeletonItem variant="text" width="90%" :animation="animation" :delay="100" />
-          <SkeletonItem variant="text" width="50%" :animation="animation" :delay="150" />
+          <div :class="[baseSkeletonClasses, 'h-6 w-[70%]']" />
+          <div :class="[baseSkeletonClasses, 'h-3 w-[90%]']" />
+          <div :class="[baseSkeletonClasses, 'h-3 w-[50%]']" />
         </div>
       </div>
     </template>
@@ -44,27 +44,16 @@
           :key="i"
           class="flex items-center gap-3"
         >
-          <SkeletonItem
+          <div
             v-if="showListIcon"
-            variant="circle"
-            size="sm"
-            :animation="animation"
-            :delay="(i - 1) * 50"
+            :class="[baseSkeletonClasses, 'h-8 w-8 rounded-full shrink-0']"
           />
           <div class="flex-1 space-y-1.5">
-            <SkeletonItem
-              variant="text"
-              :width="getRandomWidth(60, 90)"
-              :animation="animation"
-              :delay="(i - 1) * 50 + 25"
-            />
-            <SkeletonItem
+            <div :class="[baseSkeletonClasses, 'h-3']" :style="{ width: getRandomWidth(60, 90) }" />
+            <div
               v-if="showListSubtext"
-              variant="text"
-              :width="getRandomWidth(40, 60)"
-              height="10px"
-              :animation="animation"
-              :delay="(i - 1) * 50 + 50"
+              :class="[baseSkeletonClasses, 'h-2.5']"
+              :style="{ width: getRandomWidth(40, 60) }"
             />
           </div>
         </div>
@@ -75,14 +64,12 @@
     <template v-else-if="preset === 'table'">
       <div class="space-y-2">
         <!-- Header -->
-        <div class="flex gap-4 pb-2 border-b border-gray-200">
-          <SkeletonItem
+        <div class="flex gap-4 pb-2 border-b border-neutral-200 dark:border-neutral-700">
+          <div
             v-for="col in columns"
             :key="`header-${col}`"
-            variant="text"
-            height="16px"
-            :width="getColumnWidth(col)"
-            :animation="animation"
+            :class="[baseSkeletonClasses, 'h-4']"
+            :style="{ width: getColumnWidth(col) }"
           />
         </div>
         <!-- Rows -->
@@ -91,13 +78,11 @@
           :key="`row-${row}`"
           class="flex gap-4 py-2"
         >
-          <SkeletonItem
+          <div
             v-for="col in columns"
             :key="`cell-${row}-${col}`"
-            variant="text"
-            :width="getColumnWidth(col)"
-            :animation="animation"
-            :delay="(row - 1) * 30"
+            :class="[baseSkeletonClasses, 'h-3']"
+            :style="{ width: getColumnWidth(col) }"
           />
         </div>
       </div>
@@ -107,39 +92,21 @@
     <template v-else-if="preset === 'form'">
       <div class="space-y-4">
         <div v-for="i in count" :key="i" class="space-y-1.5">
-          <SkeletonItem
-            variant="text"
-            width="100px"
-            height="14px"
-            :animation="animation"
-            :delay="(i - 1) * 50"
-          />
-          <SkeletonItem
-            variant="input"
-            :animation="animation"
-            :delay="(i - 1) * 50 + 25"
-          />
+          <div :class="[baseSkeletonClasses, 'h-3.5 w-24']" />
+          <div :class="[baseSkeletonClasses, 'h-10 w-full rounded-lg']" />
         </div>
-        <SkeletonItem
-          variant="button"
-          size="md"
-          :animation="animation"
-          :delay="count * 50"
-          class="mt-2"
-        />
+        <div :class="[baseSkeletonClasses, 'h-10 w-24 mt-2 rounded-lg']" />
       </div>
     </template>
 
     <!-- Paragraph Layout -->
     <template v-else-if="preset === 'paragraph'">
       <div class="space-y-2">
-        <SkeletonItem
+        <div
           v-for="i in count"
           :key="i"
-          variant="text"
-          :width="i === count ? getRandomWidth(40, 60) : getRandomWidth(90, 100)"
-          :animation="animation"
-          :delay="(i - 1) * 30"
+          :class="[baseSkeletonClasses, 'h-3']"
+          :style="{ width: i === count ? getRandomWidth(40, 60) : getRandomWidth(90, 100) }"
         />
       </div>
     </template>
@@ -147,14 +114,14 @@
     <!-- Profile Layout -->
     <template v-else-if="preset === 'profile'">
       <div class="flex flex-col items-center gap-4">
-        <SkeletonItem variant="avatar" size="xl" :animation="animation" />
+        <div :class="[baseSkeletonClasses, 'h-16 w-16 rounded-full']" />
         <div class="w-full space-y-2 text-center">
-          <SkeletonItem variant="heading" width="60%" :animation="animation" :delay="50" class="mx-auto" />
-          <SkeletonItem variant="text" width="40%" :animation="animation" :delay="100" class="mx-auto" />
+          <div :class="[baseSkeletonClasses, 'h-6 w-[60%] mx-auto']" />
+          <div :class="[baseSkeletonClasses, 'h-3 w-[40%] mx-auto']" />
         </div>
         <div class="w-full flex justify-center gap-2 mt-2">
-          <SkeletonItem variant="button" size="sm" :animation="animation" :delay="150" />
-          <SkeletonItem variant="button" size="sm" :animation="animation" :delay="200" />
+          <div :class="[baseSkeletonClasses, 'h-8 w-20 rounded-lg']" />
+          <div :class="[baseSkeletonClasses, 'h-8 w-20 rounded-lg']" />
         </div>
       </div>
     </template>
@@ -165,21 +132,10 @@
         <div
           v-for="i in count"
           :key="i"
-          class="p-4 rounded-xl bg-gray-100 space-y-2"
+          class="p-4 rounded-xl bg-neutral-100 dark:bg-neutral-700 space-y-2"
         >
-          <SkeletonItem
-            variant="text"
-            width="60%"
-            height="12px"
-            :animation="animation"
-            :delay="(i - 1) * 50"
-          />
-          <SkeletonItem
-            variant="heading"
-            width="80%"
-            :animation="animation"
-            :delay="(i - 1) * 50 + 25"
-          />
+          <div :class="[baseSkeletonClasses, 'h-3 w-[60%]']" />
+          <div :class="[baseSkeletonClasses, 'h-6 w-[80%]']" />
         </div>
       </div>
     </template>
@@ -192,31 +148,18 @@
           :key="i"
           :class="['flex gap-3', i % 2 === 0 && 'flex-row-reverse']"
         >
-          <SkeletonItem
-            variant="avatar"
-            size="sm"
-            :animation="animation"
-            :delay="(i - 1) * 100"
-            class="shrink-0"
-          />
+          <div :class="[baseSkeletonClasses, 'h-8 w-8 rounded-full shrink-0']" />
           <div
             :class="[
               'space-y-1.5 max-w-[70%]',
               i % 2 === 0 && 'items-end',
             ]"
           >
-            <SkeletonItem
-              variant="text"
-              :width="getRandomWidth(150, 250)"
-              :animation="animation"
-              :delay="(i - 1) * 100 + 25"
-            />
-            <SkeletonItem
+            <div :class="[baseSkeletonClasses, 'h-3']" :style="{ width: getRandomWidth(150, 250) }" />
+            <div
               v-if="i % 2 !== 0"
-              variant="text"
-              :width="getRandomWidth(100, 180)"
-              :animation="animation"
-              :delay="(i - 1) * 100 + 50"
+              :class="[baseSkeletonClasses, 'h-3']"
+              :style="{ width: getRandomWidth(100, 180) }"
             />
           </div>
         </div>
@@ -225,22 +168,15 @@
   </div>
 
   <!-- Single Skeleton Item -->
-  <SkeletonItem
+  <div
     v-else
-    :variant="variant"
-    :size="size"
-    :width="width"
-    :height="height"
-    :rounded="rounded"
-    :animation="animation"
-    :delay="delay"
-    :aspectRatio="aspectRatio"
-    :class="customClass"
+    :class="[baseSkeletonClasses, variantClasses, roundedClasses, customClass]"
+    :style="computedStyles"
   />
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, type PropType } from 'vue'
+import { computed } from 'vue'
 
 type SkeletonAnimation = 'pulse' | 'wave' | 'shimmer' | 'none'
 type SkeletonVariant = 'line' | 'text' | 'heading' | 'circle' | 'square' | 'avatar' | 'button' | 'input' | 'image' | 'badge' | 'icon' | 'custom'
@@ -291,6 +227,13 @@ const props = withDefaults(defineProps<{
   imageAspect: 'video',
 })
 
+// Base skeleton classes (animation and background)
+const baseSkeletonClasses = computed(() => [
+  'bg-neutral-200 dark:bg-neutral-700',
+  props.animation === 'pulse' && 'animate-pulse',
+  props.animation === 'none' && '',
+])
+
 // Wrapper classes for presets
 const wrapperClasses = computed(() => [
   'w-full',
@@ -315,201 +258,102 @@ const getColumnWidth = (col: number): string => {
   return widths[col % widths.length] || '20%'
 }
 
-// Skeleton Item Component
-const SkeletonItem = defineComponent({
-  name: 'SkeletonItem',
-  props: {
-    variant: { type: String as PropType<SkeletonVariant>, default: 'line' },
-    size: { type: String as PropType<SkeletonSize>, default: 'md' },
-    rounded: { type: String as PropType<SkeletonRounded>, default: 'md' },
-    animation: { type: String as PropType<SkeletonAnimation>, default: 'pulse' },
-    width: { type: [String, Number], default: undefined },
-    height: { type: [String, Number], default: undefined },
-    aspectRatio: { type: String as PropType<AspectRatio>, default: 'auto' },
-    delay: { type: Number, default: 0 },
-  },
-  setup(itemProps) {
-    // Size mappings
-    const sizeMap: Record<SkeletonSize, { avatar: string; button: string; icon: string }> = {
-      xs: { avatar: 'h-6 w-6', button: 'h-6 w-16', icon: 'h-3 w-3' },
-      sm: { avatar: 'h-8 w-8', button: 'h-8 w-20', icon: 'h-4 w-4' },
-      md: { avatar: 'h-10 w-10', button: 'h-10 w-24', icon: 'h-5 w-5' },
-      lg: { avatar: 'h-12 w-12', button: 'h-12 w-32', icon: 'h-6 w-6' },
-      xl: { avatar: 'h-16 w-16', button: 'h-14 w-40', icon: 'h-8 w-8' },
-      '2xl': { avatar: 'h-20 w-20', button: 'h-16 w-48', icon: 'h-10 w-10' },
-    }
+// Size mappings
+const avatarSizeClasses: Record<SkeletonSize, string> = {
+  xs: 'h-6 w-6',
+  sm: 'h-8 w-8',
+  md: 'h-10 w-10',
+  lg: 'h-12 w-12',
+  xl: 'h-16 w-16',
+  '2xl': 'h-20 w-20',
+}
 
-    // Rounded mappings
-    const roundedMap: Record<SkeletonRounded, string> = {
-      none: 'rounded-none',
-      sm: 'rounded-sm',
-      md: 'rounded-md',
-      lg: 'rounded-lg',
-      xl: 'rounded-xl',
-      '2xl': 'rounded-2xl',
-      full: 'rounded-full',
-    }
+const buttonSizeClasses: Record<SkeletonSize, string> = {
+  xs: 'h-6 w-16',
+  sm: 'h-8 w-20',
+  md: 'h-10 w-24',
+  lg: 'h-12 w-32',
+  xl: 'h-14 w-40',
+  '2xl': 'h-16 w-48',
+}
 
-    // Animation classes
-    const animationMap: Record<SkeletonAnimation, string> = {
-      pulse: 'animate-pulse',
-      wave: 'skeleton-wave',
-      shimmer: 'skeleton-shimmer',
-      none: '',
-    }
+const iconSizeClasses: Record<SkeletonSize, string> = {
+  xs: 'h-3 w-3',
+  sm: 'h-4 w-4',
+  md: 'h-5 w-5',
+  lg: 'h-6 w-6',
+  xl: 'h-8 w-8',
+  '2xl': 'h-10 w-10',
+}
 
-    // Aspect ratio classes
-    const aspectMap: Record<AspectRatio, string> = {
-      auto: '',
-      square: 'aspect-square',
-      video: 'aspect-video',
-      wide: 'aspect-[21/9]',
-      portrait: 'aspect-[3/4]',
-    }
+// Aspect ratio classes
+const aspectClasses: Record<AspectRatio, string> = {
+  auto: '',
+  square: 'aspect-square',
+  video: 'aspect-video',
+  wide: 'aspect-[21/9]',
+  portrait: 'aspect-[3/4]',
+}
 
-    // Variant classes
-    const variantClasses = computed(() => {
-      const size = itemProps.size as SkeletonSize
-      const variants: Record<SkeletonVariant, string> = {
-        line: 'h-4 w-full',
-        text: 'h-3 w-3/4',
-        heading: 'h-6 w-1/2',
-        circle: `${sizeMap[size].avatar} rounded-full`,
-        square: sizeMap[size].avatar,
-        avatar: `${sizeMap[size].avatar} rounded-full`,
-        button: `${sizeMap[size].button} rounded-lg`,
-        input: 'h-10 w-full rounded-lg',
-        image: 'w-full rounded-lg',
-        badge: 'h-5 w-16 rounded-full',
-        icon: sizeMap[size].icon,
-        custom: '',
-      }
-      return variants[itemProps.variant as SkeletonVariant]
-    })
+// Rounded mappings
+const roundedMap: Record<SkeletonRounded, string> = {
+  none: 'rounded-none',
+  sm: 'rounded-sm',
+  md: 'rounded-md',
+  lg: 'rounded-lg',
+  xl: 'rounded-xl',
+  '2xl': 'rounded-2xl',
+  full: 'rounded-full',
+}
 
-    // Computed styles
-    const computedStyles = computed(() => {
-      const styles: Record<string, string> = {}
+// Variant classes for single skeleton
+const variantClasses = computed(() => {
+  const variants: Record<SkeletonVariant, string> = {
+    line: 'h-4 w-full',
+    text: 'h-3 w-3/4',
+    heading: 'h-6 w-1/2',
+    circle: `${avatarSizeClasses[props.size]} rounded-full`,
+    square: avatarSizeClasses[props.size],
+    avatar: `${avatarSizeClasses[props.size]} rounded-full`,
+    button: `${buttonSizeClasses[props.size]} rounded-lg`,
+    input: 'h-10 w-full rounded-lg',
+    image: `w-full rounded-lg ${aspectClasses[props.aspectRatio]}`,
+    badge: 'h-5 w-16 rounded-full',
+    icon: iconSizeClasses[props.size],
+    custom: '',
+  }
+  return variants[props.variant]
+})
 
-      if (itemProps.width) {
-        styles.width = typeof itemProps.width === 'number'
-          ? `${itemProps.width}px`
-          : itemProps.width
-      }
+// Rounded classes for single skeleton
+const roundedClasses = computed(() => {
+  // Skip if variant already has rounded class
+  if (['circle', 'avatar', 'button', 'input', 'image', 'badge'].includes(props.variant)) {
+    return ''
+  }
+  return roundedMap[props.rounded]
+})
 
-      if (itemProps.height) {
-        styles.height = typeof itemProps.height === 'number'
-          ? `${itemProps.height}px`
-          : itemProps.height
-      }
+// Computed styles for single skeleton
+const computedStyles = computed(() => {
+  const styles: Record<string, string> = {}
 
-      if (itemProps.delay > 0) {
-        styles.animationDelay = `${itemProps.delay}ms`
-      }
+  if (props.width) {
+    styles.width = typeof props.width === 'number'
+      ? `${props.width}px`
+      : props.width
+  }
 
-      return styles
-    })
+  if (props.height) {
+    styles.height = typeof props.height === 'number'
+      ? `${props.height}px`
+      : props.height
+  }
 
-    // Main classes
-    const classes = computed(() => [
-      'bg-gray-200',
-      variantClasses.value,
-      roundedMap[itemProps.rounded as SkeletonRounded],
-      animationMap[itemProps.animation as SkeletonAnimation],
-      aspectMap[itemProps.aspectRatio as AspectRatio],
-    ])
+  if (props.delay > 0) {
+    styles.animationDelay = `${props.delay}ms`
+  }
 
-    return () => h('div', {
-      class: classes.value,
-      style: computedStyles.value,
-    })
-  },
+  return styles
 })
 </script>
-
-<style scoped>
-/* Wave animation - smooth flowing effect */
-@keyframes skeleton-wave {
-  0% {
-    background-position: -200% 0;
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 0.9;
-  }
-  100% {
-    background-position: 200% 0;
-    opacity: 0.7;
-  }
-}
-
-.skeleton-wave {
-  background: linear-gradient(
-    90deg,
-    rgb(229 231 235 / 0.6) 0%,
-    rgb(243 244 246 / 0.95) 25%,
-    rgb(209 213 219 / 0.3) 50%,
-    rgb(243 244 246 / 0.95) 75%,
-    rgb(229 231 235 / 0.6) 100%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-wave 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-/* Shimmer animation - elegant highlight sweep */
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: -100% 0;
-    transform: translateX(0);
-  }
-  100% {
-    background-position: 200% 0;
-    transform: translateX(0);
-  }
-}
-
-.skeleton-shimmer {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(
-    110deg,
-    rgb(229 231 235 / 0.7) 0%,
-    rgb(229 231 235 / 0.7) 40%,
-    rgb(243 244 246 / 1) 50%,
-    rgb(229 231 235 / 0.7) 60%,
-    rgb(229 231 235 / 0.7) 100%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-/* Enhanced pulse with subtle scale */
-@keyframes skeleton-pulse {
-  0%, 100% {
-    opacity: 0.6;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.9;
-    transform: scale(1.002);
-  }
-}
-
-.animate-pulse {
-  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Stagger animation delays for children */
-.skeleton-wave,
-.skeleton-shimmer,
-.animate-pulse {
-  animation-fill-mode: both;
-  transition: opacity 0.3s ease-out;
-}
-
-/* Hover state for interactive skeletons */
-.skeleton-wave:hover,
-.skeleton-shimmer:hover {
-  opacity: 0.95;
-}
-</style>

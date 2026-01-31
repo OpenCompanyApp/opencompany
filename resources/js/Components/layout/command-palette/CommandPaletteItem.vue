@@ -4,8 +4,8 @@
       'w-full flex items-center text-left group relative overflow-hidden transition-colors duration-150',
       sizeConfig[size].container,
       selected
-        ? 'bg-gray-900 text-white'
-        : 'hover:bg-gray-50 text-gray-900',
+        ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+        : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white',
       disabled && 'opacity-50 cursor-not-allowed',
       !disabled && 'cursor-pointer'
     ]"
@@ -32,7 +32,7 @@
       :class="[
         'relative shrink-0 flex items-center justify-center transition-colors duration-150',
         sizeConfig[size].iconContainer,
-        selected ? 'bg-white/20' : 'bg-gray-100 group-hover:bg-gray-200'
+        selected ? 'bg-white/20 dark:bg-neutral-900/20' : 'bg-neutral-100 dark:bg-neutral-700 group-hover:bg-neutral-200 dark:group-hover:bg-neutral-600'
       ]"
     >
       <!-- Avatar -->
@@ -40,7 +40,7 @@
         <div
           v-if="!avatar.src"
           :class="[
-            'w-full h-full rounded-lg flex items-center justify-center font-medium bg-gray-600 text-white',
+            'w-full h-full rounded-lg flex items-center justify-center font-medium bg-neutral-600 dark:bg-neutral-500 text-white',
             sizeConfig[size].avatarText
           ]"
         >
@@ -55,7 +55,7 @@
         <!-- AI indicator -->
         <div
           v-if="avatar.isAI"
-          class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-gray-600 rounded-full ring-2 ring-white flex items-center justify-center"
+          class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-neutral-600 dark:bg-neutral-500 rounded-full ring-2 ring-white dark:ring-neutral-900 flex items-center justify-center"
         >
           <Icon name="ph:robot" class="w-2 h-2 text-white" />
         </div>
@@ -68,7 +68,7 @@
         :class="[
           'transition-colors duration-150',
           sizeConfig[size].icon,
-          selected ? 'text-white' : iconColor || 'text-gray-500'
+          selected ? 'text-white dark:text-neutral-900' : iconColor || 'text-neutral-500 dark:text-neutral-300'
         ]"
       />
     </div>
@@ -92,7 +92,7 @@
             'shrink-0 font-medium rounded-full',
             sizeConfig[size].badge,
             badgeVariantClasses[badgeVariant || 'default'],
-            selected && 'bg-white/20 text-white'
+            selected && 'bg-white/20 dark:bg-neutral-900/20 text-white dark:text-neutral-900'
           ]"
         >
           {{ badge }}
@@ -105,7 +105,7 @@
         :class="[
           'truncate',
           sizeConfig[size].description,
-          selected ? 'text-white/70' : 'text-gray-500'
+          selected ? 'text-white/70 dark:text-neutral-900/70' : 'text-neutral-500 dark:text-neutral-300'
         ]"
         v-html="highlightedDescription"
       />
@@ -119,7 +119,7 @@
         :class="[
           'font-medium',
           sizeConfig[size].meta,
-          selected ? 'text-white/60' : 'text-gray-400'
+          selected ? 'text-white/60 dark:text-neutral-900/60' : 'text-neutral-400 dark:text-neutral-400'
         ]"
       >
         {{ meta }}
@@ -134,8 +134,8 @@
             'font-mono rounded',
             sizeConfig[size].kbd,
             selected
-              ? 'bg-white/20 text-white/80'
-              : 'bg-gray-100 text-gray-400'
+              ? 'bg-white/20 dark:bg-neutral-900/20 text-white/80 dark:text-neutral-900/80'
+              : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-400'
           ]"
         >
           {{ key }}
@@ -155,7 +155,7 @@
         name="ph:caret-right"
         :class="[
           sizeConfig[size].chevron,
-          selected ? 'text-white/70' : 'text-gray-400 opacity-0 group-hover:opacity-100'
+          selected ? 'text-white/70 dark:text-neutral-900/70' : 'text-neutral-400 dark:text-neutral-400 opacity-0 group-hover:opacity-100'
         ]"
       />
     </Transition>
@@ -165,7 +165,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Icon } from '@iconify/vue'
+import Icon from '@/Components/shared/Icon.vue'
 
 // Types
 type ItemSize = 'sm' | 'md' | 'lg'
@@ -269,7 +269,7 @@ const sizeConfig: Record<ItemSize, SizeConfig> = {
 
 // Badge variant classes
 const badgeVariantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-gray-100 text-gray-500',
+  default: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-300',
   success: 'bg-green-50 text-green-600',
   warning: 'bg-amber-50 text-amber-600',
   error: 'bg-red-50 text-red-600',

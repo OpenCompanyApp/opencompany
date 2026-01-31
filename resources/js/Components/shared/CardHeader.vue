@@ -55,7 +55,7 @@
           <Icon
             v-if="verified"
             name="ph:seal-check-fill"
-            class="w-4 h-4 text-gray-600 shrink-0"
+            class="w-4 h-4 text-neutral-600 dark:text-neutral-200 shrink-0"
           />
         </div>
 
@@ -75,13 +75,13 @@
             <Icon name="ph:user" class="w-3 h-3" />
             {{ author }}
           </span>
-          <span v-if="author && timestamp" class="text-gray-400">•</span>
+          <span v-if="author && timestamp" class="text-neutral-400">•</span>
           <span v-if="timestamp" class="flex items-center gap-1">
             <Icon name="ph:clock" class="w-3 h-3" />
             {{ timestamp }}
           </span>
           <template v-if="meta">
-            <span class="text-gray-400">•</span>
+            <span class="text-neutral-400 dark:text-neutral-400">•</span>
             {{ meta }}
           </template>
         </div>
@@ -133,83 +133,33 @@
 
       <!-- Quick Actions (icon buttons) -->
       <div v-if="quickActions && quickActions.length > 0" class="flex items-center gap-1">
-        <TooltipProvider
+        <Tooltip
           v-for="qa in quickActions"
           :key="qa.label"
+          :text="qa.label"
           :delay-duration="200"
         >
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="quickActionButtonClasses"
-                :disabled="qa.disabled"
-                @click="qa.onClick"
-              >
-                <Icon :name="qa.icon" class="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent
-                class="z-50 bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs shadow-md animate-in fade-in-0 duration-150"
-                :side-offset="5"
-              >
-                {{ qa.label }}
-                <TooltipArrow class="fill-white" />
-              </TooltipContent>
-            </TooltipPortal>
-          </TooltipRoot>
-        </TooltipProvider>
+          <button
+            type="button"
+            :class="quickActionButtonClasses"
+            :disabled="qa.disabled"
+            @click="qa.onClick"
+          >
+            <Icon :name="qa.icon" class="w-4 h-4" />
+          </button>
+        </Tooltip>
       </div>
 
       <!-- More Menu -->
-      <DropdownMenuRoot v-if="menuItems && menuItems.length > 0">
-        <DropdownMenuTrigger as-child>
-          <button
-            type="button"
-            :class="menuButtonClasses"
-            aria-label="More options"
-          >
-            <Icon :name="menuIcon" class="w-4 h-4" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuPortal>
-          <DropdownMenuContent
-            class="min-w-44 bg-white border border-gray-200 rounded-lg shadow-md p-1 z-50 animate-in fade-in-0 duration-150"
-            :side-offset="5"
-            :align="menuAlign"
-          >
-            <template v-for="(item, index) in menuItems" :key="item.label">
-              <DropdownMenuSeparator
-                v-if="item.separator"
-                class="h-px bg-gray-200 my-1 -mx-1"
-              />
-              <DropdownMenuItem
-                :class="[
-                  'flex items-center gap-2 px-3 py-2 text-sm rounded-md cursor-pointer outline-none transition-colors duration-150',
-                  item.variant === 'danger'
-                    ? 'text-red-600 hover:bg-red-50 focus:bg-red-50'
-                    : 'text-gray-500 hover:bg-gray-50 focus:bg-gray-50 hover:text-gray-900 focus:text-gray-900',
-                  item.disabled && 'opacity-50 cursor-not-allowed',
-                ]"
-                :disabled="item.disabled"
-                @click="!item.disabled && item.onClick?.()"
-              >
-                <Icon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
-                <span class="flex-1">{{ item.label }}</span>
-                <SharedBadge v-if="item.badge" size="xs" variant="primary">
-                  {{ item.badge }}
-                </SharedBadge>
-                <Icon
-                  v-if="item.external"
-                  name="ph:arrow-up-right"
-                  class="w-3 h-3 opacity-50"
-                />
-              </DropdownMenuItem>
-            </template>
-          </DropdownMenuContent>
-        </DropdownMenuPortal>
-      </DropdownMenuRoot>
+      <DropdownMenu v-if="menuItems && menuItems.length > 0" :items="menuDropdownItems">
+        <button
+          type="button"
+          :class="menuButtonClasses"
+          aria-label="More options"
+        >
+          <Icon :name="menuIcon" class="w-4 h-4" />
+        </button>
+      </DropdownMenu>
 
       <!-- Slot for custom actions -->
       <slot name="actions" />
@@ -219,22 +169,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
 import type { User, AgentStatus } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
+import SharedBadge from '@/Components/shared/Badge.vue'
+import SharedStatusBadge from '@/Components/shared/StatusBadge.vue'
 
 type CardHeaderSize = 'sm' | 'md' | 'lg'
 type CardHeaderVariant = 'default' | 'compact' | 'prominent' | 'minimal'
@@ -385,8 +326,8 @@ const sizeConfig: Record<CardHeaderSize, {
 const containerClasses = computed(() => [
   'flex items-start justify-between',
   sizeConfig[props.size].gap,
-  props.bordered && 'pb-4 border-b border-gray-200',
-  props.sticky && 'sticky top-0 z-10 bg-white/80 backdrop-blur-sm py-2',
+  props.bordered && 'pb-4 border-b border-neutral-200 dark:border-neutral-700',
+  props.sticky && 'sticky top-0 z-10 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm py-2',
   props.variant === 'compact' && 'py-0',
   props.variant === 'prominent' && 'py-2',
 ])
@@ -402,13 +343,13 @@ const leftSectionClasses = computed(() => [
 const iconContainerClasses = computed(() => [
   'relative shrink-0 rounded-lg flex items-center justify-center transition-colors duration-150',
   sizeConfig[props.size].iconContainer,
-  props.iconBg || 'bg-gray-100',
+  props.iconBg || 'bg-neutral-100 dark:bg-neutral-700',
 ])
 
 // Icon classes
 const iconClasses = computed(() => [
   sizeConfig[props.size].icon,
-  props.iconColor || 'text-gray-600',
+  props.iconColor || 'text-neutral-600 dark:text-neutral-200',
 ])
 
 // Icon badge classes
@@ -425,26 +366,26 @@ const titleContainerClasses = computed(() => [
 
 // Title classes
 const titleClasses = computed(() => [
-  'font-semibold text-gray-900',
+  'font-semibold text-neutral-900 dark:text-white',
   sizeConfig[props.size].title,
   props.variant === 'minimal' && 'font-medium',
 ])
 
 // Subtitle classes
 const subtitleClasses = computed(() => [
-  'text-gray-500 mt-0.5',
+  'text-neutral-500 dark:text-neutral-300 mt-0.5',
   sizeConfig[props.size].subtitle,
 ])
 
 // Description classes
 const descriptionClasses = computed(() => [
-  'text-gray-500 mt-1 line-clamp-2',
+  'text-neutral-500 dark:text-neutral-300 mt-1 line-clamp-2',
   sizeConfig[props.size].description,
 ])
 
 // Meta classes
 const metaClasses = computed(() => [
-  'flex items-center gap-2 text-gray-500 mt-1',
+  'flex items-center gap-2 text-neutral-500 dark:text-neutral-300 mt-1',
   sizeConfig[props.size].subtitle,
 ])
 
@@ -458,25 +399,25 @@ const actionButtonClasses = computed(() => {
   const variant = props.action?.variant || 'primary'
   const baseClasses = [
     'inline-flex items-center rounded-lg text-sm font-medium transition-colors duration-150',
-    'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+    'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400',
   ]
 
   if (variant === 'primary') {
     baseClasses.push(
       'px-3 py-1.5',
-      'text-gray-900 hover:bg-gray-100',
+      'text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700',
     )
   } else if (variant === 'secondary') {
     baseClasses.push(
       'px-3 py-1.5',
-      'bg-gray-100 text-gray-900',
-      'hover:bg-gray-200',
+      'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white',
+      'hover:bg-neutral-200 dark:hover:bg-neutral-600',
     )
   } else {
     baseClasses.push(
       'px-2 py-1',
-      'text-gray-500 hover:text-gray-900',
-      'hover:bg-gray-50',
+      'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
+      'hover:bg-neutral-50 dark:hover:bg-neutral-800',
     )
   }
 
@@ -487,9 +428,9 @@ const actionButtonClasses = computed(() => {
 const secondaryActionButtonClasses = computed(() => [
   'inline-flex items-center rounded-lg text-sm transition-colors duration-150',
   'px-2 py-1.5',
-  'text-gray-500 hover:text-gray-900',
-  'hover:bg-gray-50',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
+  'hover:bg-neutral-50 dark:hover:bg-neutral-800',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400',
 ])
 
 // Action icon classes
@@ -500,19 +441,52 @@ const actionIconClasses = computed(() => [
 // Quick action button classes
 const quickActionButtonClasses = computed(() => [
   'p-1.5 rounded-lg transition-colors duration-150',
-  'text-gray-500 hover:text-gray-900',
-  'hover:bg-gray-50',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
+  'hover:bg-neutral-50 dark:hover:bg-neutral-800',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400',
   'disabled:opacity-50 disabled:cursor-not-allowed',
 ])
 
 // Menu button classes
 const menuButtonClasses = computed(() => [
   'p-1.5 rounded-lg transition-colors duration-150',
-  'text-gray-500 hover:text-gray-900',
-  'hover:bg-gray-50',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
+  'hover:bg-neutral-50 dark:hover:bg-neutral-800',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400',
 ])
+
+// Menu dropdown items for UDropdownMenu
+const menuDropdownItems = computed(() => {
+  if (!props.menuItems) return []
+
+  // Group items by separator
+  const groups: MenuItem[][] = []
+  let currentGroup: MenuItem[] = []
+
+  props.menuItems.forEach((item) => {
+    if (item.separator && currentGroup.length > 0) {
+      groups.push(currentGroup)
+      currentGroup = []
+    }
+    if (!item.separator) {
+      currentGroup.push(item)
+    }
+  })
+
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup)
+  }
+
+  return groups.map(group =>
+    group.map(item => ({
+      label: item.label,
+      icon: item.icon,
+      color: item.variant === 'danger' ? 'error' as const : undefined,
+      disabled: item.disabled,
+      click: item.onClick,
+    }))
+  )
+})
 
 // Handlers
 const handleAction = () => {

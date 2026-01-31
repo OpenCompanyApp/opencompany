@@ -37,30 +37,32 @@
     <div v-if="action || secondaryAction || $slots.actions" :class="actionsClasses">
       <slot name="actions">
         <!-- Primary Action -->
-        <SharedButton
+        <Button
           v-if="action"
-          :variant="action.variant || 'primary'"
+          :color="getButtonColor(action.variant || 'primary')"
+          :variant="getButtonVariant(action.variant || 'primary')"
           :size="buttonSize"
-          :icon-left="action.icon"
+          :icon="action.icon"
           :loading="action.loading"
           :disabled="action.disabled"
           @click="handleAction"
         >
           {{ action.label }}
-        </SharedButton>
+        </Button>
 
         <!-- Secondary Action -->
-        <SharedButton
+        <Button
           v-if="secondaryAction"
-          :variant="secondaryAction.variant || 'ghost'"
+          :color="getButtonColor(secondaryAction.variant || 'ghost')"
+          :variant="getButtonVariant(secondaryAction.variant || 'ghost')"
           :size="buttonSize"
-          :icon-left="secondaryAction.icon"
+          :icon="secondaryAction.icon"
           :loading="secondaryAction.loading"
           :disabled="secondaryAction.disabled"
           @click="handleSecondaryAction"
         >
           {{ secondaryAction.label }}
-        </SharedButton>
+        </Button>
       </slot>
     </div>
 
@@ -70,7 +72,7 @@
         :href="helpLink.url"
         target="_blank"
         rel="noopener noreferrer"
-        class="group/help inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors duration-150"
+        class="group/help inline-flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors duration-150"
       >
         <Icon name="ph:question" class="w-4 h-4" />
         <span class="underline underline-offset-2">
@@ -81,11 +83,13 @@
     </div>
 
     <!-- Retry / Refresh Button -->
-    <button
+    <Button
       v-if="showRetry"
-      type="button"
-      :class="retryButtonClasses"
+      color="neutral"
+      variant="outline"
+      size="sm"
       :disabled="retrying"
+      class="mt-4"
       @click="handleRetry"
     >
       <Icon
@@ -96,7 +100,7 @@
         ]"
       />
       <span>{{ retrying ? 'Retrying...' : 'Retry' }}</span>
-    </button>
+    </Button>
 
     <!-- Additional slot for custom footer -->
     <slot name="footer" />
@@ -106,6 +110,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
 
 type EmptyStateSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 type EmptyStateVariant = 'default' | 'minimal' | 'card' | 'bordered'
@@ -241,14 +246,14 @@ const colorClasses: Record<EmptyStateColor, {
   border: string
 }> = {
   default: {
-    iconBg: 'bg-gray-100',
-    iconText: 'text-gray-400',
-    border: 'border-gray-200',
+    iconBg: 'bg-neutral-100 dark:bg-neutral-700',
+    iconText: 'text-neutral-400 dark:text-neutral-400',
+    border: 'border-neutral-200 dark:border-neutral-700',
   },
   primary: {
-    iconBg: 'bg-gray-100',
-    iconText: 'text-gray-500',
-    border: 'border-gray-300',
+    iconBg: 'bg-neutral-100 dark:bg-neutral-700',
+    iconText: 'text-neutral-500 dark:text-neutral-300',
+    border: 'border-neutral-300 dark:border-neutral-600',
   },
   success: {
     iconBg: 'bg-green-50',
@@ -292,7 +297,7 @@ const containerClasses = computed(() => {
   switch (props.variant) {
     case 'card':
       classes.push(
-        'bg-white rounded-lg border border-gray-200'
+        'bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700'
       )
       break
     case 'bordered':
@@ -348,13 +353,13 @@ const contentClasses = computed(() => [
 
 // Title classes
 const titleClasses = computed(() => [
-  'font-medium text-gray-900',
+  'font-medium text-neutral-900 dark:text-white',
   sizeConfig[props.size].title,
 ])
 
 // Description classes
 const descriptionClasses = computed(() => [
-  'text-gray-500 mt-1.5 leading-relaxed',
+  'text-neutral-500 dark:text-neutral-300 mt-1.5 leading-relaxed',
   sizeConfig[props.size].description,
 ])
 
@@ -368,11 +373,11 @@ const actionsClasses = computed(() => [
 // Retry button classes
 const retryButtonClasses = computed(() => [
   'group/retry inline-flex items-center gap-2 mt-4 px-3 py-1.5 rounded-md text-sm',
-  'text-gray-500 hover:text-gray-700',
-  'bg-transparent hover:bg-gray-100',
-  'border border-gray-200',
+  'text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200',
+  'bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  'border border-neutral-200 dark:border-neutral-700',
   'transition-colors duration-150',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400',
   'disabled:opacity-50 disabled:cursor-not-allowed',
 ])
 
@@ -394,8 +399,18 @@ const handleSecondaryAction = () => {
 const handleRetry = () => {
   emit('retry')
 }
+
+// Button variant mapping
+const getButtonColor = (variant: string) => {
+  if (variant === 'danger') return 'error'
+  if (variant === 'primary') return 'primary'
+  return 'neutral'
+}
+
+const getButtonVariant = (variant: string) => {
+  if (variant === 'ghost') return 'ghost'
+  if (variant === 'secondary') return 'outline'
+  return 'solid'
+}
 </script>
 
-<style scoped>
-/* Minimal styling */
-</style>

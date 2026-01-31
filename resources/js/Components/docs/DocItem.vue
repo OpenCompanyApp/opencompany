@@ -55,72 +55,32 @@
         <!-- Badges -->
         <div v-if="showBadges" class="flex items-center gap-1 shrink-0">
           <!-- Shared Badge -->
-          <TooltipProvider v-if="document.isShared" :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <span :class="sharedBadgeClasses">
-                  <Icon name="ph:share-network" class="w-3 h-3" />
-                </span>
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent :class="tooltipClasses" side="top">
-                  Shared with team
-                  <TooltipArrow class="fill-white" />
-                </TooltipContent>
-              </TooltipPortal>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip v-if="document.isShared" text="Shared with team" :delay-open="300">
+            <span :class="sharedBadgeClasses">
+              <Icon name="ph:share-network" class="w-3 h-3" />
+            </span>
+          </Tooltip>
 
           <!-- Starred Badge -->
-          <TooltipProvider v-if="document.isStarred" :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <span :class="starredBadgeClasses">
-                  <Icon name="ph:star-fill" class="w-3 h-3" />
-                </span>
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent :class="tooltipClasses" side="top">
-                  Starred
-                  <TooltipArrow class="fill-white" />
-                </TooltipContent>
-              </TooltipPortal>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip v-if="document.isStarred" text="Starred" :delay-open="300">
+            <span :class="starredBadgeClasses">
+              <Icon name="ph:star-fill" class="w-3 h-3" />
+            </span>
+          </Tooltip>
 
           <!-- Pinned Badge -->
-          <TooltipProvider v-if="document.isPinned" :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <span :class="pinnedBadgeClasses">
-                  <Icon name="ph:push-pin-fill" class="w-3 h-3" />
-                </span>
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent :class="tooltipClasses" side="top">
-                  Pinned to top
-                  <TooltipArrow class="fill-white" />
-                </TooltipContent>
-              </TooltipPortal>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip v-if="document.isPinned" text="Pinned to top" :delay-open="300">
+            <span :class="pinnedBadgeClasses">
+              <Icon name="ph:push-pin-fill" class="w-3 h-3" />
+            </span>
+          </Tooltip>
 
           <!-- Locked Badge -->
-          <TooltipProvider v-if="document.isLocked" :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <span :class="lockedBadgeClasses">
-                  <Icon name="ph:lock-fill" class="w-3 h-3" />
-                </span>
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent :class="tooltipClasses" side="top">
-                  Document locked
-                  <TooltipArrow class="fill-white" />
-                </TooltipContent>
-              </TooltipPortal>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip v-if="document.isLocked" text="Document locked" :delay-open="300">
+            <span :class="lockedBadgeClasses">
+              <Icon name="ph:lock-fill" class="w-3 h-3" />
+            </span>
+          </Tooltip>
         </div>
       </div>
 
@@ -193,72 +153,21 @@
       <!-- Quick Actions -->
       <Transition name="fade">
         <div v-if="showQuickActions && hovered" class="flex items-center gap-0.5">
-          <TooltipProvider :delay-duration="200">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  :class="quickActionClasses"
-                  @click.stop="handleStar"
-                >
-                  <Icon :name="document.isStarred ? 'ph:star-fill' : 'ph:star'" :class="['w-4 h-4', document.isStarred && 'text-amber-400']" />
-                </button>
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent :class="tooltipClasses" side="top">
-                  {{ document.isStarred ? 'Unstar' : 'Star' }}
-                  <TooltipArrow class="fill-white" />
-                </TooltipContent>
-              </TooltipPortal>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip :text="document.isStarred ? 'Unstar' : 'Star'" :delay-open="200">
+            <button
+              type="button"
+              :class="quickActionClasses"
+              @click.stop="handleStar"
+            >
+              <Icon :name="document.isStarred ? 'ph:star-fill' : 'ph:star'" :class="['w-4 h-4', document.isStarred && 'text-amber-400']" />
+            </button>
+          </Tooltip>
 
-          <DropdownMenuRoot>
-            <DropdownMenuTrigger as-child>
-              <button type="button" :class="quickActionClasses" @click.stop>
-                <Icon name="ph:dots-three" class="w-4 h-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent :class="dropdownContentClasses" :side-offset="8" align="end">
-                <DropdownMenuItem :class="dropdownItemClasses" @select="emit('open')">
-                  <Icon name="ph:arrow-square-out" class="w-4 h-4 mr-2" />
-                  Open
-                </DropdownMenuItem>
-                <DropdownMenuItem :class="dropdownItemClasses" @select="emit('edit')">
-                  <Icon name="ph:pencil-simple" class="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuSeparator class="h-px bg-gray-200 my-1" />
-                <DropdownMenuItem :class="dropdownItemClasses" @select="emit('duplicate')">
-                  <Icon name="ph:copy" class="w-4 h-4 mr-2" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem :class="dropdownItemClasses" @select="emit('move')">
-                  <Icon name="ph:folder-simple" class="w-4 h-4 mr-2" />
-                  Move to...
-                </DropdownMenuItem>
-                <DropdownMenuItem :class="dropdownItemClasses" @select="emit('share')">
-                  <Icon name="ph:share" class="w-4 h-4 mr-2" />
-                  Share
-                </DropdownMenuItem>
-                <DropdownMenuSeparator class="h-px bg-gray-200 my-1" />
-                <DropdownMenuItem :class="dropdownItemClasses" @select="emit('pin')">
-                  <Icon :name="document.isPinned ? 'ph:push-pin-slash' : 'ph:push-pin'" class="w-4 h-4 mr-2" />
-                  {{ document.isPinned ? 'Unpin' : 'Pin' }}
-                </DropdownMenuItem>
-                <DropdownMenuItem :class="dropdownItemClasses" @select="emit('archive')">
-                  <Icon name="ph:archive" class="w-4 h-4 mr-2" />
-                  Archive
-                </DropdownMenuItem>
-                <DropdownMenuSeparator class="h-px bg-gray-200 my-1" />
-                <DropdownMenuItem :class="[dropdownItemClasses, 'text-red-400']" @select="emit('delete')">
-                  <Icon name="ph:trash" class="w-4 h-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenuRoot>
+          <DropdownMenu :items="quickActionsDropdown">
+            <Button variant="ghost" :class="quickActionClasses" @click.stop>
+              <Icon name="ph:dots-three" class="w-4 h-4" />
+            </Button>
+          </DropdownMenu>
         </div>
       </Transition>
     </div>
@@ -267,22 +176,11 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  TooltipArrow,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
 import type { Document, User } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 
 type DocItemSize = 'sm' | 'md' | 'lg'
 type DocItemVariant = 'default' | 'compact' | 'detailed' | 'card'
@@ -453,7 +351,7 @@ const getTypeIcon = (type: string): string => {
 const containerClasses = computed(() => {
   const base = [
     'w-full flex items-start text-left group transition-all duration-150 ease-out outline-none',
-    'focus-visible:ring-2 focus-visible:ring-gray-900/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+    'focus-visible:ring-2 focus-visible:ring-neutral-900/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
     sizeConfig[props.size].padding,
     sizeConfig[props.size].gap,
   ]
@@ -462,15 +360,15 @@ const containerClasses = computed(() => {
     base.push('rounded-lg border')
     base.push(
       props.selected
-        ? 'bg-gray-900 text-white shadow-md border-gray-900'
-        : 'bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+        ? 'bg-neutral-900 text-white shadow-md border-neutral-900'
+        : 'bg-white border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50'
     )
   } else {
     base.push('rounded-lg')
     base.push(
       props.selected
-        ? 'bg-gray-900 text-white shadow-md'
-        : 'hover:bg-gray-50 text-gray-900'
+        ? 'bg-neutral-900 text-white shadow-md'
+        : 'hover:bg-neutral-50 text-neutral-900'
     )
   }
 
@@ -481,26 +379,26 @@ const containerClasses = computed(() => {
 const iconContainerClasses = computed(() => [
   'relative rounded-lg flex items-center justify-center shrink-0 transition-all duration-150 ease-out',
   sizeConfig[props.size].iconContainer,
-  props.selected ? 'bg-white/20' : 'bg-gray-100',
+  props.selected ? 'bg-white/20' : 'bg-neutral-100',
 ])
 
 const iconClasses = computed(() => [
   sizeConfig[props.size].iconSize,
-  props.selected ? 'text-white' : 'text-gray-500',
+  props.selected ? 'text-white' : 'text-neutral-500',
 ])
 
 // Title classes
 const titleClasses = computed(() => [
   'font-medium truncate',
   sizeConfig[props.size].titleSize,
-  props.selected ? 'text-white' : 'text-gray-900',
+  props.selected ? 'text-white' : 'text-neutral-900',
 ])
 
 // Description classes
 const descriptionClasses = computed(() => [
   'line-clamp-2 mt-0.5',
   props.size === 'sm' ? 'text-[10px]' : 'text-xs',
-  props.selected ? 'text-white/70' : 'text-gray-500',
+  props.selected ? 'text-white/70' : 'text-neutral-500',
 ])
 
 // Meta row classes
@@ -511,42 +409,42 @@ const metaRowClasses = computed(() => [
 
 const metaTextClasses = computed(() => [
   'flex items-center truncate',
-  props.selected ? 'text-white/70' : 'text-gray-500',
+  props.selected ? 'text-white/70' : 'text-neutral-500',
 ])
 
 const separatorClasses = computed(() => [
-  props.selected ? 'text-white/40' : 'text-gray-200',
+  props.selected ? 'text-white/40' : 'text-neutral-200',
 ])
 
 // Badge classes
 const sharedBadgeClasses = computed(() => [
   'p-1 rounded',
-  props.selected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500',
+  props.selected ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500',
 ])
 
 const starredBadgeClasses = computed(() => [
   'p-1 rounded',
-  props.selected ? 'bg-white/20 text-amber-300' : 'bg-gray-100 text-amber-500',
+  props.selected ? 'bg-white/20 text-amber-300' : 'bg-neutral-100 text-amber-500',
 ])
 
 const pinnedBadgeClasses = computed(() => [
   'p-1 rounded',
-  props.selected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500',
+  props.selected ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500',
 ])
 
 const lockedBadgeClasses = computed(() => [
   'p-1 rounded',
-  props.selected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500',
+  props.selected ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500',
 ])
 
 const newBadgeClasses = computed(() => [
   'absolute -top-1 -right-1 p-0.5 rounded-full',
-  props.selected ? 'text-gray-300' : 'text-gray-400',
+  props.selected ? 'text-neutral-300' : 'text-neutral-400',
 ])
 
 const typeIndicatorClasses = computed(() => [
   'absolute -bottom-0.5 -right-0.5 p-0.5 rounded bg-white',
-  props.selected ? 'text-white/70' : 'text-gray-400',
+  props.selected ? 'text-white/70' : 'text-neutral-400',
 ])
 
 // Tag classes
@@ -554,20 +452,20 @@ const tagClasses = computed(() => [
   'px-1.5 py-0.5 rounded text-[10px]',
   props.selected
     ? 'bg-white/20 text-white'
-    : 'bg-gray-100 text-gray-500',
+    : 'bg-neutral-100 text-neutral-500',
 ])
 
 // Viewer classes
 const viewerAvatarClasses = computed(() => [
   'w-5 h-5 rounded-full border-2 overflow-hidden',
-  props.selected ? 'border-gray-900' : 'border-gray-50',
+  props.selected ? 'border-neutral-900' : 'border-neutral-50',
 ])
 
 const viewerCountClasses = computed(() => [
   'w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] font-medium',
   props.selected
-    ? 'border-gray-900 bg-white/20 text-white'
-    : 'border-gray-50 bg-gray-100 text-gray-500',
+    ? 'border-neutral-900 bg-white/20 text-white'
+    : 'border-neutral-50 bg-neutral-100 text-neutral-500',
 ])
 
 // Checkbox classes
@@ -577,16 +475,16 @@ const checkboxLabelClasses = computed(() => [
 
 const checkboxClasses = computed(() => [
   'w-4 h-4 rounded border-2 cursor-pointer transition-colors',
-  'focus:ring-2 focus:ring-gray-900/50 focus:ring-offset-2 focus:ring-offset-white',
+  'focus:ring-2 focus:ring-neutral-900/50 focus:ring-offset-2 focus:ring-offset-white',
   props.checked
-    ? 'bg-gray-900 border-gray-900'
-    : 'bg-transparent border-gray-200 hover:border-gray-300',
+    ? 'bg-neutral-900 border-neutral-900'
+    : 'bg-transparent border-neutral-200 hover:border-neutral-300',
 ])
 
 // Drag handle classes
 const dragHandleClasses = computed(() => [
   'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 p-1 cursor-grab',
-  'text-gray-400 hover:text-gray-500',
+  'text-neutral-400 hover:text-neutral-500',
   'opacity-0 group-hover:opacity-100 transition-opacity',
 ])
 
@@ -595,26 +493,46 @@ const quickActionClasses = computed(() => [
   'p-1.5 rounded-md transition-all duration-150 ease-out',
   props.selected
     ? 'text-white/70 hover:text-white hover:bg-white/20'
-    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100',
+    : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100',
+])
+
+// Quick actions dropdown items
+const quickActionsDropdown = computed(() => [
+  [
+    { label: 'Open', icon: 'ph:arrow-square-out', click: () => emit('open') },
+    { label: 'Edit', icon: 'ph:pencil-simple', click: () => emit('edit') },
+  ],
+  [
+    { label: 'Duplicate', icon: 'ph:copy', click: () => emit('duplicate') },
+    { label: 'Move to...', icon: 'ph:folder-simple', click: () => emit('move') },
+    { label: 'Share', icon: 'ph:share', click: () => emit('share') },
+  ],
+  [
+    { label: props.document.isPinned ? 'Unpin' : 'Pin', icon: props.document.isPinned ? 'ph:push-pin-slash' : 'ph:push-pin', click: () => emit('pin') },
+    { label: 'Archive', icon: 'ph:archive', click: () => emit('archive') },
+  ],
+  [
+    { label: 'Delete', icon: 'ph:trash', color: 'error' as const, click: () => emit('delete') },
+  ],
 ])
 
 // Dropdown classes
 const dropdownContentClasses = computed(() => [
-  'z-50 min-w-[180px] bg-white border border-gray-200 rounded-lg',
+  'z-50 min-w-[180px] bg-white border border-neutral-200 rounded-lg',
   'p-1.5 shadow-lg',
   'animate-in fade-in-0 duration-150',
 ])
 
 const dropdownItemClasses = computed(() => [
   'flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer',
-  'text-gray-700 hover:bg-gray-50',
+  'text-neutral-700 hover:bg-neutral-50',
   'transition-colors duration-150 ease-out outline-none',
-  'data-[highlighted]:bg-gray-50',
+  'data-[highlighted]:bg-neutral-50',
 ])
 
 // Tooltip classes
 const tooltipClasses = computed(() => [
-  'z-50 bg-white border border-gray-200 rounded-lg',
+  'z-50 bg-white border border-neutral-200 rounded-lg',
   'px-2 py-1 text-xs shadow-md',
   'animate-in fade-in-0 duration-150',
 ])

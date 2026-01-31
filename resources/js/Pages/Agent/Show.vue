@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen bg-white p-6">
-    <div class="max-w-6xl mx-auto">
+  <div class="h-full overflow-y-auto">
+    <div class="max-w-4xl mx-auto p-6">
       <!-- Back button -->
       <button
         type="button"
-        class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6 transition-colors"
+        class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white mb-6 transition-colors"
         @click="goBack"
       >
         <Icon name="ph:arrow-left" class="w-4 h-4" />
@@ -13,347 +13,248 @@
 
       <!-- Loading State -->
       <div v-if="loading" class="space-y-6">
-        <div class="flex items-center gap-4">
-          <SharedSkeleton custom-class="w-20 h-20 rounded-full" />
-          <div class="space-y-2">
-            <SharedSkeleton custom-class="w-48 h-6 rounded" />
-            <SharedSkeleton custom-class="w-32 h-4 rounded" />
-          </div>
+        <SharedSkeleton custom-class="h-32 rounded-xl" />
+        <div class="flex gap-2">
+          <SharedSkeleton v-for="i in 7" :key="i" custom-class="w-24 h-9 rounded-lg" />
         </div>
-        <SharedSkeleton custom-class="h-40 rounded-xl" />
-        <SharedSkeleton custom-class="h-64 rounded-xl" />
+        <SharedSkeleton custom-class="h-96 rounded-xl" />
       </div>
 
-      <template v-else-if="agentData">
-        <!-- Agent Header -->
-        <div class="bg-gray-50 rounded-xl p-6 border border-gray-200 mb-6">
-          <div class="flex items-start gap-6">
-            <!-- Avatar -->
+      <template v-else-if="agent">
+        <!-- Simplified Header -->
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-4">
             <div class="relative">
               <div
                 :class="[
-                  'w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold',
-                  agentColorMap[agentData.agent.agentType || 'default'],
+                  'w-14 h-14 rounded-xl flex items-center justify-center text-2xl',
+                  agentBgColor
                 ]"
               >
-                {{ agentData.agent.name.charAt(0) }}
+                {{ agent.identity?.emoji || '🤖' }}
               </div>
-              <!-- Status indicator -->
-              <span
+              <div
                 :class="[
-                  'absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-gray-50',
-                  statusColorMap[agentData.agent.status || 'offline'],
+                  'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-neutral-900',
+                  statusColor
                 ]"
               />
             </div>
-
-            <!-- Info -->
-            <div class="flex-1">
-              <div class="flex items-center gap-3 mb-2">
-                <h1 class="text-2xl font-bold text-gray-900">{{ agentData.agent.name }}</h1>
-                <span
-                  :class="[
-                    'px-2 py-1 rounded-lg text-xs font-medium capitalize',
-                    agentBgMap[agentData.agent.agentType || 'default'],
-                  ]"
-                >
-                  {{ agentData.agent.agentType }} Agent
-                </span>
-                <span
-                  v-if="agentData.agent.isTemporary"
-                  class="px-2 py-1 rounded-lg text-xs font-medium bg-amber-500/20 text-amber-400"
-                >
-                  Temporary
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">
+                  {{ agent.identity?.name || agent.name }}
+                </h1>
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 capitalize">
+                  {{ agent.identity?.type || agent.agentType }}
                 </span>
               </div>
-              <p v-if="agentData.agent.currentTask" class="text-sm text-gray-500 mb-3">
-                <Icon name="ph:play-circle" class="w-4 h-4 inline mr-1 text-green-400" />
-                {{ agentData.agent.currentTask }}
+              <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                {{ statusLabel }}
               </p>
-              <p v-else class="text-sm text-gray-500 mb-3">
-                <Icon name="ph:pause-circle" class="w-4 h-4 inline mr-1 text-amber-400" />
-                Idle - No active task
-              </p>
-
-              <!-- Resource Usage -->
-              <div class="flex items-center gap-6 text-sm">
-                <div class="flex items-center gap-2">
-                  <Icon name="ph:cpu" class="w-4 h-4 text-gray-500" />
-                  <span class="text-gray-500">CPU:</span>
-                  <span :class="getResourceColor(agentData.agent.cpuUsage)">{{ agentData.agent.cpuUsage }}%</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <Icon name="ph:memory" class="w-4 h-4 text-gray-500" />
-                  <span class="text-gray-500">RAM:</span>
-                  <span :class="getResourceColor(agentData.agent.memoryUsage)">{{ agentData.agent.memoryUsage }}%</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <Icon name="ph:coins" class="w-4 h-4 text-amber-400" />
-                  <span class="text-gray-500">Tokens:</span>
-                  <span class="text-gray-900">{{ formatNumber(agentData.agent.tokensUsed) }}</span>
-                </div>
-              </div>
             </div>
+          </div>
 
-            <!-- Quick Stats -->
-            <div class="grid grid-cols-2 gap-4">
-              <div class="text-center p-3 bg-white rounded-lg">
-                <p class="text-2xl font-bold text-gray-900">{{ agentData.stats.completedTasks }}</p>
-                <p class="text-xs text-gray-500">Tasks Done</p>
-              </div>
-              <div class="text-center p-3 bg-white rounded-lg">
-                <p class="text-2xl font-bold text-gray-900">{{ agentData.stats.efficiency }}%</p>
-                <p class="text-xs text-gray-500">Efficiency</p>
-              </div>
-              <div class="text-center p-3 bg-white rounded-lg">
-                <p class="text-2xl font-bold text-gray-900">{{ formatCredits(agentData.stats.totalCreditsUsed) }}</p>
-                <p class="text-xs text-gray-500">Credits Used</p>
-              </div>
-              <div class="text-center p-3 bg-white rounded-lg">
-                <p class="text-2xl font-bold text-gray-900">{{ formatUptime(agentData.stats.uptimeHours) }}</p>
-                <p class="text-xs text-gray-500">Uptime</p>
-              </div>
-            </div>
-
-            <!-- Controls -->
-            <div class="flex flex-col gap-2">
-              <Link
-                :href="`/messages/${agentData.agent.id}`"
-                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-900 hover:bg-gray-200 transition-colors"
-              >
-                <Icon name="ph:chat-circle" class="w-4 h-4" />
-                Message
-              </Link>
-              <button
-                type="button"
-                :class="[
-                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                  agentData.agent.status === 'working'
-                    ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
-                    : 'bg-green-500/20 text-green-400 hover:bg-green-500/30',
-                ]"
-                @click="togglePause"
-              >
-                <Icon :name="agentData.agent.status === 'working' ? 'ph:pause' : 'ph:play'" class="w-4 h-4" />
-                {{ agentData.agent.status === 'working' ? 'Pause' : 'Resume' }}
-              </button>
-              <button
-                type="button"
-                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                @click="cancelAgent"
-              >
-                <Icon name="ph:stop" class="w-4 h-4" />
-                Stop Agent
-              </button>
-            </div>
+          <div class="flex items-center gap-2">
+            <Link
+              :href="`/messages/${agent.id}`"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+            >
+              <Icon name="ph:chat-circle" class="w-4 h-4" />
+              Message
+            </Link>
+            <button
+              type="button"
+              :class="[
+                'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                agent.status === 'working'
+                  ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                  : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
+              ]"
+              @click="togglePause"
+            >
+              <Icon :name="agent.status === 'working' ? 'ph:pause' : 'ph:play'" class="w-4 h-4" />
+              {{ agent.status === 'working' ? 'Pause' : 'Resume' }}
+            </button>
           </div>
         </div>
 
-        <!-- Content Tabs -->
-        <div class="flex gap-2 mb-6">
+        <!-- Tabs -->
+        <div class="flex gap-1 mb-6 overflow-x-auto pb-1">
           <button
             v-for="tab in tabs"
             :key="tab.id"
             type="button"
             :class="[
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+              'px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
               activeTab === tab.id
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-50 text-gray-500 hover:text-gray-900',
+                ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
             ]"
             @click="activeTab = tab.id"
           >
-            <Icon :name="tab.icon" class="w-4 h-4 mr-1.5 inline" />
             {{ tab.label }}
-            <span v-if="tab.count" class="ml-1.5 px-1.5 py-0.5 rounded text-xs bg-white/20">
-              {{ tab.count }}
-            </span>
           </button>
         </div>
 
-        <!-- Activity Log Tab -->
-        <div v-if="activeTab === 'activity'" class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-          <div class="p-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Activity Log</h2>
-            <p class="text-sm text-gray-500">Real-time activity stream</p>
+        <!-- Tab Content -->
+        <div class="min-h-[500px]">
+          <!-- Overview Tab -->
+          <div v-if="activeTab === 'overview'" class="space-y-6">
+            <AgentIdentityCard :agent="agent" />
+
+            <!-- Current Task -->
+            <section v-if="agent.currentTask">
+              <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">Current Task</h3>
+              <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700">
+                <p class="text-sm text-neutral-900 dark:text-white">{{ agent.currentTask }}</p>
+              </div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-medium text-neutral-900 dark:text-white">Recent Activity</h3>
+                <button
+                  type="button"
+                  class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
+                  @click="activeTab = 'activity'"
+                >
+                  View all
+                </button>
+              </div>
+              <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-200 dark:divide-neutral-700">
+                <div
+                  v-for="activity in recentActivity"
+                  :key="activity.id"
+                  class="px-4 py-3 flex items-center gap-3"
+                >
+                  <div
+                    :class="[
+                      'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                      activity.type === 'completed' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-neutral-100 dark:bg-neutral-700'
+                    ]"
+                  >
+                    <Icon
+                      :name="activity.type === 'completed' ? 'ph:check' : 'ph:clock'"
+                      :class="[
+                        'w-4 h-4',
+                        activity.type === 'completed' ? 'text-green-600 dark:text-green-400' : 'text-neutral-500 dark:text-neutral-400'
+                      ]"
+                    />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-neutral-900 dark:text-white truncate">{{ activity.description }}</p>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ formatTimeAgo(activity.timestamp) }}</p>
+                  </div>
+                </div>
+                <div v-if="recentActivity.length === 0" class="px-4 py-6 text-center">
+                  <p class="text-sm text-neutral-500 dark:text-neutral-400">No recent activity</p>
+                </div>
+              </div>
+            </section>
           </div>
-          <div class="max-h-[600px] overflow-y-auto">
-            <div
-              v-for="(activity, index) in agentData.activityLog"
-              :key="activity.id"
-              :class="[
-                'flex items-start gap-4 p-4 border-b border-gray-200 last:border-b-0',
-                activity.type === 'working' && 'bg-blue-500/5',
-              ]"
-            >
-              <!-- Timeline indicator -->
-              <div class="relative flex flex-col items-center">
+
+          <!-- Personality Tab -->
+          <div v-if="activeTab === 'personality'">
+            <AgentPersonalityEditor
+              :personality="agent.personality"
+              @save="savePersonality"
+            />
+          </div>
+
+          <!-- Instructions Tab -->
+          <div v-if="activeTab === 'instructions'">
+            <AgentInstructionsEditor
+              :instructions="agent.instructions"
+              @save="saveInstructions"
+            />
+          </div>
+
+          <!-- Capabilities Tab -->
+          <div v-if="activeTab === 'capabilities'">
+            <AgentCapabilities
+              :capabilities="agent.capabilities"
+              :notes="capabilityNotes"
+              @save-notes="saveCapabilityNotes"
+            />
+          </div>
+
+          <!-- Memory Tab -->
+          <div v-if="activeTab === 'memory'">
+            <AgentMemoryView
+              :session="agent.currentSession"
+              :memory-entries="agent.memoryEntries || []"
+              @new-session="startNewSession"
+              @view-history="viewSessionHistory"
+              @add-memory="addMemoryEntry"
+              @delete-memory="deleteMemoryEntry"
+            />
+          </div>
+
+          <!-- Activity Tab -->
+          <div v-if="activeTab === 'activity'" class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+            <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
+              <h2 class="text-sm font-medium text-neutral-900 dark:text-white">Activity Log</h2>
+            </div>
+            <div class="max-h-[600px] overflow-y-auto divide-y divide-neutral-200 dark:divide-neutral-700">
+              <div
+                v-for="activity in activityLog"
+                :key="activity.id"
+                class="px-4 py-3 flex items-center gap-3"
+              >
                 <div
                   :class="[
-                    'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
-                    activity.type === 'completed' ? 'bg-green-500/20' : activity.type === 'working' ? 'bg-blue-500/20' : 'bg-gray-500/20',
+                    'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                    getActivityBg(activity.type)
                   ]"
                 >
                   <Icon
-                    :name="activity.type === 'completed' ? 'ph:check' : activity.type === 'working' ? 'ph:spinner' : 'ph:clock'"
-                    :class="[
-                      'w-5 h-5',
-                      activity.type === 'completed' ? 'text-green-400' : activity.type === 'working' ? 'text-blue-400 animate-spin' : 'text-gray-400',
-                    ]"
+                    :name="getActivityIcon(activity.type)"
+                    :class="['w-4 h-4', getActivityColor(activity.type)]"
                   />
                 </div>
-                <div
-                  v-if="index < agentData.activityLog.length - 1"
-                  class="w-0.5 flex-1 bg-gray-200 mt-2"
-                />
-              </div>
-
-              <!-- Content -->
-              <div class="flex-1 min-w-0">
-                <p class="text-sm text-gray-900">{{ activity.description }}</p>
-                <div class="flex items-center gap-3 mt-1">
-                  <p class="text-xs text-gray-500">
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-neutral-900 dark:text-white">{{ activity.description }}</p>
+                  <p class="text-xs text-neutral-500 dark:text-neutral-400">
                     {{ formatDateTime(activity.timestamp) }}
+                    <span v-if="activity.duration"> · {{ formatDuration(activity.duration) }}</span>
                   </p>
-                  <span
-                    v-if="activity.duration"
-                    class="text-xs text-gray-400"
-                  >
-                    {{ formatDuration(activity.duration) }}
-                  </span>
                 </div>
+                <span
+                  :class="[
+                    'px-2 py-0.5 rounded text-xs font-medium capitalize shrink-0',
+                    getActivityBadge(activity.type)
+                  ]"
+                >
+                  {{ activity.type === 'working' ? 'In Progress' : activity.type }}
+                </span>
               </div>
+              <div v-if="activityLog.length === 0" class="p-8 text-center">
+                <Icon name="ph:activity" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">No activity recorded</p>
+              </div>
+            </div>
+          </div>
 
-              <!-- Status badge -->
-              <span
-                :class="[
-                  'px-2 py-1 rounded text-xs font-medium capitalize shrink-0',
-                  activity.type === 'completed' ? 'bg-green-500/20 text-green-400' : activity.type === 'working' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400',
-                ]"
-              >
-                {{ activity.type === 'working' ? 'In Progress' : activity.type }}
-              </span>
-            </div>
-            <div v-if="!agentData.activityLog?.length" class="p-8 text-center text-gray-500">
-              No activity recorded yet
-            </div>
-          </div>
-        </div>
-
-        <!-- Tasks Tab -->
-        <div v-if="activeTab === 'tasks'" class="space-y-3">
-          <div
-            v-for="task in agentData.tasks"
-            :key="task.id"
-            class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200"
-          >
-            <div
-              :class="[
-                'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
-                task.status === 'done' ? 'bg-green-500/20' : task.status === 'in_progress' ? 'bg-blue-500/20' : 'bg-gray-500/20',
-              ]"
-            >
-              <Icon
-                :name="task.status === 'done' ? 'ph:check' : task.status === 'in_progress' ? 'ph:spinner' : 'ph:circle-dashed'"
-                :class="[
-                  'w-5 h-5',
-                  task.status === 'done' ? 'text-green-400' : task.status === 'in_progress' ? 'text-blue-400' : 'text-gray-400',
-                ]"
-              />
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900">{{ task.title }}</p>
-              <p class="text-xs text-gray-500 mt-1 line-clamp-1">{{ task.description }}</p>
-            </div>
-            <span
-              :class="[
-                'px-2 py-1 rounded text-xs font-medium capitalize',
-                priorityClasses[task.priority],
-              ]"
-            >
-              {{ task.priority }}
-            </span>
-            <span
-              :class="[
-                'px-2 py-1 rounded text-xs font-medium capitalize',
-                task.status === 'done' ? 'bg-green-500/20 text-green-400' : task.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400',
-              ]"
-            >
-              {{ task.status.replace('_', ' ') }}
-            </span>
-          </div>
-          <div v-if="!agentData.tasks?.length" class="text-center py-8 text-gray-500">
-            No tasks assigned
-          </div>
-        </div>
-
-        <!-- Messages Tab -->
-        <div v-if="activeTab === 'messages'" class="space-y-3">
-          <div
-            v-for="message in agentData.recentMessages"
-            :key="message.id"
-            class="p-4 bg-gray-50 rounded-xl border border-gray-200"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <span
-                v-if="message.channel"
-                class="text-xs font-medium text-gray-900"
-              >
-                #{{ message.channel.name }}
-              </span>
-              <span class="text-xs text-gray-500">
-                {{ formatDateTime(message.timestamp) }}
-              </span>
-            </div>
-            <p class="text-sm text-gray-900 line-clamp-3">{{ message.content }}</p>
-          </div>
-          <div v-if="!agentData.recentMessages?.length" class="text-center py-8 text-gray-500">
-            No messages sent
-          </div>
-        </div>
-
-        <!-- Credits Tab -->
-        <div v-if="activeTab === 'credits'" class="space-y-3">
-          <div
-            v-for="transaction in agentData.creditTransactions"
-            :key="transaction.id"
-            class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200"
-          >
-            <div
-              :class="[
-                'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
-                transaction.amount < 0 ? 'bg-red-500/20' : 'bg-green-500/20',
-              ]"
-            >
-              <Icon
-                :name="transaction.amount < 0 ? 'ph:arrow-down' : 'ph:arrow-up'"
-                :class="['w-5 h-5', transaction.amount < 0 ? 'text-red-400' : 'text-green-400']"
-              />
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900">{{ transaction.description }}</p>
-              <p class="text-xs text-gray-500 mt-1">{{ formatDateTime(transaction.createdAt) }}</p>
-            </div>
-            <span
-              :class="[
-                'text-sm font-semibold',
-                transaction.amount < 0 ? 'text-red-400' : 'text-green-400',
-              ]"
-            >
-              {{ transaction.amount > 0 ? '+' : '' }}{{ formatCredits(transaction.amount) }}
-            </span>
-          </div>
-          <div v-if="!agentData.creditTransactions?.length" class="text-center py-8 text-gray-500">
-            No credit transactions
+          <!-- Settings Tab -->
+          <div v-if="activeTab === 'settings'">
+            <AgentSettingsPanel
+              :settings="agent.settings"
+              @update="updateSettings"
+              @reset-memory="resetAgentMemory"
+              @pause-agent="togglePause"
+              @delete-agent="deleteAgent"
+            />
           </div>
         </div>
       </template>
 
       <!-- Not Found -->
       <div v-else class="text-center py-20">
-        <Icon name="ph:robot" class="w-16 h-16 mx-auto text-gray-500 mb-4" />
-        <h2 class="text-xl font-semibold text-gray-900 mb-2">Agent not found</h2>
-        <p class="text-sm text-gray-500">The agent you're looking for doesn't exist or is not an agent.</p>
+        <Icon name="ph:robot" class="w-12 h-12 mx-auto text-neutral-300 dark:text-neutral-600 mb-3" />
+        <h2 class="text-lg font-semibold text-neutral-900 dark:text-white mb-1">Agent not found</h2>
+        <p class="text-sm text-neutral-500 dark:text-neutral-400">The agent you're looking for doesn't exist.</p>
       </div>
     </div>
   </div>
@@ -361,59 +262,25 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3'
+import Icon from '@/Components/shared/Icon.vue'
 import SharedSkeleton from '@/Components/shared/Skeleton.vue'
+import AgentIdentityCard from '@/Components/agents/AgentIdentityCard.vue'
+import AgentPersonalityEditor from '@/Components/agents/AgentPersonalityEditor.vue'
+import AgentInstructionsEditor from '@/Components/agents/AgentInstructionsEditor.vue'
+import AgentCapabilities from '@/Components/agents/AgentCapabilities.vue'
+import AgentMemoryView from '@/Components/agents/AgentMemoryView.vue'
+import AgentSettingsPanel from '@/Components/agents/AgentSettingsPanel.vue'
+import type { Agent, AgentType, AgentSettings } from '@/types'
 
-interface AgentData {
-  agent: {
-    id: string
-    name: string
-    type: 'agent'
-    agentType?: string
-    status?: string
-    currentTask?: string
-    isTemporary?: boolean
-    cpuUsage: number
-    memoryUsage: number
-    tokensUsed: number
-  }
-  activityLog: Array<{
-    id: string
-    type: 'completed' | 'working' | 'pending'
-    description: string
-    timestamp: string
-    completedAt?: string
-    duration?: number
-  }>
-  tasks: Array<{
-    id: string
-    title: string
-    description: string
-    status: string
-    priority: string
-  }>
-  recentMessages: Array<{
-    id: string
-    content: string
-    timestamp: string
-    channel?: { id: string; name: string }
-  }>
-  creditTransactions: Array<{
-    id: string
-    type: string
-    amount: number
-    description: string
-    createdAt: string
-  }>
-  stats: {
-    totalCreditsUsed: number
-    completedTasks: number
-    inProgressTasks: number
-    totalTasks: number
-    uptimeHours: number
-    efficiency: number
-    messagesCount: number
-  }
+type TabId = 'overview' | 'personality' | 'instructions' | 'capabilities' | 'memory' | 'activity' | 'settings'
+
+interface ActivityItem {
+  id: string
+  type: 'completed' | 'working' | 'pending'
+  description: string
+  timestamp: string
+  duration?: number
 }
 
 const props = defineProps<{
@@ -421,50 +288,74 @@ const props = defineProps<{
 }>()
 
 const loading = ref(true)
-const agentData = ref<AgentData | null>(null)
-const activeTab = ref<'activity' | 'tasks' | 'messages' | 'credits'>('activity')
+const agent = ref<Agent | null>(null)
+const activityLog = ref<ActivityItem[]>([])
+const capabilityNotes = ref('')
 
-const tabs = computed(() => [
-  { id: 'activity' as const, label: 'Activity', icon: 'ph:activity', count: agentData.value?.activityLog?.length },
-  { id: 'tasks' as const, label: 'Tasks', icon: 'ph:check-square', count: agentData.value?.tasks?.length },
-  { id: 'messages' as const, label: 'Messages', icon: 'ph:chat-circle', count: agentData.value?.recentMessages?.length },
-  { id: 'credits' as const, label: 'Credits', icon: 'ph:coins' },
-])
+const activeTab = ref<TabId>('overview')
 
-const agentColorMap: Record<string, string> = {
-  manager: 'bg-purple-500',
-  writer: 'bg-green-500',
-  analyst: 'bg-cyan-500',
-  creative: 'bg-pink-500',
-  researcher: 'bg-amber-500',
-  coder: 'bg-indigo-500',
-  coordinator: 'bg-teal-500',
-  default: 'bg-gray-500',
+const tabs: { id: TabId; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'personality', label: 'Personality' },
+  { id: 'instructions', label: 'Instructions' },
+  { id: 'capabilities', label: 'Capabilities' },
+  { id: 'memory', label: 'Memory' },
+  { id: 'activity', label: 'Activity' },
+  { id: 'settings', label: 'Settings' },
+]
+
+const agentColors: Record<AgentType, string> = {
+  manager: 'bg-purple-100 dark:bg-purple-900/30',
+  writer: 'bg-green-100 dark:bg-green-900/30',
+  analyst: 'bg-cyan-100 dark:bg-cyan-900/30',
+  creative: 'bg-pink-100 dark:bg-pink-900/30',
+  researcher: 'bg-amber-100 dark:bg-amber-900/30',
+  coder: 'bg-indigo-100 dark:bg-indigo-900/30',
+  coordinator: 'bg-teal-100 dark:bg-teal-900/30',
 }
 
-const agentBgMap: Record<string, string> = {
-  manager: 'bg-purple-500/20 text-purple-400',
-  writer: 'bg-green-500/20 text-green-400',
-  analyst: 'bg-cyan-500/20 text-cyan-400',
-  creative: 'bg-pink-500/20 text-pink-400',
-  researcher: 'bg-amber-500/20 text-amber-400',
-  coder: 'bg-indigo-500/20 text-indigo-400',
-  coordinator: 'bg-teal-500/20 text-teal-400',
-  default: 'bg-gray-500/20 text-gray-400',
-}
+const agentBgColor = computed(() => {
+  if (!agent.value) return 'bg-neutral-100 dark:bg-neutral-700'
+  const type = agent.value.identity?.type || agent.value.agentType || 'coder'
+  return agentColors[type] || 'bg-neutral-100 dark:bg-neutral-700'
+})
 
-const statusColorMap: Record<string, string> = {
-  working: 'bg-green-400',
-  idle: 'bg-amber-400',
-  offline: 'bg-gray-400',
-}
+const statusColor = computed(() => {
+  if (!agent.value) return 'bg-neutral-400'
+  switch (agent.value.status) {
+    case 'working':
+    case 'online':
+      return 'bg-green-500'
+    case 'busy':
+      return 'bg-amber-500'
+    case 'paused':
+      return 'bg-yellow-500'
+    default:
+      return 'bg-neutral-400'
+  }
+})
 
-const priorityClasses: Record<string, string> = {
-  low: 'bg-gray-500/20 text-gray-400',
-  medium: 'bg-blue-500/20 text-blue-400',
-  high: 'bg-amber-500/20 text-amber-400',
-  urgent: 'bg-red-500/20 text-red-400',
-}
+const statusLabel = computed(() => {
+  if (!agent.value) return 'Unknown'
+  if (agent.value.status === 'working' && agent.value.currentTask) {
+    return `Working on ${agent.value.currentTask}`
+  }
+  switch (agent.value.status) {
+    case 'working':
+      return 'Working'
+    case 'online':
+    case 'idle':
+      return 'Available'
+    case 'paused':
+      return 'Paused'
+    default:
+      return 'Offline'
+  }
+})
+
+const recentActivity = computed(() => {
+  return activityLog.value.slice(0, 5)
+})
 
 const goBack = () => {
   window.history.back()
@@ -473,44 +364,157 @@ const goBack = () => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const response = await fetch(`/api/agents/${props.id}`)
-    const data = await response.json()
-    agentData.value = data
+    // Simulate API call with mock data
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    // Mock agent data
+    agent.value = {
+      id: props.id,
+      name: 'Logic',
+      type: 'agent',
+      agentType: 'coder',
+      status: 'working',
+      currentTask: 'Implementing user authentication',
+      identity: {
+        name: 'Logic',
+        emoji: '🤖',
+        type: 'coder',
+        description: 'Senior software engineer specializing in backend development',
+      },
+      personality: {
+        content: `## Communication Style
+- Be direct and concise
+- Use technical terms when appropriate
+- Ask clarifying questions before making assumptions
+
+## Boundaries
+- Never deploy to production without explicit approval
+- Always explain reasoning for significant decisions`,
+        updatedAt: new Date(),
+      },
+      instructions: {
+        content: `## Primary Responsibilities
+- Write clean, tested code
+- Review pull requests
+- Document technical decisions
+
+## Workflow
+1. Understand the task fully before starting
+2. Break complex tasks into subtasks
+3. Test changes locally before committing`,
+        updatedAt: new Date(),
+      },
+      capabilities: [
+        { id: '1', name: 'Code execution', description: 'Run Node.js and Python code', enabled: true, requiresApproval: false, icon: 'ph:code' },
+        { id: '2', name: 'File operations', description: 'Read, write, and edit files', enabled: true, requiresApproval: false, icon: 'ph:file' },
+        { id: '3', name: 'Git operations', description: 'Commit, push, and manage branches', enabled: true, requiresApproval: false, icon: 'ph:git-branch' },
+        { id: '4', name: 'API requests', description: 'Make HTTP requests to external services', enabled: true, requiresApproval: false, icon: 'ph:globe' },
+        { id: '5', name: 'Database access', description: 'Query and modify database', enabled: true, requiresApproval: true, icon: 'ph:database' },
+        { id: '6', name: 'Production deployment', description: 'Deploy to production servers', enabled: false, requiresApproval: true, icon: 'ph:rocket-launch' },
+      ],
+      currentSession: {
+        id: 'session-1',
+        startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        messageCount: 24,
+        tokenCount: 45000,
+        maxTokens: 128000,
+      },
+      memoryEntries: [
+        { id: '1', content: 'API credentials stored in vault', createdAt: new Date('2025-01-30'), category: 'fact' },
+        { id: '2', content: 'User prefers TypeScript over JavaScript', createdAt: new Date('2025-01-28'), category: 'preference' },
+        { id: '3', content: 'Project uses pnpm as package manager', createdAt: new Date('2025-01-25'), category: 'fact' },
+      ],
+      settings: {
+        behaviorMode: 'supervised',
+        costLimit: 100,
+        resetPolicy: {
+          mode: 'daily',
+          dailyHour: 4,
+        },
+      },
+      stats: {
+        tasksCompleted: 127,
+        efficiency: 94,
+        creditsUsed: 45,
+        totalSessions: 89,
+      },
+    } as Agent
+
+    activityLog.value = [
+      { id: '1', type: 'working', description: 'Implementing user authentication module', timestamp: new Date().toISOString() },
+      { id: '2', type: 'completed', description: 'Fixed database connection timeout issue', timestamp: new Date(Date.now() - 30 * 60000).toISOString(), duration: 1200 },
+      { id: '3', type: 'completed', description: 'Reviewed PR #234 for API refactoring', timestamp: new Date(Date.now() - 2 * 3600000).toISOString(), duration: 900 },
+      { id: '4', type: 'completed', description: 'Created unit tests for payment service', timestamp: new Date(Date.now() - 4 * 3600000).toISOString(), duration: 2400 },
+      { id: '5', type: 'completed', description: 'Updated documentation for deployment process', timestamp: new Date(Date.now() - 6 * 3600000).toISOString(), duration: 600 },
+    ]
+
+    capabilityNotes.value = 'Preferred test framework: Jest\nCode style: ESLint + Prettier\nDatabase: PostgreSQL with Prisma ORM'
   } catch (error) {
     console.error('Failed to fetch agent data:', error)
-    agentData.value = null
+    agent.value = null
   } finally {
     loading.value = false
   }
 }
 
 const togglePause = () => {
-  // In a real app, this would call an API to pause/resume the agent
   console.log('Toggle pause for agent:', props.id)
 }
 
-const cancelAgent = () => {
-  // In a real app, this would call an API to stop the agent
-  console.log('Cancel agent:', props.id)
+const savePersonality = (content: string) => {
+  console.log('Save personality:', content)
 }
 
-const getResourceColor = (value: number): string => {
-  if (value < 50) return 'text-green-400'
-  if (value < 80) return 'text-amber-400'
-  return 'text-red-400'
+const saveInstructions = (content: string) => {
+  console.log('Save instructions:', content)
 }
 
-const formatNumber = (value: number) => {
-  if (value < 1000) return value.toString()
-  if (value < 1000000) return `${(value / 1000).toFixed(1)}K`
-  return `${(value / 1000000).toFixed(2)}M`
+const saveCapabilityNotes = (notes: string) => {
+  capabilityNotes.value = notes
+  console.log('Save capability notes:', notes)
 }
 
-const formatCredits = (value: number) => {
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value)
+const startNewSession = () => {
+  console.log('Start new session')
+}
+
+const viewSessionHistory = () => {
+  console.log('View session history')
+}
+
+const addMemoryEntry = (entry: { content: string; category: string }) => {
+  console.log('Add memory entry:', entry)
+}
+
+const deleteMemoryEntry = (id: string) => {
+  console.log('Delete memory entry:', id)
+}
+
+const updateSettings = (settings: AgentSettings) => {
+  console.log('Update settings:', settings)
+}
+
+const resetAgentMemory = () => {
+  console.log('Reset agent memory')
+}
+
+const deleteAgent = () => {
+  console.log('Delete agent')
+}
+
+const formatTimeAgo = (dateString: string): string => {
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return ''
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  return `${diffDays}d ago`
 }
 
 const formatDateTime = (dateString: string) => {
@@ -525,14 +529,40 @@ const formatDateTime = (dateString: string) => {
 
 const formatDuration = (seconds: number) => {
   if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
   return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`
 }
 
-const formatUptime = (hours: number) => {
-  if (hours < 24) return `${hours}h`
-  const days = Math.floor(hours / 24)
-  return `${days}d ${hours % 24}h`
+const getActivityIcon = (type: string) => {
+  switch (type) {
+    case 'completed': return 'ph:check'
+    case 'working': return 'ph:spinner'
+    default: return 'ph:clock'
+  }
+}
+
+const getActivityBg = (type: string) => {
+  switch (type) {
+    case 'completed': return 'bg-green-100 dark:bg-green-900/30'
+    case 'working': return 'bg-blue-100 dark:bg-blue-900/30'
+    default: return 'bg-neutral-100 dark:bg-neutral-700'
+  }
+}
+
+const getActivityColor = (type: string) => {
+  switch (type) {
+    case 'completed': return 'text-green-600 dark:text-green-400'
+    case 'working': return 'text-blue-600 dark:text-blue-400 animate-spin'
+    default: return 'text-neutral-500 dark:text-neutral-400'
+  }
+}
+
+const getActivityBadge = (type: string) => {
+  switch (type) {
+    case 'completed': return 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+    case 'working': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+    default: return 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400'
+  }
 }
 
 onMounted(() => {

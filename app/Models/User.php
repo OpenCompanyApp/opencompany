@@ -47,6 +47,23 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Override toArray to add camelCase versions for frontend compatibility
+     */
+    public function toArray()
+    {
+        $array = parent::toArray();
+
+        // Add camelCase versions of snake_case fields
+        $array['agentType'] = $this->agent_type;
+        $array['lastSeenAt'] = $this->last_seen_at;
+        $array['currentTask'] = $this->current_task;
+        $array['isTemporary'] = $this->is_temporary;
+        $array['managerId'] = $this->manager_id;
+
+        return $array;
+    }
+
     // Relationships
     public function manager(): BelongsTo
     {
@@ -97,6 +114,23 @@ class User extends Authenticatable
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
+    }
+
+    public function calendarEvents(): HasMany
+    {
+        return $this->hasMany(CalendarEvent::class, 'created_by');
+    }
+
+    public function calendarAttendances()
+    {
+        return $this->belongsToMany(CalendarEvent::class, 'calendar_event_attendees', 'user_id', 'event_id')
+            ->withPivot('status')
+            ->withTimestamps();
+    }
+
+    public function dataTables(): HasMany
+    {
+        return $this->hasMany(DataTable::class, 'created_by');
     }
 
     // Helper methods

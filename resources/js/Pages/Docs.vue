@@ -1,12 +1,12 @@
 <template>
   <div class="h-full flex">
     <!-- Document List Sidebar -->
-    <aside class="w-72 bg-white border-r border-gray-200 flex flex-col shrink-0">
-      <div class="p-4 border-b border-gray-200">
+    <aside class="w-72 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
+      <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="font-semibold text-gray-900">Documents</h2>
+          <h2 class="font-semibold text-neutral-900 dark:text-white">Documents</h2>
           <button
-            class="p-1.5 rounded-lg hover:bg-gray-50 text-gray-900 transition-colors"
+            class="p-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white transition-colors"
             @click="handleCreateDocument"
           >
             <Icon name="ph:plus" class="w-5 h-5" />
@@ -14,13 +14,13 @@
         </div>
 
         <!-- Search -->
-        <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200">
-          <Icon name="ph:magnifying-glass" class="w-4 h-4 text-gray-500" />
+        <div class="flex items-center gap-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+          <Icon name="ph:magnifying-glass" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Search docs..."
-            class="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-500"
+            class="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-500 dark:placeholder:text-neutral-400 dark:text-white"
           />
         </div>
       </div>
@@ -51,12 +51,12 @@
 
     <!-- Version History Panel -->
     <Transition name="slide-left">
-      <aside v-if="showVersionHistory" class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0">
-        <div class="p-4 border-b border-gray-200">
+      <aside v-if="showVersionHistory" class="w-80 bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
+        <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
           <div class="flex items-center justify-between">
-            <h3 class="font-semibold text-gray-900">Version History</h3>
+            <h3 class="font-semibold text-neutral-900 dark:text-white">Version History</h3>
             <button
-              class="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors"
+              class="p-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-300 transition-colors"
               @click="showVersionHistory = false"
             >
               <Icon name="ph:x" class="w-4 h-4" />
@@ -65,9 +65,9 @@
         </div>
 
         <!-- Compare Button -->
-        <div v-if="versions.length >= 1" class="p-3 border-b border-gray-200">
+        <div v-if="versions.length >= 1" class="p-3 border-b border-neutral-200 dark:border-neutral-700">
           <button
-            class="w-full px-3 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+            class="w-full px-3 py-2 text-sm bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
             @click="showDiffViewer = true"
           >
             <Icon name="ph:git-diff" class="w-4 h-4" />
@@ -79,33 +79,33 @@
           <div
             v-for="version in versions"
             :key="version.id"
-            class="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-200"
+            class="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors border border-neutral-200 dark:border-neutral-700"
           >
             <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-700">
+              <span class="text-sm font-medium text-neutral-700 dark:text-neutral-200">
                 Version {{ version.versionNumber }}
               </span>
-              <span class="text-xs text-gray-500">
+              <span class="text-xs text-neutral-500 dark:text-neutral-300">
                 {{ formatDate(version.createdAt) }}
               </span>
             </div>
             <div v-if="version.author" class="flex items-center gap-2 mb-2">
               <SharedAgentAvatar :user="version.author" size="xs" />
-              <span class="text-xs text-gray-500">{{ version.author.name }}</span>
+              <span class="text-xs text-neutral-500 dark:text-neutral-300">{{ version.author.name }}</span>
             </div>
-            <p v-if="version.changeDescription" class="text-xs text-gray-500 line-clamp-2 mb-2">
+            <p v-if="version.changeDescription" class="text-xs text-neutral-500 dark:text-neutral-300 line-clamp-2 mb-2">
               {{ version.changeDescription }}
             </p>
             <div class="flex items-center gap-2">
               <button
-                class="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                class="text-xs text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
                 @click="handleCompareVersion(version)"
               >
                 Compare
               </button>
-              <span class="text-gray-300">|</span>
+              <span class="text-neutral-300 dark:text-neutral-600">|</span>
               <button
-                class="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                class="text-xs text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
                 @click="handleRestoreVersion(version)"
               >
                 Restore
@@ -113,7 +113,7 @@
             </div>
           </div>
 
-          <div v-if="versions.length === 0" class="text-center py-8 text-gray-500 text-sm">
+          <div v-if="versions.length === 0" class="text-center py-8 text-neutral-500 dark:text-neutral-300 text-sm">
             No version history yet
           </div>
         </div>
@@ -132,7 +132,7 @@
 
     <!-- Attachments Sidebar -->
     <Transition name="slide-left">
-      <aside v-if="showAttachmentsSidebar && selectedDoc" class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0">
+      <aside v-if="showAttachmentsSidebar && selectedDoc" class="w-80 bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
         <DocsDocumentAttachments
           :document-id="selectedDoc.id"
           @close="showAttachmentsSidebar = false"
@@ -143,15 +143,15 @@
 
     <!-- Comment Sidebar -->
     <Transition name="slide-left">
-      <aside v-if="showCommentsSidebar" class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0">
-        <div class="p-4 border-b border-gray-200">
+      <aside v-if="showCommentsSidebar" class="w-80 bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
+        <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
           <div class="flex items-center justify-between">
-            <h3 class="font-semibold text-gray-900">
+            <h3 class="font-semibold text-neutral-900 dark:text-white">
               Comments
-              <span class="ml-1 text-sm text-gray-500">({{ comments.length }})</span>
+              <span class="ml-1 text-sm text-neutral-500 dark:text-neutral-300">({{ comments.length }})</span>
             </h3>
             <button
-              class="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors"
+              class="p-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-300 transition-colors"
               @click="showCommentsSidebar = false"
             >
               <Icon name="ph:x" class="w-4 h-4" />
@@ -160,11 +160,11 @@
         </div>
 
         <!-- Add Comment Form -->
-        <div class="p-4 border-b border-gray-200">
+        <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
           <textarea
             v-model="newCommentContent"
             placeholder="Add a comment..."
-            class="w-full bg-gray-50 rounded-lg p-3 text-sm resize-none outline-none border border-gray-200 focus:border-gray-300"
+            class="w-full bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3 text-sm resize-none outline-none border border-neutral-200 dark:border-neutral-700 focus:border-neutral-300 dark:text-white dark:placeholder:text-neutral-400"
             rows="3"
           />
           <button
@@ -187,7 +187,7 @@
             @delete="handleDeleteComment"
           />
 
-          <div v-if="comments.length === 0" class="text-center py-8 text-gray-500 text-sm">
+          <div v-if="comments.length === 0" class="text-center py-8 text-neutral-500 dark:text-neutral-300 text-sm">
             No comments yet
           </div>
         </div>
@@ -198,23 +198,23 @@
     <div class="fixed bottom-6 right-6 flex items-center gap-2">
       <button
         v-if="selectedDoc"
-        class="p-3 rounded-full bg-gray-100 shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors relative"
+        class="p-3 rounded-full bg-neutral-100 dark:bg-neutral-700 shadow-lg border border-neutral-200 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-600 transition-colors relative"
         title="Attachments"
         @click="showAttachmentsSidebar = !showAttachmentsSidebar"
       >
-        <Icon name="ph:paperclip" class="w-5 h-5 text-gray-700" />
-        <span v-if="attachmentCount > 0" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center">
+        <Icon name="ph:paperclip" class="w-5 h-5 text-neutral-700 dark:text-neutral-200" />
+        <span v-if="attachmentCount > 0" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-neutral-900 text-white text-xs flex items-center justify-center">
           {{ attachmentCount }}
         </span>
       </button>
       <button
         v-if="selectedDoc"
-        class="p-3 rounded-full bg-gray-100 shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors relative"
+        class="p-3 rounded-full bg-neutral-100 dark:bg-neutral-700 shadow-lg border border-neutral-200 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-600 transition-colors relative"
         title="Comments"
         @click="showCommentsSidebar = !showCommentsSidebar"
       >
-        <Icon name="ph:chat-circle" class="w-5 h-5 text-gray-700" />
-        <span v-if="comments.length > 0" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center">
+        <Icon name="ph:chat-circle" class="w-5 h-5 text-neutral-700 dark:text-neutral-200" />
+        <span v-if="comments.length > 0" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-neutral-900 text-white text-xs flex items-center justify-center">
           {{ comments.length }}
         </span>
       </button>
@@ -231,6 +231,7 @@ import DocsDocumentDiffViewer from '@/Components/docs/DocumentDiffViewer.vue'
 import DocsDocumentAttachments from '@/Components/docs/DocumentAttachments.vue'
 import DocsCommentThread from '@/Components/docs/CommentThread.vue'
 import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
+import Icon from '@/Components/shared/Icon.vue'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
 

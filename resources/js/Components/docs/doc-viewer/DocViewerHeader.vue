@@ -3,7 +3,7 @@
     <!-- Background decoration (subtle) -->
     <div
       v-if="showGradient"
-      class="absolute inset-0 bg-gray-50/50 pointer-events-none"
+      class="absolute inset-0 bg-neutral-50/50 pointer-events-none"
     />
 
     <div class="relative flex items-start justify-between gap-4">
@@ -20,19 +20,19 @@
               <button
                 v-if="index < breadcrumbs.length - 1"
                 type="button"
-                class="text-gray-500 hover:text-gray-900 truncate max-w-[120px] px-1 py-0.5 -mx-1 rounded transition-colors duration-150 hover:bg-gray-100"
+                class="text-neutral-500 hover:text-neutral-900 truncate max-w-[120px] px-1 py-0.5 -mx-1 rounded transition-colors duration-150 hover:bg-neutral-100"
                 @click="$emit('navigate', crumb)"
               >
                 {{ crumb.title }}
               </button>
-              <span v-else class="text-gray-400 truncate max-w-[120px]">
+              <span v-else class="text-neutral-400 truncate max-w-[120px]">
                 {{ crumb.title }}
               </span>
 
               <Icon
                 v-if="index < breadcrumbs.length - 1"
                 name="ph:caret-right"
-                class="w-3 h-3 text-gray-400 shrink-0"
+                class="w-3 h-3 text-neutral-400 shrink-0"
               />
             </template>
           </nav>
@@ -62,7 +62,7 @@
                 ref="titleInputRef"
                 v-model="editedTitle"
                 type="text"
-                class="flex-1 bg-transparent border-b-2 border-gray-900 text-2xl font-bold text-gray-900 outline-none py-1"
+                class="flex-1 bg-transparent border-b-2 border-neutral-900 text-2xl font-bold text-neutral-900 outline-none py-1"
                 :placeholder="title"
                 @keydown.enter="saveTitle"
                 @keydown.escape="cancelTitleEdit"
@@ -71,19 +71,19 @@
               <div class="flex items-center gap-1">
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+                  class="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors duration-150"
                   aria-label="Save title"
                   @click="saveTitle"
                 >
-                  <Icon name="ph:check" class="w-4 h-4 text-gray-600" />
+                  <Icon name="ph:check" class="w-4 h-4 text-neutral-600" />
                 </button>
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+                  class="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors duration-150"
                   aria-label="Cancel edit"
                   @click="cancelTitleEdit"
                 >
-                  <Icon name="ph:x" class="w-4 h-4 text-gray-500" />
+                  <Icon name="ph:x" class="w-4 h-4 text-neutral-500" />
                 </button>
               </div>
             </div>
@@ -98,14 +98,14 @@
               <!-- Title badges -->
               <span
                 v-if="isLocked"
-                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600 border border-gray-200"
+                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-neutral-100 text-neutral-600 border border-neutral-200"
               >
                 <Icon name="ph:lock-fill" class="w-3 h-3" />
                 Locked
               </span>
               <span
                 v-if="isTemplate"
-                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600 border border-gray-200"
+                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-neutral-100 text-neutral-600 border border-neutral-200"
               >
                 <Icon name="ph:file-dashed" class="w-3 h-3" />
                 Template
@@ -117,61 +117,51 @@
         <!-- Metadata row -->
         <div :class="metadataClasses">
           <!-- Author -->
-          <TooltipProvider v-if="author" :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  class="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-1.5 py-0.5 -ml-1.5 transition-colors duration-150"
-                  @click="$emit('author-click', author)"
-                >
-                  <SharedAgentAvatar :user="author" size="xs" :show-status="false" />
-                  <span>{{ author.name }}</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                :side-offset="4"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-md max-w-xs animate-in fade-in-0 duration-150"
+          <div v-if="author" class="flex items-center">
+            <Tooltip :delay-open="300">
+              <button
+                type="button"
+                class="flex items-center gap-2 hover:bg-neutral-100 rounded-lg px-1.5 py-0.5 -ml-1.5 transition-colors duration-150"
+                @click="$emit('author-click', author)"
               >
-                <div class="flex items-center gap-3">
+                <SharedAgentAvatar :user="author" size="xs" :show-status="false" />
+                <span>{{ author.name }}</span>
+              </button>
+              <template #content>
+                <div class="flex items-center gap-3 p-3">
                   <SharedAgentAvatar :user="author" size="md" :show-status="true" />
                   <div>
-                    <p class="font-medium text-gray-900">{{ author.name }}</p>
-                    <p v-if="author.role" class="text-xs text-gray-500">
+                    <p class="font-medium text-neutral-900">{{ author.name }}</p>
+                    <p v-if="author.role" class="text-xs text-neutral-500">
                       {{ author.role }}
                     </p>
                   </div>
                 </div>
-              </TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
+              </template>
+            </Tooltip>
+          </div>
 
-          <span v-if="author && (updatedAt || createdAt)" class="text-gray-300">/</span>
+          <span v-if="author && (updatedAt || createdAt)" class="text-neutral-300">/</span>
 
           <!-- Dates -->
-          <TooltipProvider v-if="updatedAt" :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <span class="cursor-help">{{ formatRelativeDate(updatedAt) }}</span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" :side-offset="4">
-                <div class="text-xs">
-                  <p>Last updated: {{ formatFullDate(updatedAt) }}</p>
-                  <p v-if="createdAt" class="text-gray-500">
-                    Created: {{ formatFullDate(createdAt) }}
-                  </p>
-                </div>
-              </TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip v-if="updatedAt" :delay-open="300">
+            <span class="cursor-help">{{ formatRelativeDate(updatedAt) }}</span>
+            <template #content>
+              <div class="text-xs">
+                <p>Last updated: {{ formatFullDate(updatedAt) }}</p>
+                <p v-if="createdAt" class="text-neutral-500">
+                  Created: {{ formatFullDate(createdAt) }}
+                </p>
+              </div>
+            </template>
+          </Tooltip>
 
           <!-- Version indicator -->
           <template v-if="version">
-            <span class="text-gray-300">&middot;</span>
+            <span class="text-neutral-300">&middot;</span>
             <button
               type="button"
-              class="flex items-center gap-1 text-gray-500 hover:text-gray-900 px-1.5 py-0.5 -mx-1 rounded-md transition-colors duration-150 hover:bg-gray-100"
+              class="flex items-center gap-1 text-neutral-500 hover:text-neutral-900 px-1.5 py-0.5 -mx-1 rounded-md transition-colors duration-150 hover:bg-neutral-100"
               @click="$emit('version-click')"
             >
               <Icon name="ph:git-branch" class="w-3.5 h-3.5" />
@@ -181,16 +171,16 @@
 
           <!-- Word count -->
           <template v-if="wordCount !== undefined">
-            <span class="text-gray-300">&middot;</span>
-            <span class="text-gray-400">
+            <span class="text-neutral-300">&middot;</span>
+            <span class="text-neutral-400">
               {{ formatNumber(wordCount) }} words
             </span>
           </template>
 
           <!-- Read time -->
           <template v-if="readTime">
-            <span class="text-gray-300">&middot;</span>
-            <span class="text-gray-400">
+            <span class="text-neutral-300">&middot;</span>
+            <span class="text-neutral-400">
               {{ readTime }} min read
             </span>
           </template>
@@ -213,7 +203,7 @@
             <button
               v-if="tags.length > maxDisplayTags"
               type="button"
-              class="text-xs text-gray-500 hover:text-gray-900 px-1.5 py-0.5 rounded-md transition-colors duration-150 hover:bg-gray-100"
+              class="text-xs text-neutral-500 hover:text-neutral-900 px-1.5 py-0.5 rounded-md transition-colors duration-150 hover:bg-neutral-100"
               @click="$emit('tags-expand')"
             >
               +{{ tags.length - maxDisplayTags }} more
@@ -232,41 +222,37 @@
               :max-visible="maxVisibleViewers"
               :show-tooltip="true"
             />
-            <span class="text-xs text-gray-500">viewing</span>
+            <span class="text-xs text-neutral-500">viewing</span>
           </div>
         </Transition>
 
         <!-- Editors Indicator -->
         <Transition name="editor">
-          <TooltipProvider v-if="editors && editors.length > 0" :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <div class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-full cursor-help">
-                  <Icon name="ph:pencil-simple" class="w-4 h-4 text-gray-600" />
-                  <span class="text-xs text-gray-700 font-medium">
-                    {{ editors.length === 1 ? editors[0].name : `${editors.length} people` }} editing
-                  </span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                :side-offset="4"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-md animate-in fade-in-0 duration-150"
-              >
-                <p class="text-xs text-gray-500 mb-2">Currently editing:</p>
-                <div class="space-y-2">
-                  <div
-                    v-for="editor in editors"
-                    :key="editor.id"
-                    class="flex items-center gap-2 p-1.5 -mx-1.5 rounded-lg transition-colors duration-150 hover:bg-gray-50"
-                  >
-                    <SharedAgentAvatar :user="editor" size="xs" :show-status="false" />
-                    <span class="text-sm text-gray-900">{{ editor.name }}</span>
+          <div v-if="editors && editors.length > 0">
+            <Tooltip :delay-open="300">
+              <div class="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 border border-neutral-200 rounded-full cursor-help">
+                <Icon name="ph:pencil-simple" class="w-4 h-4 text-neutral-600" />
+                <span class="text-xs text-neutral-700 font-medium">
+                  {{ editors.length === 1 ? editors[0].name : `${editors.length} people` }} editing
+                </span>
+              </div>
+              <template #content>
+                <div class="p-3">
+                  <p class="text-xs text-neutral-500 mb-2">Currently editing:</p>
+                  <div class="space-y-2">
+                    <div
+                      v-for="editor in editors"
+                      :key="editor.id"
+                      class="flex items-center gap-2 p-1.5 -mx-1.5 rounded-lg transition-colors duration-150 hover:bg-neutral-50"
+                    >
+                      <SharedAgentAvatar :user="editor" size="xs" :show-status="false" />
+                      <span class="text-sm text-neutral-900">{{ editor.name }}</span>
+                    </div>
                   </div>
                 </div>
-              </TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
+              </template>
+            </Tooltip>
+          </div>
         </Transition>
 
         <!-- Auto-save indicator -->
@@ -275,9 +261,9 @@
             v-if="saveStatus"
             :class="[
               'flex items-center gap-1.5 text-xs',
-              saveStatus === 'saving' && 'text-gray-500',
-              saveStatus === 'saved' && 'text-gray-600',
-              saveStatus === 'error' && 'text-gray-700',
+              saveStatus === 'saving' && 'text-neutral-500',
+              saveStatus === 'saved' && 'text-neutral-600',
+              saveStatus === 'error' && 'text-neutral-700',
             ]"
           >
             <Icon
@@ -291,197 +277,93 @@
         <!-- Actions -->
         <div class="flex items-center gap-1">
           <!-- Favorite/Star -->
-          <TooltipProvider :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  :class="[
-                    actionButtonClasses,
-                    isStarred && 'bg-gray-100',
-                  ]"
-                  :aria-label="isStarred ? 'Remove from favorites' : 'Add to favorites'"
-                  @click="$emit('star')"
-                >
-                  <Icon
-                    :name="isStarred ? 'ph:star-fill' : 'ph:star'"
-                    :class="[
-                      'w-5 h-5 transition-colors duration-150',
-                      isStarred ? 'text-gray-700' : 'text-gray-500 hover:text-gray-700',
-                    ]"
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" :side-offset="4">
-                <p class="text-xs">{{ isStarred ? 'Unstar' : 'Star' }}</p>
-              </TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip :text="isStarred ? 'Unstar' : 'Star'" :delay-open="300">
+            <button
+              type="button"
+              :class="[
+                actionButtonClasses,
+                isStarred && 'bg-neutral-100',
+              ]"
+              :aria-label="isStarred ? 'Remove from favorites' : 'Add to favorites'"
+              @click="$emit('star')"
+            >
+              <Icon
+                :name="isStarred ? 'ph:star-fill' : 'ph:star'"
+                :class="[
+                  'w-5 h-5 transition-colors duration-150',
+                  isStarred ? 'text-neutral-700' : 'text-neutral-500 hover:text-neutral-700',
+                ]"
+              />
+            </button>
+          </Tooltip>
 
           <!-- Edit button -->
-          <TooltipProvider :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  :class="[actionButtonClasses, isEditing && 'bg-gray-100']"
-                  :disabled="isLocked"
-                  :aria-label="isEditing ? 'Stop editing' : 'Edit document'"
-                  @click="$emit('edit')"
-                >
-                  <Icon
-                    :name="isEditing ? 'ph:pencil-simple-fill' : 'ph:pencil-simple'"
-                    :class="[
-                      'w-5 h-5',
-                      isEditing ? 'text-gray-900' : 'text-gray-500',
-                      isLocked && 'opacity-50'
-                    ]"
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" :side-offset="4">
-                <p class="text-xs">
-                  {{ isLocked ? 'Document is locked' : isEditing ? 'Stop editing' : 'Edit' }}
-                </p>
-              </TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip :text="isLocked ? 'Document is locked' : isEditing ? 'Stop editing' : 'Edit'" :delay-open="300">
+            <button
+              type="button"
+              :class="[actionButtonClasses, isEditing && 'bg-neutral-100']"
+              :disabled="isLocked"
+              :aria-label="isEditing ? 'Stop editing' : 'Edit document'"
+              @click="$emit('edit')"
+            >
+              <Icon
+                :name="isEditing ? 'ph:pencil-simple-fill' : 'ph:pencil-simple'"
+                :class="[
+                  'w-5 h-5',
+                  isEditing ? 'text-neutral-900' : 'text-neutral-500',
+                  isLocked && 'opacity-50'
+                ]"
+              />
+            </button>
+          </Tooltip>
 
           <!-- Share button -->
-          <TooltipProvider :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  :class="actionButtonClasses"
-                  aria-label="Share document"
-                  @click="$emit('share')"
-                >
-                  <Icon name="ph:share" class="w-5 h-5 text-gray-500" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" :side-offset="4">
-                <p class="text-xs">Share</p>
-              </TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip text="Share" :delay-open="300">
+            <button
+              type="button"
+              :class="actionButtonClasses"
+              aria-label="Share document"
+              @click="$emit('share')"
+            >
+              <Icon name="ph:share" class="w-5 h-5 text-neutral-500" />
+            </button>
+          </Tooltip>
 
           <!-- Comments toggle -->
-          <TooltipProvider v-if="commentsCount !== undefined" :delay-duration="300">
-            <TooltipRoot>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  :class="[actionButtonClasses, showComments && 'bg-gray-100']"
-                  aria-label="Toggle comments"
-                  @click="$emit('toggle-comments')"
+          <Tooltip v-if="commentsCount !== undefined" :text="`${commentsCount} comment${commentsCount !== 1 ? 's' : ''}`" :delay-open="300">
+            <button
+              type="button"
+              :class="[actionButtonClasses, showComments && 'bg-neutral-100']"
+              aria-label="Toggle comments"
+              @click="$emit('toggle-comments')"
+            >
+              <div class="relative">
+                <Icon
+                  :name="showComments ? 'ph:chat-circle-fill' : 'ph:chat-circle'"
+                  :class="[
+                    'w-5 h-5',
+                    showComments ? 'text-neutral-900' : 'text-neutral-500'
+                  ]"
+                />
+                <span
+                  v-if="commentsCount > 0"
+                  class="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-neutral-900 text-[10px] text-white font-medium px-0.5"
                 >
-                  <div class="relative">
-                    <Icon
-                      :name="showComments ? 'ph:chat-circle-fill' : 'ph:chat-circle'"
-                      :class="[
-                        'w-5 h-5',
-                        showComments ? 'text-gray-900' : 'text-gray-500'
-                      ]"
-                    />
-                    <span
-                      v-if="commentsCount > 0"
-                      class="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-gray-900 text-[10px] text-white font-medium px-0.5"
-                    >
-                      {{ commentsCount > 99 ? '99+' : commentsCount }}
-                    </span>
-                  </div>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" :side-offset="4">
-                <p class="text-xs">
-                  {{ commentsCount }} comment{{ commentsCount !== 1 ? 's' : '' }}
-                </p>
-              </TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
+                  {{ commentsCount > 99 ? '99+' : commentsCount }}
+                </span>
+              </div>
+            </button>
+          </Tooltip>
 
           <!-- More options menu -->
-          <DropdownMenuRoot>
-            <DropdownMenuTrigger as-child>
-              <button
-                type="button"
-                :class="actionButtonClasses"
-                aria-label="More options"
-              >
-                <Icon name="ph:dots-three" class="w-5 h-5 text-gray-500" />
-              </button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuPortal>
-              <DropdownMenuContent
-                :side-offset="4"
-                align="end"
-                class="min-w-[180px] bg-white rounded-lg border border-gray-200 shadow-lg p-1.5 z-50 animate-in fade-in-0 duration-150"
-              >
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('duplicate')"
-                >
-                  <Icon name="ph:copy" class="w-4 h-4 text-gray-500" />
-                  <span>Duplicate</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('move')"
-                >
-                  <Icon name="ph:folder-simple" class="w-4 h-4 text-gray-500" />
-                  <span>Move to...</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('export')"
-                >
-                  <Icon name="ph:export" class="w-4 h-4 text-gray-500" />
-                  <span>Export</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('print')"
-                >
-                  <Icon name="ph:printer" class="w-4 h-4 text-gray-500" />
-                  <span>Print</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator class="h-px bg-gray-200 my-1.5" />
-
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('history')"
-                >
-                  <Icon name="ph:clock-counter-clockwise" class="w-4 h-4 text-gray-500" />
-                  <span>Version history</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150"
-                  @select="$emit('info')"
-                >
-                  <Icon name="ph:info" class="w-4 h-4 text-gray-500" />
-                  <span>Document info</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator class="h-px bg-gray-200 my-1.5" />
-
-                <DropdownMenuItem
-                  :disabled="isLocked"
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer outline-none hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                  @select="$emit('delete')"
-                >
-                  <Icon name="ph:trash" class="w-4 h-4" />
-                  <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenuRoot>
+          <DropdownMenu :items="moreOptionsDropdown">
+            <Button
+              variant="ghost"
+              :class="actionButtonClasses"
+              aria-label="More options"
+              icon="ph:dots-three"
+            />
+          </DropdownMenu>
         </div>
       </div>
     </div>
@@ -490,9 +372,9 @@
     <Transition name="progress">
       <div
         v-if="loading"
-        class="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-100 overflow-hidden"
+        class="absolute bottom-0 left-0 right-0 h-0.5 bg-neutral-100 overflow-hidden"
       >
-        <div class="h-full bg-gray-900 animate-progress" />
+        <div class="h-full bg-neutral-900 animate-progress" />
       </div>
     </Transition>
   </header>
@@ -500,21 +382,11 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
 import type { User } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
+import Tooltip from '@/Components/shared/Tooltip.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 
 // ============================================================================
 // Types
@@ -576,11 +448,11 @@ const documentTypeIcons: Record<DocumentType, string> = {
 }
 
 const documentTypeColors: Record<DocumentType, string> = {
-  document: 'text-gray-500 bg-gray-100',
-  markdown: 'text-gray-500 bg-gray-100',
-  code: 'text-gray-500 bg-gray-100',
-  spreadsheet: 'text-gray-500 bg-gray-100',
-  presentation: 'text-gray-500 bg-gray-100',
+  document: 'text-neutral-500 bg-neutral-100',
+  markdown: 'text-neutral-500 bg-neutral-100',
+  code: 'text-neutral-500 bg-neutral-100',
+  spreadsheet: 'text-neutral-500 bg-neutral-100',
+  presentation: 'text-neutral-500 bg-neutral-100',
 }
 
 // ============================================================================
@@ -628,7 +500,7 @@ const props = withDefaults(defineProps<{
   loading: false,
 })
 
-defineEmits<{
+const emit = defineEmits<{
   edit: []
   share: []
   menu: []
@@ -675,17 +547,17 @@ const config = computed(() => sizeConfig[props.size])
 // ============================================================================
 
 const headerClasses = computed(() => [
-  'sticky top-0 bg-white border-b border-gray-200 shrink-0 z-10 relative overflow-hidden',
+  'sticky top-0 bg-white border-b border-neutral-200 shrink-0 z-10 relative overflow-hidden',
   config.value.padding,
 ])
 
 const titleClasses = computed(() => [
-  'font-bold truncate text-gray-900 flex items-center',
+  'font-bold truncate text-neutral-900 flex items-center',
   config.value.titleSize,
 ])
 
 const metadataClasses = computed(() => [
-  'flex items-center mt-2 text-gray-500',
+  'flex items-center mt-2 text-neutral-500',
   config.value.metaSize,
   config.value.gap,
 ])
@@ -700,15 +572,15 @@ const iconClasses = computed(() => [
 ])
 
 const tagClasses = computed(() => [
-  'px-2 py-0.5 rounded-md text-xs bg-gray-100 text-gray-600',
-  'hover:bg-gray-200 hover:text-gray-900',
+  'px-2 py-0.5 rounded-md text-xs bg-neutral-100 text-neutral-600',
+  'hover:bg-neutral-200 hover:text-neutral-900',
   'transition-colors duration-150',
 ])
 
 const actionButtonClasses = computed(() => [
-  'p-2 rounded-lg hover:bg-gray-100 outline-none',
+  'p-2 rounded-lg hover:bg-neutral-100 outline-none',
   'transition-colors duration-150',
-  'focus-visible:ring-2 focus-visible:ring-gray-900/20',
+  'focus-visible:ring-2 focus-visible:ring-neutral-900/20',
 ])
 
 // ============================================================================
@@ -742,6 +614,22 @@ const saveStatusText = computed(() => {
     default: return ''
   }
 })
+
+const moreOptionsDropdown = computed(() => [
+  [
+    { label: 'Duplicate', icon: 'ph:copy', click: () => emit('duplicate') },
+    { label: 'Move to...', icon: 'ph:folder-simple', click: () => emit('move') },
+    { label: 'Export', icon: 'ph:export', click: () => emit('export') },
+    { label: 'Print', icon: 'ph:printer', click: () => emit('print') },
+  ],
+  [
+    { label: 'Version history', icon: 'ph:clock-counter-clockwise', click: () => emit('history') },
+    { label: 'Document info', icon: 'ph:info', click: () => emit('info') },
+  ],
+  [
+    { label: 'Delete', icon: 'ph:trash', color: 'error' as const, disabled: props.isLocked, click: () => emit('delete') },
+  ],
+])
 
 // ============================================================================
 // Methods

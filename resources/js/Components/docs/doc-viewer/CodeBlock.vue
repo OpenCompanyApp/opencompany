@@ -23,22 +23,11 @@
         </div>
 
         <!-- Filename (if provided) -->
-        <TooltipProvider v-if="filename" :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <span :class="filenameClasses">
-                {{ filename }}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              :side-offset="4"
-              class="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-md animate-in fade-in-0 duration-150"
-            >
-              <p class="text-xs">{{ fullFilename }}</p>
-            </TooltipContent>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip v-if="filename" :text="fullFilename" :delay-open="300">
+          <span :class="filenameClasses">
+            {{ filename }}
+          </span>
+        </Tooltip>
 
         <!-- Language label -->
         <span v-else :class="languageLabelClasses">
@@ -49,13 +38,13 @@
         <div v-if="hasBadges" class="flex items-center gap-1.5 ml-2">
           <span
             v-if="isModified"
-            class="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-500"
+            class="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-neutral-100 text-neutral-500"
           >
             Modified
           </span>
           <span
             v-if="isReadOnly"
-            class="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-500"
+            class="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-neutral-100 text-neutral-500"
           >
             Read-only
           </span>
@@ -65,197 +54,135 @@
       <!-- Right side: Actions -->
       <div :class="['flex items-center gap-1', actionsVisibilityClasses]">
         <!-- Line numbers toggle -->
-        <TooltipProvider v-if="showLineNumbersToggle" :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="actionButtonClasses"
-                :aria-pressed="showLineNumbers"
-                @click="toggleLineNumbers"
-              >
-                <Icon
-                  name="ph:list-numbers"
-                  :class="[
-                    actionIconClasses,
-                    showLineNumbers ? 'text-gray-900' : 'text-gray-500'
-                  ]"
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              :side-offset="4"
-              class="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-md animate-in fade-in-0 duration-150"
-            >
-              <p class="text-xs">{{ showLineNumbers ? 'Hide' : 'Show' }} line numbers</p>
-            </TooltipContent>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip v-if="showLineNumbersToggle" :text="showLineNumbers ? 'Hide line numbers' : 'Show line numbers'" :delay-open="300">
+          <button
+            type="button"
+            :class="actionButtonClasses"
+            :aria-pressed="showLineNumbers"
+            @click="toggleLineNumbers"
+          >
+            <Icon
+              name="ph:list-numbers"
+              :class="[
+                actionIconClasses,
+                showLineNumbers ? 'text-neutral-900' : 'text-neutral-500'
+              ]"
+            />
+          </button>
+        </Tooltip>
 
         <!-- Word wrap toggle -->
-        <TooltipProvider v-if="showWordWrapToggle" :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="actionButtonClasses"
-                :aria-pressed="wordWrap"
-                @click="toggleWordWrap"
-              >
-                <Icon
-                  name="ph:text-align-left"
-                  :class="[
-                    actionIconClasses,
-                    wordWrap ? 'text-gray-900' : 'text-gray-500'
-                  ]"
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              :side-offset="4"
-              class="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-md animate-in fade-in-0 duration-150"
-            >
-              <p class="text-xs">{{ wordWrap ? 'Disable' : 'Enable' }} word wrap</p>
-            </TooltipContent>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip v-if="showWordWrapToggle" :text="wordWrap ? 'Disable word wrap' : 'Enable word wrap'" :delay-open="300">
+          <button
+            type="button"
+            :class="actionButtonClasses"
+            :aria-pressed="wordWrap"
+            @click="toggleWordWrap"
+          >
+            <Icon
+              name="ph:text-align-left"
+              :class="[
+                actionIconClasses,
+                wordWrap ? 'text-neutral-900' : 'text-neutral-500'
+              ]"
+            />
+          </button>
+        </Tooltip>
 
         <!-- Expand/collapse (for collapsible blocks) -->
-        <TooltipProvider v-if="collapsible" :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="actionButtonClasses"
-                :aria-expanded="!isCollapsed"
-                @click="toggleCollapse"
-              >
-                <Icon
-                  :name="isCollapsed ? 'ph:caret-down' : 'ph:caret-up'"
-                  :class="actionIconClasses"
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              :side-offset="4"
-              class="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-md animate-in fade-in-0 duration-150"
-            >
-              <p class="text-xs">{{ isCollapsed ? 'Expand' : 'Collapse' }}</p>
-            </TooltipContent>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip v-if="collapsible" :text="isCollapsed ? 'Expand' : 'Collapse'" :delay-open="300">
+          <button
+            type="button"
+            :class="actionButtonClasses"
+            :aria-expanded="!isCollapsed"
+            @click="toggleCollapse"
+          >
+            <Icon
+              :name="isCollapsed ? 'ph:caret-down' : 'ph:caret-up'"
+              :class="actionIconClasses"
+            />
+          </button>
+        </Tooltip>
 
         <!-- Separator -->
-        <div v-if="showLineNumbersToggle || showWordWrapToggle || collapsible" class="w-px h-4 bg-gray-200 mx-1" />
+        <div v-if="showLineNumbersToggle || showWordWrapToggle || collapsible" class="w-px h-4 bg-neutral-200 mx-1" />
 
         <!-- Copy button -->
-        <TooltipProvider :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="[
-                  actionButtonClasses,
-                  copied && 'bg-green-500/20 ring-1 ring-green-500/30',
-                ]"
-                @click="copyCode"
-              >
-                <Transition name="icon" mode="out-in">
-                  <Icon
-                    v-if="copied"
-                    key="check"
-                    name="ph:check-circle-fill"
-                    class="text-green-600"
-                    :class="actionIconClasses"
-                  />
-                  <Icon
-                    v-else
-                    key="copy"
-                    name="ph:copy"
-                    :class="['text-gray-500 hover:text-gray-700', actionIconClasses]"
-                  />
-                </Transition>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              :side-offset="4"
-              :class="[
-                'border rounded-lg px-2.5 py-1.5 shadow-md animate-in fade-in-0 duration-150',
-                copied ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200',
-              ]"
-            >
-              <p class="text-xs">{{ copied ? 'Copied!' : 'Copy code' }}</p>
-            </TooltipContent>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip :text="copied ? 'Copied!' : 'Copy code'" :delay-open="300">
+          <button
+            type="button"
+            :class="[
+              actionButtonClasses,
+              copied && 'bg-green-500/20 ring-1 ring-green-500/30',
+            ]"
+            @click="copyCode"
+          >
+            <Transition name="icon" mode="out-in">
+              <Icon
+                v-if="copied"
+                key="check"
+                name="ph:check-circle-fill"
+                class="text-green-600"
+                :class="actionIconClasses"
+              />
+              <Icon
+                v-else
+                key="copy"
+                name="ph:copy"
+                :class="['text-neutral-500 hover:text-neutral-700', actionIconClasses]"
+              />
+            </Transition>
+          </button>
+        </Tooltip>
 
         <!-- Download button -->
-        <TooltipProvider v-if="showDownload" :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="actionButtonClasses"
-                @click="downloadCode"
-              >
-                <Icon
-                  name="ph:download-simple"
-                  :class="['text-gray-500', actionIconClasses]"
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              :side-offset="4"
-              class="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-md animate-in fade-in-0 duration-150"
-            >
-              <p class="text-xs">Download</p>
-            </TooltipContent>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip v-if="showDownload" text="Download" :delay-open="300">
+          <button
+            type="button"
+            :class="actionButtonClasses"
+            @click="downloadCode"
+          >
+            <Icon
+              name="ph:download-simple"
+              :class="['text-neutral-500', actionIconClasses]"
+            />
+          </button>
+        </Tooltip>
 
         <!-- Run button (for runnable code) -->
-        <TooltipProvider v-if="runnable" :delay-duration="300">
-          <TooltipRoot>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                :class="[
-                  actionButtonClasses,
-                  'bg-gray-100 hover:bg-gray-200',
-                ]"
-                :disabled="isRunning"
-                @click="$emit('run', code)"
-              >
-                <Icon
-                  :name="isRunning ? 'ph:spinner' : 'ph:play-fill'"
-                  :class="[
-                    'text-gray-600',
-                    actionIconClasses,
-                    isRunning && 'animate-spin',
-                  ]"
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              :side-offset="4"
-              class="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-md animate-in fade-in-0 duration-150"
-            >
-              <p class="text-xs">{{ isRunning ? 'Running...' : 'Run code' }}</p>
-            </TooltipContent>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip v-if="runnable" :text="isRunning ? 'Running...' : 'Run code'" :delay-open="300">
+          <button
+            type="button"
+            :class="[
+              actionButtonClasses,
+              'bg-neutral-100 hover:bg-neutral-200',
+            ]"
+            :disabled="isRunning"
+            @click="$emit('run', code)"
+          >
+            <Icon
+              :name="isRunning ? 'ph:spinner' : 'ph:play-fill'"
+              :class="[
+                'text-neutral-600',
+                actionIconClasses,
+                isRunning && 'animate-spin',
+              ]"
+            />
+          </button>
+        </Tooltip>
       </div>
     </div>
 
     <!-- Code content -->
-    <CollapsibleRoot v-model:open="isExpanded">
-      <CollapsibleContent>
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 max-h-0"
+      enter-to-class="opacity-100 max-h-[2000px]"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 max-h-[2000px]"
+      leave-to-class="opacity-0 max-h-0"
+    >
+      <div v-show="isExpanded">
         <div :class="codeContainerClasses">
           <!-- Line numbers gutter -->
           <div
@@ -268,7 +195,7 @@
               :key="lineNum"
               :class="[
                 'block text-right select-none',
-                highlightLines?.includes(lineNum) && 'text-gray-900 font-medium',
+                highlightLines?.includes(lineNum) && 'text-neutral-900 font-medium',
               ]"
             >
               {{ lineNum }}
@@ -282,36 +209,36 @@
           ><code :class="codeClasses"><template v-for="(line, index) in codeLines" :key="index"><span
               :class="[
                 'block',
-                highlightLines?.includes(index + 1) && 'bg-gray-100 -mx-4 px-4 border-l-2 border-gray-400',
+                highlightLines?.includes(index + 1) && 'bg-neutral-100 -mx-4 px-4 border-l-2 border-neutral-400',
                 diffAdditions?.includes(index + 1) && 'bg-green-50 -mx-4 px-4 border-l-2 border-green-500',
                 diffDeletions?.includes(index + 1) && 'bg-red-50 -mx-4 px-4 border-l-2 border-red-500 line-through opacity-70',
               ]"
             >{{ line || ' ' }}</span></template></code></pre>
         </div>
-      </CollapsibleContent>
+      </div>
 
       <!-- Collapsed preview -->
       <Transition name="collapsed">
         <div
           v-if="collapsible && isCollapsed"
-          class="px-4 py-3 text-gray-500 text-sm flex items-center justify-between"
+          class="px-4 py-3 text-neutral-500 text-sm flex items-center justify-between"
         >
           <span>
             {{ lineCount }} lines
-            <span v-if="language" class="text-gray-400">
+            <span v-if="language" class="text-neutral-400">
               &middot; {{ displayLanguage }}
             </span>
           </span>
           <button
             type="button"
-            class="text-gray-900 hover:underline text-sm px-2 py-1 -mr-2 rounded-lg transition-colors duration-150 ease-out hover:bg-gray-100"
+            class="text-neutral-900 hover:underline text-sm px-2 py-1 -mr-2 rounded-lg transition-colors duration-150 ease-out hover:bg-neutral-100"
             @click="toggleCollapse"
           >
             Show code
           </button>
         </div>
       </Transition>
-    </CollapsibleRoot>
+    </Transition>
 
     <!-- Footer (optional) -->
     <Transition name="footer">
@@ -319,7 +246,7 @@
         v-if="showFooter && (characterCount || executionTime !== undefined || output)"
         :class="footerClasses"
       >
-        <div class="flex items-center gap-3 text-xs text-gray-400">
+        <div class="flex items-center gap-3 text-xs text-neutral-400">
           <span v-if="characterCount">
             {{ formatNumber(characterCount) }} chars
           </span>
@@ -331,12 +258,12 @@
 
         <!-- Execution output -->
         <Transition name="output">
-          <div v-if="output" class="mt-2 pt-2 border-t border-gray-200">
+          <div v-if="output" class="mt-2 pt-2 border-t border-neutral-200">
             <div class="flex items-center gap-1.5 mb-1.5">
-              <Icon name="ph:terminal" class="w-3.5 h-3.5 text-gray-500" />
-              <span class="text-xs text-gray-500 font-medium">Output</span>
+              <Icon name="ph:terminal" class="w-3.5 h-3.5 text-neutral-500" />
+              <span class="text-xs text-neutral-500 font-medium">Output</span>
             </div>
-            <pre class="text-sm text-gray-900 font-mono whitespace-pre-wrap">{{ output }}</pre>
+            <pre class="text-sm text-neutral-900 font-mono whitespace-pre-wrap">{{ output }}</pre>
           </div>
         </Transition>
 
@@ -358,15 +285,7 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import {
-  CollapsibleContent,
-  CollapsibleRoot,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from 'reka-ui'
+import Tooltip from '@/Components/shared/Tooltip.vue'
 
 // ============================================================================
 // Types
@@ -383,42 +302,42 @@ const languageConfig: Record<string, {
   color: string
   label: string
 }> = {
-  javascript: { icon: 'ph:file-js', color: 'text-gray-500', label: 'JavaScript' },
-  js: { icon: 'ph:file-js', color: 'text-gray-500', label: 'JavaScript' },
-  typescript: { icon: 'ph:file-ts', color: 'text-gray-500', label: 'TypeScript' },
-  ts: { icon: 'ph:file-ts', color: 'text-gray-500', label: 'TypeScript' },
-  python: { icon: 'ph:file-py', color: 'text-gray-500', label: 'Python' },
-  py: { icon: 'ph:file-py', color: 'text-gray-500', label: 'Python' },
-  html: { icon: 'ph:file-html', color: 'text-gray-500', label: 'HTML' },
-  css: { icon: 'ph:file-css', color: 'text-gray-500', label: 'CSS' },
-  scss: { icon: 'ph:file-css', color: 'text-gray-500', label: 'SCSS' },
-  json: { icon: 'ph:brackets-curly', color: 'text-gray-500', label: 'JSON' },
-  yaml: { icon: 'ph:file-text', color: 'text-gray-500', label: 'YAML' },
-  yml: { icon: 'ph:file-text', color: 'text-gray-500', label: 'YAML' },
-  markdown: { icon: 'ph:markdown-logo', color: 'text-gray-500', label: 'Markdown' },
-  md: { icon: 'ph:markdown-logo', color: 'text-gray-500', label: 'Markdown' },
-  shell: { icon: 'ph:terminal', color: 'text-gray-500', label: 'Shell' },
-  bash: { icon: 'ph:terminal', color: 'text-gray-500', label: 'Bash' },
-  zsh: { icon: 'ph:terminal', color: 'text-gray-500', label: 'Zsh' },
-  sql: { icon: 'ph:database', color: 'text-gray-500', label: 'SQL' },
-  rust: { icon: 'ph:gear', color: 'text-gray-500', label: 'Rust' },
-  go: { icon: 'ph:code', color: 'text-gray-500', label: 'Go' },
-  java: { icon: 'ph:coffee', color: 'text-gray-500', label: 'Java' },
-  kotlin: { icon: 'ph:code', color: 'text-gray-500', label: 'Kotlin' },
-  swift: { icon: 'ph:code', color: 'text-gray-500', label: 'Swift' },
-  cpp: { icon: 'ph:code', color: 'text-gray-500', label: 'C++' },
-  c: { icon: 'ph:code', color: 'text-gray-500', label: 'C' },
-  ruby: { icon: 'ph:diamond', color: 'text-gray-500', label: 'Ruby' },
-  php: { icon: 'ph:code', color: 'text-gray-500', label: 'PHP' },
-  vue: { icon: 'ph:file-vue', color: 'text-gray-500', label: 'Vue' },
-  react: { icon: 'ph:atom', color: 'text-gray-500', label: 'React' },
-  jsx: { icon: 'ph:atom', color: 'text-gray-500', label: 'JSX' },
-  tsx: { icon: 'ph:atom', color: 'text-gray-500', label: 'TSX' },
-  graphql: { icon: 'ph:graph', color: 'text-gray-500', label: 'GraphQL' },
-  dockerfile: { icon: 'ph:cube', color: 'text-gray-500', label: 'Dockerfile' },
-  nginx: { icon: 'ph:gear', color: 'text-gray-500', label: 'Nginx' },
-  plaintext: { icon: 'ph:file-text', color: 'text-gray-500', label: 'Plain Text' },
-  text: { icon: 'ph:file-text', color: 'text-gray-500', label: 'Plain Text' },
+  javascript: { icon: 'ph:file-js', color: 'text-neutral-500', label: 'JavaScript' },
+  js: { icon: 'ph:file-js', color: 'text-neutral-500', label: 'JavaScript' },
+  typescript: { icon: 'ph:file-ts', color: 'text-neutral-500', label: 'TypeScript' },
+  ts: { icon: 'ph:file-ts', color: 'text-neutral-500', label: 'TypeScript' },
+  python: { icon: 'ph:file-py', color: 'text-neutral-500', label: 'Python' },
+  py: { icon: 'ph:file-py', color: 'text-neutral-500', label: 'Python' },
+  html: { icon: 'ph:file-html', color: 'text-neutral-500', label: 'HTML' },
+  css: { icon: 'ph:file-css', color: 'text-neutral-500', label: 'CSS' },
+  scss: { icon: 'ph:file-css', color: 'text-neutral-500', label: 'SCSS' },
+  json: { icon: 'ph:brackets-curly', color: 'text-neutral-500', label: 'JSON' },
+  yaml: { icon: 'ph:file-text', color: 'text-neutral-500', label: 'YAML' },
+  yml: { icon: 'ph:file-text', color: 'text-neutral-500', label: 'YAML' },
+  markdown: { icon: 'ph:markdown-logo', color: 'text-neutral-500', label: 'Markdown' },
+  md: { icon: 'ph:markdown-logo', color: 'text-neutral-500', label: 'Markdown' },
+  shell: { icon: 'ph:terminal', color: 'text-neutral-500', label: 'Shell' },
+  bash: { icon: 'ph:terminal', color: 'text-neutral-500', label: 'Bash' },
+  zsh: { icon: 'ph:terminal', color: 'text-neutral-500', label: 'Zsh' },
+  sql: { icon: 'ph:database', color: 'text-neutral-500', label: 'SQL' },
+  rust: { icon: 'ph:gear', color: 'text-neutral-500', label: 'Rust' },
+  go: { icon: 'ph:code', color: 'text-neutral-500', label: 'Go' },
+  java: { icon: 'ph:coffee', color: 'text-neutral-500', label: 'Java' },
+  kotlin: { icon: 'ph:code', color: 'text-neutral-500', label: 'Kotlin' },
+  swift: { icon: 'ph:code', color: 'text-neutral-500', label: 'Swift' },
+  cpp: { icon: 'ph:code', color: 'text-neutral-500', label: 'C++' },
+  c: { icon: 'ph:code', color: 'text-neutral-500', label: 'C' },
+  ruby: { icon: 'ph:diamond', color: 'text-neutral-500', label: 'Ruby' },
+  php: { icon: 'ph:code', color: 'text-neutral-500', label: 'PHP' },
+  vue: { icon: 'ph:file-vue', color: 'text-neutral-500', label: 'Vue' },
+  react: { icon: 'ph:atom', color: 'text-neutral-500', label: 'React' },
+  jsx: { icon: 'ph:atom', color: 'text-neutral-500', label: 'JSX' },
+  tsx: { icon: 'ph:atom', color: 'text-neutral-500', label: 'TSX' },
+  graphql: { icon: 'ph:graph', color: 'text-neutral-500', label: 'GraphQL' },
+  dockerfile: { icon: 'ph:cube', color: 'text-neutral-500', label: 'Dockerfile' },
+  nginx: { icon: 'ph:gear', color: 'text-neutral-500', label: 'Nginx' },
+  plaintext: { icon: 'ph:file-text', color: 'text-neutral-500', label: 'Plain Text' },
+  text: { icon: 'ph:file-text', color: 'text-neutral-500', label: 'Plain Text' },
 }
 
 const sizeConfig: Record<CodeBlockSize, {
@@ -552,18 +471,18 @@ const hasBadges = computed(() => props.isModified || props.isReadOnly)
 // ============================================================================
 
 const containerClasses = computed(() => [
-  'relative group rounded-lg overflow-hidden border border-gray-200 bg-white',
+  'relative group rounded-lg overflow-hidden border border-neutral-200 bg-white',
   'transition-all duration-150 ease-out',
-  isHovered.value && 'ring-1 ring-gray-300 border-gray-300',
+  isHovered.value && 'ring-1 ring-neutral-300 border-neutral-300',
 ])
 
 const headerClasses = computed(() => [
-  'flex items-center justify-between bg-gray-50 border-b border-gray-200',
+  'flex items-center justify-between bg-neutral-50 border-b border-neutral-200',
   config.value.headerPadding,
 ])
 
 const languageIconContainerClasses = computed(() => [
-  'w-5 h-5 bg-gray-100 transition-colors duration-150 ease-out',
+  'w-5 h-5 bg-neutral-100 transition-colors duration-150 ease-out',
 ])
 
 const languageIconClasses = computed(() => [
@@ -572,12 +491,12 @@ const languageIconClasses = computed(() => [
 ])
 
 const filenameClasses = computed(() => [
-  'text-gray-900 font-mono truncate max-w-[200px]',
+  'text-neutral-900 font-mono truncate max-w-[200px]',
   config.value.fontSize,
 ])
 
 const languageLabelClasses = computed(() => [
-  'text-gray-500 font-mono',
+  'text-neutral-500 font-mono',
   config.value.fontSize,
 ])
 
@@ -589,8 +508,8 @@ const actionsVisibilityClasses = computed(() => [
 const actionButtonClasses = computed(() => [
   'flex items-center justify-center rounded-md outline-none',
   'transition-colors duration-150 ease-out',
-  'hover:bg-gray-100',
-  'focus-visible:ring-2 focus-visible:ring-gray-900/50',
+  'hover:bg-neutral-100',
+  'focus-visible:ring-2 focus-visible:ring-neutral-900/50',
   config.value.actionButtonSize,
 ])
 
@@ -602,7 +521,7 @@ const codeContainerClasses = computed(() => [
 ])
 
 const lineNumbersClasses = computed(() => [
-  'pr-4 mr-4 border-r border-gray-200 text-gray-400 font-mono shrink-0',
+  'pr-4 mr-4 border-r border-neutral-200 text-neutral-400 font-mono shrink-0',
   config.value.fontSize,
   config.value.lineHeight,
 ])
@@ -613,13 +532,13 @@ const preClasses = computed(() => [
 ])
 
 const codeClasses = computed(() => [
-  'font-mono text-gray-900',
+  'font-mono text-neutral-900',
   config.value.fontSize,
   config.value.lineHeight,
 ])
 
 const footerClasses = computed(() => [
-  'border-t border-gray-200 bg-gray-50',
+  'border-t border-neutral-200 bg-neutral-50',
   config.value.headerPadding,
 ])
 

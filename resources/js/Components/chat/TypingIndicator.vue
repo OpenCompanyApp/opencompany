@@ -272,12 +272,12 @@ const transitionName = computed(() => props.animated ? 'typing-indicator' : '')
 
 // Container classes
 const containerClasses = computed(() => [
-  'flex items-center text-gray-500',
+  'flex items-center text-neutral-500 dark:text-neutral-300',
   sizeConfig[props.size].container,
   sizeConfig[props.size].gap,
-  props.variant === 'minimal' ? 'bg-transparent' : 'bg-gray-50 rounded-lg border border-gray-200',
+  props.variant === 'minimal' ? 'bg-transparent' : 'bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700',
   props.animated && 'transition-colors duration-150',
-  'hover:bg-gray-100',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
 ])
 
 // Avatar stack classes
@@ -295,7 +295,7 @@ const avatarWrapperClasses = computed(() => [
 // Typing ring classes
 const typingRingClasses = computed(() => [
   'absolute inset-0 rounded-full pointer-events-none',
-  'ring-2 ring-gray-300',
+  'ring-2 ring-neutral-300 dark:ring-neutral-600',
 ])
 
 // Overflow badge classes
@@ -309,8 +309,8 @@ const overflowBadgeClasses = computed(() => {
 
   return [
     'rounded-full flex items-center justify-center',
-    'bg-gray-100 border-2 border-white',
-    'font-medium text-gray-500',
+    'bg-neutral-100 dark:bg-neutral-700 border-2 border-white dark:border-neutral-900',
+    'font-medium text-neutral-500 dark:text-neutral-300',
     sizeMap[props.size],
   ]
 })
@@ -323,13 +323,13 @@ const textContainerClasses = computed(() => [
 
 // Names classes
 const namesClasses = computed(() => [
-  'font-medium text-gray-900 truncate',
+  'font-medium text-neutral-900 dark:text-white truncate',
   sizeConfig[props.size].text,
 ])
 
 // Action classes
 const actionClasses = computed(() => [
-  'text-gray-500 whitespace-nowrap',
+  'text-neutral-500 dark:text-neutral-300 whitespace-nowrap',
   sizeConfig[props.size].text,
 ])
 
@@ -342,13 +342,13 @@ const dotsContainerClasses = computed(() => [
 
 // Dot classes
 const dotClasses = computed(() => [
-  'rounded-full bg-gray-400 animate-typing-dot',
+  'rounded-full bg-neutral-400 dark:bg-neutral-500 animate-typing-dot',
   sizeConfig[props.size].dot,
 ])
 
 // Wave bar classes
 const waveBarClasses = computed(() => [
-  'w-[3px] bg-gray-400 rounded-full animate-typing-wave',
+  'w-[3px] bg-neutral-400 dark:bg-neutral-500 rounded-full animate-typing-wave',
 ])
 
 // Pulse classes
@@ -358,7 +358,7 @@ const pulseClasses = computed(() => [
 
 // Pulse inner classes
 const pulseInnerClasses = computed(() => [
-  'absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75',
+  'absolute inline-flex h-full w-full rounded-full bg-neutral-400 dark:bg-neutral-500 opacity-75',
 ])
 
 // Activity icon container classes
@@ -375,21 +375,21 @@ const activityIconClasses = computed(() => {
     lg: 'w-5 h-5',
   }
 
-  return [sizeMap[props.size], 'text-gray-500']
+  return [sizeMap[props.size], 'text-neutral-500 dark:text-neutral-300']
 })
 
 // Duration classes
 const durationClasses = computed(() => [
-  'text-gray-400',
+  'text-neutral-400 dark:text-neutral-400',
   sizeConfig[props.size].text,
 ])
 
 // Dismiss button classes
 const dismissButtonClasses = computed(() => [
   'p-1 rounded-lg transition-colors duration-150',
-  'text-gray-400 hover:text-gray-900',
-  'hover:bg-gray-100',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-400',
+  'text-neutral-400 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
 ])
 
 // Handler

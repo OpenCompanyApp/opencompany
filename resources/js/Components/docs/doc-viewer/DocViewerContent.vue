@@ -18,14 +18,14 @@
             v-if="showTableOfContents && tableOfContents.length > 0"
             class="fixed right-8 top-32 w-52 hidden xl:block"
           >
-            <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-              <h4 class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <div class="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+              <h4 class="text-[11px] font-semibold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <Icon name="ph:list" class="w-3.5 h-3.5" />
                 On this page
               </h4>
               <div class="relative">
                 <!-- Active indicator line -->
-                <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-100 rounded-full" />
+                <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-neutral-100 rounded-full" />
                 <ul class="space-y-0.5 relative">
                   <li
                     v-for="item in tableOfContents"
@@ -36,7 +36,7 @@
                     <Transition name="marker">
                       <div
                         v-if="activeHeadingId === item.id"
-                        class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-900 rounded-full"
+                        class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-neutral-900 rounded-full"
                       />
                     </Transition>
                     <button
@@ -45,8 +45,8 @@
                         'text-left w-full text-sm py-1.5 px-3 rounded-md truncate',
                         'transition-colors duration-150',
                         activeHeadingId === item.id
-                          ? 'text-gray-900 font-medium bg-gray-100'
-                          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
+                          ? 'text-neutral-900 font-medium bg-neutral-100'
+                          : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50',
                         item.level === 2 && 'pl-5',
                         item.level === 3 && 'pl-7 text-xs',
                       ]"
@@ -67,82 +67,54 @@
           <Transition name="toolbar">
             <div
               v-if="showSelectionToolbar && selectionPosition"
-              class="fixed z-50 bg-white rounded-lg border border-gray-200 shadow-lg p-1.5 flex items-center gap-0.5"
+              class="fixed z-50 bg-white rounded-lg border border-neutral-200 shadow-lg p-1.5 flex items-center gap-0.5"
               :style="{
                 left: `${selectionPosition.x}px`,
                 top: `${selectionPosition.y}px`,
                 transform: 'translateX(-50%)',
               }"
             >
-              <TooltipProvider :delay-duration="300">
-                <TooltipRoot>
-                  <TooltipTrigger as-child>
-                    <button
-                      type="button"
-                      class="p-2 rounded-md transition-colors duration-150 hover:bg-gray-100"
-                      @click="handleHighlight"
-                    >
-                      <Icon name="ph:highlighter" class="w-4 h-4 text-gray-500" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" :side-offset="4">
-                    <p class="text-xs">Highlight</p>
-                  </TooltipContent>
-                </TooltipRoot>
-              </TooltipProvider>
+              <Tooltip text="Highlight" :delay-open="300">
+                <button
+                  type="button"
+                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100"
+                  @click="handleHighlight"
+                >
+                  <Icon name="ph:highlighter" class="w-4 h-4 text-neutral-500" />
+                </button>
+              </Tooltip>
 
-              <TooltipProvider :delay-duration="300">
-                <TooltipRoot>
-                  <TooltipTrigger as-child>
-                    <button
-                      type="button"
-                      class="p-2 rounded-md transition-colors duration-150 hover:bg-gray-100"
-                      @click="handleComment"
-                    >
-                      <Icon name="ph:chat-circle" class="w-4 h-4 text-gray-500" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" :side-offset="4">
-                    <p class="text-xs">Comment</p>
-                  </TooltipContent>
-                </TooltipRoot>
-              </TooltipProvider>
+              <Tooltip text="Comment" :delay-open="300">
+                <button
+                  type="button"
+                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100"
+                  @click="handleComment"
+                >
+                  <Icon name="ph:chat-circle" class="w-4 h-4 text-neutral-500" />
+                </button>
+              </Tooltip>
 
-              <div class="w-px h-4 bg-gray-200 mx-1" />
+              <div class="w-px h-4 bg-neutral-200 mx-1" />
 
-              <TooltipProvider :delay-duration="300">
-                <TooltipRoot>
-                  <TooltipTrigger as-child>
-                    <button
-                      type="button"
-                      class="p-2 rounded-md transition-colors duration-150 hover:bg-gray-100"
-                      @click="handleCopySelection"
-                    >
-                      <Icon name="ph:copy" class="w-4 h-4 text-gray-500" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" :side-offset="4">
-                    <p class="text-xs">Copy</p>
-                  </TooltipContent>
-                </TooltipRoot>
-              </TooltipProvider>
+              <Tooltip text="Copy" :delay-open="300">
+                <button
+                  type="button"
+                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100"
+                  @click="handleCopySelection"
+                >
+                  <Icon name="ph:copy" class="w-4 h-4 text-neutral-500" />
+                </button>
+              </Tooltip>
 
-              <TooltipProvider :delay-duration="300">
-                <TooltipRoot>
-                  <TooltipTrigger as-child>
-                    <button
-                      type="button"
-                      class="p-2 rounded-md transition-colors duration-150 hover:bg-gray-100"
-                      @click="handleShare"
-                    >
-                      <Icon name="ph:share" class="w-4 h-4 text-gray-500" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" :side-offset="4">
-                    <p class="text-xs">Share</p>
-                  </TooltipContent>
-                </TooltipRoot>
-              </TooltipProvider>
+              <Tooltip text="Share" :delay-open="300">
+                <button
+                  type="button"
+                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100"
+                  @click="handleShare"
+                >
+                  <Icon name="ph:share" class="w-4 h-4 text-neutral-500" />
+                </button>
+              </Tooltip>
             </div>
           </Transition>
 
@@ -172,11 +144,11 @@
                 {{ block.content }}
                 <button
                   type="button"
-                  class="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-gray-100 transition-opacity duration-150"
+                  class="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-neutral-100 transition-opacity duration-150"
                   :aria-label="`Copy link to ${block.content}`"
                   @click="copyHeadingLink(block.content)"
                 >
-                  <Icon name="ph:link" class="w-4 h-4 text-gray-500" />
+                  <Icon name="ph:link" class="w-4 h-4 text-neutral-500" />
                 </button>
               </component>
 
@@ -198,15 +170,15 @@
               <!-- Table -->
               <div
                 v-else-if="block.tag === 'table'"
-                class="my-6 overflow-x-auto rounded-lg border border-gray-200"
+                class="my-6 overflow-x-auto rounded-lg border border-neutral-200"
               >
                 <table class="w-full text-sm">
-                  <thead class="bg-gray-50">
+                  <thead class="bg-neutral-50">
                     <tr>
                       <th
                         v-for="(header, hIdx) in block.headers"
                         :key="hIdx"
-                        class="px-4 py-2 text-left font-medium text-gray-900 border-b border-gray-200"
+                        class="px-4 py-2 text-left font-medium text-neutral-900 border-b border-neutral-200"
                       >
                         {{ header }}
                       </th>
@@ -216,12 +188,12 @@
                     <tr
                       v-for="(row, rIdx) in block.rows"
                       :key="rIdx"
-                      class="border-b border-gray-200 last:border-0 hover:bg-gray-50 transition-colors duration-150"
+                      class="border-b border-neutral-200 last:border-0 hover:bg-neutral-50 transition-colors duration-150"
                     >
                       <td
                         v-for="(cell, cIdx) in row"
                         :key="cIdx"
-                        class="px-4 py-2 text-gray-900"
+                        class="px-4 py-2 text-neutral-900"
                       >
                         {{ cell }}
                       </td>
@@ -241,8 +213,8 @@
                     'mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0',
                     'transition-colors duration-150',
                     block.checked
-                      ? 'bg-gray-900 border-gray-900'
-                      : 'border-gray-300 hover:border-gray-400',
+                      ? 'bg-neutral-900 border-neutral-900'
+                      : 'border-neutral-300 hover:border-neutral-400',
                   ]"
                   :aria-checked="block.checked"
                   role="checkbox"
@@ -256,7 +228,7 @@
                     />
                   </Transition>
                 </button>
-                <span :class="[block.checked && 'line-through text-gray-500']">
+                <span :class="[block.checked && 'line-through text-neutral-500']">
                   {{ block.content }}
                 </span>
               </div>
@@ -264,7 +236,7 @@
               <!-- Horizontal rule -->
               <hr
                 v-else-if="block.tag === 'hr'"
-                class="my-8 border-0 h-px bg-gray-200"
+                class="my-8 border-0 h-px bg-neutral-200"
               />
 
               <!-- Image -->
@@ -272,7 +244,7 @@
                 v-else-if="block.tag === 'image'"
                 class="my-6"
               >
-                <div class="relative rounded-lg overflow-hidden border border-gray-200">
+                <div class="relative rounded-lg overflow-hidden border border-neutral-200">
                   <img
                     :src="block.src"
                     :alt="block.alt || ''"
@@ -284,12 +256,12 @@
                     class="absolute top-2 right-2 p-2 rounded-lg bg-white/80 opacity-0 hover:opacity-100 transition-opacity duration-150 hover:bg-white"
                     @click="$emit('image-click', block.src)"
                   >
-                    <Icon name="ph:arrows-out" class="w-4 h-4 text-gray-500" />
+                    <Icon name="ph:arrows-out" class="w-4 h-4 text-neutral-500" />
                   </button>
                 </div>
                 <figcaption
                   v-if="block.caption"
-                  class="text-center text-sm text-gray-500 mt-2 italic"
+                  class="text-center text-sm text-neutral-500 mt-2 italic"
                 >
                   {{ block.caption }}
                 </figcaption>
@@ -308,12 +280,12 @@
                     <em v-else-if="part.italic">{{ part.text }}</em>
                     <code
                       v-else-if="part.code"
-                      class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-800 font-mono text-sm"
+                      class="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-800 font-mono text-sm"
                     >{{ part.text }}</code>
                     <a
                       v-else-if="part.link"
                       :href="part.link"
-                      class="text-gray-900 underline hover:text-gray-600"
+                      class="text-neutral-900 underline hover:text-neutral-600"
                       target="_blank"
                       rel="noopener noreferrer"
                     >{{ part.text }}</a>
@@ -332,7 +304,7 @@
           <Transition name="progress">
             <div
               v-if="showReadProgress"
-              class="fixed bottom-8 right-8 w-14 h-14 rounded-xl bg-white border border-gray-200 shadow-md flex items-center justify-center cursor-pointer transition-colors duration-150 hover:bg-gray-50"
+              class="fixed bottom-8 right-8 w-14 h-14 rounded-xl bg-white border border-neutral-200 shadow-md flex items-center justify-center cursor-pointer transition-colors duration-150 hover:bg-neutral-50"
               :title="`${Math.round(readProgress)}% read`"
             >
               <svg class="w-10 h-10 -rotate-90">
@@ -343,7 +315,7 @@
                   stroke="currentColor"
                   stroke-width="2.5"
                   fill="none"
-                  class="text-gray-100"
+                  class="text-neutral-100"
                 />
                 <circle
                   cx="20"
@@ -352,13 +324,13 @@
                   stroke="currentColor"
                   stroke-width="2.5"
                   fill="none"
-                  class="text-gray-900 transition-all duration-150"
+                  class="text-neutral-900 transition-all duration-150"
                   :stroke-dasharray="circumference"
                   :stroke-dashoffset="circumference - (readProgress / 100) * circumference"
                   stroke-linecap="round"
                 />
               </svg>
-              <span class="absolute text-xs font-semibold text-gray-900 tabular-nums">
+              <span class="absolute text-xs font-semibold text-neutral-900 tabular-nums">
                 {{ Math.round(readProgress) }}%
               </span>
             </div>
@@ -372,7 +344,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, defineComponent, h } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import { TooltipContent, TooltipPortal, TooltipProvider, TooltipRoot, TooltipTrigger } from 'reka-ui'
+import Tooltip from '@/Components/shared/Tooltip.vue'
 
 // ============================================================================
 // Types
@@ -426,26 +398,26 @@ const ContentSkeleton = defineComponent({
   setup() {
     return () => h('div', { class: 'space-y-6 animate-pulse' }, [
       // Title skeleton
-      h('div', { class: 'h-8 bg-gray-100 rounded-lg w-3/4' }),
+      h('div', { class: 'h-8 bg-neutral-100 rounded-lg w-3/4' }),
       // Paragraphs
       h('div', { class: 'space-y-3' }, [
-        h('div', { class: 'h-4 bg-gray-100 rounded w-full' }),
-        h('div', { class: 'h-4 bg-gray-100 rounded w-5/6' }),
-        h('div', { class: 'h-4 bg-gray-100 rounded w-4/5' }),
+        h('div', { class: 'h-4 bg-neutral-100 rounded w-full' }),
+        h('div', { class: 'h-4 bg-neutral-100 rounded w-5/6' }),
+        h('div', { class: 'h-4 bg-neutral-100 rounded w-4/5' }),
       ]),
       // Subheading
-      h('div', { class: 'h-6 bg-gray-100 rounded-lg w-1/2 mt-8' }),
+      h('div', { class: 'h-6 bg-neutral-100 rounded-lg w-1/2 mt-8' }),
       // More paragraphs
       h('div', { class: 'space-y-3' }, [
-        h('div', { class: 'h-4 bg-gray-100 rounded w-full' }),
-        h('div', { class: 'h-4 bg-gray-100 rounded w-3/4' }),
+        h('div', { class: 'h-4 bg-neutral-100 rounded w-full' }),
+        h('div', { class: 'h-4 bg-neutral-100 rounded w-3/4' }),
       ]),
       // Code block skeleton
-      h('div', { class: 'h-32 bg-gray-100 rounded-lg mt-6' }),
+      h('div', { class: 'h-32 bg-neutral-100 rounded-lg mt-6' }),
       // More content
       h('div', { class: 'space-y-3 mt-6' }, [
-        h('div', { class: 'h-4 bg-gray-100 rounded w-full' }),
-        h('div', { class: 'h-4 bg-gray-100 rounded w-2/3' }),
+        h('div', { class: 'h-4 bg-neutral-100 rounded w-full' }),
+        h('div', { class: 'h-4 bg-neutral-100 rounded w-2/3' }),
       ]),
     ])
   },
@@ -527,11 +499,11 @@ const selectionPosition = ref<SelectionPosition | null>(null)
 const circumference = 2 * Math.PI * 16
 
 const blockquoteVariants: Record<BlockquoteVariant, string> = {
-  note: 'border-gray-400 bg-gray-50',
-  tip: 'border-gray-400 bg-gray-50',
-  warning: 'border-gray-400 bg-gray-50',
-  danger: 'border-gray-400 bg-gray-50',
-  info: 'border-gray-400 bg-gray-50',
+  note: 'border-neutral-400 bg-neutral-50',
+  tip: 'border-neutral-400 bg-neutral-50',
+  warning: 'border-neutral-400 bg-neutral-50',
+  danger: 'border-neutral-400 bg-neutral-50',
+  info: 'border-neutral-400 bg-neutral-50',
 }
 
 const blockquoteIcons: Record<BlockquoteVariant, string> = {
@@ -543,11 +515,11 @@ const blockquoteIcons: Record<BlockquoteVariant, string> = {
 }
 
 const blockquoteIconClasses: Record<BlockquoteVariant, string> = {
-  note: 'w-4 h-4 text-gray-500',
-  tip: 'w-4 h-4 text-gray-500',
-  warning: 'w-4 h-4 text-gray-500',
-  danger: 'w-4 h-4 text-gray-500',
-  info: 'w-4 h-4 text-gray-500',
+  note: 'w-4 h-4 text-neutral-500',
+  tip: 'w-4 h-4 text-neutral-500',
+  warning: 'w-4 h-4 text-neutral-500',
+  danger: 'w-4 h-4 text-neutral-500',
+  info: 'w-4 h-4 text-neutral-500',
 }
 
 const blockquoteLabels: Record<BlockquoteVariant, string> = {
@@ -580,17 +552,17 @@ const proseClasses = computed(() => [
 ])
 
 const blockClasses: Record<string, string> = {
-  h1: 'text-3xl font-bold mb-6 mt-8 first:mt-0 text-gray-900',
-  h2: 'text-2xl font-semibold mb-4 mt-8 text-gray-900',
-  h3: 'text-xl font-semibold mb-3 mt-6 text-gray-900',
-  h4: 'text-lg font-medium mb-2 mt-4 text-gray-900',
-  h5: 'text-base font-medium mb-2 mt-4 text-gray-900',
-  h6: 'text-sm font-medium mb-2 mt-4 text-gray-500 uppercase tracking-wide',
-  p: 'text-gray-700 leading-relaxed mb-4',
-  li: 'text-gray-700 leading-relaxed ml-6 mb-2 list-disc',
-  ol: 'text-gray-700 leading-relaxed ml-6 mb-4',
-  ul: 'text-gray-700 leading-relaxed ml-6 mb-4',
-  blockquote: 'border-l-4 border-gray-300 pl-4 py-2 my-4 rounded-r-lg',
+  h1: 'text-3xl font-bold mb-6 mt-8 first:mt-0 text-neutral-900',
+  h2: 'text-2xl font-semibold mb-4 mt-8 text-neutral-900',
+  h3: 'text-xl font-semibold mb-3 mt-6 text-neutral-900',
+  h4: 'text-lg font-medium mb-2 mt-4 text-neutral-900',
+  h5: 'text-base font-medium mb-2 mt-4 text-neutral-900',
+  h6: 'text-sm font-medium mb-2 mt-4 text-neutral-500 uppercase tracking-wide',
+  p: 'text-neutral-700 leading-relaxed mb-4',
+  li: 'text-neutral-700 leading-relaxed ml-6 mb-2 list-disc',
+  ol: 'text-neutral-700 leading-relaxed ml-6 mb-4',
+  ul: 'text-neutral-700 leading-relaxed ml-6 mb-4',
+  blockquote: 'border-l-4 border-neutral-300 pl-4 py-2 my-4 rounded-r-lg',
 }
 
 // ============================================================================
@@ -1112,15 +1084,15 @@ onMounted(() => {
 
 /* Prose customizations */
 .prose :deep(a) {
-  @apply text-gray-900 underline hover:text-gray-600 transition-colors;
+  @apply text-neutral-900 underline hover:text-neutral-600 transition-colors;
 }
 
 .prose :deep(strong) {
-  @apply text-gray-900 font-semibold;
+  @apply text-neutral-900 font-semibold;
 }
 
 .prose :deep(em) {
-  @apply text-gray-500;
+  @apply text-neutral-500;
 }
 
 /* Highlight animation */

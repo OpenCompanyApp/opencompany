@@ -5,7 +5,7 @@
       'transition-all duration-150',
       sizeConfig[size].container,
       collapsed && sizeConfig[size].collapsedContainer,
-      isDragOver && !collapsed && 'ring-2 ring-gray-300'
+      isDragOver && !collapsed && 'ring-2 ring-neutral-300'
     ]"
     @dragover.prevent="handleDragOver"
     @dragleave="handleDragLeave"
@@ -16,7 +16,7 @@
       :class="[
         'flex items-center justify-between group/header',
         sizeConfig[size].header,
-        collapsible && 'cursor-pointer hover:bg-gray-50 rounded-lg transition-colors duration-150'
+        collapsible && 'cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors duration-150'
       ]"
       @click="collapsible && $emit('toggle')"
     >
@@ -55,9 +55,9 @@
           <span
             v-if="!collapsed"
             :class="[
-              'font-medium bg-gray-100 text-gray-500 rounded-full shrink-0',
+              'font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 rounded-full shrink-0',
               'transition-colors duration-150',
-              'group-hover/header:bg-gray-200',
+              'group-hover/header:bg-neutral-200 dark:group-hover/header:bg-neutral-700',
               sizeConfig[size].count
             ]"
           >
@@ -100,7 +100,7 @@
           v-if="collapsible"
           name="ph:caret-down"
           :class="[
-            'text-gray-400',
+            'text-neutral-400',
             'transition-transform duration-150',
             sizeConfig[size].chevron,
             collapsed && '-rotate-90'
@@ -108,49 +108,18 @@
         />
 
         <!-- Menu -->
-        <DropdownMenuRoot>
-          <DropdownMenuTrigger as-child>
-            <button
-              :class="[
-                'rounded-lg hover:bg-gray-100',
-                'transition-colors duration-150',
-                sizeConfig[size].menuButton
-              ]"
-              @click.stop
-            >
-              <Icon name="ph:dots-three" :class="['text-gray-500', sizeConfig[size].menuIcon]" />
-            </button>
-          </DropdownMenuTrigger>
-
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              :class="[
-                'bg-white border border-gray-200 rounded-lg',
-                'shadow-lg z-50',
-                'animate-in fade-in-0 duration-150',
-                sizeConfig[size].dropdownContent
-              ]"
-              :side-offset="5"
-              align="end"
-            >
-              <DropdownMenuItem
-                v-for="action in columnActions"
-                :key="action.id"
-                :class="[
-                  'flex items-center rounded-md cursor-pointer outline-none',
-                  'transition-colors duration-150',
-                  'focus:bg-gray-50',
-                  action.variant === 'danger' ? 'text-red-600 hover:bg-red-50' : 'hover:bg-gray-50',
-                  sizeConfig[size].dropdownItem
-                ]"
-                @click="$emit('action', action.id)"
-              >
-                <Icon :name="action.icon" :class="['mr-2', sizeConfig[size].dropdownIcon]" />
-                <span>{{ action.label }}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+        <DropdownMenu :items="columnDropdownItems">
+          <button
+            :class="[
+              'rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700',
+              'transition-colors duration-150',
+              sizeConfig[size].menuButton
+            ]"
+            @click.stop
+          >
+            <Icon name="ph:dots-three" :class="['text-neutral-500 dark:text-neutral-300', sizeConfig[size].menuIcon]" />
+          </button>
+        </DropdownMenu>
       </div>
     </div>
 
@@ -170,13 +139,13 @@
       >
         <span
           :class="[
-            'font-bold text-gray-500',
+            'font-bold text-neutral-500 dark:text-neutral-300',
             sizeConfig[size].collapsedCount
           ]"
         >
           {{ tasks.length }}
         </span>
-        <span :class="['text-gray-400', sizeConfig[size].collapsedLabel]">
+        <span :class="['text-neutral-400 dark:text-neutral-400', sizeConfig[size].collapsedLabel]">
           {{ tasks.length === 1 ? 'task' : 'tasks' }}
         </span>
 
@@ -191,7 +160,7 @@
             class="flex items-center gap-1.5"
           >
             <span :class="['w-2 h-2 rounded-full', priority.color]" />
-            <span :class="['text-gray-500', sizeConfig[size].collapsedPriorityText]">
+            <span :class="['text-neutral-500', sizeConfig[size].collapsedPriorityText]">
               {{ priority.count }}
             </span>
           </div>
@@ -213,7 +182,7 @@
           'transition-colors duration-150',
           sizeConfig[size].cardsContainer,
           isDragOver
-            ? 'bg-gray-50 ring-2 ring-gray-300 ring-inset'
+            ? 'bg-neutral-50 dark:bg-neutral-800 ring-2 ring-neutral-300 dark:ring-neutral-600 ring-inset'
             : ''
         ]"
       >
@@ -223,23 +192,23 @@
             v-for="i in 3"
             :key="`skeleton-${i}`"
             :class="[
-              'animate-pulse rounded-lg bg-white border border-gray-200',
+              'animate-pulse rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700',
               sizeConfig[size].skeleton
             ]"
           >
             <div class="flex items-center gap-2 mb-3">
-              <div :class="['rounded bg-gray-200', sizeConfig[size].skeletonBadge]" />
+              <div :class="['rounded bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].skeletonBadge]" />
               <div class="flex-1" />
-              <div :class="['rounded bg-gray-200', sizeConfig[size].skeletonAction]" />
+              <div :class="['rounded bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].skeletonAction]" />
             </div>
-            <div :class="['rounded bg-gray-200 mb-2', sizeConfig[size].skeletonTitle]" />
-            <div :class="['rounded bg-gray-100', sizeConfig[size].skeletonDesc]" />
-            <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+            <div :class="['rounded bg-neutral-200 dark:bg-neutral-700 mb-2', sizeConfig[size].skeletonTitle]" />
+            <div :class="['rounded bg-neutral-100 dark:bg-neutral-700', sizeConfig[size].skeletonDesc]" />
+            <div class="flex items-center justify-between mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-700">
               <div class="flex -space-x-2">
-                <div :class="['rounded-full bg-gray-200', sizeConfig[size].skeletonAvatar]" />
-                <div :class="['rounded-full bg-gray-200', sizeConfig[size].skeletonAvatar]" />
+                <div :class="['rounded-full bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].skeletonAvatar]" />
+                <div :class="['rounded-full bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].skeletonAvatar]" />
               </div>
-              <div :class="['rounded bg-gray-200', sizeConfig[size].skeletonMeta]" />
+              <div :class="['rounded bg-neutral-200 dark:bg-neutral-700', sizeConfig[size].skeletonMeta]" />
             </div>
           </div>
         </template>
@@ -259,7 +228,7 @@
           <div
             v-if="isDragOver && dropTargetIndex === 0"
             key="drop-indicator-top"
-            class="h-1 bg-gray-400 rounded-full mx-2"
+            class="h-1 bg-neutral-400 rounded-full mx-2"
           />
 
           <template v-for="(task, index) in displayedTasks" :key="task.id">
@@ -282,7 +251,7 @@
             <div
               v-if="isDragOver && dropTargetIndex === index + 1"
               :key="`drop-indicator-${index}`"
-              class="h-1 bg-gray-400 rounded-full mx-2"
+              class="h-1 bg-neutral-400 rounded-full mx-2"
             />
           </template>
 
@@ -291,10 +260,10 @@
             v-if="hasMoreTasks"
             key="show-more"
             :class="[
-              'w-full flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100',
-              'border border-gray-200 hover:border-gray-300 rounded-lg',
+              'w-full flex items-center justify-center gap-2 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700',
+              'border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 rounded-lg',
               'transition-colors duration-150',
-              'text-gray-500 hover:text-gray-900',
+              'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
               sizeConfig[size].showMore
             ]"
             @click.stop="showAllTasks = true"
@@ -317,8 +286,8 @@
           <div
             v-if="isDragOver && filteredTasks.length > 0"
             :class="[
-              'flex items-center justify-center border-2 border-dashed border-gray-400 rounded-lg',
-              'bg-gray-50 text-gray-600',
+              'flex items-center justify-center border-2 border-dashed border-neutral-400 dark:border-neutral-500 rounded-lg',
+              'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-200',
               sizeConfig[size].dropIndicator
             ]"
           >
@@ -343,28 +312,28 @@
           >
             <div
               :class="[
-                'rounded-lg bg-gray-100 flex items-center justify-center mb-3',
+                'rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-3',
                 'transition-colors duration-150',
-                'group-hover/empty:bg-gray-200',
+                'group-hover/empty:bg-neutral-200 dark:group-hover/empty:bg-neutral-700',
                 sizeConfig[size].emptyIcon
               ]"
             >
               <Icon
                 :name="emptyIcon"
                 :class="[
-                  'text-gray-400',
+                  'text-neutral-400 dark:text-neutral-400',
                   'transition-colors duration-150',
-                  'group-hover/empty:text-gray-600',
+                  'group-hover/empty:text-neutral-600 dark:group-hover/empty:text-neutral-300',
                   sizeConfig[size].emptyIconSize
                 ]"
               />
             </div>
-            <p :class="['text-gray-500 transition-colors duration-150', sizeConfig[size].emptyText]">
+            <p :class="['text-neutral-500 dark:text-neutral-300 transition-colors duration-150', sizeConfig[size].emptyText]">
               {{ emptyText }}
             </p>
             <p
               v-if="emptySubtext"
-              :class="['text-gray-400 mt-1', sizeConfig[size].emptySubtext]"
+              :class="['text-neutral-400 dark:text-neutral-400 mt-1', sizeConfig[size].emptySubtext]"
             >
               {{ emptySubtext }}
             </p>
@@ -383,10 +352,10 @@
       <button
         v-if="!collapsed && showAddButton"
         :class="[
-          'flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-200 rounded-lg',
-          'hover:border-gray-400 hover:bg-gray-50',
+          'flex items-center justify-center gap-2 w-full border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-lg',
+          'hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800',
           'transition-colors duration-150',
-          'text-gray-500 hover:text-gray-900 group/add',
+          'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white group/add',
           sizeConfig[size].addButton
         ]"
         @click.stop="$emit('add')"
@@ -412,7 +381,7 @@
       <div
         v-if="showQuickAdd && !collapsed"
         :class="[
-          'border border-gray-200 rounded-lg bg-white overflow-hidden',
+          'border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 overflow-hidden',
           'shadow-md',
           sizeConfig[size].quickAdd
         ]"
@@ -423,18 +392,18 @@
           type="text"
           placeholder="Task title..."
           :class="[
-            'w-full bg-transparent outline-none placeholder:text-gray-400',
-            'transition-colors duration-150 focus:placeholder:text-gray-500',
+            'w-full bg-transparent outline-none placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-neutral-900 dark:text-white',
+            'transition-colors duration-150 focus:placeholder:text-neutral-500 dark:focus:placeholder:text-neutral-400',
             sizeConfig[size].quickAddInput
           ]"
           @keydown.enter="handleQuickAdd"
           @keydown.escape="cancelQuickAdd"
           @blur="cancelQuickAdd"
         />
-        <div :class="['flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50', sizeConfig[size].quickAddActions]">
+        <div :class="['flex items-center justify-end gap-2 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900', sizeConfig[size].quickAddActions]">
           <button
             :class="[
-              'text-gray-500 hover:text-gray-900',
+              'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white',
               'transition-colors duration-150',
               sizeConfig[size].quickAddCancel
             ]"
@@ -444,7 +413,7 @@
           </button>
           <button
             :class="[
-              'bg-gray-900 text-white rounded-lg hover:bg-gray-800',
+              'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100',
               'transition-colors duration-150',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               sizeConfig[size].quickAddSubmit
@@ -462,16 +431,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
 import type { Task, TaskStatus, Priority } from '@/types'
 import TaskCard from '@/Components/tasks/TaskCard.vue'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from 'reka-ui'
+import Icon from '@/Components/shared/Icon.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 
 // Types
 type ColumnSize = 'sm' | 'md' | 'lg'
@@ -728,25 +691,25 @@ const sizeConfig: Record<ColumnSize, SizeConfig> = {
 // Status colors
 const statusColors: Record<TaskStatus, { bg: string; icon: string }> = {
   backlog: {
-    bg: 'bg-gray-100',
-    icon: 'text-gray-500',
+    bg: 'bg-neutral-100 dark:bg-neutral-800',
+    icon: 'text-neutral-500 dark:text-neutral-300',
   },
   in_progress: {
-    bg: 'bg-gray-100',
-    icon: 'text-gray-600',
+    bg: 'bg-neutral-100 dark:bg-neutral-800',
+    icon: 'text-neutral-600 dark:text-neutral-200',
   },
   done: {
-    bg: 'bg-gray-100',
-    icon: 'text-gray-700',
+    bg: 'bg-neutral-100 dark:bg-neutral-800',
+    icon: 'text-neutral-700 dark:text-neutral-200',
   },
 }
 
 // Priority colors
 const priorityColors: Record<Priority, string> = {
-  urgent: 'bg-gray-700',
-  high: 'bg-gray-600',
-  medium: 'bg-gray-500',
-  low: 'bg-gray-400',
+  urgent: 'bg-neutral-700',
+  high: 'bg-neutral-600',
+  medium: 'bg-neutral-500',
+  low: 'bg-neutral-400',
 }
 
 // Column actions
@@ -815,6 +778,15 @@ const priorityBreakdown = computed<PriorityBreakdownItem[]>(() => {
       color: priorityColors[level],
     }))
 })
+
+const columnDropdownItems = computed(() => [
+  columnActions.map(action => ({
+    label: action.label,
+    icon: action.icon,
+    color: action.variant === 'danger' ? 'error' as const : undefined,
+    click: () => emit('action', action.id),
+  })),
+])
 
 // Methods
 const handleDragStart = (event: DragEvent, task: Task) => {

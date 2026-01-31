@@ -1,43 +1,41 @@
 <template>
-  <DialogRoot :open="open" @update:open="$emit('update:open', $event)">
-    <DialogPortal>
-      <DialogOverlay class="fixed inset-0 bg-black/50 z-40" />
-      <DialogContent
-        class="fixed inset-4 bg-white border border-gray-200 rounded-xl z-50 overflow-hidden flex flex-col"
-      >
-        <DialogTitle class="sr-only">Compare Versions</DialogTitle>
-        <DialogDescription class="sr-only">Compare document versions side by side</DialogDescription>
-
-        <!-- Header -->
-        <div class="shrink-0 p-4 border-b border-gray-200">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900">Compare Versions</h2>
-            <DialogClose
-              class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              <Icon name="ph:x" class="w-5 h-5" />
-            </DialogClose>
-          </div>
+  <Modal
+    :open="open"
+    title="Compare Versions"
+    description="Compare document versions side by side"
+    fullscreen
+    @update:open="$emit('update:open', $event)"
+  >
+    <template #header>
+      <div class="flex items-center justify-between w-full">
+        <h2 class="text-lg font-semibold text-neutral-900">Compare Versions</h2>
+        <button
+          class="p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50 rounded-lg transition-colors"
+          @click="$emit('update:open', false)"
+        >
+          <Icon name="ph:x" class="w-5 h-5" />
+        </button>
+      </div>
 
           <!-- Version Selectors -->
           <div class="mt-4 flex items-center gap-4">
             <div class="flex-1">
-              <label class="block text-sm font-medium text-gray-500 mb-1">From (older)</label>
+              <label class="block text-sm font-medium text-neutral-500 mb-1">From (older)</label>
               <select
                 v-model="selectedOldVersion"
-                class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 text-sm focus:border-gray-300 focus:outline-none"
+                class="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-700 text-sm focus:border-neutral-300 focus:outline-none"
               >
                 <option v-for="v in availableOldVersions" :key="v.id" :value="v">
                   Version {{ v.versionNumber }} - {{ formatDate(v.createdAt) }}
                 </option>
               </select>
             </div>
-            <Icon name="ph:arrow-right" class="w-5 h-5 text-gray-400 mt-6" />
+            <Icon name="ph:arrow-right" class="w-5 h-5 text-neutral-400 mt-6" />
             <div class="flex-1">
-              <label class="block text-sm font-medium text-gray-500 mb-1">To (newer)</label>
+              <label class="block text-sm font-medium text-neutral-500 mb-1">To (newer)</label>
               <select
                 v-model="selectedNewVersion"
-                class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 text-sm focus:border-gray-300 focus:outline-none"
+                class="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-700 text-sm focus:border-neutral-300 focus:outline-none"
               >
                 <option :value="currentDocument">
                   Current - {{ formatDate(currentDocument?.updatedAt) }}
@@ -48,8 +46,9 @@
               </select>
             </div>
           </div>
-        </div>
+      </template>
 
+      <template #body>
         <!-- Diff Content -->
         <div class="flex-1 overflow-hidden flex">
           <!-- Stats -->
@@ -59,10 +58,10 @@
           </div>
 
           <!-- Side by Side View -->
-          <div class="flex-1 grid grid-cols-2 divide-x divide-gray-200 overflow-hidden">
+          <div class="flex-1 grid grid-cols-2 divide-x divide-neutral-200 overflow-hidden">
             <!-- Old Version -->
             <div class="flex flex-col overflow-hidden">
-              <div class="shrink-0 px-4 py-2 bg-red-50 border-b border-gray-200">
+              <div class="shrink-0 px-4 py-2 bg-red-50 border-b border-neutral-200">
                 <span class="text-sm font-medium text-red-700">
                   {{ selectedOldVersion ? `Version ${selectedOldVersion.versionNumber}` : 'Previous' }}
                 </span>
@@ -75,17 +74,17 @@
                   v-for="(line, index) in diffLines"
                   :key="`old-${index}`"
                   :class="[
-                    'flex border-b border-gray-100',
+                    'flex border-b border-neutral-100',
                     line.type === 'removed' ? 'bg-red-50' : '',
-                    line.type === 'added' ? 'bg-gray-50 text-gray-300' : ''
+                    line.type === 'added' ? 'bg-neutral-50 text-neutral-300' : ''
                   ]"
                 >
-                  <span class="w-12 shrink-0 px-2 py-1 text-right text-gray-400 border-r border-gray-200 bg-gray-50 select-none">
+                  <span class="w-12 shrink-0 px-2 py-1 text-right text-neutral-400 border-r border-neutral-200 bg-neutral-50 select-none">
                     {{ line.type !== 'added' ? line.oldLineNum : '' }}
                   </span>
                   <pre
                     class="flex-1 px-3 py-1 whitespace-pre-wrap break-words"
-                    :class="line.type === 'removed' ? 'text-red-700' : 'text-gray-700'"
+                    :class="line.type === 'removed' ? 'text-red-700' : 'text-neutral-700'"
                   >{{ line.type !== 'added' ? line.oldContent : '' }}</pre>
                 </div>
               </div>
@@ -93,7 +92,7 @@
 
             <!-- New Version -->
             <div class="flex flex-col overflow-hidden">
-              <div class="shrink-0 px-4 py-2 bg-green-50 border-b border-gray-200">
+              <div class="shrink-0 px-4 py-2 bg-green-50 border-b border-neutral-200">
                 <span class="text-sm font-medium text-green-700">
                   {{ isCurrentVersion ? 'Current Version' : `Version ${(selectedNewVersion as any)?.versionNumber}` }}
                 </span>
@@ -106,55 +105,47 @@
                   v-for="(line, index) in diffLines"
                   :key="`new-${index}`"
                   :class="[
-                    'flex border-b border-gray-100',
+                    'flex border-b border-neutral-100',
                     line.type === 'added' ? 'bg-green-50' : '',
-                    line.type === 'removed' ? 'bg-gray-50 text-gray-300' : ''
+                    line.type === 'removed' ? 'bg-neutral-50 text-neutral-300' : ''
                   ]"
                 >
-                  <span class="w-12 shrink-0 px-2 py-1 text-right text-gray-400 border-r border-gray-200 bg-gray-50 select-none">
+                  <span class="w-12 shrink-0 px-2 py-1 text-right text-neutral-400 border-r border-neutral-200 bg-neutral-50 select-none">
                     {{ line.type !== 'removed' ? line.newLineNum : '' }}
                   </span>
                   <pre
                     class="flex-1 px-3 py-1 whitespace-pre-wrap break-words"
-                    :class="line.type === 'added' ? 'text-green-700' : 'text-gray-700'"
+                    :class="line.type === 'added' ? 'text-green-700' : 'text-neutral-700'"
                   >{{ line.type !== 'removed' ? line.newContent : '' }}</pre>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </template>
 
-        <!-- Footer -->
-        <div class="shrink-0 p-4 border-t border-gray-200 flex items-center justify-between">
-          <div class="text-sm text-gray-500">
+      <template #footer>
+        <div class="flex items-center justify-between w-full">
+          <div class="text-sm text-neutral-500">
             {{ diffLines.length }} lines compared
           </div>
-          <button
+          <Button
             v-if="selectedOldVersion"
-            class="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
             @click="handleRestore"
           >
             Restore to Version {{ selectedOldVersion.versionNumber }}
-          </button>
+          </Button>
         </div>
-      </DialogContent>
-    </DialogPortal>
-  </DialogRoot>
+      </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import Icon from '@/Components/shared/Icon.vue'
 import type { Document } from '@/types'
-import {
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogRoot,
-  DialogTitle,
-} from 'reka-ui'
+import Modal from '@/Components/shared/Modal.vue'
+import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
 
 interface DocumentVersion {
   id: string
