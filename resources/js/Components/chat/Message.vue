@@ -437,6 +437,7 @@ const groupedReactions = computed(() => {
   const groups: Record<string, { emoji: string; count: number; users: User[]; hasReacted: boolean }> = {}
 
   props.message.reactions.forEach((reaction: MessageReaction) => {
+    if (!reaction?.emoji) return
     if (!groups[reaction.emoji]) {
       groups[reaction.emoji] = {
         emoji: reaction.emoji,
@@ -445,8 +446,9 @@ const groupedReactions = computed(() => {
         hasReacted: false,
       }
     }
-    groups[reaction.emoji].count += reaction.users.length
-    groups[reaction.emoji].users.push(...reaction.users)
+    const users = reaction.users || []
+    groups[reaction.emoji].count += users.length
+    groups[reaction.emoji].users.push(...users)
   })
 
   return Object.values(groups)
@@ -784,7 +786,8 @@ const truncateReply = (content: string, maxLength = 50) => {
 }
 
 // Get attachment icon
-const getAttachmentIcon = (type: string) => {
+const getAttachmentIcon = (type?: string) => {
+  if (!type) return 'ph:file'
   if (type.startsWith('image/')) return 'ph:image'
   if (type.startsWith('video/')) return 'ph:video'
   if (type.startsWith('audio/')) return 'ph:music-note'

@@ -9,7 +9,7 @@
         // Shape
         shapeClasses[shape],
         // Variant colors
-        variantClasses[variant][badgeStyle],
+        safeVariantClasses,
         // States
         interactive && !disabled && 'cursor-pointer',
         disabled && 'opacity-50 cursor-not-allowed',
@@ -75,7 +75,7 @@
       // Shape
       shapeClasses[shape],
       // Variant colors
-      variantClasses[variant][badgeStyle],
+      safeVariantClasses,
       // States
       interactive && !disabled && 'cursor-pointer',
       disabled && 'opacity-50 cursor-not-allowed',
@@ -289,6 +289,12 @@ const dotColorClasses: Record<BadgeVariant, string> = {
   error: 'bg-red-500',
   info: 'bg-blue-500',
 }
+
+// Safe variant lookup with fallback
+const safeVariantClasses = computed(() => {
+  const variant = variantClasses[props.variant] || variantClasses.default
+  return variant[props.badgeStyle] || variant.soft
+})
 
 const handleClick = (event: MouseEvent) => {
   if (props.disabled || props.loading) {

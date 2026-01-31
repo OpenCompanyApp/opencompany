@@ -51,6 +51,7 @@ import { Link } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import Badge from '@/Components/shared/Badge.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
+import ContextMenu from '@/Components/shared/ContextMenu.vue'
 import type { Channel, User } from '@/types'
 
 type ChannelItemSize = 'sm' | 'md' | 'lg'
