@@ -15,12 +15,18 @@ withDefaults(defineProps<{
   sideOffset?: number
   showArrow?: boolean
   showClose?: boolean
+  mode?: 'click' | 'hover'
+  openDelay?: number
+  closeDelay?: number
 }>(), {
   side: 'bottom',
   align: 'center',
   sideOffset: 4,
   showArrow: false,
   showClose: false,
+  mode: 'click',
+  openDelay: 0,
+  closeDelay: 0,
 })
 
 const open = defineModel<boolean>('open', { default: false })

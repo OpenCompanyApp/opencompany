@@ -1,16 +1,23 @@
 <template>
-  <Popover v-if="showTooltip" mode="hover" :open-delay="tooltipDelay" :close-delay="0">
-    <component
-      :is="interactive ? 'button' : 'span'"
-      :type="interactive ? 'button' : undefined"
-      :class="badgeClasses"
-      :style="badgeStyles"
-      @click="handleClick"
-    >
-      <BadgeContent />
-    </component>
+  <HoverCardRoot v-if="showTooltip" :open-delay="tooltipDelay" :close-delay="100">
+    <HoverCardTrigger as-child>
+      <component
+        :is="interactive ? 'button' : 'span'"
+        :type="interactive ? 'button' : undefined"
+        :class="badgeClasses"
+        :style="badgeStyles"
+        @click="handleClick"
+      >
+        <BadgeContent />
+      </component>
+    </HoverCardTrigger>
 
-    <template #content>
+    <HoverCardPortal>
+      <HoverCardContent
+        class="z-50 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-lg animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+        :side="tooltipSide"
+        :side-offset="8"
+      >
       <div class="space-y-2.5 p-3.5 max-w-xs">
         <div class="flex items-center gap-2">
           <div class="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center">
@@ -56,8 +63,9 @@
           {{ timestamp }}
         </p>
       </div>
-    </template>
-  </Popover>
+      </HoverCardContent>
+    </HoverCardPortal>
+  </HoverCardRoot>
 
   <component
     v-else
@@ -73,8 +81,13 @@
 
 <script setup lang="ts">
 import { computed, h, type VNode } from 'vue'
+import {
+  HoverCardRoot,
+  HoverCardTrigger,
+  HoverCardPortal,
+  HoverCardContent,
+} from 'reka-ui'
 import Icon from '@/Components/shared/Icon.vue'
-import Popover from '@/Components/shared/Popover.vue'
 
 type CostBadgeSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 type CostBadgeVariant = 'actual' | 'estimated' | 'budget' | 'savings'
@@ -88,7 +101,7 @@ interface CostBreakdownItem {
 }
 
 const props = withDefaults(defineProps<{
-  cost: number
+  cost: number | string
   size?: CostBadgeSize
   variant?: CostBadgeVariant
   style?: CostBadgeStyle
