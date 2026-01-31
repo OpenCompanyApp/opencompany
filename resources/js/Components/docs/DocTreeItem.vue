@@ -23,7 +23,7 @@
     </Transition>
 
     <!-- Main row -->
-    <DocsDocTreeDocTreeItemRow
+    <DocTreeItemRow
       :title="item.title"
       :is-folder="item.isFolder ?? false"
       :expanded="expanded"
@@ -116,7 +116,7 @@
           tag="div"
           @before-leave="onBeforeLeave"
         >
-          <DocsDocTreeItem
+          <DocTreeItem
             v-for="child in sortedChildren"
             :key="child.id"
             :item="child"
@@ -178,9 +178,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, defineAsyncComponent } from 'vue'
 import type { Document } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
+import DocTreeItemRow from './doc-tree/DocTreeItemRow.vue'
+
+// Self-reference for recursive component
+const DocTreeItem = defineAsyncComponent(() => import('./DocTreeItem.vue'))
 
 // ============================================================================
 // Types

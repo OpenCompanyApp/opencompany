@@ -173,7 +173,7 @@
       </div>
     </div>
 
-    <!-- Code content -->
+    <!-- Code content (expanded) -->
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
       enter-from-class="opacity-0 max-h-0"
@@ -182,7 +182,7 @@
       leave-from-class="opacity-100 max-h-[2000px]"
       leave-to-class="opacity-0 max-h-0"
     >
-      <div v-show="isExpanded">
+      <div v-if="isExpanded">
         <div :class="codeContainerClasses">
           <!-- Line numbers gutter -->
           <div
@@ -216,28 +216,28 @@
             >{{ line || ' ' }}</span></template></code></pre>
         </div>
       </div>
+    </Transition>
 
-      <!-- Collapsed preview -->
-      <Transition name="collapsed">
-        <div
-          v-if="collapsible && isCollapsed"
-          class="px-4 py-3 text-neutral-500 text-sm flex items-center justify-between"
-        >
-          <span>
-            {{ lineCount }} lines
-            <span v-if="language" class="text-neutral-400">
-              &middot; {{ displayLanguage }}
-            </span>
+    <!-- Collapsed preview -->
+    <Transition name="collapsed">
+      <div
+        v-if="collapsible && isCollapsed"
+        class="px-4 py-3 text-neutral-500 text-sm flex items-center justify-between"
+      >
+        <span>
+          {{ lineCount }} lines
+          <span v-if="language" class="text-neutral-400">
+            &middot; {{ displayLanguage }}
           </span>
-          <button
-            type="button"
-            class="text-neutral-900 hover:underline text-sm px-2 py-1 -mr-2 rounded-lg transition-colors duration-150 ease-out hover:bg-neutral-100"
-            @click="toggleCollapse"
-          >
-            Show code
-          </button>
-        </div>
-      </Transition>
+        </span>
+        <button
+          type="button"
+          class="text-neutral-900 hover:underline text-sm px-2 py-1 -mr-2 rounded-lg transition-colors duration-150 ease-out hover:bg-neutral-100"
+          @click="toggleCollapse"
+        >
+          Show code
+        </button>
+      </div>
     </Transition>
 
     <!-- Footer (optional) -->

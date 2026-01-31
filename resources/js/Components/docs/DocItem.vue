@@ -93,7 +93,7 @@
       <div :class="metaRowClasses">
         <!-- Author -->
         <div v-if="showAuthor && document.author" class="flex items-center gap-1.5">
-          <SharedAgentAvatar :user="document.author" size="xs" :show-status="false" />
+          <AgentAvatar :user="document.author" size="xs" :show-status="false" />
           <span :class="metaTextClasses">{{ document.author.name }}</span>
         </div>
 
@@ -143,7 +143,7 @@
           :key="viewer.id"
           :class="viewerAvatarClasses"
         >
-          <SharedAgentAvatar :user="viewer" size="xs" :show-status="false" />
+          <AgentAvatar :user="viewer" size="xs" :show-status="false" />
         </div>
         <div v-if="hiddenViewerCount > 0" :class="viewerCountClasses">
           +{{ hiddenViewerCount }}
@@ -181,6 +181,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 
 type DocItemSize = 'sm' | 'md' | 'lg'
 type DocItemVariant = 'default' | 'compact' | 'detailed' | 'card'

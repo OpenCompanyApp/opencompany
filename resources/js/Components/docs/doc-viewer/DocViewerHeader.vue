@@ -124,12 +124,12 @@
                 class="flex items-center gap-2 hover:bg-neutral-100 rounded-lg px-1.5 py-0.5 -ml-1.5 transition-colors duration-150"
                 @click="$emit('author-click', author)"
               >
-                <SharedAgentAvatar :user="author" size="xs" :show-status="false" />
+                <AgentAvatar :user="author" size="xs" :show-status="false" />
                 <span>{{ author.name }}</span>
               </button>
               <template #content>
                 <div class="flex items-center gap-3 p-3">
-                  <SharedAgentAvatar :user="author" size="md" :show-status="true" />
+                  <AgentAvatar :user="author" size="md" :show-status="true" />
                   <div>
                     <p class="font-medium text-neutral-900">{{ author.name }}</p>
                     <p v-if="author.role" class="text-xs text-neutral-500">
@@ -217,7 +217,7 @@
         <!-- Viewers Presence -->
         <Transition name="presence">
           <div v-if="viewers && viewers.length > 0" class="flex items-center gap-2">
-            <SharedPresenceRow
+            <PresenceRow
               :users="viewers"
               :max-visible="maxVisibleViewers"
               :show-tooltip="true"
@@ -245,7 +245,7 @@
                       :key="editor.id"
                       class="flex items-center gap-2 p-1.5 -mx-1.5 rounded-lg transition-colors duration-150 hover:bg-neutral-50"
                     >
-                      <SharedAgentAvatar :user="editor" size="xs" :show-status="false" />
+                      <AgentAvatar :user="editor" size="xs" :show-status="false" />
                       <span class="text-sm text-neutral-900">{{ editor.name }}</span>
                     </div>
                   </div>
@@ -387,6 +387,8 @@ import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
+import PresenceRow from '@/Components/shared/PresenceRow.vue'
 
 // ============================================================================
 // Types

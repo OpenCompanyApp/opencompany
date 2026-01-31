@@ -2,7 +2,7 @@
   <div :class="['p-3 rounded-lg border', comment.resolved ? 'bg-neutral-50 border-neutral-100' : 'bg-white border-neutral-200']">
     <!-- Comment Header -->
     <div class="flex items-start gap-2 mb-2">
-      <SharedAgentAvatar v-if="comment.author" :user="comment.author" size="sm" />
+      <AgentAvatar v-if="comment.author" :user="comment.author" size="sm" />
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between">
           <span class="text-sm font-medium text-neutral-700">
@@ -87,7 +87,7 @@
         class="p-2 rounded-lg bg-white"
       >
         <div class="flex items-start gap-2 mb-1">
-          <SharedAgentAvatar v-if="reply.author" :user="reply.author" size="xs" />
+          <AgentAvatar v-if="reply.author" :user="reply.author" size="xs" />
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="text-xs font-medium text-neutral-700">
@@ -109,6 +109,7 @@
 import { ref } from 'vue'
 import type { User } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
+import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 
 interface DocumentComment {
   id: string

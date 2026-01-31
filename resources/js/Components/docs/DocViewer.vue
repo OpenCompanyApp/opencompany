@@ -8,7 +8,7 @@
     <!-- Content -->
     <template v-else-if="document">
       <!-- Header -->
-      <DocsDocViewerHeader
+      <DocViewerHeader
         :title="document.title"
         :author="document.author"
         :updated-at="document.updatedAt"
@@ -138,7 +138,7 @@
       </Transition>
 
       <!-- Document Content -->
-      <DocsDocViewerContent
+      <DocViewerContent
         :content="document.content"
         :size="size"
         :editable="isEditing"
@@ -172,7 +172,7 @@
                 :class="commentClasses"
               >
                 <div class="flex items-start gap-2 mb-2">
-                  <SharedAgentAvatar :user="comment.author" size="xs" />
+                  <AgentAvatar :user="comment.author" size="xs" />
                   <div class="flex-1 min-w-0">
                     <p class="text-xs font-medium text-neutral-700">{{ comment.author.name }}</p>
                     <p class="text-[10px] text-neutral-400">{{ formatTimeAgo(comment.createdAt) }}</p>
@@ -246,15 +246,16 @@
 </template>
 
 <script setup lang="ts">
-import { h, defineComponent, resolveComponent, ref, computed, watch } from 'vue'
+import { h, defineComponent, ref, computed, watch } from 'vue'
 import type { Document, User } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
-import DocsDocViewerHeader from '@/Components/docs/doc-viewer/DocViewerHeader.vue'
-import DocsDocViewerContent from '@/Components/docs/doc-viewer/DocViewerContent.vue'
-import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
+import Skeleton from '@/Components/shared/Skeleton.vue'
+import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
+import DocViewerHeader from './doc-viewer/DocViewerHeader.vue'
+import DocViewerContent from './doc-viewer/DocViewerContent.vue'
 
 type DocViewerSize = 'sm' | 'md' | 'lg'
 
@@ -546,36 +547,36 @@ const DocViewerSkeleton = defineComponent({
       h('div', { class: 'border-b border-neutral-200 px-8 py-4' }, [
         h('div', { class: 'flex items-center justify-between' }, [
           h('div', { class: 'space-y-2' }, [
-            h(resolveComponent('SharedSkeleton'), { customClass: 'h-8 w-64' }),
+            h(Skeleton, { customClass: 'h-8 w-64' }),
             h('div', { class: 'flex items-center gap-3' }, [
-              h(resolveComponent('SharedSkeleton'), { variant: 'avatar', customClass: 'w-6 h-6' }),
-              h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-24' }),
-              h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-32' }),
+              h(Skeleton, { variant: 'avatar', customClass: 'w-6 h-6' }),
+              h(Skeleton, { customClass: 'h-4 w-24' }),
+              h(Skeleton, { customClass: 'h-4 w-32' }),
             ]),
           ]),
           h('div', { class: 'flex items-center gap-2' }, [
-            h(resolveComponent('SharedSkeleton'), { customClass: 'h-10 w-10 rounded-lg' }),
-            h(resolveComponent('SharedSkeleton'), { customClass: 'h-10 w-10 rounded-lg' }),
-            h(resolveComponent('SharedSkeleton'), { customClass: 'h-10 w-10 rounded-lg' }),
+            h(Skeleton, { customClass: 'h-10 w-10 rounded-lg' }),
+            h(Skeleton, { customClass: 'h-10 w-10 rounded-lg' }),
+            h(Skeleton, { customClass: 'h-10 w-10 rounded-lg' }),
           ]),
         ]),
       ]),
       // Content skeleton
       h('div', { class: 'px-8 py-6 max-w-3xl mx-auto space-y-6' }, [
-        h(resolveComponent('SharedSkeleton'), { customClass: 'h-10 w-3/4' }),
+        h(Skeleton, { customClass: 'h-10 w-3/4' }),
         h('div', { class: 'space-y-3' }, [
-          h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-full' }),
-          h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-full' }),
-          h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-5/6' }),
+          h(Skeleton, { customClass: 'h-4 w-full' }),
+          h(Skeleton, { customClass: 'h-4 w-full' }),
+          h(Skeleton, { customClass: 'h-4 w-5/6' }),
         ]),
-        h(resolveComponent('SharedSkeleton'), { customClass: 'h-8 w-1/2' }),
+        h(Skeleton, { customClass: 'h-8 w-1/2' }),
         h('div', { class: 'space-y-3' }, [
-          h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-full' }),
-          h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-4/5' }),
-          h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-full' }),
-          h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-3/4' }),
+          h(Skeleton, { customClass: 'h-4 w-full' }),
+          h(Skeleton, { customClass: 'h-4 w-4/5' }),
+          h(Skeleton, { customClass: 'h-4 w-full' }),
+          h(Skeleton, { customClass: 'h-4 w-3/4' }),
         ]),
-        h(resolveComponent('SharedSkeleton'), { customClass: 'h-40 w-full rounded-xl' }),
+        h(Skeleton, { customClass: 'h-40 w-full rounded-xl' }),
       ]),
     ])
   },

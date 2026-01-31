@@ -248,7 +248,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, defineComponent, resolveComponent, type PropType, ref, computed } from 'vue'
+import { h, defineComponent, type PropType, ref, computed } from 'vue'
 import type { Document } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
@@ -637,13 +637,13 @@ const DocListSkeleton = defineComponent({
           Array.from({ length: props.count }).map((_, i) =>
             h('div', { key: i, class: 'p-4 rounded-xl border border-neutral-100 animate-pulse' }, [
               h('div', { class: 'flex items-center gap-3 mb-3' }, [
-                h(resolveComponent('SharedSkeleton'), { customClass: 'w-10 h-10 rounded-xl' }),
+                h(SharedSkeleton, { customClass: 'w-10 h-10 rounded-xl' }),
                 h('div', { class: 'flex-1 space-y-2' }, [
-                  h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-3/4' }),
-                  h(resolveComponent('SharedSkeleton'), { customClass: 'h-3 w-1/2' }),
+                  h(SharedSkeleton, { customClass: 'h-4 w-3/4' }),
+                  h(SharedSkeleton, { customClass: 'h-3 w-1/2' }),
                 ]),
               ]),
-              h(resolveComponent('SharedSkeleton'), { customClass: 'h-3 w-full' }),
+              h(SharedSkeleton, { customClass: 'h-3 w-full' }),
             ])
           )
         )
@@ -652,12 +652,12 @@ const DocListSkeleton = defineComponent({
       return h('div', { class: 'space-y-1' },
         Array.from({ length: props.count }).map((_, i) =>
           h('div', { key: i, class: 'flex items-center gap-3 p-3 rounded-xl animate-pulse' }, [
-            h(resolveComponent('SharedSkeleton'), { customClass: 'w-10 h-10 rounded-xl' }),
+            h(SharedSkeleton, { customClass: 'w-10 h-10 rounded-xl' }),
             h('div', { class: 'flex-1 space-y-2' }, [
-              h(resolveComponent('SharedSkeleton'), { customClass: 'h-4 w-48' }),
+              h(SharedSkeleton, { customClass: 'h-4 w-48' }),
               h('div', { class: 'flex items-center gap-2' }, [
-                h(resolveComponent('SharedSkeleton'), { variant: 'avatar', customClass: 'w-4 h-4' }),
-                h(resolveComponent('SharedSkeleton'), { customClass: 'h-3 w-20' }),
+                h(SharedSkeleton, { variant: 'avatar', customClass: 'w-4 h-4' }),
+                h(SharedSkeleton, { customClass: 'h-3 w-20' }),
               ]),
             ]),
           ])

@@ -122,7 +122,7 @@
           <TransitionGroup name="content-block" tag="div">
             <template v-for="(block, index) in parsedContent" :key="`${block.tag}-${index}`">
               <!-- Code Block -->
-              <DocsDocViewerCodeBlock
+              <CodeBlock
                 v-if="block.tag === 'code'"
                 :code="block.content"
                 :language="block.language"
@@ -345,6 +345,7 @@
 import { ref, computed, onMounted, defineComponent, h } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
+import CodeBlock from './CodeBlock.vue'
 
 // ============================================================================
 // Types
