@@ -3,7 +3,7 @@
     <!-- Background decoration (subtle) -->
     <div
       v-if="showGradient"
-      class="absolute inset-0 bg-neutral-50/50 pointer-events-none"
+      class="absolute inset-0 bg-neutral-50/50 dark:bg-neutral-800/50 pointer-events-none"
     />
 
     <div class="relative flex items-start justify-between gap-4">
@@ -20,19 +20,19 @@
               <button
                 v-if="index < breadcrumbs.length - 1"
                 type="button"
-                class="text-neutral-500 hover:text-neutral-900 truncate max-w-[120px] px-1 py-0.5 -mx-1 rounded transition-colors duration-150 hover:bg-neutral-100"
+                class="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white truncate max-w-[120px] px-1 py-0.5 -mx-1 rounded transition-colors duration-150 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                 @click="$emit('navigate', crumb)"
               >
                 {{ crumb.title }}
               </button>
-              <span v-else class="text-neutral-400 truncate max-w-[120px]">
+              <span v-else class="text-neutral-400 dark:text-neutral-500 truncate max-w-[120px]">
                 {{ crumb.title }}
               </span>
 
               <Icon
                 v-if="index < breadcrumbs.length - 1"
                 name="ph:caret-right"
-                class="w-3 h-3 text-neutral-400 shrink-0"
+                class="w-3 h-3 text-neutral-400 dark:text-neutral-500 shrink-0"
               />
             </template>
           </nav>
@@ -62,7 +62,7 @@
                 ref="titleInputRef"
                 v-model="editedTitle"
                 type="text"
-                class="flex-1 bg-transparent border-b-2 border-neutral-900 text-2xl font-bold text-neutral-900 outline-none py-1"
+                class="flex-1 bg-transparent border-b-2 border-neutral-900 dark:border-white text-2xl font-bold text-neutral-900 dark:text-white outline-none py-1"
                 :placeholder="title"
                 @keydown.enter="saveTitle"
                 @keydown.escape="cancelTitleEdit"
@@ -71,19 +71,19 @@
               <div class="flex items-center gap-1">
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors duration-150"
+                  class="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150"
                   aria-label="Save title"
                   @click="saveTitle"
                 >
-                  <Icon name="ph:check" class="w-4 h-4 text-neutral-600" />
+                  <Icon name="ph:check" class="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
                 </button>
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors duration-150"
+                  class="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150"
                   aria-label="Cancel edit"
                   @click="cancelTitleEdit"
                 >
-                  <Icon name="ph:x" class="w-4 h-4 text-neutral-500" />
+                  <Icon name="ph:x" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                 </button>
               </div>
             </div>
@@ -98,14 +98,14 @@
               <!-- Title badges -->
               <span
                 v-if="isLocked"
-                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-neutral-100 text-neutral-600 border border-neutral-200"
+                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700"
               >
                 <Icon name="ph:lock-fill" class="w-3 h-3" />
                 Locked
               </span>
               <span
                 v-if="isTemplate"
-                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-neutral-100 text-neutral-600 border border-neutral-200"
+                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700"
               >
                 <Icon name="ph:file-dashed" class="w-3 h-3" />
                 Template
@@ -141,7 +141,7 @@
             </Tooltip>
           </div>
 
-          <span v-if="author && (updatedAt || createdAt)" class="text-neutral-300">/</span>
+          <span v-if="author && (updatedAt || createdAt)" class="text-neutral-300 dark:text-neutral-600">/</span>
 
           <!-- Dates -->
           <Tooltip v-if="updatedAt" :delay-open="300">
@@ -158,10 +158,10 @@
 
           <!-- Version indicator -->
           <template v-if="version">
-            <span class="text-neutral-300">&middot;</span>
+            <span class="text-neutral-300 dark:text-neutral-600">&middot;</span>
             <button
               type="button"
-              class="flex items-center gap-1 text-neutral-500 hover:text-neutral-900 px-1.5 py-0.5 -mx-1 rounded-md transition-colors duration-150 hover:bg-neutral-100"
+              class="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white px-1.5 py-0.5 -mx-1 rounded-md transition-colors duration-150 hover:bg-neutral-100 dark:hover:bg-neutral-800"
               @click="$emit('version-click')"
             >
               <Icon name="ph:git-branch" class="w-3.5 h-3.5" />
@@ -171,16 +171,16 @@
 
           <!-- Word count -->
           <template v-if="wordCount !== undefined">
-            <span class="text-neutral-300">&middot;</span>
-            <span class="text-neutral-400">
+            <span class="text-neutral-300 dark:text-neutral-600">&middot;</span>
+            <span class="text-neutral-400 dark:text-neutral-500">
               {{ formatNumber(wordCount) }} words
             </span>
           </template>
 
           <!-- Read time -->
           <template v-if="readTime">
-            <span class="text-neutral-300">&middot;</span>
-            <span class="text-neutral-400">
+            <span class="text-neutral-300 dark:text-neutral-600">&middot;</span>
+            <span class="text-neutral-400 dark:text-neutral-500">
               {{ readTime }} min read
             </span>
           </template>
@@ -450,11 +450,11 @@ const documentTypeIcons: Record<DocumentType, string> = {
 }
 
 const documentTypeColors: Record<DocumentType, string> = {
-  document: 'text-neutral-500 bg-neutral-100',
-  markdown: 'text-neutral-500 bg-neutral-100',
-  code: 'text-neutral-500 bg-neutral-100',
-  spreadsheet: 'text-neutral-500 bg-neutral-100',
-  presentation: 'text-neutral-500 bg-neutral-100',
+  document: 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800',
+  markdown: 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800',
+  code: 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800',
+  spreadsheet: 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800',
+  presentation: 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800',
 }
 
 // ============================================================================
@@ -549,17 +549,17 @@ const config = computed(() => sizeConfig[props.size])
 // ============================================================================
 
 const headerClasses = computed(() => [
-  'sticky top-0 bg-white border-b border-neutral-200 shrink-0 z-10 relative overflow-hidden',
+  'sticky top-0 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 shrink-0 z-10 relative overflow-hidden',
   config.value.padding,
 ])
 
 const titleClasses = computed(() => [
-  'font-bold truncate text-neutral-900 flex items-center',
+  'font-bold truncate text-neutral-900 dark:text-white flex items-center',
   config.value.titleSize,
 ])
 
 const metadataClasses = computed(() => [
-  'flex items-center mt-2 text-neutral-500',
+  'flex items-center mt-2 text-neutral-500 dark:text-neutral-400',
   config.value.metaSize,
   config.value.gap,
 ])
@@ -574,15 +574,15 @@ const iconClasses = computed(() => [
 ])
 
 const tagClasses = computed(() => [
-  'px-2 py-0.5 rounded-md text-xs bg-neutral-100 text-neutral-600',
-  'hover:bg-neutral-200 hover:text-neutral-900',
+  'px-2 py-0.5 rounded-md text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
+  'hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-neutral-900 dark:hover:text-white',
   'transition-colors duration-150',
 ])
 
 const actionButtonClasses = computed(() => [
-  'p-2 rounded-lg hover:bg-neutral-100 outline-none',
+  'p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 outline-none',
   'transition-colors duration-150',
-  'focus-visible:ring-2 focus-visible:ring-neutral-900/20',
+  'focus-visible:ring-2 focus-visible:ring-neutral-900/20 dark:focus-visible:ring-neutral-500/30',
 ])
 
 // ============================================================================

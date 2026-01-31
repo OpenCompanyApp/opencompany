@@ -187,6 +187,19 @@ const sizeConfig: Record<ChannelItemSize, {
 const channelIcon = computed(() => {
   if (props.channel.type === 'agent') return 'ph:robot'
   if (props.channel.type === 'dm') return 'ph:chat-circle'
+  if (props.channel.type === 'external') {
+    // Provider-specific icons for external channels
+    const providerIcons: Record<string, string> = {
+      telegram: 'ph:telegram-logo',
+      slack: 'ph:slack-logo',
+      discord: 'ph:discord-logo',
+      google_chat: 'ph:google-logo',
+      whatsapp: 'ph:whatsapp-logo',
+    }
+    // Handle both camelCase and snake_case from API
+    const provider = props.channel.externalProvider || (props.channel as any).external_provider || ''
+    return providerIcons[provider] || 'ph:plug'
+  }
   if (props.channel.private) return 'ph:lock-simple'
   return 'ph:hash'
 })

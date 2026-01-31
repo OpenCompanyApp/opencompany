@@ -93,15 +93,15 @@
         <Transition name="status-badge">
           <div
             v-if="isLocked"
-            class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white flex items-center justify-center"
+            class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white dark:bg-neutral-900 flex items-center justify-center"
           >
-            <Icon name="ph:lock-fill" class="w-2 h-2 text-neutral-500" />
+            <Icon name="ph:lock-fill" class="w-2 h-2 text-neutral-500 dark:text-neutral-400" />
           </div>
           <div
             v-else-if="isShared"
-            class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white flex items-center justify-center"
+            class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white dark:bg-neutral-900 flex items-center justify-center"
           >
-            <Icon name="ph:users-fill" class="w-2 h-2 text-neutral-500" />
+            <Icon name="ph:users-fill" class="w-2 h-2 text-neutral-500 dark:text-neutral-400" />
           </div>
         </Transition>
       </div>
@@ -125,7 +125,7 @@
               <template v-for="(part, index) in highlightedTitle" :key="index">
                 <mark
                   v-if="part.highlight"
-                  class="bg-yellow-100 text-neutral-900 rounded px-0.5"
+                  class="bg-yellow-100 dark:bg-yellow-900/50 text-neutral-900 dark:text-white rounded px-0.5"
                 >{{ part.text }}</mark>
                 <span v-else>{{ part.text }}</span>
               </template>
@@ -167,12 +167,12 @@
 
           <!-- Tags -->
           <template v-if="tags && tags.length > 0">
-            <span class="text-neutral-200">&middot;</span>
+            <span class="text-neutral-200 dark:text-neutral-600">&middot;</span>
             <div class="flex items-center gap-1">
               <span
                 v-for="tag in displayTags"
                 :key="tag"
-                class="px-1.5 py-0.5 rounded-md text-[10px] bg-neutral-100 text-neutral-500"
+                class="px-1.5 py-0.5 rounded-md text-[10px] bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
               >
                 {{ tag }}
               </span>
@@ -422,14 +422,14 @@ const config = computed(() => sizeConfig[props.size])
 const rowClasses = computed(() => [
   'w-full flex items-start rounded-lg text-left group outline-none relative overflow-hidden',
   'transition-all duration-150 ease-out',
-  'focus-visible:ring-2 focus-visible:ring-neutral-900/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+  'focus-visible:ring-2 focus-visible:ring-neutral-900/50 dark:focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900',
   config.value.gap,
   props.selected
-    ? 'bg-neutral-100 text-neutral-900 border-l-2 border-neutral-900'
-    : 'hover:bg-neutral-50 text-neutral-900',
+    ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white border-l-2 border-neutral-900 dark:border-white'
+    : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white',
   props.disabled && 'opacity-50 cursor-not-allowed',
-  props.isDragging && 'opacity-60 shadow-lg ring-2 ring-neutral-300',
-  props.isLocked && !props.selected && 'bg-neutral-50',
+  props.isDragging && 'opacity-60 shadow-lg ring-2 ring-neutral-300 dark:ring-neutral-600',
+  props.isLocked && !props.selected && 'bg-neutral-50 dark:bg-neutral-800/50',
 ])
 
 const rowStyles = computed(() => ({
@@ -444,19 +444,19 @@ const checkboxClasses = computed(() => [
   'transition-colors duration-150 ease-out',
   config.value.toggleSize,
   props.isSelected
-    ? 'bg-neutral-900 border-neutral-900'
-    : 'border-neutral-200 hover:border-neutral-400',
+    ? 'bg-neutral-900 dark:bg-white border-neutral-900 dark:border-white'
+    : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-400 dark:hover:border-neutral-500',
 ])
 
 const checkIconClasses = computed(() => [
-  'text-white',
+  'text-white dark:text-neutral-900',
   props.size === 'sm' ? 'w-2.5 h-2.5' : props.size === 'lg' ? 'w-3.5 h-3.5' : 'w-3 h-3',
 ])
 
 const toggleButtonClasses = computed(() => [
   'flex items-center justify-center shrink-0 -ml-1 rounded',
   'transition-colors duration-150 ease-out',
-  'hover:bg-neutral-100',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
   config.value.toggleSize,
 ])
 
@@ -468,7 +468,7 @@ const togglePlaceholderClasses = computed(() => [
 const toggleIconClasses = computed(() => [
   'transition-transform duration-150 ease-out',
   props.expanded ? 'rotate-90' : '',
-  props.selected ? 'text-neutral-900' : 'text-neutral-500',
+  props.selected ? 'text-neutral-900 dark:text-white' : 'text-neutral-500 dark:text-neutral-400',
   props.size === 'sm' ? 'w-2.5 h-2.5' : props.size === 'lg' ? 'w-3.5 h-3.5' : 'w-3 h-3',
 ])
 
@@ -477,8 +477,8 @@ const iconContainerClasses = computed(() => [
   'transition-colors duration-150 ease-out',
   config.value.iconContainer,
   props.selected
-    ? 'bg-neutral-200'
-    : 'bg-neutral-100',
+    ? 'bg-neutral-200 dark:bg-neutral-700'
+    : 'bg-neutral-100 dark:bg-neutral-800',
 ])
 
 const iconSizeStyle = computed(() => {
@@ -487,8 +487,8 @@ const iconSizeStyle = computed(() => {
 })
 
 const iconColorClasses = computed(() => {
-  if (props.selected) return 'text-neutral-700'
-  return documentTypeColors[effectiveDocType.value] || 'text-neutral-500'
+  if (props.selected) return 'text-neutral-700 dark:text-neutral-300'
+  return documentTypeColors[effectiveDocType.value] || 'text-neutral-500 dark:text-neutral-400'
 })
 
 const documentIconClasses = computed(() => [
@@ -515,8 +515,8 @@ const metaTextClasses = computed(() => [
 const actionButtonClasses = computed(() => [
   'flex items-center justify-center rounded-md',
   'transition-colors duration-150 ease-out',
-  'hover:bg-neutral-100',
-  'focus-visible:ring-2 focus-visible:ring-neutral-900/50 focus-visible:ring-offset-1 focus-visible:ring-offset-white',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  'focus-visible:ring-2 focus-visible:ring-neutral-900/50 dark:focus-visible:ring-white/50 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900',
   config.value.actionSize,
 ])
 

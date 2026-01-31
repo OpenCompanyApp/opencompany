@@ -67,7 +67,7 @@
     </div>
 
     <!-- Agents Section (collapsible) -->
-    <CollapsibleRoot v-if="agents.length > 0 || loading" v-model:open="agentsSectionOpen" class="mt-3">
+    <CollapsibleRoot v-if="agents.length > 0 || loading" v-model:open="agentsSectionOpen" class="mt-3 mb-3">
       <CollapsibleTrigger
         v-if="!collapsed"
         class="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors duration-150"
@@ -176,16 +176,15 @@ const page = usePage()
 // State
 const agentsSectionOpen = ref(true)
 
-// Primary navigation - most critical/frequently used items
+// Primary navigation - core daily workflow (high frequency)
 const primaryNavItems = ref<NavItem[]>([
-  { to: '/chat', icon: 'ph:hash', iconActive: 'ph:hash-fill', label: 'Chat', badge: 15 },
-  { to: '/messages', icon: 'ph:chat-circle', iconActive: 'ph:chat-circle-fill', label: 'DMs' },
+  { to: '/', icon: 'ph:house', iconActive: 'ph:house-fill', label: 'Dashboard' },
+  { to: '/chat', icon: 'ph:chat-circle', iconActive: 'ph:chat-circle-fill', label: 'Messages', badge: 15 },
   { to: '/tasks', icon: 'ph:check-square', iconActive: 'ph:check-square-fill', label: 'Tasks' },
   { to: '/approvals', icon: 'ph:seal-check', iconActive: 'ph:seal-check-fill', label: 'Approvals', badge: 3 },
-  { to: '/', icon: 'ph:house', iconActive: 'ph:house-fill', label: 'Dashboard' },
 ])
 
-// Secondary navigation - less frequently used
+// Secondary navigation - tools & resources (moderate frequency)
 const secondaryNavItems = ref<NavItem[]>([
   { to: '/activity', icon: 'ph:activity', iconActive: 'ph:activity-fill', label: 'Activity' },
   { to: '/docs', icon: 'ph:file-text', iconActive: 'ph:file-text-fill', label: 'Docs' },
@@ -194,9 +193,8 @@ const secondaryNavItems = ref<NavItem[]>([
   { to: '/org', icon: 'ph:tree-structure', iconActive: 'ph:tree-structure-fill', label: 'Organization' },
   { to: '/workload', icon: 'ph:chart-bar', iconActive: 'ph:chart-bar-fill', label: 'Workload' },
   { to: '/automation', icon: 'ph:lightning', iconActive: 'ph:lightning-fill', label: 'Automation' },
-  { to: '/integrations', icon: 'ph:plugs-connected', iconActive: 'ph:plugs-connected-fill', label: 'Integrations' },
-  { to: '/settings', icon: 'ph:gear', iconActive: 'ph:gear-fill', label: 'Settings' },
 ])
+
 
 // Computed
 const agents = computed(() => props.agents)

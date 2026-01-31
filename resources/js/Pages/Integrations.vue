@@ -9,7 +9,33 @@
         </p>
       </header>
 
-      <div class="space-y-6">
+      <!-- Tabs -->
+      <div class="flex gap-2 mb-6">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          type="button"
+          :class="[
+            'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+            activeTab === tab.id
+              ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+              : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800',
+          ]"
+          @click="activeTab = tab.id"
+        >
+          <Icon :name="tab.icon" class="w-4 h-4 mr-1.5 inline" />
+          {{ tab.label }}
+          <span
+            v-if="tab.id === 'installed' && installedCount > 0"
+            class="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-white/20 dark:bg-neutral-900/20"
+          >
+            {{ installedCount }}
+          </span>
+        </button>
+      </div>
+
+      <!-- Installed Tab -->
+      <div v-if="activeTab === 'installed'" class="space-y-6">
         <!-- Webhooks Section -->
         <section>
           <div class="flex items-center justify-between mb-4">
@@ -137,36 +163,87 @@
           </div>
         </section>
 
-        <!-- Connected Services Section (future) -->
+        <!-- Connected Services Section -->
         <section>
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-sm font-medium text-neutral-900 dark:text-white">Connected Services</h2>
           </div>
 
-          <div class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
+          <div v-if="connectedServices.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
             <div
-              v-for="service in availableServices"
+              v-for="service in connectedServices"
               :key="service.id"
               class="px-4 py-3"
             >
               <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-                  <Icon :name="service.icon" class="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
+                <div class="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <Icon :name="service.icon" class="w-4 h-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ service.name }}</p>
                   <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ service.description }}</p>
                 </div>
-                <button
-                  v-if="!service.connected"
-                  type="button"
-                  class="px-3 py-1.5 text-xs font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150"
-                >
-                  Connect
-                </button>
-                <span v-else class="text-xs text-green-600 dark:text-green-400">Connected</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <Icon name="ph:check-circle-fill" class="w-3.5 h-3.5" />
+                    Connected
+                  </span>
+                  <button
+                    type="button"
+                    class="p-1.5 text-neutral-400 hover:text-red-500 transition-colors"
+                    title="Disconnect"
+                    @click="disconnectService(service.id)"
+                  >
+                    <Icon name="ph:plug" class="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
+          </div>
+
+          <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center">
+            <Icon name="ph:plugs-connected" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
+            <p class="text-sm text-neutral-500 dark:text-neutral-400">No connected services</p>
+            <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+              Browse the
+              <button type="button" class="text-neutral-900 dark:text-white underline" @click="activeTab = 'library'">
+                library
+              </button>
+              to connect integrations
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Library Tab -->
+      <div v-else-if="activeTab === 'library'" class="space-y-8">
+        <!-- Search -->
+        <SearchInput
+          v-model="librarySearch"
+          placeholder="Search integrations..."
+          :clearable="true"
+        />
+
+        <!-- Empty search state -->
+        <div v-if="librarySearch && filteredCategories.length === 0" class="text-center py-12">
+          <Icon name="ph:magnifying-glass" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+          <p class="text-sm text-neutral-500 dark:text-neutral-400">No integrations found for "{{ librarySearch }}"</p>
+        </div>
+
+        <!-- Categories -->
+        <section v-for="category in filteredCategories" :key="category.id">
+          <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
+            <Icon :name="category.icon" class="w-4 h-4 text-neutral-500" />
+            {{ category.name }}
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <IntegrationCard
+              v-for="integration in category.integrations"
+              :key="integration.id"
+              :integration="integration"
+              @install="handleInstall"
+              @uninstall="handleUninstall"
+            />
           </div>
         </section>
       </div>
@@ -232,10 +309,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
+import SearchInput from '@/Components/shared/SearchInput.vue'
+import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
+import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
+// Tab state
+type TabId = 'installed' | 'library'
+
+const tabs = [
+  { id: 'installed' as const, label: 'Installed', icon: 'ph:check-circle' },
+  { id: 'library' as const, label: 'Library', icon: 'ph:squares-four' },
+]
+
+const activeTab = ref<TabId>('installed')
+
+// Interfaces
 interface Webhook {
   id: string
   name: string
@@ -262,15 +353,25 @@ interface Service {
   connected: boolean
 }
 
-const showWebhookModal = ref(false)
+interface IntegrationCategory {
+  id: string
+  name: string
+  icon: string
+  integrations: Integration[]
+}
 
+// Webhook state
+const showWebhookModal = ref(false)
 const webhookForm = reactive({
   name: '',
   targetType: 'agent' as 'agent' | 'channel' | 'task',
   targetId: '',
 })
 
-// Mock data
+// Library search
+const librarySearch = ref('')
+
+// Mock data - Webhooks
 const webhooks = ref<Webhook[]>([
   {
     id: 'wh-1',
@@ -292,6 +393,7 @@ const webhooks = ref<Webhook[]>([
   },
 ])
 
+// Mock data - API Keys
 const apiKeys = ref<ApiKey[]>([
   {
     id: 'key-1',
@@ -302,12 +404,98 @@ const apiKeys = ref<ApiKey[]>([
   },
 ])
 
-const availableServices = ref<Service[]>([
-  { id: 'slack', name: 'Slack', icon: 'ph:slack-logo', description: 'Send notifications to Slack channels', connected: false },
-  { id: 'github', name: 'GitHub', icon: 'ph:github-logo', description: 'Sync issues and pull requests', connected: true },
-  { id: 'linear', name: 'Linear', icon: 'ph:square-split-horizontal', description: 'Sync tasks with Linear projects', connected: false },
+// Integration categories for Library
+const integrationCategories = ref<IntegrationCategory[]>([
+  {
+    id: 'communication',
+    name: 'Communication',
+    icon: 'ph:chat-circle',
+    integrations: [
+      { id: 'slack', name: 'Slack', icon: 'ph:slack-logo', description: 'Team messaging and notifications', installed: false, popular: true },
+      { id: 'discord', name: 'Discord', icon: 'ph:discord-logo', description: 'Community chat and voice', installed: false, popular: true },
+      { id: 'teams', name: 'Microsoft Teams', icon: 'ph:microsoft-teams-logo', description: 'Enterprise collaboration', installed: false },
+      { id: 'telegram', name: 'Telegram', icon: 'ph:telegram-logo', description: 'Secure messaging', installed: false },
+      { id: 'matrix', name: 'Matrix', icon: 'ph:chat-centered-dots', description: 'Decentralized chat (self-hosted)', installed: false },
+    ],
+  },
+  {
+    id: 'developer',
+    name: 'Developer Tools',
+    icon: 'ph:code',
+    integrations: [
+      { id: 'github', name: 'GitHub', icon: 'ph:github-logo', description: 'Repos, issues, PRs, actions', installed: true, popular: true },
+      { id: 'gitlab', name: 'GitLab', icon: 'ph:gitlab-logo', description: 'Git hosting and CI/CD', installed: false },
+      { id: 'linear', name: 'Linear', icon: 'ph:square-split-horizontal', description: 'Issue tracking', installed: false, popular: true },
+      { id: 'jira', name: 'Jira', icon: 'ph:kanban', description: 'Project management', installed: false },
+    ],
+  },
+  {
+    id: 'productivity',
+    name: 'Productivity',
+    icon: 'ph:briefcase',
+    integrations: [
+      { id: 'notion', name: 'Notion', icon: 'ph:notebook', description: 'Docs and knowledge base', installed: false, popular: true },
+      { id: 'trello', name: 'Trello', icon: 'ph:trello-logo', description: 'Kanban boards', installed: false },
+      { id: 'google-calendar', name: 'Google Calendar', icon: 'ph:calendar', description: 'Calendar sync', installed: false },
+      { id: 'obsidian', name: 'Obsidian', icon: 'ph:vault', description: 'Knowledge management', installed: false },
+      { id: 'google-drive', name: 'Google Drive', icon: 'ph:google-drive-logo', description: 'File storage and sharing', installed: false },
+    ],
+  },
+  {
+    id: 'data',
+    name: 'Data & APIs',
+    icon: 'ph:database',
+    integrations: [
+      { id: 'webhooks', name: 'Webhooks', icon: 'ph:webhooks-logo', description: 'Custom HTTP webhooks', installed: true },
+      { id: 'email', name: 'Email (SMTP)', icon: 'ph:envelope', description: 'Send and receive emails', installed: false },
+      { id: 'rest-api', name: 'REST API', icon: 'ph:plug', description: 'Generic API connector', installed: false },
+      { id: 'zapier', name: 'Zapier', icon: 'ph:lightning', description: 'Connect to 5,000+ apps', installed: false, popular: true },
+    ],
+  },
 ])
 
+// Computed - Connected services (installed integrations)
+const connectedServices = computed<Service[]>(() => {
+  const installed: Service[] = []
+  for (const category of integrationCategories.value) {
+    for (const integration of category.integrations) {
+      if (integration.installed) {
+        installed.push({
+          id: integration.id,
+          name: integration.name,
+          icon: integration.icon,
+          description: integration.description,
+          connected: true,
+        })
+      }
+    }
+  }
+  return installed
+})
+
+// Computed - Installed count for tab badge
+const installedCount = computed(() => {
+  return webhooks.value.length + apiKeys.value.length + connectedServices.value.length
+})
+
+// Computed - Filtered categories for search
+const filteredCategories = computed(() => {
+  if (!librarySearch.value) {
+    return integrationCategories.value
+  }
+
+  const search = librarySearch.value.toLowerCase()
+  return integrationCategories.value
+    .map(category => ({
+      ...category,
+      integrations: category.integrations.filter(
+        i => i.name.toLowerCase().includes(search) || i.description.toLowerCase().includes(search)
+      ),
+    }))
+    .filter(category => category.integrations.length > 0)
+})
+
+// Webhook handlers
 const editWebhook = (webhook: Webhook) => {
   webhookForm.name = webhook.name
   webhookForm.targetType = webhook.targetType
@@ -334,6 +522,7 @@ const saveWebhook = () => {
   webhookForm.targetId = ''
 }
 
+// API Key handlers
 const generateApiKey = () => {
   const newKey: ApiKey = {
     id: `key-${Date.now()}`,
@@ -351,5 +540,39 @@ const copyApiKey = (key: ApiKey) => {
 
 const revokeApiKey = (id: string) => {
   apiKeys.value = apiKeys.value.filter(k => k.id !== id)
+}
+
+// Integration handlers
+const handleInstall = (integration: Integration) => {
+  // Find and update the integration
+  for (const category of integrationCategories.value) {
+    const found = category.integrations.find(i => i.id === integration.id)
+    if (found) {
+      found.installed = true
+      break
+    }
+  }
+}
+
+const handleUninstall = (integration: Integration) => {
+  // Find and update the integration
+  for (const category of integrationCategories.value) {
+    const found = category.integrations.find(i => i.id === integration.id)
+    if (found) {
+      found.installed = false
+      break
+    }
+  }
+}
+
+const disconnectService = (id: string) => {
+  // Find and disconnect the service
+  for (const category of integrationCategories.value) {
+    const found = category.integrations.find(i => i.id === id)
+    if (found) {
+      found.installed = false
+      break
+    }
+  }
 }
 </script>

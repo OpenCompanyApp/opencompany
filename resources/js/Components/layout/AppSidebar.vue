@@ -10,9 +10,25 @@
   >
     <!-- Header -->
     <div class="flex items-center justify-between p-3">
-      <!-- Collapse toggle / New chat button -->
+      <!-- Logo or collapse toggle -->
+      <Link v-if="!collapsed" href="/" class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center shrink-0">
+          <span class="text-white dark:text-neutral-900 font-bold text-sm">O</span>
+        </div>
+        <span class="font-semibold text-neutral-900 dark:text-white tracking-tight">OpenCompany</span>
+      </Link>
+
+      <!-- Collapsed: show icon only -->
+      <Link v-else href="/" class="p-2">
+        <div class="w-8 h-8 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center">
+          <span class="text-white dark:text-neutral-900 font-bold text-sm">O</span>
+        </div>
+      </Link>
+
+      <!-- Collapse toggle button -->
       <Tooltip
-        :text="collapsed ? 'Expand sidebar' : 'Toggle sidebar'"
+        v-if="!collapsed"
+        text="Hide sidebar"
         :delay-open="300"
       >
         <button
@@ -29,14 +45,19 @@
           />
         </button>
       </Tooltip>
+    </div>
 
-      <!-- New action button -->
-      <Tooltip v-if="!collapsed" text="New chat" :delay-open="300">
+    <!-- Expand button when collapsed -->
+    <div v-if="collapsed" class="px-2 mb-2">
+      <Tooltip text="Expand sidebar" side="right" :delay-open="300">
         <button
-          class="p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-neutral-400"
-          @click="$emit('searchClick')"
+          class="w-full p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 flex items-center justify-center"
+          @click="handleCollapse"
         >
-          <Icon name="ph:pencil-simple-line" class="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
+          <Icon
+            name="ph:sidebar-simple"
+            class="w-5 h-5 text-neutral-600 dark:text-neutral-300"
+          />
         </button>
       </Tooltip>
     </div>
@@ -48,26 +69,42 @@
 
     <!-- Bottom section -->
     <div class="mt-auto">
-      <!-- Credits Display (compact) -->
-      <div
-        v-if="showCredits && !collapsed"
-        class="mx-2 mb-2"
-      >
-        <button
-          class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors duration-150 text-left group"
-          @click="$emit('creditsClick')"
+      <!-- Settings & Integrations -->
+      <div :class="['space-y-0.5', collapsed ? 'px-2' : 'px-2']">
+        <Link
+          href="/integrations"
+          :class="[
+            'group flex items-center rounded-lg transition-colors duration-150 outline-none',
+            collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
+            isActive('/integrations')
+              ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
+              : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
+            'focus-visible:ring-1 focus-visible:ring-neutral-400',
+          ]"
         >
-          <div class="relative">
-            <Icon name="ph:coins" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-            <span
-              v-if="creditsPercentage <= 20"
-              class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"
-            />
-          </div>
-          <span class="flex-1 text-sm text-neutral-600 dark:text-neutral-300">
-            {{ formatCredits(creditsRemainingValue) }} credits
-          </span>
-        </button>
+          <Icon
+            :name="isActive('/integrations') ? 'ph:plugs-connected-fill' : 'ph:plugs-connected'"
+            class="w-[18px] h-[18px] shrink-0"
+          />
+          <span v-if="!collapsed" class="text-sm truncate">Integrations</span>
+        </Link>
+        <Link
+          href="/settings"
+          :class="[
+            'group flex items-center rounded-lg transition-colors duration-150 outline-none',
+            collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
+            isActive('/settings')
+              ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
+              : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
+            'focus-visible:ring-1 focus-visible:ring-neutral-400',
+          ]"
+        >
+          <Icon
+            :name="isActive('/settings') ? 'ph:gear-fill' : 'ph:gear'"
+            class="w-[18px] h-[18px] shrink-0"
+          />
+          <span v-if="!collapsed" class="text-sm truncate">Settings</span>
+        </Link>
       </div>
 
       <!-- User Menu -->
@@ -80,6 +117,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Link, usePage } from '@inertiajs/vue3'
 import SidebarNav from '@/Components/layout/SidebarNav.vue'
 import UserMenu from '@/Components/layout/UserMenu.vue'
 import Icon from '@/Components/shared/Icon.vue'
@@ -91,42 +129,26 @@ type SidebarVariant = 'default' | 'floating' | 'minimal'
 // Props
 const props = withDefaults(defineProps<{
   variant?: SidebarVariant
-  collapsed?: boolean
-  showCredits?: boolean
-  creditsRemaining?: number
-  creditsTotal?: number
   class?: string
 }>(), {
   variant: 'default',
-  collapsed: false,
-  showCredits: true,
-  creditsRemaining: 1850,
-  creditsTotal: 3000,
 })
 
+const collapsed = defineModel<boolean>('collapsed', { default: false })
+
 const className = computed(() => props.class)
+const page = usePage()
 
-// Computed
-const creditsRemainingValue = computed(() => props.creditsRemaining ?? 1850)
-const creditsTotalValue = computed(() => props.creditsTotal ?? 3000)
-const creditsPercentage = computed(() => Math.round((creditsRemainingValue.value / creditsTotalValue.value) * 100))
-
-// Methods
-const formatCredits = (value: number): string => {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(1)}k`
-  }
-  return value.toLocaleString()
+const isActive = (path: string): boolean => {
+  return page.url.startsWith(path)
 }
 
 const emit = defineEmits<{
   searchClick: []
-  creditsClick: []
-  'update:collapsed': [collapsed: boolean]
 }>()
 
 const handleCollapse = () => {
-  emit('update:collapsed', !props.collapsed)
+  collapsed.value = !collapsed.value
 }
 </script>
 

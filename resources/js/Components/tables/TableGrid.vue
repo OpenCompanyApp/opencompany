@@ -41,7 +41,16 @@
               </button>
             </DropdownMenu>
           </th>
-          <th class="w-10 px-2 py-2 border-b border-neutral-200 dark:border-neutral-700" />
+          <!-- Add Column Button -->
+          <th class="w-10 px-2 py-2 border-b border-neutral-200 dark:border-neutral-700">
+            <button
+              type="button"
+              class="w-full h-full flex items-center justify-center p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              @click="$emit('addColumn')"
+            >
+              <Icon name="ph:plus" class="w-4 h-4" />
+            </button>
+          </th>
         </tr>
       </thead>
 
@@ -92,10 +101,35 @@
               <div class="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-3">
                 <Icon name="ph:rows" class="w-6 h-6 text-neutral-400" />
               </div>
-              <p class="text-sm text-neutral-500 dark:text-neutral-400">
-                No rows yet. Click "Add Row" to create your first row.
+              <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-3">
+                No rows yet
               </p>
+              <button
+                type="button"
+                class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+                @click="$emit('addRow')"
+              >
+                <Icon name="ph:plus" class="w-4 h-4" />
+                Add row
+              </button>
             </div>
+          </td>
+        </tr>
+
+        <!-- Add Row Button -->
+        <tr v-else>
+          <td
+            :colspan="columns.length + 2"
+            class="px-3 py-2 border-b border-neutral-200 dark:border-neutral-700"
+          >
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-2 py-1 text-sm text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors"
+              @click="$emit('addRow')"
+            >
+              <Icon name="ph:plus" class="w-4 h-4" />
+              <span>Add row</span>
+            </button>
           </td>
         </tr>
       </tbody>
@@ -146,6 +180,8 @@ const emit = defineEmits<{
   deleteColumn: [columnId: string]
   editColumn: [column: DataTableColumn]
   selectionChange: [selectedIds: string[]]
+  addRow: []
+  addColumn: []
 }>()
 
 // Selection state

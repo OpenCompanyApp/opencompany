@@ -16,6 +16,8 @@ class Task extends Model
 
     protected $fillable = [
         'id',
+        'parent_id',
+        'is_folder',
         'title',
         'description',
         'status',
@@ -32,6 +34,7 @@ class Task extends Model
     protected function casts(): array
     {
         return [
+            'is_folder' => 'boolean',
             'cost' => 'decimal:2',
             'estimated_cost' => 'decimal:2',
             'completed_at' => 'datetime',
@@ -48,6 +51,8 @@ class Task extends Model
         $array = parent::toArray();
 
         // Add camelCase versions of snake_case fields
+        $array['parentId'] = $this->parent_id;
+        $array['isFolder'] = $this->is_folder;
         $array['createdAt'] = $this->created_at;
         $array['completedAt'] = $this->completed_at;
         $array['estimatedCost'] = $this->estimated_cost;
@@ -86,5 +91,15 @@ class Task extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(TaskComment::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(Task::class, 'parent_id');
     }
 }

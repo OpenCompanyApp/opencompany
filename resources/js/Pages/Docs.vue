@@ -1,37 +1,62 @@
 <template>
-  <div class="h-full flex">
-    <!-- Document List Sidebar -->
-    <aside class="w-72 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
-      <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="font-semibold text-neutral-900 dark:text-white">Documents</h2>
-          <button
-            class="p-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white transition-colors"
-            @click="handleCreateDocument"
-          >
-            <Icon name="ph:plus" class="w-5 h-5" />
-          </button>
-        </div>
+  <div class="h-full flex flex-col md:flex-row">
+    <!-- Mobile Toolbar -->
+    <div class="md:hidden flex items-center gap-2 p-3 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shrink-0">
+      <button
+        class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-sm text-neutral-700 dark:text-neutral-200"
+        @click="showMobileDocList = true"
+      >
+        <Icon name="ph:list" class="w-4 h-4" />
+        Docs
+      </button>
+      <span class="flex-1 text-sm font-medium text-neutral-900 dark:text-white truncate">
+        {{ selectedDoc?.title || 'Select a document' }}
+      </span>
+      <button
+        v-if="selectedDoc"
+        class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 relative"
+        @click="showAttachmentsSidebar = true"
+      >
+        <Icon name="ph:paperclip" class="w-5 h-5" />
+        <span v-if="attachmentCount > 0" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-neutral-900 text-white text-[10px] flex items-center justify-center">
+          {{ attachmentCount }}
+        </span>
+      </button>
+      <button
+        v-if="selectedDoc"
+        class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 relative"
+        @click="showCommentsSidebar = true"
+      >
+        <Icon name="ph:chat-circle" class="w-5 h-5" />
+        <span v-if="comments.length > 0" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-neutral-900 text-white text-[10px] flex items-center justify-center">
+          {{ comments.length }}
+        </span>
+      </button>
+    </div>
 
-        <!-- Search -->
-        <div class="flex items-center gap-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
-          <Icon name="ph:magnifying-glass" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search docs..."
-            class="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-500 dark:placeholder:text-neutral-400 dark:text-white"
-          />
-        </div>
-      </div>
-
-      <div class="flex-1 overflow-y-auto p-3">
-        <DocsDocList
-          :documents="filteredDocuments"
-          :selected="selectedDoc"
-          @select="handleSelectDocument"
-        />
-      </div>
+    <!-- Document List Sidebar - Desktop always visible, Mobile as overlay -->
+    <aside
+      :class="[
+        'border-r border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0 bg-white dark:bg-neutral-900',
+        'fixed inset-0 z-30 md:relative md:w-72',
+        showMobileDocList ? 'flex' : 'hidden md:flex'
+      ]"
+    >
+      <!-- Mobile close button -->
+      <button
+        class="md:hidden absolute top-3 right-3 p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 z-10"
+        @click="showMobileDocList = false"
+      >
+        <Icon name="ph:x" class="w-5 h-5 text-neutral-500 dark:text-neutral-300" />
+      </button>
+      <DocsDocList
+        :documents="filteredDocuments"
+        :selected="selectedDoc"
+        title="Documents"
+        @select="handleSelectDocumentMobile"
+        @create="handleCreateDocument"
+        @create-folder="handleCreateFolder"
+      />
     </aside>
 
     <!-- Document Viewer -->
@@ -51,7 +76,7 @@
 
     <!-- Version History Panel -->
     <Transition name="slide-left">
-      <aside v-if="showVersionHistory" class="w-80 bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
+      <aside v-if="showVersionHistory" class="fixed inset-0 z-30 md:relative md:inset-auto w-full md:w-80 bg-white dark:bg-neutral-900 md:border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
         <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
           <div class="flex items-center justify-between">
             <h3 class="font-semibold text-neutral-900 dark:text-white">Version History</h3>
@@ -132,7 +157,7 @@
 
     <!-- Attachments Sidebar -->
     <Transition name="slide-left">
-      <aside v-if="showAttachmentsSidebar && selectedDoc" class="w-80 bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
+      <aside v-if="showAttachmentsSidebar && selectedDoc" class="fixed inset-0 z-30 md:relative md:inset-auto w-full md:w-80 bg-white dark:bg-neutral-900 md:border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
         <DocsDocumentAttachments
           :document-id="selectedDoc.id"
           @close="showAttachmentsSidebar = false"
@@ -143,7 +168,7 @@
 
     <!-- Comment Sidebar -->
     <Transition name="slide-left">
-      <aside v-if="showCommentsSidebar" class="w-80 bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
+      <aside v-if="showCommentsSidebar" class="fixed inset-0 z-30 md:relative md:inset-auto w-full md:w-80 bg-white dark:bg-neutral-900 md:border-l border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
         <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
           <div class="flex items-center justify-between">
             <h3 class="font-semibold text-neutral-900 dark:text-white">
@@ -194,8 +219,8 @@
       </aside>
     </Transition>
 
-    <!-- Floating Actions -->
-    <div class="fixed bottom-6 right-6 flex items-center gap-2">
+    <!-- Floating Actions (desktop only, mobile uses toolbar) -->
+    <div class="hidden md:flex fixed bottom-6 right-6 items-center gap-2">
       <button
         v-if="selectedDoc"
         class="p-3 rounded-full bg-neutral-100 dark:bg-neutral-700 shadow-lg border border-neutral-200 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-600 transition-colors relative"
@@ -284,13 +309,13 @@ const documents = computed<Document[]>(() => documentsData.value ?? [])
 
 // Select the first actual document (not a folder)
 const selectedDoc = ref<Document | null>(null)
-const searchQuery = ref('')
 const isEditing = ref(false)
 const hasChanges = ref(false)
 const saving = ref(false)
 const editedContent = ref('')
 const showVersionHistory = ref(false)
 const showCommentsSidebar = ref(false)
+const showMobileDocList = ref(false)
 const showAttachmentsSidebar = ref(false)
 const showDiffViewer = ref(false)
 const newCommentContent = ref('')
@@ -355,11 +380,7 @@ const loadAttachmentCount = async (documentId?: string) => {
   }
 }
 
-const filteredDocuments = computed(() =>
-  documents.value.filter(doc =>
-    doc.title.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-)
+const filteredDocuments = computed(() => documents.value)
 
 const handleSelectDocument = async (doc: Document) => {
   if (isEditing.value && hasChanges.value) {
@@ -372,6 +393,11 @@ const handleSelectDocument = async (doc: Document) => {
   hasChanges.value = false
 }
 
+const handleSelectDocumentMobile = async (doc: Document) => {
+  await handleSelectDocument(doc)
+  showMobileDocList.value = false
+}
+
 const handleCreateDocument = async () => {
   const newDoc = await createDocument({
     title: 'Untitled Document',
@@ -382,6 +408,16 @@ const handleCreateDocument = async () => {
   if (newDoc) {
     selectedDoc.value = newDoc as Document
   }
+}
+
+const handleCreateFolder = async () => {
+  await createDocument({
+    title: 'New Folder',
+    content: '',
+    authorId: 'h1',
+    isFolder: true,
+  })
+  await refreshDocuments()
 }
 
 const handleContentChange = (content: string) => {

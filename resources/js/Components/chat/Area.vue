@@ -1,7 +1,7 @@
 <template>
   <div class="flex-1 flex flex-col h-full bg-white dark:bg-neutral-900">
-    <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
+    <!-- Header (hidden on mobile - parent has mobile toolbar) -->
+    <div class="hidden md:flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
       <div class="flex items-center gap-3">
         <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-700">
           <Icon :name="channelIcon" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
@@ -30,11 +30,12 @@
           </button>
         </Tooltip>
 
-        <!-- Members -->
-        <Tooltip text="View members" :delay-duration="300" side="bottom">
+        <!-- Members / Toggle Info -->
+        <Tooltip text="Channel details" :delay-duration="300" side="bottom">
           <button
             type="button"
             class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+            @click="emit('toggleInfo')"
           >
             <Icon name="ph:users" class="w-4 h-4" />
             <span class="text-xs font-medium">{{ channel.members?.length || 0 }}</span>
@@ -246,6 +247,7 @@ const emit = defineEmits<{
   threadReply: [parentMessageId: string, content: string]
   pin: [message: Message]
   typing: []
+  toggleInfo: []
 }>()
 
 // State

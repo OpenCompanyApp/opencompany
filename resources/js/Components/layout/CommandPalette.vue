@@ -1,17 +1,24 @@
 <template>
-  <Modal
-    v-model:open="isOpen"
-    :ui="{
-      width: sizeConfig[size].container,
-      padding: 'p-0',
-      rounded: 'rounded-lg',
-      background: 'bg-white dark:bg-neutral-900',
-      ring: 'ring-1 ring-neutral-200 dark:ring-neutral-700',
-      shadow: 'shadow-lg',
-    }"
-  >
-    <template #content>
-      <div class="overflow-hidden rounded-lg">
+  <DialogRoot v-model:open="isOpen">
+    <DialogPortal>
+      <DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+      <DialogContent
+        :class="[
+          'fixed left-1/2 top-[20%] z-50 -translate-x-1/2',
+          'w-full bg-white dark:bg-neutral-900 shadow-xl',
+          'border border-neutral-200 dark:border-neutral-700 rounded-xl',
+          'data-[state=open]:animate-in data-[state=closed]:animate-out',
+          'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+          'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+          'data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]',
+          'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
+          'duration-200',
+          sizeConfig[size].container,
+        ]"
+      >
+        <DialogTitle class="sr-only">Command Palette</DialogTitle>
+        <DialogDescription class="sr-only">Search and navigate</DialogDescription>
+        <div class="overflow-hidden rounded-xl">
         <!-- Search header -->
         <div
           :class="[
@@ -281,8 +288,9 @@
           @bulk-action="handleBulkAction"
         />
       </div>
-    </template>
-  </Modal>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 </template>
 
 <script setup lang="ts">
@@ -293,7 +301,14 @@ import CommandPaletteItem from '@/Components/layout/command-palette/CommandPalet
 import CommandPaletteEmpty from '@/Components/layout/command-palette/CommandPaletteEmpty.vue'
 import CommandPaletteFooter from '@/Components/layout/command-palette/CommandPaletteFooter.vue'
 import Icon from '@/Components/shared/Icon.vue'
-import Modal from '@/Components/shared/Modal.vue'
+import {
+  DialogRoot,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from 'reka-ui'
 
 // Types
 type PaletteSize = 'sm' | 'md' | 'lg'
@@ -360,7 +375,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   size: 'md',
   placeholder: 'Search commands, channels, files...',
-  footerTitle: 'Olympus Command Center',
+  footerTitle: 'OpenCompany',
   showModeTabs: true,
   showRecentSearches: true,
   showFooterActions: false,

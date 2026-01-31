@@ -1,42 +1,145 @@
 <template>
-  <div class="h-full flex">
-    <!-- Channel List Sidebar -->
-    <ChatChannelList
-      :channels="channelsData"
-      :selected-channel="selectedChannel"
-      @select="selectChannel"
-      @create="showCreateChannelModal = true"
-    />
+  <div class="h-full flex flex-col">
+    <!-- Mobile Toolbar -->
+    <div class="md:hidden flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shrink-0">
+      <button
+        type="button"
+        class="p-2 -ml-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        @click="showMobileChannelList = true"
+      >
+        <Icon name="ph:list" class="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
+      </button>
+      <div v-if="selectedChannel" class="flex-1 flex items-center gap-2 min-w-0">
+        <Icon :name="channelIcon" class="w-4 h-4 text-neutral-500 dark:text-neutral-400 shrink-0" />
+        <span class="font-medium text-neutral-900 dark:text-white truncate">{{ selectedChannel.name }}</span>
+      </div>
+      <div v-else class="flex-1 text-sm text-neutral-500 dark:text-neutral-400">Select a channel</div>
+      <button
+        v-if="selectedChannel"
+        type="button"
+        class="p-2 -mr-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        @click="showChannelInfo = true"
+      >
+        <Icon name="ph:info" class="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
+      </button>
+    </div>
 
-    <!-- Main Chat Area -->
-    <ChatArea
-      v-if="selectedChannel"
-      :channel="selectedChannel"
-      :messages="channelMessages"
-      :pinned-messages="pinnedMessagesData"
-      :typing-users="typingUsersData"
-      :current-user-id="'h1'"
-      :active-thread="activeThread"
-      class="flex-1"
-      @send="handleSendMessage"
-      @react="handleReaction"
-      @open-thread="handleOpenThread"
-      @close-thread="activeThread = null"
-      @thread-reply="handleThreadReply"
-      @pin="handlePinMessage"
-      @typing="handleTyping"
-    />
+    <!-- Main Content -->
+    <div class="flex-1 flex min-h-0">
+      <!-- Desktop Channel List Sidebar -->
+      <ChatChannelList
+        class="hidden md:flex"
+        :channels="channelsData"
+        :selected-channel="selectedChannel"
+        @select="selectChannel"
+        @create="showCreateChannelModal = true"
+        @create-dm="showCreateDmModal = true"
+        @create-external="showCreateExternalModal = true"
+      />
 
-    <!-- Channel Info Sidebar -->
-    <ChatChannelInfo
-      v-if="selectedChannel"
-      :channel="selectedChannel"
-      :viewers="channelViewers"
-      @add-member="showAddMemberModal = true"
-      @member-remove="handleMemberRemove"
-      @member-click="handleMemberClick"
-      @member-message="handleMemberMessage"
-    />
+      <!-- Main Chat Area -->
+      <ChatArea
+        v-if="selectedChannel"
+        :channel="selectedChannel"
+        :messages="channelMessages"
+        :pinned-messages="pinnedMessagesData"
+        :typing-users="typingUsersData"
+        :current-user-id="'h1'"
+        :active-thread="activeThread"
+        class="flex-1"
+        @send="handleSendMessage"
+        @react="handleReaction"
+        @open-thread="handleOpenThread"
+        @close-thread="activeThread = null"
+        @thread-reply="handleThreadReply"
+        @pin="handlePinMessage"
+        @typing="handleTyping"
+        @toggle-info="showChannelInfo = !showChannelInfo"
+      />
+
+      <!-- Empty State when no channel selected -->
+      <div v-else class="flex-1 flex items-center justify-center bg-white dark:bg-neutral-900">
+        <div class="text-center">
+          <Icon name="ph:chat-circle-dots" class="w-16 h-16 text-neutral-300 dark:text-neutral-600 mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-1">No channel selected</h3>
+          <p class="text-sm text-neutral-500 dark:text-neutral-400">Select a channel to start chatting</p>
+        </div>
+      </div>
+
+      <!-- Desktop Channel Info Sidebar -->
+      <ChatChannelInfo
+        v-if="selectedChannel && showChannelInfo"
+        class="hidden md:flex"
+        :channel="selectedChannel"
+        :viewers="channelViewers"
+        @close="showChannelInfo = false"
+        @add-member="showAddMemberModal = true"
+        @member-remove="handleMemberRemove"
+        @member-click="handleMemberClick"
+        @member-message="handleMemberMessage"
+      />
+    </div>
+
+    <!-- Mobile Channel List Slideover -->
+    <Slideover v-if="isMobile" v-model:open="showMobileChannelList" side="left" size="sm" :show-close="false">
+      <template #header>
+        <div class="flex items-center justify-between w-full">
+          <span class="font-semibold text-neutral-900 dark:text-white">Channels</span>
+          <button
+            type="button"
+            class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+            @click="showMobileChannelList = false"
+          >
+            <Icon name="ph:x" class="w-5 h-5 text-neutral-500 dark:text-neutral-300" />
+          </button>
+        </div>
+      </template>
+      <template #body>
+        <div class="-mx-6 -my-4 h-full">
+          <ChatChannelList
+            class="h-full border-r-0 w-full"
+            :channels="channelsData"
+            :selected-channel="selectedChannel"
+            :show-header="false"
+            @select="(channel) => { selectChannel(channel); showMobileChannelList = false }"
+            @create="showCreateChannelModal = true; showMobileChannelList = false"
+            @create-dm="showCreateDmModal = true; showMobileChannelList = false"
+            @create-external="showCreateExternalModal = true; showMobileChannelList = false"
+          />
+        </div>
+      </template>
+    </Slideover>
+
+    <!-- Mobile Channel Info Slideover -->
+    <Slideover v-if="isMobile" v-model:open="showChannelInfo" side="right" size="md" :show-close="false">
+      <template #header>
+        <div class="flex items-center justify-between w-full">
+          <span class="font-semibold text-neutral-900 dark:text-white">Channel Details</span>
+          <button
+            type="button"
+            class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+            @click="showChannelInfo = false"
+          >
+            <Icon name="ph:x" class="w-5 h-5 text-neutral-500 dark:text-neutral-300" />
+          </button>
+        </div>
+      </template>
+      <template #body>
+        <div class="-mx-6 -my-4 h-full">
+          <ChatChannelInfo
+            v-if="selectedChannel"
+            class="h-full border-l-0 w-full"
+            :channel="selectedChannel"
+            :viewers="channelViewers"
+            @close="showChannelInfo = false"
+            @add-member="showAddMemberModal = true"
+            @member-remove="handleMemberRemove"
+            @member-click="handleMemberClick"
+            @member-message="handleMemberMessage"
+          />
+        </div>
+      </template>
+    </Slideover>
 
     <!-- Add Member Modal -->
     <ChatAddMemberModal
@@ -62,12 +165,16 @@ import ChatArea from '@/Components/chat/Area.vue'
 import ChatChannelInfo from '@/Components/chat/ChannelInfo.vue'
 import ChatAddMemberModal from '@/Components/chat/AddMemberModal.vue'
 import ChatCreateChannelModal from '@/Components/chat/CreateChannelModal.vue'
+import Slideover from '@/Components/shared/Slideover.vue'
+import Icon from '@/Components/shared/Icon.vue'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
 import { useTypingIndicator } from '@/composables/useTypingIndicator'
+import { useIsMobile } from '@/composables/useMediaQuery'
 
 const page = usePage()
 const { fetchChannels, fetchMessages, sendMessage, markChannelRead, addMessageReaction, fetchMessageThread, removeChannelMember, pinMessage, fetchPinnedMessages, sendTypingIndicator, uploadMessageAttachment } = useApi()
+const isMobile = useIsMobile()
 
 interface Thread {
   parentMessage: Message
@@ -77,6 +184,19 @@ interface Thread {
 const activeThread = ref<Thread | null>(null)
 const showAddMemberModal = ref(false)
 const showCreateChannelModal = ref(false)
+const showCreateDmModal = ref(false)
+const showCreateExternalModal = ref(false)
+const showChannelInfo = ref(false)
+const showMobileChannelList = ref(false)
+
+// Channel icon for mobile toolbar
+const channelIcon = computed(() => {
+  if (!selectedChannel.value) return 'ph:hash'
+  if (selectedChannel.value.type === 'agent') return 'ph:robot'
+  if (selectedChannel.value.type === 'dm') return 'ph:chat-circle'
+  if (selectedChannel.value.private) return 'ph:lock-simple'
+  return 'ph:hash'
+})
 
 // Channels data
 const channels = ref<Channel[]>([])
@@ -96,21 +216,52 @@ watch(channelsData, (newChannels) => {
   if (!selectedChannel.value && newChannels.length > 0) {
     const url = new URL(window.location.href)
     const channelId = url.searchParams.get('channel')
-    const found = channelId ? newChannels.find(c => c.id === channelId) : newChannels[2]
+    const dmUserId = url.searchParams.get('dm')
+
+    let found: Channel | undefined
+
+    // Check for dm parameter first - find DM channel with this user
+    if (dmUserId) {
+      found = newChannels.find(c =>
+        c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
+      )
+    }
+
+    // Then check for channel parameter
+    if (!found && channelId) {
+      found = newChannels.find(c => c.id === channelId)
+    }
+
+    // Fallback to first channel
     selectedChannel.value = found ?? newChannels[0]
   }
 }, { immediate: true })
 
-// Handle channel query param changes
+// Handle channel and dm query param changes
 watch(() => {
   const url = new URL(window.location.href)
-  return url.searchParams.get('channel')
-}, (channelId) => {
-  if (channelId && channelsData.value.length > 0) {
+  return {
+    channelId: url.searchParams.get('channel'),
+    dmUserId: url.searchParams.get('dm')
+  }
+}, ({ channelId, dmUserId }) => {
+  if (channelsData.value.length === 0) return
+
+  // Handle dm parameter - find DM channel with this user
+  if (dmUserId) {
+    const found = channelsData.value.find(c =>
+      c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
+    )
+    if (found) selectedChannel.value = found
+    return
+  }
+
+  // Handle channel parameter
+  if (channelId) {
     const found = channelsData.value.find(c => c.id === channelId)
     if (found) selectedChannel.value = found
   }
-})
+}, { deep: true })
 
 // Messages data
 const messages = ref<Message[]>([])

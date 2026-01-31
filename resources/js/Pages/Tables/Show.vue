@@ -1,69 +1,88 @@
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col bg-white dark:bg-neutral-900">
     <!-- Header -->
-    <header class="shrink-0 px-6 py-4 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <Link
-            href="/tables"
-            class="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          >
-            <Icon name="ph:arrow-left" class="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
-          </Link>
-          <div v-if="table" class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-              <Icon :name="table.icon || 'ph:table'" class="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
-            </div>
-            <div>
-              <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">
-                {{ table.name }}
-              </h1>
-              <p v-if="table.description" class="text-sm text-neutral-500 dark:text-neutral-400">
-                {{ table.description }}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="flex items-center gap-2">
-          <Button variant="secondary" @click="showAddColumnModal = true">
-            <Icon name="ph:plus" class="w-4 h-4 mr-1.5" />
-            Add Column
-          </Button>
-          <Button @click="handleAddRow">
-            <Icon name="ph:plus" class="w-4 h-4 mr-1.5" />
-            Add Row
-          </Button>
+    <TableHeader
+      v-if="table"
+      :table="table"
+      @update:name="handleUpdateName"
+      @update:description="handleUpdateDescription"
+      @update:icon="handleUpdateIcon"
+      @export="handleExport"
+      @import="handleImport"
+      @settings="showSettingsModal = true"
+      @duplicate="handleDuplicateTable"
+      @delete="showDeleteConfirm = true"
+    />
+
+    <!-- Loading Header Placeholder -->
+    <div v-else class="shrink-0 px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+      <div class="flex items-center gap-4">
+        <div class="w-11 h-11 rounded-xl bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
+        <div class="space-y-2">
+          <div class="h-5 w-32 bg-neutral-100 dark:bg-neutral-800 rounded animate-pulse" />
+          <div class="h-4 w-48 bg-neutral-100 dark:bg-neutral-800 rounded animate-pulse" />
         </div>
       </div>
-    </header>
+    </div>
 
-    <!-- Toolbar -->
-    <div class="shrink-0 px-6 py-3 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50 flex items-center gap-4">
+    <!-- Toolbar (combined with tabs) -->
+    <div v-if="table" class="shrink-0 px-6 py-2 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 flex items-center gap-3">
+      <!-- View Tabs -->
+      <div class="flex items-center gap-1">
+        <button
+          v-for="view in views"
+          :key="view.id"
+          type="button"
+          :class="[
+            'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-all',
+            activeViewId === view.id
+              ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-700/50',
+          ]"
+          @click="handleSelectView(view.id)"
+        >
+          <Icon :name="getViewIcon(view.type)" class="w-4 h-4" />
+          <span>{{ view.name }}</span>
+        </button>
+
+        <!-- Add View -->
+        <DropdownMenu :items="addViewOptions">
+          <button
+            type="button"
+            class="flex items-center gap-1 px-2 py-1.5 rounded-md text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-700/50 transition-all"
+          >
+            <Icon name="ph:plus" class="w-4 h-4" />
+          </button>
+        </DropdownMenu>
+      </div>
+
+      <div class="w-px h-5 bg-neutral-300 dark:bg-neutral-600" />
+
+      <!-- Search -->
       <SearchInput
         v-model="searchQuery"
-        placeholder="Search rows..."
-        class="w-64"
+        placeholder="Search..."
+        class="w-48"
       />
+
       <div class="flex-1" />
 
-      <!-- Bulk actions -->
-      <div v-if="selectedRowIds.length > 0" class="flex items-center gap-3">
-        <span class="text-sm text-neutral-600 dark:text-neutral-300">
-          {{ selectedRowIds.length }} selected
-        </span>
-        <Button
-          variant="danger"
-          size="sm"
-          @click="confirmBulkDelete"
-        >
-          <Icon name="ph:trash" class="w-4 h-4 mr-1" />
-          Delete
-        </Button>
+      <!-- View Controls -->
+      <div class="flex items-center gap-0.5">
+        <Button variant="ghost" size="sm" icon-left="ph:funnel" icon-only @click="showFilterPanel = !showFilterPanel" />
+        <Button variant="ghost" size="sm" icon-left="ph:sort-ascending" icon-only @click="showSortPanel = !showSortPanel" />
       </div>
 
-      <span class="text-sm text-neutral-500 dark:text-neutral-400">
-        {{ filteredRows.length }} rows
-      </span>
+      <!-- Selection Actions -->
+      <template v-if="selectedRowIds.length > 0">
+        <div class="w-px h-5 bg-neutral-300 dark:bg-neutral-600" />
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-neutral-600 dark:text-neutral-300">
+            {{ selectedRowIds.length }} selected
+          </span>
+          <Button variant="ghost" size="sm" icon-left="ph:trash" icon-only @click="confirmBulkDelete" />
+        </div>
+      </template>
     </div>
 
     <!-- Table Grid -->
@@ -73,13 +92,19 @@
       </div>
 
       <div v-else-if="!table" class="flex items-center justify-center h-full">
-        <p class="text-neutral-500 dark:text-neutral-400">Table not found</p>
+        <div class="text-center">
+          <Icon name="ph:warning" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+          <p class="text-neutral-500 dark:text-neutral-400">Table not found</p>
+          <Link href="/tables" class="text-sm text-neutral-900 dark:text-white hover:underline mt-2 inline-block">
+            Back to Tables
+          </Link>
+        </div>
       </div>
 
       <TableGrid
         v-else
         ref="tableGridRef"
-        :columns="table.columns || []"
+        :columns="visibleColumns"
         :rows="filteredRows"
         @update-cell="handleUpdateCell"
         @delete-row="handleDeleteRow"
@@ -87,7 +112,16 @@
         @delete-column="handleDeleteColumn"
         @edit-column="handleEditColumn"
         @selection-change="handleSelectionChange"
+        @add-row="handleAddRow"
+        @add-column="showAddColumnModal = true"
       />
+    </div>
+
+    <!-- Footer with row count -->
+    <div v-if="table && !loading" class="shrink-0 px-6 py-2 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
+      <span class="text-xs text-neutral-500 dark:text-neutral-400">
+        {{ filteredRows.length }} {{ filteredRows.length === 1 ? 'row' : 'rows' }}
+      </span>
     </div>
 
     <!-- Add Column Modal -->
@@ -115,19 +149,32 @@
       @confirm="handleBulkDelete"
       @update:open="showBulkDeleteConfirm = false"
     />
+
+    <!-- Delete Table Confirmation -->
+    <ConfirmDialog
+      :open="showDeleteConfirm"
+      title="Delete Table"
+      :description="`Are you sure you want to delete '${table?.name}'? This will permanently delete all data and cannot be undone.`"
+      variant="danger"
+      confirm-label="Delete Table"
+      @confirm="handleDeleteTable"
+      @update:open="showDeleteConfirm = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import SearchInput from '@/Components/shared/SearchInput.vue'
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+import TableHeader from '@/Components/tables/TableHeader.vue'
 import TableGrid from '@/Components/tables/TableGrid.vue'
 import ColumnTypeModal from '@/Components/tables/ColumnTypeModal.vue'
-import type { DataTable, DataTableRow, DataTableColumn } from '@/types'
+import type { DataTable, DataTableRow, DataTableColumn, DataTableView, DataTableViewType } from '@/types'
 
 const props = defineProps<{
   tableId: string
@@ -135,6 +182,8 @@ const props = defineProps<{
 
 const table = ref<DataTable | null>(null)
 const rows = ref<DataTableRow[]>([])
+const views = ref<DataTableView[]>([])
+const activeViewId = ref<string | null>(null)
 const loading = ref(true)
 const searchQuery = ref('')
 const showAddColumnModal = ref(false)
@@ -142,6 +191,12 @@ const showEditColumnModal = ref(false)
 const columnToEdit = ref<DataTableColumn | null>(null)
 const selectedRowIds = ref<string[]>([])
 const showBulkDeleteConfirm = ref(false)
+const showDeleteConfirm = ref(false)
+const showSettingsModal = ref(false)
+const showFilterPanel = ref(false)
+const showHidePanel = ref(false)
+const showSortPanel = ref(false)
+const hiddenColumns = ref<string[]>([])
 const tableGridRef = ref<InstanceType<typeof TableGrid> | null>(null)
 
 const filteredRows = computed(() => {
@@ -154,6 +209,30 @@ const filteredRows = computed(() => {
   })
 })
 
+const visibleColumns = computed(() => {
+  if (!table.value?.columns) return []
+  return table.value.columns.filter(col => !hiddenColumns.value.includes(col.id))
+})
+
+// View helpers
+const viewTypeIcons: Record<DataTableViewType, string> = {
+  grid: 'ph:table',
+  kanban: 'ph:kanban',
+  gallery: 'ph:squares-four',
+  calendar: 'ph:calendar',
+}
+
+const getViewIcon = (type: DataTableViewType) => viewTypeIcons[type] || 'ph:table'
+
+const addViewOptions = computed(() => [
+  [
+    { label: 'Grid View', icon: 'ph:table', click: () => handleAddView('grid') },
+    { label: 'Kanban View', icon: 'ph:kanban', click: () => handleAddView('kanban') },
+    { label: 'Gallery View', icon: 'ph:squares-four', click: () => handleAddView('gallery') },
+    { label: 'Calendar View', icon: 'ph:calendar', click: () => handleAddView('calendar') },
+  ],
+])
+
 const fetchTable = async () => {
   loading.value = true
   try {
@@ -163,6 +242,20 @@ const fetchTable = async () => {
     ])
     table.value = await tableResponse.json()
     rows.value = await rowsResponse.json()
+
+    // Create default view if none exist
+    if (views.value.length === 0) {
+      views.value = [{
+        id: 'default-grid',
+        tableId: props.tableId,
+        name: 'Grid',
+        type: 'grid',
+        filters: [],
+        sorts: [],
+        hiddenColumns: [],
+      }]
+      activeViewId.value = 'default-grid'
+    }
   } catch (error) {
     console.error('Failed to fetch table:', error)
     table.value = null
@@ -172,10 +265,159 @@ const fetchTable = async () => {
   }
 }
 
+// Table update handlers
+const handleUpdateName = async (name: string) => {
+  if (!table.value) return
+  try {
+    await fetch(`/api/tables/${props.tableId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    table.value.name = name
+  } catch (error) {
+    console.error('Failed to update table name:', error)
+  }
+}
+
+const handleUpdateDescription = async (description: string) => {
+  if (!table.value) return
+  try {
+    await fetch(`/api/tables/${props.tableId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description }),
+    })
+    table.value.description = description
+  } catch (error) {
+    console.error('Failed to update table description:', error)
+  }
+}
+
+const handleUpdateIcon = async (icon: string) => {
+  if (!table.value) return
+  try {
+    await fetch(`/api/tables/${props.tableId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ icon }),
+    })
+    table.value.icon = icon
+  } catch (error) {
+    console.error('Failed to update table icon:', error)
+  }
+}
+
+// Export/Import handlers
+const handleExport = async (format: 'csv' | 'json') => {
+  if (!table.value) return
+
+  try {
+    const response = await fetch(`/api/tables/${props.tableId}/export?format=${format}`)
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${table.value.name}.${format}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Failed to export table:', error)
+  }
+}
+
+const handleImport = async (file: File, format: 'csv' | 'json') => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('format', format)
+
+  try {
+    const response = await fetch(`/api/tables/${props.tableId}/import`, {
+      method: 'POST',
+      body: formData,
+    })
+    const result = await response.json()
+    if (result.rows) {
+      rows.value = [...rows.value, ...result.rows]
+    }
+  } catch (error) {
+    console.error('Failed to import data:', error)
+  }
+}
+
+// View handlers
+const handleSelectView = (viewId: string) => {
+  activeViewId.value = viewId
+}
+
+const handleAddView = async (type: DataTableViewType) => {
+  const newView: DataTableView = {
+    id: `view-${Date.now()}`,
+    tableId: props.tableId,
+    name: `${type.charAt(0).toUpperCase() + type.slice(1)} View`,
+    type,
+    filters: [],
+    sorts: [],
+    hiddenColumns: [],
+  }
+  views.value.push(newView)
+  activeViewId.value = newView.id
+}
+
+const handleRenameView = (viewId: string) => {
+  // TODO: Show rename modal
+  console.log('Rename view:', viewId)
+}
+
+const handleDuplicateView = (viewId: string) => {
+  const view = views.value.find(v => v.id === viewId)
+  if (view) {
+    const newView: DataTableView = {
+      ...view,
+      id: `view-${Date.now()}`,
+      name: `${view.name} (Copy)`,
+    }
+    views.value.push(newView)
+  }
+}
+
+const handleDeleteView = (viewId: string) => {
+  if (views.value.length <= 1) return
+  views.value = views.value.filter(v => v.id !== viewId)
+  if (activeViewId.value === viewId) {
+    activeViewId.value = views.value[0]?.id || null
+  }
+}
+
+// Table deletion
+const handleDeleteTable = async () => {
+  try {
+    await fetch(`/api/tables/${props.tableId}`, { method: 'DELETE' })
+    router.visit('/tables')
+  } catch (error) {
+    console.error('Failed to delete table:', error)
+  }
+}
+
+const handleDuplicateTable = async () => {
+  if (!table.value) return
+  try {
+    const response = await fetch(`/api/tables/${props.tableId}/duplicate`, {
+      method: 'POST',
+    })
+    const newTable = await response.json()
+    router.visit(`/tables/${newTable.id}`)
+  } catch (error) {
+    console.error('Failed to duplicate table:', error)
+  }
+}
+
+// Row handlers
 const handleAddRow = async () => {
   if (!table.value) return
 
-  // Create empty row with default values
   const data: Record<string, unknown> = {}
   for (const column of table.value.columns || []) {
     if (column.type === 'checkbox') {
@@ -230,6 +472,7 @@ const handleDeleteRow = async (rowId: string) => {
   }
 }
 
+// Column handlers
 const handleAddColumn = async (columnData: { name: string; type: string; options?: Record<string, unknown>; required?: boolean }) => {
   try {
     const response = await fetch(`/api/tables/${props.tableId}/columns`, {
@@ -307,6 +550,7 @@ const handleDeleteColumn = async (columnId: string) => {
   }
 }
 
+// Selection handlers
 const handleSelectionChange = (ids: string[]) => {
   selectedRowIds.value = ids
 }

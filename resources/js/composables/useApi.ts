@@ -103,7 +103,7 @@ export const useApi = () => {
   // Tasks
   const fetchTasks = () => useFetch<Task[]>('/tasks')
   const fetchTask = (id: string) => useFetch<Task>(`/tasks/${id}`)
-  const createTask = (data: { title: string; description?: string; assigneeId: string; priority?: string; status?: string; channelId?: string | null; estimatedCost?: number | null; collaboratorIds?: string[] }) =>
+  const createTask = (data: { title: string; description?: string; assigneeId?: string; priority?: string; status?: string; channelId?: string | null; estimatedCost?: number | null; collaboratorIds?: string[]; parentId?: string | null; isFolder?: boolean }) =>
     api.post('/tasks', data)
   const updateTask = (id: string, data: Partial<Task>) =>
     api.patch(`/tasks/${id}`, data)

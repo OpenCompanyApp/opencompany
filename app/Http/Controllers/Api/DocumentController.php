@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DocumentResource;
 use App\Models\Document;
 use App\Models\DocumentPermission;
 use App\Models\DocumentVersion;
@@ -13,15 +14,19 @@ class DocumentController extends Controller
 {
     public function index()
     {
-        return Document::with(['author', 'parent', 'permissions.user'])
+        $documents = Document::with(['author', 'parent', 'permissions.user'])
             ->orderBy('updated_at', 'desc')
             ->get();
+
+        return DocumentResource::collection($documents);
     }
 
     public function show(string $id)
     {
-        return Document::with(['author', 'parent', 'children', 'permissions.user', 'comments.author'])
+        $document = Document::with(['author', 'parent', 'children', 'permissions.user', 'comments.author'])
             ->findOrFail($id);
+
+        return new DocumentResource($document);
     }
 
     public function store(Request $request)
@@ -60,7 +65,7 @@ class DocumentController extends Controller
             }
         }
 
-        return $document->load(['author', 'permissions.user']);
+        return new DocumentResource($document->load(['author', 'permissions.user']));
     }
 
     public function update(Request $request, string $id)
@@ -100,7 +105,7 @@ class DocumentController extends Controller
 
         $document->update($data);
 
-        return $document->load(['author', 'parent', 'permissions.user']);
+        return new DocumentResource($document->load(['author', 'parent', 'permissions.user']));
     }
 
     public function destroy(string $id)

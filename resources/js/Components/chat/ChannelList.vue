@@ -156,21 +156,6 @@
           @context-action="handleContextAction"
         />
 
-        <!-- Agent Channels -->
-        <ChannelSection
-          v-if="agentChannels.length > 0"
-          title="Agent Channels"
-          icon="ph:robot"
-          :channels="agentChannels"
-          :selected-id="selectedChannel?.id"
-          :collapsible="true"
-          :default-open="true"
-          :show-count="true"
-          :size="size"
-          @select="handleSelect"
-          @context-action="handleContextAction"
-        />
-
         <!-- Direct Messages -->
         <ChannelSection
           v-if="dmChannels.length > 0"
@@ -184,6 +169,21 @@
           :show-online-count="true"
           :size="size"
           :action="{ icon: 'ph:plus', label: 'New message', onClick: () => emit('createDm') }"
+          @select="handleSelect"
+          @context-action="handleContextAction"
+        />
+
+        <!-- Agent Channels -->
+        <ChannelSection
+          v-if="agentChannels.length > 0"
+          title="Agent Channels"
+          icon="ph:robot"
+          :channels="agentChannels"
+          :selected-id="selectedChannel?.id"
+          :collapsible="true"
+          :default-open="true"
+          :show-count="true"
+          :size="size"
           @select="handleSelect"
           @context-action="handleContextAction"
         />
@@ -215,6 +215,22 @@
           :show-count="true"
           :size="size"
           :action="{ icon: 'ph:plus', label: 'Add channel', onClick: handleCreateChannel }"
+          @select="handleSelect"
+          @context-action="handleContextAction"
+        />
+
+        <!-- External Channels -->
+        <ChannelSection
+          v-if="externalChannels.length > 0"
+          title="External"
+          icon="ph:plug"
+          :channels="externalChannels"
+          :selected-id="selectedChannel?.id"
+          :collapsible="true"
+          :default-open="true"
+          :show-count="true"
+          :size="size"
+          :action="{ icon: 'ph:plus', label: 'Connect integration', onClick: () => emit('createExternal') }"
           @select="handleSelect"
           @context-action="handleContextAction"
         />
@@ -315,7 +331,7 @@ import type { Channel } from '@/types'
 
 type ChannelListSize = 'sm' | 'md' | 'lg'
 type ChannelListVariant = 'default' | 'compact' | 'floating'
-type ChannelType = 'public' | 'private' | 'dm' | 'agent'
+type ChannelType = 'public' | 'private' | 'dm' | 'agent' | 'external'
 type StatusFilter = 'unread' | 'muted' | 'pinned' | 'starred'
 type QuickFilter = 'unread' | 'agents' | 'dms'
 
@@ -364,6 +380,7 @@ const emit = defineEmits<{
   select: [channel: Channel]
   create: []
   createDm: []
+  createExternal: []
   browse: []
   contextAction: [action: string, channel: Channel]
 }>()
@@ -383,6 +400,7 @@ const channelTypeFilters: { value: ChannelType; label: string; icon: string }[] 
   { value: 'private', label: 'Private', icon: 'ph:lock-simple' },
   { value: 'dm', label: 'DMs', icon: 'ph:chat-circle' },
   { value: 'agent', label: 'Agents', icon: 'ph:robot' },
+  { value: 'external', label: 'External', icon: 'ph:plug' },
 ]
 
 const statusFilters: { value: StatusFilter; label: string }[] = [
@@ -449,6 +467,7 @@ const filteredChannels = computed(() => {
       if (activeTypeFilters.value.includes('private') && c.private) return true
       if (activeTypeFilters.value.includes('dm') && c.type === 'dm') return true
       if (activeTypeFilters.value.includes('agent') && c.type === 'agent') return true
+      if (activeTypeFilters.value.includes('external') && c.type === 'external') return true
       return false
     })
   }
@@ -504,6 +523,10 @@ const publicChannels = computed(() =>
 
 const archivedChannels = computed(() =>
   filteredChannels.value.filter(c => c.archived),
+)
+
+const externalChannels = computed(() =>
+  filteredChannels.value.filter(c => c.type === 'external' && !c.pinned && !c.starred && !c.archived),
 )
 
 // Computed values

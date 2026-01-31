@@ -352,7 +352,7 @@ const getTypeIcon = (type: string): string => {
 const containerClasses = computed(() => {
   const base = [
     'w-full flex items-start text-left group transition-all duration-150 ease-out outline-none',
-    'focus-visible:ring-2 focus-visible:ring-neutral-900/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+    'focus-visible:ring-2 focus-visible:ring-neutral-900/50 dark:focus-visible:ring-neutral-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900',
     sizeConfig[props.size].padding,
     sizeConfig[props.size].gap,
   ]
@@ -361,15 +361,15 @@ const containerClasses = computed(() => {
     base.push('rounded-lg border')
     base.push(
       props.selected
-        ? 'bg-neutral-900 text-white shadow-md border-neutral-900'
-        : 'bg-white border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50'
+        ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-md border-neutral-900 dark:border-white'
+        : 'bg-white dark:bg-neutral-800 border-neutral-100 dark:border-neutral-700 hover:border-neutral-200 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-700'
     )
   } else {
     base.push('rounded-lg')
     base.push(
       props.selected
-        ? 'bg-neutral-900 text-white shadow-md'
-        : 'hover:bg-neutral-50 text-neutral-900'
+        ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-md'
+        : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white'
     )
   }
 
@@ -380,26 +380,26 @@ const containerClasses = computed(() => {
 const iconContainerClasses = computed(() => [
   'relative rounded-lg flex items-center justify-center shrink-0 transition-all duration-150 ease-out',
   sizeConfig[props.size].iconContainer,
-  props.selected ? 'bg-white/20' : 'bg-neutral-100',
+  props.selected ? 'bg-white/20 dark:bg-neutral-900/20' : 'bg-neutral-100 dark:bg-neutral-700',
 ])
 
 const iconClasses = computed(() => [
   sizeConfig[props.size].iconSize,
-  props.selected ? 'text-white' : 'text-neutral-500',
+  props.selected ? 'text-white dark:text-neutral-900' : 'text-neutral-500 dark:text-neutral-400',
 ])
 
 // Title classes
 const titleClasses = computed(() => [
   'font-medium truncate',
   sizeConfig[props.size].titleSize,
-  props.selected ? 'text-white' : 'text-neutral-900',
+  props.selected ? 'text-white dark:text-neutral-900' : 'text-neutral-900 dark:text-white',
 ])
 
 // Description classes
 const descriptionClasses = computed(() => [
   'line-clamp-2 mt-0.5',
   props.size === 'sm' ? 'text-[10px]' : 'text-xs',
-  props.selected ? 'text-white/70' : 'text-neutral-500',
+  props.selected ? 'text-white/70 dark:text-neutral-900/70' : 'text-neutral-500 dark:text-neutral-400',
 ])
 
 // Meta row classes
@@ -410,63 +410,63 @@ const metaRowClasses = computed(() => [
 
 const metaTextClasses = computed(() => [
   'flex items-center truncate',
-  props.selected ? 'text-white/70' : 'text-neutral-500',
+  props.selected ? 'text-white/70 dark:text-neutral-900/70' : 'text-neutral-500 dark:text-neutral-400',
 ])
 
 const separatorClasses = computed(() => [
-  props.selected ? 'text-white/40' : 'text-neutral-200',
+  props.selected ? 'text-white/40 dark:text-neutral-900/40' : 'text-neutral-200 dark:text-neutral-600',
 ])
 
 // Badge classes
 const sharedBadgeClasses = computed(() => [
   'p-1 rounded',
-  props.selected ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500',
+  props.selected ? 'bg-white/20 dark:bg-neutral-900/20 text-white dark:text-neutral-900' : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400',
 ])
 
 const starredBadgeClasses = computed(() => [
   'p-1 rounded',
-  props.selected ? 'bg-white/20 text-amber-300' : 'bg-neutral-100 text-amber-500',
+  props.selected ? 'bg-white/20 dark:bg-neutral-900/20 text-amber-300' : 'bg-neutral-100 dark:bg-neutral-700 text-amber-500',
 ])
 
 const pinnedBadgeClasses = computed(() => [
   'p-1 rounded',
-  props.selected ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500',
+  props.selected ? 'bg-white/20 dark:bg-neutral-900/20 text-white dark:text-neutral-900' : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400',
 ])
 
 const lockedBadgeClasses = computed(() => [
   'p-1 rounded',
-  props.selected ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500',
+  props.selected ? 'bg-white/20 dark:bg-neutral-900/20 text-white dark:text-neutral-900' : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400',
 ])
 
 const newBadgeClasses = computed(() => [
   'absolute -top-1 -right-1 p-0.5 rounded-full',
-  props.selected ? 'text-neutral-300' : 'text-neutral-400',
+  props.selected ? 'text-neutral-300 dark:text-neutral-600' : 'text-neutral-400 dark:text-neutral-500',
 ])
 
 const typeIndicatorClasses = computed(() => [
-  'absolute -bottom-0.5 -right-0.5 p-0.5 rounded bg-white',
-  props.selected ? 'text-white/70' : 'text-neutral-400',
+  'absolute -bottom-0.5 -right-0.5 p-0.5 rounded bg-white dark:bg-neutral-800',
+  props.selected ? 'text-white/70 dark:text-neutral-900/70' : 'text-neutral-400 dark:text-neutral-500',
 ])
 
 // Tag classes
 const tagClasses = computed(() => [
   'px-1.5 py-0.5 rounded text-[10px]',
   props.selected
-    ? 'bg-white/20 text-white'
-    : 'bg-neutral-100 text-neutral-500',
+    ? 'bg-white/20 dark:bg-neutral-900/20 text-white dark:text-neutral-900'
+    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400',
 ])
 
 // Viewer classes
 const viewerAvatarClasses = computed(() => [
   'w-5 h-5 rounded-full border-2 overflow-hidden',
-  props.selected ? 'border-neutral-900' : 'border-neutral-50',
+  props.selected ? 'border-neutral-900 dark:border-white' : 'border-neutral-50 dark:border-neutral-800',
 ])
 
 const viewerCountClasses = computed(() => [
   'w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] font-medium',
   props.selected
-    ? 'border-neutral-900 bg-white/20 text-white'
-    : 'border-neutral-50 bg-neutral-100 text-neutral-500',
+    ? 'border-neutral-900 dark:border-white bg-white/20 dark:bg-neutral-900/20 text-white dark:text-neutral-900'
+    : 'border-neutral-50 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400',
 ])
 
 // Checkbox classes
@@ -476,16 +476,16 @@ const checkboxLabelClasses = computed(() => [
 
 const checkboxClasses = computed(() => [
   'w-4 h-4 rounded border-2 cursor-pointer transition-colors',
-  'focus:ring-2 focus:ring-neutral-900/50 focus:ring-offset-2 focus:ring-offset-white',
+  'focus:ring-2 focus:ring-neutral-900/50 dark:focus:ring-neutral-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900',
   props.checked
-    ? 'bg-neutral-900 border-neutral-900'
-    : 'bg-transparent border-neutral-200 hover:border-neutral-300',
+    ? 'bg-neutral-900 dark:bg-white border-neutral-900 dark:border-white'
+    : 'bg-transparent border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500',
 ])
 
 // Drag handle classes
 const dragHandleClasses = computed(() => [
   'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 p-1 cursor-grab',
-  'text-neutral-400 hover:text-neutral-500',
+  'text-neutral-400 dark:text-neutral-500 hover:text-neutral-500 dark:hover:text-neutral-400',
   'opacity-0 group-hover:opacity-100 transition-opacity',
 ])
 
@@ -493,8 +493,8 @@ const dragHandleClasses = computed(() => [
 const quickActionClasses = computed(() => [
   'p-1.5 rounded-md transition-all duration-150 ease-out',
   props.selected
-    ? 'text-white/70 hover:text-white hover:bg-white/20'
-    : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100',
+    ? 'text-white/70 dark:text-neutral-900/70 hover:text-white dark:hover:text-neutral-900 hover:bg-white/20 dark:hover:bg-neutral-900/20'
+    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700',
 ])
 
 // Quick actions dropdown items

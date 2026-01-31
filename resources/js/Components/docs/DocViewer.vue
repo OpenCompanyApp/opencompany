@@ -405,24 +405,24 @@ const headingDropdownItems = computed(() => [
 
 // Container classes
 const containerClasses = computed(() => [
-  'flex-1 bg-white flex flex-col h-full overflow-hidden relative',
+  'flex-1 bg-white dark:bg-neutral-900 flex flex-col h-full overflow-hidden relative',
 ])
 
 // Toolbar classes
 const toolbarClasses = computed(() => [
   'sticky top-0 z-20 flex items-center justify-between px-8 py-2',
-  'bg-white border-b border-neutral-200',
+  'bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700',
 ])
 
 const toolbarButtonClasses = computed(() => [
-  'p-2 rounded-lg text-neutral-500 hover:text-neutral-700',
-  'hover:bg-neutral-100 transition-colors duration-150',
-  'outline-none focus-visible:ring-2 focus-visible:ring-neutral-300',
+  'p-2 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150',
+  'outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-600',
 ])
 
 const saveButtonClasses = computed(() => [
   'px-4 py-2 rounded-lg font-medium text-sm',
-  'bg-neutral-900 text-white hover:bg-neutral-800',
+  'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100',
   'transition-colors duration-150',
   'disabled:opacity-50 disabled:cursor-not-allowed',
 ])
@@ -430,29 +430,29 @@ const saveButtonClasses = computed(() => [
 // TOC sidebar classes
 const tocSidebarClasses = computed(() => [
   'absolute right-0 top-0 bottom-0 w-64 p-6',
-  'bg-white border-l border-neutral-200 overflow-y-auto',
+  'bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 overflow-y-auto',
 ])
 
 const tocItemClasses = computed(() => [
   'block w-full text-left text-sm py-1 pr-2 border-l-2 border-transparent',
-  'text-neutral-500 hover:text-neutral-700',
+  'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200',
   'transition-colors duration-150',
 ])
 
 // Comments sidebar classes
 const commentsSidebarClasses = computed(() => [
   'absolute right-0 top-0 bottom-0 w-80 p-6',
-  'bg-white border-l border-neutral-200 overflow-y-auto',
+  'bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 overflow-y-auto',
 ])
 
 const commentClasses = computed(() => [
-  'p-3 rounded-lg bg-neutral-50 border border-neutral-100',
+  'p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700',
 ])
 
 // Footer classes
 const footerClasses = computed(() => [
   'sticky bottom-0 flex items-center justify-between px-8 py-2',
-  'bg-white border-t border-neutral-200',
+  'bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700',
 ])
 
 // Empty state classes

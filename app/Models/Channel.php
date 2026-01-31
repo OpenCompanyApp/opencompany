@@ -21,12 +21,16 @@ class Channel extends Model
         'description',
         'creator_id',
         'is_temporary',
+        'external_provider',
+        'external_id',
+        'external_config',
     ];
 
     protected function casts(): array
     {
         return [
             'is_temporary' => 'boolean',
+            'external_config' => 'array',
         ];
     }
 

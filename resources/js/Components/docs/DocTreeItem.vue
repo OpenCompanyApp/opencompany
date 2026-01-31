@@ -17,7 +17,7 @@
     <Transition name="drop-indicator">
       <div
         v-if="isDragOver && dropPosition === 'above'"
-        class="absolute left-0 right-0 top-0 h-0.5 bg-neutral-900 z-10 rounded-full"
+        class="absolute left-0 right-0 top-0 h-0.5 bg-neutral-900 dark:bg-white z-10 rounded-full"
         :style="{ marginLeft: `${8 + level * 20}px` }"
       />
     </Transition>
@@ -161,7 +161,7 @@
     <Transition name="drop-indicator">
       <div
         v-if="isDragOver && dropPosition === 'below'"
-        class="absolute left-0 right-0 bottom-0 h-0.5 bg-neutral-900 z-10 rounded-full"
+        class="absolute left-0 right-0 bottom-0 h-0.5 bg-neutral-900 dark:bg-white z-10 rounded-full"
         :style="{ marginLeft: `${8 + level * 20}px` }"
       />
     </Transition>
@@ -170,7 +170,7 @@
     <Transition name="drop-inside">
       <div
         v-if="isDragOver && dropPosition === 'inside' && item.isFolder"
-        class="absolute inset-0 rounded-lg border-2 border-dashed border-neutral-900 bg-neutral-50 pointer-events-none z-5"
+        class="absolute inset-0 rounded-lg border-2 border-dashed border-neutral-900 dark:border-white bg-neutral-50 dark:bg-neutral-800 pointer-events-none z-5"
         :style="{ marginLeft: `${level * 20}px` }"
       />
     </Transition>

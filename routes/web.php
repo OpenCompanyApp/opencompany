@@ -105,13 +105,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Agent/Show', ['id' => $id]);
     })->name('agent.show');
 
-    // Messages (DM)
+    // Messages (DM) - Redirect to unified chat
     Route::get('/messages', function () {
-        return Inertia::render('Messages/Index');
+        return redirect('/chat');
     })->name('messages.index');
 
     Route::get('/messages/{id}', function (string $id) {
-        return Inertia::render('Messages/Show', ['userId' => $id]);
+        return redirect('/chat?dm=' . $id);
     })->name('messages.show');
 
     // Profile pages

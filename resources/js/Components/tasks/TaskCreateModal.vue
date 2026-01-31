@@ -154,6 +154,7 @@ interface Channel {
 const props = defineProps<{
   open: boolean
   initialStatus?: TaskStatus
+  parentId?: string | null
   users?: User[]
   channels?: Channel[]
 }>()
@@ -168,6 +169,7 @@ const emit = defineEmits<{
     assigneeId: string
     estimatedCost: number | null
     channelId: string | null
+    parentId: string | null
   }]
 }>()
 
@@ -214,6 +216,7 @@ const createTask = async () => {
       assigneeId: form.value.assigneeId,
       estimatedCost: form.value.estimatedCost,
       channelId: form.value.channelId || null,
+      parentId: props.parentId || null,
     })
     emit('update:open', false)
   } finally {

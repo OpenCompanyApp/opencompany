@@ -1,22 +1,46 @@
 <template>
-  <div class="h-full flex flex-col">
-    <!-- Header -->
-    <header class="h-14 px-6 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between bg-white dark:bg-neutral-900 shrink-0">
-      <div class="flex items-center gap-4">
-        <h1 class="text-xl font-bold text-neutral-900 dark:text-white">Tasks</h1>
-        <div class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-300">
-          <span>{{ taskCounts.total }} tasks</span>
-          <span class="text-neutral-200 dark:text-neutral-600">/</span>
-          <span class="text-green-400">{{ taskCounts.done }} done</span>
+  <div class="h-full flex">
+    <!-- Project Sidebar (hidden on mobile) -->
+    <div class="hidden md:block w-64 shrink-0">
+      <TasksProjectList
+        :tasks="tasks"
+        :selected-id="selectedProjectId"
+        @select="handleProjectSelect"
+        @create-project="openCreateProjectModal"
+        @rename-project="handleRenameProject"
+        @delete-project="handleDeleteProject"
+      />
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col min-w-0">
+      <!-- Header -->
+      <header class="px-4 md:px-6 py-3 md:py-0 md:h-14 border-b border-neutral-200 dark:border-neutral-700 flex flex-col md:flex-row md:items-center gap-3 bg-white dark:bg-neutral-900 shrink-0">
+      <div class="flex items-center justify-between md:gap-4">
+        <div class="flex items-center gap-3 md:gap-4">
+          <h1 class="text-xl font-bold text-neutral-900 dark:text-white">Tasks</h1>
+          <div class="hidden md:flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-300">
+            <span>{{ taskCounts.total }} tasks</span>
+            <span class="text-neutral-200 dark:text-neutral-600">/</span>
+            <span class="text-green-400">{{ taskCounts.done }} done</span>
+          </div>
         </div>
+        <!-- Mobile: New Task button -->
+        <button
+          class="md:hidden flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg"
+          @click="openCreateModal()"
+        >
+          <Icon name="ph:plus-bold" class="w-4 h-4" />
+          <span>New</span>
+        </button>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 overflow-x-auto md:overflow-visible md:ml-auto pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
         <TasksTaskFilters
           v-model:filter="currentFilter"
           v-model:view="currentView"
         />
         <button
-          class="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+          class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0"
           @click="openCreateModal()"
         >
           <Icon name="ph:plus-bold" class="w-4 h-4" />
@@ -36,8 +60,63 @@
     />
 
     <!-- List View -->
-    <div v-else-if="currentView === 'list'" class="flex-1 overflow-auto p-6">
-      <div class="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+    <div v-else-if="currentView === 'list'" class="flex-1 overflow-auto p-4 md:p-6">
+      <!-- Mobile Card View -->
+      <div class="md:hidden space-y-3">
+        <div
+          v-for="task in filteredTasks"
+          :key="task.id"
+          class="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer active:bg-neutral-50 dark:active:bg-neutral-700/50"
+          @click="openTaskDetail(task)"
+        >
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <h4 :class="['font-medium text-neutral-900 dark:text-white', task.status === 'done' && 'line-through text-neutral-500 dark:text-neutral-400']">
+              {{ task.title }}
+            </h4>
+            <span
+              :class="[
+                'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full shrink-0',
+                statusClasses[task.status]
+              ]"
+            >
+              <span :class="['w-1.5 h-1.5 rounded-full', statusDots[task.status]]" />
+              {{ statusLabels[task.status] }}
+            </span>
+          </div>
+          <p v-if="task.description" class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2 mb-3">
+            {{ task.description }}
+          </p>
+          <div class="flex items-center gap-3 text-sm">
+            <span
+              :class="[
+                'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full',
+                priorityClasses[task.priority]
+              ]"
+            >
+              {{ task.priority }}
+            </span>
+            <div v-if="task.assignee" class="flex items-center gap-1.5">
+              <AgentAvatar :user="task.assignee" size="xs" />
+              <span class="text-neutral-600 dark:text-neutral-300">{{ task.assignee.name }}</span>
+            </div>
+            <CostBadge
+              v-if="task.cost || task.estimatedCost"
+              :cost="task.cost || task.estimatedCost!"
+              :variant="task.cost ? 'actual' : 'estimated'"
+              size="xs"
+              class="ml-auto"
+            />
+          </div>
+        </div>
+        <!-- Mobile Empty State -->
+        <div v-if="filteredTasks.length === 0" class="text-center py-12">
+          <Icon name="ph:list-checks" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+          <p class="text-neutral-500 dark:text-neutral-400">No tasks found</p>
+        </div>
+      </div>
+
+      <!-- Desktop Table View -->
+      <div class="hidden md:block bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
         <!-- Table Header -->
         <div class="grid grid-cols-12 gap-4 px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
           <div class="col-span-5">Task</div>
@@ -143,8 +222,46 @@
     <TasksTaskCreateModal
       v-model:open="createModalOpen"
       :initial-status="createInitialStatus"
+      :parent-id="selectedProjectId"
+      :users="users"
+      :channels="channels"
       @created="handleTaskCreated"
     />
+
+    <!-- Create Project Modal -->
+    <Modal v-model:open="createProjectModalOpen" title="New Project">
+      <form @submit.prevent="handleCreateProject" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+            Project Name
+          </label>
+          <input
+            v-model="newProjectName"
+            type="text"
+            placeholder="Enter project name..."
+            class="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
+            autofocus
+          />
+        </div>
+        <div class="flex justify-end gap-2">
+          <button
+            type="button"
+            class="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+            @click="createProjectModalOpen = false"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            :disabled="!newProjectName.trim()"
+            class="px-4 py-2 text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Create Project
+          </button>
+        </div>
+      </form>
+    </Modal>
+    </div>
   </div>
 </template>
 
@@ -155,17 +272,21 @@ import TasksTaskFilters from '@/Components/tasks/TaskFilters.vue'
 import TasksTaskBoard from '@/Components/tasks/TaskBoard.vue'
 import TasksTaskDetail from '@/Components/tasks/TaskDetail.vue'
 import TasksTaskCreateModal from '@/Components/tasks/TaskCreateModal.vue'
+import TasksProjectList from '@/Components/tasks/ProjectList.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import CostBadge from '@/Components/shared/CostBadge.vue'
+import Modal from '@/Components/shared/Modal.vue'
 import { useApi } from '@/composables/useApi'
 
 type ViewType = 'board' | 'list' | 'timeline'
 
-const { fetchTasks, updateTask, reorderTasks } = useApi()
+const { fetchTasks, fetchUsers, fetchChannels, updateTask, reorderTasks, createTask, deleteTask } = useApi()
 
-// Fetch tasks from API
+// Fetch data from API
 const { data: tasksData, refresh: refreshTasks } = fetchTasks()
+const { data: usersData } = fetchUsers()
+const { data: channelsData } = fetchChannels()
 
 const currentFilter = ref('all')
 const currentView = ref<ViewType>('board')
@@ -174,17 +295,32 @@ const taskDetailOpen = ref(false)
 const createModalOpen = ref(false)
 const createInitialStatus = ref<TaskStatus>('backlog')
 
+// Project state
+const selectedProjectId = ref<string | null>(null)
+const createProjectModalOpen = ref(false)
+const newProjectName = ref('')
+
 const tasks = computed<Task[]>(() => tasksData.value ?? [])
+const users = computed(() => usersData.value ?? [])
+const channels = computed(() => channelsData.value ?? [])
 
 const filteredTasks = computed(() => {
-  if (currentFilter.value === 'all') return tasks.value
+  // Start with non-folder tasks only
+  let result = tasks.value.filter(t => !t.isFolder)
+
+  // Filter by selected project
+  if (selectedProjectId.value) {
+    result = result.filter(t => t.parentId === selectedProjectId.value)
+  }
+
+  // Filter by assignee type
   if (currentFilter.value === 'agents') {
-    return tasks.value.filter(t => t.assignee?.type === 'agent')
+    result = result.filter(t => t.assignee?.type === 'agent')
+  } else if (currentFilter.value === 'humans') {
+    result = result.filter(t => t.assignee?.type === 'human')
   }
-  if (currentFilter.value === 'humans') {
-    return tasks.value.filter(t => t.assignee?.type === 'human')
-  }
-  return tasks.value
+
+  return result
 })
 
 const taskCounts = computed(() => ({
@@ -285,7 +421,59 @@ const openCreateModal = (status?: TaskStatus) => {
   createModalOpen.value = true
 }
 
-const handleTaskCreated = async () => {
+const handleTaskCreated = async (taskData: {
+  title: string
+  description: string
+  status: TaskStatus
+  priority: Priority
+  assigneeId: string
+  estimatedCost: number | null
+  channelId: string | null
+  parentId: string | null
+}) => {
+  await createTask(taskData)
   await refreshTasks()
+}
+
+// Project handlers
+const handleProjectSelect = (projectId: string | null) => {
+  selectedProjectId.value = projectId
+}
+
+const openCreateProjectModal = () => {
+  newProjectName.value = ''
+  createProjectModalOpen.value = true
+}
+
+const handleCreateProject = async () => {
+  if (!newProjectName.value.trim()) return
+
+  await createTask({
+    title: newProjectName.value.trim(),
+    isFolder: true,
+    parentId: selectedProjectId.value,
+  })
+
+  createProjectModalOpen.value = false
+  newProjectName.value = ''
+  await refreshTasks()
+}
+
+const handleRenameProject = async (project: Task) => {
+  const newName = prompt('Enter new project name:', project.title)
+  if (newName && newName.trim() !== project.title) {
+    await updateTask(project.id, { title: newName.trim() })
+    await refreshTasks()
+  }
+}
+
+const handleDeleteProject = async (project: Task) => {
+  if (confirm(`Delete project "${project.title}"? All tasks in this project will also be deleted.`)) {
+    await deleteTask(project.id)
+    if (selectedProjectId.value === project.id) {
+      selectedProjectId.value = null
+    }
+    await refreshTasks()
+  }
 }
 </script>

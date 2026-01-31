@@ -18,14 +18,14 @@
             v-if="showTableOfContents && tableOfContents.length > 0"
             class="fixed right-8 top-32 w-52 hidden xl:block"
           >
-            <div class="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
-              <h4 class="text-[11px] font-semibold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <div class="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 shadow-sm">
+              <h4 class="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <Icon name="ph:list" class="w-3.5 h-3.5" />
                 On this page
               </h4>
               <div class="relative">
                 <!-- Active indicator line -->
-                <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-neutral-100 rounded-full" />
+                <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-neutral-100 dark:bg-neutral-700 rounded-full" />
                 <ul class="space-y-0.5 relative">
                   <li
                     v-for="item in tableOfContents"
@@ -36,7 +36,7 @@
                     <Transition name="marker">
                       <div
                         v-if="activeHeadingId === item.id"
-                        class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-neutral-900 rounded-full"
+                        class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-neutral-900 dark:bg-white rounded-full"
                       />
                     </Transition>
                     <button
@@ -45,8 +45,8 @@
                         'text-left w-full text-sm py-1.5 px-3 rounded-md truncate',
                         'transition-colors duration-150',
                         activeHeadingId === item.id
-                          ? 'text-neutral-900 font-medium bg-neutral-100'
-                          : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50',
+                          ? 'text-neutral-900 dark:text-white font-medium bg-neutral-100 dark:bg-neutral-700'
+                          : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-700',
                         item.level === 2 && 'pl-5',
                         item.level === 3 && 'pl-7 text-xs',
                       ]"
@@ -67,7 +67,7 @@
           <Transition name="toolbar">
             <div
               v-if="showSelectionToolbar && selectionPosition"
-              class="fixed z-50 bg-white rounded-lg border border-neutral-200 shadow-lg p-1.5 flex items-center gap-0.5"
+              class="fixed z-50 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 shadow-lg p-1.5 flex items-center gap-0.5"
               :style="{
                 left: `${selectionPosition.x}px`,
                 top: `${selectionPosition.y}px`,
@@ -77,42 +77,42 @@
               <Tooltip text="Highlight" :delay-open="300">
                 <button
                   type="button"
-                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100"
+                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100 dark:hover:bg-neutral-700"
                   @click="handleHighlight"
                 >
-                  <Icon name="ph:highlighter" class="w-4 h-4 text-neutral-500" />
+                  <Icon name="ph:highlighter" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                 </button>
               </Tooltip>
 
               <Tooltip text="Comment" :delay-open="300">
                 <button
                   type="button"
-                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100"
+                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100 dark:hover:bg-neutral-700"
                   @click="handleComment"
                 >
-                  <Icon name="ph:chat-circle" class="w-4 h-4 text-neutral-500" />
+                  <Icon name="ph:chat-circle" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                 </button>
               </Tooltip>
 
-              <div class="w-px h-4 bg-neutral-200 mx-1" />
+              <div class="w-px h-4 bg-neutral-200 dark:bg-neutral-600 mx-1" />
 
               <Tooltip text="Copy" :delay-open="300">
                 <button
                   type="button"
-                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100"
+                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100 dark:hover:bg-neutral-700"
                   @click="handleCopySelection"
                 >
-                  <Icon name="ph:copy" class="w-4 h-4 text-neutral-500" />
+                  <Icon name="ph:copy" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                 </button>
               </Tooltip>
 
               <Tooltip text="Share" :delay-open="300">
                 <button
                   type="button"
-                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100"
+                  class="p-2 rounded-md transition-colors duration-150 hover:bg-neutral-100 dark:hover:bg-neutral-700"
                   @click="handleShare"
                 >
-                  <Icon name="ph:share" class="w-4 h-4 text-neutral-500" />
+                  <Icon name="ph:share" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                 </button>
               </Tooltip>
             </div>
@@ -144,11 +144,11 @@
                 {{ block.content }}
                 <button
                   type="button"
-                  class="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-neutral-100 transition-opacity duration-150"
+                  class="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-opacity duration-150"
                   :aria-label="`Copy link to ${block.content}`"
                   @click="copyHeadingLink(block.content)"
                 >
-                  <Icon name="ph:link" class="w-4 h-4 text-neutral-500" />
+                  <Icon name="ph:link" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                 </button>
               </component>
 
@@ -170,15 +170,15 @@
               <!-- Table -->
               <div
                 v-else-if="block.tag === 'table'"
-                class="my-6 overflow-x-auto rounded-lg border border-neutral-200"
+                class="my-6 overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700"
               >
                 <table class="w-full text-sm">
-                  <thead class="bg-neutral-50">
+                  <thead class="bg-neutral-50 dark:bg-neutral-800">
                     <tr>
                       <th
                         v-for="(header, hIdx) in block.headers"
                         :key="hIdx"
-                        class="px-4 py-2 text-left font-medium text-neutral-900 border-b border-neutral-200"
+                        class="px-4 py-2 text-left font-medium text-neutral-900 dark:text-white border-b border-neutral-200 dark:border-neutral-700"
                       >
                         {{ header }}
                       </th>
@@ -188,12 +188,12 @@
                     <tr
                       v-for="(row, rIdx) in block.rows"
                       :key="rIdx"
-                      class="border-b border-neutral-200 last:border-0 hover:bg-neutral-50 transition-colors duration-150"
+                      class="border-b border-neutral-200 dark:border-neutral-700 last:border-0 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors duration-150"
                     >
                       <td
                         v-for="(cell, cIdx) in row"
                         :key="cIdx"
-                        class="px-4 py-2 text-neutral-900"
+                        class="px-4 py-2 text-neutral-900 dark:text-neutral-100"
                       >
                         {{ cell }}
                       </td>
@@ -213,8 +213,8 @@
                     'mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0',
                     'transition-colors duration-150',
                     block.checked
-                      ? 'bg-neutral-900 border-neutral-900'
-                      : 'border-neutral-300 hover:border-neutral-400',
+                      ? 'bg-neutral-900 dark:bg-white border-neutral-900 dark:border-white'
+                      : 'border-neutral-300 dark:border-neutral-600 hover:border-neutral-400 dark:hover:border-neutral-500',
                   ]"
                   :aria-checked="block.checked"
                   role="checkbox"
@@ -224,11 +224,11 @@
                     <Icon
                       v-if="block.checked"
                       name="ph:check-bold"
-                      class="w-3 h-3 text-white"
+                      class="w-3 h-3 text-white dark:text-neutral-900"
                     />
                   </Transition>
                 </button>
-                <span :class="[block.checked && 'line-through text-neutral-500']">
+                <span :class="[block.checked && 'line-through text-neutral-500 dark:text-neutral-400', 'text-neutral-700 dark:text-neutral-300']">
                   {{ block.content }}
                 </span>
               </div>
@@ -236,7 +236,7 @@
               <!-- Horizontal rule -->
               <hr
                 v-else-if="block.tag === 'hr'"
-                class="my-8 border-0 h-px bg-neutral-200"
+                class="my-8 border-0 h-px bg-neutral-200 dark:bg-neutral-700"
               />
 
               <!-- Image -->
@@ -244,7 +244,7 @@
                 v-else-if="block.tag === 'image'"
                 class="my-6"
               >
-                <div class="relative rounded-lg overflow-hidden border border-neutral-200">
+                <div class="relative rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700">
                   <img
                     :src="block.src"
                     :alt="block.alt || ''"
@@ -253,15 +253,15 @@
                   />
                   <button
                     type="button"
-                    class="absolute top-2 right-2 p-2 rounded-lg bg-white/80 opacity-0 hover:opacity-100 transition-opacity duration-150 hover:bg-white"
+                    class="absolute top-2 right-2 p-2 rounded-lg bg-white/80 dark:bg-neutral-800/80 opacity-0 hover:opacity-100 transition-opacity duration-150 hover:bg-white dark:hover:bg-neutral-800"
                     @click="$emit('image-click', block.src)"
                   >
-                    <Icon name="ph:arrows-out" class="w-4 h-4 text-neutral-500" />
+                    <Icon name="ph:arrows-out" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                   </button>
                 </div>
                 <figcaption
                   v-if="block.caption"
-                  class="text-center text-sm text-neutral-500 mt-2 italic"
+                  class="text-center text-sm text-neutral-500 dark:text-neutral-400 mt-2 italic"
                 >
                   {{ block.caption }}
                 </figcaption>
@@ -276,16 +276,16 @@
                 <!-- Render inline formatting -->
                 <template v-if="block.inlineContent">
                   <template v-for="(part, pIdx) in block.inlineContent" :key="pIdx">
-                    <strong v-if="part.bold">{{ part.text }}</strong>
+                    <strong v-if="part.bold" class="text-neutral-900 dark:text-white">{{ part.text }}</strong>
                     <em v-else-if="part.italic">{{ part.text }}</em>
                     <code
                       v-else-if="part.code"
-                      class="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-800 font-mono text-sm"
+                      class="px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-mono text-sm"
                     >{{ part.text }}</code>
                     <a
                       v-else-if="part.link"
                       :href="part.link"
-                      class="text-neutral-900 underline hover:text-neutral-600"
+                      class="text-neutral-900 dark:text-white underline hover:text-neutral-600 dark:hover:text-neutral-300"
                       target="_blank"
                       rel="noopener noreferrer"
                     >{{ part.text }}</a>
@@ -304,7 +304,7 @@
           <Transition name="progress">
             <div
               v-if="showReadProgress"
-              class="fixed bottom-8 right-8 w-14 h-14 rounded-xl bg-white border border-neutral-200 shadow-md flex items-center justify-center cursor-pointer transition-colors duration-150 hover:bg-neutral-50"
+              class="fixed bottom-8 right-8 w-14 h-14 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center cursor-pointer transition-colors duration-150 hover:bg-neutral-50 dark:hover:bg-neutral-700"
               :title="`${Math.round(readProgress)}% read`"
             >
               <svg class="w-10 h-10 -rotate-90">
@@ -315,7 +315,7 @@
                   stroke="currentColor"
                   stroke-width="2.5"
                   fill="none"
-                  class="text-neutral-100"
+                  class="text-neutral-100 dark:text-neutral-700"
                 />
                 <circle
                   cx="20"
@@ -324,13 +324,13 @@
                   stroke="currentColor"
                   stroke-width="2.5"
                   fill="none"
-                  class="text-neutral-900 transition-all duration-150"
+                  class="text-neutral-900 dark:text-white transition-all duration-150"
                   :stroke-dasharray="circumference"
                   :stroke-dashoffset="circumference - (readProgress / 100) * circumference"
                   stroke-linecap="round"
                 />
               </svg>
-              <span class="absolute text-xs font-semibold text-neutral-900 tabular-nums">
+              <span class="absolute text-xs font-semibold text-neutral-900 dark:text-white tabular-nums">
                 {{ Math.round(readProgress) }}%
               </span>
             </div>
@@ -500,11 +500,11 @@ const selectionPosition = ref<SelectionPosition | null>(null)
 const circumference = 2 * Math.PI * 16
 
 const blockquoteVariants: Record<BlockquoteVariant, string> = {
-  note: 'border-neutral-400 bg-neutral-50',
-  tip: 'border-neutral-400 bg-neutral-50',
-  warning: 'border-neutral-400 bg-neutral-50',
-  danger: 'border-neutral-400 bg-neutral-50',
-  info: 'border-neutral-400 bg-neutral-50',
+  note: 'border-neutral-400 bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-600',
+  tip: 'border-neutral-400 bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-600',
+  warning: 'border-neutral-400 bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-600',
+  danger: 'border-neutral-400 bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-600',
+  info: 'border-neutral-400 bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-600',
 }
 
 const blockquoteIcons: Record<BlockquoteVariant, string> = {
@@ -516,11 +516,11 @@ const blockquoteIcons: Record<BlockquoteVariant, string> = {
 }
 
 const blockquoteIconClasses: Record<BlockquoteVariant, string> = {
-  note: 'w-4 h-4 text-neutral-500',
-  tip: 'w-4 h-4 text-neutral-500',
-  warning: 'w-4 h-4 text-neutral-500',
-  danger: 'w-4 h-4 text-neutral-500',
-  info: 'w-4 h-4 text-neutral-500',
+  note: 'w-4 h-4 text-neutral-500 dark:text-neutral-400',
+  tip: 'w-4 h-4 text-neutral-500 dark:text-neutral-400',
+  warning: 'w-4 h-4 text-neutral-500 dark:text-neutral-400',
+  danger: 'w-4 h-4 text-neutral-500 dark:text-neutral-400',
+  info: 'w-4 h-4 text-neutral-500 dark:text-neutral-400',
 }
 
 const blockquoteLabels: Record<BlockquoteVariant, string> = {
@@ -553,17 +553,17 @@ const proseClasses = computed(() => [
 ])
 
 const blockClasses: Record<string, string> = {
-  h1: 'text-3xl font-bold mb-6 mt-8 first:mt-0 text-neutral-900',
-  h2: 'text-2xl font-semibold mb-4 mt-8 text-neutral-900',
-  h3: 'text-xl font-semibold mb-3 mt-6 text-neutral-900',
-  h4: 'text-lg font-medium mb-2 mt-4 text-neutral-900',
-  h5: 'text-base font-medium mb-2 mt-4 text-neutral-900',
-  h6: 'text-sm font-medium mb-2 mt-4 text-neutral-500 uppercase tracking-wide',
-  p: 'text-neutral-700 leading-relaxed mb-4',
-  li: 'text-neutral-700 leading-relaxed ml-6 mb-2 list-disc',
-  ol: 'text-neutral-700 leading-relaxed ml-6 mb-4',
-  ul: 'text-neutral-700 leading-relaxed ml-6 mb-4',
-  blockquote: 'border-l-4 border-neutral-300 pl-4 py-2 my-4 rounded-r-lg',
+  h1: 'text-3xl font-bold mb-6 mt-8 first:mt-0 text-neutral-900 dark:text-white',
+  h2: 'text-2xl font-semibold mb-4 mt-8 text-neutral-900 dark:text-white',
+  h3: 'text-xl font-semibold mb-3 mt-6 text-neutral-900 dark:text-white',
+  h4: 'text-lg font-medium mb-2 mt-4 text-neutral-900 dark:text-white',
+  h5: 'text-base font-medium mb-2 mt-4 text-neutral-900 dark:text-white',
+  h6: 'text-sm font-medium mb-2 mt-4 text-neutral-500 dark:text-neutral-400 uppercase tracking-wide',
+  p: 'text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4',
+  li: 'text-neutral-700 dark:text-neutral-300 leading-relaxed ml-6 mb-2 list-disc',
+  ol: 'text-neutral-700 dark:text-neutral-300 leading-relaxed ml-6 mb-4',
+  ul: 'text-neutral-700 dark:text-neutral-300 leading-relaxed ml-6 mb-4',
+  blockquote: 'border-l-4 border-neutral-300 dark:border-neutral-600 pl-4 py-2 my-4 rounded-r-lg',
 }
 
 // ============================================================================

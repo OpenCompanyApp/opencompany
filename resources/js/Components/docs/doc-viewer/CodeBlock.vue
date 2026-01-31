@@ -38,13 +38,13 @@
         <div v-if="hasBadges" class="flex items-center gap-1.5 ml-2">
           <span
             v-if="isModified"
-            class="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-neutral-100 text-neutral-500"
+            class="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
           >
             Modified
           </span>
           <span
             v-if="isReadOnly"
-            class="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-neutral-100 text-neutral-500"
+            class="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
           >
             Read-only
           </span>
@@ -105,7 +105,7 @@
         </Tooltip>
 
         <!-- Separator -->
-        <div v-if="showLineNumbersToggle || showWordWrapToggle || collapsible" class="w-px h-4 bg-neutral-200 mx-1" />
+        <div v-if="showLineNumbersToggle || showWordWrapToggle || collapsible" class="w-px h-4 bg-neutral-200 dark:bg-neutral-600 mx-1" />
 
         <!-- Copy button -->
         <Tooltip :text="copied ? 'Copied!' : 'Copy code'" :delay-open="300">
@@ -209,9 +209,9 @@
           ><code :class="codeClasses"><template v-for="(line, index) in codeLines" :key="index"><span
               :class="[
                 'block',
-                highlightLines?.includes(index + 1) && 'bg-neutral-100 -mx-4 px-4 border-l-2 border-neutral-400',
-                diffAdditions?.includes(index + 1) && 'bg-green-50 -mx-4 px-4 border-l-2 border-green-500',
-                diffDeletions?.includes(index + 1) && 'bg-red-50 -mx-4 px-4 border-l-2 border-red-500 line-through opacity-70',
+                highlightLines?.includes(index + 1) && 'bg-neutral-100 dark:bg-neutral-800 -mx-4 px-4 border-l-2 border-neutral-400 dark:border-neutral-500',
+                diffAdditions?.includes(index + 1) && 'bg-green-50 dark:bg-green-900/30 -mx-4 px-4 border-l-2 border-green-500',
+                diffDeletions?.includes(index + 1) && 'bg-red-50 dark:bg-red-900/30 -mx-4 px-4 border-l-2 border-red-500 line-through opacity-70',
               ]"
             >{{ line || ' ' }}</span></template></code></pre>
         </div>
@@ -222,17 +222,17 @@
     <Transition name="collapsed">
       <div
         v-if="collapsible && isCollapsed"
-        class="px-4 py-3 text-neutral-500 text-sm flex items-center justify-between"
+        class="px-4 py-3 text-neutral-500 dark:text-neutral-400 text-sm flex items-center justify-between"
       >
         <span>
           {{ lineCount }} lines
-          <span v-if="language" class="text-neutral-400">
+          <span v-if="language" class="text-neutral-400 dark:text-neutral-500">
             &middot; {{ displayLanguage }}
           </span>
         </span>
         <button
           type="button"
-          class="text-neutral-900 hover:underline text-sm px-2 py-1 -mr-2 rounded-lg transition-colors duration-150 ease-out hover:bg-neutral-100"
+          class="text-neutral-900 dark:text-white hover:underline text-sm px-2 py-1 -mr-2 rounded-lg transition-colors duration-150 ease-out hover:bg-neutral-100 dark:hover:bg-neutral-800"
           @click="toggleCollapse"
         >
           Show code
@@ -258,23 +258,23 @@
 
         <!-- Execution output -->
         <Transition name="output">
-          <div v-if="output" class="mt-2 pt-2 border-t border-neutral-200">
+          <div v-if="output" class="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700">
             <div class="flex items-center gap-1.5 mb-1.5">
-              <Icon name="ph:terminal" class="w-3.5 h-3.5 text-neutral-500" />
-              <span class="text-xs text-neutral-500 font-medium">Output</span>
+              <Icon name="ph:terminal" class="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
+              <span class="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Output</span>
             </div>
-            <pre class="text-sm text-neutral-900 font-mono whitespace-pre-wrap">{{ output }}</pre>
+            <pre class="text-sm text-neutral-900 dark:text-neutral-100 font-mono whitespace-pre-wrap">{{ output }}</pre>
           </div>
         </Transition>
 
         <!-- Error output -->
         <Transition name="output">
-          <div v-if="error" class="mt-2 pt-2 border-t border-red-200">
+          <div v-if="error" class="mt-2 pt-2 border-t border-red-200 dark:border-red-800">
             <div class="flex items-center gap-1.5 mb-1.5">
-              <Icon name="ph:warning-circle" class="w-3.5 h-3.5 text-red-600" />
-              <span class="text-xs text-red-600 font-medium">Error</span>
+              <Icon name="ph:warning-circle" class="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+              <span class="text-xs text-red-600 dark:text-red-400 font-medium">Error</span>
             </div>
-            <pre class="text-sm text-red-600 font-mono whitespace-pre-wrap">{{ error }}</pre>
+            <pre class="text-sm text-red-600 dark:text-red-400 font-mono whitespace-pre-wrap">{{ error }}</pre>
           </div>
         </Transition>
       </div>
@@ -471,18 +471,18 @@ const hasBadges = computed(() => props.isModified || props.isReadOnly)
 // ============================================================================
 
 const containerClasses = computed(() => [
-  'relative group rounded-lg overflow-hidden border border-neutral-200 bg-white',
+  'relative group rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900',
   'transition-all duration-150 ease-out',
-  isHovered.value && 'ring-1 ring-neutral-300 border-neutral-300',
+  isHovered.value && 'ring-1 ring-neutral-300 dark:ring-neutral-600 border-neutral-300 dark:border-neutral-600',
 ])
 
 const headerClasses = computed(() => [
-  'flex items-center justify-between bg-neutral-50 border-b border-neutral-200',
+  'flex items-center justify-between bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700',
   config.value.headerPadding,
 ])
 
 const languageIconContainerClasses = computed(() => [
-  'w-5 h-5 bg-neutral-100 transition-colors duration-150 ease-out',
+  'w-5 h-5 bg-neutral-100 dark:bg-neutral-700 transition-colors duration-150 ease-out',
 ])
 
 const languageIconClasses = computed(() => [
@@ -491,12 +491,12 @@ const languageIconClasses = computed(() => [
 ])
 
 const filenameClasses = computed(() => [
-  'text-neutral-900 font-mono truncate max-w-[200px]',
+  'text-neutral-900 dark:text-neutral-100 font-mono truncate max-w-[200px]',
   config.value.fontSize,
 ])
 
 const languageLabelClasses = computed(() => [
-  'text-neutral-500 font-mono',
+  'text-neutral-500 dark:text-neutral-400 font-mono',
   config.value.fontSize,
 ])
 
@@ -508,8 +508,8 @@ const actionsVisibilityClasses = computed(() => [
 const actionButtonClasses = computed(() => [
   'flex items-center justify-center rounded-md outline-none',
   'transition-colors duration-150 ease-out',
-  'hover:bg-neutral-100',
-  'focus-visible:ring-2 focus-visible:ring-neutral-900/50',
+  'hover:bg-neutral-100 dark:hover:bg-neutral-700',
+  'focus-visible:ring-2 focus-visible:ring-neutral-900/50 dark:focus-visible:ring-neutral-500/50',
   config.value.actionButtonSize,
 ])
 
@@ -521,7 +521,7 @@ const codeContainerClasses = computed(() => [
 ])
 
 const lineNumbersClasses = computed(() => [
-  'pr-4 mr-4 border-r border-neutral-200 text-neutral-400 font-mono shrink-0',
+  'pr-4 mr-4 border-r border-neutral-200 dark:border-neutral-700 text-neutral-400 dark:text-neutral-500 font-mono shrink-0',
   config.value.fontSize,
   config.value.lineHeight,
 ])
@@ -532,13 +532,13 @@ const preClasses = computed(() => [
 ])
 
 const codeClasses = computed(() => [
-  'font-mono text-neutral-900',
+  'font-mono text-neutral-900 dark:text-neutral-100',
   config.value.fontSize,
   config.value.lineHeight,
 ])
 
 const footerClasses = computed(() => [
-  'border-t border-neutral-200 bg-neutral-50',
+  'border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800',
   config.value.headerPadding,
 ])
 

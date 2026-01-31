@@ -1,6 +1,6 @@
 <template>
   <div class="h-full overflow-y-auto">
-    <div class="max-w-5xl mx-auto p-6">
+    <div class="max-w-5xl mx-auto p-4 md:p-6">
       <!-- Simple Header -->
       <header class="mb-6">
         <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Dashboard</h1>

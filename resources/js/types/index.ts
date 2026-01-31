@@ -4,7 +4,8 @@ export type PresenceStatus = 'online' | 'away' | 'busy' | 'offline'
 export type TaskStatus = 'backlog' | 'in_progress' | 'done'
 export type EntityType = 'human' | 'agent'
 export type AgentType = 'manager' | 'writer' | 'analyst' | 'creative' | 'researcher' | 'coder' | 'coordinator'
-export type ChannelType = 'public' | 'private' | 'agent' | 'dm'
+export type ChannelType = 'public' | 'private' | 'agent' | 'dm' | 'external'
+export type ExternalChannelProvider = 'telegram' | 'google_chat' | 'slack' | 'discord'
 export type Priority = 'low' | 'medium' | 'high' | 'urgent'
 export type ActivityType = 'message' | 'task_completed' | 'task_started' | 'agent_spawned' | 'approval_needed' | 'approval_granted' | 'error'
 
@@ -50,6 +51,10 @@ export interface Channel {
   pinned?: boolean
   starred?: boolean
   archived?: boolean
+  // External channel fields
+  externalProvider?: ExternalChannelProvider
+  externalId?: string
+  externalConfig?: Record<string, unknown>
 }
 
 export interface Attachment {
@@ -121,6 +126,8 @@ export interface ApprovalRequest {
 
 export interface Task {
   id: string
+  parentId?: string | null
+  isFolder?: boolean
   title: string
   description: string
   status: TaskStatus

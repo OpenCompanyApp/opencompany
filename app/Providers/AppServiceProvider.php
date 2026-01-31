@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Prism\Prism\PrismManager;
@@ -23,6 +24,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // Disable JSON wrapping for API resources
+        JsonResource::withoutWrapping();
 
         // Register GLM (Zhipu AI) as a custom Prism provider
         // GLM uses OpenAI-compatible chat/completions API (same as DeepSeek)

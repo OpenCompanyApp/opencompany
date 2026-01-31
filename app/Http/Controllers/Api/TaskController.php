@@ -25,14 +25,30 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
-        $maxPosition = Task::where('status', $request->input('status', 'todo'))->max('position') ?? 0;
+        $isFolder = $request->input('isFolder', false);
+        $parentId = $request->input('parentId');
+
+        // For folders, calculate max position among siblings
+        // For tasks, calculate max position within parent and status
+        if ($isFolder) {
+            $maxPosition = Task::where('parent_id', $parentId)
+                ->where('is_folder', true)
+                ->max('position') ?? 0;
+        } else {
+            $maxPosition = Task::where('parent_id', $parentId)
+                ->where('is_folder', false)
+                ->where('status', $request->input('status', 'backlog'))
+                ->max('position') ?? 0;
+        }
 
         $task = Task::create([
             'id' => Str::uuid()->toString(),
+            'parent_id' => $parentId,
+            'is_folder' => $isFolder,
             'title' => $request->input('title'),
-            'description' => $request->input('description'),
-            'status' => $request->input('status', 'todo'),
-            'priority' => $request->input('priority', 'medium'),
+            'description' => $request->input('description', ''),
+            'status' => $isFolder ? 'backlog' : $request->input('status', 'backlog'),
+            'priority' => $isFolder ? 'medium' : $request->input('priority', 'medium'),
             'assignee_id' => $request->input('assigneeId'),
             'creator_id' => $request->input('creatorId'),
             'channel_id' => $request->input('channelId'),
@@ -68,6 +84,9 @@ class TaskController extends Controller
         ]);
 
         // Handle snake_case conversion for camelCase inputs
+        if ($request->has('parentId')) {
+            $data['parent_id'] = $request->input('parentId');
+        }
         if ($request->has('assigneeId')) {
             $data['assignee_id'] = $request->input('assigneeId');
         }

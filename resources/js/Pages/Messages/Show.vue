@@ -69,7 +69,7 @@
     <div
       v-else-if="conversation"
       ref="messagesContainer"
-      class="flex-1 overflow-y-auto px-6 pt-4 pb-24"
+      class="flex-1 overflow-y-auto px-4 md:px-6 pt-4 pb-24"
     >
       <div class="max-w-4xl mx-auto space-y-4">
         <!-- Empty state -->
@@ -112,7 +112,7 @@
           <!-- Message bubble -->
           <div
             :class="[
-              'max-w-[70%] rounded-2xl px-4 py-2',
+              'max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-2',
               msg.author.id === currentUserId
                 ? 'bg-neutral-900 text-white'
                 : 'bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white',
