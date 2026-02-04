@@ -5,7 +5,7 @@
       <header class="mb-6">
         <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Settings</h1>
         <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-          Manage your organization, credits, and agent configuration
+          Manage your organization and agent configuration
         </p>
       </header>
 
@@ -45,55 +45,6 @@
           </div>
         </SettingsSection>
 
-        <!-- Credits & Billing -->
-        <SettingsSection title="Credits & Billing" icon="ph:coin">
-          <div class="space-y-6">
-            <!-- Credits Overview -->
-            <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-6 border border-neutral-200 dark:border-neutral-700">
-              <div class="flex items-center justify-between mb-4">
-                <div>
-                  <p class="text-sm text-neutral-500 dark:text-neutral-300">Available Credits</p>
-                  <p class="text-3xl font-bold text-neutral-900 dark:text-white">
-                    {{ statsData?.creditsRemaining?.toLocaleString() ?? 0 }}
-                  </p>
-                </div>
-                <div class="text-right">
-                  <p class="text-sm text-neutral-500 dark:text-neutral-300">Credits Used</p>
-                  <p class="text-xl font-semibold text-neutral-900 dark:text-white">
-                    {{ statsData?.creditsUsed?.toLocaleString() ?? 0 }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Usage Bar -->
-              <div class="h-3 bg-white dark:bg-neutral-700 rounded-full overflow-hidden">
-                <div
-                  class="h-full bg-gradient-to-r from-neutral-700 to-neutral-500 rounded-full transition-all duration-500"
-                  :style="{ width: `${creditUsagePercent}%` }"
-                />
-              </div>
-              <p class="text-xs text-neutral-500 dark:text-neutral-300 mt-2">
-                {{ creditUsagePercent.toFixed(1) }}% of total credits used
-              </p>
-            </div>
-
-            <!-- Credit Packages -->
-            <div class="grid grid-cols-3 gap-4">
-              <button
-                v-for="pkg in creditPackages"
-                :key="pkg.credits"
-                class="p-4 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-neutral-900 dark:hover:border-neutral-500 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all text-left group"
-              >
-                <p class="text-2xl font-bold text-neutral-900 dark:text-white group-hover:scale-105 transition-transform">
-                  {{ pkg.credits.toLocaleString() }}
-                </p>
-                <p class="text-sm text-neutral-500 dark:text-neutral-300">credits</p>
-                <p class="mt-2 font-semibold text-neutral-700 dark:text-neutral-200">${{ pkg.price }}</p>
-              </button>
-            </div>
-          </div>
-        </SettingsSection>
-
         <!-- Agent Defaults -->
         <SettingsSection title="Agent Defaults" icon="ph:robot">
           <div class="space-y-4">
@@ -103,19 +54,6 @@
                 <option value="supervised">Supervised (ask before actions)</option>
                 <option value="strict">Strict (require approval for everything)</option>
               </select>
-            </SettingsField>
-
-            <SettingsField label="Cost Limit per Task">
-              <div class="flex items-center gap-2">
-                <input
-                  v-model.number="agentSettings.costLimit"
-                  type="number"
-                  class="settings-input flex-1"
-                  placeholder="100"
-                  min="0"
-                />
-                <span class="text-neutral-500">credits</span>
-              </div>
             </SettingsField>
 
             <SettingsField label="Auto-spawn Agents">
@@ -383,7 +321,6 @@ import SettingsField from '@/Components/settings/SettingsField.vue'
 import SharedButton from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
-import { useApi } from '@/composables/useApi'
 
 interface ActionPolicy {
   id: string
@@ -393,8 +330,6 @@ interface ActionPolicy {
   costThreshold?: number
   approvers: string[]
 }
-
-const { fetchStats } = useApi()
 
 // Policy modal state
 const showPolicyModal = ref(false)
@@ -487,23 +422,6 @@ const closePolicyModal = () => {
   policyForm.costThreshold = undefined
 }
 
-const { data: stats } = fetchStats()
-
-const statsData = computed(() => stats.value)
-
-const creditUsagePercent = computed(() => {
-  const used = statsData.value?.creditsUsed ?? 0
-  const remaining = statsData.value?.creditsRemaining ?? 1
-  const total = used + remaining
-  return (used / total) * 100
-})
-
-const creditPackages = [
-  { credits: 1000, price: 10 },
-  { credits: 5000, price: 45 },
-  { credits: 10000, price: 80 },
-]
-
 const orgSettings = reactive({
   name: 'Bloom Agency',
   email: 'team@bloomagency.com',
@@ -512,7 +430,6 @@ const orgSettings = reactive({
 
 const agentSettings = reactive({
   behavior: 'supervised',
-  costLimit: 100,
   autoSpawn: true,
 })
 

@@ -54,10 +54,10 @@
               {{ formatAgentType(node.agentType) }}
             </span>
             <span
-              v-if="node.isTemporary"
+              v-if="node.isEphemeral"
               class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-400"
             >
-              Temporary
+              Ephemeral
             </span>
           </div>
           <p v-if="node.type === 'human' && node.email" class="text-xs text-neutral-500 dark:text-neutral-300 truncate">
@@ -113,7 +113,7 @@ interface OrgNode {
   status: string | null
   currentTask: string | null
   email: string | null
-  isTemporary: boolean | null
+  isEphemeral: boolean | null
   managerId: string | null
   children: OrgNode[]
 }

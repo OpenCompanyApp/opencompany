@@ -20,7 +20,7 @@ class Channel extends Model
         'type',
         'description',
         'creator_id',
-        'is_temporary',
+        'is_ephemeral',
         'external_provider',
         'external_id',
         'external_config',
@@ -29,7 +29,7 @@ class Channel extends Model
     protected function casts(): array
     {
         return [
-            'is_temporary' => 'boolean',
+            'is_ephemeral' => 'boolean',
             'external_config' => 'array',
         ];
     }

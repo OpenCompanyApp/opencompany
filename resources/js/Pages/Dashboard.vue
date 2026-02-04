@@ -93,8 +93,6 @@ const statsData = computed<Stats>(() => stats.value ?? {
   tasksToday: 0,
   messagesTotal: 0,
   messagesToday: 0,
-  creditsUsed: 0,
-  creditsRemaining: 0,
 })
 
 const activitiesData = computed<Activity[]>(() => activities.value ?? [])

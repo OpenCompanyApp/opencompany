@@ -435,7 +435,6 @@ const fetchData = async () => {
       stats: {
         tasksCompleted: 127,
         efficiency: 94,
-        creditsUsed: 45,
         totalSessions: 89,
       },
     } as Agent

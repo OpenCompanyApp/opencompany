@@ -1,0 +1,209 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\IntegrationSetting;
+use App\Models\User;
+use App\Services\AgentDocumentService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class AgentController extends Controller
+{
+    public function __construct(
+        private AgentDocumentService $agentDocumentService
+    ) {}
+
+    /**
+     * List all agents
+     */
+    public function index()
+    {
+        return User::where('type', 'agent')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Create a new agent
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'agentType' => 'required|in:general,writer,analyst,creative,researcher,coder,coordinator,workspace-manager',
+            'brain' => 'required|string',
+            'task' => 'nullable|string',
+            'behavior' => 'nullable|in:autonomous,supervised,strict',
+            'isEphemeral' => 'nullable|boolean',
+            'identity' => 'nullable|array',
+            'identity.IDENTITY' => 'nullable|string',
+            'identity.SOUL' => 'nullable|string',
+            'identity.USER' => 'nullable|string',
+            'identity.AGENTS' => 'nullable|string',
+            'identity.TOOLS' => 'nullable|string',
+            'identity.HEARTBEAT' => 'nullable|string',
+            'identity.BOOTSTRAP' => 'nullable|string',
+            'identity.MEMORY' => 'nullable|string',
+        ]);
+
+        // Validate brain format (provider:model)
+        if (!str_contains($validated['brain'], ':')) {
+            return response()->json([
+                'error' => 'Invalid brain format. Expected "provider:model" (e.g., "glm:glm-4.7")',
+            ], 422);
+        }
+
+        [$provider] = explode(':', $validated['brain'], 2);
+
+        // Verify the integration is enabled
+        $integration = IntegrationSetting::where('integration_id', $provider)
+            ->where('enabled', true)
+            ->first();
+
+        if (!$integration) {
+            return response()->json([
+                'error' => "AI model provider '{$provider}' is not configured or enabled. Please configure it in Integrations.",
+            ], 422);
+        }
+
+        // Create the agent user
+        $agent = User::create([
+            'id' => Str::uuid()->toString(),
+            'name' => $validated['name'],
+            'type' => 'agent',
+            'agent_type' => $validated['agentType'],
+            'brain' => $validated['brain'],
+            'status' => 'idle',
+            'presence' => 'online',
+            'is_ephemeral' => $validated['isEphemeral'] ?? false,
+            'current_task' => $validated['task'] ?? null,
+        ]);
+
+        // Create the document structure for this agent
+        $identityContent = $validated['identity'] ?? [];
+        $agentFolder = $this->agentDocumentService->createAgentDocumentStructure($agent, $identityContent);
+
+        // Store the folder reference
+        $agent->update(['docs_folder_id' => $agentFolder->id]);
+
+        return response()->json($agent->fresh(), 201);
+    }
+
+    /**
+     * Get a specific agent
+     */
+    public function show(string $id)
+    {
+        $agent = User::where('type', 'agent')
+            ->with('docsFolder')
+            ->findOrFail($id);
+
+        return response()->json($agent);
+    }
+
+    /**
+     * Update an agent
+     */
+    public function update(Request $request, string $id)
+    {
+        $agent = User::where('type', 'agent')->findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'brain' => 'sometimes|string',
+            'status' => 'sometimes|in:idle,working,offline',
+            'currentTask' => 'sometimes|nullable|string',
+        ]);
+
+        // If updating brain, validate the format and integration
+        if (isset($validated['brain'])) {
+            if (!str_contains($validated['brain'], ':')) {
+                return response()->json([
+                    'error' => 'Invalid brain format. Expected "provider:model"',
+                ], 422);
+            }
+
+            [$provider] = explode(':', $validated['brain'], 2);
+            $integration = IntegrationSetting::where('integration_id', $provider)
+                ->where('enabled', true)
+                ->first();
+
+            if (!$integration) {
+                return response()->json([
+                    'error' => "AI model provider '{$provider}' is not configured or enabled.",
+                ], 422);
+            }
+        }
+
+        $agent->update([
+            'name' => $validated['name'] ?? $agent->name,
+            'brain' => $validated['brain'] ?? $agent->brain,
+            'status' => $validated['status'] ?? $agent->status,
+            'current_task' => $validated['currentTask'] ?? $agent->current_task,
+        ]);
+
+        return response()->json($agent);
+    }
+
+    /**
+     * Delete an agent
+     */
+    public function destroy(string $id)
+    {
+        $agent = User::where('type', 'agent')->findOrFail($id);
+        $agent->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Get identity files for an agent
+     */
+    public function identityFiles(string $id)
+    {
+        $agent = User::where('type', 'agent')->findOrFail($id);
+        $files = $this->agentDocumentService->getIdentityFiles($agent);
+
+        return response()->json($files->map(function ($file) {
+            return [
+                'id' => $file->id,
+                'type' => str_replace('.md', '', $file->title),
+                'title' => $file->title,
+                'content' => $file->content,
+                'updatedAt' => $file->updated_at,
+            ];
+        }));
+    }
+
+    /**
+     * Update an identity file for an agent
+     */
+    public function updateIdentityFile(Request $request, string $id, string $fileType)
+    {
+        $agent = User::where('type', 'agent')->findOrFail($id);
+
+        $validated = $request->validate([
+            'content' => 'required|string',
+        ]);
+
+        $file = $this->agentDocumentService->updateIdentityFile(
+            $agent,
+            $fileType,
+            $validated['content']
+        );
+
+        if (!$file) {
+            return response()->json(['error' => 'Identity file not found'], 404);
+        }
+
+        return response()->json([
+            'id' => $file->id,
+            'type' => str_replace('.md', '', $file->title),
+            'title' => $file->title,
+            'content' => $file->content,
+            'updatedAt' => $file->updated_at,
+        ]);
+    }
+}

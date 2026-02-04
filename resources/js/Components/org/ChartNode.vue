@@ -46,12 +46,12 @@
         </div>
       </div>
 
-      <!-- Temporary badge -->
+      <!-- Ephemeral badge -->
       <span
-        v-if="node.isTemporary"
+        v-if="node.isEphemeral"
         class="absolute -top-2 -right-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30"
       >
-        Temp
+        Ephemeral
       </span>
     </div>
 
@@ -106,7 +106,7 @@ interface OrgNode {
   status: string | null
   currentTask: string | null
   email: string | null
-  isTemporary: boolean | null
+  isEphemeral: boolean | null
   managerId: string | null
   children: OrgNode[]
 }

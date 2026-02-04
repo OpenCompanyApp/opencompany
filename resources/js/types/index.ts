@@ -40,7 +40,7 @@ export interface Channel {
   description?: string
   unreadCount: number
   members: User[]
-  isTemporary?: boolean
+  isEphemeral?: boolean
   private?: boolean
   createdAt?: Date
   createdBy?: User
@@ -175,8 +175,6 @@ export interface Stats {
   tasksToday: number
   messagesTotal: number
   messagesToday: number
-  creditsUsed: number
-  creditsRemaining: number
 }
 
 export interface CommandItem {
@@ -259,7 +257,6 @@ export interface Agent extends User {
   stats?: {
     tasksCompleted: number
     efficiency: number
-    creditsUsed: number
     totalSessions: number
   }
 }

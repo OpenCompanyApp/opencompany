@@ -105,7 +105,7 @@ interface OrgNode {
   status: string | null
   currentTask: string | null
   email: string | null
-  isTemporary: boolean | null
+  isEphemeral: boolean | null
   managerId: string | null
   children: OrgNode[]
 }
@@ -156,7 +156,7 @@ const fetchHierarchy = async () => {
           status: user.status || null,
           currentTask: user.currentTask || null,
           email: user.email || null,
-          isTemporary: user.isTemporary || false,
+          isEphemeral: user.isEphemeral || false,
           managerId: user.managerId || null,
           children: [],
         })

@@ -53,6 +53,14 @@
       </span>
       <button
         type="button"
+        class="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+        title="Configure"
+        @click.stop="$emit('configure', integration)"
+      >
+        <Icon name="ph:gear" class="w-4 h-4" />
+      </button>
+      <button
+        type="button"
         class="p-1 text-neutral-400 hover:text-red-500 transition-colors"
         title="Uninstall"
         @click.stop="$emit('uninstall', integration)"
@@ -74,6 +82,7 @@ export interface Integration {
   category?: string
   installed: boolean
   popular?: boolean
+  configurable?: boolean
 }
 
 defineProps<{
@@ -83,6 +92,7 @@ defineProps<{
 const emit = defineEmits<{
   install: [integration: Integration]
   uninstall: [integration: Integration]
+  configure: [integration: Integration]
   click: [integration: Integration]
 }>()
 

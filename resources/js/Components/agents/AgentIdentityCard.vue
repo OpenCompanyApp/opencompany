@@ -46,8 +46,8 @@
         <p class="text-sm font-semibold text-neutral-900 dark:text-white">{{ agent.stats.tasksCompleted }}</p>
       </div>
       <div>
-        <p class="text-xs text-neutral-500 dark:text-neutral-400">Credits</p>
-        <p class="text-sm font-semibold text-neutral-900 dark:text-white">${{ agent.stats.creditsUsed }}</p>
+        <p class="text-xs text-neutral-500 dark:text-neutral-400">Sessions</p>
+        <p class="text-sm font-semibold text-neutral-900 dark:text-white">{{ agent.stats.totalSessions }}</p>
       </div>
     </div>
   </div>

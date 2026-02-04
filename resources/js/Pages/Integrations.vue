@@ -243,10 +243,18 @@
               :integration="integration"
               @install="handleInstall"
               @uninstall="handleUninstall"
+              @configure="handleConfigure"
             />
           </div>
         </section>
       </div>
+
+      <!-- GLM Config Modal -->
+      <GlmConfigModal
+        v-model:open="showGlmConfigModal"
+        :integration-id="activeGlmIntegrationId"
+        @saved="handleGlmSaved"
+      />
 
       <!-- Webhook Modal -->
       <Modal v-model:open="showWebhookModal" title="Add Webhook">
@@ -309,11 +317,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import SearchInput from '@/Components/shared/SearchInput.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
+import GlmConfigModal from '@/Components/integrations/GlmConfigModal.vue'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
 // Tab state
@@ -371,6 +380,35 @@ const webhookForm = reactive({
 // Library search
 const librarySearch = ref('')
 
+// GLM Config modal
+const showGlmConfigModal = ref(false)
+const activeGlmIntegrationId = ref<'glm' | 'glm-coding'>('glm-coding')
+
+// Load integration status from backend
+onMounted(async () => {
+  await loadIntegrationStatus()
+})
+
+const loadIntegrationStatus = async () => {
+  try {
+    const response = await fetch('/api/integrations')
+    if (response.ok) {
+      const integrations = await response.json()
+      // Update the AI Models category with real status
+      for (const integration of integrations) {
+        for (const category of integrationCategories.value) {
+          const found = category.integrations.find(i => i.id === integration.id)
+          if (found) {
+            found.installed = integration.enabled
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load integration status:', error)
+  }
+}
+
 // Mock data - Webhooks
 const webhooks = ref<Webhook[]>([
   {
@@ -406,6 +444,15 @@ const apiKeys = ref<ApiKey[]>([
 
 // Integration categories for Library
 const integrationCategories = ref<IntegrationCategory[]>([
+  {
+    id: 'ai-models',
+    name: 'AI Models',
+    icon: 'ph:brain',
+    integrations: [
+      { id: 'glm', name: 'GLM (Zhipu AI)', icon: 'ph:brain', description: 'General-purpose Chinese LLM', installed: false, popular: true },
+      { id: 'glm-coding', name: 'GLM Coding Plan', icon: 'ph:code', description: 'Specialized coding LLM', installed: false, popular: true },
+    ],
+  },
   {
     id: 'communication',
     name: 'Communication',
@@ -544,6 +591,13 @@ const revokeApiKey = (id: string) => {
 
 // Integration handlers
 const handleInstall = (integration: Integration) => {
+  // For AI model integrations, open config modal
+  if (integration.id === 'glm' || integration.id === 'glm-coding') {
+    activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
+    showGlmConfigModal.value = true
+    return
+  }
+
   // Find and update the integration
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === integration.id)
@@ -551,6 +605,26 @@ const handleInstall = (integration: Integration) => {
       found.installed = true
       break
     }
+  }
+}
+
+// Handle GLM config saved
+const handleGlmSaved = (result: { enabled: boolean; configured: boolean }) => {
+  // Update the specific GLM integration status
+  for (const category of integrationCategories.value) {
+    const found = category.integrations.find(i => i.id === activeGlmIntegrationId.value)
+    if (found) {
+      found.installed = result.enabled
+      break
+    }
+  }
+}
+
+// Handle configure integration
+const handleConfigure = (integration: Integration) => {
+  if (integration.id === 'glm' || integration.id === 'glm-coding') {
+    activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
+    showGlmConfigModal.value = true
   }
 }
 

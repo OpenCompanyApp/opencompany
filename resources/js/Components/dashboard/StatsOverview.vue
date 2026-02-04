@@ -39,15 +39,15 @@
       </div>
     </div>
 
-    <!-- Credits -->
+    <!-- Total Agents -->
     <div class="p-4 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-          <Icon name="ph:coins" class="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
+          <Icon name="ph:users" class="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
         </div>
         <div>
-          <p class="text-2xl font-semibold text-neutral-900 dark:text-white">${{ stats.creditsUsed }}</p>
-          <p class="text-xs text-neutral-500 dark:text-neutral-400">Credits used</p>
+          <p class="text-2xl font-semibold text-neutral-900 dark:text-white">{{ stats.totalAgents }}</p>
+          <p class="text-xs text-neutral-500 dark:text-neutral-400">Total agents</p>
         </div>
       </div>
     </div>

@@ -68,10 +68,10 @@
                   {{ user.agentType }} Agent
                 </span>
                 <span
-                  v-if="user.isTemporary"
+                  v-if="user.isEphemeral"
                   class="px-2 py-1 rounded-lg text-xs font-medium bg-amber-500/20 text-amber-400"
                 >
-                  Temporary
+                  Ephemeral
                 </span>
               </div>
               <p v-if="user.email" class="text-sm text-neutral-500 dark:text-neutral-300 mb-2">
@@ -106,15 +106,9 @@
             </div>
 
             <!-- Quick Stats -->
-            <div class="grid grid-cols-2 gap-4">
-              <div class="text-center p-3 bg-white dark:bg-neutral-700 rounded-lg">
-                <p class="text-2xl font-bold text-neutral-900 dark:text-white">{{ activityData?.stats?.completedTasks || 0 }}</p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-300">Tasks Done</p>
-              </div>
-              <div class="text-center p-3 bg-white dark:bg-neutral-700 rounded-lg">
-                <p class="text-2xl font-bold text-neutral-900 dark:text-white">{{ formatCredits(activityData?.stats?.totalCreditsUsed || 0) }}</p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-300">Credits Used</p>
-              </div>
+            <div class="text-center p-3 bg-white dark:bg-neutral-700 rounded-lg">
+              <p class="text-2xl font-bold text-neutral-900 dark:text-white">{{ activityData?.stats?.completedTasks || 0 }}</p>
+              <p class="text-xs text-neutral-500 dark:text-neutral-300">Tasks Done</p>
             </div>
           </div>
         </div>
@@ -213,41 +207,6 @@
           </div>
         </div>
 
-        <!-- Credits Tab -->
-        <div v-if="activeTab === 'credits'" class="space-y-3">
-          <div
-            v-for="transaction in activityData?.creditTransactions"
-            :key="transaction.id"
-            class="flex items-center gap-4 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700"
-          >
-            <div
-              :class="[
-                'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-                transaction.amount < 0 ? 'bg-red-500/20' : 'bg-green-500/20',
-              ]"
-            >
-              <Icon
-                :name="transaction.amount < 0 ? 'ph:arrow-down' : 'ph:arrow-up'"
-                :class="['w-4 h-4', transaction.amount < 0 ? 'text-red-400' : 'text-green-400']"
-              />
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ transaction.description }}</p>
-              <p class="text-xs text-neutral-500 dark:text-neutral-300 mt-1">{{ formatDateTime(transaction.createdAt) }}</p>
-            </div>
-            <span
-              :class="[
-                'text-sm font-semibold',
-                transaction.amount < 0 ? 'text-red-400' : 'text-green-400',
-              ]"
-            >
-              {{ transaction.amount > 0 ? '+' : '' }}{{ formatCredits(transaction.amount) }}
-            </span>
-          </div>
-          <div v-if="!activityData?.creditTransactions?.length" class="text-center py-8 text-neutral-500 dark:text-neutral-300">
-            No credit transactions
-          </div>
-        </div>
       </template>
 
       <!-- Not Found -->
@@ -275,7 +234,7 @@ interface User {
   status?: string
   currentTask?: string
   email?: string
-  isTemporary?: boolean
+  isEphemeral?: boolean
 }
 
 interface ActivityData {
@@ -298,15 +257,7 @@ interface ActivityData {
     description: string
     status: string
   }>
-  creditTransactions: Array<{
-    id: string
-    type: string
-    amount: number
-    description: string
-    createdAt: string
-  }>
   stats: {
-    totalCreditsUsed: number
     completedTasks: number
     inProgressTasks: number
     totalTasks: number
@@ -320,12 +271,11 @@ const props = defineProps<{
 const loading = ref(true)
 const user = ref<User | null>(null)
 const activityData = ref<ActivityData | null>(null)
-const activeTab = ref<'activity' | 'tasks' | 'credits'>('activity')
+const activeTab = ref<'activity' | 'tasks'>('activity')
 
 const tabs = [
   { id: 'activity' as const, label: 'Activity', icon: 'ph:activity' },
   { id: 'tasks' as const, label: 'Tasks', icon: 'ph:check-square' },
-  { id: 'credits' as const, label: 'Credits', icon: 'ph:coins' },
 ]
 
 const agentColorMap: Record<string, string> = {
@@ -377,13 +327,6 @@ const fetchData = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const formatCredits = (value: number) => {
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value)
 }
 
 const formatDateTime = (dateString: string) => {

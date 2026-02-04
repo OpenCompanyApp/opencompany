@@ -61,11 +61,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Automation');
     })->name('automation');
 
-    // Credits
-    Route::get('/credits', function () {
-        return Inertia::render('Credits');
-    })->name('credits');
-
     // Organization
     Route::get('/org', function () {
         return Inertia::render('Org');

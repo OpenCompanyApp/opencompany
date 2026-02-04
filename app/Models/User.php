@@ -22,13 +22,15 @@ class User extends Authenticatable
         'avatar',
         'type',
         'agent_type',
+        'brain',
+        'docs_folder_id',
         'status',
         'presence',
         'last_seen_at',
         'current_task',
         'email',
         'password',
-        'is_temporary',
+        'is_ephemeral',
         'manager_id',
     ];
 
@@ -43,7 +45,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'password' => 'hashed',
-            'is_temporary' => 'boolean',
+            'is_ephemeral' => 'boolean',
         ];
     }
 
@@ -56,9 +58,11 @@ class User extends Authenticatable
 
         // Add camelCase versions of snake_case fields
         $array['agentType'] = $this->agent_type;
+        $array['brain'] = $this->brain;
+        $array['docsFolderId'] = $this->docs_folder_id;
         $array['lastSeenAt'] = $this->last_seen_at;
         $array['currentTask'] = $this->current_task;
-        $array['isTemporary'] = $this->is_temporary;
+        $array['isEphemeral'] = $this->is_ephemeral;
         $array['managerId'] = $this->manager_id;
 
         return $array;
@@ -104,6 +108,11 @@ class User extends Authenticatable
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class, 'author_id');
+    }
+
+    public function docsFolder(): BelongsTo
+    {
+        return $this->belongsTo(Document::class, 'docs_folder_id');
     }
 
     public function activities(): HasMany

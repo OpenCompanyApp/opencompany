@@ -14,15 +14,5 @@ class Stat extends Model
 
     protected $fillable = [
         'id',
-        'credits_used',
-        'credits_remaining',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'credits_used' => 'decimal:2',
-            'credits_remaining' => 'decimal:2',
-        ];
-    }
 }

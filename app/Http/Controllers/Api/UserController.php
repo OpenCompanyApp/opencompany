@@ -154,17 +154,7 @@ class UserController extends Controller
                     'status' => 'in_progress',
                 ],
             ],
-            'creditTransactions' => [
-                [
-                    'id' => 'ct1',
-                    'type' => 'usage',
-                    'amount' => -5.50,
-                    'description' => 'Task completion',
-                    'createdAt' => now()->subDay()->toISOString(),
-                ],
-            ],
             'stats' => [
-                'totalCreditsUsed' => 45.50,
                 'completedTasks' => 12,
                 'inProgressTasks' => 2,
                 'totalTasks' => 14,

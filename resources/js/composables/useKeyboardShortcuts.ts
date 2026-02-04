@@ -97,15 +97,6 @@ export const useKeyboardShortcuts = () => {
     }
   })
 
-  // g + b - Go to Credits (billing)
-  whenever(keys.b, () => {
-    if (isInputFocused()) return
-    if (gPressed.value) {
-      router.visit('/credits')
-      gPressed.value = false
-    }
-  })
-
   // g + s - Go to Settings
   whenever(keys.s, () => {
     if (isInputFocused()) return

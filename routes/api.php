@@ -4,7 +4,6 @@ use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\ApprovalController;
 use App\Http\Controllers\Api\AutomationRuleController;
 use App\Http\Controllers\Api\ChannelController;
-use App\Http\Controllers\Api\CreditController;
 use App\Http\Controllers\Api\DirectMessageController;
 use App\Http\Controllers\Api\DocumentAttachmentController;
 use App\Http\Controllers\Api\DocumentCommentController;
@@ -24,7 +23,9 @@ use App\Http\Controllers\Api\DataTableController;
 use App\Http\Controllers\Api\DataTableColumnController;
 use App\Http\Controllers\Api\DataTableRowController;
 use App\Http\Controllers\Api\DataTableViewController;
+use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\DmController;
+use App\Http\Controllers\Api\IntegrationController;
 use Illuminate\Support\Facades\Route;
 
 // Users
@@ -122,9 +123,6 @@ Route::patch('/notifications/{id}', [NotificationController::class, 'update']);
 Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
 Route::get('/notifications/count', [NotificationController::class, 'count']);
 
-// Credits
-Route::get('/credits', [CreditController::class, 'index']);
-
 // Direct Messages
 Route::get('/direct-messages', [DirectMessageController::class, 'index']);
 Route::post('/direct-messages', [DirectMessageController::class, 'store']);
@@ -180,3 +178,19 @@ Route::get('/tables/{tableId}/views', [DataTableViewController::class, 'index'])
 Route::post('/tables/{tableId}/views', [DataTableViewController::class, 'store']);
 Route::patch('/tables/{tableId}/views/{viewId}', [DataTableViewController::class, 'update']);
 Route::delete('/tables/{tableId}/views/{viewId}', [DataTableViewController::class, 'destroy']);
+
+// Agents
+Route::get('/agents', [AgentController::class, 'index']);
+Route::post('/agents', [AgentController::class, 'store']);
+Route::get('/agents/{id}', [AgentController::class, 'show']);
+Route::patch('/agents/{id}', [AgentController::class, 'update']);
+Route::delete('/agents/{id}', [AgentController::class, 'destroy']);
+Route::get('/agents/{id}/identity', [AgentController::class, 'identityFiles']);
+Route::put('/agents/{id}/identity/{fileType}', [AgentController::class, 'updateIdentityFile']);
+
+// Integrations
+Route::get('/integrations', [IntegrationController::class, 'index']);
+Route::get('/integrations/models', [IntegrationController::class, 'enabledModels']);
+Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConfig']);
+Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
+Route::post('/integrations/{id}/test', [IntegrationController::class, 'testConnection']);

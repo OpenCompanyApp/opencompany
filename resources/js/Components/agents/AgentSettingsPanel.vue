@@ -26,27 +26,6 @@
       </div>
     </section>
 
-    <!-- Cost Limit -->
-    <section>
-      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">Cost Limit</h3>
-      <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
-        <div class="flex items-center gap-3">
-          <label class="text-sm text-neutral-600 dark:text-neutral-300">Max credits per task:</label>
-          <input
-            v-model.number="localSettings.costLimit"
-            type="number"
-            min="0"
-            step="10"
-            class="w-24 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
-            @change="emitUpdate"
-          />
-        </div>
-        <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
-          Agent will pause and request approval when approaching this limit
-        </p>
-      </div>
-    </section>
-
     <!-- Session Reset -->
     <section>
       <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">Session Reset</h3>
