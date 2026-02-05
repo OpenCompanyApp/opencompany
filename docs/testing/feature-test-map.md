@@ -54,7 +54,6 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] Agents Online stat card
 - [ ] Pending Tasks stat card
 - [ ] Unread Messages stat card
-- [ ] Credits stat card
 - [ ] Each stat shows correct number
 
 ### Pending Approvals Section (if any)
@@ -90,7 +89,7 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] Agent name input
 - [ ] Initial task textarea (optional)
 - [ ] Behavior mode select (autonomous/supervised/strict)
-- [ ] Temporary agent toggle
+- [ ] Ephemeral agent toggle
 - [ ] Estimated cost display
 - [ ] Cancel button
 - [ ] Spawn Agent button
@@ -103,13 +102,13 @@ Complete checklist of all features, buttons, and functionality to test.
 ### Channel List Sidebar
 - [ ] Channel items display
 - [ ] Unread count badges
-- [ ] Channel type icons (public/private/agent)
+- [ ] Channel type icons (public/private/agent/dm/external)
 - [ ] Selected channel highlight
 - [ ] "New Channel" button
 - [ ] Search channels (if available)
 
 ### Create Channel Modal
-- [ ] Channel type selection (public/private/agent)
+- [ ] Channel type selection (public/private/agent/dm/external)
 - [ ] Channel name input (validation: lowercase, hyphens)
 - [ ] Description textarea
 - [ ] Member search input
@@ -188,11 +187,13 @@ Complete checklist of all features, buttons, and functionality to test.
 
 ## 4. DIRECT MESSAGES
 
-### Messages Index (`/messages`)
-- [ ] Header with title
+> **Note:** `/messages` now redirects to `/chat`. DMs are part of the unified chat interface and appear as `dm` type channels in the channel list.
+
+### DM Conversations (via `/chat`)
+- [ ] DM channels appear in channel list
+- [ ] DM channel type icon distinct from other types
 - [ ] "New Message" button
 - [ ] Search conversations input
-- [ ] Conversations list display
 - [ ] Avatar per conversation
 - [ ] Last message preview
 - [ ] Time ago display
@@ -233,31 +234,90 @@ Complete checklist of all features, buttons, and functionality to test.
 ## 5. TASKS (`/tasks`)
 
 ### Header
-- [ ] Page title
-- [ ] View mode tabs (Board/List/Timeline)
-- [ ] Task filters dropdown
+- [ ] Page title "Tasks"
+- [ ] Filter tabs by status (All/Active/Pending/Completed/Failed)
+- [ ] Filter by agent
+- [ ] Filter by priority
+- [ ] Filter by type
 - [ ] "Create Task" button
 
-### Task Filters
-- [ ] All tasks
-- [ ] Assigned to me
-- [ ] Assigned to agents
-- [ ] Assigned to humans
+### Task List
+- [ ] Task rows display
+- [ ] Task title
+- [ ] Type badge (ticket/request/analysis/content/research/custom)
+- [ ] Status badge with color (pending/active/paused/completed/failed/cancelled)
+- [ ] Priority badge (low/medium/high/urgent)
+- [ ] Assigned agent with avatar
+- [ ] Due date display
+- [ ] Click to open task detail
+
+### Create Task Modal
+- [ ] Title input (required)
+- [ ] Description textarea
+- [ ] Type select (ticket/request/analysis/content/research/custom)
+- [ ] Priority select (low/medium/high/urgent)
+- [ ] Agent assignment select
+- [ ] Due date input
+- [ ] Cancel button
+- [ ] Create button
+- [ ] Loading state
+
+### Task Detail View (`/tasks/{id}`)
+- [ ] Task title display
+- [ ] Type badge
+- [ ] Status badge with color
+- [ ] Priority badge
+- [ ] Description display
+- [ ] Assigned agent with avatar
+- [ ] Requester info
+- [ ] Channel link (if linked)
+- [ ] Due date
+- [ ] Created/started/completed timestamps
+- [ ] Lifecycle action buttons:
+  - [ ] Start button (pending → active)
+  - [ ] Pause button (active → paused)
+  - [ ] Resume button (paused → active)
+  - [ ] Complete button (active → completed)
+  - [ ] Fail button (active → failed)
+  - [ ] Cancel button (any → cancelled)
+
+### Task Steps
+- [ ] Steps list display
+- [ ] Step description
+- [ ] Step type badge (action/decision/approval/sub_task/message)
+- [ ] Step status indicator (pending/in_progress/completed/skipped)
+- [ ] Step timestamps
+- [ ] Step metadata display
+
+### Sub-Tasks
+- [ ] Sub-task list (if parent task)
+- [ ] Sub-task status indicators
+- [ ] Click to open sub-task
+
+---
+
+## 6. LISTS (`/lists`)
+
+### Header
+- [ ] Page title "Lists"
+- [ ] View mode tabs (Board/List)
+- [ ] Filter dropdown
+- [ ] "Create Item" button
 
 ### Board View (Kanban)
 - [ ] Backlog column with count
 - [ ] In Progress column with count
 - [ ] Done column with count
-- [ ] Task cards in each column
+- [ ] Item cards in each column
 - [ ] Drag and drop between columns
-- [ ] Task card: title, priority badge, assignee avatar, cost
+- [ ] Item card: title, priority badge, assignee avatar, cost
 
 ### List View
-- [ ] Task rows in table format
+- [ ] Item rows in table format
 - [ ] Sortable columns
-- [ ] Task details visible
+- [ ] Item details visible
 
-### Create Task Modal
+### Create Item Modal
 - [ ] Title input (required)
 - [ ] Description textarea
 - [ ] Status select (backlog/in_progress/done)
@@ -269,8 +329,8 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] Create button
 - [ ] Loading state
 
-### Task Detail Slideover
-- [ ] Task title display
+### Item Detail Slideover
+- [ ] Item title display
 - [ ] Edit button → edit mode
 - [ ] Close (X) button
 - [ ] Status badge with color
@@ -281,12 +341,12 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] Created date
 - [ ] Completed date (if done)
 - [ ] Mark Complete button
-- [ ] Reopen Task button (if done)
+- [ ] Reopen button (if done)
 - [ ] Delete button
+- [ ] Collaborators section
 - [ ] Comments section
 - [ ] Add comment input
-- [ ] Comment list with threading
-- [ ] Reply to comment
+- [ ] Comment list
 - [ ] Delete comment (hover reveal)
 - [ ] Edit mode: editable title
 - [ ] Edit mode: editable description
@@ -297,7 +357,7 @@ Complete checklist of all features, buttons, and functionality to test.
 
 ---
 
-## 6. DOCUMENTS (`/docs`)
+## 7. DOCUMENTS (`/docs`)
 
 ### Document List Sidebar
 - [ ] Search documents input
@@ -356,7 +416,7 @@ Complete checklist of all features, buttons, and functionality to test.
 
 ---
 
-## 7. ACTIVITY (`/activity`)
+## 8. ACTIVITY (`/activity`)
 
 ### Header
 - [ ] Page title
@@ -379,7 +439,7 @@ Complete checklist of all features, buttons, and functionality to test.
 
 ---
 
-## 8. APPROVALS (`/approvals`)
+## 9. APPROVALS (`/approvals`)
 
 ### Header
 - [ ] Page title
@@ -407,7 +467,7 @@ Complete checklist of all features, buttons, and functionality to test.
 
 ---
 
-## 9. AUTOMATION (`/automation`)
+## 10. AUTOMATION (`/automation`)
 
 ### Header
 - [ ] Page title
@@ -461,36 +521,6 @@ Complete checklist of all features, buttons, and functionality to test.
 
 ---
 
-## 10. CREDITS (`/credits`)
-
-### Stats Cards
-- [ ] Available credits card
-- [ ] Used credits card
-- [ ] Today's usage card
-- [ ] Usage percentage bar
-
-### Daily Usage Chart
-- [ ] Chart displays (last 7 days)
-- [ ] Daily bars/lines
-- [ ] Date labels
-- [ ] Value tooltips
-
-### Usage by Agent
-- [ ] Agent list with usage
-- [ ] Agent avatars
-- [ ] Usage amounts
-- [ ] Percentage bars
-
-### Recent Transactions
-- [ ] Transaction list
-- [ ] Transaction type icons
-- [ ] Amounts with +/- indicators
-- [ ] Timestamps
-- [ ] Filter by type (usage/purchases)
-- [ ] Load more
-
----
-
 ## 11. ORGANIZATION (`/org`)
 
 ### Header
@@ -509,7 +539,7 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] Status indicators (working/idle)
 - [ ] Current task display
 - [ ] Email for humans
-- [ ] Temporary badge if applicable
+- [ ] Ephemeral badge if applicable
 - [ ] Expand/collapse children
 - [ ] Expand indicator with count
 - [ ] Click to expand/collapse
@@ -523,7 +553,7 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] Connector lines between nodes
 - [ ] Root node highlighted
 - [ ] Agent/human icons
-- [ ] Temporary badge
+- [ ] Ephemeral badge
 - [ ] Focus indicator on cards
 - [ ] Profile link per node
 
@@ -606,11 +636,6 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] Organization email input
 - [ ] Timezone select
 - [ ] Save button
-
-### Credits & Billing
-- [ ] Current balance display
-- [ ] Credit packages display
-- [ ] Purchase buttons
 
 ### Agent Defaults
 - [ ] Default behavior mode select
@@ -839,7 +864,7 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] User name
 - [ ] User type badge (human/agent)
 - [ ] Email display
-- [ ] Temporary indicator (if agent)
+- [ ] Ephemeral indicator (if agent)
 - [ ] Status display
 - [ ] Current task (if agent)
 - [ ] Message button
@@ -848,7 +873,6 @@ Complete checklist of all features, buttons, and functionality to test.
 ### Tabs
 - [ ] Activity tab
 - [ ] Tasks tab
-- [ ] Credits tab
 
 ### Activity Tab
 - [ ] Activity steps list
@@ -859,11 +883,6 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] Assigned tasks list
 - [ ] Task status badges
 - [ ] Click to open task
-
-### Credits Tab
-- [ ] Transaction history
-- [ ] Transaction types
-- [ ] Amounts
 
 ---
 
@@ -906,10 +925,6 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] Settings link
 - [ ] Logout button
 
-### Credits Display
-- [ ] Credits balance in header/sidebar
-- [ ] Click to go to Credits page
-
 ### Command Palette (Cmd/Ctrl+K)
 - [ ] Opens on shortcut
 - [ ] Search input autofocus
@@ -930,7 +945,6 @@ Complete checklist of all features, buttons, and functionality to test.
 - [ ] g+d: Go to Docs
 - [ ] g+a: Go to Approvals
 - [ ] g+o: Go to Organization
-- [ ] g+b: Go to Credits
 - [ ] g+s: Go to Settings
 
 ### Dark Mode
@@ -1074,6 +1088,6 @@ Complete checklist of all features, buttons, and functionality to test.
 
 ---
 
-## Total Test Items: ~500+
+## Total Test Items: ~750+
 
 Use this checklist to systematically test every feature in the application.

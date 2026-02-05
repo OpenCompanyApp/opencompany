@@ -38,6 +38,10 @@
 | **Result Aggregation** | Sub-agent outputs merged automatically |
 | **Auto-Dissolution** | Sub-agents cleaned up after task completion |
 | **Spawn Permissions** | Control which agents can spawn others |
+| **Concurrent Execution** | Up to 8 sub-agents running simultaneously per parent |
+| **Announce Flow** | Results delivered to parent with runtime stats (tokens, cost, duration) |
+| **Queue Modes** | Control result delivery: followup, steer, collect, or interrupt |
+| **Heartbeat Monitoring** | Detect and handle stuck sub-agents automatically |
 
 ---
 
@@ -81,6 +85,9 @@
 | **Working State** | Tracks what agent is currently doing |
 | **Recent Outputs** | Recalls recent tool results |
 | **Session Management** | Separate contexts per conversation |
+| **Context Pruning** | Automatic trimming of old tool results (soft/hard modes) |
+| **Auto-Compaction** | Progressive summarization when approaching context limits |
+| **Pre-Compaction Flush** | Saves durable memories before context compression |
 
 ### Long-Term Memory
 
@@ -90,8 +97,24 @@
 | **Past Conversations** | Recall previous interactions |
 | **Learned Preferences** | Adapts to how you work |
 | **Project History** | Remembers past projects and decisions |
-| **Semantic Search** | Find relevant memories by meaning |
-| **Vector Embeddings** | AI-powered memory retrieval |
+| **Daily Memory Logs** | Append-only daily activity logs for temporal context |
+
+### Memory Search
+
+| Feature | Description |
+|---------|-------------|
+| **Hybrid Search** | Combined vector similarity + BM25 keyword search for best results |
+| **Collection-Based Search** | Organize memories into named collections (identity, logs, sessions, custom) |
+| **Session Transcript Search** | Past conversations exported and indexed for semantic search |
+| **Daily Log Indexing** | Daily activity logs automatically indexed and searchable |
+| **Citation Support** | Search results include source file and line range references |
+| **Scope Rules** | Memory search restricted by conversation type (DM-only by default) |
+| **Result Clamping** | Smart limits on result count and snippet size to prevent context bloat |
+| **Periodic Re-Indexing** | Automatic background re-indexing every 5 minutes with delta tracking |
+| **Embedding Cache** | SHA256-keyed cache avoids re-embedding unchanged content (~90% cost savings) |
+| **Debounced Updates** | Document changes trigger indexing with 15-second debounce |
+| **Atomic Reindexing** | Zero-downtime memory re-indexing with cache seeding |
+| **Vector Embeddings** | AI-powered semantic retrieval across all memory collections |
 
 ### Workspace Knowledge
 
@@ -204,10 +227,13 @@
 | Feature | Description |
 |---------|-------------|
 | **Webhooks** | Trigger agents from external HTTP calls |
-| **Cron Jobs** | Schedule agents to run at specific times |
+| **Cron Jobs** | Schedule agents with ISO 8601 or cron expressions |
 | **Event-Based** | React to events from connected apps |
 | **Polling** | Periodically check external sources |
 | **Manual Trigger** | Start automations on demand |
+| **One-Shot Tasks** | Execute once and auto-delete |
+| **Delivery Modes** | Choose how results are delivered: announce, post, or silent |
+| **Agent-Scoped Schedules** | Each agent has its own independent schedule |
 
 ### Integrations
 
@@ -294,8 +320,13 @@
 
 | Feature | Description |
 |---------|-------------|
-| **Tool Allowlists** | Define which tools agents can use |
+| **Three-Tier Security** | Deny, allowlist, or full access modes per agent |
+| **Tool Allowlists** | Pre-approve specific tools with glob pattern matching |
 | **Tool Blocklists** | Block specific tools |
+| **Tool Groups** | Batch permissions: memory, web, filesystem, runtime, messaging |
+| **Tool Profiles** | Preset configurations: minimal, coding, messaging, full |
+| **Approval Workflows** | ExecAsk modes: off, on-miss, always |
+| **Safe Bins** | Auto-approved read-only tools (grep, jq, cat, etc.) |
 | **Rate Limiting** | Limit how often tools can be called |
 | **Path Restrictions** | Limit file/API access by path |
 | **Domain Restrictions** | Limit web/API access by domain |
@@ -433,6 +464,25 @@
 | **Plugin System** | Extend functionality |
 | **Custom Tools** | Create new agent tools |
 | **Webhook Handlers** | Custom webhook processing |
+
+### Plugin System
+
+| Feature | Description |
+|---------|-------------|
+| **Plugin Discovery** | Auto-discover plugins from workspace, global, and bundled sources |
+| **10 Capability Types** | Tools, channels, providers, skills, hooks, gateway, HTTP, CLI, services, commands |
+| **Exclusive Slots** | Replaceable subsystems: memory backend, sandbox, browser |
+| **Config Validation** | JSON Schema validation for plugin configuration |
+| **Laravel Packages** | Plugins implemented as standard Laravel service providers |
+
+### Multi-Device Support
+
+| Feature | Description |
+|---------|-------------|
+| **Device Registry** | Register and manage connected devices |
+| **Cross-Platform Sync** | Keep agent state consistent across devices |
+| **Device-Aware Routing** | Route tasks to devices with matching capabilities |
+| **Health Monitoring** | Heartbeat-based device health tracking |
 
 ---
 

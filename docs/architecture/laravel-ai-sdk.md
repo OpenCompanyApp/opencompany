@@ -20,6 +20,17 @@
 12. [Testing Strategy](#testing-strategy)
 13. [Migration Path](#migration-path)
 14. [Provider Support Matrix](#provider-support-matrix)
+15. [Events](#events)
+16. [Embedding Cache Strategy](#embedding-cache-strategy)
+17. [Document Memory Search](#document-memory-search)
+18. [Agent Workspace Files Mapping](#agent-workspace-files-mapping)
+19. [Heartbeat System](#heartbeat-system)
+20. [Agent Execution Loop](#agent-execution-loop)
+21. [Context Compaction](#context-compaction)
+22. [Pre-Compaction Memory Flush](#pre-compaction-memory-flush)
+23. [Enhanced Subagent Patterns](#enhanced-subagent-patterns)
+24. [Agent Execution Pipeline](#agent-execution-pipeline)
+25. [Links & Resources](#links--resources)
 
 ---
 
@@ -1252,6 +1263,1166 @@ class TrackAgentActivity
     }
 }
 ```
+
+---
+
+## Embedding Cache Strategy
+
+> Inspired by OpenClaw's embedding cache pattern for zero-cost re-indexing.
+
+### Cache Architecture
+
+Embedding generation is expensive. OpenClaw solves this with a SHA256-keyed cache that stores embeddings by `(provider, model, content_hash)`. This means:
+
+- Same text with same model = cache hit (no API call)
+- Same text with different model = cache miss (different embeddings per model)
+- Modified text = new hash = cache miss (re-embed only changed content)
+
+### Cache Seeding During Reindex
+
+When re-indexing is needed (e.g., chunking strategy change), OpenClaw seeds the new cache from the old one:
+
+1. Build new database/index
+2. Copy matching `(provider, model, content_hash)` entries from old cache
+3. Only re-embed content that has no cache entry
+4. Atomic rename: new DB → active, old DB → backup
+
+This reduces re-indexing cost by ~90% since most content hasn't changed.
+
+### OpenCompany Implementation
+
+```php
+// Migration: embedding_cache table
+Schema::create('embedding_cache', function (Blueprint $table) {
+    $table->string('provider', 50);
+    $table->string('model', 100);
+    $table->string('content_hash', 64); // SHA256
+    $table->vector('embedding', dimensions: 1536);
+    $table->integer('dims');
+    $table->timestamps();
+
+    $table->primary(['provider', 'model', 'content_hash']);
+});
+
+// EmbeddingCacheService
+class EmbeddingCacheService
+{
+    public function getOrCreate(string $text, string $provider, string $model): array
+    {
+        $hash = hash('sha256', $text);
+
+        $cached = EmbeddingCache::where('provider', $provider)
+            ->where('model', $model)
+            ->where('content_hash', $hash)
+            ->first();
+
+        if ($cached) {
+            return $cached->embedding;
+        }
+
+        $embedding = Embeddings::for([$text])->generate($provider, $model);
+
+        EmbeddingCache::create([
+            'provider' => $provider,
+            'model' => $model,
+            'content_hash' => $hash,
+            'embedding' => $embedding->embeddings[0],
+            'dims' => count($embedding->embeddings[0]),
+        ]);
+
+        return $embedding->embeddings[0];
+    }
+
+    /**
+     * Seed new cache from old during reindex.
+     * Copies matching entries to avoid re-embedding unchanged content.
+     */
+    public function seedFromExisting(string $provider, string $model, array $contentHashes): int
+    {
+        return EmbeddingCache::where('provider', $provider)
+            ->where('model', $model)
+            ->whereIn('content_hash', $contentHashes)
+            ->count(); // Already exists, no action needed
+    }
+}
+```
+
+---
+
+## Document Memory Search
+
+> OpenCompany's QMD-equivalent system: PostgreSQL-based collection search with hybrid ranking across agent documents. Adapted from OpenClaw's QMD sidecar architecture for a server-side multi-tenant environment.
+
+### Architecture Overview
+
+OpenClaw uses a SQLite-based QMD subprocess as a sidecar to each agent. OpenCompany replaces this with PostgreSQL-backed services integrated into the existing Document model hierarchy:
+
+| QMD (OpenClaw) | OpenCompany Equivalent |
+|---|---|
+| SQLite database per agent | PostgreSQL `memory_chunks` table (shared, agent-scoped) |
+| QMD subprocess (sidecar) | Laravel queue jobs + services (in-process) |
+| Filesystem collections | Document-based collections via `MemoryCollection` model |
+| File watcher (inotify, 15s debounce) | Eloquent model observers + debounced queue dispatch |
+| Cron-like periodic re-index (5m) | Laravel Scheduler `everyFiveMinutes()` |
+| Embedding refresh (60m) | Laravel Scheduler `hourly()` |
+| IPC to subprocess | Direct PHP service calls |
+| Per-agent SQLite fallback | Single PostgreSQL backend (no fallback needed) |
+
+### Collection System
+
+Collections scope searches to specific document subsets, replacing QMD's filesystem path groups:
+
+```php
+// MemoryCollection model
+class MemoryCollection extends Model
+{
+    use HasUuids;
+
+    protected $fillable = ['agent_config_id', 'name', 'type', 'description'];
+
+    // Collection types (matching QMD defaults):
+    // 'identity'  → identity/ folder documents (IDENTITY.md, SOUL.md, etc.)
+    // 'memory'    → memory/ folder documents (MEMORY.md, daily logs)
+    // 'sessions'  → indexed session transcripts
+    // 'custom'    → user-defined document sets
+
+    public function agentConfiguration(): BelongsTo
+    {
+        return $this->belongsTo(AgentConfiguration::class);
+    }
+
+    public function documents(): BelongsToMany
+    {
+        return $this->belongsToMany(Document::class, 'memory_collection_documents');
+    }
+
+    public function scopeForAgent($query, string $agentConfigId)
+    {
+        return $query->where('agent_config_id', $agentConfigId);
+    }
+
+    public function scopeOfType($query, string $type)
+    {
+        return $query->where('type', $type);
+    }
+}
+```
+
+Default collections per agent (created automatically):
+
+| Collection | Type | Contents |
+|---|---|---|
+| `identity` | identity | All 8 identity files (IDENTITY.md, SOUL.md, USER.md, etc.) |
+| `memory-root` | memory | MEMORY.md long-term memory file |
+| `memory-logs` | memory | memory/*.md daily log files |
+| `sessions` | sessions | Indexed conversation transcripts |
+
+### Integration with AgentDocumentService
+
+The existing `AgentDocumentService` (`app/Services/AgentDocumentService.php`) already manages the document hierarchy. Extensions for QMD search:
+
+```php
+// New methods on AgentDocumentService
+class AgentDocumentService
+{
+    // Existing: createAgentDocumentStructure(), createMemoryLog(), getIdentityFiles()
+
+    /**
+     * Create default memory collections when agent structure is set up
+     */
+    public function createDefaultCollections(User $agent, string $agentConfigId): void
+    {
+        $identityDocs = $this->getIdentityFiles($agent);
+        $memoryRoot = $this->getIdentityFile($agent, 'MEMORY');
+
+        // Create 'identity' collection with all identity docs
+        $identityCollection = MemoryCollection::create([
+            'agent_config_id' => $agentConfigId,
+            'name' => 'identity',
+            'type' => 'identity',
+        ]);
+        $identityCollection->documents()->attach($identityDocs->pluck('id'));
+
+        // Create 'memory-root' collection
+        if ($memoryRoot) {
+            $memoryRootCollection = MemoryCollection::create([
+                'agent_config_id' => $agentConfigId,
+                'name' => 'memory-root',
+                'type' => 'memory',
+            ]);
+            $memoryRootCollection->documents()->attach($memoryRoot->id);
+        }
+
+        // 'memory-logs' and 'sessions' created empty, populated as docs are added
+        MemoryCollection::create([
+            'agent_config_id' => $agentConfigId,
+            'name' => 'memory-logs',
+            'type' => 'memory',
+        ]);
+
+        MemoryCollection::create([
+            'agent_config_id' => $agentConfigId,
+            'name' => 'sessions',
+            'type' => 'sessions',
+        ]);
+    }
+
+    /**
+     * Get all searchable documents for an agent (across all collections)
+     */
+    public function getMemoryDocuments(User $agent): Collection
+    {
+        // Returns identity files + memory logs + session transcripts
+    }
+}
+```
+
+### Hybrid Search on Document Chunks
+
+The core search service combines pgvector cosine similarity with PostgreSQL full-text search:
+
+```php
+class HybridDocumentSearch
+{
+    public function __construct(
+        private EmbeddingCacheService $embeddings,
+    ) {}
+
+    public function search(
+        string $agentConfigId,
+        string $query,
+        int $maxResults = 6,
+        float $minScore = 0.0,
+        ?array $collectionNames = null,
+    ): SearchResultSet {
+        // 1. Generate query embedding via EmbeddingCacheService
+        $queryEmbedding = $this->embeddings->getOrGenerate($query);
+
+        // 2. Build base query scoped to agent
+        $baseQuery = MemoryChunk::where('agent_config_id', $agentConfigId);
+
+        // 3. Optional collection filtering
+        if ($collectionNames) {
+            $collectionIds = MemoryCollection::forAgent($agentConfigId)
+                ->whereIn('name', $collectionNames)
+                ->pluck('id');
+
+            $documentIds = DB::table('memory_collection_documents')
+                ->whereIn('collection_id', $collectionIds)
+                ->pluck('document_id');
+
+            $baseQuery->whereIn('document_id', $documentIds);
+        }
+
+        // 4. Vector search: cosine similarity via pgvector
+        $vectorResults = (clone $baseQuery)
+            ->selectRaw("*, 1 - (embedding <=> ?) as vector_score", [$queryEmbedding])
+            ->orderByRaw("embedding <=> ?", [$queryEmbedding])
+            ->limit($maxResults * 2) // Over-fetch for merging
+            ->get();
+
+        // 5. FTS search: PostgreSQL full-text ranking
+        $tsQuery = DB::raw("plainto_tsquery('english', ?)");
+        $ftsResults = (clone $baseQuery)
+            ->selectRaw("*, ts_rank(to_tsvector('english', text), plainto_tsquery('english', ?)) as text_score", [$query])
+            ->whereRaw("to_tsvector('english', text) @@ plainto_tsquery('english', ?)", [$query])
+            ->orderByRaw("ts_rank(to_tsvector('english', text), plainto_tsquery('english', ?)) DESC", [$query])
+            ->limit($maxResults * 2)
+            ->get();
+
+        // 6. Merge scores: 0.7 * vector + 0.3 * text
+        $merged = $this->mergeResults($vectorResults, $ftsResults, 0.7, 0.3);
+
+        // 7. Clamp results
+        return $this->clampResults($merged, $maxResults, $minScore);
+    }
+
+    private function clampResults(
+        Collection $results,
+        int $maxResults,
+        float $minScore,
+    ): SearchResultSet {
+        $clamped = $results
+            ->filter(fn ($r) => $r->score >= $minScore)
+            ->take($maxResults);
+
+        // Enforce maxInjectedChars (4000 total)
+        $totalChars = 0;
+        $final = $clamped->takeWhile(function ($result) use (&$totalChars) {
+            $snippetChars = min(strlen($result->text), 700); // maxSnippetChars
+            $totalChars += $snippetChars;
+            return $totalChars <= 4000; // maxInjectedChars
+        });
+
+        return new SearchResultSet($final);
+    }
+}
+```
+
+### Memory Tools for Agents
+
+```php
+// RecallMemory tool — hybrid search across collections
+class RecallMemory implements Tool
+{
+    public function description(): string
+    {
+        return 'Search your memory for relevant information. Returns semantically matched snippets with source citations.';
+    }
+
+    public function handle(Request $request): string
+    {
+        $scopeGuard = app(MemorySearchScopeGuard::class);
+        if (!$scopeGuard->canSearch($this->agent, $this->chatContext)) {
+            return 'Memory search is not available in this context.';
+        }
+
+        $results = app(HybridDocumentSearch::class)->search(
+            agentConfigId: $this->agent->agentConfiguration->id,
+            query: $request['query'],
+            maxResults: $request['max_results'] ?? 6,
+            collectionNames: $request['collections'] ?? null,
+        );
+
+        return $results->toJson(); // Includes citations
+    }
+}
+
+// SaveMemory tool — writes to daily log via AgentDocumentService
+class SaveMemory implements Tool
+{
+    public function description(): string
+    {
+        return 'Save a note to your persistent memory. Stored in today\'s daily log.';
+    }
+
+    public function handle(Request $request): string
+    {
+        $doc = app(AgentDocumentService::class)
+            ->createMemoryLog($this->agent, $request['content']);
+
+        // Trigger re-indexing of the updated document
+        IndexAgentMemoryJob::dispatch($doc->id)->delay(15); // 15s debounce
+
+        return "Memory saved to {$doc->title}";
+    }
+}
+```
+
+### Periodic Indexing via Queue Jobs
+
+```php
+// Index a single document (dispatched on create/update)
+class IndexAgentMemoryJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public function __construct(public string $documentId) {}
+
+    public function handle(ChunkingService $chunker, EmbeddingCacheService $embeddings): void
+    {
+        $document = Document::findOrFail($this->documentId);
+        $existingHash = MemoryChunk::where('document_id', $document->id)
+            ->value('content_hash');
+
+        $newHash = hash('sha256', $document->content);
+        if ($existingHash === $newHash) {
+            return; // No changes, skip
+        }
+
+        // Re-chunk the document
+        $chunks = $chunker->chunk($document->content, maxTokens: 400, overlap: 80);
+
+        // Delete old chunks, insert new
+        MemoryChunk::where('document_id', $document->id)->delete();
+
+        foreach ($chunks as $chunk) {
+            $embedding = $embeddings->getOrGenerate($chunk['text']);
+            MemoryChunk::create([
+                'agent_config_id' => $document->agentConfigId(),
+                'document_id' => $document->id,
+                'document_path' => $document->path(),
+                'text' => $chunk['text'],
+                'start_line' => $chunk['start_line'],
+                'end_line' => $chunk['end_line'],
+                'content_hash' => hash('sha256', $chunk['text']),
+                'embedding' => $embedding,
+            ]);
+        }
+    }
+}
+
+// Scheduled periodic re-index (every 5 minutes)
+// In app/Console/Kernel.php:
+$schedule->job(new PeriodicReindexJob)->everyFiveMinutes();
+$schedule->job(new EmbeddingRefreshJob)->hourly();
+```
+
+### Session Transcript Indexing
+
+```php
+class ExportSessionTranscriptJob implements ShouldQueue
+{
+    public function __construct(public string $sessionId) {}
+
+    public function handle(AgentDocumentService $docs): void
+    {
+        $session = AgentSession::with('messages')->findOrFail($this->sessionId);
+        $agent = $session->agentConfiguration->user;
+
+        // Convert messages to markdown
+        $markdown = "# Session Transcript - {$session->created_at->format('Y-m-d H:i')}\n\n";
+        foreach ($session->messages as $message) {
+            $role = ucfirst($message->role);
+            $markdown .= "**{$role}:** {$message->content}\n\n";
+        }
+
+        // Store as document in memory/ folder
+        $doc = $docs->createMemoryLog($agent, $markdown);
+
+        // Add to 'sessions' collection
+        $sessionsCollection = MemoryCollection::forAgent($session->agent_config_id)
+            ->where('name', 'sessions')
+            ->first();
+        $sessionsCollection?->documents()->attach($doc->id);
+
+        // Trigger indexing
+        IndexAgentMemoryJob::dispatch($doc->id);
+    }
+}
+```
+
+Triggered by:
+- Session archival (daily reset, idle timeout, manual reset)
+- Pre-compaction memory flush
+- Manual export via API
+
+### Scope Rules
+
+```php
+class MemorySearchScopeGuard
+{
+    /**
+     * Determine if memory search is allowed in the current context.
+     * DM-only by default (matching QMD's default scope rules).
+     */
+    public function canSearch(User $agent, ChatContext $context): bool
+    {
+        $settings = $agent->agentConfiguration?->settings;
+        $scope = $settings?->memory_search_scope ?? 'dm_only';
+
+        return match ($scope) {
+            'dm_only' => $context->channel->type === 'dm',
+            'all' => true,
+            'none' => false,
+            default => $context->channel->type === 'dm',
+        };
+    }
+}
+```
+
+### Citation Support
+
+Search results include source attribution for verification and navigation:
+
+```php
+class SearchResult
+{
+    public function __construct(
+        public string $text,           // Chunk content (max 700 chars)
+        public float $score,           // Combined hybrid score (0.0 - 1.0)
+        public string $documentPath,   // e.g., "memory/2026-02-05.md"
+        public ?string $documentId,    // UUID for navigation
+        public ?int $startLine,        // Source line range start
+        public ?int $endLine,          // Source line range end
+        public string $source,         // "memory" | "sessions" | "identity"
+    ) {}
+
+    public function citation(): string
+    {
+        $citation = $this->documentPath;
+        if ($this->startLine) {
+            $citation .= "#L{$this->startLine}";
+            if ($this->endLine && $this->endLine !== $this->startLine) {
+                $citation .= "-L{$this->endLine}";
+            }
+        }
+        return $citation;
+    }
+}
+```
+
+### Result Clamping Configuration
+
+Matching QMD's proven defaults to prevent context bloat:
+
+```php
+// config/memory.php
+return [
+    'search' => [
+        'max_results' => 6,             // Top-K results
+        'max_snippet_chars' => 700,     // Per-result snippet limit
+        'max_injected_chars' => 4000,   // Total context injection limit
+        'timeout_ms' => 4000,           // Query timeout
+        'vector_weight' => 0.7,         // Hybrid score: vector weight
+        'text_weight' => 0.3,           // Hybrid score: text weight
+    ],
+    'indexing' => [
+        'chunk_size' => 400,            // Tokens per chunk
+        'chunk_overlap' => 80,          // Overlap between chunks
+        'periodic_interval' => 5,       // Minutes between re-index
+        'embedding_interval' => 60,     // Minutes between embedding refresh
+        'debounce_seconds' => 15,       // Debounce for file change triggers
+    ],
+    'scope' => [
+        'default' => 'dm_only',         // Default scope rule
+    ],
+];
+```
+
+---
+
+## Agent Workspace Files Mapping
+
+> How OpenClaw's file-based agent identity translates to OpenCompany's database-backed system.
+
+### OpenClaw → OpenCompany Translation
+
+OpenClaw stores agent identity and behavior as markdown files in a workspace directory. OpenCompany replaces this with structured database fields and the existing `AgentDocumentService`.
+
+| OpenClaw File | Purpose | OpenCompany Field/Service |
+|--------------|---------|--------------------------|
+| `IDENTITY.md` | Name, emoji, avatar, vibe | `agent_configs.name`, `users.avatar`, `agent_configs.emoji` |
+| `SOUL.md` | Personality, boundaries, core truths | `agent_configs.personality` (text field) |
+| `AGENTS.md` | Operating instructions, memory guidelines | `agent_configs.instructions` (text field) |
+| `TOOLS.md` | Tool notes, platform conventions | Auto-generated from registered capabilities |
+| `USER.md` | User profile, timezone, preferences | Runtime injection from authenticated `User` model |
+| `HEARTBEAT.md` | Periodic check-in checklist | `agent_configs.heartbeat_prompt` (text field) |
+| `BOOTSTRAP.md` | One-time setup ritual | `BootstrapAgentJob` (runs once on agent creation) |
+| `BOOT.md` | Gateway restart checklist | Not needed (Laravel handles app lifecycle) |
+| `MEMORY.md` | Curated long-term memory | `AgentDocumentService` memory folder documents |
+| `memory/*.md` | Daily append-only logs | `AgentDocumentService::createMemoryLog()` |
+| `skills/` | Workspace-specific skill overrides | Agent capability/tool registry in DB |
+
+### System Prompt Assembly
+
+OpenClaw injects workspace files in order: `IDENTITY → SOUL → USER → AGENTS → TOOLS → MEMORY → HEARTBEAT → BOOTSTRAP`. OpenCompany replicates this with `AgentPromptBuilder`:
+
+```php
+class AgentPromptBuilder
+{
+    public function build(AgentConfig $agent, User $user, Channel $channel): string
+    {
+        $sections = [];
+
+        // 1. Identity (IDENTITY.md equivalent)
+        $sections[] = "You are {$agent->name} ({$agent->emoji}).";
+
+        // 2. Personality (SOUL.md equivalent)
+        if ($agent->personality) {
+            $sections[] = "## Personality\n{$agent->personality}";
+        }
+
+        // 3. User context (USER.md equivalent)
+        $sections[] = "## User\nYou are working with {$user->name}.";
+
+        // 4. Instructions (AGENTS.md equivalent)
+        if ($agent->instructions) {
+            $sections[] = "## Instructions\n{$agent->instructions}";
+        }
+
+        // 5. Tools (TOOLS.md equivalent — auto-generated)
+        $tools = $this->getToolDocumentation($agent);
+        if ($tools) {
+            $sections[] = "## Available Tools\n{$tools}";
+        }
+
+        // 6. Memory (MEMORY.md + daily logs)
+        $memory = $this->getRelevantMemory($agent, $channel);
+        if ($memory) {
+            $sections[] = "## Memory\n{$memory}";
+        }
+
+        // 7. Heartbeat context (only for heartbeat sessions)
+        // 8. Bootstrap context (only for first run)
+
+        return implode("\n\n---\n\n", $sections);
+    }
+}
+```
+
+### Sub-Agent Prompt Restrictions
+
+When building prompts for sub-agents, only sections 1 (identity name only) and 4 (instructions) are included. Personality, user context, heartbeat, and bootstrap are excluded to keep sub-agents task-focused.
+
+---
+
+## Heartbeat System
+
+> Periodic agent health checks adapted from OpenClaw's heartbeat runner.
+
+### Architecture
+
+OpenClaw uses a Node.js `setInterval` to wake agents periodically. OpenCompany replaces this with Laravel's Scheduler dispatching jobs per active agent.
+
+```php
+// app/Console/Kernel.php
+$schedule->call(function () {
+    AgentConfig::where('status', 'active')
+        ->whereNotNull('heartbeat_prompt')
+        ->where('heartbeat_enabled', true)
+        ->each(function ($agent) {
+            HeartbeatJob::dispatch($agent);
+        });
+})->everyThirtyMinutes();
+```
+
+### HeartbeatJob
+
+```php
+class HeartbeatJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public function __construct(
+        private AgentConfig $agent
+    ) {}
+
+    public function handle(AiManager $ai): void
+    {
+        // Check active hours
+        if (!$this->isWithinActiveHours()) {
+            return;
+        }
+
+        // Build minimal prompt with heartbeat checklist
+        $prompt = $this->agent->heartbeat_prompt;
+
+        // Call AI provider
+        $response = $ai->chat()
+            ->withModel($this->agent->model)
+            ->withSystemPrompt("You are {$this->agent->name}. Perform your heartbeat check.")
+            ->send($prompt);
+
+        $text = $response->text();
+
+        // Skip posting if just an ack (nothing to report)
+        if ($this->isAckOnly($text)) {
+            return;
+        }
+
+        // Post to agent's primary channel
+        $channel = $this->agent->user->channels()
+            ->where('type', 'dm')
+            ->first();
+
+        if ($channel) {
+            Message::create([
+                'content' => $text,
+                'author_id' => $this->agent->user_id,
+                'channel_id' => $channel->id,
+            ]);
+
+            broadcast(new MessageSent($channel, $message));
+        }
+    }
+
+    private function isAckOnly(string $text): bool
+    {
+        return str_contains(strtolower($text), 'heartbeat_ok')
+            || strlen(trim($text)) < 30;
+    }
+
+    private function isWithinActiveHours(): bool
+    {
+        if (!$this->agent->heartbeat_active_start || !$this->agent->heartbeat_active_end) {
+            return true;
+        }
+
+        $now = now()->setTimezone($this->agent->timezone ?? 'UTC');
+        return $now->between(
+            $now->copy()->setTimeFromTimeString($this->agent->heartbeat_active_start),
+            $now->copy()->setTimeFromTimeString($this->agent->heartbeat_active_end)
+        );
+    }
+}
+```
+
+### Configuration Fields
+
+Add to `agent_configs` migration:
+
+```php
+$table->text('heartbeat_prompt')->nullable();
+$table->boolean('heartbeat_enabled')->default(false);
+$table->string('heartbeat_interval')->default('30m');
+$table->string('heartbeat_active_start')->nullable(); // "09:00"
+$table->string('heartbeat_active_end')->nullable();   // "18:00"
+$table->string('heartbeat_timezone')->nullable();
+```
+
+---
+
+## Agent Execution Loop
+
+> The complete flow for running an agent in OpenCompany, adapted from OpenClaw's embedded runner.
+
+### Overview
+
+OpenClaw's agent execution is a 10-step async pipeline running in a Node.js gateway process. OpenCompany replaces this with Laravel queue jobs, the AI SDK, and Reverb WebSocket broadcasting.
+
+### Execution Flow
+
+```
+1. Message arrives (WebSocket event or API POST)
+      ↓
+2. MessageController stores message, checks if agent is mentioned
+      ↓
+3. Dispatches ProcessAgentMessageJob to agent-specific queue
+      ↓
+4. Job loads: AgentConfig, channel context, identity documents, memory
+      ↓
+5. AgentPromptBuilder assembles system prompt (personality + instructions + tools + memory)
+      ↓
+6. Laravel AI SDK sends to provider: chat()->withTools($tools)->stream()
+      ↓
+7. Tool calls? → AgentToolExecutor handles registered tools, results fed back
+      ↓
+8. Response streamed via Reverb broadcast to connected clients
+      ↓
+9. Final response stored as Message in database
+      ↓
+10. Post-processing: memory indexing, compaction check, activity logging
+```
+
+### ProcessAgentMessageJob
+
+```php
+class ProcessAgentMessageJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public function __construct(
+        private Message $message,
+        private AgentConfig $agent,
+        private Channel $channel
+    ) {
+        $this->onQueue('agent-' . $agent->id);
+    }
+
+    public function handle(
+        AgentPromptBuilder $promptBuilder,
+        AgentToolExecutor $toolExecutor,
+        AiManager $ai
+    ): void {
+        // 1. Build system prompt
+        $systemPrompt = $promptBuilder->build(
+            $this->agent,
+            $this->message->author,
+            $this->channel
+        );
+
+        // 2. Load conversation context
+        $history = $this->loadConversationHistory();
+
+        // 3. Send to AI provider with streaming
+        $stream = $ai->chat()
+            ->withModel($this->agent->model)
+            ->withSystemPrompt($systemPrompt)
+            ->withMessages($history)
+            ->withTools($toolExecutor->getToolsFor($this->agent))
+            ->stream();
+
+        // 4. Process stream
+        $fullResponse = '';
+        foreach ($stream as $chunk) {
+            if ($chunk->isToolCall()) {
+                $result = $toolExecutor->execute($chunk->toolCall());
+                // Feed result back to LLM (continue loop)
+            } else {
+                $fullResponse .= $chunk->text();
+                // Broadcast partial response via Reverb
+                broadcast(new AgentTyping($this->channel, $this->agent, $chunk->text()));
+            }
+        }
+
+        // 5. Store final response
+        $response = Message::create([
+            'content' => $fullResponse,
+            'author_id' => $this->agent->user_id,
+            'channel_id' => $this->channel->id,
+        ]);
+
+        broadcast(new MessageSent($this->channel, $response));
+
+        // 6. Post-processing
+        $this->triggerMemoryIndexing($response);
+        $this->checkCompactionThreshold();
+    }
+}
+```
+
+### Queue Architecture
+
+| Queue | Purpose | Concurrency |
+|-------|---------|-------------|
+| `agent-{id}` | Per-agent message processing | 1 (serialized) |
+| `agent-subagent` | Sub-agent task execution | Configurable (default: 8) |
+| `agent-heartbeat` | Heartbeat runs | 1 per agent |
+
+This mirrors OpenClaw's lane system: per-session serialization prevents race conditions, while sub-agent lanes allow parallel background work.
+
+---
+
+## Context Compaction
+
+> Adapted from OpenClaw's multi-stage context management system.
+
+### The Problem
+
+LLMs have fixed context windows. As conversations grow, they eventually hit the limit. Without management, agents either fail or lose important context.
+
+### OpenClaw's Three-Stage Approach
+
+**Stage 1: Context Pruning (per-request, in-memory)**
+- Only old `toolResult` messages are pruned
+- User and assistant messages are never modified
+- Last 3 assistant messages are always protected
+- Pruning modes:
+  - **Soft trim**: Keep first 1,500 chars + last 1,500 chars (max 4,000 chars total)
+  - **Hard clear**: Replace with `[Old tool result content cleared]`
+- TTL-based: tool results older than 5 minutes (configurable) are eligible
+
+**Stage 2: Pre-Compaction Memory Flush (see next section)**
+- Silent agentic turn to persist durable memories before compaction
+
+**Stage 3: Auto-Compaction (triggered by threshold)**
+- Triggered when `contextTokens > contextWindow - reserveTokens`
+- Also triggered on context overflow error (compact → retry)
+- Progressive summarization of older messages
+- Keeps recent tokens intact (default: 20,000 tokens)
+- Compaction count tracked per session
+
+### Configuration
+
+```php
+// In AgentSettings model
+'reserve_tokens' => 16384,           // Tokens reserved for compaction operations
+'reserve_tokens_floor' => 20000,     // Minimum safety floor
+'keep_recent_tokens' => 20000,       // Tokens to keep after compaction
+'pruning_ttl_minutes' => 5,          // TTL before tool results are prunable
+'soft_threshold_tokens' => 4000,     // Buffer before triggering memory flush
+```
+
+### OpenCompany Implementation
+
+Context management is handled in `AgentRespondJob` via a `ContextWindowGuard` service:
+
+```php
+class ContextWindowGuard
+{
+    public function shouldTriggerCompaction(AgentSession $session): bool
+    {
+        $settings = $session->agentConfiguration->settings;
+        $threshold = $session->max_tokens - $settings->reserve_tokens;
+
+        return $session->token_count >= $threshold;
+    }
+
+    public function shouldPrune(AgentSession $session): bool
+    {
+        if (!$session->last_api_call_at) return false;
+
+        $ttl = $session->agentConfiguration->settings->pruning_ttl_minutes;
+        return $session->last_api_call_at->addMinutes($ttl)->isPast();
+    }
+}
+```
+
+---
+
+## Pre-Compaction Memory Flush
+
+> Directly adopted from OpenClaw's `memory-flush.ts` pattern.
+
+### How It Works
+
+Before compaction erases older context, a **silent agentic turn** runs to persist durable memories. This prevents "amnesia" — the agent saves important facts, decisions, and learnings before they're summarized away.
+
+### Threshold Calculation
+
+```
+flushThreshold = contextWindow - reserveTokensFloor - softThresholdTokens
+```
+
+With defaults:
+- Context window: 200,000 tokens (Claude)
+- Reserve floor: 20,000 tokens
+- Soft threshold: 4,000 tokens
+- **Flush triggers at: 176,000 tokens**
+
+### Flush Protocol
+
+1. **Check threshold**: `totalTokens >= flushThreshold`
+2. **Check dedup**: `memoryFlushCompactionCount !== compactionCount` (haven't flushed this cycle)
+3. **Run silent turn**: Agent receives special prompt to persist memories
+4. **NO_REPLY convention**: Response starts with `NO_REPLY` token — user sees nothing
+5. **Update tracker**: Set `memoryFlushCompactionCount = compactionCount`
+
+### System Prompt for Memory Flush
+
+```
+Pre-compaction memory flush.
+Store durable memories now (use agent memory tools).
+If nothing to store, reply with NO_REPLY.
+```
+
+### OpenCompany Implementation
+
+```php
+class MemoryFlushService
+{
+    public function shouldRunMemoryFlush(AgentSession $session): bool
+    {
+        $settings = $session->agentConfiguration->settings;
+        $contextWindow = $session->max_tokens;
+        $reserveFloor = $settings->reserve_tokens_floor;
+        $softThreshold = $settings->soft_threshold_tokens;
+
+        $threshold = max(0, $contextWindow - $reserveFloor - $softThreshold);
+
+        if ($threshold <= 0 || $session->token_count < $threshold) {
+            return false;
+        }
+
+        // Prevent duplicate flushes per compaction cycle
+        return $session->memory_flush_compaction_count !== $session->compaction_count;
+    }
+
+    public function runMemoryFlush(AgentSession $session): void
+    {
+        $agent = OpenCompanyAgent::for($session->agentConfiguration->user);
+
+        $response = $agent->prompt(
+            'Pre-compaction memory flush. Store durable memories now. If nothing to store, reply with NO_REPLY.',
+            systemPrompt: 'Pre-compaction memory flush turn. Capture durable memories to persistent storage. You may reply, but usually NO_REPLY is correct.',
+        );
+
+        // Update flush tracker
+        $session->update([
+            'memory_flush_at' => now(),
+            'memory_flush_compaction_count' => $session->compaction_count,
+        ]);
+    }
+}
+```
+
+---
+
+## Enhanced Subagent Patterns
+
+> Extends the subagent section with detailed lifecycle and queue management from OpenClaw.
+
+### SubagentRegistry Lifecycle
+
+OpenClaw's `SubagentRegistry` (429 lines) manages the full subagent lifecycle:
+
+```
+Spawn Request → Permission Check → Session Creation → Execute → Monitor → Announce → Cleanup
+```
+
+**Lifecycle stages:**
+
+| Stage | Description |
+|-------|-------------|
+| **Spawn** | Validate permissions, create isolated session key `agent:{id}:subagent:{uuid}` |
+| **Execute** | Run in dedicated lane (`AGENT_LANE_SUBAGENT`), track via `SubagentRunRecord` |
+| **Monitor** | Heartbeat system with `HEARTBEAT_OK` token for long-running tasks |
+| **Announce** | Queue results for delivery to parent with stats (runtime, tokens, cost) |
+| **Cleanup** | Auto-archive after timeout (default 60 minutes), or immediate on `cleanup: "delete"` |
+
+### Queue Modes
+
+When a subagent completes, results can be delivered to the parent in different modes:
+
+| Mode | Behavior |
+|------|----------|
+| **followup** | Default. Queue result as next message to parent |
+| **steer** | Inject into parent's active run (interrupts current processing) |
+| **collect** | Batch results until parent explicitly requests them |
+| **interrupt** | Immediately interrupt parent and deliver result |
+
+### Concurrency Control
+
+- Max concurrent subagents: 8 (configurable per agent)
+- Per-session lanes prevent message interleaving
+- Global lanes for system-wide concurrency limits
+- Subagents cannot spawn other subagents (single level of nesting)
+
+### Heartbeat System
+
+For long-running subagent tasks, OpenClaw uses a heartbeat mechanism:
+- Agent periodically emits `HEARTBEAT_OK` token
+- Parent monitors heartbeat to detect stuck agents
+- Timeout triggers automatic cancellation and error announcement
+
+### Tool Policy for Subagents
+
+Subagents are excluded from session management tools by default:
+- No `sessions_list` (can't see other sessions)
+- No `sessions_history` (can't read transcripts)
+- No `sessions_send` (can't message other sessions)
+- No `sessions_spawn` (can't spawn further subagents)
+
+### OpenCompany Implementation
+
+```php
+// SubagentRegistry service
+class SubagentRegistry
+{
+    const MAX_CONCURRENT = 8;
+
+    public function spawn(User $parent, User $child, string $task, array $options = []): SubagentRun
+    {
+        // Check permissions
+        $permission = SubagentSpawnPermission::where('parent_agent_id', $parent->id)->first();
+        if (!$permission || !$permission->canSpawn($child->id)) {
+            throw new UnauthorizedSpawnException();
+        }
+
+        // Check concurrency
+        $activeRuns = SubagentRun::where('parent_agent_id', $parent->id)
+            ->where('status', 'running')
+            ->count();
+
+        if ($activeRuns >= ($permission->max_concurrent ?? self::MAX_CONCURRENT)) {
+            throw new MaxConcurrencyException();
+        }
+
+        // Create run record
+        $run = SubagentRun::create([
+            'parent_agent_id' => $parent->id,
+            'child_agent_id' => $child->id,
+            'task_description' => $task,
+            'label' => $options['label'] ?? null,
+            'status' => 'running',
+            'runtime_config' => $options,
+        ]);
+
+        // Dispatch execution job
+        ExecuteSubagentJob::dispatch($run)
+            ->onQueue('subagents')
+            ->timeout($options['timeout'] ?? 300);
+
+        return $run;
+    }
+
+    public function announce(SubagentRun $run): void
+    {
+        $run->update([
+            'status' => 'success',
+            'completed_at' => now(),
+        ]);
+
+        // Deliver result to parent based on queue mode
+        $mode = $run->runtime_config['queue_mode'] ?? 'followup';
+
+        match ($mode) {
+            'followup' => $this->queueFollowup($run),
+            'steer' => $this->steerParent($run),
+            'collect' => $this->collectResult($run),
+            'interrupt' => $this->interruptParent($run),
+        };
+    }
+}
+```
+
+---
+
+## Agent Execution Pipeline
+
+> Detailed execution flow based on OpenClaw's agent runtime.
+
+### Full Pipeline
+
+```
+User Message
+    ↓
+Session Resolution (find or create session for this conversation)
+    ↓
+Context Loading (load conversation history from messages table)
+    ↓
+Context Pruning (trim old tool results if TTL expired)
+    ↓
+Memory Flush Check (save durable memories if near compaction threshold)
+    ↓
+Model Selection (resolve provider + model from DynamicProviderResolver)
+    ↓
+Agent Execution (run prompt with tools via Laravel AI SDK)
+    ↓
+  ├── Tool Calls → Security Check → Execute/Request Approval
+  ├── Streaming → Broadcast to Reverb channel
+  └── Heartbeat (for long-running tasks)
+    ↓
+Response Handling
+  ├── NO_REPLY → Silent message (hidden from user)
+  └── Normal → Save message + broadcast to channel
+    ↓
+Post-Execution
+  ├── Update token counts
+  ├── Update session activity timestamp
+  └── Check compaction threshold
+```
+
+### Model Fallback Chain
+
+The `DynamicProviderResolver` supports automatic failover:
+
+```php
+// Agent.brain = "anthropic:claude-sonnet-4-20250514"
+// If Anthropic fails, try OpenAI, then Gemini
+$config = $resolver->resolveForAgent($agentUser);
+
+// Built-in SDK failover
+$response = $agent->prompt(
+    $message,
+    provider: [$config['provider'], 'openai', 'gemini'], // Failover chain
+    model: $config['model'],
+);
+```
+
+### Tool Security (Three-Tier Model)
+
+Adopted from OpenClaw's tool security architecture:
+
+| Tier | Mode | Behavior |
+|------|------|----------|
+| 1 | **deny** | Block all tool execution. Agent can only generate text. |
+| 2 | **allowlist** | Only pre-approved tools/commands execute. Others prompt for approval. |
+| 3 | **full** | All tools execute without approval. Use for trusted agents only. |
+
+### ExecAsk Modes
+
+Controls when to prompt the user for approval:
+
+| Mode | Behavior |
+|------|----------|
+| **off** | Never ask — execute based on security tier only |
+| **on-miss** | Ask when tool/command is not in the allowlist (default) |
+| **always** | Always ask before executing any tool |
+
+### Safe Bins (Auto-Approved)
+
+Common read-only tools that bypass approval in allowlist mode:
+
+```php
+private array $safeBins = [
+    'jq', 'grep', 'cut', 'sort', 'uniq', 'head', 'tail', 'tr', 'wc',
+    'cat', 'ls', 'find', 'which', 'echo', 'date', 'env', 'pwd',
+];
+```
+
+Configurable via `auto_allow_skills` setting (default: true).
 
 ---
 

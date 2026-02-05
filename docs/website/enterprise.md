@@ -400,7 +400,7 @@ Best of both worlds:
 
 ### SLA Guarantees
 
-| Plan | Uptime SLA | Credits |
+| Plan | Uptime SLA | Service Credits |
 |------|------------|---------|
 | Team | 99.5% | 10% per 0.1% below |
 | Business | 99.9% | 25% per 0.1% below |

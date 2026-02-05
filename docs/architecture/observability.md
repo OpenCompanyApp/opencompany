@@ -27,7 +27,7 @@
 The observability system provides administrators with comprehensive visibility into:
 - **Performance**: Request latency, database queries, AI API response times
 - **Reliability**: Error rates, system health, service availability
-- **Cost Optimization**: AI token usage, credit consumption, resource utilization
+- **Cost Optimization**: AI token usage, resource utilization
 - **Debugging**: Request tracing, log correlation, error context
 
 ### Principles
@@ -105,7 +105,7 @@ class MetricsService
 | `ai_cost_dollars` | Estimated cost by provider | Budget monitoring |
 | `ai_request_duration_seconds` | LLM API latency | Provider comparison |
 | `approval_turnaround_seconds` | Time from request to response | Workflow efficiency |
-| `credits_consumed_total` | Credit usage over time | Billing forecasting |
+| `ai_tokens_consumed_total` | Cumulative AI token usage over time | Cost forecasting |
 
 #### AI Cost Tracking
 

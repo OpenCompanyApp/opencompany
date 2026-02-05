@@ -371,7 +371,7 @@ namespace Tests\Unit\Models;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\Channel;
-use App\Models\TaskComment;
+use App\Models\ListItemComment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -417,10 +417,10 @@ class TaskTest extends TestCase
     public function test_has_many_comments(): void
     {
         $task = Task::factory()->create();
-        TaskComment::factory()->count(3)->create(['task_id' => $task->id]);
+        ListItemComment::factory()->count(3)->create(['list_item_id' => $task->id]);
 
         $this->assertCount(3, $task->comments);
-        $this->assertInstanceOf(TaskComment::class, $task->comments->first());
+        $this->assertInstanceOf(ListItemComment::class, $task->comments->first());
     }
 
     // ==================== SCOPES ====================
@@ -557,7 +557,6 @@ class TaskTest extends TestCase
 | `DataTableController` | CRUD, columns, rows | Medium |
 | `AutomationRuleController` | CRUD | Medium |
 | `SettingsController` | index, update | Medium |
-| `CreditController` | index, purchase | Low |
 | `IntegrationController` | CRUD | Low |
 
 ### 2.4 Service Tests
@@ -1319,7 +1318,7 @@ SESSION_DRIVER=array
 | ApprovalRequestFactory | ApprovalRequest | ✅ Exists |
 | NotificationFactory | Notification | ✅ Exists |
 | DirectMessageFactory | DirectMessage | ✅ Exists |
-| TaskCommentFactory | TaskComment | ✅ Exists |
+| ListItemCommentFactory | ListItemComment | ✅ Exists |
 | ActivityFactory | Activity | ✅ Exists |
 | TaskFactory | Task | ✅ Exists |
 
@@ -1332,7 +1331,7 @@ SESSION_DRIVER=array
 | AgentSettingsFactory | AgentSettings | High |
 | AgentSessionFactory | AgentSession | High |
 | AgentMemoryFactory | AgentMemory | Medium |
-| TaskAutomationRuleFactory | TaskAutomationRule | Medium |
+| ListAutomationRuleFactory | ListAutomationRule | Medium |
 | CalendarEventFactory | CalendarEvent | Low |
 | DataTableFactory | DataTable | Low |
 

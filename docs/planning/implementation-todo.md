@@ -273,6 +273,34 @@
   - Combine vector similarity score with FTS rank
   - Default weights: 0.7 vector, 0.3 text
 
+#### 1.5.3 Collection System (QMD)
+
+- [ ] **1.5.3.1** Create `memory_collections` migration
+  - **What:** Stores named collection definitions per agent for scoping memory search
+  - **Why:** QMD uses collections to group indexed paths (memory-root, memory-alt, memory-dir). OpenCompany needs the same concept to scope searches to specific document subsets (identity files, memory logs, session transcripts, custom sets).
+  - **Context:** Default collections created by AgentDocumentService during agent setup. Custom collections addable via API. Each agent has isolated collections.
+  - Fields: `id` (UUID), `agent_config_id` (FK), `name` (string), `type` (enum: identity/memory/sessions/custom), `description` (nullable text), `created_at`, `updated_at`
+  - Unique index on (`agent_config_id`, `name`)
+
+- [ ] **1.5.3.2** Create `memory_collection_documents` pivot migration
+  - **What:** Junction table linking collections to documents
+  - **Why:** A document can belong to multiple collections (e.g., MEMORY.md in both memory-root and identity), and a collection contains multiple documents. Many-to-many relationship.
+  - Fields: `id` (UUID), `collection_id` (FK), `document_id` (FK), `created_at`
+  - Unique constraint on (`collection_id`, `document_id`)
+
+#### 1.5.4 Result Clamping & Citation Support (QMD)
+
+- [ ] **1.5.4.1** Add citation columns to `memory_chunks` migration
+  - **What:** Add `document_id` (FK to documents) and `document_path` (text) columns to memory_chunks
+  - **Why:** QMD returns citations in `path#Lstart-Lend` format. Storing the document reference and denormalized path in chunks enables generating citations without extra joins during search.
+  - **Context:** `document_path` is denormalized from Document model's hierarchical path for fast citation generation.
+
+- [ ] **1.5.4.2** Create `config/memory.php` configuration file
+  - **What:** Configuration constants for QMD-equivalent search behavior
+  - **Why:** Centralizes all memory search tuning parameters. Matches QMD's proven defaults while allowing per-deployment customization.
+  - **Context:** Values derived from OpenClaw's QMD defaults.
+  - Constants: `max_results` = 6, `max_snippet_chars` = 700, `max_injected_chars` = 4000, `timeout_ms` = 4000, `vector_weight` = 0.7, `text_weight` = 0.3, `chunk_size` = 400, `chunk_overlap` = 80, `periodic_interval` = 5 (minutes), `embedding_interval` = 60 (minutes), `debounce_seconds` = 15, `scope_default` = 'dm_only'
+
 ---
 
 ## Phase 2: Laravel Models
@@ -470,35 +498,46 @@
 
 ---
 
-## Phase 3.5: Workflow Integration (Prism + Laravel Workflow)
+## Phase 3.5: Workflow Integration (Laravel AI SDK + Laravel Workflow)
 
-> **Why:** This phase connects the AI layer (Prism) with the orchestration layer (Laravel Workflow). Tools give agents abilities. Workflows coordinate multi-step agent tasks with durability and approval gates.
+> **Why:** This phase connects the AI layer (Laravel AI SDK) with the orchestration layer (Laravel Workflow). Tools give agents abilities. Workflows coordinate multi-step agent tasks with durability and approval gates.
 
-### 3.5.1 Create Prism Tools
+### 3.5.1 Create Agent Tools
 
-- [ ] **3.5.1.1** Create `app/AI/Tools/` directory
-  - **What:** Directory for Prism tool definitions
-  - **Why:** Organizes AI tools separately from services. Each tool class defines what the AI can do and how.
+- [ ] **3.5.1.1** Create `app/Agents/Tools/` directory
+  - **What:** Directory for Laravel AI SDK tool definitions
+  - **Why:** Organizes AI tools separately from services. Each tool class implements the SDK `Tool` contract.
 
-- [ ] **3.5.1.2** Create base tool classes for agent capabilities
-  - **What:** Prism tool implementations for each capability type
-  - **Why:** Tools are how agents interact with the system. Each tool wraps a system capability (file access, git, etc.) with parameter validation and execution logic.
-  - **Context:** Tools use Prism's tool definition format. Some tools require approval (database, deployment) - this is checked at execution time.
-  - `CodeExecutionTool` - execute code snippets
-  - `FileOperationTool` - read/write files
-  - `GitOperationTool` - git commands
-  - `ApiRequestTool` - external API calls
-  - `DatabaseAccessTool` - database queries (requires approval)
-  - `DeploymentTool` - production deployments (requires approval)
+- [ ] **3.5.1.2** Create tool classes for agent capabilities
+  - **What:** Laravel AI SDK `Tool` implementations for each capability type
+  - **Why:** Tools are how agents interact with the system. Each tool wraps a system capability (documents, tasks, messaging, etc.) with parameter validation and execution logic.
+  - **Context:** Tools implement the SDK `Tool` contract with `description()`, `handle()`, and `schema()` methods. Use `php artisan make:tool` to scaffold.
+  - `SearchDocuments` - search workspace documents
+  - `ReadDocument` / `UpdateDocument` - document CRUD
+  - `CreateListItem` / `UpdateListItem` - list management
+  - `SendMessage` - messaging
+  - `CreateTaskStep` - task progress tracking
+  - `CreateApproval` - request human approval
+  - `QueryDataTable` - data table queries
+  - `WebSearch` / `WebFetch` - web capabilities (SDK built-in)
 
 - [ ] **3.5.1.3** Create tool registry service
-  - **What:** Service that provides tools to agents based on their enabled capabilities
-  - **Why:** Agents should only see tools they're allowed to use. The registry filters the master tool list by agent's enabled capabilities.
-  - **Context:** Called by ExecuteAgentActivity to get the tool list for each Prism call.
+  - **What:** Service that provides tools to agents based on their DB-stored capabilities
+  - **Why:** Agents should only see tools they're allowed to use. The registry maps capability strings from the DB to tool class instances.
+  - **Context:** Called by `OpenCompanyAgent::tools()` to resolve the tool list dynamically.
   ```php
-  class AgentToolRegistry {
-      public function getToolsForAgent(AgentConfiguration $config): array
-      public function filterByCapabilities(array $tools, array $enabledCapabilities): array
+  class ToolRegistry {
+      private array $capabilityToolMap = [
+          'documents'   => [SearchDocuments::class, ReadDocument::class, UpdateDocument::class],
+          'lists'       => [CreateListItem::class, UpdateListItem::class],
+          'messaging'   => [SendMessage::class],
+          'tasks'       => [CreateTaskStep::class],
+          'approvals'   => [CreateApproval::class],
+          'web_search'  => [WebSearch::class],
+          'web_fetch'   => [WebFetch::class],
+      ];
+
+      public function getToolsForAgent(User $agent): array
   }
   ```
 
@@ -518,22 +557,23 @@
   - Return config with enabled tools
 
 - [ ] **3.5.2.3** Create `ExecuteAgentActivity` ← depends on: [3.5.1.2]
-  - **What:** Execute Prism AI call with tools
-  - **Why:** This is the core AI execution - send prompt to Claude, get response, handle tool calls. The activity wraps Prism so workflows can orchestrate AI calls.
-  - **Context:** Uses Prism's withMaxSteps for multi-turn tool use. Token tracking is critical for billing and context management.
-  - Execute Prism text generation with tools
-  - Handle streaming responses
+  - **What:** Execute Laravel AI SDK agent call with tools
+  - **Why:** This is the core AI execution - send prompt to LLM, get response, handle tool calls. The activity wraps `OpenCompanyAgent` so workflows can orchestrate AI calls.
+  - **Context:** Uses SDK's `#[MaxSteps]` attribute for multi-turn tool use. Token tracking is critical for billing and context management.
+  - Execute agent prompt with tools
+  - Handle streaming responses via `->stream()->broadcastOnQueue()`
   - Track token usage
   ```php
   class ExecuteAgentActivity extends Activity {
-      public function execute(AgentConfiguration $config, string $prompt): AgentResult {
-          return Prism::text()
-              ->using(Provider::Anthropic, $config->model ?? 'claude-sonnet-4-20250514')
-              ->withSystemPrompt($config->personality . "\n" . $config->instructions)
-              ->withTools($this->toolRegistry->getToolsForAgent($config))
-              ->withMaxSteps(5)
-              ->withPrompt($prompt)
-              ->asText();
+      public function execute(User $agentUser, string $prompt): AgentResult {
+          $config = app(DynamicProviderResolver::class)->resolveForAgent($agentUser);
+          $agent = OpenCompanyAgent::for($agentUser);
+
+          return $agent->prompt(
+              $prompt,
+              provider: $config['provider'],
+              model: $config['model'],
+          );
       }
   }
   ```
@@ -615,7 +655,7 @@
           // 3. Prune session if TTL elapsed (OpenClaw)
           yield Activity::make(PruneSessionActivity::class, $task->sessionId);
 
-          // 4. Execute agent with Prism
+          // 4. Execute agent with Laravel AI SDK
           $result = yield Activity::make(ExecuteAgentActivity::class, $config, $task->prompt);
 
           // 5. Handle silent responses (NO_REPLY convention)
@@ -836,6 +876,119 @@
   - `POST /api/agents/{id}/memory/search` - search agent memory
   - Request: `{ query: string, limit?: number }`
   - Response: `{ results: [{ text, score, source, lines }] }`
+
+### 3.7.5 Collection Management (QMD)
+
+- [ ] **3.7.5.1** Create `MemoryCollection` model ← depends on: [1.5.3.1]
+  - **What:** Eloquent model for named search collections that scope memory queries
+  - **Why:** Collections are the fundamental organizing unit for QMD search. They determine which documents are included in search results for each query.
+  - **Context:** Maps to QMD's collection system where `memory-root`, `memory-dir`, etc. define what's searchable.
+  - Relationships: `belongsTo(AgentConfiguration)`, `belongsToMany(Document)` through `memory_collection_documents`
+  - Scopes: `forAgent($agentConfigId)`, `ofType($type)`
+  - Methods: `addDocument($doc)`, `removeDocument($doc)`, `getSearchableChunkIds()`
+
+- [ ] **3.7.5.2** Create default collections in `AgentDocumentService` ← depends on: [3.7.5.1]
+  - **What:** Automatically create default collections when agent document structure is set up
+  - **Why:** Every agent needs baseline collections matching QMD defaults. Automatic creation ensures agents are immediately searchable without manual setup.
+  - **Context:** Hook into existing `createAgentDocumentStructure()` method.
+  - Default collections: `identity` (8 identity files), `memory-root` (MEMORY.md), `memory-logs` (memory/*.md daily logs), `sessions` (indexed transcripts)
+  - Auto-populate identity collection with identity documents on creation
+
+- [ ] **3.7.5.3** Create `MemoryCollectionController` ← depends on: [3.7.5.1]
+  - **What:** API endpoints for managing custom memory collections
+  - **Why:** Users or agents may want to create custom collections for project-specific document groups beyond the defaults.
+  - `GET /api/agents/{id}/memory/collections` — list agent's collections
+  - `POST /api/agents/{id}/memory/collections` — create custom collection
+  - `POST /api/agents/{id}/memory/collections/{cid}/documents` — add document to collection
+  - `DELETE /api/agents/{id}/memory/collections/{cid}/documents/{did}` — remove document from collection
+
+### 3.7.6 Session Transcript Indexing (QMD)
+
+- [ ] **3.7.6.1** Create `ExportSessionTranscriptJob` ← depends on: [3.7.3.1]
+  - **What:** Queue job that converts session messages to markdown and stores as a Document in the agent's memory/ folder
+  - **Why:** QMD indexes session transcripts so agents can search past conversations. This enables agents to recall information from previous sessions by searching through exported transcripts semantically.
+  - **Context:** Exported document is automatically added to the 'sessions' collection and triggers chunk indexing.
+  - Convert session messages to markdown (preserve role attribution: user/assistant/tool)
+  - Store as Document in agent's memory/ folder with title `session-{date}-{id}.md`
+  - Attach to 'sessions' MemoryCollection
+  - Dispatch `IndexAgentMemoryJob` for the new document
+
+- [ ] **3.7.6.2** Wire session transcript export to session lifecycle ← depends on: [3.7.6.1]
+  - **What:** Trigger transcript export on session archival events
+  - **Why:** Sessions are archived on daily reset, idle timeout, or manual reset. Each archival should produce a searchable transcript document.
+  - **Context:** Hook into AgentSession status change from 'active' to 'archived'.
+  - Dispatch `ExportSessionTranscriptJob` on session archival
+  - Include in pre-compaction memory flush pipeline
+  - Optional: configurable retention (default: 30 days)
+
+### 3.7.7 Periodic Re-Indexing (QMD)
+
+- [ ] **3.7.7.1** Create `PeriodicReindexJob` ← depends on: [3.7.3.1]
+  - **What:** Scheduled job that re-indexes changed documents across all active agents
+  - **Why:** QMD re-indexes every 5 minutes to catch changes. OpenCompany needs the same periodic cycle to catch document changes not triggered by model observers (e.g., direct DB updates, bulk imports, admin edits).
+  - **Context:** Uses delta tracking (SHA256 hash comparison on `content_hash`) to only re-process changed documents.
+  - Schedule: `everyFiveMinutes()` in `app/Console/Kernel.php`
+  - Delta-based: compare stored content hash vs current content hash, skip unchanged
+  - Scope: all agents with at least one active session or recent activity
+
+- [ ] **3.7.7.2** Create `EmbeddingRefreshJob` ← depends on: [3.7.1.1]
+  - **What:** Scheduled job that regenerates stale or missing embeddings
+  - **Why:** QMD refreshes embeddings every 60 minutes (less frequent than text indexing since embeddings are expensive). Embeddings may need regeneration when provider changes, models are updated, or new chunks lack embeddings.
+  - Schedule: `hourly()` in `app/Console/Kernel.php`
+  - Process chunks where embedding is null or provider/model has changed
+  - Uses `EmbeddingCacheService` to avoid redundant API calls
+
+- [ ] **3.7.7.3** Add Document model observer for indexing triggers ← depends on: [3.7.3.1]
+  - **What:** Eloquent observer on Document model that dispatches indexing jobs when memory documents are created or updated
+  - **Why:** QMD uses file watchers with 15-second debounce to detect changes. OpenCompany uses model observers with debounced queue dispatch for the same purpose.
+  - **Context:** Only trigger for documents inside agent memory/ and identity/ folders, not all documents.
+  - Observer triggers on `created` and `updated` events
+  - Filter: only agent memory/identity documents (check parent folder hierarchy)
+  - Dispatch `IndexAgentMemoryJob::dispatch($doc->id)->delay(15)` (15-second debounce)
+
+### 3.7.8 Scope Rules & Security (QMD)
+
+- [ ] **3.7.8.1** Create `MemorySearchScopeGuard` service ← depends on: [3.7.4.1]
+  - **What:** Service that enforces search scope restrictions based on chat/conversation type
+  - **Why:** QMD restricts memory search by chat type (DM-only by default). This prevents agents from leaking private conversation memories when operating in group channel contexts.
+  - **Context:** Configurable per agent via `AgentSettings.memory_search_scope`. Default: `dm_only`.
+  - Scope modes: `dm_only` (default), `all`, `none`
+  - DM conversations: full memory access (all collections)
+  - Group channels: only shared/public memories (no session transcripts)
+  - Applied as a filter wrapper around `HybridDocumentSearch`
+
+- [ ] **3.7.8.2** Add security checks to `RecallMemory` tool ← depends on: [3.7.8.1]
+  - **What:** Enforce QMD-equivalent security guards in the memory search tool
+  - **Why:** QMD blocks non-markdown reads, rejects symlinks, and prevents path traversal. RecallMemory tool needs identical guards to prevent agents from accessing unauthorized content.
+  - Validate document paths are within agent scope (own documents only)
+  - Reject attempts to read non-markdown content
+  - Block path traversal patterns (`../`)
+  - Enforce collection-based access (only search documents in agent's collections)
+
+### 3.7.9 Enhanced HybridMemorySearch with QMD Features
+
+- [ ] **3.7.9.1** Add result clamping to `HybridMemorySearch` ← depends on: [3.7.4.1, 1.5.4.2]
+  - **What:** Enforce QMD-equivalent result limits to prevent context bloat
+  - **Why:** Without clamping, search results can overwhelm the agent's context window. QMD's defaults are battle-tested to balance relevance with context budget.
+  - **Context:** Read limits from `config/memory.php`.
+  - `maxResults`: 6 (top-K results)
+  - `maxSnippetChars`: 700 (truncate at word boundaries)
+  - `maxInjectedChars`: 4000 (total across all results)
+  - `timeoutMs`: 4000 (enforced via `DB::timeout()` or query cancellation)
+
+- [ ] **3.7.9.2** Add citation generation to search results ← depends on: [3.7.4.1, 1.5.4.1]
+  - **What:** Generate `path#Lstart-Lend` citations for each search result
+  - **Why:** Citations enable agents to reference source material precisely and users to navigate to the exact source of retrieved information.
+  - Format: `document_path#L{start_line}[-L{end_line}]`
+  - Include citation in SearchResult response object
+  - Auto-mode: show citations in DM, suppress in groups (matching QMD's `"auto"` citation mode)
+
+- [ ] **3.7.9.3** Add collection filtering to `HybridMemorySearch` ← depends on: [3.7.5.1]
+  - **What:** Allow searches to be scoped to specific named collections
+  - **Why:** Agents may want to search only identity files, or only session transcripts, or only daily logs. Collection filtering enables this granularity without complex query building.
+  - Optional `collectionNames` parameter on search method
+  - Default: search all collections for the agent
+  - Filter `memory_chunks` by document membership in specified collections
 
 ---
 
@@ -1317,6 +1470,284 @@
 
 ---
 
+## Phase 3.8: Plugin System
+
+> **Why:** OpenClaw's plugin architecture enables extensibility without modifying core code. Plugins add tools, channels, providers, skills, and more. OpenCompany should support the same extensibility via Laravel packages.
+
+### 3.8.1 Plugin Infrastructure
+
+- [ ] **3.8.1.1** Create `plugins` migration
+  - **What:** Table to track installed plugins and their configuration
+  - **Why:** Need to know which plugins are installed, enabled, and how they're configured.
+  - Fields: `id`, `name`, `version`, `description`, `author`, `enabled`, `capabilities` (JSON), `config` (JSON), `slot` (nullable enum: memory/sandbox/browser), `created_at`, `updated_at`
+
+- [ ] **3.8.1.2** Create `Plugin` model
+  - **What:** Eloquent model for plugin management
+  - **Why:** Central model for plugin CRUD and capability resolution.
+  - Relationships: `hasMany(PluginCapability)`
+  - Scopes: `enabled()`, `withCapability($type)`, `forSlot($slot)`
+
+- [ ] **3.8.1.3** Create `PluginRegistryService`
+  - **What:** Service that discovers, validates, and registers plugins
+  - **Why:** Centralized plugin lifecycle management. Handles discovery chain: config → workspace → global → bundled.
+  - **Context:** Plugins are Laravel packages with service providers. The registry tracks which capabilities each plugin provides.
+  - `discover()` - scan for available plugins
+  - `register(Plugin $plugin)` - register plugin capabilities
+  - `validateConfig(Plugin $plugin)` - validate plugin config against schema
+  - `resolveSlot(string $slot)` - get the active plugin for an exclusive slot
+
+### 3.8.2 Plugin Capabilities
+
+- [ ] **3.8.2.1** Create capability interfaces
+  - **What:** PHP interfaces for each plugin capability type
+  - **Why:** Type-safe contracts that plugins must implement. Ensures consistency across all plugins.
+  - **Context:** OpenClaw supports 10 capability types. Start with the most useful ones.
+  ```php
+  interface ProvidesTools { public function tools(): array; }
+  interface ProvidesChannels { public function channels(): array; }
+  interface ProvidesProviders { public function providers(): array; }
+  interface ProvidesSkills { public function skills(): array; }
+  interface ProvidesHooks { public function hooks(): array; }
+  ```
+
+- [ ] **3.8.2.2** Create exclusive slot system
+  - **What:** Logic to enforce that only one plugin can claim each exclusive slot
+  - **Why:** Some capabilities (memory backend, sandbox) can only have one active implementation.
+  - **Context:** If multiple plugins claim the same slot, highest-precedence one wins.
+
+### 3.8.3 Plugin Management API
+
+- [ ] **3.8.3.1** Create `PluginController`
+  - **What:** API endpoints for managing plugins
+  - **Why:** Frontend needs to list, enable/disable, and configure plugins.
+  - `GET /api/plugins` - list all plugins
+  - `POST /api/plugins/{id}/enable` - enable plugin
+  - `POST /api/plugins/{id}/disable` - disable plugin
+  - `PUT /api/plugins/{id}/config` - update plugin config
+  - `POST /api/plugins/discover` - trigger plugin discovery
+
+- [ ] **3.8.3.2** Create plugin management UI
+  - **What:** Vue component for plugin management
+  - **Why:** Users need to see installed plugins, toggle them, and configure settings.
+  - **Context:** Similar to VS Code extension panel. Show capabilities, slot claims, config fields.
+
+---
+
+## Phase 3.9: Multi-Device Support
+
+> **Why:** OpenClaw's gateway enables agents to be accessed from any device (iOS, Android, macOS, web). A node registry tracks connected devices and routes tasks based on device capabilities. OpenCompany should support similar multi-device access.
+
+### 3.9.1 Node Registry
+
+- [ ] **3.9.1.1** Create `connected_devices` migration
+  - **What:** Table to track connected devices/clients
+  - **Why:** Need to know which devices are connected, their capabilities, and health status.
+  - Fields: `id`, `user_id` (FK), `device_id` (unique string), `platform` (enum: ios/android/macos/web/desktop), `device_name`, `capabilities` (JSON), `last_heartbeat_at`, `is_online`, `metadata` (JSON), `created_at`, `updated_at`
+
+- [ ] **3.9.1.2** Create `ConnectedDevice` model
+  - **What:** Eloquent model for device management
+  - **Why:** Track device state and enable capability-based routing.
+  - Relationships: `belongsTo(User)`
+  - Scopes: `online()`, `withCapability($cap)`, `forPlatform($platform)`
+  - Methods: `heartbeat()`, `markOffline()`, `hasCapability($cap)`
+
+- [ ] **3.9.1.3** Create WebSocket heartbeat system
+  - **What:** Periodic heartbeat via Reverb to track device health
+  - **Why:** Need to detect disconnected devices. Devices send heartbeat every 30 seconds.
+  - **Context:** Uses existing Laravel Reverb WebSocket. Add presence channel for device tracking.
+  ```php
+  // routes/channels.php
+  Broadcast::channel('devices.{userId}', function ($user, $userId) {
+      return $user->id === $userId ? [
+          'id' => $user->id,
+          'name' => $user->name,
+          'device' => request()->header('X-Device-Id'),
+      ] : null;
+  });
+  ```
+
+### 3.9.2 Device-Aware Routing
+
+- [ ] **3.9.2.1** Create `DeviceRouter` service
+  - **What:** Service that routes notifications and tasks to the right device
+  - **Why:** Some tasks need specific device capabilities (e.g., browser tasks → desktop device).
+  - `routeNotification($user, $notification)` - route to best device
+  - `routeTask($user, $task)` - route to device with required capabilities
+  - `broadcastToAll($user, $event)` - broadcast to all connected devices
+
+- [ ] **3.9.2.2** Create device status dashboard component
+  - **What:** Vue component showing connected devices and their status
+  - **Why:** Users need to see which devices are connected, online, and their capabilities.
+  - Real-time status via WebSocket
+  - Show platform icon, device name, last activity, capabilities
+
+### 3.9.3 Cross-Platform Sync
+
+- [ ] **3.9.3.1** Create sync event system
+  - **What:** Broadcast state changes to all connected devices
+  - **Why:** Agent state (messages, tasks, approvals) must be consistent across devices.
+  - **Context:** Use existing Reverb channels. Add sync events for: new messages, task updates, approval requests, agent status changes.
+
+---
+
+## Phase 3.10: Cron & Scheduled Tasks
+
+> **Why:** OpenClaw supports cron-based autonomous agent execution. Agents can perform tasks on a schedule without human triggers — daily summaries, periodic monitoring, scheduled reports. OpenCompany should support the same autonomous agent capabilities.
+
+### 3.10.1 Cron Job Infrastructure
+
+- [ ] **3.10.1.1** Create `agent_cron_jobs` migration
+  - **What:** Table for scheduled agent tasks
+  - **Why:** Store cron job definitions with schedule, task prompt, and delivery configuration.
+  - Fields: `id`, `agent_id` (FK to users), `name`, `schedule` (cron expression), `task` (TEXT - prompt), `delivery_mode` (enum: announce/none/post), `target_channel_id` (nullable FK), `enabled`, `one_shot`, `last_run_at`, `last_result` (JSON), `created_at`, `updated_at`
+
+- [ ] **3.10.1.2** Create `AgentCronJob` model
+  - **What:** Eloquent model for cron job management
+  - **Why:** Central model for cron CRUD and execution tracking.
+  - Relationships: `belongsTo(User, 'agent_id')`, `belongsTo(Channel, 'target_channel_id')`
+  - Scopes: `enabled()`, `forAgent($agentId)`, `dueNow()`
+  - Methods: `isDue()`, `markRan()`, `shouldAutoDelete()`
+
+- [ ] **3.10.1.3** Create `ExecuteAgentCronJob` queue job
+  - **What:** Job that executes a scheduled agent task
+  - **Why:** Cron jobs should run asynchronously on queue workers, with isolated sessions.
+  - **Context:** Creates an isolated session (separate from conversation context) so cron execution doesn't pollute chat history.
+  ```php
+  class ExecuteAgentCronJob implements ShouldQueue
+  {
+      public function handle(): void
+      {
+          // Create isolated session for cron execution
+          $session = AgentSession::create([
+              'session_key' => "cron:{$this->cronJob->id}:" . now()->timestamp,
+              'status' => 'active',
+          ]);
+
+          $agent = OpenCompanyAgent::for($this->cronJob->agent);
+          $response = $agent->prompt($this->cronJob->task);
+
+          // Deliver based on mode
+          match ($this->cronJob->delivery_mode) {
+              'announce' => $this->announceResult($response),
+              'post' => $this->postToChannel($response),
+              'none' => null,
+          };
+
+          // Auto-delete one-shot jobs
+          if ($this->cronJob->one_shot) {
+              $this->cronJob->delete();
+          }
+
+          $this->cronJob->update([
+              'last_run_at' => now(),
+              'last_result' => ['response' => (string) $response],
+          ]);
+      }
+  }
+  ```
+
+### 3.10.2 Scheduler Integration
+
+- [ ] **3.10.2.1** Register cron jobs with Laravel scheduler
+  - **What:** Load agent cron jobs from DB and register with `Schedule`
+  - **Why:** Laravel's scheduler handles cron expression evaluation, overlap prevention, and single-server execution.
+  ```php
+  // app/Console/Kernel.php
+  protected function schedule(Schedule $schedule): void
+  {
+      AgentCronJob::where('enabled', true)->each(function ($job) use ($schedule) {
+          $schedule->job(new ExecuteAgentCronJob($job))
+              ->cron($job->schedule)
+              ->withoutOverlapping()
+              ->onOneServer();
+      });
+  }
+  ```
+
+- [ ] **3.10.2.2** Create cron job execution history migration
+  - **What:** Table to track cron job execution history
+  - **Why:** Need audit trail for scheduled executions. Track success/failure, runtime, token usage.
+  - Fields: `id`, `cron_job_id` (FK), `status` (enum: success/error/timeout), `started_at`, `completed_at`, `token_count`, `result` (JSON), `error` (TEXT nullable)
+
+### 3.10.3 Cron Management API & UI
+
+- [ ] **3.10.3.1** Create `AgentCronJobController`
+  - **What:** API endpoints for managing agent cron jobs
+  - **Why:** Frontend needs CRUD for cron jobs plus manual trigger and history view.
+  - `GET /api/agents/{id}/cron-jobs` - list cron jobs
+  - `POST /api/agents/{id}/cron-jobs` - create cron job
+  - `PUT /api/cron-jobs/{id}` - update cron job
+  - `DELETE /api/cron-jobs/{id}` - delete cron job
+  - `POST /api/cron-jobs/{id}/trigger` - manual trigger
+  - `GET /api/cron-jobs/{id}/history` - execution history
+
+- [ ] **3.10.3.2** Create cron management Vue component
+  - **What:** UI for managing scheduled agent tasks
+  - **Why:** Users need to create, edit, enable/disable, and monitor cron jobs.
+  - **Context:** Include cron expression helper (common presets: daily, hourly, weekly, etc.), delivery mode selector, and execution history log.
+
+---
+
+### 3.11 Heartbeat System
+
+- [ ] **3.11.1** Add heartbeat fields to `agent_configs` migration ← depends on: [1.1.3]
+  - **What:** Migration adding `heartbeat_prompt`, `heartbeat_enabled`, `heartbeat_interval`, `heartbeat_active_start`, `heartbeat_active_end`, `heartbeat_timezone` to `agent_configs` table
+  - **Why:** Agents need configurable heartbeat settings. OpenClaw stores this in HEARTBEAT.md; we use DB fields for admin UI editability.
+
+- [ ] **3.11.2** Create `HeartbeatJob` ← depends on: [3.11.1, 3.1.1]
+  - **What:** Queue job that runs an agent's heartbeat check: loads prompt, calls AI SDK, posts results to channel (or skips if ack-only)
+  - **Why:** This is the core heartbeat execution. Adapted from OpenClaw's heartbeat-runner.ts.
+  - Active hours gating via `between()` check
+  - Ack suppression for responses under 30 chars or containing `HEARTBEAT_OK`
+
+- [ ] **3.11.3** Wire scheduler to dispatch heartbeats ← depends on: [3.11.2]
+  - **What:** Add scheduler entry in `app/Console/Kernel.php` that queries active agents with heartbeat enabled, dispatches `HeartbeatJob` for each
+  - **Why:** Replaces OpenClaw's Node.js setInterval with Laravel's built-in scheduler.
+  - Default interval: every 30 minutes (configurable per agent via `heartbeat_interval`)
+
+- [ ] **3.11.4** Add heartbeat configuration to agent admin UI ← depends on: [3.11.1, 4.1.x]
+  - **What:** Add heartbeat settings section to Agent/Show.vue Settings tab: enable toggle, prompt textarea, interval select, active hours inputs
+  - **Why:** Admins need to configure heartbeat behavior per agent without touching the database directly.
+
+---
+
+### 3.12 Agent Execution Loop (Core Agent Brain)
+
+> **This is the most critical phase.** Without this, agents cannot process messages or execute tasks. All other agent features (memory, heartbeat, sub-agents) depend on this.
+
+- [ ] **3.12.1** Create `AgentPromptBuilder` service ← depends on: [2.1.x, 3.1.1]
+  - **What:** Service that assembles the system prompt from agent config fields (personality, instructions), user context, tool documentation, and memory. Follows OpenClaw's injection order: identity → personality → user → instructions → tools → memory.
+  - **Why:** Clean separation of prompt assembly from execution. Handles sub-agent restrictions (only instructions, no personality/user context).
+
+- [ ] **3.12.2** Create `AgentToolExecutor` service ← depends on: [3.5.1.x]
+  - **What:** Service that resolves available tools for an agent (based on capabilities/permissions), executes tool calls from LLM responses, and returns results.
+  - **Why:** Adapted from OpenClaw's tool execution loop. Handles the tool call → result → feed back cycle.
+  - Tool resolution follows permission stack: profile → allow/deny → agent-specific restrictions
+
+- [ ] **3.12.3** Create `ProcessAgentMessageJob` ← depends on: [3.12.1, 3.12.2]
+  - **What:** The core agent runner job. Dispatched when an agent is mentioned or receives a DM. Loads context, builds prompt, calls AI SDK with streaming, processes tool calls, stores response, broadcasts via Reverb.
+  - **Why:** This is the "agent brain" — the single most important piece of the system. Replaces OpenClaw's `runEmbeddedPiAgent()`.
+  - Queue: `agent-{id}` (serialized per agent to prevent race conditions)
+  - Includes: conversation history loading, streaming response broadcast, post-processing (memory indexing, compaction check)
+
+- [ ] **3.12.4** Wire message controller to dispatch agent runs ← depends on: [3.12.3]
+  - **What:** Update `MessageController::store()` to detect @mentions of agents and dispatch `ProcessAgentMessageJob`. Also handle DM channels where the other participant is an agent.
+  - **Why:** This is the trigger that makes agents respond to messages.
+  - Detection: check message content for @mentions matching agent names, or check if channel is a DM with an agent member
+
+- [ ] **3.12.5** Add response streaming via Reverb ← depends on: [3.12.3]
+  - **What:** Create `AgentTyping` broadcast event for partial response streaming. Clients receive chunks as the agent generates them, showing real-time typing.
+  - **Why:** UX requirement — users should see agents "typing" in real-time, not wait for complete responses.
+  - Broadcast on channel: `channel.{id}`
+  - Event data: `{ agentId, chunk, isComplete }`
+
+- [ ] **3.12.6** Add model failover support ← depends on: [3.12.3]
+  - **What:** Configure primary + fallback models per agent in `agent_configs`. `ProcessAgentMessageJob` tries primary first, falls back to alternatives on failure.
+  - **Why:** Adapted from OpenClaw's failover chain. Ensures agents stay operational if a provider has an outage.
+  - Config: `model_primary`, `model_fallbacks` (JSON array) on agent_configs
+
+---
+
 ## Verification Checklist
 
 ### Functional Verification
@@ -1365,16 +1796,15 @@
 ### Packages to Install
 ```bash
 # Required
-composer require prism-php/prism
+composer require laravel/ai
 composer require laravel-workflow/laravel-workflow
 
 # Optional
-composer require grpaiva/prism-agents
-composer require elliottlawson/converse-prism
-composer require laravel-workflow/waterline  # UI for workflow monitoring
+composer require laravel/mcp                   # MCP server for external AI clients
+composer require laravel-workflow/waterline     # UI for workflow monitoring
 ```
 
-### Migrations to Create (13 files)
+### Migrations to Create (17 files)
 ```
 database/migrations/
 ├── xxxx_create_agent_configurations_table.php
@@ -1389,10 +1819,14 @@ database/migrations/
 ├── xxxx_create_subagent_runs_table.php
 ├── xxxx_create_agent_tool_allowlist_table.php    # OpenClaw
 ├── xxxx_create_memory_chunks_table.php           # OpenClaw
-└── xxxx_create_embedding_cache_table.php         # OpenClaw
+├── xxxx_create_embedding_cache_table.php         # OpenClaw
+├── xxxx_create_plugins_table.php                  # Plugin system
+├── xxxx_create_connected_devices_table.php        # Multi-device
+├── xxxx_create_agent_cron_jobs_table.php           # Cron system
+└── xxxx_create_cron_job_history_table.php          # Cron history
 ```
 
-### Models to Create (13 files)
+### Models to Create (17 files)
 ```
 app/Models/
 ├── AgentConfiguration.php
@@ -1407,10 +1841,15 @@ app/Models/
 ├── SubagentRun.php
 ├── AgentToolAllowlist.php       # OpenClaw
 ├── MemoryChunk.php              # OpenClaw
-└── EmbeddingCache.php           # OpenClaw
+├── EmbeddingCache.php           # OpenClaw
+├── MemoryCollection.php            # QMD collections
+├── Plugin.php                  # Plugin system
+├── ConnectedDevice.php         # Multi-device
+├── AgentCronJob.php            # Cron system
+└── CronJobHistory.php          # Cron history
 ```
 
-### Controllers to Create (9 files)
+### Controllers to Create (12 files)
 ```
 app/Http/Controllers/Api/
 ├── AgentConfigurationController.php
@@ -1421,18 +1860,36 @@ app/Http/Controllers/Api/
 ├── AgentMemoryController.php
 ├── SubagentController.php
 ├── MemorySearchController.php      # OpenClaw
-└── AllowlistController.php         # OpenClaw
+├── MemoryCollectionController.php  # QMD collection management
+├── AllowlistController.php         # OpenClaw
+├── PluginController.php           # Plugin system
+├── ConnectedDeviceController.php  # Multi-device
+└── AgentCronJobController.php     # Cron system
 ```
 
-### AI Tools to Create (6 files)
+### Agent + Tools to Create
 ```
-app/AI/Tools/
-├── CodeExecutionTool.php
-├── FileOperationTool.php
-├── GitOperationTool.php
-├── ApiRequestTool.php
-├── DatabaseAccessTool.php
-└── DeploymentTool.php
+app/Agents/
+├── OpenCompanyAgent.php            # Single dynamic agent class
+├── DynamicProviderResolver.php     # Resolves provider from IntegrationSetting
+├── ToolRegistry.php                # Maps DB capabilities to tool classes
+└── Tools/
+    ├── Internal/                   # Workspace tools
+    │   ├── SearchDocuments.php
+    │   ├── ReadDocument.php
+    │   ├── UpdateDocument.php
+    │   ├── CreateListItem.php
+    │   ├── UpdateListItem.php
+    │   ├── SendMessage.php
+    │   ├── CreateTaskStep.php
+    │   ├── CreateApproval.php
+    │   └── QueryDataTable.php
+    ├── External/                   # SDK built-in wrappers
+    │   ├── WebSearch.php
+    │   └── WebFetch.php
+    └── Memory/                     # Memory tools
+        ├── SaveMemory.php
+        └── RecallMemory.php
 ```
 
 ### Workflow Activities to Create (9 files)
@@ -1457,10 +1914,12 @@ app/Workflows/
 └── SubagentSpawnWorkflow.php
 ```
 
-### Services to Create (11 files)
+### Services to Create (16 files)
 ```
 app/Services/
 ├── AgentToolRegistry.php
+├── AgentPromptBuilder.php          # System prompt assembly (OpenClaw workspace files mapping)
+├── AgentToolExecutor.php           # Tool resolution + execution loop
 ├── ContextWindowGuard.php          # OpenClaw
 ├── MemoryFlushService.php          # OpenClaw
 ├── SessionPruningService.php       # OpenClaw
@@ -1470,7 +1929,12 @@ app/Services/
 ├── EmbeddingCacheService.php       # OpenClaw
 ├── ChunkingService.php             # OpenClaw
 ├── MemoryIndexService.php          # OpenClaw
-└── HybridMemorySearch.php          # OpenClaw
+├── HybridMemorySearch.php          # OpenClaw
+├── HybridDocumentSearch.php        # QMD-enhanced hybrid search
+├── MemorySearchScopeGuard.php      # QMD scope rules
+├── PluginRegistryService.php   # Plugin system
+├── DeviceRouter.php            # Multi-device
+└── CronExecutionService.php    # Cron system
 ```
 
 ### Frontend Files to Update (2 files)
@@ -1496,6 +1960,24 @@ database/seeders/
 └── AgentSettingsSeeder.php
 ```
 
+### Jobs to Create
+```
+app/Jobs/
+├── IndexAgentMemoryJob.php         # Index single document into memory_chunks
+├── ExportSessionTranscriptJob.php  # Export session messages to markdown document
+├── PeriodicReindexJob.php          # Scheduled re-index (every 5 minutes)
+├── EmbeddingRefreshJob.php         # Scheduled embedding refresh (hourly)
+├── ReindexAgentJob.php             # Full agent re-index on demand
+├── HeartbeatJob.php                # Periodic agent heartbeat check
+└── ProcessAgentMessageJob.php      # Core agent brain — message processing + tool execution
+```
+
+### Config Files to Create
+```
+config/
+└── memory.php                      # QMD search parameters & indexing config
+```
+
 ---
 
 ## Implementation Priority Order
@@ -1505,7 +1987,7 @@ database/seeders/
 
 **Week 1: Foundation**
 1. Database migrations (1.1.1 - 1.4.3)
-2. Memory search infrastructure (1.5.1 - 1.5.2) ← OpenClaw
+2. Memory search infrastructure (1.5.1 - 1.5.4) ← includes QMD collections & clamping
 3. Core models (2.1.1 - 2.4.2)
 
 **Week 2: API Layer**
@@ -1525,22 +2007,44 @@ database/seeders/
 13. Tool Kind Classification (3.6.4)
 14. Execution Approval System (3.6.5)
 
-**Week 5: Hybrid Memory Search (OpenClaw)**
+**Week 5-6: Hybrid Memory Search + QMD Features (OpenClaw)**
 15. Embedding Service (3.7.1)
 16. Chunking Service (3.7.2)
 17. Memory Indexing (3.7.3)
 18. Hybrid Search (3.7.4)
+19. Collection Management (3.7.5)
+20. Session Transcript Indexing (3.7.6)
+21. Periodic Re-Indexing (3.7.7)
+22. Scope Rules & Security (3.7.8)
+23. Enhanced Search with QMD Features (3.7.9)
 
-**Week 6: Frontend Integration**
-19. useApi methods (4.1.1 - 4.1.8)
-20. Component connections (4.2.1 - 4.2.9)
-21. Page updates (4.3.1 - 4.3.2)
+**Week 7: Frontend Integration**
+24. useApi methods (4.1.1 - 4.1.8)
+25. Component connections (4.2.1 - 4.2.9)
+26. Page updates (4.3.1 - 4.3.2)
 
-**Week 7: Polish & Testing**
-22. Agent control actions (5.1.1 - 5.2.2)
-23. Testing (7.1.1 - 7.2.7)
+**Week 8: Heartbeat System**
+27. Heartbeat migration (3.11.1)
+28. HeartbeatJob (3.11.2)
+29. Scheduler wiring (3.11.3)
+30. Heartbeat admin UI (3.11.4)
+
+**Week 9: Agent Brain**
+31. AgentPromptBuilder service (3.12.1)
+32. AgentToolExecutor service (3.12.2)
+33. ProcessAgentMessageJob (3.12.3)
+34. Wire message controller (3.12.4)
+35. Response streaming via Reverb (3.12.5)
+36. Model failover support (3.12.6)
+
+**Week 10: Polish & Testing**
+37. Agent control actions (5.1.1 - 5.2.2)
+38. Testing (7.1.1 - 7.2.7)
 
 **Post-MVP: Enhancements**
-24. Subagent spawning (8.3.x)
-25. Skills system (8.4.x)
-26. Webhooks (8.5.x)
+39. Subagent spawning (8.3.x)
+40. Skills system (8.4.x)
+41. Webhooks (8.5.x)
+42. Plugin system (3.8.x)
+43. Multi-device support (3.9.x)
+44. Cron & scheduled tasks (3.10.x)
