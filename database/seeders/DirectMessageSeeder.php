@@ -77,7 +77,7 @@ class DirectMessageSeeder extends Seeder
             $channel = Channel::create([
                 'id' => $channelId,
                 'name' => 'Direct Message',
-                'type' => 'private',
+                'type' => 'dm',
                 'description' => null,
                 'creator_id' => $convo['user1_id'],
                 'is_ephemeral' => false,

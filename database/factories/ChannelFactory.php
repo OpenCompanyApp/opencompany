@@ -26,7 +26,7 @@ class ChannelFactory extends Factory
             'type' => fake()->randomElement(['public', 'private', 'agent']),
             'description' => fake()->sentence(),
             'creator_id' => User::factory(),
-            'is_temporary' => false,
+            'is_ephemeral' => false,
         ];
     }
 
@@ -61,12 +61,22 @@ class ChannelFactory extends Factory
     }
 
     /**
+     * Create a DM channel.
+     */
+    public function dm(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'dm',
+        ]);
+    }
+
+    /**
      * Create a temporary channel.
      */
     public function temporary(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_temporary' => true,
+            'is_ephemeral' => true,
         ]);
     }
 }

@@ -313,6 +313,16 @@ export const useApi = () => {
   const deleteAutomationRule = (id: string) =>
     api.delete(`/automation-rules/${id}`)
 
+  // Agents
+  const fetchAgentDetail = (id: string) => useFetch<Record<string, unknown>>(`/agents/${id}`)
+  const fetchAgentIdentityFiles = (id: string) => useFetch<Record<string, unknown>[]>(`/agents/${id}/identity`)
+  const updateAgentIdentityFile = (id: string, fileType: string, content: string) =>
+    api.put(`/agents/${id}/identity/${fileType}`, { content })
+  const updateAgent = (id: string, data: Record<string, unknown>) =>
+    api.patch(`/agents/${id}`, data)
+  const deleteAgent = (id: string) =>
+    api.delete(`/agents/${id}`)
+
   // Search
   const search = (query: string, type?: string) => {
     const params = new URLSearchParams({ q: query })
@@ -453,6 +463,12 @@ export const useApi = () => {
     createAutomationRule,
     updateAutomationRule,
     deleteAutomationRule,
+    // Agents
+    fetchAgentDetail,
+    fetchAgentIdentityFiles,
+    updateAgentIdentityFile,
+    updateAgent,
+    deleteAgent,
     // Search
     search,
     // Direct Messages

@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('integration_settings', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('integration_id')->unique(); // e.g., 'glm', 'openai', 'anthropic'
-            $table->json('config'); // Encrypted: api_key, url, default_model, etc.
+            $table->text('config'); // Encrypted via model cast: api_key, url, default_model, etc.
             $table->boolean('enabled')->default(false);
             $table->timestamps();
         });

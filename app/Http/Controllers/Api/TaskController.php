@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ExecuteAgentTaskJob;
 use App\Models\Task;
 use App\Models\TaskStep;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class TaskController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Task::with(['agent', 'requester', 'channel', 'project', 'steps']);
+        $query = Task::with(['agent', 'requester', 'channel', 'steps']);
 
         // Filter by status
         if ($request->has('status')) {
@@ -47,11 +48,6 @@ class TaskController extends Controller
             $query->where('priority', $request->input('priority'));
         }
 
-        // Filter by project
-        if ($request->has('projectId')) {
-            $query->where('project_id', $request->input('projectId'));
-        }
-
         // Order by
         $orderBy = $request->input('orderBy', 'created_at');
         $orderDir = $request->input('orderDir', 'desc');
@@ -66,7 +62,6 @@ class TaskController extends Controller
             'agent',
             'requester',
             'channel',
-            'project',
             'listItem',
             'parentTask',
             'subtasks',
@@ -86,14 +81,13 @@ class TaskController extends Controller
             'agent_id' => $request->input('agentId'),
             'requester_id' => $request->input('requesterId'),
             'channel_id' => $request->input('channelId'),
-            'project_id' => $request->input('projectId'),
             'list_item_id' => $request->input('listItemId'),
             'parent_task_id' => $request->input('parentTaskId'),
             'context' => $request->input('context'),
             'due_at' => $request->input('dueAt'),
         ]);
 
-        return $task->load(['agent', 'requester', 'channel', 'project', 'steps']);
+        return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
     public function update(Request $request, string $id)
@@ -116,16 +110,13 @@ class TaskController extends Controller
         if ($request->has('channelId')) {
             $data['channel_id'] = $request->input('channelId');
         }
-        if ($request->has('projectId')) {
-            $data['project_id'] = $request->input('projectId');
-        }
         if ($request->has('dueAt')) {
             $data['due_at'] = $request->input('dueAt');
         }
 
         $task->update($data);
 
-        return $task->load(['agent', 'requester', 'channel', 'project', 'steps']);
+        return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
     public function destroy(string $id)
@@ -140,9 +131,18 @@ class TaskController extends Controller
     public function start(string $id)
     {
         $task = Task::findOrFail($id);
+
+        // If task has an assigned agent, dispatch the execution job
+        if ($task->agent_id) {
+            ExecuteAgentTaskJob::dispatch($task);
+            // Return immediately — task will be updated via broadcast
+            return $task->load(['agent', 'requester', 'channel', 'steps']);
+        }
+
+        // No agent assigned — just start the task manually
         $task->start();
 
-        return $task->load(['agent', 'requester', 'channel', 'project', 'steps']);
+        return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
     public function pause(string $id)
@@ -150,7 +150,7 @@ class TaskController extends Controller
         $task = Task::findOrFail($id);
         $task->pause();
 
-        return $task->load(['agent', 'requester', 'channel', 'project', 'steps']);
+        return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
     public function resume(string $id)
@@ -158,7 +158,7 @@ class TaskController extends Controller
         $task = Task::findOrFail($id);
         $task->resume();
 
-        return $task->load(['agent', 'requester', 'channel', 'project', 'steps']);
+        return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
     public function complete(Request $request, string $id)
@@ -166,7 +166,7 @@ class TaskController extends Controller
         $task = Task::findOrFail($id);
         $task->complete($request->input('result'));
 
-        return $task->load(['agent', 'requester', 'channel', 'project', 'steps']);
+        return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
     public function fail(Request $request, string $id)
@@ -174,7 +174,7 @@ class TaskController extends Controller
         $task = Task::findOrFail($id);
         $task->fail($request->input('reason'));
 
-        return $task->load(['agent', 'requester', 'channel', 'project', 'steps']);
+        return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
     public function cancel(string $id)
@@ -182,7 +182,7 @@ class TaskController extends Controller
         $task = Task::findOrFail($id);
         $task->cancel();
 
-        return $task->load(['agent', 'requester', 'channel', 'project', 'steps']);
+        return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
     // Task Steps

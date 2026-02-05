@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('channels', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('name');
-            $table->enum('type', ['public', 'private', 'agent']);
+            $table->string('type')->default('public');
             $table->text('description')->nullable();
             $table->string('creator_id')->nullable();
             $table->boolean('is_temporary')->default(false);

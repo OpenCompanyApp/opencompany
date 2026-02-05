@@ -289,7 +289,7 @@
               @update="updateSettings"
               @reset-memory="resetAgentMemory"
               @pause-agent="togglePause"
-              @delete-agent="deleteAgent"
+              @delete-agent="deleteAgentHandler"
             />
           </div>
         </div>
@@ -328,7 +328,7 @@ import TaskDetailDrawer from '@/Components/tasks/TaskDetailDrawer.vue'
 import { useApi } from '@/composables/useApi'
 import type { Agent, AgentType, AgentSettings, AgentTask } from '@/types'
 
-const { fetchAgentTasks } = useApi()
+const { fetchAgentDetail, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi } = useApi()
 
 type TabId = 'overview' | 'tasks' | 'personality' | 'instructions' | 'capabilities' | 'memory' | 'activity' | 'settings'
 
@@ -425,99 +425,57 @@ const goBack = () => {
 const fetchData = async () => {
   loading.value = true
   try {
-    // Simulate API call with mock data
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // Fetch agent detail (includes identity files, tasks, capabilities)
+    const agentFetch = fetchAgentDetail(props.id)
+    await agentFetch.promise
 
-    // Mock agent data
+    const raw = agentFetch.data.value as Record<string, unknown> | null
+    if (!raw) {
+      agent.value = null
+      return
+    }
+
+    // Map API response to Agent interface
     agent.value = {
-      id: props.id,
-      name: 'Logic',
-      type: 'agent',
-      agentType: 'coder',
-      status: 'working',
-      currentTask: 'Implementing user authentication',
-      identity: {
-        name: 'Logic',
-        emoji: '🤖',
-        type: 'coder',
-        description: 'Senior software engineer specializing in backend development',
-      },
-      personality: {
-        content: `## Communication Style
-- Be direct and concise
-- Use technical terms when appropriate
-- Ask clarifying questions before making assumptions
-
-## Boundaries
-- Never deploy to production without explicit approval
-- Always explain reasoning for significant decisions`,
-        updatedAt: new Date(),
-      },
-      instructions: {
-        content: `## Primary Responsibilities
-- Write clean, tested code
-- Review pull requests
-- Document technical decisions
-
-## Workflow
-1. Understand the task fully before starting
-2. Break complex tasks into subtasks
-3. Test changes locally before committing`,
-        updatedAt: new Date(),
-      },
-      capabilities: [
-        { id: '1', name: 'Code execution', description: 'Run Node.js and Python code', enabled: true, requiresApproval: false, icon: 'ph:code' },
-        { id: '2', name: 'File operations', description: 'Read, write, and edit files', enabled: true, requiresApproval: false, icon: 'ph:file' },
-        { id: '3', name: 'Git operations', description: 'Commit, push, and manage branches', enabled: true, requiresApproval: false, icon: 'ph:git-branch' },
-        { id: '4', name: 'API requests', description: 'Make HTTP requests to external services', enabled: true, requiresApproval: false, icon: 'ph:globe' },
-        { id: '5', name: 'Database access', description: 'Query and modify database', enabled: true, requiresApproval: true, icon: 'ph:database' },
-        { id: '6', name: 'Production deployment', description: 'Deploy to production servers', enabled: false, requiresApproval: true, icon: 'ph:rocket-launch' },
-      ],
-      currentSession: {
-        id: 'session-1',
-        startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        messageCount: 24,
-        tokenCount: 45000,
-        maxTokens: 128000,
-      },
-      memoryEntries: [
-        { id: '1', content: 'API credentials stored in vault', createdAt: new Date('2025-01-30'), category: 'fact' },
-        { id: '2', content: 'User prefers TypeScript over JavaScript', createdAt: new Date('2025-01-28'), category: 'preference' },
-        { id: '3', content: 'Project uses pnpm as package manager', createdAt: new Date('2025-01-25'), category: 'fact' },
-      ],
+      id: raw.id as string,
+      name: raw.name as string,
+      type: raw.type as 'agent',
+      agentType: (raw.agentType as AgentType) || 'coder',
+      status: (raw.status as string) || 'idle',
+      currentTask: raw.currentTask as string | undefined,
+      identity: raw.identity as Agent['identity'],
+      personality: raw.personality ? {
+        content: (raw.personality as Record<string, unknown>).content as string,
+        updatedAt: new Date((raw.personality as Record<string, unknown>).updatedAt as string),
+      } : undefined,
+      instructions: raw.instructions ? {
+        content: (raw.instructions as Record<string, unknown>).content as string,
+        updatedAt: new Date((raw.instructions as Record<string, unknown>).updatedAt as string),
+      } : undefined,
+      capabilities: (raw.capabilities as Agent['capabilities']) || [],
       settings: {
         behaviorMode: 'supervised',
         costLimit: 100,
-        resetPolicy: {
-          mode: 'daily',
-          dailyHour: 4,
-        },
+        resetPolicy: { mode: 'daily', dailyHour: 4 },
       },
-      stats: {
-        tasksCompleted: 127,
-        efficiency: 94,
-        totalSessions: 89,
-      },
+      stats: raw.stats as Agent['stats'],
     } as Agent
 
-    activityLog.value = [
-      { id: '1', type: 'working', description: 'Implementing user authentication module', timestamp: new Date().toISOString() },
-      { id: '2', type: 'completed', description: 'Fixed database connection timeout issue', timestamp: new Date(Date.now() - 30 * 60000).toISOString(), duration: 1200 },
-      { id: '3', type: 'completed', description: 'Reviewed PR #234 for API refactoring', timestamp: new Date(Date.now() - 2 * 3600000).toISOString(), duration: 900 },
-      { id: '4', type: 'completed', description: 'Created unit tests for payment service', timestamp: new Date(Date.now() - 4 * 3600000).toISOString(), duration: 2400 },
-      { id: '5', type: 'completed', description: 'Updated documentation for deployment process', timestamp: new Date(Date.now() - 6 * 3600000).toISOString(), duration: 600 },
-    ]
+    capabilityNotes.value = (raw.toolNotes as string) || ''
 
-    capabilityNotes.value = 'Preferred test framework: Jest\nCode style: ESLint + Prettier\nDatabase: PostgreSQL with Prisma ORM'
+    // Map tasks from the detail response
+    const rawTasks = (raw.tasks as AgentTask[]) || []
+    agentTasks.value = rawTasks
 
-    // Fetch agent's tasks
-    try {
-      const { data } = await fetchAgentTasks({ agentId: props.id })
-      agentTasks.value = data || []
-    } catch (e) {
-      console.error('Failed to fetch agent tasks:', e)
-      agentTasks.value = []
-    }
+    // Build activity log from completed tasks
+    activityLog.value = rawTasks
+      .filter((t: AgentTask) => t.status === 'completed' || t.status === 'active')
+      .map((t: AgentTask) => ({
+        id: t.id,
+        type: t.status === 'completed' ? 'completed' as const : 'working' as const,
+        description: t.title,
+        timestamp: (t.completedAt || t.startedAt || t.createdAt)?.toString() || new Date().toISOString(),
+      }))
   } catch (error) {
     console.error('Failed to fetch agent data:', error)
     agent.value = null
@@ -526,49 +484,95 @@ const fetchData = async () => {
   }
 }
 
-const togglePause = () => {
-  console.log('Toggle pause for agent:', props.id)
+const togglePause = async () => {
+  if (!agent.value) return
+  const newStatus = agent.value.status === 'working' ? 'idle' : 'working'
+  try {
+    await updateAgent(props.id, { status: newStatus })
+    agent.value = { ...agent.value, status: newStatus } as Agent
+  } catch (e) {
+    console.error('Failed to toggle pause:', e)
+  }
 }
 
-const savePersonality = (content: string) => {
-  console.log('Save personality:', content)
+const savePersonality = async (content: string) => {
+  try {
+    await updateAgentIdentityFile(props.id, 'SOUL', content)
+    if (agent.value?.personality) {
+      agent.value.personality = { content, updatedAt: new Date() }
+    }
+  } catch (e) {
+    console.error('Failed to save personality:', e)
+  }
 }
 
-const saveInstructions = (content: string) => {
-  console.log('Save instructions:', content)
+const saveInstructions = async (content: string) => {
+  try {
+    await updateAgentIdentityFile(props.id, 'AGENTS', content)
+    if (agent.value?.instructions) {
+      agent.value.instructions = { content, updatedAt: new Date() }
+    }
+  } catch (e) {
+    console.error('Failed to save instructions:', e)
+  }
 }
 
-const saveCapabilityNotes = (notes: string) => {
-  capabilityNotes.value = notes
-  console.log('Save capability notes:', notes)
+const saveCapabilityNotes = async (notes: string) => {
+  try {
+    await updateAgentIdentityFile(props.id, 'TOOLS', notes)
+    capabilityNotes.value = notes
+  } catch (e) {
+    console.error('Failed to save capability notes:', e)
+  }
 }
 
 const startNewSession = () => {
-  console.log('Start new session')
+  // Session management deferred to Sprint 2
 }
 
 const viewSessionHistory = () => {
-  console.log('View session history')
+  // Session history deferred to Sprint 2
 }
 
-const addMemoryEntry = (entry: { content: string; category: string }) => {
-  console.log('Add memory entry:', entry)
+const addMemoryEntry = async (entry: { content: string; category: string }) => {
+  // Append to MEMORY.md identity file
+  const currentMemory = (agent.value as Record<string, unknown>)?.memoryContent as string || ''
+  const newContent = currentMemory
+    ? `${currentMemory}\n\n- [${entry.category}] ${entry.content}`
+    : `# Long-term Memory\n\n- [${entry.category}] ${entry.content}`
+  try {
+    await updateAgentIdentityFile(props.id, 'MEMORY', newContent)
+  } catch (e) {
+    console.error('Failed to add memory entry:', e)
+  }
 }
 
 const deleteMemoryEntry = (id: string) => {
+  // Memory entry management deferred to Sprint 2
   console.log('Delete memory entry:', id)
 }
 
 const updateSettings = (settings: AgentSettings) => {
+  // Settings persistence deferred to Sprint 2
   console.log('Update settings:', settings)
 }
 
-const resetAgentMemory = () => {
-  console.log('Reset agent memory')
+const resetAgentMemory = async () => {
+  try {
+    await updateAgentIdentityFile(props.id, 'MEMORY', '# Long-term Memory\n\n(Cleared)')
+  } catch (e) {
+    console.error('Failed to reset memory:', e)
+  }
 }
 
-const deleteAgent = () => {
-  console.log('Delete agent')
+const deleteAgentHandler = async () => {
+  if (!confirm('Are you sure you want to delete this agent?')) return
+  try {
+    await deleteAgentApi(props.id)
+    window.location.href = '/'
+  } catch (e) {
+    console.error('Failed to delete agent:', e)
+  }
 }
 
 const formatTimeAgo = (dateString: string): string => {

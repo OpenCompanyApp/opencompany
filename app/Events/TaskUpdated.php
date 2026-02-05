@@ -3,9 +3,7 @@
 namespace App\Events;
 
 use App\Models\Task;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -23,7 +21,8 @@ class TaskUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel('tasks'),
+            new PrivateChannel('tasks'),
+            new PrivateChannel('task.' . $this->task->id),
         ];
     }
 
@@ -31,7 +30,7 @@ class TaskUpdated implements ShouldBroadcast
     {
         return [
             'action' => $this->action,
-            'task' => $this->task->load(['assignee', 'collaborators.user']),
+            'task' => $this->task->load(['agent', 'requester', 'steps']),
         ];
     }
 }

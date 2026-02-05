@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Agents\Tools\ToolRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\IntegrationSetting;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentDocumentService;
 use Illuminate\Http\Request;
@@ -92,15 +94,120 @@ class AgentController extends Controller
     }
 
     /**
-     * Get a specific agent
+     * Get a specific agent with enriched detail data
      */
     public function show(string $id)
     {
-        $agent = User::where('type', 'agent')
-            ->with('docsFolder')
-            ->findOrFail($id);
+        $agent = User::where('type', 'agent')->findOrFail($id);
 
-        return response()->json($agent);
+        // Load identity files and map by type
+        $identityFiles = $this->agentDocumentService->getIdentityFiles($agent);
+        $filesByType = [];
+        foreach ($identityFiles as $file) {
+            $type = strtoupper(str_replace('.md', '', $file->title));
+            $filesByType[$type] = [
+                'content' => $file->content ?? '',
+                'updatedAt' => $file->updated_at,
+            ];
+        }
+
+        // Parse IDENTITY.md for structured identity info
+        $identity = $this->parseIdentityContent(
+            $filesByType['IDENTITY']['content'] ?? '',
+            $agent
+        );
+
+        // Task stats
+        $taskStats = Task::where('agent_id', $agent->id)
+            ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
+            ->first();
+
+        // Recent tasks
+        $recentTasks = Task::where('agent_id', $agent->id)
+            ->with(['requester', 'steps'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Capabilities from ToolRegistry
+        $toolRegistry = app(ToolRegistry::class);
+        $tools = $toolRegistry->getToolsForAgent($agent);
+        $capabilities = collect($tools)->map(fn ($tool, $i) => [
+            'id' => (string) ($i + 1),
+            'name' => $this->humanizeClassName(class_basename($tool)),
+            'description' => $tool->description(),
+            'enabled' => true,
+            'requiresApproval' => false,
+        ])->values();
+
+        return response()->json([
+            'id' => $agent->id,
+            'name' => $agent->name,
+            'type' => $agent->type,
+            'agentType' => $agent->agent_type,
+            'status' => $agent->status,
+            'presence' => $agent->presence,
+            'brain' => $agent->brain,
+            'currentTask' => $agent->current_task,
+            'identity' => $identity,
+            'personality' => $filesByType['SOUL'] ?? null,
+            'instructions' => $filesByType['AGENTS'] ?? null,
+            'capabilities' => $capabilities,
+            'toolNotes' => $filesByType['TOOLS']['content'] ?? '',
+            'memoryContent' => $filesByType['MEMORY']['content'] ?? '',
+            'stats' => [
+                'tasksCompleted' => (int) ($taskStats->completed ?? 0),
+                'totalTasks' => (int) ($taskStats->total ?? 0),
+                'efficiency' => $taskStats->total > 0
+                    ? (int) round(($taskStats->completed / $taskStats->total) * 100)
+                    : 0,
+                'totalSessions' => 0,
+            ],
+            'tasks' => $recentTasks,
+        ]);
+    }
+
+    /**
+     * Parse IDENTITY.md content to extract structured identity data
+     */
+    private function parseIdentityContent(string $content, User $agent): array
+    {
+        $identity = [
+            'name' => $agent->name,
+            'emoji' => '🤖',
+            'type' => $agent->agent_type ?? 'coder',
+            'description' => '',
+        ];
+
+        if (!$content) {
+            return $identity;
+        }
+
+        foreach (explode("\n", $content) as $line) {
+            $line = trim($line);
+            // Match "- **Key**: Value" or "Key: Value"
+            if (preg_match('/^(?:-\s*\*\*|\*\*|#+\s*)?(\w+)(?:\*\*)?\s*:\s*(.+)$/i', $line, $matches)) {
+                $key = strtolower(trim($matches[1]));
+                $value = trim($matches[2]);
+                match ($key) {
+                    'name' => $identity['name'] = $value,
+                    'emoji' => $identity['emoji'] = $value,
+                    'type' => $identity['type'] = strtolower($value),
+                    'description', 'vibe' => $identity['description'] = $value,
+                    default => null,
+                };
+            }
+        }
+
+        return $identity;
+    }
+
+    /**
+     * Convert PascalCase class name to human-readable string
+     */
+    private function humanizeClassName(string $className): string
+    {
+        return trim(preg_replace('/([A-Z])/', ' $1', $className));
     }
 
     /**

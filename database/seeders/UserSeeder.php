@@ -33,6 +33,7 @@ class UserSeeder extends Seeder
                 'agent_type' => 'manager',
                 'status' => 'working',
                 'current_task' => 'Coordinating team workflow and prioritizing tasks',
+                'brain' => 'glm:glm-4-plus',
             ],
             [
                 'id' => 'a2',
@@ -40,6 +41,7 @@ class UserSeeder extends Seeder
                 'agent_type' => 'writer',
                 'status' => 'idle',
                 'current_task' => null,
+                'brain' => 'glm-coding:glm-4.7',
             ],
             [
                 'id' => 'a3',
@@ -47,6 +49,7 @@ class UserSeeder extends Seeder
                 'agent_type' => 'analyst',
                 'status' => 'working',
                 'current_task' => 'Analyzing Q4 performance metrics',
+                'brain' => 'glm-coding:glm-4.7',
             ],
             [
                 'id' => 'a4',
@@ -54,6 +57,7 @@ class UserSeeder extends Seeder
                 'agent_type' => 'creative',
                 'status' => 'idle',
                 'current_task' => null,
+                'brain' => 'glm:glm-4-plus',
             ],
             [
                 'id' => 'a5',
@@ -61,6 +65,7 @@ class UserSeeder extends Seeder
                 'agent_type' => 'coder',
                 'status' => 'working',
                 'current_task' => 'Building API endpoints for user management',
+                'brain' => 'glm-coding:glm-4.7',
             ],
             [
                 'id' => 'a6',
@@ -68,6 +73,7 @@ class UserSeeder extends Seeder
                 'agent_type' => 'researcher',
                 'status' => 'idle',
                 'current_task' => null,
+                'brain' => 'glm-coding:glm-4.7',
             ],
         ];
 
@@ -80,6 +86,7 @@ class UserSeeder extends Seeder
                 'status' => $agent['status'],
                 'presence' => $agent['status'] === 'working' ? 'online' : 'offline',
                 'current_task' => $agent['current_task'],
+                'brain' => $agent['brain'],
                 'manager_id' => $agent['id'] !== 'a1' ? 'a1' : null, // Atlas manages other agents
             ]);
         }

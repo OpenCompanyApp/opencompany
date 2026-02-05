@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
+use App\Jobs\AgentRespondJob;
 use App\Models\Channel;
 use App\Models\DirectMessage;
 use App\Models\Message;
@@ -67,7 +68,7 @@ class MessageController extends Controller
     {
         // Check if this is a DM channel
         $channel = Channel::find($message->channel_id);
-        if ($channel->type !== 'direct') {
+        if (!$channel || $channel->type !== 'dm') {
             return;
         }
 
@@ -85,15 +86,20 @@ class MessageController extends Controller
         $otherUser = User::find($otherUserId);
 
         // Check if other user is an agent
-        if ($otherUser->type !== 'agent') {
+        if (!$otherUser || $otherUser->type !== 'agent') {
             return;
         }
 
-        // Generate agent response
+        // Dispatch async agent response via Laravel AI SDK
+        if (config('app.agent_async', true)) {
+            AgentRespondJob::dispatch($message, $otherUser, $message->channel_id);
+            return;
+        }
+
+        // Sync fallback for development (uses old AgentChatService)
         $responseText = app(AgentChatService::class)
             ->respond($otherUser, $message->channel_id, $message->content);
 
-        // Create agent's response message
         $agentMessage = Message::create([
             'id' => Str::uuid()->toString(),
             'content' => $responseText,
@@ -102,14 +108,11 @@ class MessageController extends Controller
             'timestamp' => now(),
         ]);
 
-        // Update channel's last_message_at
         Channel::where('id', $message->channel_id)
             ->update(['last_message_at' => now()]);
 
-        // Update DM's last_message_at
         $dm->update(['last_message_at' => now()]);
 
-        // Broadcast agent's response
         broadcast(new MessageSent($agentMessage));
     }
 

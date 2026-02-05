@@ -12,9 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // For PostgreSQL, we need to drop the check constraint and recreate it
-        DB::statement("ALTER TABLE channels DROP CONSTRAINT IF EXISTS channels_type_check");
-        DB::statement("ALTER TABLE channels ADD CONSTRAINT channels_type_check CHECK (type IN ('public', 'private', 'agent', 'dm', 'external'))");
+        // Check constraints only apply to PostgreSQL; SQLite has no ALTER TABLE ... DROP CONSTRAINT
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE channels DROP CONSTRAINT IF EXISTS channels_type_check");
+            DB::statement("ALTER TABLE channels ADD CONSTRAINT channels_type_check CHECK (type IN ('public', 'private', 'agent', 'dm', 'external'))");
+        }
     }
 
     /**
@@ -22,7 +24,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE channels DROP CONSTRAINT IF EXISTS channels_type_check");
-        DB::statement("ALTER TABLE channels ADD CONSTRAINT channels_type_check CHECK (type IN ('public', 'private', 'agent'))");
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE channels DROP CONSTRAINT IF EXISTS channels_type_check");
+            DB::statement("ALTER TABLE channels ADD CONSTRAINT channels_type_check CHECK (type IN ('public', 'private', 'agent'))");
+        }
     }
 };
