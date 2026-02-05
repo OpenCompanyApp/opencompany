@@ -9,7 +9,7 @@
 
 ## Technology Stack
 
-> See [Technology Decisions](./technology-decisions.md) for detailed comparison and rationale.
+> See [Technology Decisions](../architecture/technology-decisions.md) for detailed comparison and rationale.
 
 | Component | Choice | Reason |
 |-----------|--------|--------|
