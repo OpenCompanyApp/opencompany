@@ -4,8 +4,16 @@
     <header class="shrink-0 px-6 py-4 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Agent Workload</h1>
-          <p class="text-sm text-neutral-500 dark:text-neutral-300 mt-1">
+          <div class="flex items-center gap-1 mb-1">
+            <Link
+              href="/tasks"
+              class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+            >
+              Tasks
+            </Link>
+            <span class="text-xl font-semibold text-neutral-900 dark:text-white">Workload</span>
+          </div>
+          <p class="text-sm text-neutral-500 dark:text-neutral-300">
             Monitor agent performance and task distribution
           </p>
         </div>

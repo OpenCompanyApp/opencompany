@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Task;
-use App\Models\TaskTemplate;
+use App\Models\ListItem;
+use App\Models\ListTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
-class TaskTemplateController extends Controller
+class ListTemplateController extends Controller
 {
     public function index(Request $request)
     {
-        $query = TaskTemplate::with(['defaultAssignee', 'createdBy']);
+        $query = ListTemplate::with(['defaultAssignee', 'createdBy']);
 
         if ($request->input('activeOnly', true)) {
             $query->where('is_active', true);
@@ -23,7 +23,7 @@ class TaskTemplateController extends Controller
 
     public function store(Request $request)
     {
-        $template = TaskTemplate::create([
+        $template = ListTemplate::create([
             'id' => Str::uuid()->toString(),
             'name' => $request->input('name'),
             'description' => $request->input('description'),
@@ -42,7 +42,7 @@ class TaskTemplateController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $template = TaskTemplate::findOrFail($id);
+        $template = ListTemplate::findOrFail($id);
 
         $data = $request->only([
             'name',
@@ -77,18 +77,18 @@ class TaskTemplateController extends Controller
 
     public function destroy(string $id)
     {
-        TaskTemplate::findOrFail($id)->delete();
+        ListTemplate::findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
 
-    public function createTask(Request $request, string $templateId)
+    public function createListItem(Request $request, string $templateId)
     {
-        $template = TaskTemplate::findOrFail($templateId);
+        $template = ListTemplate::findOrFail($templateId);
 
-        $maxPosition = Task::where('status', 'todo')->max('position') ?? 0;
+        $maxPosition = ListItem::where('status', 'todo')->max('position') ?? 0;
 
-        $task = Task::create([
+        $listItem = ListItem::create([
             'id' => Str::uuid()->toString(),
             'title' => $request->input('title', $template->default_title),
             'description' => $request->input('description', $template->default_description),
@@ -103,6 +103,6 @@ class TaskTemplateController extends Controller
         // Increment template usage count
         $template->increment('usage_count');
 
-        return $task->load(['assignee', 'creator', 'collaborators.user', 'channel']);
+        return $listItem->load(['assignee', 'creator', 'collaborators', 'channel']);
     }
 }

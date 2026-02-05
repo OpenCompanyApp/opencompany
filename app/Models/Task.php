@@ -6,38 +6,67 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * Task - Discrete work items that agents work on (like cases)
+ *
+ * Examples: support tickets, content requests, research tasks, analysis jobs
+ * For kanban board items, see the ListItem model instead.
+ */
 class Task extends Model
 {
     use HasFactory;
+
+    protected $table = 'tasks';
     protected $keyType = 'string';
     public $incrementing = false;
 
+    public const TYPE_TICKET = 'ticket';
+    public const TYPE_REQUEST = 'request';
+    public const TYPE_ANALYSIS = 'analysis';
+    public const TYPE_CONTENT = 'content';
+    public const TYPE_RESEARCH = 'research';
+    public const TYPE_CUSTOM = 'custom';
+
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_PAUSED = 'paused';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_FAILED = 'failed';
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const PRIORITY_LOW = 'low';
+    public const PRIORITY_NORMAL = 'normal';
+    public const PRIORITY_HIGH = 'high';
+    public const PRIORITY_URGENT = 'urgent';
+
     protected $fillable = [
         'id',
-        'parent_id',
-        'is_folder',
         'title',
         'description',
+        'type',
         'status',
-        'assignee_id',
-        'creator_id',
         'priority',
-        'cost',
-        'estimated_cost',
+        'agent_id',
+        'requester_id',
         'channel_id',
-        'position',
+        'list_item_id',
+        'parent_task_id',
+        'context',
+        'result',
+        'started_at',
         'completed_at',
+        'due_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_folder' => 'boolean',
-            'cost' => 'decimal:2',
-            'estimated_cost' => 'decimal:2',
+            'context' => 'array',
+            'result' => 'array',
+            'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'due_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -46,31 +75,34 @@ class Task extends Model
     /**
      * Override toArray to add camelCase versions for frontend compatibility
      */
-    public function toArray()
+    public function toArray(): array
     {
         $array = parent::toArray();
 
-        // Add camelCase versions of snake_case fields
-        $array['parentId'] = $this->parent_id;
-        $array['isFolder'] = $this->is_folder;
-        $array['createdAt'] = $this->created_at;
-        $array['completedAt'] = $this->completed_at;
-        $array['estimatedCost'] = $this->estimated_cost;
-        $array['assigneeId'] = $this->assignee_id;
-        $array['creatorId'] = $this->creator_id;
+        $array['agentId'] = $this->agent_id;
+        $array['requesterId'] = $this->requester_id;
         $array['channelId'] = $this->channel_id;
+        $array['listItemId'] = $this->list_item_id;
+        $array['parentTaskId'] = $this->parent_task_id;
+        $array['startedAt'] = $this->started_at;
+        $array['completedAt'] = $this->completed_at;
+        $array['dueAt'] = $this->due_at;
+        $array['createdAt'] = $this->created_at;
+        $array['updatedAt'] = $this->updated_at;
 
         return $array;
     }
 
-    public function assignee(): BelongsTo
+    // Relationships
+
+    public function agent(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assignee_id');
+        return $this->belongsTo(User::class, 'agent_id');
     }
 
-    public function creator(): BelongsTo
+    public function requester(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'creator_id');
+        return $this->belongsTo(User::class, 'requester_id');
     }
 
     public function channel(): BelongsTo
@@ -78,28 +110,143 @@ class Task extends Model
         return $this->belongsTo(Channel::class);
     }
 
-    public function collaboratorPivots(): HasMany
+    public function listItem(): BelongsTo
     {
-        return $this->hasMany(TaskCollaborator::class);
+        return $this->belongsTo(ListItem::class);
     }
 
-    public function collaborators(): BelongsToMany
+    public function parentTask(): BelongsTo
     {
-        return $this->belongsToMany(User::class, 'task_collaborators');
+        return $this->belongsTo(Task::class, 'parent_task_id');
     }
 
-    public function comments(): HasMany
+    public function subtasks(): HasMany
     {
-        return $this->hasMany(TaskComment::class);
+        return $this->hasMany(Task::class, 'parent_task_id');
     }
 
-    public function parent(): BelongsTo
+    public function steps(): HasMany
     {
-        return $this->belongsTo(Task::class, 'parent_id');
+        return $this->hasMany(TaskStep::class)->orderBy('created_at');
     }
 
-    public function children(): HasMany
+    // Lifecycle Methods
+
+    public function start(): self
     {
-        return $this->hasMany(Task::class, 'parent_id');
+        $this->update([
+            'status' => self::STATUS_ACTIVE,
+            'started_at' => now(),
+        ]);
+
+        return $this;
+    }
+
+    public function pause(): self
+    {
+        $this->update(['status' => self::STATUS_PAUSED]);
+        return $this;
+    }
+
+    public function resume(): self
+    {
+        $this->update(['status' => self::STATUS_ACTIVE]);
+        return $this;
+    }
+
+    public function complete(?array $result = null): self
+    {
+        $this->update([
+            'status' => self::STATUS_COMPLETED,
+            'completed_at' => now(),
+            'result' => $result,
+        ]);
+
+        return $this;
+    }
+
+    public function fail(?string $reason = null): self
+    {
+        $this->update([
+            'status' => self::STATUS_FAILED,
+            'completed_at' => now(),
+            'result' => ['error' => $reason],
+        ]);
+
+        return $this;
+    }
+
+    public function cancel(): self
+    {
+        $this->update([
+            'status' => self::STATUS_CANCELLED,
+            'completed_at' => now(),
+        ]);
+
+        return $this;
+    }
+
+    // Query Scopes
+
+    public function scopePending($query)
+    {
+        return $query->where('status', self::STATUS_PENDING);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', self::STATUS_ACTIVE);
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', self::STATUS_COMPLETED);
+    }
+
+    public function scopeForAgent($query, string $agentId)
+    {
+        return $query->where('agent_id', $agentId);
+    }
+
+    public function scopeForRequester($query, string $requesterId)
+    {
+        return $query->where('requester_id', $requesterId);
+    }
+
+    // Helper Methods
+
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === self::STATUS_PENDING;
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED;
+    }
+
+    public function isClosed(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_COMPLETED,
+            self::STATUS_FAILED,
+            self::STATUS_CANCELLED,
+        ]);
+    }
+
+    public function addStep(string $description, string $type = 'action', array $metadata = []): TaskStep
+    {
+        return $this->steps()->create([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'description' => $description,
+            'step_type' => $type,
+            'status' => TaskStep::STATUS_PENDING,
+            'metadata' => $metadata,
+        ]);
     }
 }

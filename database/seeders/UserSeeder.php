@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Stat;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -84,12 +83,5 @@ class UserSeeder extends Seeder
                 'manager_id' => $agent['id'] !== 'a1' ? 'a1' : null, // Atlas manages other agents
             ]);
         }
-
-        // Create stats record
-        Stat::create([
-            'id' => 'stat1',
-            'credits_used' => 1247.50,
-            'credits_remaining' => 2752.50,
-        ]);
     }
 }

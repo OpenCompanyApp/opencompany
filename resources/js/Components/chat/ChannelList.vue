@@ -173,21 +173,6 @@
           @context-action="handleContextAction"
         />
 
-        <!-- Agent Channels -->
-        <ChannelSection
-          v-if="agentChannels.length > 0"
-          title="Agent Channels"
-          icon="ph:robot"
-          :channels="agentChannels"
-          :selected-id="selectedChannel?.id"
-          :collapsible="true"
-          :default-open="true"
-          :show-count="true"
-          :size="size"
-          @select="handleSelect"
-          @context-action="handleContextAction"
-        />
-
         <!-- Private Channels -->
         <ChannelSection
           v-if="privateChannels.length > 0"
@@ -333,7 +318,7 @@ type ChannelListSize = 'sm' | 'md' | 'lg'
 type ChannelListVariant = 'default' | 'compact' | 'floating'
 type ChannelType = 'public' | 'private' | 'dm' | 'agent' | 'external'
 type StatusFilter = 'unread' | 'muted' | 'pinned' | 'starred'
-type QuickFilter = 'unread' | 'agents' | 'dms'
+type QuickFilter = 'unread' | 'dms'
 
 interface SectionAction {
   icon: string
@@ -399,7 +384,6 @@ const channelTypeFilters: { value: ChannelType; label: string; icon: string }[] 
   { value: 'public', label: 'Public', icon: 'ph:hash' },
   { value: 'private', label: 'Private', icon: 'ph:lock-simple' },
   { value: 'dm', label: 'DMs', icon: 'ph:chat-circle' },
-  { value: 'agent', label: 'Agents', icon: 'ph:robot' },
   { value: 'external', label: 'External', icon: 'ph:plug' },
 ]
 
@@ -412,7 +396,6 @@ const statusFilters: { value: StatusFilter; label: string }[] = [
 
 const quickFilters: { value: QuickFilter; label: string; icon?: string }[] = [
   { value: 'unread', label: 'Unread' },
-  { value: 'agents', label: 'Agents', icon: 'ph:robot' },
   { value: 'dms', label: 'DMs', icon: 'ph:chat-circle' },
 ]
 
@@ -466,7 +449,6 @@ const filteredChannels = computed(() => {
       if (activeTypeFilters.value.includes('public') && c.type === 'public' && !c.private) return true
       if (activeTypeFilters.value.includes('private') && c.private) return true
       if (activeTypeFilters.value.includes('dm') && c.type === 'dm') return true
-      if (activeTypeFilters.value.includes('agent') && c.type === 'agent') return true
       if (activeTypeFilters.value.includes('external') && c.type === 'external') return true
       return false
     })
@@ -487,7 +469,6 @@ const filteredChannels = computed(() => {
   if (activeQuickFilters.value.length > 0) {
     result = result.filter(c => {
       if (activeQuickFilters.value.includes('unread') && (c.unreadCount || 0) > 0) return true
-      if (activeQuickFilters.value.includes('agents') && c.type === 'agent') return true
       if (activeQuickFilters.value.includes('dms') && c.type === 'dm') return true
       return activeQuickFilters.value.length === 0
     })
@@ -503,10 +484,6 @@ const pinnedChannels = computed(() =>
 
 const starredChannels = computed(() =>
   filteredChannels.value.filter(c => c.starred && !c.pinned && !c.archived),
-)
-
-const agentChannels = computed(() =>
-  filteredChannels.value.filter(c => c.type === 'agent' && !c.pinned && !c.starred && !c.archived),
 )
 
 const dmChannels = computed(() =>

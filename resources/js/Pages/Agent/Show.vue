@@ -155,6 +155,51 @@
             </section>
           </div>
 
+          <!-- Tasks Tab -->
+          <div v-if="activeTab === 'tasks'" class="space-y-3">
+            <div v-if="agentTasks.length === 0" class="text-center py-12">
+              <Icon name="ph:check-square" class="w-12 h-12 mx-auto text-neutral-300 dark:text-neutral-600 mb-3" />
+              <p class="text-sm text-neutral-500 dark:text-neutral-400">No tasks assigned to this agent</p>
+            </div>
+            <div
+              v-for="task in agentTasks"
+              :key="task.id"
+              class="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors"
+              @click="openTaskDetail(task)"
+            >
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span
+                      :class="[
+                        'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
+                        taskStatusClasses[task.status]
+                      ]"
+                    >
+                      <span :class="['w-1.5 h-1.5 rounded-full', taskStatusDots[task.status]]" />
+                      {{ task.status }}
+                    </span>
+                    <span class="text-xs text-neutral-400 dark:text-neutral-500">
+                      {{ task.type }}
+                    </span>
+                  </div>
+                  <h4 class="font-medium text-neutral-900 dark:text-white truncate">
+                    {{ task.title }}
+                  </h4>
+                  <p v-if="task.description" class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-1 mt-1">
+                    {{ task.description }}
+                  </p>
+                </div>
+                <div class="flex flex-col items-end gap-2 shrink-0">
+                  <Icon :name="taskTypeIcons[task.type] || 'ph:gear'" class="w-4 h-4 text-neutral-400" />
+                  <span v-if="task.steps?.length" class="text-xs text-neutral-400">
+                    {{ task.steps.filter(s => s.status === 'completed').length }}/{{ task.steps.length }} steps
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Personality Tab -->
           <div v-if="activeTab === 'personality'">
             <AgentPersonalityEditor
@@ -257,6 +302,14 @@
         <p class="text-sm text-neutral-500 dark:text-neutral-400">The agent you're looking for doesn't exist.</p>
       </div>
     </div>
+
+    <!-- Task Detail Drawer -->
+    <TaskDetailDrawer
+      v-if="selectedTask"
+      :task="selectedTask"
+      :open="taskDrawerOpen"
+      @close="closeTaskDrawer"
+    />
   </div>
 </template>
 
@@ -271,9 +324,13 @@ import AgentInstructionsEditor from '@/Components/agents/AgentInstructionsEditor
 import AgentCapabilities from '@/Components/agents/AgentCapabilities.vue'
 import AgentMemoryView from '@/Components/agents/AgentMemoryView.vue'
 import AgentSettingsPanel from '@/Components/agents/AgentSettingsPanel.vue'
-import type { Agent, AgentType, AgentSettings } from '@/types'
+import TaskDetailDrawer from '@/Components/tasks/TaskDetailDrawer.vue'
+import { useApi } from '@/composables/useApi'
+import type { Agent, AgentType, AgentSettings, AgentTask } from '@/types'
 
-type TabId = 'overview' | 'personality' | 'instructions' | 'capabilities' | 'memory' | 'activity' | 'settings'
+const { fetchAgentTasks } = useApi()
+
+type TabId = 'overview' | 'tasks' | 'personality' | 'instructions' | 'capabilities' | 'memory' | 'activity' | 'settings'
 
 interface ActivityItem {
   id: string
@@ -291,11 +348,15 @@ const loading = ref(true)
 const agent = ref<Agent | null>(null)
 const activityLog = ref<ActivityItem[]>([])
 const capabilityNotes = ref('')
+const agentTasks = ref<AgentTask[]>([])
+const selectedTask = ref<AgentTask | null>(null)
+const taskDrawerOpen = ref(false)
 
 const activeTab = ref<TabId>('overview')
 
 const tabs: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'tasks', label: 'Tasks' },
   { id: 'personality', label: 'Personality' },
   { id: 'instructions', label: 'Instructions' },
   { id: 'capabilities', label: 'Capabilities' },
@@ -448,6 +509,15 @@ const fetchData = async () => {
     ]
 
     capabilityNotes.value = 'Preferred test framework: Jest\nCode style: ESLint + Prettier\nDatabase: PostgreSQL with Prisma ORM'
+
+    // Fetch agent's tasks
+    try {
+      const { data } = await fetchAgentTasks({ agentId: props.id })
+      agentTasks.value = data || []
+    } catch (e) {
+      console.error('Failed to fetch agent tasks:', e)
+      agentTasks.value = []
+    }
   } catch (error) {
     console.error('Failed to fetch agent data:', error)
     agent.value = null
@@ -562,6 +632,44 @@ const getActivityBadge = (type: string) => {
     case 'working': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
     default: return 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400'
   }
+}
+
+// Task helpers
+const taskStatusClasses: Record<string, string> = {
+  pending: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400',
+  active: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400',
+  paused: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+  completed: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+  failed: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+  cancelled: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-500',
+}
+
+const taskStatusDots: Record<string, string> = {
+  pending: 'bg-neutral-400',
+  active: 'bg-yellow-500',
+  paused: 'bg-orange-500',
+  completed: 'bg-green-500',
+  failed: 'bg-red-500',
+  cancelled: 'bg-neutral-400',
+}
+
+const taskTypeIcons: Record<string, string> = {
+  ticket: 'ph:ticket',
+  request: 'ph:envelope-simple',
+  analysis: 'ph:chart-line',
+  content: 'ph:article',
+  research: 'ph:magnifying-glass',
+  custom: 'ph:gear',
+}
+
+const openTaskDetail = (task: AgentTask) => {
+  selectedTask.value = task
+  taskDrawerOpen.value = true
+}
+
+const closeTaskDrawer = () => {
+  taskDrawerOpen.value = false
+  selectedTask.value = null
 }
 
 onMounted(() => {

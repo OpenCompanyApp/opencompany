@@ -1,4 +1,4 @@
-# Olympus Feature Test Map
+# OpenCompany Feature Test Map
 
 Complete checklist of all features, buttons, and functionality to test.
 

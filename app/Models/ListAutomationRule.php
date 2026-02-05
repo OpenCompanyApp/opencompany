@@ -5,8 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class TaskAutomationRule extends Model
+class ListAutomationRule extends Model
 {
+    protected $table = 'list_automation_rules';
     protected $keyType = 'string';
     public $incrementing = false;
 
@@ -18,7 +19,7 @@ class TaskAutomationRule extends Model
         'trigger_conditions',
         'action_type',
         'action_config',
-        'template_id',
+        'list_template_id',
         'is_active',
         'last_triggered_at',
         'trigger_count',
@@ -37,7 +38,7 @@ class TaskAutomationRule extends Model
 
     public function template(): BelongsTo
     {
-        return $this->belongsTo(TaskTemplate::class, 'template_id');
+        return $this->belongsTo(ListTemplate::class, 'list_template_id');
     }
 
     public function createdBy(): BelongsTo

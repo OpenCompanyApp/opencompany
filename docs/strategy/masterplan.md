@@ -47,7 +47,9 @@ Hierarchy, organogram drawer agents/humans are in the organogram. (Yes a human c
 
 Some kind of slack ACP
 
-Also project management/ todo lists
+Tasks - discrete work items agents process (like support tickets, content requests, research jobs). Each task has lifecycle tracking (pending → active → completed), step-by-step progress visibility, and structured results.
+
+Lists - project management boards (kanban/checklist style) for organizing work
 
 Md docs db (also vectorized). 
 

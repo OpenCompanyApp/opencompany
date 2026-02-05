@@ -11,7 +11,7 @@ A comprehensive technical breakdown of how OpenClaw handles agents, subagents, m
 3. [Subagent System](#subagent-system)
 4. [Memory Architecture](#memory-architecture)
 5. [Skills System](#skills-system)
-6. [Key Takeaways for Olympus](#key-takeaways-for-olympus)
+6. [Key Takeaways for OpenCompany](#key-takeaways-for-opencompany)
 
 ---
 
@@ -523,7 +523,7 @@ clawhub publish ./my-skill --slug my-skill --name "My Skill"
 
 ---
 
-## Key Takeaways for Olympus
+## Key Takeaways for OpenCompany
 
 ### What to Adopt
 
@@ -544,7 +544,7 @@ clawhub publish ./my-skill --slug my-skill --name "My Skill"
 
 ### Architecture Comparison
 
-| Aspect | OpenClaw | Olympus (Target) |
+| Aspect | OpenClaw | OpenCompany (Target) |
 |--------|----------|------------------|
 | Config storage | JSON files | Database + UI |
 | Session storage | JSONL files | PostgreSQL |

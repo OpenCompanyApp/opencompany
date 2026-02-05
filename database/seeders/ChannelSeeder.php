@@ -36,13 +36,19 @@ class ChannelSeeder extends Seeder
                 'description' => 'Design discussions and creative work',
                 'members' => ['h1', 'a2', 'a4'],
             ],
-            // Agent channel
             [
                 'id' => 'ch4',
-                'name' => 'agent-ops',
-                'type' => 'agent',
-                'description' => 'Agent coordination and status updates',
-                'members' => ['a1', 'a2', 'a3', 'a4', 'a5', 'a6'],
+                'name' => 'announcements',
+                'type' => 'public',
+                'description' => 'Company announcements and updates',
+                'members' => ['h1', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6'],
+            ],
+            [
+                'id' => 'ch5',
+                'name' => 'random',
+                'type' => 'public',
+                'description' => 'Off-topic discussions and fun stuff',
+                'members' => ['h1', 'a1', 'a2', 'a4', 'a6'],
             ],
             // Direct Messages
             [

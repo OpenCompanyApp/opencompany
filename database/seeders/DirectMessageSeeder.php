@@ -80,7 +80,7 @@ class DirectMessageSeeder extends Seeder
                 'type' => 'private',
                 'description' => null,
                 'creator_id' => $convo['user1_id'],
-                'is_temporary' => false,
+                'is_ephemeral' => false,
             ]);
 
             // Add both users as members

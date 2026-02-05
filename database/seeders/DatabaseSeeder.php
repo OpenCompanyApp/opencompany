@@ -15,12 +15,12 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ChannelSeeder::class,
             MessageSeeder::class,
-            TaskSeeder::class,
+            ListItemSeeder::class,
+            AgentTaskSeeder::class,
             DocumentSeeder::class,
             ApprovalSeeder::class,
             ActivitySeeder::class,
             NotificationSeeder::class,
-            CreditSeeder::class,
             DirectMessageSeeder::class,
         ]);
     }

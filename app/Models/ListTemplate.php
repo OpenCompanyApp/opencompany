@@ -6,8 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class TaskTemplate extends Model
+class ListTemplate extends Model
 {
+    protected $table = 'list_templates';
     protected $keyType = 'string';
     public $incrementing = false;
 
@@ -46,6 +47,6 @@ class TaskTemplate extends Model
 
     public function automationRules(): HasMany
     {
-        return $this->hasMany(TaskAutomationRule::class, 'template_id');
+        return $this->hasMany(ListAutomationRule::class, 'list_template_id');
     }
 }

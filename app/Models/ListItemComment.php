@@ -7,23 +7,25 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class TaskComment extends Model
+class ListItemComment extends Model
 {
     use HasFactory;
+
+    protected $table = 'list_item_comments';
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
-        'task_id',
+        'list_item_id',
         'author_id',
         'content',
         'parent_id',
     ];
 
-    public function task(): BelongsTo
+    public function listItem(): BelongsTo
     {
-        return $this->belongsTo(Task::class);
+        return $this->belongsTo(ListItem::class);
     }
 
     public function author(): BelongsTo
@@ -33,11 +35,11 @@ class TaskComment extends Model
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(TaskComment::class, 'parent_id');
+        return $this->belongsTo(ListItemComment::class, 'parent_id');
     }
 
     public function replies(): HasMany
     {
-        return $this->hasMany(TaskComment::class, 'parent_id');
+        return $this->hasMany(ListItemComment::class, 'parent_id');
     }
 }

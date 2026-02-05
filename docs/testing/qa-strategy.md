@@ -1,6 +1,6 @@
 # QA Strategy
 
-> Comprehensive quality assurance strategy for the Olympus application.
+> Comprehensive quality assurance strategy for the OpenCompany application.
 >
 > This document defines testing standards, coverage requirements, and implementation guidelines.
 
@@ -1058,9 +1058,9 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: olympus
+          POSTGRES_USER: opencompany
           POSTGRES_PASSWORD: secret
-          POSTGRES_DB: olympus_test
+          POSTGRES_DB: opencompany_test
         ports:
           - 5432:5432
         options: >-
@@ -1100,8 +1100,8 @@ jobs:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
-          DB_DATABASE: olympus_test
-          DB_USERNAME: olympus
+          DB_DATABASE: opencompany_test
+          DB_USERNAME: opencompany
           DB_PASSWORD: secret
 
       - name: Run PHPUnit tests
@@ -1110,8 +1110,8 @@ jobs:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
-          DB_DATABASE: olympus_test
-          DB_USERNAME: olympus
+          DB_DATABASE: opencompany_test
+          DB_USERNAME: opencompany
           DB_PASSWORD: secret
 
       - name: Upload coverage to Codecov
@@ -1181,9 +1181,9 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: olympus
+          POSTGRES_USER: opencompany
           POSTGRES_PASSWORD: secret
-          POSTGRES_DB: olympus_test
+          POSTGRES_DB: opencompany_test
         ports:
           - 5432:5432
         options: >-
@@ -1226,8 +1226,8 @@ jobs:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
-          DB_DATABASE: olympus_test
-          DB_USERNAME: olympus
+          DB_DATABASE: opencompany_test
+          DB_USERNAME: opencompany
           DB_PASSWORD: secret
 
       - name: Install Chrome Driver
@@ -1246,8 +1246,8 @@ jobs:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
-          DB_DATABASE: olympus_test
-          DB_USERNAME: olympus
+          DB_DATABASE: opencompany_test
+          DB_USERNAME: opencompany
           DB_PASSWORD: secret
 
       - name: Upload Screenshots
@@ -1270,7 +1270,7 @@ jobs:
 ```env
 # .env.dusk.ci
 
-APP_NAME=Olympus
+APP_NAME=OpenCompany
 APP_ENV=testing
 APP_KEY=
 APP_DEBUG=true
@@ -1279,8 +1279,8 @@ APP_URL=http://127.0.0.1:8000
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=olympus_test
-DB_USERNAME=olympus
+DB_DATABASE=opencompany_test
+DB_USERNAME=opencompany
 DB_PASSWORD=secret
 
 BROADCAST_CONNECTION=log

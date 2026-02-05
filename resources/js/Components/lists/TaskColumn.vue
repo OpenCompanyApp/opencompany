@@ -431,10 +431,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import type { Task, TaskStatus, Priority } from '@/types'
-import TaskCard from '@/Components/tasks/TaskCard.vue'
+import type { ListItem, ListItemStatus, Priority } from '@/types'
+import TaskCard from '@/Components/lists/TaskCard.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+
+// Type alias for backwards compatibility
+type Task = ListItem
+type TaskStatus = ListItemStatus
 
 // Types
 type ColumnSize = 'sm' | 'md' | 'lg'

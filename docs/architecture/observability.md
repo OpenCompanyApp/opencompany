@@ -2,7 +2,7 @@
 
 > **Admin-Only** - All observability features require administrator authentication.
 >
-> This document defines the observability strategy for monitoring, debugging, and improving the Olympus application.
+> This document defines the observability strategy for monitoring, debugging, and improving the OpenCompany application.
 
 ---
 
@@ -258,7 +258,7 @@ All logs use JSON format with consistent fields:
   },
   "extra": {
     "environment": "production",
-    "hostname": "olympus-web-1"
+    "hostname": "opencompany-web-1"
   }
 }
 ```
@@ -545,7 +545,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
-use Prism\Prism\Facades\Prism;
+use Laravel\AI\Facades\Agent;
+use App\Agents\OpenCompanyAgent;
 
 class HealthController extends Controller
 {
@@ -638,11 +639,13 @@ class HealthController extends Controller
         foreach ($providers as $provider) {
             try {
                 $start = microtime(true);
-                // Simple ping - minimal token usage
-                Prism::text()
-                    ->using($provider, $this->getDefaultModel($provider))
-                    ->withPrompt('ping')
-                    ->asText();
+                // Simple ping - minimal token usage via Laravel AI SDK
+                $agent = new \Laravel\AI\Agent;
+                $response = $agent->prompt(
+                    'ping',
+                    provider: $provider,
+                    model: $this->getDefaultModel($provider),
+                );
                 $latency = (microtime(true) - $start) * 1000;
 
                 $results[$provider] = [

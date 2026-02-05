@@ -36,10 +36,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Chat');
     })->name('chat');
 
-    // Tasks
+    // Tasks (cases - discrete work items agents work on)
     Route::get('/tasks', function () {
         return Inertia::render('Tasks');
     })->name('tasks');
+
+    Route::get('/tasks/{id}', function (string $id) {
+        return Inertia::render('Tasks/Show', ['taskId' => $id]);
+    })->name('tasks.show');
+
+    // Lists (kanban boards - formerly Tasks)
+    Route::get('/lists', function () {
+        return Inertia::render('Lists');
+    })->name('lists');
 
     // Documents
     Route::get('/docs', function () {

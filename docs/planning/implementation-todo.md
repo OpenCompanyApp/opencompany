@@ -1,4 +1,4 @@
-# Olympus Agent System - Complete Implementation Todo
+# OpenCompany Agent System - Complete Implementation Todo
 
 > **Comprehensive hierarchical task list for implementing OpenClaw-style agent system**
 >
@@ -13,45 +13,44 @@
 
 | Component | Choice | Reason |
 |-----------|--------|--------|
-| **AI Framework** | **Prism** | Laravel-native, better DX, stronger ecosystem |
+| **AI Framework** | **Laravel AI SDK (`laravel/ai`)** | Official first-party, full multimodal, comprehensive testing |
 | **Orchestration** | **Laravel Workflow** | No external infra, familiar patterns, good enough for MVP |
 | **Future Option** | Temporal | Upgrade path when scale demands it |
 
 **Core Packages:**
-- `prism-php/prism` - AI/LLM integration
+- `laravel/ai` - Official Laravel AI SDK (agents, tools, embeddings, multimodal)
 - `laravel-workflow/laravel-workflow` - Durable workflow orchestration
 
 **Optional Packages:**
-- `grpaiva/prism-agents` - Multi-agent orchestration with guardrails
-- `elliottlawson/converse-prism` - Conversation persistence
+- `laravel/mcp` - Expose OpenCompany as MCP server for external AI clients
 
 ---
 
 ## Phase 0: Package Installation & Setup
 
-> **Why:** Before building the agent system, we need the core AI and workflow packages installed. Prism provides Laravel-native LLM integration, and Laravel Workflow handles durable task orchestration.
+> **Why:** Before building the agent system, we need the core AI and workflow packages installed. Laravel AI SDK provides official first-party LLM integration, and Laravel Workflow handles durable task orchestration.
 
 ### 0.1 Install Core Packages
-- [ ] **0.1.1** Install Prism
-  - **What:** Laravel package for AI/LLM integration with multiple providers
-  - **Why:** Prism is Laravel-native, provides excellent DX, and supports Claude/Anthropic out of the box. It handles tool calling, streaming, and token tracking.
-  - **Context:** We chose Prism over raw API calls for its Laravel integration (config, caching, retry logic).
+- [ ] **0.1.1** Install Laravel AI SDK
+  - **What:** Official first-party Laravel package for AI/LLM integration with multiple providers
+  - **Why:** Laravel AI SDK is the official package from the Laravel team. It supports agents, tools, streaming, embeddings, image generation, audio, and comprehensive testing utilities.
+  - **Context:** We chose Laravel AI SDK over Prism (community package) for its first-party support, multimodal capabilities, and built-in testing.
   ```bash
-  composer require prism-php/prism
+  composer require laravel/ai
   ```
 
-- [ ] **0.1.2** Publish Prism config
-  - **What:** Creates `config/prism.php` with provider settings
-  - **Why:** Need to configure API keys and provider-specific settings. Also enables adding custom providers like GLM.
+- [ ] **0.1.2** Publish AI SDK config
+  - **What:** Creates `config/ai.php` with provider settings
+  - **Why:** Need to configure API keys and provider-specific settings. Also enables adding custom providers like GLM via OpenAI-compatible endpoint.
   ```bash
-  php artisan vendor:publish --tag=prism-config
+  php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
   ```
 
-- [ ] **0.1.3** Configure Anthropic provider in `config/prism.php`
-  - **What:** Set up Claude API credentials
-  - **Why:** Anthropic/Claude is our primary LLM for agent tasks. The API key enables all agent operations.
-  - **Context:** GLM 4.7 is already configured as a secondary provider for testing.
-  - Set `ANTHROPIC_API_KEY` in `.env`
+- [ ] **0.1.3** Configure providers in `config/ai.php`
+  - **What:** Set up API credentials for all LLM providers
+  - **Why:** Anthropic/Claude is our primary LLM for agent tasks. OpenAI, Gemini, Groq, xAI are available as alternatives/fallbacks.
+  - **Context:** GLM/Zhipu AI uses OpenAI-compatible endpoint with custom base URL. Provider failover is built-in.
+  - Set `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. in `.env`
 
 - [ ] **0.1.4** Install Laravel Workflow
   - **What:** Durable workflow orchestration package for Laravel
@@ -73,15 +72,16 @@
   - **Why:** Workflow state must persist to database for durability across restarts.
 
 ### 0.2 Verify Setup
-- [ ] **0.2.1** Test Prism text generation ← depends on: [0.1.3]
-  - **What:** Simple test to verify Anthropic API is working
+- [ ] **0.2.1** Test Laravel AI SDK agent ← depends on: [0.1.3]
+  - **What:** Simple test to verify provider APIs are working
   - **Why:** Catch configuration errors early before building dependent features.
   - **Context:** Should return a response and log token usage.
   ```php
-  Prism::text()
-      ->using(Provider::Anthropic, 'claude-sonnet-4-20250514')
-      ->withPrompt('Hello, world!')
-      ->asText();
+  use function Laravel\Ai\agent;
+
+  $response = agent(
+      instructions: 'You are a helpful assistant.',
+  )->prompt('Hello, world!');
   ```
 
 - [ ] **0.2.2** Test Laravel Workflow setup ← depends on: [0.1.6]
@@ -91,20 +91,12 @@
   - Verify state persistence
 
 ### 0.3 Optional: Install Extensions
-- [ ] **0.3.1** Install Prism Agents (if needed)
-  - **What:** Multi-agent orchestration package with guardrails
-  - **Why:** May be useful for complex agent hierarchies, but can build simpler version ourselves.
-  - **Context:** Evaluate after MVP - may adopt their patterns without the package.
+- [ ] **0.3.1** Install Laravel MCP
+  - **What:** Expose OpenCompany workspace as MCP server for external AI clients
+  - **Why:** Allows Claude Desktop, VS Code Copilot, and other MCP-compatible tools to interact with OpenCompany data.
+  - **Context:** Provides tools (search_documents, create_task, send_message) and resources (documents, agent configs) via MCP protocol.
   ```bash
-  composer require grpaiva/prism-agents
-  ```
-
-- [ ] **0.3.2** Install Converse Prism (for conversation history)
-  - **What:** Conversation persistence package for Prism
-  - **Why:** Simplifies loading/saving conversation context to our session tables.
-  - **Context:** Evaluate after MVP - we may implement custom persistence instead.
-  ```bash
-  composer require elliottlawson/converse-prism
+  composer require laravel/mcp
   ```
 
 ---

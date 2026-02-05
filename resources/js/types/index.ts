@@ -1,12 +1,16 @@
 export type AgentStatus = 'idle' | 'working' | 'offline' | 'paused' | 'online' | 'busy'
 export type UserStatus = 'online' | 'away' | 'busy' | 'dnd' | 'offline'
 export type PresenceStatus = 'online' | 'away' | 'busy' | 'offline'
-export type TaskStatus = 'backlog' | 'in_progress' | 'done'
+export type ListItemStatus = 'backlog' | 'in_progress' | 'done'
+export type TaskStatus = 'pending' | 'active' | 'paused' | 'completed' | 'failed' | 'cancelled'
+export type TaskType = 'ticket' | 'request' | 'analysis' | 'content' | 'research' | 'custom'
+export type TaskStepType = 'action' | 'decision' | 'approval' | 'sub_task' | 'message'
+export type TaskStepStatus = 'pending' | 'in_progress' | 'completed' | 'skipped'
 export type EntityType = 'human' | 'agent'
 export type AgentType = 'manager' | 'writer' | 'analyst' | 'creative' | 'researcher' | 'coder' | 'coordinator'
 export type ChannelType = 'public' | 'private' | 'agent' | 'dm' | 'external'
 export type ExternalChannelProvider = 'telegram' | 'google_chat' | 'slack' | 'discord'
-export type Priority = 'low' | 'medium' | 'high' | 'urgent'
+export type Priority = 'low' | 'medium' | 'high' | 'urgent' | 'normal'
 export type ActivityType = 'message' | 'task_completed' | 'task_started' | 'agent_spawned' | 'approval_needed' | 'approval_granted' | 'error'
 
 export interface User {
@@ -124,13 +128,17 @@ export interface ApprovalRequest {
   createdAt?: Date
 }
 
-export interface Task {
+/**
+ * ListItem - Items in a kanban board (formerly Task)
+ * For discrete agent work items, see the Task interface instead.
+ */
+export interface ListItem {
   id: string
   parentId?: string | null
   isFolder?: boolean
   title: string
   description: string
-  status: TaskStatus
+  status: ListItemStatus
   assignee: User
   collaborators?: User[]
   priority: Priority
@@ -139,6 +147,57 @@ export interface Task {
   createdAt: Date
   completedAt?: Date
   channelId?: string
+}
+
+// Legacy alias for backwards compatibility
+export type Task = ListItem
+
+/**
+ * AgentTask - Discrete work items that agents work on (like cases)
+ *
+ * Examples: support tickets, content requests, research tasks, analysis jobs
+ */
+export interface AgentTask {
+  id: string
+  title: string
+  description?: string
+  type: TaskType
+  status: TaskStatus
+  priority: Priority
+  agent?: User
+  agentId?: string
+  requester?: User
+  requesterId: string
+  channel?: Channel
+  channelId?: string
+  project?: { id: string; name: string }
+  projectId?: string
+  listItem?: ListItem
+  listItemId?: string
+  parentTask?: AgentTask
+  parentTaskId?: string
+  subtasks?: AgentTask[]
+  steps?: TaskStep[]
+  context?: Record<string, unknown>
+  result?: Record<string, unknown>
+  startedAt?: Date
+  completedAt?: Date
+  dueAt?: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface TaskStep {
+  id: string
+  taskId: string
+  description: string
+  status: TaskStepStatus
+  stepType: TaskStepType
+  metadata?: Record<string, unknown>
+  startedAt?: Date
+  completedAt?: Date
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface Document {

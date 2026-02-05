@@ -3,25 +3,25 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\TaskComment;
+use App\Models\ListItemComment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
-class TaskCommentController extends Controller
+class ListItemCommentController extends Controller
 {
-    public function index(string $taskId)
+    public function index(string $listItemId)
     {
-        return TaskComment::with(['author', 'parent'])
-            ->where('task_id', $taskId)
+        return ListItemComment::with(['author', 'parent'])
+            ->where('list_item_id', $listItemId)
             ->orderBy('created_at', 'asc')
             ->get();
     }
 
-    public function store(Request $request, string $taskId)
+    public function store(Request $request, string $listItemId)
     {
-        $comment = TaskComment::create([
+        $comment = ListItemComment::create([
             'id' => Str::uuid()->toString(),
-            'task_id' => $taskId,
+            'list_item_id' => $listItemId,
             'author_id' => $request->input('authorId'),
             'content' => $request->input('content'),
             'parent_id' => $request->input('parentId'),
@@ -30,10 +30,10 @@ class TaskCommentController extends Controller
         return $comment->load('author');
     }
 
-    public function destroy(string $taskId, string $commentId)
+    public function destroy(string $listItemId, string $commentId)
     {
-        TaskComment::where('id', $commentId)
-            ->where('task_id', $taskId)
+        ListItemComment::where('id', $commentId)
+            ->where('list_item_id', $listItemId)
             ->delete();
 
         return response()->json(['success' => true]);

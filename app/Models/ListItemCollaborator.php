@@ -5,21 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class TaskCollaborator extends Model
+class ListItemCollaborator extends Model
 {
+    protected $table = 'list_item_collaborators';
     protected $keyType = 'string';
     public $incrementing = false;
     public $timestamps = false;
 
     protected $fillable = [
         'id',
-        'task_id',
+        'list_item_id',
         'user_id',
     ];
 
-    public function task(): BelongsTo
+    public function listItem(): BelongsTo
     {
-        return $this->belongsTo(Task::class);
+        return $this->belongsTo(ListItem::class);
     }
 
     public function user(): BelongsTo

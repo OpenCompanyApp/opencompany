@@ -13,9 +13,10 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\StatsController;
-use App\Http\Controllers\Api\TaskCommentController;
+use App\Http\Controllers\Api\ListItemController;
+use App\Http\Controllers\Api\ListItemCommentController;
+use App\Http\Controllers\Api\ListTemplateController;
 use App\Http\Controllers\Api\TaskController;
-use App\Http\Controllers\Api\TaskTemplateController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\CalendarEventController;
 use App\Http\Controllers\Api\CalendarEventAttendeeController;
@@ -56,27 +57,48 @@ Route::delete('/messages/{messageId}/reactions/{reactionId}', [MessageController
 Route::get('/messages/{id}/thread', [MessageController::class, 'thread']);
 Route::post('/messages/{id}/pin', [MessageController::class, 'pin']);
 
-// Tasks
+// List Items (formerly Tasks - kanban board items)
+Route::get('/list-items', [ListItemController::class, 'index']);
+Route::post('/list-items', [ListItemController::class, 'store']);
+Route::post('/list-items/reorder', [ListItemController::class, 'reorder']);
+Route::get('/list-items/{id}', [ListItemController::class, 'show']);
+Route::patch('/list-items/{id}', [ListItemController::class, 'update']);
+Route::delete('/list-items/{id}', [ListItemController::class, 'destroy']);
+
+// List Item Comments
+Route::get('/list-items/{listItemId}/comments', [ListItemCommentController::class, 'index']);
+Route::post('/list-items/{listItemId}/comments', [ListItemCommentController::class, 'store']);
+Route::delete('/list-items/{listItemId}/comments/{commentId}', [ListItemCommentController::class, 'destroy']);
+
+// List Templates
+Route::get('/list-templates', [ListTemplateController::class, 'index']);
+Route::post('/list-templates', [ListTemplateController::class, 'store']);
+Route::patch('/list-templates/{id}', [ListTemplateController::class, 'update']);
+Route::delete('/list-templates/{id}', [ListTemplateController::class, 'destroy']);
+Route::post('/list-templates/{id}/create-item', [ListTemplateController::class, 'createListItem']);
+
+// Tasks (discrete work items - cases)
 Route::get('/tasks', [TaskController::class, 'index']);
 Route::post('/tasks', [TaskController::class, 'store']);
-Route::post('/tasks/reorder', [TaskController::class, 'reorder']);
 Route::get('/tasks/{id}', [TaskController::class, 'show']);
 Route::patch('/tasks/{id}', [TaskController::class, 'update']);
 Route::delete('/tasks/{id}', [TaskController::class, 'destroy']);
 
-// Task Comments
-Route::get('/tasks/{taskId}/comments', [TaskCommentController::class, 'index']);
-Route::post('/tasks/{taskId}/comments', [TaskCommentController::class, 'store']);
-Route::delete('/tasks/{taskId}/comments/{commentId}', [TaskCommentController::class, 'destroy']);
+// Task Lifecycle
+Route::post('/tasks/{id}/start', [TaskController::class, 'start']);
+Route::post('/tasks/{id}/pause', [TaskController::class, 'pause']);
+Route::post('/tasks/{id}/resume', [TaskController::class, 'resume']);
+Route::post('/tasks/{id}/complete', [TaskController::class, 'complete']);
+Route::post('/tasks/{id}/fail', [TaskController::class, 'fail']);
+Route::post('/tasks/{id}/cancel', [TaskController::class, 'cancel']);
 
-// Task Templates
-Route::get('/task-templates', [TaskTemplateController::class, 'index']);
-Route::post('/task-templates', [TaskTemplateController::class, 'store']);
-Route::patch('/task-templates/{id}', [TaskTemplateController::class, 'update']);
-Route::delete('/task-templates/{id}', [TaskTemplateController::class, 'destroy']);
-Route::post('/task-templates/{id}/create-task', [TaskTemplateController::class, 'createTask']);
+// Task Steps
+Route::get('/tasks/{id}/steps', [TaskController::class, 'steps']);
+Route::post('/tasks/{id}/steps', [TaskController::class, 'addStep']);
+Route::patch('/tasks/{taskId}/steps/{stepId}', [TaskController::class, 'updateStep']);
+Route::post('/tasks/{taskId}/steps/{stepId}/complete', [TaskController::class, 'completeStep']);
 
-// Automation Rules
+// Automation Rules (for list items)
 Route::get('/automation-rules', [AutomationRuleController::class, 'index']);
 Route::post('/automation-rules', [AutomationRuleController::class, 'store']);
 Route::patch('/automation-rules/{id}', [AutomationRuleController::class, 'update']);

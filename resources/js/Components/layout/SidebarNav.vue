@@ -5,65 +5,49 @@
       collapsed ? 'px-2 py-2' : 'px-2 py-1'
     ]"
   >
-    <!-- Primary navigation (most used) -->
+    <!-- Dashboard (always at top) -->
     <div class="space-y-0.5">
       <Link
-        v-for="item in primaryNavItems"
-        :key="item.to"
-        :href="item.to"
+        href="/"
         :class="[
           'group flex items-center rounded-lg transition-colors duration-150 outline-none',
           collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-          isActive(item.to)
+          isActive('/')
             ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
             : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200',
           'focus-visible:ring-1 focus-visible:ring-neutral-400',
         ]"
       >
         <Icon
-          :name="isActive(item.to) ? item.iconActive : item.icon"
+          :name="isActive('/') ? 'ph:house-fill' : 'ph:house'"
           class="w-[18px] h-[18px] shrink-0"
         />
-        <span v-if="!collapsed" class="text-sm truncate flex-1">{{ item.label }}</span>
-        <span
-          v-if="!collapsed && item.badge && item.badge > 0"
-          class="text-xs px-1.5 py-0.5 rounded-full bg-neutral-300 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-medium"
-        >
-          {{ item.badge > 99 ? '99+' : item.badge }}
-        </span>
+        <span v-if="!collapsed" class="text-sm truncate flex-1">Dashboard</span>
       </Link>
     </div>
 
     <!-- Separator -->
-    <div class="my-3 border-t border-neutral-200 dark:border-neutral-800" />
+    <div class="my-2.5 mx-3 border-t border-neutral-200 dark:border-neutral-800" />
 
-    <!-- Secondary navigation -->
+    <!-- Agent Work Items -->
     <div class="space-y-0.5">
-      <Link
-        v-for="item in secondaryNavItems"
-        :key="item.to"
-        :href="item.to"
-        :class="[
-          'group flex items-center rounded-lg transition-colors duration-150 outline-none',
-          collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-          isActive(item.to)
-            ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-            : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
-          'focus-visible:ring-1 focus-visible:ring-neutral-400',
-        ]"
-      >
-        <Icon
-          :name="isActive(item.to) ? item.iconActive : item.icon"
-          class="w-[18px] h-[18px] shrink-0"
-        />
-        <span v-if="!collapsed" class="text-sm truncate flex-1">{{ item.label }}</span>
-        <span
-          v-if="!collapsed && item.badge && item.badge > 0"
-          class="text-xs px-1.5 py-0.5 rounded-full bg-neutral-300 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 font-medium"
-        >
-          {{ item.badge > 99 ? '99+' : item.badge }}
-        </span>
-      </Link>
+      <NavItem v-for="item in agentWorkItems" :key="item.to" :item="item" :collapsed="collapsed" />
+    </div>
+
+    <!-- Separator -->
+    <div class="my-2.5 mx-3 border-t border-neutral-200 dark:border-neutral-800" />
+
+    <!-- Office Items -->
+    <div class="space-y-0.5">
+      <NavItem v-for="item in officeItems" :key="item.to" :item="item" :collapsed="collapsed" />
+    </div>
+
+    <!-- Separator -->
+    <div class="my-2.5 mx-3 border-t border-neutral-200 dark:border-neutral-800" />
+
+    <!-- Monitoring Items -->
+    <div class="space-y-0.5">
+      <NavItem v-for="item in monitoringItems" :key="item.to" :item="item" :collapsed="collapsed" />
     </div>
 
     <!-- Agents Section (collapsible) -->
@@ -123,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, h, defineComponent } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui'
@@ -131,7 +115,7 @@ import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Icon from '@/Components/shared/Icon.vue'
 
 // Types
-interface NavItem {
+interface NavItemType {
   to: string
   icon: string
   iconActive: string
@@ -174,25 +158,27 @@ const props = withDefaults(defineProps<{
 const page = usePage()
 
 // State
-const agentsSectionOpen = ref(true)
+const agentsSectionOpen = ref(false)
 
-// Primary navigation - core daily workflow (high frequency)
-const primaryNavItems = ref<NavItem[]>([
-  { to: '/', icon: 'ph:house', iconActive: 'ph:house-fill', label: 'Dashboard' },
-  { to: '/chat', icon: 'ph:chat-circle', iconActive: 'ph:chat-circle-fill', label: 'Messages', badge: 15 },
+// Agent Work - Tasks, approvals, organization
+const agentWorkItems = ref<NavItemType[]>([
   { to: '/tasks', icon: 'ph:check-square', iconActive: 'ph:check-square-fill', label: 'Tasks' },
   { to: '/approvals', icon: 'ph:seal-check', iconActive: 'ph:seal-check-fill', label: 'Approvals', badge: 3 },
+  { to: '/org', icon: 'ph:tree-structure', iconActive: 'ph:tree-structure-fill', label: 'Organization' },
 ])
 
-// Secondary navigation - tools & resources (moderate frequency)
-const secondaryNavItems = ref<NavItem[]>([
-  { to: '/activity', icon: 'ph:activity', iconActive: 'ph:activity-fill', label: 'Activity' },
+// Office - Daily productivity tools
+const officeItems = ref<NavItemType[]>([
+  { to: '/chat', icon: 'ph:chat-circle', iconActive: 'ph:chat-circle-fill', label: 'Chat', badge: 15 },
   { to: '/docs', icon: 'ph:file-text', iconActive: 'ph:file-text-fill', label: 'Docs' },
-  { to: '/calendar', icon: 'ph:calendar', iconActive: 'ph:calendar-fill', label: 'Calendar' },
   { to: '/tables', icon: 'ph:table', iconActive: 'ph:table-fill', label: 'Tables' },
-  { to: '/org', icon: 'ph:tree-structure', iconActive: 'ph:tree-structure-fill', label: 'Organization' },
-  { to: '/workload', icon: 'ph:chart-bar', iconActive: 'ph:chart-bar-fill', label: 'Workload' },
-  { to: '/automation', icon: 'ph:lightning', iconActive: 'ph:lightning-fill', label: 'Automation' },
+  { to: '/calendar', icon: 'ph:calendar', iconActive: 'ph:calendar-fill', label: 'Calendar' },
+  { to: '/lists', icon: 'ph:kanban', iconActive: 'ph:kanban-fill', label: 'Lists' },
+])
+
+// Monitoring - Activity feed
+const monitoringItems = ref<NavItemType[]>([
+  { to: '/activity', icon: 'ph:activity', iconActive: 'ph:activity-fill', label: 'Activity' },
 ])
 
 
@@ -218,6 +204,38 @@ const handleAgentClick = (agent: Agent) => {
     router.visit(`/profile/${agent.id}`)
   }
 }
+
+// NavItem subcomponent
+const NavItem = defineComponent({
+  name: 'NavItem',
+  props: {
+    item: { type: Object as () => NavItemType, required: true },
+    collapsed: { type: Boolean, default: false },
+  },
+  setup(itemProps) {
+    return () => h(Link, {
+      href: itemProps.item.to,
+      class: [
+        'group flex items-center rounded-lg transition-colors duration-150 outline-none',
+        itemProps.collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
+        isActive(itemProps.item.to)
+          ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
+          : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
+        'focus-visible:ring-1 focus-visible:ring-neutral-400',
+      ],
+    }, () => [
+      h(Icon, {
+        name: isActive(itemProps.item.to) ? itemProps.item.iconActive : itemProps.item.icon,
+        class: 'w-[18px] h-[18px] shrink-0',
+      }),
+      !itemProps.collapsed && h('span', { class: 'text-sm truncate flex-1' }, itemProps.item.label),
+      !itemProps.collapsed && itemProps.item.badge && itemProps.item.badge > 0 && h('span', {
+        class: 'text-xs px-1.5 py-0.5 rounded-full bg-neutral-300 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 font-medium',
+      }, itemProps.item.badge > 99 ? '99+' : itemProps.item.badge),
+    ])
+  },
+})
+
 </script>
 
 <style scoped>

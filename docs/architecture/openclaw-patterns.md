@@ -1,8 +1,8 @@
-# Strategic Analysis: OpenClaw Patterns for Olympus
+# Strategic Analysis: OpenClaw Patterns for OpenCompany
 
 ## Executive Summary
 
-OpenClaw is a personal AI assistant system with sophisticated patterns for agent management, approval workflows, and multi-channel communication. While built for individual power users with a "local-first, security-optional" philosophy, many of its architectural patterns can be adapted for Olympus's enterprise-focused agent work OS.
+OpenClaw is a personal AI assistant system with sophisticated patterns for agent management, approval workflows, and multi-channel communication. While built for individual power users with a "local-first, security-optional" philosophy, many of its architectural patterns can be adapted for OpenCompany's enterprise-focused agent work OS.
 
 This document identifies which OpenClaw systems to adopt, which to skip, and how to implement them properly for business users who need auditability, compliance, and team collaboration.
 
@@ -10,7 +10,7 @@ This document identifies which OpenClaw systems to adopt, which to skip, and how
 
 ## System Comparison
 
-| Aspect | OpenClaw | Olympus |
+| Aspect | OpenClaw | OpenCompany |
 |--------|----------|---------|
 | **Target User** | Individual power user | Business teams |
 | **Security Model** | Opt-in, local trust | Mandatory approval flows |
@@ -32,7 +32,7 @@ This document identifies which OpenClaw systems to adopt, which to skip, and how
 - Approval socket protocol for external approval UIs
 - Per-agent configuration
 
-**Olympus Adaptation:**
+**OpenCompany Adaptation:**
 ```
 ApprovalPolicy:
   - level: "allowlist" | "approval_required" | "blocked"
@@ -58,7 +58,7 @@ ApprovalPolicy:
 - Per-agent auth profiles and credentials
 - Config-based routing (not hardcoded)
 
-**Olympus Adaptation:**
+**OpenCompany Adaptation:**
 ```php
 // Agent workspace model
 Agent {
@@ -95,7 +95,7 @@ Workspace {
 - Session reset policies (daily, idle-based, manual)
 - Session pruning and compaction for context management
 
-**Olympus Adaptation:**
+**OpenCompany Adaptation:**
 ```
 SessionPolicy:
   - dm_scope: "shared" | "per_user" | "per_channel"
@@ -121,7 +121,7 @@ SessionPolicy:
 - Presets for common services (Gmail, GitHub)
 - Template-based routing to agents
 
-**Olympus Adaptation:**
+**OpenCompany Adaptation:**
 ```php
 Webhook {
   id, name, secret_token
@@ -160,7 +160,7 @@ Webhook {
 - Platform/OS filtering
 - ClawHub registry for sharing
 
-**Olympus Adaptation:**
+**OpenCompany Adaptation:**
 ```
 Skill {
   id, name, description
@@ -199,7 +199,7 @@ Skill {
 - Per-agent cost visibility
 - Model failover for cost optimization
 
-**Olympus Enhancement (already has credits):**
+**OpenCompany Enhancement (already has credits):**
 ```
 // Extend existing credit system
 CreditTransaction {
@@ -241,7 +241,7 @@ Budget {
 - No version control or audit trail
 - Can't be managed via UI
 
-**Olympus Approach:** Database-backed configuration with UI editor and change history
+**OpenCompany Approach:** Database-backed configuration with UI editor and change history
 
 ---
 
@@ -253,7 +253,7 @@ Budget {
 - Businesses need consistent auth regardless of network location
 - Compliance requires explicit authentication
 
-**Olympus Approach:** Standard session-based auth with SSO/SAML support
+**OpenCompany Approach:** Standard session-based auth with SSO/SAML support
 
 ---
 
@@ -265,7 +265,7 @@ Budget {
 - Too risky for business environments
 - Compliance issues with arbitrary code execution
 
-**Olympus Approach:**
+**OpenCompany Approach:**
 - Predefined "actions" with parameters, not raw commands
 - Sandboxed execution environments
 - All actions go through approval workflow
@@ -281,7 +281,7 @@ Budget {
 - Compliance and data retention concerns
 - Can be added later for customer support use cases
 
-**Olympus Approach:** Internal chat + Slack/Teams integration for business tools
+**OpenCompany Approach:** Internal chat + Slack/Teams integration for business tools
 
 ---
 
@@ -394,4 +394,4 @@ ALTER TABLE credit_transactions
 
 OpenClaw provides excellent architectural patterns for agent management, but its "power user, security-optional" philosophy needs adaptation for business use. The key insight is to take the **structural patterns** (workspace isolation, approval flows, session management, webhooks) while replacing the **implementation details** (file-based config, local trust, raw shell access) with enterprise-appropriate alternatives.
 
-Olympus already has a solid foundation with its approval system and credit economy. The next step is to add workspace isolation and granular action policies, which will unlock the multi-agent, multi-team capabilities that businesses need.
+OpenCompany already has a solid foundation with its approval system and credit economy. The next step is to add workspace isolation and granular action policies, which will unlock the multi-agent, multi-team capabilities that businesses need.

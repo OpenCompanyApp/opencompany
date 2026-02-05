@@ -278,10 +278,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import type { Task, TaskStatus } from '@/types'
-import TaskColumn from '@/Components/tasks/TaskColumn.vue'
-import TaskCard from '@/Components/tasks/TaskCard.vue'
+import type { ListItem, ListItemStatus } from '@/types'
+import TaskColumn from '@/Components/lists/TaskColumn.vue'
+import TaskCard from '@/Components/lists/TaskCard.vue'
 import Icon from '@/Components/shared/Icon.vue'
+
+// Type alias for backwards compatibility
+type Task = ListItem
+type TaskStatus = ListItemStatus
 
 // Types
 type BoardSize = 'sm' | 'md' | 'lg'

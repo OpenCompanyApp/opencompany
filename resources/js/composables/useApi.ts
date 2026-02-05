@@ -5,6 +5,9 @@ import type {
   Channel,
   Message,
   Task,
+  ListItem,
+  AgentTask,
+  TaskStep,
   Document,
   Activity,
   Stats,
@@ -100,25 +103,100 @@ export const useApi = () => {
   const fetchPinnedMessages = (channelId: string) =>
     useFetch<Message[]>(`/channels/${channelId}/pinned`)
 
-  // Tasks
-  const fetchTasks = () => useFetch<Task[]>('/tasks')
-  const fetchTask = (id: string) => useFetch<Task>(`/tasks/${id}`)
-  const createTask = (data: { title: string; description?: string; assigneeId?: string; priority?: string; status?: string; channelId?: string | null; estimatedCost?: number | null; collaboratorIds?: string[]; parentId?: string | null; isFolder?: boolean }) =>
-    api.post('/tasks', data)
-  const updateTask = (id: string, data: Partial<Task>) =>
-    api.patch(`/tasks/${id}`, data)
-  const deleteTask = (id: string) =>
-    api.delete(`/tasks/${id}`)
-  const reorderTasks = (taskOrders: { id: string; position: number; status?: string }[]) =>
-    api.post('/tasks/reorder', { taskOrders })
+  // List Items (kanban board items - formerly Tasks)
+  const fetchListItems = () => useFetch<ListItem[]>('/list-items')
+  const fetchListItem = (id: string) => useFetch<ListItem>(`/list-items/${id}`)
+  const createListItem = (data: { title: string; description?: string; assigneeId?: string; priority?: string; status?: string; channelId?: string | null; estimatedCost?: number | null; collaboratorIds?: string[]; parentId?: string | null; isFolder?: boolean }) =>
+    api.post('/list-items', data)
+  const updateListItem = (id: string, data: Partial<ListItem>) =>
+    api.patch(`/list-items/${id}`, data)
+  const deleteListItem = (id: string) =>
+    api.delete(`/list-items/${id}`)
+  const reorderListItems = (itemOrders: { id: string; position: number; status?: string }[]) =>
+    api.post('/list-items/reorder', { itemOrders })
 
-  // Task Comments
-  const fetchTaskComments = (taskId: string) =>
-    useFetch(`/tasks/${taskId}/comments`)
-  const addTaskComment = (taskId: string, data: { content: string; parentId?: string; authorId?: string }) =>
-    api.post(`/tasks/${taskId}/comments`, data)
-  const deleteTaskComment = (taskId: string, commentId: string) =>
-    api.delete(`/tasks/${taskId}/comments/${commentId}`)
+  // Legacy aliases for backwards compatibility
+  const fetchTasks = fetchListItems
+  const fetchTask = fetchListItem
+  const createTask = createListItem
+  const updateTask = updateListItem
+  const deleteTask = deleteListItem
+  const reorderTasks = (taskOrders: { id: string; position: number; status?: string }[]) =>
+    api.post('/list-items/reorder', { taskOrders })
+
+  // List Item Comments
+  const fetchListItemComments = (listItemId: string) =>
+    useFetch(`/list-items/${listItemId}/comments`)
+  const addListItemComment = (listItemId: string, data: { content: string; parentId?: string; authorId?: string }) =>
+    api.post(`/list-items/${listItemId}/comments`, data)
+  const deleteListItemComment = (listItemId: string, commentId: string) =>
+    api.delete(`/list-items/${listItemId}/comments/${commentId}`)
+
+  // Legacy aliases
+  const fetchTaskComments = fetchListItemComments
+  const addTaskComment = addListItemComment
+  const deleteTaskComment = deleteListItemComment
+
+  // Agent Tasks (cases - discrete work items)
+  const fetchAgentTasks = (filters?: { status?: string | string[]; agentId?: string; requesterId?: string; type?: string; priority?: string; projectId?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) {
+      if (Array.isArray(filters.status)) {
+        filters.status.forEach(s => params.append('status[]', s))
+      } else {
+        params.append('status', filters.status)
+      }
+    }
+    if (filters?.agentId) params.append('agentId', filters.agentId)
+    if (filters?.requesterId) params.append('requesterId', filters.requesterId)
+    if (filters?.type) params.append('type', filters.type)
+    if (filters?.priority) params.append('priority', filters.priority)
+    if (filters?.projectId) params.append('projectId', filters.projectId)
+    return useFetch<AgentTask[]>(`/tasks?${params.toString()}`)
+  }
+  const fetchAgentTask = (id: string) => useFetch<AgentTask>(`/tasks/${id}`)
+  const createAgentTask = (data: {
+    title: string
+    description?: string
+    type?: string
+    priority?: string
+    agentId?: string
+    requesterId: string
+    channelId?: string
+    projectId?: string
+    listItemId?: string
+    parentTaskId?: string
+    context?: Record<string, unknown>
+    dueAt?: string
+  }) => api.post('/tasks', data)
+  const updateAgentTask = (id: string, data: Partial<AgentTask>) =>
+    api.patch(`/tasks/${id}`, data)
+  const deleteAgentTask = (id: string) =>
+    api.delete(`/tasks/${id}`)
+
+  // Agent Task Lifecycle
+  const startAgentTask = (id: string) =>
+    api.post(`/tasks/${id}/start`)
+  const pauseAgentTask = (id: string) =>
+    api.post(`/tasks/${id}/pause`)
+  const resumeAgentTask = (id: string) =>
+    api.post(`/tasks/${id}/resume`)
+  const completeAgentTask = (id: string, result?: Record<string, unknown>) =>
+    api.post(`/tasks/${id}/complete`, { result })
+  const failAgentTask = (id: string, reason?: string) =>
+    api.post(`/tasks/${id}/fail`, { reason })
+  const cancelAgentTask = (id: string) =>
+    api.post(`/tasks/${id}/cancel`)
+
+  // Task Steps
+  const fetchTaskSteps = (taskId: string) =>
+    useFetch<TaskStep[]>(`/tasks/${taskId}/steps`)
+  const addTaskStep = (taskId: string, data: { description: string; type?: string; metadata?: Record<string, unknown> }) =>
+    api.post(`/tasks/${taskId}/steps`, data)
+  const updateTaskStep = (taskId: string, stepId: string, data: Partial<TaskStep>) =>
+    api.patch(`/tasks/${taskId}/steps/${stepId}`, data)
+  const completeTaskStep = (taskId: string, stepId: string) =>
+    api.post(`/tasks/${taskId}/steps/${stepId}/complete`)
 
   // Documents
   const fetchDocuments = () => useFetch<Document[]>('/documents')
@@ -182,10 +260,10 @@ export const useApi = () => {
   const updateStats = (data: Partial<Stats>) =>
     api.patch('/stats', data)
 
-  // Task Templates
-  const fetchTaskTemplates = (activeOnly = true) =>
-    useFetch(`/task-templates?activeOnly=${activeOnly}`)
-  const createTaskTemplate = (data: {
+  // List Templates (formerly Task Templates)
+  const fetchListTemplates = (activeOnly = true) =>
+    useFetch(`/list-templates?activeOnly=${activeOnly}`)
+  const createListTemplate = (data: {
     name: string
     defaultTitle: string
     description?: string
@@ -195,12 +273,12 @@ export const useApi = () => {
     estimatedCost?: number
     tags?: string[]
     createdById?: string
-  }) => api.post('/task-templates', data)
-  const updateTaskTemplate = (id: string, data: Record<string, unknown>) =>
-    api.patch(`/task-templates/${id}`, data)
-  const deleteTaskTemplate = (id: string) =>
-    api.delete(`/task-templates/${id}`)
-  const createTaskFromTemplate = (templateId: string, overrides?: {
+  }) => api.post('/list-templates', data)
+  const updateListTemplate = (id: string, data: Record<string, unknown>) =>
+    api.patch(`/list-templates/${id}`, data)
+  const deleteListTemplate = (id: string) =>
+    api.delete(`/list-templates/${id}`)
+  const createListItemFromTemplate = (templateId: string, overrides?: {
     title?: string
     description?: string
     assigneeId?: string
@@ -208,7 +286,14 @@ export const useApi = () => {
     channelId?: string
     collaboratorIds?: string[]
     estimatedCost?: number
-  }) => api.post(`/task-templates/${templateId}/create-task`, overrides || {})
+  }) => api.post(`/list-templates/${templateId}/create-item`, overrides || {})
+
+  // Legacy aliases
+  const fetchTaskTemplates = fetchListTemplates
+  const createTaskTemplate = createListTemplate
+  const updateTaskTemplate = updateListTemplate
+  const deleteTaskTemplate = deleteListTemplate
+  const createTaskFromTemplate = createListItemFromTemplate
 
   // Automation Rules
   const fetchAutomationRules = (activeOnly = true) =>
@@ -286,17 +371,44 @@ export const useApi = () => {
     pinMessage,
     fetchPinnedMessages,
     uploadMessageAttachment,
-    // Tasks
+    // List Items (kanban board)
+    fetchListItems,
+    fetchListItem,
+    createListItem,
+    updateListItem,
+    deleteListItem,
+    reorderListItems,
+    // List Item Comments
+    fetchListItemComments,
+    addListItemComment,
+    deleteListItemComment,
+    // Legacy aliases for Tasks (kanban)
     fetchTasks,
     fetchTask,
     createTask,
     updateTask,
     deleteTask,
     reorderTasks,
-    // Task Comments
     fetchTaskComments,
     addTaskComment,
     deleteTaskComment,
+    // Agent Tasks (cases)
+    fetchAgentTasks,
+    fetchAgentTask,
+    createAgentTask,
+    updateAgentTask,
+    deleteAgentTask,
+    startAgentTask,
+    pauseAgentTask,
+    resumeAgentTask,
+    completeAgentTask,
+    failAgentTask,
+    cancelAgentTask,
+    // Task Steps
+    fetchTaskSteps,
+    addTaskStep,
+    updateTaskStep,
+    completeTaskStep,
     // Documents
     fetchDocuments,
     fetchDocument,
@@ -324,7 +436,13 @@ export const useApi = () => {
     // Stats
     fetchStats,
     updateStats,
-    // Task Templates
+    // List Templates
+    fetchListTemplates,
+    createListTemplate,
+    updateListTemplate,
+    deleteListTemplate,
+    createListItemFromTemplate,
+    // Legacy aliases
     fetchTaskTemplates,
     createTaskTemplate,
     updateTaskTemplate,

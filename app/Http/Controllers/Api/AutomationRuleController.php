@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\TaskAutomationRule;
+use App\Models\ListAutomationRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -11,7 +11,7 @@ class AutomationRuleController extends Controller
 {
     public function index(Request $request)
     {
-        $query = TaskAutomationRule::with(['template', 'createdBy']);
+        $query = ListAutomationRule::with(['template', 'createdBy']);
 
         if ($request->input('activeOnly', true)) {
             $query->where('is_active', true);
@@ -22,7 +22,7 @@ class AutomationRuleController extends Controller
 
     public function store(Request $request)
     {
-        $rule = TaskAutomationRule::create([
+        $rule = ListAutomationRule::create([
             'id' => Str::uuid()->toString(),
             'name' => $request->input('name'),
             'description' => $request->input('description'),
@@ -30,7 +30,7 @@ class AutomationRuleController extends Controller
             'trigger_conditions' => $request->input('triggerConditions'),
             'action_type' => $request->input('actionType'),
             'action_config' => $request->input('actionConfig'),
-            'template_id' => $request->input('templateId'),
+            'list_template_id' => $request->input('templateId'),
             'created_by_id' => $request->input('createdById'),
             'is_active' => true,
         ]);
@@ -40,7 +40,7 @@ class AutomationRuleController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $rule = TaskAutomationRule::findOrFail($id);
+        $rule = ListAutomationRule::findOrFail($id);
 
         $data = $request->only([
             'name',
@@ -60,7 +60,7 @@ class AutomationRuleController extends Controller
             $data['action_config'] = $request->input('actionConfig');
         }
         if ($request->has('templateId')) {
-            $data['template_id'] = $request->input('templateId');
+            $data['list_template_id'] = $request->input('templateId');
         }
         if ($request->has('isActive')) {
             $data['is_active'] = $request->input('isActive');
@@ -73,7 +73,7 @@ class AutomationRuleController extends Controller
 
     public function destroy(string $id)
     {
-        TaskAutomationRule::findOrFail($id)->delete();
+        ListAutomationRule::findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }

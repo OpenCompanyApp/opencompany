@@ -2,30 +2,30 @@
 
 namespace Database\Seeders;
 
-use App\Models\Task;
-use App\Models\TaskCollaborator;
-use App\Models\TaskComment;
-use App\Models\TaskTemplate;
-use App\Models\TaskAutomationRule;
+use App\Models\ListItem;
+use App\Models\ListItemCollaborator;
+use App\Models\ListItemComment;
+use App\Models\ListTemplate;
+use App\Models\ListAutomationRule;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Str;
 
-class TaskSeeder extends Seeder
+class ListItemSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     public function run(): void
     {
-        $this->createTasks();
-        $this->createTaskTemplates();
+        $this->createListItems();
+        $this->createListTemplates();
         $this->createAutomationRules();
     }
 
-    private function createTasks(): void
+    private function createListItems(): void
     {
-        $tasks = [
-            // Completed tasks
+        $items = [
+            // Completed items
             [
                 'title' => 'Set up authentication system',
                 'description' => 'Implement JWT-based authentication with refresh tokens and secure session management.',
@@ -71,7 +71,7 @@ class TaskSeeder extends Seeder
                 'completed_at' => now()->subHours(12),
             ],
 
-            // In progress tasks
+            // In progress items
             [
                 'title' => 'Implement notification system',
                 'description' => 'Build real-time notifications using WebSockets with read/unread tracking.',
@@ -113,7 +113,7 @@ class TaskSeeder extends Seeder
                 'channel_id' => 'ch1',
             ],
 
-            // Backlog tasks (ready to be picked up)
+            // Backlog items
             [
                 'title' => 'Implement dark mode',
                 'description' => 'Add dark mode theme support across all components.',
@@ -150,118 +150,55 @@ class TaskSeeder extends Seeder
                 'estimated_cost' => 45.00,
                 'channel_id' => 'ch2',
             ],
-            [
-                'title' => 'Blog content calendar',
-                'description' => 'Plan content calendar for Q1 blog posts and thought leadership.',
-                'status' => 'backlog',
-                'assignee_id' => 'a2',
-                'priority' => 'medium',
-                'estimated_cost' => 18.00,
-                'channel_id' => 'ch1',
-            ],
-            [
-                'title' => 'Integration with Slack',
-                'description' => 'Build Slack integration for notifications and commands.',
-                'status' => 'backlog',
-                'assignee_id' => 'a5',
-                'priority' => 'medium',
-                'estimated_cost' => 30.00,
-                'channel_id' => 'ch2',
-            ],
-            [
-                'title' => 'User feedback analysis',
-                'description' => 'Analyze recent user feedback and prioritize improvements.',
-                'status' => 'backlog',
-                'assignee_id' => 'a3',
-                'priority' => 'medium',
-                'estimated_cost' => 15.00,
-                'channel_id' => 'ch1',
-            ],
-            [
-                'title' => 'AI model fine-tuning',
-                'description' => 'Fine-tune language models for improved task understanding.',
-                'status' => 'backlog',
-                'assignee_id' => 'a1',
-                'priority' => 'low',
-                'estimated_cost' => 80.00,
-                'channel_id' => 'ch2',
-            ],
-            [
-                'title' => 'Multi-language support',
-                'description' => 'Implement i18n for supporting multiple languages.',
-                'status' => 'backlog',
-                'assignee_id' => 'a2',
-                'priority' => 'low',
-                'estimated_cost' => 50.00,
-                'channel_id' => 'ch1',
-            ],
-            [
-                'title' => 'Advanced analytics dashboard',
-                'description' => 'Build advanced analytics with custom reports and exports.',
-                'status' => 'backlog',
-                'assignee_id' => 'a3',
-                'priority' => 'medium',
-                'estimated_cost' => 65.00,
-                'channel_id' => 'ch2',
-            ],
-            [
-                'title' => 'Video conferencing integration',
-                'description' => 'Integrate video calls directly into channels.',
-                'status' => 'backlog',
-                'assignee_id' => 'a5',
-                'priority' => 'low',
-                'estimated_cost' => 100.00,
-                'channel_id' => 'ch1',
-            ],
         ];
 
         $position = 0;
-        $createdTasks = [];
+        $createdItems = [];
 
-        foreach ($tasks as $taskData) {
-            $task = Task::create([
+        foreach ($items as $itemData) {
+            $item = ListItem::create([
                 'id' => Str::uuid()->toString(),
-                'title' => $taskData['title'],
-                'description' => $taskData['description'],
-                'status' => $taskData['status'],
-                'assignee_id' => $taskData['assignee_id'],
-                'priority' => $taskData['priority'],
-                'cost' => $taskData['cost'] ?? 0,
-                'estimated_cost' => $taskData['estimated_cost'] ?? 0,
-                'channel_id' => $taskData['channel_id'],
+                'title' => $itemData['title'],
+                'description' => $itemData['description'],
+                'status' => $itemData['status'],
+                'assignee_id' => $itemData['assignee_id'],
+                'priority' => $itemData['priority'],
+                'cost' => $itemData['cost'] ?? 0,
+                'estimated_cost' => $itemData['estimated_cost'] ?? 0,
+                'channel_id' => $itemData['channel_id'],
                 'position' => $position++,
-                'completed_at' => $taskData['completed_at'] ?? null,
+                'completed_at' => $itemData['completed_at'] ?? null,
             ]);
 
-            $createdTasks[] = $task;
+            $createdItems[] = $item;
 
-            // Add collaborators to some tasks
-            if (rand(1, 10) <= 6 && $taskData['assignee_id']) {
+            // Add collaborators to some items
+            if (rand(1, 10) <= 6 && $itemData['assignee_id']) {
                 $collaborators = collect(['h1', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6'])
-                    ->reject(fn($id) => $id === $taskData['assignee_id'])
+                    ->reject(fn($id) => $id === $itemData['assignee_id'])
                     ->random(rand(1, 2));
 
                 foreach ($collaborators as $collaboratorId) {
-                    TaskCollaborator::create([
+                    ListItemCollaborator::create([
                         'id' => Str::uuid()->toString(),
-                        'task_id' => $task->id,
+                        'list_item_id' => $item->id,
                         'user_id' => $collaboratorId,
                     ]);
                 }
             }
         }
 
-        // Add comments to tasks
-        $this->createTaskComments($createdTasks);
+        // Add comments to items
+        $this->createListItemComments($createdItems);
     }
 
-    private function createTaskComments(array $tasks): void
+    private function createListItemComments(array $items): void
     {
         $comments = [
             'Great progress on this! Let me know if you need any help.',
             'I\'ve reviewed the implementation and it looks solid.',
             'Can we add some unit tests for edge cases?',
-            'This is blocking another task. Let\'s prioritize it.',
+            'This is blocking another item. Let\'s prioritize it.',
             'Nice work! The code quality is excellent.',
             'I have a few suggestions for improvement.',
             'Let\'s discuss this in our next standup.',
@@ -270,14 +207,14 @@ class TaskSeeder extends Seeder
             'Should we consider a different approach here?',
         ];
 
-        foreach (array_slice($tasks, 0, 12) as $task) {
-            $commentCount = rand(1, 4);
+        foreach (array_slice($items, 0, 8) as $item) {
+            $commentCount = rand(1, 3);
             $parentCommentId = null;
 
             for ($i = 0; $i < $commentCount; $i++) {
-                $comment = TaskComment::create([
+                $comment = ListItemComment::create([
                     'id' => Str::uuid()->toString(),
-                    'task_id' => $task->id,
+                    'list_item_id' => $item->id,
                     'author_id' => collect(['h1', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6'])->random(),
                     'content' => $comments[array_rand($comments)],
                     'parent_id' => ($i > 0 && rand(1, 3) === 1) ? $parentCommentId : null,
@@ -291,7 +228,7 @@ class TaskSeeder extends Seeder
         }
     }
 
-    private function createTaskTemplates(): void
+    private function createListTemplates(): void
     {
         $templates = [
             [
@@ -324,30 +261,10 @@ class TaskSeeder extends Seeder
                 'estimated_cost' => 10.00,
                 'tags' => ['docs', 'writing'],
             ],
-            [
-                'name' => 'Research',
-                'description' => 'Template for research tasks',
-                'default_title' => 'Research: [Topic]',
-                'default_description' => "## Research Question\n\n## Sources to Review\n\n## Deliverables\n",
-                'default_priority' => 'medium',
-                'default_assignee_id' => 'a6',
-                'estimated_cost' => 20.00,
-                'tags' => ['research', 'analysis'],
-            ],
-            [
-                'name' => 'Design Review',
-                'description' => 'Template for design review tasks',
-                'default_title' => 'Design: [Component/Feature]',
-                'default_description' => "## Design Goals\n\n## Requirements\n\n## Deliverables\n- [ ] Wireframes\n- [ ] High-fidelity mockups\n- [ ] Responsive variants\n",
-                'default_priority' => 'medium',
-                'default_assignee_id' => 'a4',
-                'estimated_cost' => 25.00,
-                'tags' => ['design', 'ui', 'ux'],
-            ],
         ];
 
         foreach ($templates as $templateData) {
-            TaskTemplate::create([
+            ListTemplate::create([
                 'id' => Str::uuid()->toString(),
                 'name' => $templateData['name'],
                 'description' => $templateData['description'],
@@ -365,69 +282,35 @@ class TaskSeeder extends Seeder
 
     private function createAutomationRules(): void
     {
-        $bugTemplate = TaskTemplate::where('name', 'Bug Fix')->first();
-        $featureTemplate = TaskTemplate::where('name', 'Feature Request')->first();
+        $bugTemplate = ListTemplate::where('name', 'Bug Fix')->first();
 
         $rules = [
             [
                 'name' => 'Auto-assign bugs to Logic',
-                'description' => 'Automatically assign bug tasks to the coder agent',
+                'description' => 'Automatically assign bug items to the coder agent',
                 'trigger_type' => 'task_created',
                 'trigger_conditions' => ['tags_contain' => 'bug'],
                 'action_type' => 'assign_task',
                 'action_config' => ['user_id' => 'a5'],
-                'template_id' => $bugTemplate?->id,
+                'list_template_id' => $bugTemplate?->id,
                 'trigger_count' => 12,
                 'last_triggered_at' => now()->subDays(2),
             ],
             [
                 'name' => 'High priority notification',
-                'description' => 'Notify manager when high priority tasks are created',
+                'description' => 'Notify manager when high priority items are created',
                 'trigger_type' => 'task_created',
                 'trigger_conditions' => ['priority' => 'high'],
                 'action_type' => 'send_notification',
-                'action_config' => ['user_id' => 'a1', 'message' => 'New high priority task created'],
-                'template_id' => null,
+                'action_config' => ['user_id' => 'a1', 'message' => 'New high priority item created'],
+                'list_template_id' => null,
                 'trigger_count' => 8,
-                'last_triggered_at' => now()->subDays(1),
-            ],
-            [
-                'name' => 'Auto-update feature requests',
-                'description' => 'Update feature requests with enhancement label',
-                'trigger_type' => 'task_created',
-                'trigger_conditions' => ['title_contains' => 'Feature:'],
-                'action_type' => 'update_task',
-                'action_config' => ['label' => 'enhancement'],
-                'template_id' => $featureTemplate?->id,
-                'trigger_count' => 5,
-                'last_triggered_at' => now()->subDays(3),
-            ],
-            [
-                'name' => 'Completion notification',
-                'description' => 'Send notification when task is completed',
-                'trigger_type' => 'task_completed',
-                'trigger_conditions' => [],
-                'action_type' => 'send_notification',
-                'action_config' => ['channel_id' => 'ch1', 'message' => 'Task completed!'],
-                'template_id' => null,
-                'trigger_count' => 15,
-                'last_triggered_at' => now()->subHours(6),
-            ],
-            [
-                'name' => 'Spawn agent for new tasks',
-                'description' => 'Automatically spawn an agent when approval is granted',
-                'trigger_type' => 'approval_granted',
-                'trigger_conditions' => ['task_type' => 'development'],
-                'action_type' => 'spawn_agent',
-                'action_config' => ['agent_type' => 'coder', 'message' => 'Starting work on approved task'],
-                'template_id' => null,
-                'trigger_count' => 3,
                 'last_triggered_at' => now()->subDays(1),
             ],
         ];
 
         foreach ($rules as $ruleData) {
-            TaskAutomationRule::create([
+            ListAutomationRule::create([
                 'id' => Str::uuid()->toString(),
                 'name' => $ruleData['name'],
                 'description' => $ruleData['description'],
@@ -435,7 +318,7 @@ class TaskSeeder extends Seeder
                 'trigger_conditions' => $ruleData['trigger_conditions'],
                 'action_type' => $ruleData['action_type'],
                 'action_config' => $ruleData['action_config'],
-                'template_id' => $ruleData['template_id'],
+                'list_template_id' => $ruleData['list_template_id'],
                 'is_active' => true,
                 'trigger_count' => $ruleData['trigger_count'],
                 'last_triggered_at' => $ruleData['last_triggered_at'],
