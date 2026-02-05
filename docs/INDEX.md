@@ -52,6 +52,17 @@
 
 ---
 
+## UI/UX
+
+| Document | What it covers | Read when... |
+|----------|---------------|--------------|
+| [design-system.md](ui/design-system.md) | Design tokens, colors, typography, spacing, animations, accessibility | Building new UI components, choosing colors or spacing |
+| [components.md](ui/components.md) | All 26 shared components with props, slots, events, and usage | Using a shared component, checking available props |
+| [layouts.md](ui/layouts.md) | Common layout patterns with ASCII diagrams, responsive breakdowns | Designing a new page, understanding how layouts work |
+| [pages/](ui/pages/) | Individual page specifications with ASCII layouts and feature docs | Understanding or modifying a specific page |
+
+---
+
 ## Key Concepts
 
 | Term | Meaning |
