@@ -221,6 +221,17 @@
             <AgentCapabilities
               :capabilities="agent.capabilities"
               :notes="capabilityNotes"
+              :behavior-mode="behaviorMode"
+              :must-wait-for-approval="mustWaitForApproval"
+              :channel-permissions="channelPermissions"
+              :folder-permissions="folderPermissions"
+              :agent-channels="agentChannels"
+              :document-folders="documentFolders"
+              @update-behavior-mode="handleBehaviorModeChange"
+              @update-tool-permissions="handleToolPermissions"
+              @update-channel-permissions="handleChannelPermissions"
+              @update-folder-permissions="handleFolderPermissions"
+              @update-must-wait-for-approval="handleMustWaitChange"
               @save-notes="saveCapabilityNotes"
             />
           </div>
@@ -326,9 +337,9 @@ import AgentMemoryView from '@/Components/agents/AgentMemoryView.vue'
 import AgentSettingsPanel from '@/Components/agents/AgentSettingsPanel.vue'
 import TaskDetailDrawer from '@/Components/tasks/TaskDetailDrawer.vue'
 import { useApi } from '@/composables/useApi'
-import type { Agent, AgentType, AgentSettings, AgentTask } from '@/types'
+import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask } from '@/types'
 
-const { fetchAgentDetail, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi } = useApi()
+const { fetchAgentDetail, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions } = useApi()
 
 type TabId = 'overview' | 'tasks' | 'personality' | 'instructions' | 'capabilities' | 'memory' | 'activity' | 'settings'
 
@@ -351,6 +362,13 @@ const capabilityNotes = ref('')
 const agentTasks = ref<AgentTask[]>([])
 const selectedTask = ref<AgentTask | null>(null)
 const taskDrawerOpen = ref(false)
+const behaviorMode = ref<AgentBehaviorMode>('autonomous')
+const mustWaitForApproval = ref(false)
+const channelPermissions = ref<string[]>([])
+const folderPermissions = ref<string[]>([])
+const agentChannels = ref<{ id: string; name: string; type: string }[]>([])
+const documentFolders = ref<{ id: string; title: string }[]>([])
+
 
 const activeTab = ref<TabId>('overview')
 
@@ -391,6 +409,8 @@ const statusColor = computed(() => {
       return 'bg-amber-500'
     case 'paused':
       return 'bg-yellow-500'
+    case 'awaiting_approval':
+      return 'bg-amber-500'
     default:
       return 'bg-neutral-400'
   }
@@ -409,6 +429,8 @@ const statusLabel = computed(() => {
       return 'Available'
     case 'paused':
       return 'Paused'
+    case 'awaiting_approval':
+      return 'Waiting for approval'
     default:
       return 'Offline'
   }
@@ -462,6 +484,12 @@ const fetchData = async () => {
     } as Agent
 
     capabilityNotes.value = (raw.toolNotes as string) || ''
+    behaviorMode.value = (raw.behaviorMode as AgentBehaviorMode) || 'autonomous'
+    mustWaitForApproval.value = (raw.mustWaitForApproval as boolean) || false
+    channelPermissions.value = (raw.channelPermissions as string[]) || []
+    folderPermissions.value = (raw.folderPermissions as string[]) || []
+    agentChannels.value = (raw.agentChannels as { id: string; name: string; type: string }[]) || []
+    documentFolders.value = (raw.documentFolders as { id: string; title: string }[]) || []
 
     // Map tasks from the detail response
     const rawTasks = (raw.tasks as AgentTask[]) || []
@@ -523,6 +551,52 @@ const saveCapabilityNotes = async (notes: string) => {
     capabilityNotes.value = notes
   } catch (e) {
     console.error('Failed to save capability notes:', e)
+  }
+}
+
+const handleMustWaitChange = async (value: boolean) => {
+  try {
+    await updateAgent(props.id, { mustWaitForApproval: value })
+    mustWaitForApproval.value = value
+  } catch (e) {
+    console.error('Failed to update must-wait setting:', e)
+  }
+}
+
+const handleBehaviorModeChange = async (mode: AgentBehaviorMode) => {
+  try {
+    await updateAgent(props.id, { behaviorMode: mode })
+    behaviorMode.value = mode
+  } catch (e) {
+    console.error('Failed to update behavior mode:', e)
+  }
+}
+
+const handleToolPermissions = async (tools: { scopeKey: string; permission: string; requiresApproval: boolean }[]) => {
+  try {
+    await updateAgentToolPermissions(props.id, tools)
+    // Refresh agent data to get updated capabilities
+    await fetchData()
+  } catch (e) {
+    console.error('Failed to update tool permissions:', e)
+  }
+}
+
+const handleChannelPermissions = async (channels: string[]) => {
+  try {
+    await updateAgentChannelPermissions(props.id, channels)
+    channelPermissions.value = channels
+  } catch (e) {
+    console.error('Failed to update channel permissions:', e)
+  }
+}
+
+const handleFolderPermissions = async (folders: string[]) => {
+  try {
+    await updateAgentFolderPermissions(props.id, folders)
+    folderPermissions.value = folders
+  } catch (e) {
+    console.error('Failed to update folder permissions:', e)
   }
 }
 

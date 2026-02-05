@@ -6,6 +6,7 @@ use App\Events\MessageSent;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\AgentPermissionService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -15,6 +16,7 @@ class SendChannelMessage implements Tool
 {
     public function __construct(
         private User $agent,
+        private AgentPermissionService $permissionService,
     ) {}
 
     public function description(): string
@@ -27,6 +29,11 @@ class SendChannelMessage implements Tool
         try {
             $channelId = $request['channelId'];
             $content = $request['content'];
+
+            // Check channel access permission
+            if (!$this->permissionService->canAccessChannel($this->agent, $channelId)) {
+                return "Error: You do not have permission to send messages to this channel.";
+            }
 
             $channel = Channel::find($channelId);
             if (!$channel) {

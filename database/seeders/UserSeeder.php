@@ -34,6 +34,8 @@ class UserSeeder extends Seeder
                 'status' => 'working',
                 'current_task' => 'Coordinating team workflow and prioritizing tasks',
                 'brain' => 'glm:glm-4-plus',
+                'behavior_mode' => 'autonomous',
+                'must_wait_for_approval' => false,
             ],
             [
                 'id' => 'a2',
@@ -42,6 +44,8 @@ class UserSeeder extends Seeder
                 'status' => 'idle',
                 'current_task' => null,
                 'brain' => 'glm-coding:glm-4.7',
+                'behavior_mode' => 'supervised',
+                'must_wait_for_approval' => true,
             ],
             [
                 'id' => 'a3',
@@ -50,6 +54,8 @@ class UserSeeder extends Seeder
                 'status' => 'working',
                 'current_task' => 'Analyzing Q4 performance metrics',
                 'brain' => 'glm-coding:glm-4.7',
+                'behavior_mode' => 'autonomous',
+                'must_wait_for_approval' => false,
             ],
             [
                 'id' => 'a4',
@@ -58,6 +64,8 @@ class UserSeeder extends Seeder
                 'status' => 'idle',
                 'current_task' => null,
                 'brain' => 'glm:glm-4-plus',
+                'behavior_mode' => 'supervised',
+                'must_wait_for_approval' => false,
             ],
             [
                 'id' => 'a5',
@@ -66,6 +74,8 @@ class UserSeeder extends Seeder
                 'status' => 'working',
                 'current_task' => 'Building API endpoints for user management',
                 'brain' => 'glm-coding:glm-4.7',
+                'behavior_mode' => 'autonomous',
+                'must_wait_for_approval' => false,
             ],
             [
                 'id' => 'a6',
@@ -74,6 +84,8 @@ class UserSeeder extends Seeder
                 'status' => 'idle',
                 'current_task' => null,
                 'brain' => 'glm-coding:glm-4.7',
+                'behavior_mode' => 'strict',
+                'must_wait_for_approval' => true,
             ],
         ];
 
@@ -87,6 +99,8 @@ class UserSeeder extends Seeder
                 'presence' => $agent['status'] === 'working' ? 'online' : 'offline',
                 'current_task' => $agent['current_task'],
                 'brain' => $agent['brain'],
+                'behavior_mode' => $agent['behavior_mode'] ?? null,
+                'must_wait_for_approval' => $agent['must_wait_for_approval'] ?? false,
                 'manager_id' => $agent['id'] !== 'a1' ? 'a1' : null, // Atlas manages other agents
             ]);
         }

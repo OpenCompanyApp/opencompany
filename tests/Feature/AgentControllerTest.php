@@ -66,7 +66,7 @@ class AgentControllerTest extends TestCase
         $this->assertStringContainsString('Be accurate and thorough', $data['personality']['content']);
         $this->assertStringContainsString('cooperatively', $data['instructions']['content']);
         $this->assertStringContainsString('automated testing', $data['toolNotes']);
-        $this->assertCount(3, $data['capabilities']); // 3 tools from ToolRegistry
+        $this->assertCount(4, $data['capabilities']); // 4 tools from ToolRegistry
     }
 
     public function test_show_returns_task_stats(): void

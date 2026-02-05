@@ -67,10 +67,37 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
 
         $prompt .= "## Available Tools\n\n";
         $prompt .= "You have access to the following tools:\n";
-        $prompt .= "- **send_channel_message**: Send a message to any channel in the workspace\n";
-        $prompt .= "- **search_documents**: Search workspace documents by keyword\n";
-        $prompt .= "- **create_task_step**: Log progress on a task you're working on\n";
+
+        foreach ($this->tools() as $tool) {
+            $isWrapped = $tool instanceof Tools\ApprovalWrappedTool;
+            $innerTool = $isWrapped ? $tool->getInnerTool() : $tool;
+            $name = strtolower(preg_replace('/([A-Z])/', '_$1', lcfirst(class_basename($innerTool))));
+            $desc = $innerTool->description();
+            $approval = $isWrapped ? ' (requires approval)' : '';
+            $prompt .= "- **{$name}**: {$desc}{$approval}\n";
+        }
+
         $prompt .= "\nUse these tools when appropriate to help users effectively.\n";
+
+        // Add approval workflow context if any tools require approval
+        $hasApprovalTools = false;
+        foreach ($this->tools() as $tool) {
+            if ($tool instanceof Tools\ApprovalWrappedTool) {
+                $hasApprovalTools = true;
+                break;
+            }
+        }
+
+        if ($hasApprovalTools) {
+            $prompt .= "\n## Approval Workflow\n\n";
+            if ($this->agent->must_wait_for_approval) {
+                $prompt .= "When you use a tool that requires approval, you will automatically pause until the approval is decided. Tell the user you are waiting for their decision.\n";
+            } else {
+                $prompt .= "When you use a tool that requires approval, decide whether to wait for the decision or continue working:\n";
+                $prompt .= "- If your next steps depend on the tool's result, call `wait_for_approval` with the approval ID to pause until it's decided.\n";
+                $prompt .= "- If the action is a side-effect and you can continue without the result, keep working — the action will execute when approved.\n";
+            }
+        }
 
         return $prompt;
     }

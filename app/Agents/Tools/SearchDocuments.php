@@ -3,6 +3,8 @@
 namespace App\Agents\Tools;
 
 use App\Models\Document;
+use App\Models\User;
+use App\Services\AgentPermissionService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -10,6 +12,11 @@ use Laravel\Ai\Tools\Request;
 
 class SearchDocuments implements Tool
 {
+    public function __construct(
+        private User $agent,
+        private AgentPermissionService $permissionService,
+    ) {}
+
     public function description(): string
     {
         return 'Search workspace documents by keyword. Returns matching document titles and content snippets.';
@@ -22,11 +29,20 @@ class SearchDocuments implements Tool
             $limit = $request['limit'] ?? 5;
 
             $lowerQuery = '%' . strtolower($query) . '%';
-            $documents = Document::where('is_folder', false)
+
+            $docQuery = Document::where('is_folder', false)
                 ->where(function ($q) use ($lowerQuery) {
                     $q->whereRaw('LOWER(title) LIKE ?', [$lowerQuery])
                       ->orWhereRaw('LOWER(content) LIKE ?', [$lowerQuery]);
-                })
+                });
+
+            // Apply folder scoping if restricted
+            $allowedFolderIds = $this->permissionService->getAllowedFolderIds($this->agent);
+            if ($allowedFolderIds !== null) {
+                $docQuery->whereIn('parent_id', $allowedFolderIds);
+            }
+
+            $documents = $docQuery
                 ->orderBy('updated_at', 'desc')
                 ->take($limit)
                 ->get(['id', 'title', 'content', 'updated_at']);

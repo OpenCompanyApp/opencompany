@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\DataTableColumnController;
 use App\Http\Controllers\Api\DataTableRowController;
 use App\Http\Controllers\Api\DataTableViewController;
 use App\Http\Controllers\Api\AgentController;
+use App\Http\Controllers\Api\AgentPermissionController;
 use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\IntegrationController;
 use Illuminate\Support\Facades\Route;
@@ -209,6 +210,12 @@ Route::patch('/agents/{id}', [AgentController::class, 'update']);
 Route::delete('/agents/{id}', [AgentController::class, 'destroy']);
 Route::get('/agents/{id}/identity', [AgentController::class, 'identityFiles']);
 Route::put('/agents/{id}/identity/{fileType}', [AgentController::class, 'updateIdentityFile']);
+
+// Agent Permissions
+Route::get('/agents/{id}/permissions', [AgentPermissionController::class, 'index']);
+Route::put('/agents/{id}/permissions/tools', [AgentPermissionController::class, 'updateTools']);
+Route::put('/agents/{id}/permissions/channels', [AgentPermissionController::class, 'updateChannels']);
+Route::put('/agents/{id}/permissions/folders', [AgentPermissionController::class, 'updateFolders']);
 
 // Integrations
 Route::get('/integrations', [IntegrationController::class, 'index']);

@@ -6,6 +6,7 @@ use App\Agents\Tools\SendChannelMessage;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\AgentPermissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Laravel\Ai\Tools\Request;
@@ -22,7 +23,7 @@ class SendChannelMessageTest extends TestCase
         $agent = User::factory()->create(['type' => 'agent']);
         $channel = Channel::factory()->create(['name' => 'general']);
 
-        $tool = new SendChannelMessage($agent);
+        $tool = new SendChannelMessage($agent, app(AgentPermissionService::class));
         $request = new Request(['channelId' => $channel->id, 'content' => 'Hello from agent!']);
 
         $result = $tool->handle($request);
@@ -40,7 +41,7 @@ class SendChannelMessageTest extends TestCase
     {
         $agent = User::factory()->create(['type' => 'agent']);
 
-        $tool = new SendChannelMessage($agent);
+        $tool = new SendChannelMessage($agent, app(AgentPermissionService::class));
         $request = new Request(['channelId' => 'nonexistent', 'content' => 'Hello']);
 
         $result = $tool->handle($request);
@@ -51,7 +52,7 @@ class SendChannelMessageTest extends TestCase
     public function test_has_correct_description(): void
     {
         $agent = User::factory()->create(['type' => 'agent']);
-        $tool = new SendChannelMessage($agent);
+        $tool = new SendChannelMessage($agent, app(AgentPermissionService::class));
 
         $this->assertStringContainsString('Send a message', $tool->description());
     }

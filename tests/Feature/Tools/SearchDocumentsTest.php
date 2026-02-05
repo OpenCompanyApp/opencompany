@@ -5,6 +5,7 @@ namespace Tests\Feature\Tools;
 use App\Agents\Tools\SearchDocuments;
 use App\Models\Document;
 use App\Models\User;
+use App\Services\AgentPermissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
@@ -12,6 +13,12 @@ use Tests\TestCase;
 class SearchDocumentsTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function makeTool(?User $agent = null): SearchDocuments
+    {
+        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
+        return new SearchDocuments($agent, app(AgentPermissionService::class));
+    }
 
     public function test_finds_documents_by_title(): void
     {
@@ -33,7 +40,7 @@ class SearchDocumentsTest extends TestCase
             'is_folder' => false,
         ]);
 
-        $tool = new SearchDocuments();
+        $tool = $this->makeTool();
         $request = new Request(['query' => 'API']);
 
         $result = $tool->handle($request);
@@ -55,7 +62,7 @@ class SearchDocumentsTest extends TestCase
             'is_folder' => false,
         ]);
 
-        $tool = new SearchDocuments();
+        $tool = $this->makeTool();
         $request = new Request(['query' => 'docker']);
 
         $result = $tool->handle($request);
@@ -66,7 +73,7 @@ class SearchDocumentsTest extends TestCase
 
     public function test_returns_no_results_message(): void
     {
-        $tool = new SearchDocuments();
+        $tool = $this->makeTool();
         $request = new Request(['query' => 'nonexistent-term-xyz']);
 
         $result = $tool->handle($request);
@@ -88,7 +95,7 @@ class SearchDocumentsTest extends TestCase
             ]);
         }
 
-        $tool = new SearchDocuments();
+        $tool = $this->makeTool();
         $request = new Request(['query' => 'matching', 'limit' => 2]);
 
         $result = $tool->handle($request);
@@ -108,7 +115,7 @@ class SearchDocumentsTest extends TestCase
             'is_folder' => true,
         ]);
 
-        $tool = new SearchDocuments();
+        $tool = $this->makeTool();
         $request = new Request(['query' => 'matching']);
 
         $result = $tool->handle($request);

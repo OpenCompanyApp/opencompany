@@ -323,6 +323,16 @@ export const useApi = () => {
   const deleteAgent = (id: string) =>
     api.delete(`/agents/${id}`)
 
+  // Agent Permissions
+  const fetchAgentPermissions = (id: string) =>
+    useFetch<{ tools: unknown[]; channelIds: string[]; folderIds: string[]; behaviorMode: string }>(`/agents/${id}/permissions`)
+  const updateAgentToolPermissions = (id: string, tools: { scopeKey: string; permission: string; requiresApproval: boolean }[]) =>
+    api.put(`/agents/${id}/permissions/tools`, { tools })
+  const updateAgentChannelPermissions = (id: string, channels: string[]) =>
+    api.put(`/agents/${id}/permissions/channels`, { channels })
+  const updateAgentFolderPermissions = (id: string, folders: string[]) =>
+    api.put(`/agents/${id}/permissions/folders`, { folders })
+
   // Search
   const search = (query: string, type?: string) => {
     const params = new URLSearchParams({ q: query })
@@ -469,6 +479,11 @@ export const useApi = () => {
     updateAgentIdentityFile,
     updateAgent,
     deleteAgent,
+    // Agent Permissions
+    fetchAgentPermissions,
+    updateAgentToolPermissions,
+    updateAgentChannelPermissions,
+    updateAgentFolderPermissions,
     // Search
     search,
     // Direct Messages

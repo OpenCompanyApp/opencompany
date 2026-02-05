@@ -31,6 +31,9 @@ class User extends Authenticatable
         'email',
         'password',
         'is_ephemeral',
+        'behavior_mode',
+        'awaiting_approval_id',
+        'must_wait_for_approval',
         'manager_id',
     ];
 
@@ -46,6 +49,7 @@ class User extends Authenticatable
             'last_seen_at' => 'datetime',
             'password' => 'hashed',
             'is_ephemeral' => 'boolean',
+            'must_wait_for_approval' => 'boolean',
         ];
     }
 
@@ -63,12 +67,20 @@ class User extends Authenticatable
         $array['lastSeenAt'] = $this->last_seen_at;
         $array['currentTask'] = $this->current_task;
         $array['isEphemeral'] = $this->is_ephemeral;
+        $array['behaviorMode'] = $this->behavior_mode;
+        $array['awaitingApprovalId'] = $this->awaiting_approval_id;
+        $array['mustWaitForApproval'] = $this->must_wait_for_approval;
         $array['managerId'] = $this->manager_id;
 
         return $array;
     }
 
     // Relationships
+    public function awaitingApproval(): BelongsTo
+    {
+        return $this->belongsTo(ApprovalRequest::class, 'awaiting_approval_id');
+    }
+
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
@@ -142,7 +154,37 @@ class User extends Authenticatable
         return $this->hasMany(DataTable::class, 'created_by');
     }
 
+    public function agentPermissions(): HasMany
+    {
+        return $this->hasMany(AgentPermission::class, 'agent_id');
+    }
+
+    public function toolPermissions(): HasMany
+    {
+        return $this->agentPermissions()->where('scope_type', 'tool');
+    }
+
+    public function channelPermissions(): HasMany
+    {
+        return $this->agentPermissions()->where('scope_type', 'channel');
+    }
+
+    public function folderPermissions(): HasMany
+    {
+        return $this->agentPermissions()->where('scope_type', 'folder');
+    }
+
     // Helper methods
+    public function isAwaitingApproval(): bool
+    {
+        return $this->awaiting_approval_id !== null;
+    }
+
+    public function clearAwaitingApproval(): void
+    {
+        $this->update(['awaiting_approval_id' => null, 'status' => 'idle']);
+    }
+
     public function isAgent(): bool
     {
         return $this->type === 'agent';

@@ -1,4 +1,4 @@
-export type AgentStatus = 'idle' | 'working' | 'offline' | 'paused' | 'online' | 'busy'
+export type AgentStatus = 'idle' | 'working' | 'offline' | 'paused' | 'online' | 'busy' | 'awaiting_approval'
 export type UserStatus = 'online' | 'away' | 'busy' | 'dnd' | 'offline'
 export type PresenceStatus = 'online' | 'away' | 'busy' | 'offline'
 export type ListItemStatus = 'backlog' | 'in_progress' | 'done'
@@ -26,6 +26,8 @@ export interface User {
   currentTask?: string
   activityLog?: ActivityStep[]
   isAgent?: boolean
+  awaitingApprovalId?: string
+  mustWaitForApproval?: boolean
   role?: 'admin' | 'editor' | 'viewer' | 'owner'
 }
 
@@ -265,10 +267,13 @@ export interface AgentInstructions {
   updatedAt: Date
 }
 
+export type ToolType = 'read' | 'write'
+
 export interface AgentCapability {
   id: string
   name: string
   description?: string
+  type: ToolType
   enabled: boolean
   requiresApproval: boolean
   notes?: string

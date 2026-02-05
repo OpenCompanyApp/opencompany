@@ -22,6 +22,8 @@ class ApprovalRequest extends Model
         'status',
         'responded_by_id',
         'responded_at',
+        'tool_execution_context',
+        'channel_id',
     ];
 
     protected function casts(): array
@@ -29,6 +31,7 @@ class ApprovalRequest extends Model
         return [
             'amount' => 'decimal:2',
             'responded_at' => 'datetime',
+            'tool_execution_context' => 'array',
         ];
     }
 

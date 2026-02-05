@@ -163,16 +163,22 @@ class AgentController extends Controller
             ->limit(10)
             ->get();
 
-        // Capabilities from ToolRegistry
+        // Capabilities from ToolRegistry (permission-aware)
         $toolRegistry = app(ToolRegistry::class);
-        $tools = $toolRegistry->getToolsForAgent($agent);
-        $capabilities = collect($tools)->map(fn ($tool, $i) => [
-            'id' => (string) ($i + 1),
-            'name' => $this->humanizeClassName(class_basename($tool)),
-            'description' => $tool->description(),
-            'enabled' => true,
-            'requiresApproval' => false,
-        ])->values();
+        $capabilities = $toolRegistry->getAllToolsMeta($agent);
+
+        // Channel and folder permissions
+        $channelPermissions = $agent->channelPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
+        $folderPermissions = $agent->folderPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
+
+        // Agent's channel memberships (for the UI checklist)
+        $agentChannels = $agent->channels()->get(['channels.id', 'channels.name', 'channels.type']);
+
+        // Document folders (for the UI checklist)
+        $documentFolders = \App\Models\Document::where('is_folder', true)
+            ->whereNull('parent_id')
+            ->orderBy('title')
+            ->get(['id', 'title']);
 
         return response()->json([
             'id' => $agent->id,
@@ -183,10 +189,17 @@ class AgentController extends Controller
             'presence' => $agent->presence,
             'brain' => $agent->brain,
             'currentTask' => $agent->current_task,
+            'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
+            'mustWaitForApproval' => $agent->must_wait_for_approval ?? false,
+            'awaitingApprovalId' => $agent->awaiting_approval_id,
             'identity' => $identity,
             'personality' => $filesByType['SOUL'] ?? null,
             'instructions' => $filesByType['AGENTS'] ?? null,
             'capabilities' => $capabilities,
+            'channelPermissions' => $channelPermissions,
+            'folderPermissions' => $folderPermissions,
+            'agentChannels' => $agentChannels,
+            'documentFolders' => $documentFolders,
             'toolNotes' => $filesByType['TOOLS']['content'] ?? '',
             'memoryContent' => $filesByType['MEMORY']['content'] ?? '',
             'stats' => [
@@ -254,8 +267,10 @@ class AgentController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'brain' => 'sometimes|string',
-            'status' => 'sometimes|in:idle,working,offline',
+            'status' => 'sometimes|in:idle,working,offline,awaiting_approval',
             'currentTask' => 'sometimes|nullable|string',
+            'behaviorMode' => 'sometimes|nullable|in:autonomous,supervised,strict',
+            'mustWaitForApproval' => 'sometimes|nullable|boolean',
         ]);
 
         // If updating brain, validate the format and integration
@@ -287,6 +302,8 @@ class AgentController extends Controller
             'brain' => $validated['brain'] ?? $agent->brain,
             'status' => $validated['status'] ?? $agent->status,
             'current_task' => $validated['currentTask'] ?? $agent->current_task,
+            'behavior_mode' => $validated['behaviorMode'] ?? $agent->behavior_mode,
+            'must_wait_for_approval' => $validated['mustWaitForApproval'] ?? $agent->must_wait_for_approval,
         ]);
 
         return response()->json($agent);

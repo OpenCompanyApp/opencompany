@@ -87,8 +87,14 @@ class AgentRespondJob implements ShouldQueue
             // Send error message as agent response so user isn't left hanging
             $this->sendErrorMessage($e);
         } finally {
-            // Reset agent status
-            $this->agent->update(['status' => 'idle']);
+            // Refresh to pick up changes made by tools during execution
+            $this->agent->refresh();
+
+            if ($this->agent->awaiting_approval_id) {
+                $this->agent->update(['status' => 'awaiting_approval']);
+            } else {
+                $this->agent->update(['status' => 'idle']);
+            }
         }
     }
 
