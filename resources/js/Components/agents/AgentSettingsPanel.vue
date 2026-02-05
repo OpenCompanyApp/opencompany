@@ -1,5 +1,60 @@
 <template>
   <div class="space-y-6">
+    <!-- Brain / AI Model -->
+    <section>
+      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">AI Model</h3>
+      <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 space-y-3">
+        <div v-if="loadingBrains" class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+          <Icon name="ph:spinner" class="w-4 h-4 animate-spin" />
+          Loading available models...
+        </div>
+
+        <div v-else-if="availableBrains.length === 0" class="text-sm text-neutral-500 dark:text-neutral-400">
+          <p>No AI models configured.</p>
+          <a href="/integrations" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
+            Configure integrations
+          </a>
+        </div>
+
+        <template v-else>
+          <div class="space-y-2">
+            <button
+              v-for="brain in availableBrains"
+              :key="brain.id"
+              type="button"
+              :class="[
+                'w-full p-3 rounded-lg border-2 text-left transition-all flex items-center gap-3',
+                selectedBrain === brain.id
+                  ? 'border-neutral-900 dark:border-white bg-neutral-900/5 dark:bg-white/5'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500',
+              ]"
+              @click="changeBrain(brain.id)"
+            >
+              <div
+                :class="[
+                  'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                  selectedBrain === brain.id
+                    ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500',
+                ]"
+              >
+                <Icon :name="brain.icon" class="w-4 h-4" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-sm text-neutral-900 dark:text-white">{{ brain.name }}</p>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ brain.providerName }}</p>
+              </div>
+              <Icon
+                v-if="selectedBrain === brain.id"
+                name="ph:check-circle-fill"
+                class="w-5 h-5 text-green-500 shrink-0"
+              />
+            </button>
+          </div>
+        </template>
+      </div>
+    </section>
+
     <!-- Behavior Mode -->
     <section>
       <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">Behavior Mode</h3>
@@ -128,25 +183,68 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import Icon from '@/Components/shared/Icon.vue'
 import type { AgentSettings, AgentBehaviorMode } from '@/types'
+
+interface BrainOption {
+  id: string
+  provider: string
+  providerName: string
+  model: string
+  name: string
+  icon: string
+}
 
 const props = defineProps<{
   settings: AgentSettings
+  brain?: string
 }>()
 
 const emit = defineEmits<{
   update: [settings: AgentSettings]
+  updateBrain: [brain: string]
   resetMemory: []
   pauseAgent: []
   deleteAgent: []
 }>()
 
 const localSettings = ref<AgentSettings>({ ...props.settings })
+const availableBrains = ref<BrainOption[]>([])
+const loadingBrains = ref(false)
+const selectedBrain = ref(props.brain || '')
 
 watch(() => props.settings, (newSettings) => {
   localSettings.value = { ...newSettings }
 }, { deep: true })
+
+watch(() => props.brain, (newBrain) => {
+  if (newBrain) selectedBrain.value = newBrain
+})
+
+onMounted(async () => {
+  await loadAvailableBrains()
+})
+
+const loadAvailableBrains = async () => {
+  loadingBrains.value = true
+  try {
+    const response = await fetch('/api/integrations/models')
+    if (response.ok) {
+      availableBrains.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Failed to load available brains:', error)
+  } finally {
+    loadingBrains.value = false
+  }
+}
+
+const changeBrain = (brainId: string) => {
+  if (brainId === selectedBrain.value) return
+  selectedBrain.value = brainId
+  emit('updateBrain', brainId)
+}
 
 const behaviorModes: { value: AgentBehaviorMode; label: string }[] = [
   { value: 'autonomous', label: 'Autonomous' },

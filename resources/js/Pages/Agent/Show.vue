@@ -297,7 +297,9 @@
           <div v-if="activeTab === 'settings'">
             <AgentSettingsPanel
               :settings="agent.settings"
+              :brain="agent.brain"
               @update="updateSettings"
+              @update-brain="updateBrain"
               @reset-memory="resetAgentMemory"
               @pause-agent="togglePause"
               @delete-agent="deleteAgentHandler"
@@ -465,6 +467,7 @@ const fetchData = async () => {
       agentType: (raw.agentType as AgentType) || 'coder',
       status: (raw.status as string) || 'idle',
       currentTask: raw.currentTask as string | undefined,
+      brain: raw.brain as string | undefined,
       identity: raw.identity as Agent['identity'],
       personality: raw.personality ? {
         content: (raw.personality as Record<string, unknown>).content as string,
@@ -629,6 +632,16 @@ const deleteMemoryEntry = (id: string) => {
 const updateSettings = (settings: AgentSettings) => {
   // Settings persistence deferred to Sprint 2
   console.log('Update settings:', settings)
+}
+
+const updateBrain = async (brain: string) => {
+  if (!agent.value) return
+  try {
+    await updateAgent(props.id, { brain })
+    agent.value = { ...agent.value, brain } as Agent
+  } catch (e) {
+    console.error('Failed to update brain:', e)
+  }
 }
 
 const resetAgentMemory = async () => {

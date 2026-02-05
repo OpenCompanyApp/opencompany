@@ -28,6 +28,7 @@ export interface User {
   isAgent?: boolean
   awaitingApprovalId?: string
   mustWaitForApproval?: boolean
+  brain?: string
   role?: 'admin' | 'editor' | 'viewer' | 'owner'
 }
 

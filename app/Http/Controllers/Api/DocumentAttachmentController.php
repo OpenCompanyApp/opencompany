@@ -12,7 +12,7 @@ class DocumentAttachmentController extends Controller
 {
     public function index(string $documentId)
     {
-        return DocumentAttachment::with('uploader')
+        return DocumentAttachment::with('uploadedBy')
             ->where('document_id', $documentId)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -26,14 +26,15 @@ class DocumentAttachmentController extends Controller
         $attachment = DocumentAttachment::create([
             'id' => Str::uuid()->toString(),
             'document_id' => $documentId,
-            'uploader_id' => $request->input('uploaderId'),
-            'name' => $file->getClientOriginalName(),
-            'type' => $file->getMimeType(),
+            'uploaded_by_id' => $request->input('uploaderId'),
+            'filename' => $file->hashName(),
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
             'size' => $file->getSize(),
             'url' => '/storage/' . $path,
         ]);
 
-        return $attachment->load('uploader');
+        return $attachment->load('uploadedBy');
     }
 
     public function destroy(string $documentId, string $attachmentId)

@@ -258,9 +258,20 @@
 
         <!-- File Editor -->
         <div class="space-y-2">
-          <p class="text-xs text-neutral-500 dark:text-neutral-400">
-            {{ getFileDescription(activeIdentityFile) }}
-          </p>
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-neutral-500 dark:text-neutral-400">
+              {{ getFileDescription(activeIdentityFile) }}
+            </p>
+            <button
+              v-if="!identityContent[activeIdentityFile]?.trim()"
+              type="button"
+              class="flex items-center gap-1 px-2 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-md transition-colors"
+              @click="fillWithTemplate(activeIdentityFile)"
+            >
+              <Icon name="ph:magic-wand" class="w-3 h-3" />
+              Use template
+            </button>
+          </div>
           <textarea
             v-model="identityContent[activeIdentityFile]"
             rows="6"
@@ -462,6 +473,10 @@ const goToStep = (index: number) => {
   if (index <= currentStep.value || (index === currentStep.value + 1 && canProceed.value)) {
     currentStep.value = index
   }
+}
+
+const fillWithTemplate = (type: string) => {
+  identityContent.value[type] = getFilePlaceholder(type)
 }
 
 const getFileDescription = (type: string): string => {
