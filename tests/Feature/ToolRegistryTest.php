@@ -3,6 +3,10 @@
 namespace Tests\Feature;
 
 use App\Agents\Tools\ApprovalWrappedTool;
+use App\Agents\Tools\QueryCalendar;
+use App\Agents\Tools\QueryListItems;
+use App\Agents\Tools\QueryTable;
+use App\Agents\Tools\ReadChannel;
 use App\Agents\Tools\SearchDocuments;
 use App\Agents\Tools\SendChannelMessage;
 use App\Agents\Tools\ToolRegistry;
@@ -41,11 +45,11 @@ class ToolRegistryTest extends TestCase
 
     // ── getToolsForAgent Tests ─────────────────────────────────────────
 
-    public function test_returns_four_tools_with_no_permissions(): void
+    public function test_returns_sixteen_tools_with_no_permissions(): void
     {
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(4, $tools);
+        $this->assertCount(16, $tools);
 
         foreach ($tools as $tool) {
             $this->assertNotInstanceOf(ApprovalWrappedTool::class, $tool);
@@ -62,7 +66,7 @@ class ToolRegistryTest extends TestCase
 
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(3, $tools);
+        $this->assertCount(15, $tools);
     }
 
     public function test_wraps_tools_with_db_approval_required(): void
@@ -76,7 +80,7 @@ class ToolRegistryTest extends TestCase
 
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(4, $tools);
+        $this->assertCount(16, $tools);
 
         $wrappedTools = array_filter($tools, fn ($t) => $t instanceof ApprovalWrappedTool);
         $this->assertCount(1, $wrappedTools);
@@ -91,16 +95,41 @@ class ToolRegistryTest extends TestCase
 
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(4, $tools);
+        $this->assertCount(16, $tools);
 
+        $readToolClasses = [
+            SearchDocuments::class,
+            ReadChannel::class,
+            QueryTable::class,
+            QueryCalendar::class,
+            QueryListItems::class,
+        ];
+
+        $unwrappedTools = [];
         foreach ($tools as $tool) {
             if ($tool instanceof ApprovalWrappedTool) {
-                // Write tools should be wrapped — inner tool should NOT be SearchDocuments (read)
-                $this->assertNotInstanceOf(SearchDocuments::class, $tool->getInnerTool());
+                // Write tools should be wrapped — inner tool should NOT be a read tool
+                $inner = $tool->getInnerTool();
+                foreach ($readToolClasses as $readClass) {
+                    $this->assertNotInstanceOf($readClass, $inner);
+                }
             } else {
-                // Unwrapped tools should be the read tool: SearchDocuments
-                $this->assertInstanceOf(SearchDocuments::class, $tool);
+                // Unwrapped tools should be one of the read tools
+                $unwrappedTools[] = $tool;
             }
+        }
+
+        $this->assertCount(5, $unwrappedTools);
+
+        foreach ($unwrappedTools as $tool) {
+            $isReadTool = false;
+            foreach ($readToolClasses as $readClass) {
+                if ($tool instanceof $readClass) {
+                    $isReadTool = true;
+                    break;
+                }
+            }
+            $this->assertTrue($isReadTool, get_class($tool) . ' should be a read tool');
         }
     }
 
@@ -110,7 +139,7 @@ class ToolRegistryTest extends TestCase
 
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(4, $tools);
+        $this->assertCount(16, $tools);
 
         foreach ($tools as $tool) {
             $this->assertInstanceOf(ApprovalWrappedTool::class, $tool);
@@ -123,7 +152,7 @@ class ToolRegistryTest extends TestCase
     {
         $meta = $this->registry->getAllToolsMeta($this->agent);
 
-        $this->assertCount(4, $meta);
+        $this->assertCount(16, $meta);
 
         $expectedKeys = ['id', 'name', 'description', 'type', 'icon', 'enabled', 'requiresApproval'];
 

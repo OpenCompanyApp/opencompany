@@ -28,5 +28,9 @@ Thumbs.db
 auto-imports.d.ts
 components.d.ts
 
+# Playwright
+/screenshots
+/.playwright-mcp
+
 # Inspiration repos
 /inspiration

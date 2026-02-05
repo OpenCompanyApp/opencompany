@@ -1,4 +1,4 @@
-export type AgentStatus = 'idle' | 'working' | 'offline' | 'paused' | 'online' | 'busy' | 'awaiting_approval'
+export type AgentStatus = 'idle' | 'working' | 'offline' | 'paused' | 'online' | 'busy' | 'awaiting_approval' | 'sleeping'
 export type UserStatus = 'online' | 'away' | 'busy' | 'dnd' | 'offline'
 export type PresenceStatus = 'online' | 'away' | 'busy' | 'offline'
 export type ListItemStatus = 'backlog' | 'in_progress' | 'done'

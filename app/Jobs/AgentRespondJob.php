@@ -90,7 +90,9 @@ class AgentRespondJob implements ShouldQueue
             // Refresh to pick up changes made by tools during execution
             $this->agent->refresh();
 
-            if ($this->agent->awaiting_approval_id) {
+            if ($this->agent->sleeping_until) {
+                $this->agent->update(['status' => 'sleeping']);
+            } elseif ($this->agent->awaiting_approval_id) {
                 $this->agent->update(['status' => 'awaiting_approval']);
             } else {
                 $this->agent->update(['status' => 'idle']);

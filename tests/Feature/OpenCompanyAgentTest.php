@@ -79,7 +79,7 @@ class OpenCompanyAgentTest extends TestCase
         $agentInstance = OpenCompanyAgent::for($agent, 'channel-1');
         $tools = iterator_to_array($agentInstance->tools());
 
-        $this->assertCount(4, $tools);
+        $this->assertCount(16, $tools);
     }
 
     public function test_fake_prevents_real_api_calls(): void

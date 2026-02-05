@@ -99,6 +99,23 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             }
         }
 
+        // Add wait/sleep context if the wait tool is available
+        $hasWaitTool = false;
+        foreach ($this->tools() as $tool) {
+            $inner = $tool instanceof Tools\ApprovalWrappedTool ? $tool->getInnerTool() : $tool;
+            if ($inner instanceof Tools\Wait) {
+                $hasWaitTool = true;
+                break;
+            }
+        }
+
+        if ($hasWaitTool) {
+            $prompt .= "\n## Wait / Sleep\n\n";
+            $prompt .= "You can use the `wait` tool to pause execution for a specified number of minutes (up to 7 days). ";
+            $prompt .= "Use this when you need to wait for an external process, check back on something later, ";
+            $prompt .= "or schedule a follow-up action. You will be automatically resumed when the wait period ends.\n";
+        }
+
         return $prompt;
     }
 

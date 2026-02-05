@@ -34,6 +34,8 @@ class User extends Authenticatable
         'behavior_mode',
         'awaiting_approval_id',
         'must_wait_for_approval',
+        'sleeping_until',
+        'sleeping_reason',
         'manager_id',
     ];
 
@@ -50,6 +52,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_ephemeral' => 'boolean',
             'must_wait_for_approval' => 'boolean',
+            'sleeping_until' => 'datetime',
         ];
     }
 
@@ -178,6 +181,11 @@ class User extends Authenticatable
     public function isAwaitingApproval(): bool
     {
         return $this->awaiting_approval_id !== null;
+    }
+
+    public function isSleeping(): bool
+    {
+        return $this->status === 'sleeping';
     }
 
     public function clearAwaitingApproval(): void
