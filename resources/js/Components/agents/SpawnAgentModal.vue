@@ -322,15 +322,7 @@ import Icon from '@/Components/shared/Icon.vue'
 const isOpen = defineModel<boolean>('open', { default: false })
 
 const emit = defineEmits<{
-  spawn: [agent: {
-    name: string
-    type: string
-    brain: string
-    task: string
-    behavior: string
-    isEphemeral: boolean
-    identity: Record<string, string>
-  }]
+  spawn: [agent: { id: string; name: string; [key: string]: unknown }]
 }>()
 
 // Steps
@@ -582,15 +574,9 @@ const handleSpawn = async () => {
       return
     }
 
-    emit('spawn', {
-      name: agentName.value.trim(),
-      type: selectedTemplate.value,
-      brain: selectedBrain.value,
-      task: initialTask.value.trim(),
-      behavior: behavior.value,
-      isEphemeral: isEphemeral.value,
-      identity: identityContent.value,
-    })
+    const result = await response.json()
+
+    emit('spawn', result)
 
     isOpen.value = false
   } catch (error) {

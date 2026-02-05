@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('avatar')->nullable();
             $table->enum('type', ['human', 'agent']);
-            $table->enum('agent_type', ['manager', 'writer', 'analyst', 'creative', 'researcher', 'coder', 'coordinator'])->nullable();
+            $table->string('agent_type')->nullable();
             $table->enum('status', ['idle', 'working', 'offline'])->default('offline');
             $table->enum('presence', ['online', 'away', 'busy', 'offline'])->default('offline');
             $table->timestamp('last_seen_at')->nullable();

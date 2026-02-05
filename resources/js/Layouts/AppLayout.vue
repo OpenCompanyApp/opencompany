@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { TooltipProvider } from 'reka-ui'
 import AppSidebar from '@/Components/layout/AppSidebar.vue'
 import CommandPalette from '@/Components/layout/CommandPalette.vue'
@@ -9,18 +10,52 @@ import Slideover from '@/Components/shared/Slideover.vue'
 import SidebarNav from '@/Components/layout/SidebarNav.vue'
 import UserMenu from '@/Components/layout/UserMenu.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import SpawnAgentModal from '@/Components/agents/SpawnAgentModal.vue'
 import { useKeyboardShortcuts, useCommandPalette } from '@/composables/useKeyboardShortcuts'
 import { usePresence } from '@/composables/usePresence'
+import { useApi } from '@/composables/useApi'
 
 useKeyboardShortcuts()
 const { isOpen: commandPaletteOpen } = useCommandPalette()
 
 const sidebarCollapsed = ref(false)
 const mobileMenuOpen = ref(false)
+const showSpawnModal = ref(false)
 
 // Get current user ID from Inertia page props
 const page = usePage()
 const userId = (page.props.auth as any)?.user?.id || 'guest'
+
+// Load agents for sidebar
+const { fetchAgents } = useApi()
+const { data: agentsData, refresh: refreshAgents } = fetchAgents()
+
+const sidebarAgents = computed(() =>
+  (agentsData.value ?? []).map(a => ({
+    id: a.id,
+    name: a.name,
+    status: a.status as 'online' | 'busy' | 'idle' | 'offline' | undefined,
+    currentTask: a.currentTask,
+    isAI: true,
+  }))
+)
+
+const onlineAgentCount = computed(() =>
+  (agentsData.value ?? []).filter(a =>
+    a.status === 'idle' || a.status === 'working' || a.status === 'online'
+  ).length
+)
+
+const totalAgentCount = computed(() => (agentsData.value ?? []).length)
+
+const handleSpawnAgent = () => {
+  showSpawnModal.value = true
+}
+
+const handleAgentSpawned = async (agent: { id: string }) => {
+  await refreshAgents()
+  router.visit(`/agent/${agent.id}`)
+}
 
 // Initialize presence tracking
 const { initPresence, cleanup } = usePresence(userId)
@@ -64,7 +99,14 @@ const isActive = (path: string): boolean => {
         </div>
 
         <!-- Desktop Sidebar -->
-        <AppSidebar class="hidden md:flex" v-model:collapsed="sidebarCollapsed" />
+        <AppSidebar
+          class="hidden md:flex"
+          v-model:collapsed="sidebarCollapsed"
+          :agents="sidebarAgents"
+          :online-agents="onlineAgentCount"
+          :total-agents="totalAgentCount"
+          @spawn-agent="handleSpawnAgent"
+        />
 
         <!-- Mobile Sidebar Drawer -->
         <Slideover v-model:open="mobileMenuOpen" side="left" size="sm" :show-close="false">
@@ -133,6 +175,12 @@ const isActive = (path: string): boolean => {
         </main>
 
         <CommandPalette v-model="commandPaletteOpen" />
+
+        <!-- Spawn Agent Modal (accessible from sidebar) -->
+        <SpawnAgentModal
+          v-model:open="showSpawnModal"
+          @spawn="handleAgentSpawned"
+        />
       </div>
     </RealtimeProvider>
   </TooltipProvider>

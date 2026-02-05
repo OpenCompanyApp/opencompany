@@ -64,7 +64,16 @@
 
     <!-- Navigation slot -->
     <slot name="navigation">
-      <SidebarNav :collapsed="collapsed" size="sm" :show-shortcuts="false" :show-quick-actions="false" />
+      <SidebarNav
+        :collapsed="collapsed"
+        size="sm"
+        :show-shortcuts="false"
+        :show-quick-actions="false"
+        :agents="agents"
+        :online-agents="onlineAgents"
+        :total-agents="totalAgents"
+        @spawn-agent="emit('spawnAgent')"
+      />
     </slot>
 
     <!-- Bottom section -->
@@ -143,12 +152,26 @@ import Tooltip from '@/Components/shared/Tooltip.vue'
 // Types
 type SidebarVariant = 'default' | 'floating' | 'minimal'
 
+interface SidebarAgent {
+  id: string
+  name: string
+  status?: 'online' | 'busy' | 'idle' | 'offline'
+  currentTask?: string
+  isAI: boolean
+}
+
 // Props
 const props = withDefaults(defineProps<{
   variant?: SidebarVariant
   class?: string
+  agents?: SidebarAgent[]
+  onlineAgents?: number
+  totalAgents?: number
 }>(), {
   variant: 'default',
+  agents: () => [],
+  onlineAgents: 0,
+  totalAgents: 0,
 })
 
 const collapsed = defineModel<boolean>('collapsed', { default: false })
@@ -162,6 +185,7 @@ const isActive = (path: string): boolean => {
 
 const emit = defineEmits<{
   searchClick: []
+  spawnAgent: []
 }>()
 
 const handleCollapse = () => {

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Agents\Tools\ToolRegistry;
 use App\Http\Controllers\Controller;
+use App\Models\Channel;
+use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
 use App\Models\Task;
 use App\Models\User;
@@ -59,15 +61,19 @@ class AgentController extends Controller
 
         [$provider] = explode(':', $validated['brain'], 2);
 
-        // Verify the integration is enabled
-        $integration = IntegrationSetting::where('integration_id', $provider)
-            ->where('enabled', true)
-            ->first();
+        // Standard providers use .env keys; only check IntegrationSetting for custom providers
+        $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama'];
 
-        if (!$integration) {
-            return response()->json([
-                'error' => "AI model provider '{$provider}' is not configured or enabled. Please configure it in Integrations.",
-            ], 422);
+        if (!in_array($provider, $standardProviders)) {
+            $integration = IntegrationSetting::where('integration_id', $provider)
+                ->where('enabled', true)
+                ->first();
+
+            if (!$integration) {
+                return response()->json([
+                    'error' => "AI model provider '{$provider}' is not configured or enabled. Please configure it in Integrations.",
+                ], 422);
+            }
         }
 
         // Create the agent user
@@ -89,6 +95,34 @@ class AgentController extends Controller
 
         // Store the folder reference
         $agent->update(['docs_folder_id' => $agentFolder->id]);
+
+        // Create DM channel between creator and agent
+        $creatorId = $request->user()?->id ?? 'h1';
+        $creator = User::find($creatorId);
+        $dmChannel = Channel::create([
+            'id' => Str::uuid()->toString(),
+            'name' => 'DM: ' . ($creator?->name ?? 'User') . ' ↔ ' . $agent->name,
+            'type' => 'dm',
+            'is_ephemeral' => false,
+        ]);
+
+        ChannelMember::create([
+            'channel_id' => $dmChannel->id,
+            'user_id' => $creatorId,
+        ]);
+        ChannelMember::create([
+            'channel_id' => $dmChannel->id,
+            'user_id' => $agent->id,
+        ]);
+
+        // Add agent to #general channel by default
+        $generalChannel = Channel::where('name', 'general')->first();
+        if ($generalChannel) {
+            ChannelMember::create([
+                'channel_id' => $generalChannel->id,
+                'user_id' => $agent->id,
+            ]);
+        }
 
         return response()->json($agent->fresh(), 201);
     }
@@ -233,14 +267,18 @@ class AgentController extends Controller
             }
 
             [$provider] = explode(':', $validated['brain'], 2);
-            $integration = IntegrationSetting::where('integration_id', $provider)
-                ->where('enabled', true)
-                ->first();
+            $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama'];
 
-            if (!$integration) {
-                return response()->json([
-                    'error' => "AI model provider '{$provider}' is not configured or enabled.",
-                ], 422);
+            if (!in_array($provider, $standardProviders)) {
+                $integration = IntegrationSetting::where('integration_id', $provider)
+                    ->where('enabled', true)
+                    ->first();
+
+                if (!$integration) {
+                    return response()->json([
+                        'error' => "AI model provider '{$provider}' is not configured or enabled.",
+                    ], 422);
+                }
             }
         }
 

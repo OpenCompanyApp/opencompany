@@ -51,27 +51,36 @@
     </div>
 
     <!-- Agents Section (collapsible) -->
-    <CollapsibleRoot v-if="agents.length > 0 || loading" v-model:open="agentsSectionOpen" class="mt-3 mb-3">
-      <CollapsibleTrigger
-        v-if="!collapsed"
-        class="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors duration-150"
-      >
-        <Icon
-          name="ph:caret-down"
-          :class="[
-            'w-3 h-3 transition-transform duration-150',
-            !agentsSectionOpen && '-rotate-90'
-          ]"
-        />
-        <span>Agents</span>
-        <span
-          v-if="onlineAgents > 0"
-          class="ml-auto flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500"
+    <CollapsibleRoot v-model:open="agentsSectionOpen" class="mt-3 mb-3">
+      <div v-if="!collapsed" class="flex items-center gap-1 px-3">
+        <CollapsibleTrigger
+          class="flex-1 flex items-center gap-2 py-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors duration-150"
         >
-          <span class="w-1.5 h-1.5 bg-green-500 rounded-full" />
-          {{ onlineAgents }}
-        </span>
-      </CollapsibleTrigger>
+          <Icon
+            name="ph:caret-down"
+            :class="[
+              'w-3 h-3 transition-transform duration-150',
+              !agentsSectionOpen && '-rotate-90'
+            ]"
+          />
+          <span>Agents</span>
+          <span
+            v-if="onlineAgents > 0"
+            class="ml-auto flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500"
+          >
+            <span class="w-1.5 h-1.5 bg-green-500 rounded-full" />
+            {{ onlineAgents }}
+          </span>
+        </CollapsibleTrigger>
+        <button
+          type="button"
+          class="p-1 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors duration-150"
+          title="Spawn new agent"
+          @click.stop="emit('spawnAgent')"
+        >
+          <Icon name="ph:plus" class="w-3.5 h-3.5" />
+        </button>
+      </div>
 
       <CollapsibleContent>
         <div class="mt-1 space-y-0.5">
@@ -153,6 +162,11 @@ const props = withDefaults(defineProps<{
   totalAgents: 0,
   onlineAgents: 0,
 })
+
+// Emits
+const emit = defineEmits<{
+  spawnAgent: []
+}>()
 
 // Composables
 const page = usePage()
