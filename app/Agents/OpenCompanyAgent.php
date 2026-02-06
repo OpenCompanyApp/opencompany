@@ -51,7 +51,12 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         $identityFiles = $this->docService->getIdentityFiles($this->agent);
 
         if ($identityFiles->isEmpty()) {
-            return "You are {$this->agent->name}, a helpful AI assistant working within a company workspace. You can search documents, send messages, and track task progress.\n\n" . $this->buildChannelContext();
+            $fallback = "You are {$this->agent->name}, a helpful AI assistant working within a company workspace.\n\n";
+            $fallback .= $this->buildChannelContext();
+            $fallback .= "## Apps\n\n";
+            $fallback .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
+            $fallback .= "Call get_tool_info(name) for parameter details before using an unfamiliar tool.\n";
+            return $fallback;
         }
 
         $prompt = "# Project Context\n\n";
@@ -69,56 +74,10 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         // Add current channel context
         $prompt .= $this->buildChannelContext();
 
-        $prompt .= "## Available Tools\n\n";
-        $prompt .= "You have access to the following tools:\n";
-
-        foreach ($this->tools() as $tool) {
-            $isWrapped = $tool instanceof Tools\ApprovalWrappedTool;
-            $innerTool = $isWrapped ? $tool->getInnerTool() : $tool;
-            $name = strtolower(preg_replace('/([A-Z])/', '_$1', lcfirst(class_basename($innerTool))));
-            $desc = $innerTool->description();
-            $approval = $isWrapped ? ' (requires approval)' : '';
-            $prompt .= "- **{$name}**: {$desc}{$approval}\n";
-        }
-
-        $prompt .= "\nUse these tools when appropriate to help users effectively.\n";
-
-        // Add approval workflow context if any tools require approval
-        $hasApprovalTools = false;
-        foreach ($this->tools() as $tool) {
-            if ($tool instanceof Tools\ApprovalWrappedTool) {
-                $hasApprovalTools = true;
-                break;
-            }
-        }
-
-        if ($hasApprovalTools) {
-            $prompt .= "\n## Approval Workflow\n\n";
-            if ($this->agent->must_wait_for_approval) {
-                $prompt .= "When you use a tool that requires approval, you will automatically pause until the approval is decided. Tell the user you are waiting for their decision.\n";
-            } else {
-                $prompt .= "When you use a tool that requires approval, decide whether to wait for the decision or continue working:\n";
-                $prompt .= "- If your next steps depend on the tool's result, call `wait_for_approval` with the approval ID to pause until it's decided.\n";
-                $prompt .= "- If the action is a side-effect and you can continue without the result, keep working — the action will execute when approved.\n";
-            }
-        }
-
-        // Add wait/sleep context if the wait tool is available
-        $hasWaitTool = false;
-        foreach ($this->tools() as $tool) {
-            $inner = $tool instanceof Tools\ApprovalWrappedTool ? $tool->getInnerTool() : $tool;
-            if ($inner instanceof Tools\Wait) {
-                $hasWaitTool = true;
-                break;
-            }
-        }
-
-        if ($hasWaitTool) {
-            $prompt .= "\n## Wait / Sleep\n\n";
-            $prompt .= "You can use the `wait` tool to pause execution for a specified number of minutes (up to 7 days). ";
-            $prompt .= "Use this when you need to wait for an external process, check back on something later, ";
-            $prompt .= "or schedule a follow-up action. You will be automatically resumed when the wait period ends.\n";
-        }
+        $prompt .= "## Apps\n\n";
+        $prompt .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
+        $prompt .= "Call get_tool_info(name) for parameter details before using an unfamiliar tool.\n";
+        $prompt .= "Tools marked with * require approval.\n";
 
         return $prompt;
     }

@@ -8,6 +8,53 @@ use App\Services\AgentPermissionService;
 class ToolRegistry
 {
     /**
+     * App groups for compact system prompt catalog.
+     * Maps app name => [tool slugs] + description.
+     */
+    public const APP_GROUPS = [
+        'chat' => [
+            'tools' => ['send_channel_message', 'read_channel', 'list_channels', 'manage_message'],
+            'label' => 'send, read, list, manage',
+            'description' => 'Channel messaging and operations',
+        ],
+        'docs' => [
+            'tools' => ['search_documents', 'manage_document', 'comment_on_document'],
+            'label' => 'search, manage, comment',
+            'description' => 'Document workspace',
+        ],
+        'tables' => [
+            'tools' => ['query_table', 'manage_table', 'manage_table_rows'],
+            'label' => 'query, manage, rows',
+            'description' => 'Structured data tables',
+        ],
+        'calendar' => [
+            'tools' => ['query_calendar', 'manage_calendar_event'],
+            'label' => 'query, manage',
+            'description' => 'Events and scheduling',
+        ],
+        'lists' => [
+            'tools' => ['query_list_items', 'manage_list_item'],
+            'label' => 'query, manage',
+            'description' => 'Kanban board items',
+        ],
+        'tasks' => [
+            'tools' => ['create_task_step'],
+            'label' => 'log_step',
+            'description' => 'Work progress tracking',
+        ],
+        'telegram' => [
+            'tools' => ['send_telegram_notification'],
+            'label' => 'notify',
+            'description' => 'External notifications',
+        ],
+        'system' => [
+            'tools' => ['wait', 'wait_for_approval'],
+            'label' => 'wait, wait_for_approval',
+            'description' => 'Execution control',
+        ],
+    ];
+
+    /**
      * Registry of all available tools with metadata.
      */
     private const TOOL_MAP = [
@@ -130,6 +177,14 @@ class ToolRegistry
             'description' => 'Send a notification to a Telegram chat.',
             'icon' => 'ph:telegram-logo',
         ],
+        // Meta
+        'get_tool_info' => [
+            'class' => GetToolInfo::class,
+            'type' => 'read',
+            'name' => 'Get Tool Info',
+            'description' => 'Get detailed parameter info for a tool or app before using it.',
+            'icon' => 'ph:info',
+        ],
         // Control Flow
         'wait_for_approval' => [
             'class' => WaitForApproval::class,
@@ -222,6 +277,144 @@ class ToolRegistry
     }
 
     /**
+     * Build a compact app catalog string for the system prompt.
+     * Only includes apps that have at least one allowed tool for the agent.
+     */
+    public function getAppCatalog(User $agent): string
+    {
+        $lines = [];
+
+        foreach (self::APP_GROUPS as $appName => $group) {
+            // Check which tools in this app the agent has access to
+            $allowedSlugs = [];
+            $hasApproval = false;
+
+            foreach ($group['tools'] as $slug) {
+                if (!isset(self::TOOL_MAP[$slug])) {
+                    continue;
+                }
+                $result = $this->permissionService->resolveToolPermission(
+                    $agent, $slug, self::TOOL_MAP[$slug]['type']
+                );
+                if ($result['allowed']) {
+                    // Use short action name from slug (last part after underscore prefix)
+                    $allowedSlugs[] = $slug;
+                    if ($result['requires_approval']) {
+                        $hasApproval = true;
+                    }
+                }
+            }
+
+            if (empty($allowedSlugs)) {
+                continue;
+            }
+
+            $approval = $hasApproval ? ' *' : '';
+            $lines[] = "{$appName}: {$group['label']} — {$group['description']}{$approval}";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Get detailed info about a tool or app for the get_tool_info meta-tool.
+     */
+    public function getToolDetail(string $query, User $agent): string
+    {
+        // Check if query matches an app name
+        $queryLower = strtolower(trim($query));
+        if (isset(self::APP_GROUPS[$queryLower])) {
+            return $this->getAppDetail($queryLower, $agent);
+        }
+
+        // Check if query matches a tool slug
+        if (isset(self::TOOL_MAP[$queryLower])) {
+            return $this->getSingleToolDetail($queryLower, $agent);
+        }
+
+        // Fuzzy search — try to find a matching tool
+        foreach (self::TOOL_MAP as $slug => $meta) {
+            if (str_contains($slug, $queryLower) || str_contains(strtolower($meta['name']), $queryLower)) {
+                return $this->getSingleToolDetail($slug, $agent);
+            }
+        }
+
+        // List available apps
+        $apps = implode(', ', array_keys(self::APP_GROUPS));
+        $tools = implode(', ', array_keys(self::TOOL_MAP));
+        return "Not found: '{$query}'. Available apps: {$apps}. Or query a specific tool: {$tools}";
+    }
+
+    private function getAppDetail(string $appName, User $agent): string
+    {
+        $group = self::APP_GROUPS[$appName];
+        $lines = ["App: {$appName} — {$group['description']}", '', 'Tools:'];
+
+        foreach ($group['tools'] as $slug) {
+            if (!isset(self::TOOL_MAP[$slug])) {
+                continue;
+            }
+            $meta = self::TOOL_MAP[$slug];
+            $perm = $this->permissionService->resolveToolPermission($agent, $slug, $meta['type']);
+
+            if (!$perm['allowed']) {
+                continue;
+            }
+
+            $approval = $perm['requires_approval'] ? ' (requires approval)' : '';
+            $tool = $this->instantiateTool($meta['class'], $agent);
+            $schema = $tool->schema(new \Illuminate\JsonSchema\JsonSchemaTypeFactory);
+
+            $params = [];
+            foreach ($schema as $paramName => $paramSchema) {
+                $arr = method_exists($paramSchema, 'toArray') ? $paramSchema->toArray() : [];
+                $required = !empty($arr['required']) ? ', required' : '';
+                $desc = $arr['description'] ?? '';
+                $params[] = "      {$paramName}{$required}" . ($desc ? " — {$desc}" : '');
+            }
+
+            $lines[] = "  {$slug} ({$meta['type']}){$approval} — {$meta['description']}";
+            if (!empty($params)) {
+                $lines[] = "    Params:";
+                $lines = array_merge($lines, $params);
+            }
+            $lines[] = '';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function getSingleToolDetail(string $slug, User $agent): string
+    {
+        $meta = self::TOOL_MAP[$slug];
+        $perm = $this->permissionService->resolveToolPermission($agent, $slug, $meta['type']);
+
+        if (!$perm['allowed']) {
+            return "You do not have permission to use '{$slug}'.";
+        }
+
+        $approval = $perm['requires_approval'] ? 'yes' : 'no';
+        $tool = $this->instantiateTool($meta['class'], $agent);
+        $schema = $tool->schema(new \Illuminate\JsonSchema\JsonSchemaTypeFactory);
+
+        $lines = [
+            "{$slug} — {$meta['description']}",
+            "Type: {$meta['type']} | Requires approval: {$approval}",
+            '',
+            'Parameters:',
+        ];
+
+        foreach ($schema as $paramName => $paramSchema) {
+            $arr = method_exists($paramSchema, 'toArray') ? $paramSchema->toArray() : [];
+            $required = !empty($arr['required']) ? ' (required)' : '';
+            $desc = $arr['description'] ?? '';
+            $lines[] = "  {$paramName}{$required}" . ($desc ? " — {$desc}" : '');
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
      * Instantiate a tool class with the appropriate constructor arguments.
      */
     private function instantiateTool(string $class, User $agent): \Laravel\Ai\Contracts\Tool
@@ -235,6 +428,7 @@ class ToolRegistry
             ManageDocument::class => new ManageDocument($agent, $this->permissionService),
             CommentOnDocument::class => new CommentOnDocument($agent, $this->permissionService),
             ListChannels::class => new ListChannels($agent),
+            GetToolInfo::class => new GetToolInfo($agent, $this),
             // Tools needing only agent
             QueryTable::class => new QueryTable($agent),
             ManageTable::class => new ManageTable($agent),
