@@ -55,6 +55,11 @@ class ToolRegistry
             'label' => 'create',
             'description' => 'Generate chart images (JpGraph)',
         ],
+        'svg' => [
+            'tools' => ['render_svg'],
+            'label' => 'render',
+            'description' => 'Render SVG markup to PNG images',
+        ],
         'telegram' => [
             'tools' => ['send_telegram_notification'],
             'label' => 'notify',
@@ -89,6 +94,7 @@ class ToolRegistry
         'lists' => 'ph:kanban',
         'tasks' => 'ph:list-checks',
         'jpgraph_charts' => 'ph:chart-bar',
+        'svg' => 'ph:file-svg',
         'telegram' => 'ph:telegram-logo',
         'plausible' => 'ph:chart-line-up',
         'system' => 'ph:gear',
@@ -233,6 +239,14 @@ class ToolRegistry
             'description' => 'Generate chart images (bar, line, pie, scatter, radar, stock, gantt, and 14 more types) from data.',
             'icon' => 'ph:chart-bar',
         ],
+        // SVG
+        'render_svg' => [
+            'class' => RenderSvg::class,
+            'type' => 'write',
+            'name' => 'Render SVG',
+            'description' => 'Convert SVG markup to a PNG image.',
+            'icon' => 'ph:file-svg',
+        ],
         // External
         'send_telegram_notification' => [
             'class' => SendTelegramNotification::class,
@@ -364,6 +378,30 @@ class ToolRegistry
         }
 
         return $tools;
+    }
+
+    /**
+     * Get the slugs of tools available to a given agent.
+     */
+    public function getToolSlugsForAgent(User $agent): array
+    {
+        $enabledIntegrations = $this->permissionService->getEnabledIntegrations($agent);
+        $appLookup = $this->buildAppLookup();
+        $slugs = [];
+
+        foreach (self::TOOL_MAP as $slug => $meta) {
+            $app = $appLookup[$slug] ?? 'other';
+            if (in_array($app, self::INTEGRATION_APPS) && !in_array($app, $enabledIntegrations)) {
+                continue;
+            }
+
+            $result = $this->permissionService->resolveToolPermission($agent, $slug, $meta['type']);
+            if ($result['allowed']) {
+                $slugs[] = $slug;
+            }
+        }
+
+        return $slugs;
     }
 
     /**
@@ -618,6 +656,7 @@ class ToolRegistry
             UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
             CreateJpGraphChart::class => new CreateJpGraphChart($agent),
+            RenderSvg::class => new RenderSvg($agent),
             SendTelegramNotification::class => new SendTelegramNotification($agent),
             PlausibleQueryStats::class => new PlausibleQueryStats($agent),
             PlausibleRealtimeVisitors::class => new PlausibleRealtimeVisitors($agent),

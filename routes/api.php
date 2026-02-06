@@ -82,23 +82,23 @@ Route::post('/list-templates/{id}/create-item', [ListTemplateController::class, 
 // Tasks (discrete work items - cases)
 Route::get('/tasks', [TaskController::class, 'index']);
 Route::post('/tasks', [TaskController::class, 'store']);
-Route::get('/tasks/{id}', [TaskController::class, 'show']);
-Route::patch('/tasks/{id}', [TaskController::class, 'update']);
-Route::delete('/tasks/{id}', [TaskController::class, 'destroy']);
+Route::get('/tasks/{id}', [TaskController::class, 'show'])->whereUuid('id');
+Route::patch('/tasks/{id}', [TaskController::class, 'update'])->whereUuid('id');
+Route::delete('/tasks/{id}', [TaskController::class, 'destroy'])->whereUuid('id');
 
 // Task Lifecycle
-Route::post('/tasks/{id}/start', [TaskController::class, 'start']);
-Route::post('/tasks/{id}/pause', [TaskController::class, 'pause']);
-Route::post('/tasks/{id}/resume', [TaskController::class, 'resume']);
-Route::post('/tasks/{id}/complete', [TaskController::class, 'complete']);
-Route::post('/tasks/{id}/fail', [TaskController::class, 'fail']);
-Route::post('/tasks/{id}/cancel', [TaskController::class, 'cancel']);
+Route::post('/tasks/{id}/start', [TaskController::class, 'start'])->whereUuid('id');
+Route::post('/tasks/{id}/pause', [TaskController::class, 'pause'])->whereUuid('id');
+Route::post('/tasks/{id}/resume', [TaskController::class, 'resume'])->whereUuid('id');
+Route::post('/tasks/{id}/complete', [TaskController::class, 'complete'])->whereUuid('id');
+Route::post('/tasks/{id}/fail', [TaskController::class, 'fail'])->whereUuid('id');
+Route::post('/tasks/{id}/cancel', [TaskController::class, 'cancel'])->whereUuid('id');
 
 // Task Steps
-Route::get('/tasks/{id}/steps', [TaskController::class, 'steps']);
-Route::post('/tasks/{id}/steps', [TaskController::class, 'addStep']);
-Route::patch('/tasks/{taskId}/steps/{stepId}', [TaskController::class, 'updateStep']);
-Route::post('/tasks/{taskId}/steps/{stepId}/complete', [TaskController::class, 'completeStep']);
+Route::get('/tasks/{id}/steps', [TaskController::class, 'steps'])->whereUuid('id');
+Route::post('/tasks/{id}/steps', [TaskController::class, 'addStep'])->whereUuid('id');
+Route::patch('/tasks/{taskId}/steps/{stepId}', [TaskController::class, 'updateStep'])->whereUuid('taskId')->whereUuid('stepId');
+Route::post('/tasks/{taskId}/steps/{stepId}/complete', [TaskController::class, 'completeStep'])->whereUuid('taskId')->whereUuid('stepId');
 
 // Automation Rules (for list items)
 Route::get('/automation-rules', [AutomationRuleController::class, 'index']);

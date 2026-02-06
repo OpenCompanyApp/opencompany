@@ -84,6 +84,26 @@ class AgentRespondJob implements ShouldQueue
             // Create the agent and get a response (task context is in system prompt)
             $agentInstance = OpenCompanyAgent::for($this->agent, $this->channelId, $task->id);
 
+            // Capture LLM context before prompting (for observability)
+            try {
+                $toolRegistry = app(\App\Agents\Tools\ToolRegistry::class);
+                $task->update([
+                    'context' => [
+                        'system_prompt' => $agentInstance->instructions(),
+                        'messages' => collect($agentInstance->messages())
+                            ->map(fn ($m) => [
+                                'role' => $m->role->value,
+                                'content' => Str::limit($m->content ?? '', 2000),
+                            ])->values()->toArray(),
+                        'tools' => $toolRegistry->getToolSlugsForAgent($this->agent),
+                        'model' => $agentInstance->model(),
+                        'provider' => $agentInstance->provider(),
+                    ],
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to capture LLM context', ['error' => $e->getMessage()]);
+            }
+
             $response = $agentInstance->prompt($this->userMessage->content);
 
             $responseText = $response->text;
@@ -110,8 +130,8 @@ class AgentRespondJob implements ShouldQueue
                 'timestamp' => now(),
             ]);
 
-            // Save chart images from tool results as message attachments
-            $this->saveChartAttachments($response, $agentMessage);
+            // Save generated images from tool results as message attachments
+            $this->saveImageAttachments($response, $agentMessage);
 
             // Update channel timestamp
             Channel::where('id', $this->channelId)
@@ -135,8 +155,11 @@ class AgentRespondJob implements ShouldQueue
 
             // Complete the task
             $task->complete([
-                'response' => Str::limit($responseText, 500),
-                'tokens' => $response->usage?->totalTokens ?? null,
+                'response' => $responseText,
+                'prompt_tokens' => $response->usage?->promptTokens ?? null,
+                'completion_tokens' => $response->usage?->completionTokens ?? null,
+                'cache_read_tokens' => $response->usage?->cacheReadInputTokens ?? null,
+                'cache_write_tokens' => $response->usage?->cacheWriteInputTokens ?? null,
                 'tool_calls_count' => $response->toolCalls->count(),
             ]);
 
@@ -187,35 +210,37 @@ class AgentRespondJob implements ShouldQueue
     }
 
     /**
-     * Save chart images from tool call results as message attachments.
+     * Save generated images from tool call results as message attachments.
      */
-    private function saveChartAttachments($response, Message $message): void
+    private function saveImageAttachments($response, Message $message): void
     {
         try {
-            foreach ($response->toolResults as $toolResult) {
-                if ($toolResult->name !== 'create_jpgraph_chart') {
-                    continue;
-                }
+            foreach ($response->steps as $step) {
+                foreach ($step->toolResults as $toolResult) {
+                    if (!in_array($toolResult->name, ['create_jpgraph_chart', 'render_svg'])) {
+                        continue;
+                    }
 
-                $result = $toolResult->result ?? '';
-                if (preg_match('#(/storage/charts/[a-f0-9-]+\.png)#', $result, $m)) {
-                    $url = $m[1];
-                    $filePath = storage_path('app/public/' . str_replace('/storage/', '', $url));
+                    $result = $toolResult->result ?? '';
+                    if (preg_match('#(/storage/(?:charts|svg)/[a-f0-9-]+\.png)#', $result, $m)) {
+                        $url = $m[1];
+                        $filePath = storage_path('app/public/' . str_replace('/storage/', '', $url));
 
-                    MessageAttachment::create([
-                        'id' => Str::uuid()->toString(),
-                        'message_id' => $message->id,
-                        'filename' => basename($url),
-                        'original_name' => basename($url),
-                        'mime_type' => 'image/png',
-                        'size' => file_exists($filePath) ? filesize($filePath) : 0,
-                        'url' => $url,
-                        'uploaded_by_id' => $this->agent->id,
-                    ]);
+                        MessageAttachment::create([
+                            'id' => Str::uuid()->toString(),
+                            'message_id' => $message->id,
+                            'filename' => basename($url),
+                            'original_name' => basename($url),
+                            'mime_type' => 'image/png',
+                            'size' => file_exists($filePath) ? filesize($filePath) : 0,
+                            'url' => $url,
+                            'uploaded_by_id' => $this->agent->id,
+                        ]);
+                    }
                 }
             }
         } catch (\Throwable $e) {
-            Log::warning('Failed to save chart attachments', ['error' => $e->getMessage()]);
+            Log::warning('Failed to save image attachments', ['error' => $e->getMessage()]);
         }
     }
 
@@ -225,13 +250,27 @@ class AgentRespondJob implements ShouldQueue
     private function logToolSteps(Task $task, $response): void
     {
         foreach ($response->steps as $step) {
+            // Build a lookup of tool results keyed by tool call ID
+            $resultsByCallId = [];
+            foreach ($step->toolResults as $toolResult) {
+                $resultsByCallId[$toolResult->id] = $toolResult->result;
+            }
+
             foreach ($step->toolCalls as $toolCall) {
+                $result = $resultsByCallId[$toolCall->id] ?? null;
+
+                // Truncate large string results to prevent DB bloat
+                if (is_string($result) && strlen($result) > 2000) {
+                    $result = substr($result, 0, 2000) . '... [truncated]';
+                }
+
                 $toolStep = $task->addStep(
                     "Used tool: {$toolCall->name}",
                     'action',
                     [
                         'tool' => $toolCall->name,
                         'arguments' => $toolCall->arguments,
+                        'result' => $result,
                     ]
                 );
                 $toolStep->start();

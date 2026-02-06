@@ -43,7 +43,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/tasks/{id}', function (string $id) {
         return Inertia::render('Tasks/Show', ['taskId' => $id]);
-    })->name('tasks.show');
+    })->whereUuid('id')->name('tasks.show');
 
     // Lists (kanban boards - formerly Tasks)
     Route::get('/lists', function () {

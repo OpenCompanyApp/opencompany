@@ -319,19 +319,12 @@
       </div>
     </div>
 
-    <!-- Task Detail Drawer -->
-    <TaskDetailDrawer
-      v-if="selectedTask"
-      :task="selectedTask"
-      :open="taskDrawerOpen"
-      @close="closeTaskDrawer"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import SharedSkeleton from '@/Components/shared/Skeleton.vue'
 import AgentIdentityCard from '@/Components/agents/AgentIdentityCard.vue'
@@ -340,7 +333,6 @@ import AgentInstructionsEditor from '@/Components/agents/AgentInstructionsEditor
 import AgentCapabilities from '@/Components/agents/AgentCapabilities.vue'
 import AgentMemoryView from '@/Components/agents/AgentMemoryView.vue'
 import AgentSettingsPanel from '@/Components/agents/AgentSettingsPanel.vue'
-import TaskDetailDrawer from '@/Components/tasks/TaskDetailDrawer.vue'
 import { useApi } from '@/composables/useApi'
 import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask, AgentMemoryEntry } from '@/types'
 
@@ -366,8 +358,6 @@ const activityLog = ref<ActivityItem[]>([])
 const capabilityNotes = ref('')
 const memoryContent = ref('')
 const agentTasks = ref<AgentTask[]>([])
-const selectedTask = ref<AgentTask | null>(null)
-const taskDrawerOpen = ref(false)
 const behaviorMode = ref<AgentBehaviorMode>('autonomous')
 const mustWaitForApproval = ref(false)
 const channelPermissions = ref<string[]>([])
@@ -807,13 +797,7 @@ const taskTypeIcons: Record<string, string> = {
 }
 
 const openTaskDetail = (task: AgentTask) => {
-  selectedTask.value = task
-  taskDrawerOpen.value = true
-}
-
-const closeTaskDrawer = () => {
-  taskDrawerOpen.value = false
-  selectedTask.value = null
+  router.visit(`/tasks/${task.id}`)
 }
 
 onMounted(() => {

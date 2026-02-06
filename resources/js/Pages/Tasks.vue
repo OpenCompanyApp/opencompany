@@ -169,19 +169,6 @@
       </div>
     </div>
 
-    <!-- Task Detail Drawer -->
-    <TaskDetailDrawer
-      v-if="selectedTask"
-      v-model:open="taskDetailOpen"
-      :task="selectedTask"
-      @update="handleTaskUpdate"
-      @start="handleTaskStart"
-      @pause="handleTaskPause"
-      @resume="handleTaskResume"
-      @complete="handleTaskComplete"
-      @cancel="handleTaskCancel"
-    />
-
     <!-- Task Create Modal -->
     <Modal v-model:open="createModalOpen" title="New Task">
       <form @submit.prevent="handleCreateTask" class="space-y-4">
@@ -282,18 +269,12 @@ import type { AgentTask, TaskStatus, TaskType, Priority, User } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Modal from '@/Components/shared/Modal.vue'
-import TaskDetailDrawer from '@/Components/tasks/TaskDetailDrawer.vue'
 import { useApi } from '@/composables/useApi'
 
 const {
   fetchAgentTasks,
   fetchAgents,
   createAgentTask,
-  startAgentTask,
-  pauseAgentTask,
-  resumeAgentTask,
-  completeAgentTask,
-  cancelAgentTask,
 } = useApi()
 
 const currentUserId = ref('h1')
@@ -304,8 +285,6 @@ const { data: agentsData } = fetchAgents()
 const currentFilter = ref<'all' | 'pending' | 'active' | 'completed'>('all')
 const agentFilter = ref('')
 const sourceFilter = ref('')
-const selectedTask = ref<AgentTask | null>(null)
-const taskDetailOpen = ref(false)
 const createModalOpen = ref(false)
 
 const newTask = ref({
@@ -383,43 +362,7 @@ const timeAgo = (date: Date | string) => {
 }
 
 const openTaskDetail = (task: AgentTask) => {
-  selectedTask.value = task
-  taskDetailOpen.value = true
-}
-
-const handleTaskUpdate = async () => {
-  await refreshTasks()
-  if (selectedTask.value) {
-    const updated = tasks.value.find(t => t.id === selectedTask.value!.id)
-    if (updated) {
-      selectedTask.value = updated
-    }
-  }
-}
-
-const handleTaskStart = async (taskId: string) => {
-  await startAgentTask(taskId)
-  await handleTaskUpdate()
-}
-
-const handleTaskPause = async (taskId: string) => {
-  await pauseAgentTask(taskId)
-  await handleTaskUpdate()
-}
-
-const handleTaskResume = async (taskId: string) => {
-  await resumeAgentTask(taskId)
-  await handleTaskUpdate()
-}
-
-const handleTaskComplete = async (taskId: string, result?: Record<string, unknown>) => {
-  await completeAgentTask(taskId, result)
-  await handleTaskUpdate()
-}
-
-const handleTaskCancel = async (taskId: string) => {
-  await cancelAgentTask(taskId)
-  await handleTaskUpdate()
+  router.visit(`/tasks/${task.id}`)
 }
 
 const handleCreateTask = async () => {

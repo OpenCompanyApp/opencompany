@@ -23,3 +23,16 @@ Schedule::call(function () {
         }
     }
 })->daily()->name('cleanup-charts');
+
+Schedule::call(function () {
+    $dir = storage_path('app/public/svg');
+    if (!is_dir($dir)) {
+        return;
+    }
+    $cutoff = now()->subDays(7)->getTimestamp();
+    foreach (glob($dir . '/*.png') as $file) {
+        if (filemtime($file) < $cutoff) {
+            unlink($file);
+        }
+    }
+})->daily()->name('cleanup-svg');
