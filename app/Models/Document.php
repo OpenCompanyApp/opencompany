@@ -29,6 +29,19 @@ class Document extends Model
         ];
     }
 
+    public function toArray()
+    {
+        $array = parent::toArray();
+
+        $array['isFolder'] = $this->is_folder;
+        $array['parentId'] = $this->parent_id;
+        $array['authorId'] = $this->author_id;
+        $array['createdAt'] = $this->created_at;
+        $array['updatedAt'] = $this->updated_at;
+
+        return $array;
+    }
+
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');

@@ -33,6 +33,21 @@ class CalendarEvent extends Model
         ];
     }
 
+    public function toArray()
+    {
+        $array = parent::toArray();
+
+        $array['startAt'] = $this->start_at;
+        $array['endAt'] = $this->end_at;
+        $array['allDay'] = $this->all_day;
+        $array['createdBy'] = $this->created_by;
+        $array['recurrenceRule'] = $this->recurrence_rule;
+        $array['createdAt'] = $this->created_at;
+        $array['updatedAt'] = $this->updated_at;
+
+        return $array;
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

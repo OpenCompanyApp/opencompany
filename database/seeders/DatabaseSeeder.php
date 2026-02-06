@@ -24,6 +24,8 @@ class DatabaseSeeder extends Seeder
             NotificationSeeder::class,
             DirectMessageSeeder::class,
             AgentPermissionSeeder::class,
+            DataTableSeeder::class,
+            CalendarEventSeeder::class,
         ]);
     }
 }

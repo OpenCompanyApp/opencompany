@@ -18,7 +18,7 @@ class DocumentController extends Controller
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        return DocumentResource::collection($documents);
+        return $documents;
     }
 
     public function show(string $id)
@@ -48,7 +48,7 @@ class DocumentController extends Controller
                     'id' => Str::uuid()->toString(),
                     'document_id' => $document->id,
                     'user_id' => $userId,
-                    'permission' => 'view',
+                    'role' => 'viewer',
                 ]);
             }
         }
@@ -60,7 +60,7 @@ class DocumentController extends Controller
                     'id' => Str::uuid()->toString(),
                     'document_id' => $document->id,
                     'user_id' => $userId,
-                    'permission' => 'edit',
+                    'role' => 'editor',
                 ]);
             }
         }

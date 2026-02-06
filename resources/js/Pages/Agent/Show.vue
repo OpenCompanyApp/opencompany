@@ -629,9 +629,16 @@ const deleteMemoryEntry = (id: string) => {
   console.log('Delete memory entry:', id)
 }
 
-const updateSettings = (settings: AgentSettings) => {
-  // Settings persistence deferred to Sprint 2
-  console.log('Update settings:', settings)
+const updateSettings = async (settings: AgentSettings) => {
+  if (!agent.value) return
+  try {
+    await updateAgent(props.id, {
+      behaviorMode: settings.behaviorMode,
+    })
+    agent.value = { ...agent.value, settings } as Agent
+  } catch (e) {
+    console.error('Failed to update settings:', e)
+  }
 }
 
 const updateBrain = async (brain: string) => {

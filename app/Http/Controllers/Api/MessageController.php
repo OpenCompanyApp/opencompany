@@ -61,6 +61,9 @@ class MessageController extends Controller
         // Check if this is a DM with an agent and respond
         $this->handleAgentResponse($message);
 
+        // Check for @mentions of agents in non-DM channels
+        $this->handleMentionedAgents($message);
+
         return $message->load(['author', 'reactions.user', 'attachments', 'replyTo.author']);
     }
 
@@ -114,6 +117,28 @@ class MessageController extends Controller
         $dm->update(['last_message_at' => now()]);
 
         broadcast(new MessageSent($agentMessage));
+    }
+
+    private function handleMentionedAgents(Message $message): void
+    {
+        $channel = Channel::find($message->channel_id);
+        if (!$channel || $channel->type === 'dm') {
+            return; // DMs are handled by handleAgentResponse
+        }
+
+        // Find all agents and check if their name is @mentioned
+        $agents = User::where('type', 'agent')->get();
+
+        foreach ($agents as $agent) {
+            if ($agent->id === $message->author_id) {
+                continue; // Don't respond to own messages
+            }
+
+            // Match @AgentName (case-insensitive)
+            if (preg_match('/@' . preg_quote($agent->name, '/') . '\b/i', $message->content)) {
+                AgentRespondJob::dispatch($message, $agent, $message->channel_id);
+            }
+        }
     }
 
     public function destroy(string $id)

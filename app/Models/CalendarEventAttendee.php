@@ -17,6 +17,16 @@ class CalendarEventAttendee extends Model
         'status',
     ];
 
+    public function toArray()
+    {
+        $array = parent::toArray();
+
+        $array['eventId'] = $this->event_id;
+        $array['userId'] = $this->user_id;
+
+        return $array;
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(CalendarEvent::class, 'event_id');
