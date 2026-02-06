@@ -186,8 +186,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         }
 
         $prompt .= "\nTask management is internal — NEVER mention tasks, steps, or task status in your response to the user.\n";
-        $prompt .= "Call update_current_task(action: \"update_task\") to set title to a short action summary (e.g., \"Generate pirate jokes\").\n";
-        $prompt .= "Before the task completes, set description to a brief summary of what was done. The task cannot complete without a description.\n\n";
+        $prompt .= "ALWAYS call update_current_task(action: \"update_task\") FIRST, before doing anything else, to set:\n";
+        $prompt .= "- title: a short action summary (e.g., \"Generate pirate jokes\"), NOT the user's raw message\n";
+        $prompt .= "- description: brief context of what was requested and what you plan to do\n\n";
 
         return $prompt;
     }

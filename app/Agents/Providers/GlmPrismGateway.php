@@ -5,7 +5,6 @@ namespace App\Agents\Providers;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Gateway\Prism\PrismGateway;
 use Laravel\Ai\Gateway\TextGenerationOptions;
 use Laravel\Ai\Providers\Provider;
@@ -55,12 +54,6 @@ class GlmPrismGateway extends PrismGateway
         ?int $timeout = null,
     ) {
         $resolvedTimeout = $timeout ?? (int) config('prism.request_timeout', 600);
-
-        Log::info('GlmPrismGateway timeout debug', [
-            'incoming_timeout' => $timeout,
-            'config_value' => config('prism.request_timeout'),
-            'resolved_timeout' => $resolvedTimeout,
-        ]);
 
         return parent::createPrismTextRequest(
             $provider,

@@ -28,8 +28,15 @@ class MessageSent implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        return [
-            'message' => $this->message->load(['author', 'reactions.user', 'attachments', 'replyTo.author']),
-        ];
+        $message = $this->message->load(['author', 'reactions.user', 'attachments', 'replyTo.author']);
+        $data = $message->toArray();
+
+        // Truncate long content to stay within Reverb/Pusher payload limits (~10KB)
+        if (strlen($data['content'] ?? '') > 2000) {
+            $data['content'] = mb_substr($data['content'], 0, 2000) . "\n\n…";
+            $data['truncated'] = true;
+        }
+
+        return ['message' => $data];
     }
 }

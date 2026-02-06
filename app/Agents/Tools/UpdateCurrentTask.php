@@ -17,7 +17,7 @@ class UpdateCurrentTask implements Tool
 
     public function description(): string
     {
-        return 'Update your currently running task — set its title and description, add steps, update steps, or set its final status. Set description before completing to summarize what was done.';
+        return 'Update your currently running task — set its title and description, add steps, update steps, or set its final status. Always set a clear title and description at the start of a task.';
     }
 
     public function handle(Request $request): string
@@ -131,10 +131,6 @@ class UpdateCurrentTask implements Tool
 
     private function completeTask(Task $task, mixed $result): string
     {
-        if (empty($task->description)) {
-            return 'Error: set a description (via update_task) before completing. Summarize what was done.';
-        }
-
         $resultArray = is_array($result) ? $result : ($result ? ['summary' => $result] : null);
         $task->complete($resultArray);
 

@@ -39,7 +39,16 @@ class TelegramService
             $params['reply_markup'] = json_encode($replyMarkup);
         }
 
-        return $this->request('sendMessage', $params);
+        try {
+            return $this->request('sendMessage', $params);
+        } catch (\RuntimeException $e) {
+            if (!$replyMarkup && str_contains($e->getMessage(), "can't parse entities")) {
+                $params['text'] = strip_tags($params['text']);
+                unset($params['parse_mode']);
+                return $this->request('sendMessage', $params);
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -131,68 +140,98 @@ class TelegramService
      */
     public static function markdownToTelegramHtml(string $markdown): string
     {
-        // Extract code blocks first to protect them from other transformations
-        $codeBlocks = [];
-        $text = preg_replace_callback('/```(?:\w*)\n(.*?)```/s', function ($m) use (&$codeBlocks) {
-            $placeholder = "\x00CODEBLOCK" . count($codeBlocks) . "\x00";
-            $codeBlocks[$placeholder] = '<pre>' . htmlspecialchars($m[1], ENT_QUOTES, 'UTF-8') . '</pre>';
-            return $placeholder;
+        $protected = [];
+
+        // 1. Extract fenced code blocks (with optional language tag, newline optional)
+        $text = preg_replace_callback('/```(?:\w*)\n?(.*?)```/s', function ($m) use (&$protected) {
+            $id = "\x00BLK" . count($protected) . "\x00";
+            $protected[$id] = '<pre>' . htmlspecialchars(trim($m[1]), ENT_QUOTES, 'UTF-8') . '</pre>';
+            return $id;
         }, $markdown);
 
-        // Convert markdown tables to pre-formatted text
-        $text = preg_replace_callback('/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/m', function ($m) use (&$codeBlocks) {
-            $placeholder = "\x00CODEBLOCK" . count($codeBlocks) . "\x00";
-            $codeBlocks[$placeholder] = '<pre>' . htmlspecialchars(self::formatTable($m[0]), ENT_QUOTES, 'UTF-8') . '</pre>';
-            return $placeholder;
+        // 2. Convert horizontal rules (---, ***, ___) before table detection
+        $text = preg_replace('/^[-*_]{3,}\s*$/m', '───', $text);
+
+        // 3. Convert markdown tables to pre-formatted text
+        $text = preg_replace_callback('/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/m', function ($m) use (&$protected) {
+            $id = "\x00BLK" . count($protected) . "\x00";
+            $protected[$id] = '<pre>' . htmlspecialchars(self::formatTable($m[0]), ENT_QUOTES, 'UTF-8') . '</pre>';
+            return $id;
         }, $text);
 
-        // Extract inline code to protect from other transformations
-        $inlineCodes = [];
-        $text = preg_replace_callback('/`([^`]+)`/', function ($m) use (&$inlineCodes) {
-            $placeholder = "\x00INLINE" . count($inlineCodes) . "\x00";
-            $inlineCodes[$placeholder] = '<code>' . htmlspecialchars($m[1], ENT_QUOTES, 'UTF-8') . '</code>';
-            return $placeholder;
+        // 4. Extract inline code
+        $text = preg_replace_callback('/`([^`]+)`/', function ($m) use (&$protected) {
+            $id = "\x00BLK" . count($protected) . "\x00";
+            $protected[$id] = '<code>' . htmlspecialchars($m[1], ENT_QUOTES, 'UTF-8') . '</code>';
+            return $id;
         }, $text);
 
-        // Escape HTML entities in remaining text
+        // 5. Escape HTML entities in remaining text
         $text = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
 
-        // Convert markdown patterns (order matters)
-        // Bold: **text** or __text__
+        // 6. Convert markdown patterns (order matters)
         $text = preg_replace('/\*\*(.+?)\*\*/s', '<b>$1</b>', $text);
         $text = preg_replace('/__(.+?)__/s', '<b>$1</b>', $text);
-
-        // Italic: *text* or _text_ (but not inside words like some_var_name)
         $text = preg_replace('/(?<!\w)\*([^*]+?)\*(?!\w)/', '<i>$1</i>', $text);
         $text = preg_replace('/(?<!\w)_([^_]+?)_(?!\w)/', '<i>$1</i>', $text);
-
-        // Strikethrough: ~~text~~
         $text = preg_replace('/~~(.+?)~~/s', '<s>$1</s>', $text);
-
-        // Links: [text](url)
         $text = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2">$1</a>', $text);
-
-        // Headers: # text → bold text
         $text = preg_replace('/^#{1,6}\s+(.+)$/m', '<b>$1</b>', $text);
-
-        // Blockquotes: > text
         $text = preg_replace('/^&gt;\s?(.+)$/m', '<blockquote>$1</blockquote>', $text);
-
-        // List items: - text or * text → bullet
         $text = preg_replace('/^[-*]\s+/m', '• ', $text);
 
-        // Restore code blocks and inline code
-        foreach ($codeBlocks as $placeholder => $code) {
-            $text = str_replace(htmlspecialchars($placeholder, ENT_QUOTES, 'UTF-8'), $code, $text);
-        }
-        foreach ($inlineCodes as $placeholder => $code) {
-            $text = str_replace(htmlspecialchars($placeholder, ENT_QUOTES, 'UTF-8'), $code, $text);
+        // 7. Restore protected blocks
+        foreach ($protected as $id => $html) {
+            $text = str_replace(htmlspecialchars($id, ENT_QUOTES, 'UTF-8'), $html, $text);
         }
 
-        // Clean up multiple blank lines
+        // 8. Clean up multiple blank lines
         $text = preg_replace('/\n{3,}/', "\n\n", $text);
 
         return trim($text);
+    }
+
+    /**
+     * Strip markdown formatting markers from text.
+     */
+    private static function stripMarkdown(string $text): string
+    {
+        $text = preg_replace('/\*\*(.+?)\*\*/', '$1', $text);
+        $text = preg_replace('/__(.+?)__/', '$1', $text);
+        $text = preg_replace('/(?<!\w)\*([^*]+?)\*(?!\w)/', '$1', $text);
+        $text = preg_replace('/(?<!\w)_([^_]+?)_(?!\w)/', '$1', $text);
+        $text = preg_replace('/~~(.+?)~~/', '$1', $text);
+
+        return $text;
+    }
+
+    /**
+     * Calculate visual width of a string, accounting for double-width characters (emoji, CJK).
+     */
+    private static function visualWidth(string $text): int
+    {
+        // mb_strwidth treats East Asian characters as width 2
+        // but doesn't handle all emoji. Use it as base, then adjust for emoji.
+        $width = mb_strwidth($text, 'UTF-8');
+
+        // Count emoji (most common ranges) — each emoji takes ~2 columns in monospace
+        // mb_strwidth already counts some as 2, but many emoji are missed
+        preg_match_all('/[\x{1F300}-\x{1F9FF}\x{2600}-\x{27BF}\x{FE00}-\x{FE0F}\x{200D}]/u', $text, $emoji);
+        // Each emoji is counted as 1 by mb_strwidth but renders as 2; add 1 per emoji
+        $width += count($emoji[0]);
+
+        return $width;
+    }
+
+    /**
+     * Pad a string to a visual width, accounting for double-width characters.
+     */
+    private static function visualPad(string $text, int $targetWidth): string
+    {
+        $currentWidth = self::visualWidth($text);
+        $padding = $targetWidth - $currentWidth;
+
+        return $padding > 0 ? $text . str_repeat(' ', $padding) : $text;
     }
 
     /**
@@ -209,6 +248,8 @@ class TelegramService
             if (!empty($cells) && preg_match('/^[-: ]+$/', $cells[0])) {
                 continue;
             }
+            // Clean markdown formatting from cell content
+            $cells = array_map([self::class, 'stripMarkdown'], $cells);
             $rows[] = $cells;
         }
 
@@ -216,11 +257,11 @@ class TelegramService
             return $tableMarkdown;
         }
 
-        // Calculate column widths
+        // Calculate column widths using visual width (handles emoji/CJK)
         $colWidths = [];
         foreach ($rows as $row) {
             foreach ($row as $i => $cell) {
-                $colWidths[$i] = max($colWidths[$i] ?? 0, mb_strlen($cell));
+                $colWidths[$i] = max($colWidths[$i] ?? 0, self::visualWidth($cell));
             }
         }
 
@@ -229,14 +270,14 @@ class TelegramService
         foreach ($rows as $ri => $row) {
             $parts = [];
             foreach ($row as $i => $cell) {
-                $parts[] = mb_str_pad($cell, $colWidths[$i] ?? 0);
+                $parts[] = self::visualPad($cell, $colWidths[$i] ?? 0);
             }
             $output[] = implode('  ', $parts);
             // Add separator after header
             if ($ri === 0) {
                 $sep = [];
                 foreach ($colWidths as $w) {
-                    $sep[] = str_repeat('─', $w);
+                    $sep[] = str_repeat('-', $w);
                 }
                 $output[] = implode('  ', $sep);
             }
@@ -246,22 +287,103 @@ class TelegramService
     }
 
     /**
-     * Send a long message by splitting into chunks.
+     * Send a long message by splitting into chunks at line boundaries.
      */
     private function sendLongMessage(string $chatId, string $text): array
     {
-        $chunks = str_split($text, self::MAX_MESSAGE_LENGTH);
+        $chunks = $this->splitAtLineBoundaries($text, self::MAX_MESSAGE_LENGTH);
         $lastResult = [];
 
         foreach ($chunks as $chunk) {
-            $lastResult = $this->request('sendMessage', [
-                'chat_id' => $chatId,
-                'text' => $chunk,
-                'parse_mode' => 'HTML',
-            ]);
+            $lastResult = $this->sendChunk($chatId, $chunk);
         }
 
         return $lastResult;
+    }
+
+    /**
+     * Send a single chunk, falling back to plain text if HTML parsing fails.
+     */
+    private function sendChunk(string $chatId, string $text): array
+    {
+        try {
+            return $this->request('sendMessage', [
+                'chat_id' => $chatId,
+                'text' => $text,
+                'parse_mode' => 'HTML',
+            ]);
+        } catch (\RuntimeException $e) {
+            if (str_contains($e->getMessage(), "can't parse entities")) {
+                return $this->request('sendMessage', [
+                    'chat_id' => $chatId,
+                    'text' => strip_tags($text),
+                ]);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Split text at safe boundaries, never inside <pre> blocks.
+     *
+     * Strategy: split the text into "segments" (pre blocks and regular text),
+     * then accumulate segments into chunks that fit within maxLength.
+     * A <pre> block is never split — if it doesn't fit, it gets its own chunk.
+     */
+    private function splitAtLineBoundaries(string $text, int $maxLength): array
+    {
+        if (strlen($text) <= $maxLength) {
+            return [$text];
+        }
+
+        // Split into segments: alternating text and <pre>...</pre> blocks
+        $segments = preg_split('/(<pre>.*?<\/pre>)/s', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+
+        $chunks = [];
+        $current = '';
+
+        foreach ($segments as $segment) {
+            $isPre = str_starts_with($segment, '<pre>');
+
+            if ($isPre) {
+                // Never split a <pre> block — flush current and add as its own chunk if needed
+                if (strlen($current . $segment) <= $maxLength) {
+                    $current .= $segment;
+                } else {
+                    if ($current !== '') {
+                        $chunks[] = trim($current);
+                        $current = '';
+                    }
+                    // Pre block alone (may exceed max, but we can't split it safely)
+                    $chunks[] = trim($segment);
+                }
+            } else {
+                // Regular text — split at line boundaries
+                $lines = explode("\n", $segment);
+                foreach ($lines as $line) {
+                    $candidate = $current === '' ? $line : $current . "\n" . $line;
+
+                    if (strlen($candidate) > $maxLength) {
+                        if ($current !== '') {
+                            $chunks[] = trim($current);
+                            $current = $line;
+                        } else {
+                            // Single line exceeds max
+                            $chunks[] = substr($line, 0, $maxLength);
+                            $current = substr($line, $maxLength);
+                        }
+                    } else {
+                        $current = $candidate;
+                    }
+                }
+            }
+        }
+
+        if (trim($current) !== '') {
+            $chunks[] = trim($current);
+        }
+
+        return array_filter($chunks, fn ($c) => $c !== '');
     }
 
     /**

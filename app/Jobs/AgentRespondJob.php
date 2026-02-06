@@ -52,7 +52,7 @@ class AgentRespondJob implements ShouldQueue
         $task = Task::create([
             'id' => Str::uuid()->toString(),
             'title' => Str::limit($this->userMessage->content, 80),
-            'description' => null,
+            'description' => $this->userMessage->content,
             'type' => Task::TYPE_CUSTOM,
             'status' => Task::STATUS_ACTIVE,
             'priority' => Task::PRIORITY_NORMAL,
@@ -63,7 +63,11 @@ class AgentRespondJob implements ShouldQueue
             'started_at' => now(),
         ]);
 
-        broadcast(new TaskUpdated($task, 'started'));
+        try {
+            broadcast(new TaskUpdated($task, 'started'));
+        } catch (\Throwable $e) {
+            Log::warning('Failed to broadcast task started', ['error' => $e->getMessage()]);
+        }
 
         try {
             // Update agent status to working
@@ -113,16 +117,17 @@ class AgentRespondJob implements ShouldQueue
             DirectMessage::where('channel_id', $this->channelId)
                 ->update(['last_message_at' => now()]);
 
-            // Broadcast agent's response
-            broadcast(new MessageSent($agentMessage));
+            // Broadcast agent's response (non-critical — message is already saved to DB)
+            try {
+                broadcast(new MessageSent($agentMessage));
+            } catch (\Throwable $broadcastError) {
+                Log::warning('Failed to broadcast agent message', [
+                    'error' => $broadcastError->getMessage(),
+                    'channel' => $this->channelId,
+                ]);
+            }
 
             $deliveryStep->complete();
-
-            // Ensure description is set before completing
-            $task->refresh();
-            if (empty($task->description)) {
-                $task->update(['description' => Str::limit($responseText, 200)]);
-            }
 
             // Complete the task
             $task->complete([
@@ -131,7 +136,11 @@ class AgentRespondJob implements ShouldQueue
                 'tool_calls_count' => $response->toolCalls->count(),
             ]);
 
-            broadcast(new TaskUpdated($task, 'completed'));
+            try {
+                broadcast(new TaskUpdated($task, 'completed'));
+            } catch (\Throwable $broadcastError) {
+                Log::warning('Failed to broadcast task completed', ['error' => $broadcastError->getMessage()]);
+            }
 
             Log::info('Agent responded', [
                 'agent' => $this->agent->name,
@@ -149,7 +158,11 @@ class AgentRespondJob implements ShouldQueue
 
             $task->addStep("Error: {$e->getMessage()}", 'action');
             $task->fail($e->getMessage());
-            broadcast(new TaskUpdated($task, 'failed'));
+            try {
+                broadcast(new TaskUpdated($task, 'failed'));
+            } catch (\Throwable $broadcastError) {
+                Log::warning('Failed to broadcast task failed', ['error' => $broadcastError->getMessage()]);
+            }
 
             // Send error message as agent response so user isn't left hanging
             $this->sendErrorMessage($e);
