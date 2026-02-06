@@ -14,12 +14,9 @@
 | Component | Choice | Reason |
 |-----------|--------|--------|
 | **AI Framework** | **Laravel AI SDK (`laravel/ai`)** | Official first-party, full multimodal, comprehensive testing |
-| **Orchestration** | **Laravel Workflow** | No external infra, familiar patterns, good enough for MVP |
-| **Future Option** | Temporal | Upgrade path when scale demands it |
 
 **Core Packages:**
 - `laravel/ai` - Official Laravel AI SDK (agents, tools, embeddings, multimodal)
-- `laravel-workflow/laravel-workflow` - Durable workflow orchestration
 
 **Optional Packages:**
 - `laravel/mcp` - Expose OpenCompany as MCP server for external AI clients
@@ -28,7 +25,7 @@
 
 ## Phase 0: Package Installation & Setup
 
-> **Why:** Before building the agent system, we need the core AI and workflow packages installed. Laravel AI SDK provides official first-party LLM integration, and Laravel Workflow handles durable task orchestration.
+> **Why:** Before building the agent system, we need the core AI package installed. Laravel AI SDK provides official first-party LLM integration. Laravel queues handle async task processing.
 
 ### 0.1 Install Core Packages
 - [ ] **0.1.1** Install Laravel AI SDK
@@ -52,25 +49,6 @@
   - **Context:** GLM/Zhipu AI uses OpenAI-compatible endpoint with custom base URL. Provider failover is built-in.
   - Set `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. in `.env`
 
-- [ ] **0.1.4** Install Laravel Workflow
-  - **What:** Durable workflow orchestration package for Laravel
-  - **Why:** Agent tasks need to survive failures, handle long-running operations (waiting for approval), and maintain state. Laravel Workflow provides this without external infrastructure like Temporal.
-  - **Context:** Alternative was Temporal, but Laravel Workflow is simpler and sufficient for MVP scale.
-  ```bash
-  composer require laravel-workflow/laravel-workflow
-  ```
-
-- [ ] **0.1.5** Publish Laravel Workflow config & migrations
-  - **What:** Creates workflow tables and configuration
-  - **Why:** Workflows need database persistence for state, timers, and signals.
-  ```bash
-  php artisan vendor:publish --provider="Workflow\WorkflowServiceProvider"
-  ```
-
-- [ ] **0.1.6** Run workflow migrations ← depends on: [0.1.5]
-  - **What:** Creates `workflows`, `workflow_states`, and related tables
-  - **Why:** Workflow state must persist to database for durability across restarts.
-
 ### 0.2 Verify Setup
 - [ ] **0.2.1** Test Laravel AI SDK agent ← depends on: [0.1.3]
   - **What:** Simple test to verify provider APIs are working
@@ -83,12 +61,6 @@
       instructions: 'You are a helpful assistant.',
   )->prompt('Hello, world!');
   ```
-
-- [ ] **0.2.2** Test Laravel Workflow setup ← depends on: [0.1.6]
-  - **What:** Create a minimal workflow that persists and resumes
-  - **Why:** Verify workflow infrastructure before building complex agent workflows.
-  - Create simple test workflow
-  - Verify state persistence
 
 ### 0.3 Optional: Install Extensions
 - [ ] **0.3.1** Install Laravel MCP
@@ -478,7 +450,7 @@
 - [ ] **3.6.1** Create `SubagentController` ← depends on: [2.3.1, 2.3.2]
   - **What:** Manage subagent spawning permissions and track spawned agent runs
   - **Why:** Enables agent hierarchies. Users need to configure which agents can spawn which, monitor running subagents, and cancel if needed.
-  - **Context:** Spawn endpoint triggers the SubagentSpawnWorkflow. Cancel sends a signal to stop the running workflow.
+  - **Context:** Spawn endpoint triggers the SubagentSpawnService. Cancel stops the running task.
   - `GET /api/agents/{id}/spawn-permissions` - get spawn permissions
   - `PUT /api/agents/{id}/spawn-permissions` - update permissions
   - `POST /api/agents/{id}/spawn` - spawn subagent
@@ -498,9 +470,9 @@
 
 ---
 
-## Phase 3.5: Workflow Integration (Laravel AI SDK + Laravel Workflow)
+## Phase 3.5: Agent Execution Integration (Laravel AI SDK + Queues)
 
-> **Why:** This phase connects the AI layer (Laravel AI SDK) with the orchestration layer (Laravel Workflow). Tools give agents abilities. Workflows coordinate multi-step agent tasks with durability and approval gates.
+> **Why:** This phase connects the AI layer (Laravel AI SDK) with Laravel's queue system for async task processing. Tools give agents abilities. Queue jobs and services coordinate multi-step agent tasks with durability and approval gates.
 
 ### 3.5.1 Create Agent Tools
 
@@ -541,36 +513,36 @@
   }
   ```
 
-### 3.5.2 Create Workflow Activities
+### 3.5.2 Create Agent Jobs
 
-> **Why:** Activities are the building blocks of workflows. Each activity does one thing: fetch config, execute AI, save message, etc. Activities are retryable and their results are persisted.
+> **Why:** Jobs are the building blocks of agent task execution. Each job does one thing: fetch config, execute AI, save message, etc. Jobs are retryable and queued for async processing.
 
-- [ ] **3.5.2.1** Create `app/Workflows/Activities/` directory ← depends on: [0.1.4]
-  - **What:** Directory for Laravel Workflow activity classes
-  - **Why:** Organizes workflow activities. Each class handles one atomic operation.
+- [ ] **3.5.2.1** Create `app/Jobs/Agent/` directory
+  - **What:** Directory for agent-specific job classes
+  - **Why:** Organizes agent jobs separately from other system jobs. Each class handles one atomic operation.
 
-- [ ] **3.5.2.2** Create `FetchAgentConfigActivity`
+- [ ] **3.5.2.2** Create `FetchAgentConfigJob`
   - **What:** Load agent configuration and enabled tools from database
-  - **Why:** Workflows need agent config to operate. This activity is the first step in any agent task - load who the agent is.
+  - **Why:** Agent tasks need agent config to operate. This job fetches who the agent is and what they can do.
   - **Context:** Returns AgentConfiguration with relationships (capabilities, settings) loaded.
   - Fetch agent configuration from database
   - Return config with enabled tools
 
-- [ ] **3.5.2.3** Create `ExecuteAgentActivity` ← depends on: [3.5.1.2]
+- [ ] **3.5.2.3** Create `ExecuteAgentJob` ← depends on: [3.5.1.2]
   - **What:** Execute Laravel AI SDK agent call with tools
-  - **Why:** This is the core AI execution - send prompt to LLM, get response, handle tool calls. The activity wraps `OpenCompanyAgent` so workflows can orchestrate AI calls.
+  - **Why:** This is the core AI execution - send prompt to LLM, get response, handle tool calls. This job wraps `OpenCompanyAgent` for queued execution.
   - **Context:** Uses SDK's `#[MaxSteps]` attribute for multi-turn tool use. Token tracking is critical for billing and context management.
   - Execute agent prompt with tools
   - Handle streaming responses via `->stream()->broadcastOnQueue()`
   - Track token usage
   ```php
-  class ExecuteAgentActivity extends Activity {
-      public function execute(User $agentUser, string $prompt): AgentResult {
-          $config = app(DynamicProviderResolver::class)->resolveForAgent($agentUser);
-          $agent = OpenCompanyAgent::for($agentUser);
+  class ExecuteAgentJob implements ShouldQueue {
+      public function handle(): AgentResult {
+          $config = app(DynamicProviderResolver::class)->resolveForAgent($this->agentUser);
+          $agent = OpenCompanyAgent::for($this->agentUser);
 
           return $agent->prompt(
-              $prompt,
+              $this->prompt,
               provider: $config['provider'],
               model: $config['model'],
           );
@@ -578,102 +550,102 @@
   }
   ```
 
-- [ ] **3.5.2.4** Create `CreateApprovalRequestActivity`
+- [ ] **3.5.2.4** Create `CreateApprovalRequestJob`
   - **What:** Create an approval request record and notify users
-  - **Why:** When agent wants to do something risky (database access, deployment), humans must approve. This activity creates the approval request.
+  - **Why:** When agent wants to do something risky (database access, deployment), humans must approve. This job creates the approval request.
   - **Context:** Approval requests appear in the Approvals page. Users are notified via WebSocket.
   - Create approval record in database
   - Notify relevant users
   - Return approval request ID
 
-- [ ] **3.5.2.5** Create `WaitForApprovalActivity`
-  - **What:** Long-running activity that suspends workflow until approval/rejection
-  - **Why:** Workflows must pause and wait for human decision. This activity uses Laravel Workflow's signal feature to resume when approval arrives.
-  - **Context:** Can wait indefinitely or have a timeout. Rejection cancels the workflow.
-  - Long-running activity that waits for approval signal
-  - Resume workflow when approved/rejected
+- [ ] **3.5.2.5** Create approval handling service
+  - **What:** Service that polls/waits for approval decisions
+  - **Why:** Agent execution must pause and wait for human decision. This service checks approval status and resumes execution when approved/rejected.
+  - **Context:** Can use polling or event-based approach. Rejection cancels the task.
+  - Check approval status
+  - Resume execution when approved/rejected
 
-- [ ] **3.5.2.6** Create `ExecuteApprovedActionActivity`
+- [ ] **3.5.2.6** Create `ExecuteApprovedActionJob`
   - **What:** Execute the action that was approved
-  - **Why:** After approval, the original tool call needs to be executed. This activity runs the approved action safely.
+  - **Why:** After approval, the original tool call needs to be executed. This job runs the approved action safely.
   - **Context:** Logs the execution for audit trail. Updates task status to completed.
   - Execute the approved action
   - Update task status
 
-- [ ] **3.5.2.7** Create `SaveSessionMessageActivity`
+- [ ] **3.5.2.7** Create `SaveSessionMessageJob`
   - **What:** Persist messages to the session_messages table
-  - **Why:** All messages (user, assistant, tool) must be saved for context loading and history. This activity handles persistence and token count updates.
+  - **Why:** All messages (user, assistant, tool) must be saved for context loading and history. This job handles persistence and token count updates.
   - **Context:** Handles the `is_silent` flag for NO_REPLY messages.
   - Persist messages to agent_session_messages table
   - Update token counts
 
-- [ ] **3.5.2.8** Create `MemoryFlushActivity` ← depends on: [3.6.2.1]
+- [ ] **3.5.2.8** Create `MemoryFlushJob` ← depends on: [3.6.2.1]
   - **What:** Execute pre-compaction memory flush (OpenClaw)
-  - **Why:** Before context compaction, the agent should save important information to durable memory. This activity triggers a silent agent turn to do that.
+  - **Why:** Before context compaction, the agent should save important information to durable memory. This job triggers a silent agent turn to do that.
   - **Context:** Uses NO_REPLY convention so output isn't shown to user. The agent is prompted to persist important context to MEMORY.md.
   - Execute pre-compaction memory flush
   - Return flush result for logging
 
-- [ ] **3.5.2.9** Create `PruneSessionActivity` ← depends on: [3.6.3.1]
+- [ ] **3.5.2.9** Create `PruneSessionJob` ← depends on: [3.6.3.1]
   - **What:** Prune old tool results from session context (OpenClaw)
   - **Why:** Old tool results bloat context. After TTL expires (5 minutes default), tool results are trimmed or replaced with placeholders.
   - **Context:** Uses soft-trim (keep head+tail) or hard-clear depending on size. Protects last 3 assistant messages.
   - Prune old tool results if TTL elapsed
   - Return pruning stats
 
-- [ ] **3.5.2.10** Create `CheckMemoryFlushActivity`
+- [ ] **3.5.2.10** Create `CheckMemoryFlushJob`
   - **What:** Check if memory flush is needed based on soft threshold (OpenClaw)
-  - **Why:** Memory flush should run before compaction, not after. This activity checks if we're approaching the threshold and haven't flushed this cycle.
+  - **Why:** Memory flush should run before compaction, not after. This job checks if we're approaching the threshold and haven't flushed this cycle.
   - **Context:** Uses `memoryFlushCompactionCount` to prevent duplicate flushes per compaction cycle.
   - Check if memory flush is needed based on soft threshold
   - Return boolean
 
-### 3.5.3 Create Workflows
+### 3.5.3 Create Agent Orchestration Services
 
-> **Why:** Workflows orchestrate activities into complete agent operations. They handle the full lifecycle: load config → check context → execute AI → save results → handle approvals.
+> **Why:** Services orchestrate jobs into complete agent operations. They handle the full lifecycle: load config → check context → execute AI → save results → handle approvals.
 
-- [ ] **3.5.3.1** Create `app/Workflows/` directory ← depends on: [0.1.4]
-  - **What:** Directory for Laravel Workflow workflow classes
-  - **Why:** Organizes workflows separately. Each workflow class defines a complete agent operation.
+- [ ] **3.5.3.1** Create `app/Services/Agent/` directory
+  - **What:** Directory for agent orchestration services
+  - **Why:** Organizes agent services separately. Each service class defines a complete agent operation.
 
-- [ ] **3.5.3.2** Create `AgentTaskWorkflow` ← depends on: [3.5.2.2-3.5.2.10]
-  - **What:** Main workflow for executing an agent task (responding to user input)
+- [ ] **3.5.3.2** Create `AgentTaskService` ← depends on: [3.5.2.2-3.5.2.10]
+  - **What:** Main service for executing an agent task (responding to user input)
   - **Why:** This is the core agent loop. It handles OpenClaw patterns (memory flush, pruning), executes the AI, saves messages, and manages approvals.
-  - **Context:** Workflows are durable - if the server crashes, they resume from the last completed activity. The `yield` syntax enables Laravel Workflow's generator-based execution.
+  - **Context:** Uses Laravel's queue system for async execution. Jobs can be retried on failure.
   ```php
-  class AgentTaskWorkflow extends Workflow {
-      public function execute(AgentTask $task) {
+  class AgentTaskService {
+      public function execute(AgentTask $task): AgentResult {
           // 1. Fetch agent config
-          $config = yield Activity::make(FetchAgentConfigActivity::class, $task->agentId);
+          $config = FetchAgentConfigJob::dispatchSync($task->agentId);
 
           // 2. Check if memory flush needed before execution (OpenClaw)
-          $flushNeeded = yield Activity::make(CheckMemoryFlushActivity::class, $task->sessionId);
+          $flushNeeded = CheckMemoryFlushJob::dispatchSync($task->sessionId);
           if ($flushNeeded) {
-              yield Activity::make(MemoryFlushActivity::class, $task->sessionId);
+              MemoryFlushJob::dispatchSync($task->sessionId);
           }
 
           // 3. Prune session if TTL elapsed (OpenClaw)
-          yield Activity::make(PruneSessionActivity::class, $task->sessionId);
+          PruneSessionJob::dispatchSync($task->sessionId);
 
           // 4. Execute agent with Laravel AI SDK
-          $result = yield Activity::make(ExecuteAgentActivity::class, $config, $task->prompt);
+          $result = ExecuteAgentJob::dispatchSync($config, $task->prompt);
 
           // 5. Handle silent responses (NO_REPLY convention)
           if (str_starts_with($result->text, 'NO_REPLY')) {
-              yield Activity::make(SaveSessionMessageActivity::class, $task->sessionId, $result, true);
+              SaveSessionMessageJob::dispatchSync($task->sessionId, $result, true);
               return $result->withSuppressedOutput();
           }
 
           // 6. Save messages to session
-          yield Activity::make(SaveSessionMessageActivity::class, $task->sessionId, $result);
+          SaveSessionMessageJob::dispatchSync($task->sessionId, $result);
 
           // 7. Handle approval if needed
           if ($result->requiresApproval) {
-              $approval = yield Activity::make(CreateApprovalRequestActivity::class, $result);
-              $approved = yield Activity::make(WaitForApprovalActivity::class, $approval->id);
+              $approval = CreateApprovalRequestJob::dispatchSync($result);
+              $approved = $this->waitForApproval($approval->id);
 
               if ($approved) {
-                  yield Activity::make(ExecuteApprovedActionActivity::class, $result);
+                  ExecuteApprovedActionJob::dispatchSync($result);
               }
           }
 
@@ -682,52 +654,47 @@
   }
   ```
 
-- [ ] **3.5.3.3** Create `AgentSessionResetWorkflow`
-  - **What:** Workflow for resetting agent sessions (daily reset, idle reset, manual reset)
-  - **Why:** Sessions need to be reset according to reset_policy. This workflow archives the old session, creates a new one, and optionally runs a "goodbye" summary.
+- [ ] **3.5.3.3** Create `AgentSessionResetService`
+  - **What:** Service for resetting agent sessions (daily reset, idle reset, manual reset)
+  - **Why:** Sessions need to be reset according to reset_policy. This service archives the old session, creates a new one, and optionally runs a "goodbye" summary.
   - **Context:** Triggered by scheduler for daily resets, or by idle detection for idle resets.
   - Handle scheduled session resets
   - Archive old session
   - Create new session
 
-- [ ] **3.5.3.4** Create `SubagentSpawnWorkflow` ← depends on: [3.5.3.2]
-  - **What:** Workflow for spawning and managing a child agent
-  - **Why:** Subagent spawning needs to track the parent-child relationship, enforce timeouts, and handle cancellation. This workflow wraps AgentTaskWorkflow with spawn-specific logic.
-  - **Context:** Creates SubagentRun record, starts child workflow, waits for completion or timeout, stores result.
-  - Spawn child agent workflow
+- [ ] **3.5.3.4** Create `SubagentSpawnService` ← depends on: [3.5.3.2]
+  - **What:** Service for spawning and managing a child agent
+  - **Why:** Subagent spawning needs to track the parent-child relationship, enforce timeouts, and handle cancellation. This service wraps AgentTaskService with spawn-specific logic.
+  - **Context:** Creates SubagentRun record, starts child task, waits for completion or timeout, stores result.
+  - Spawn child agent task
   - Track parent-child relationship
   - Handle timeout and cancellation
 
-### 3.5.4 Workflow Infrastructure
+### 3.5.4 Queue Infrastructure
 
-> **Why:** Workflows need worker processes to execute them and APIs to monitor/control them. This infrastructure makes workflows operational.
+> **Why:** Agent jobs need queue workers to process them and APIs to monitor/control them. This infrastructure makes agent execution operational.
 
-- [ ] **3.5.4.1** Create workflow worker command
-  - **What:** Artisan command that processes workflow jobs
-  - **Why:** Workflows execute on queue workers. This command starts the worker that processes workflow activities.
-  - **Context:** Run with `php artisan workflow:work`. Can run multiple workers for parallelism.
+- [ ] **3.5.4.1** Configure queue workers for agent jobs
+  - **What:** Set up queue configuration for agent job processing
+  - **Why:** Agent jobs need dedicated queue configuration. May need separate queues for high-priority vs background tasks.
+  - **Context:** Configure in `config/queue.php`. Consider separate connection for agent jobs.
   ```bash
-  php artisan workflow:work
+  php artisan queue:work --queue=agents,default
   ```
 
-- [ ] **3.5.4.2** Configure queue workers for workflows
-  - **What:** Set up queue configuration for workflow processing
-  - **Why:** Workflows need dedicated queue configuration. May need separate queues for high-priority vs background workflows.
-  - **Context:** Configure in `config/queue.php`. Consider separate connection for workflows.
+- [ ] **3.5.4.2** Add agent task status endpoints
+  - **What:** API endpoints to check agent task status and manage execution
+  - **Why:** Frontend needs to display task progress (e.g., "waiting for approval", "executing"). Endpoints enable monitoring and control.
+  - **Context:** Status updates broadcast via WebSocket for real-time UI updates.
+  - `GET /api/agent-tasks/{id}` - get task status
+  - `POST /api/agent-tasks/{id}/cancel` - cancel running task
 
-- [ ] **3.5.4.3** Add workflow status endpoints
-  - **What:** API endpoints to check workflow status and send signals
-  - **Why:** Frontend needs to display workflow progress (e.g., "waiting for approval"). Signal endpoint enables sending approval decisions to waiting workflows.
-  - **Context:** Signals are how external events (approval clicks) communicate with paused workflows.
-  - `GET /api/workflows/{id}` - get workflow status
-  - `POST /api/workflows/{id}/signal` - send signal (e.g., approval)
-
-- [ ] **3.5.4.4** Install Waterline UI (optional) ← depends on: [0.1.4]
-  - **What:** Web UI for monitoring Laravel Workflows
-  - **Why:** Debugging workflows is easier with a visual UI. Shows workflow history, current state, and allows manual intervention.
-  - **Context:** Optional - can use database queries directly if preferred.
+- [ ] **3.5.4.3** Configure Horizon for queue monitoring (optional)
+  - **What:** Install Laravel Horizon for queue monitoring dashboard
+  - **Why:** Debugging agent jobs is easier with a visual UI. Shows job history, failures, and queue metrics.
+  - **Context:** Optional - can use database queries or Laravel Telescope if preferred.
   ```bash
-  composer require laravel-workflow/waterline
+  composer require laravel/horizon
   ```
 
 ---
@@ -1060,7 +1027,7 @@
 - [ ] **4.1.6** Add subagent methods ← depends on: [3.6.1]
   - **What:** Methods for managing subagent spawning
   - **Why:** Subagent UI needs to configure spawn permissions, trigger spawns, monitor runs, and cancel if needed.
-  - **Context:** Spawn is async - it starts a workflow and returns immediately. Frontend polls or uses WebSocket to track progress.
+  - **Context:** Spawn is async - it starts a background task and returns immediately. Frontend polls or uses WebSocket to track progress.
   ```typescript
   fetchSpawnPermissions(agentId: string)
   updateSpawnPermissions(agentId: string, permissions)
@@ -1202,14 +1169,14 @@
 - [ ] **5.1.1** Add status control endpoints to `UserController` ← depends on: [2.4.1]
   - **What:** API endpoints for controlling agent operational status
   - **Why:** Users need to pause agents (stop processing), resume them, or hard-stop current work. Essential for managing runaway or misbehaving agents.
-  - **Context:** Pause prevents new tasks from starting. Stop cancels the currently running workflow.
+  - **Context:** Pause prevents new tasks from starting. Stop cancels the currently running task.
   - `POST /api/agents/{id}/pause` - pause agent
   - `POST /api/agents/{id}/resume` - resume agent
   - `POST /api/agents/{id}/stop` - stop agent (cancel current task)
 
 - [ ] **5.1.2** Implement pause/resume logic
-  - **What:** Business logic for status transitions and workflow cancellation
-  - **Why:** Status changes must update the database and notify connected clients. Stopping requires cancelling the active workflow.
+  - **What:** Business logic for status transitions and task cancellation
+  - **Why:** Status changes must update the database and notify connected clients. Stopping requires cancelling the active task.
   - **Context:** WebSocket broadcast ensures all open tabs see status change immediately.
   - Update agent status to 'paused'/'working'/'idle'
   - Cancel any running tasks if stopping
@@ -1797,11 +1764,10 @@
 ```bash
 # Required
 composer require laravel/ai
-composer require laravel-workflow/laravel-workflow
 
 # Optional
 composer require laravel/mcp                   # MCP server for external AI clients
-composer require laravel-workflow/waterline     # UI for workflow monitoring
+composer require laravel/horizon               # Queue monitoring dashboard
 ```
 
 ### Migrations to Create (17 files)
@@ -1892,26 +1858,25 @@ app/Agents/
         └── RecallMemory.php
 ```
 
-### Workflow Activities to Create (9 files)
+### Agent Jobs to Create (9 files)
 ```
-app/Workflows/Activities/
-├── FetchAgentConfigActivity.php
-├── ExecuteAgentActivity.php
-├── CreateApprovalRequestActivity.php
-├── WaitForApprovalActivity.php
-├── ExecuteApprovedActionActivity.php
-├── SaveSessionMessageActivity.php
-├── MemoryFlushActivity.php            # OpenClaw
-├── PruneSessionActivity.php           # OpenClaw
-└── CheckMemoryFlushActivity.php       # OpenClaw
+app/Jobs/Agent/
+├── FetchAgentConfigJob.php
+├── ExecuteAgentJob.php
+├── CreateApprovalRequestJob.php
+├── ExecuteApprovedActionJob.php
+├── SaveSessionMessageJob.php
+├── MemoryFlushJob.php            # OpenClaw
+├── PruneSessionJob.php           # OpenClaw
+└── CheckMemoryFlushJob.php       # OpenClaw
 ```
 
-### Workflows to Create (3 files)
+### Agent Services to Create (3 files)
 ```
-app/Workflows/
-├── AgentTaskWorkflow.php
-├── AgentSessionResetWorkflow.php
-└── SubagentSpawnWorkflow.php
+app/Services/Agent/
+├── AgentTaskService.php
+├── AgentSessionResetService.php
+└── SubagentSpawnService.php
 ```
 
 ### Services to Create (16 files)
@@ -1994,11 +1959,11 @@ config/
 4. Controllers (3.1.1 - 3.7.1)
 5. Seeders (6.1.1 - 6.2.2)
 
-**Week 3: Workflow Integration**
+**Week 3: Agent Execution Jobs**
 6. AI Tools (3.5.1.1 - 3.5.1.3)
-7. Workflow Activities (3.5.2.1 - 3.5.2.10)
-8. Workflows (3.5.3.1 - 3.5.3.4)
-9. Workflow Infrastructure (3.5.4.1 - 3.5.4.4)
+7. Agent Jobs (3.5.2.1 - 3.5.2.10)
+8. Agent Services (3.5.3.1 - 3.5.3.4)
+9. Queue Infrastructure (3.5.4.1 - 3.5.4.3)
 
 **Week 4: Context Management (OpenClaw)**
 10. Context Window Guard (3.6.1)

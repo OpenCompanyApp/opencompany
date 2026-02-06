@@ -580,9 +580,18 @@ const generateApiKey = () => {
   apiKeys.value.push(newKey)
 }
 
-const copyApiKey = (key: ApiKey) => {
-  // In real implementation, would copy actual key to clipboard
-  console.log('Copying key:', key.id)
+const copyApiKey = async (key: ApiKey) => {
+  try {
+    await navigator.clipboard.writeText(key.maskedKey)
+  } catch {
+    // Fallback for non-HTTPS contexts
+    const textarea = document.createElement('textarea')
+    textarea.value = key.maskedKey
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
 }
 
 const revokeApiKey = (id: string) => {

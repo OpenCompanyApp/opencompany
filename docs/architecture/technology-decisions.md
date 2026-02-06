@@ -9,8 +9,6 @@
 | Component | Choice | Reason |
 |-----------|--------|--------|
 | **AI Framework** | **Laravel AI SDK (`laravel/ai`)** | Official first-party Laravel package, full multimodal, comprehensive testing |
-| **Orchestration** | **Laravel Workflow** | No external infra, familiar patterns, good enough for MVP |
-| **Future Option** | Temporal | Upgrade path when scale demands it |
 
 ---
 
@@ -56,47 +54,6 @@ See [Laravel AI SDK Strategy](./laravel-ai-sdk.md) for full integration details.
 
 ---
 
-## Orchestration: Laravel Workflow vs Temporal
-
-### Feature Matrix
-
-| Feature | Laravel Workflow | Temporal |
-|---------|------------------|----------|
-| **Infrastructure** | Uses Laravel queues | External cluster required |
-| **State Persistence** | Database + events | Event sourcing + snapshots |
-| **Long-Running** | Hours to days | Hours to years |
-| **Parallel Execution** | Concurrent workers | Child workflows + activities |
-| **Retries** | Laravel retry mechanisms | Built-in policies |
-| **Observability** | Waterline UI | Temporal UI + APIs |
-| **Learning Curve** | Low | Moderate |
-| **Scalability** | Thousands | Millions |
-| **Cost** | Just queue/DB | Infrastructure + licensing |
-| **Setup Complexity** | Minimal | Significant |
-
----
-
-### Decision: **Laravel Workflow** (Start Here)
-
-**Why Laravel Workflow for OpenCompany:**
-
-1. **No External Infrastructure**: Uses existing Laravel queues - you already have this
-
-2. **Faster to Production**: Can implement orchestration patterns immediately
-
-3. **Familiar Patterns**: Generator-based yields feel natural to PHP developers
-
-4. **Good Enough for MVP**: Handles thousands of concurrent workflows
-
-5. **Migration Path**: Patterns translate to Temporal if you outgrow it
-
-**When to Upgrade to Temporal:**
-- Need to orchestrate across multiple services (not just Laravel)
-- Require enterprise-grade durability (years-long workflows)
-- Scale to millions of concurrent agents
-- Need Temporal's advanced observability
-
----
-
 ## Recommended Stack Architecture
 
 ```
@@ -117,9 +74,9 @@ See [Laravel AI SDK Strategy](./laravel-ai-sdk.md) for full integration details.
 │  │  - Image, Audio, Transcription     │    │
 │  └─────────────────────────────────────┘    │
 │  ┌─────────────────────────────────────┐    │
-│  │       Laravel Workflow              │    │
-│  │  - Agent Task Orchestration         │    │
-│  │  - Approval Workflows               │    │
+│  │       Laravel Queues + Jobs         │    │
+│  │  - Async Agent Execution            │    │
+│  │  - Approval Processing              │    │
 │  │  - Retry & Recovery                 │    │
 │  └─────────────────────────────────────┘    │
 │  ┌─────────────────────────────────────┐    │
@@ -135,7 +92,6 @@ See [Laravel AI SDK Strategy](./laravel-ai-sdk.md) for full integration details.
 │            PostgreSQL                       │
 │  - Agent configurations                     │
 │  - Sessions & memories                      │
-│  - Workflow state                           │
 │  - Chat history                             │
 └─────────────────────────────────────────────┘
 ```
@@ -150,12 +106,6 @@ composer require laravel/ai
 
 # Laravel MCP (expose app as MCP server)
 composer require laravel/mcp
-
-# Laravel Workflow (orchestration)
-composer require laravel-workflow/laravel-workflow
-
-# Optional: Waterline UI for workflow monitoring
-composer require laravel-workflow/waterline
 ```
 
 ---
@@ -201,24 +151,6 @@ class ExecuteAgentTask implements ShouldQueue
         $this->task->complete(['response' => (string) $response]);
     }
 }
-
-// 3. Orchestrate with Laravel Workflow
-class AgentTaskWorkflow extends Workflow
-{
-    public function execute(AgentTask $task)
-    {
-        $config = yield Activity::make(FetchAgentConfig::class, $task->agentId);
-
-        // Dispatch agent execution via SDK
-        ExecuteAgentTask::dispatch($task)->onQueue('agents');
-
-        if ($result->requiresApproval) {
-            yield Activity::make(CreateApprovalRequest::class, $result);
-        }
-
-        return $result;
-    }
-}
 ```
 
 ---
@@ -230,12 +162,3 @@ class AgentTaskWorkflow extends Workflow
 - [Laravel MCP Docs](https://laravel.com/docs/12.x/mcp)
 - [Laravel Boost Docs](https://laravel.com/docs/12.x/boost)
 - [OpenCompany AI SDK Strategy](./laravel-ai-sdk.md)
-
-### Laravel Workflow
-- [Laravel Workflow GitHub](https://github.com/laravel-workflow/laravel-workflow)
-- [Laravel Workflow Documentation](https://laravel-workflow.com/docs/introduction/)
-- [Waterline UI](https://github.com/laravel-workflow/waterline)
-
-### Temporal (Future Upgrade)
-- [Temporal.io](https://temporal.io/)
-- [Laravel Temporal](https://github.com/keepsuit/laravel-temporal)

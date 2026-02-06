@@ -11,7 +11,7 @@
 | [openclaw-reference.md](architecture/openclaw-reference.md) | OpenClaw's agent, memory, skills, QMD, and plugin architecture (reference material) | Designing agent features, understanding source patterns |
 | [openclaw-patterns.md](architecture/openclaw-patterns.md) | Which OpenClaw patterns to adopt, adapt, or skip for OpenCompany | Planning new agent capabilities |
 | [laravel-ai-sdk.md](architecture/laravel-ai-sdk.md) | Laravel AI SDK integration strategy — providers, tools, streaming, memory, workflows, QMD adaptation | Implementing AI features |
-| [technology-decisions.md](architecture/technology-decisions.md) | Tech stack choices: Laravel AI SDK over Prism, Laravel Workflow over Temporal | Understanding why we chose what |
+| [technology-decisions.md](architecture/technology-decisions.md) | Tech stack choices: Laravel AI SDK over Prism, Laravel queues for orchestration | Understanding why we chose what |
 | [observability.md](architecture/observability.md) | Monitoring, metrics, logging, error tracking, health checks, alerting | Building admin/ops features |
 
 ## Planning & Implementation
@@ -72,4 +72,3 @@
 | **OpenClaw** | Open-source AI agent platform we study for architectural patterns |
 | **QMD** | Quick Markdown — OpenClaw's memory search system; we adapt it with PostgreSQL + pgvector |
 | **Laravel AI SDK** | Official Laravel package for AI provider integration (our chosen framework) |
-| **Laravel Workflow** | Durable execution engine for agent workflows |

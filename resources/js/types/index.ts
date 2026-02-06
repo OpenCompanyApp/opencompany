@@ -256,6 +256,9 @@ export interface AgentIdentity {
   type: AgentType
   avatar?: string
   description?: string
+  theme?: string
+  creature?: string
+  vibe?: string
 }
 
 export interface AgentPersonality {
@@ -269,6 +272,20 @@ export interface AgentInstructions {
 }
 
 export type ToolType = 'read' | 'write'
+export type ToolKind = 'read' | 'write' | 'execute' | 'other'
+
+export interface Capability {
+  id: string
+  name: string
+  displayName: string
+  description?: string
+  icon?: string
+  category?: string
+  kind: ToolKind
+  defaultEnabled: boolean
+  defaultRequiresApproval: boolean
+  sortOrder: number
+}
 
 export interface AgentCapability {
   id: string
@@ -279,6 +296,17 @@ export interface AgentCapability {
   requiresApproval: boolean
   notes?: string
   icon?: string
+}
+
+export interface AgentConfiguration {
+  id: string
+  userId: string
+  personality?: string
+  instructions?: string
+  identity?: AgentIdentity
+  toolNotes?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface AgentSession {
@@ -299,11 +327,25 @@ export interface AgentMemoryEntry {
 }
 
 export type AgentBehaviorMode = 'autonomous' | 'supervised' | 'strict'
+export type SecurityMode = 'deny' | 'allowlist' | 'full'
+export type AskMode = 'off' | 'on-miss' | 'always'
 export type SessionResetMode = 'daily' | 'idle' | 'manual'
 
 export interface AgentSettings {
+  id?: string
+  agentConfigId?: string
   behaviorMode: AgentBehaviorMode
-  costLimit: number
+  securityMode?: SecurityMode
+  askMode?: AskMode
+  costLimitDaily?: number | null
+  costLimit?: number // legacy alias
+  maxTokensPerRequest?: number
+  reserveTokens?: number
+  reserveTokensFloor?: number
+  keepRecentTokens?: number
+  softThresholdTokens?: number
+  pruningTtlMinutes?: number
+  autoAllowSkills?: boolean
   resetPolicy: {
     mode: SessionResetMode
     dailyHour?: number

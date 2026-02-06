@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
@@ -155,6 +156,11 @@ class User extends Authenticatable
     public function dataTables(): HasMany
     {
         return $this->hasMany(DataTable::class, 'created_by');
+    }
+
+    public function agentConfiguration(): HasOne
+    {
+        return $this->hasOne(AgentConfiguration::class);
     }
 
     public function agentPermissions(): HasMany
