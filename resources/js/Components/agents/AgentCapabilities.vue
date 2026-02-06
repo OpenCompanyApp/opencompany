@@ -426,57 +426,6 @@
       </div>
     </section>
 
-    <!-- Tool Notes -->
-    <section>
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-medium text-neutral-900 dark:text-white">Tool Notes</h3>
-        <button
-          type="button"
-          class="px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
-          @click="editingNotes = true"
-        >
-          {{ notes ? 'Edit' : 'Add notes' }}
-        </button>
-      </div>
-
-      <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
-        <div v-if="editingNotes">
-          <textarea
-            v-model="localNotes"
-            rows="4"
-            class="w-full bg-transparent text-sm text-neutral-900 dark:text-white focus:outline-none resize-none"
-            placeholder="Add notes about tool usage, preferences, or configuration..."
-          />
-          <div class="flex justify-end gap-2 mt-3">
-            <button
-              type="button"
-              class="px-3 py-1.5 text-xs rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700"
-              @click="cancelNotes"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              class="px-3 py-1.5 text-xs font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100"
-              @click="saveNotes"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-
-        <div v-else-if="notes" class="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
-          {{ notes }}
-        </div>
-
-        <div v-else class="text-center py-2">
-          <p class="text-sm text-neutral-500 dark:text-neutral-400">No tool notes</p>
-          <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-            Document preferences and configurations
-          </p>
-        </div>
-      </div>
-    </section>
   </div>
 </template>
 
@@ -508,7 +457,6 @@ const props = defineProps<{
   capabilities: AgentCapability[]
   appGroups: AppGroupInfo[]
   enabledIntegrations: string[]
-  notes?: string
   behaviorMode: AgentBehaviorMode
   mustWaitForApproval: boolean
   channelPermissions: string[]
@@ -524,7 +472,6 @@ const emit = defineEmits<{
   updateToolPermissions: [tools: { scopeKey: string; permission: string; requiresApproval: boolean }[]]
   updateChannelPermissions: [channels: string[]]
   updateFolderPermissions: [folders: string[]]
-  saveNotes: [notes: string]
 }>()
 
 // Local state
@@ -534,8 +481,6 @@ const localTools = ref<AgentCapability[]>(props.capabilities.map(c => ({ ...c })
 const localChannelIds = ref<string[]>([...props.channelPermissions])
 const localFolderIds = ref<string[]>([...props.folderPermissions])
 const localIntegrations = ref<string[]>([...props.enabledIntegrations])
-const editingNotes = ref(false)
-const localNotes = ref(props.notes || '')
 const channelSectionOpen = ref(false)
 const folderSectionOpen = ref(false)
 const expandedGroups = reactive<Record<string, boolean>>({})
@@ -647,10 +592,6 @@ watch(() => props.mustWaitForApproval, (newVal) => {
   localMustWait.value = newVal
 })
 
-watch(() => props.notes, (newNotes) => {
-  if (newNotes !== undefined) localNotes.value = newNotes
-})
-
 // Behavior mode
 const behaviorModes: { value: AgentBehaviorMode; label: string }[] = [
   { value: 'autonomous', label: 'Autonomous' },
@@ -755,14 +696,4 @@ const saveFolderPermissions = () => {
   foldersDirty.value = false
 }
 
-// Tool notes
-const cancelNotes = () => {
-  localNotes.value = props.notes || ''
-  editingNotes.value = false
-}
-
-const saveNotes = () => {
-  emit('saveNotes', localNotes.value)
-  editingNotes.value = false
-}
 </script>

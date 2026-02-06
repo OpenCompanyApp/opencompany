@@ -275,15 +275,6 @@ export interface AgentIdentity {
   vibe?: string
 }
 
-export interface AgentPersonality {
-  content: string  // Markdown content for behavior guidelines
-  updatedAt: Date
-}
-
-export interface AgentInstructions {
-  content: string  // Markdown content for operating manual
-  updatedAt: Date
-}
 
 export type ToolType = 'read' | 'write'
 export type ToolKind = 'read' | 'write' | 'execute' | 'other'
@@ -313,33 +304,6 @@ export interface AgentCapability {
   app?: string
 }
 
-export interface AgentConfiguration {
-  id: string
-  userId: string
-  personality?: string
-  instructions?: string
-  identity?: AgentIdentity
-  toolNotes?: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface AgentSession {
-  id: string
-  startedAt: Date
-  messageCount: number
-  tokenCount: number
-  maxTokens: number
-  lastActivityAt?: Date
-}
-
-export interface AgentMemoryEntry {
-  id: string
-  content: string
-  createdAt: Date
-  source?: string
-  category?: 'fact' | 'preference' | 'context' | 'note'
-}
 
 export type AgentBehaviorMode = 'autonomous' | 'supervised' | 'strict'
 export type SecurityMode = 'deny' | 'allowlist' | 'full'
@@ -370,11 +334,7 @@ export interface AgentSettings {
 
 export interface Agent extends User {
   identity: AgentIdentity
-  personality?: AgentPersonality
-  instructions?: AgentInstructions
   capabilities: AgentCapability[]
-  currentSession?: AgentSession
-  memoryEntries?: AgentMemoryEntry[]
   settings: AgentSettings
   stats?: {
     tasksCompleted: number

@@ -13,7 +13,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             IntegrationSettingSeeder::class,
-            CapabilitySeeder::class,
             UserSeeder::class,
             ChannelSeeder::class,
             MessageSeeder::class,

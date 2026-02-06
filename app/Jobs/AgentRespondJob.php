@@ -16,6 +16,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Services\AgentDocumentService;
 use App\Services\TelegramService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -113,6 +114,17 @@ class AgentRespondJob implements ShouldQueue
             }
 
             $llmStep->complete();
+
+            // Clear bootstrap file after first successful interaction
+            if (!$this->agent->bootstrapped_at) {
+                try {
+                    $docService = app(AgentDocumentService::class);
+                    $docService->updateIdentityFile($this->agent, 'BOOTSTRAP', '');
+                    $this->agent->update(['bootstrapped_at' => now()]);
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to clear bootstrap', ['error' => $e->getMessage()]);
+                }
+            }
 
             // Log tool usage as task steps
             $this->logToolSteps($task, $response);

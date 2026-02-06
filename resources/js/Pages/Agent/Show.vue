@@ -200,19 +200,12 @@
             </div>
           </div>
 
-          <!-- Personality Tab -->
-          <div v-if="activeTab === 'personality'">
-            <AgentPersonalityEditor
-              :personality="agent.personality"
-              @save="savePersonality"
-            />
-          </div>
-
-          <!-- Instructions Tab -->
-          <div v-if="activeTab === 'instructions'">
-            <AgentInstructionsEditor
-              :instructions="agent.instructions"
-              @save="saveInstructions"
+          <!-- Identity Tab -->
+          <div v-if="activeTab === 'identity'">
+            <AgentIdentityFiles
+              :files="identityFiles"
+              :saving="identityFileSaving"
+              @save="saveIdentityFile"
             />
           </div>
 
@@ -222,7 +215,6 @@
               :capabilities="agent.capabilities"
               :app-groups="appGroups"
               :enabled-integrations="enabledIntegrations"
-              :notes="capabilityNotes"
               :behavior-mode="behaviorMode"
               :must-wait-for-approval="mustWaitForApproval"
               :channel-permissions="channelPermissions"
@@ -235,19 +227,6 @@
               @update-channel-permissions="handleChannelPermissions"
               @update-folder-permissions="handleFolderPermissions"
               @update-must-wait-for-approval="handleMustWaitChange"
-              @save-notes="saveCapabilityNotes"
-            />
-          </div>
-
-          <!-- Memory Tab -->
-          <div v-if="activeTab === 'memory'">
-            <AgentMemoryView
-              :session="agent.currentSession"
-              :memory-entries="parsedMemoryEntries"
-              @new-session="startNewSession"
-              @view-history="viewSessionHistory"
-              @add-memory="addMemoryEntry"
-              @delete-memory="deleteMemoryEntry"
             />
           </div>
 
@@ -328,17 +307,15 @@ import { Link, router } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import SharedSkeleton from '@/Components/shared/Skeleton.vue'
 import AgentIdentityCard from '@/Components/agents/AgentIdentityCard.vue'
-import AgentPersonalityEditor from '@/Components/agents/AgentPersonalityEditor.vue'
-import AgentInstructionsEditor from '@/Components/agents/AgentInstructionsEditor.vue'
+import AgentIdentityFiles from '@/Components/agents/AgentIdentityFiles.vue'
 import AgentCapabilities from '@/Components/agents/AgentCapabilities.vue'
-import AgentMemoryView from '@/Components/agents/AgentMemoryView.vue'
 import AgentSettingsPanel from '@/Components/agents/AgentSettingsPanel.vue'
 import { useApi } from '@/composables/useApi'
-import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask, AgentMemoryEntry } from '@/types'
+import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask } from '@/types'
 
-const { fetchAgentDetail, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions, updateAgentIntegrations } = useApi()
+const { fetchAgentDetail, fetchAgentIdentityFiles, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions, updateAgentIntegrations } = useApi()
 
-type TabId = 'overview' | 'tasks' | 'personality' | 'instructions' | 'capabilities' | 'memory' | 'activity' | 'settings'
+type TabId = 'overview' | 'tasks' | 'identity' | 'capabilities' | 'activity' | 'settings'
 
 interface ActivityItem {
   id: string
@@ -355,8 +332,8 @@ const props = defineProps<{
 const loading = ref(true)
 const agent = ref<Agent | null>(null)
 const activityLog = ref<ActivityItem[]>([])
-const capabilityNotes = ref('')
-const memoryContent = ref('')
+const identityFiles = ref<{ type: string; title: string; content: string; updatedAt: string }[]>([])
+const identityFileSaving = ref(false)
 const agentTasks = ref<AgentTask[]>([])
 const behaviorMode = ref<AgentBehaviorMode>('autonomous')
 const mustWaitForApproval = ref(false)
@@ -367,34 +344,13 @@ const documentFolders = ref<{ id: string; title: string }[]>([])
 const appGroups = ref<{ name: string; description: string; icon: string; logo?: string; isIntegration?: boolean }[]>([])
 const enabledIntegrations = ref<string[]>([])
 
-const parsedMemoryEntries = computed<AgentMemoryEntry[]>(() => {
-  if (!memoryContent.value) return []
-  const entries: AgentMemoryEntry[] = []
-  const lines = memoryContent.value.split('\n')
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
-    const match = line.match(/^-\s*\[(\w+)\]\s*(.+)$/)
-    if (match) {
-      entries.push({
-        id: `mem-${i}`,
-        content: match[2],
-        category: match[1] as AgentMemoryEntry['category'],
-        createdAt: new Date(),
-      })
-    }
-  }
-  return entries
-})
-
 const activeTab = ref<TabId>('overview')
 
 const tabs: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'tasks', label: 'Tasks' },
-  { id: 'personality', label: 'Personality' },
-  { id: 'instructions', label: 'Instructions' },
+  { id: 'identity', label: 'Identity' },
   { id: 'capabilities', label: 'Capabilities' },
-  { id: 'memory', label: 'Memory' },
   { id: 'activity', label: 'Activity' },
   { id: 'settings', label: 'Settings' },
 ]
@@ -483,14 +439,6 @@ const fetchData = async () => {
       currentTask: raw.currentTask as string | undefined,
       brain: raw.brain as string | undefined,
       identity: raw.identity as Agent['identity'],
-      personality: raw.personality ? {
-        content: (raw.personality as Record<string, unknown>).content as string,
-        updatedAt: new Date((raw.personality as Record<string, unknown>).updatedAt as string),
-      } : undefined,
-      instructions: raw.instructions ? {
-        content: (raw.instructions as Record<string, unknown>).content as string,
-        updatedAt: new Date((raw.instructions as Record<string, unknown>).updatedAt as string),
-      } : undefined,
       capabilities: (raw.capabilities as Agent['capabilities']) || [],
       settings: {
         behaviorMode: 'supervised',
@@ -500,8 +448,6 @@ const fetchData = async () => {
       stats: raw.stats as Agent['stats'],
     } as Agent
 
-    capabilityNotes.value = (raw.toolNotes as string) || ''
-    memoryContent.value = (raw.memoryContent as string) || ''
     behaviorMode.value = (raw.behaviorMode as AgentBehaviorMode) || 'autonomous'
     mustWaitForApproval.value = (raw.mustWaitForApproval as boolean) || false
     channelPermissions.value = (raw.channelPermissions as string[]) || []
@@ -514,6 +460,15 @@ const fetchData = async () => {
     // Map tasks from the detail response
     const rawTasks = (raw.tasks as AgentTask[]) || []
     agentTasks.value = rawTasks
+
+    // Fetch identity files
+    try {
+      const identityFetch = fetchAgentIdentityFiles(props.id)
+      await identityFetch.promise
+      identityFiles.value = (identityFetch.data.value as typeof identityFiles.value) || []
+    } catch (e) {
+      console.error('Failed to fetch identity files:', e)
+    }
 
     // Build activity log from completed tasks
     activityLog.value = rawTasks
@@ -543,34 +498,19 @@ const togglePause = async () => {
   }
 }
 
-const savePersonality = async (content: string) => {
+const saveIdentityFile = async (fileType: string, content: string) => {
+  identityFileSaving.value = true
   try {
-    await updateAgentIdentityFile(props.id, 'SOUL', content)
-    if (agent.value?.personality) {
-      agent.value.personality = { content, updatedAt: new Date() }
+    await updateAgentIdentityFile(props.id, fileType, content)
+    // Update the local identity files array
+    const idx = identityFiles.value.findIndex(f => f.type === fileType)
+    if (idx >= 0) {
+      identityFiles.value[idx] = { ...identityFiles.value[idx], content, updatedAt: new Date().toISOString() }
     }
   } catch (e) {
-    console.error('Failed to save personality:', e)
-  }
-}
-
-const saveInstructions = async (content: string) => {
-  try {
-    await updateAgentIdentityFile(props.id, 'AGENTS', content)
-    if (agent.value?.instructions) {
-      agent.value.instructions = { content, updatedAt: new Date() }
-    }
-  } catch (e) {
-    console.error('Failed to save instructions:', e)
-  }
-}
-
-const saveCapabilityNotes = async (notes: string) => {
-  try {
-    await updateAgentIdentityFile(props.id, 'TOOLS', notes)
-    capabilityNotes.value = notes
-  } catch (e) {
-    console.error('Failed to save capability notes:', e)
+    console.error('Failed to save identity file:', e)
+  } finally {
+    identityFileSaving.value = false
   }
 }
 
@@ -627,41 +567,6 @@ const handleFolderPermissions = async (folders: string[]) => {
     folderPermissions.value = folders
   } catch (e) {
     console.error('Failed to update folder permissions:', e)
-  }
-}
-
-const startNewSession = () => {
-  // Session management deferred to Sprint 2
-}
-
-const viewSessionHistory = () => {
-  // Session history deferred to Sprint 2
-}
-
-const addMemoryEntry = async (entry: { content: string; category: string }) => {
-  const newContent = memoryContent.value
-    ? `${memoryContent.value}\n- [${entry.category}] ${entry.content}`
-    : `# Long-term Memory\n\n- [${entry.category}] ${entry.content}`
-  try {
-    await updateAgentIdentityFile(props.id, 'MEMORY', newContent)
-    memoryContent.value = newContent
-  } catch (e) {
-    console.error('Failed to add memory entry:', e)
-  }
-}
-
-const deleteMemoryEntry = async (id: string) => {
-  // id is "mem-{lineIndex}" — find and remove that line from memoryContent
-  const lineIndex = parseInt(id.replace('mem-', ''), 10)
-  const lines = memoryContent.value.split('\n')
-  if (lineIndex < 0 || lineIndex >= lines.length) return
-  lines.splice(lineIndex, 1)
-  const newContent = lines.join('\n')
-  try {
-    await updateAgentIdentityFile(props.id, 'MEMORY', newContent)
-    memoryContent.value = newContent
-  } catch (e) {
-    console.error('Failed to delete memory entry:', e)
   }
 }
 

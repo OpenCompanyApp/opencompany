@@ -37,6 +37,7 @@ class User extends Authenticatable
         'must_wait_for_approval',
         'sleeping_until',
         'sleeping_reason',
+        'bootstrapped_at',
         'manager_id',
     ];
 
@@ -54,6 +55,7 @@ class User extends Authenticatable
             'is_ephemeral' => 'boolean',
             'must_wait_for_approval' => 'boolean',
             'sleeping_until' => 'datetime',
+            'bootstrapped_at' => 'datetime',
         ];
     }
 
@@ -158,10 +160,6 @@ class User extends Authenticatable
         return $this->hasMany(DataTable::class, 'created_by');
     }
 
-    public function agentConfiguration(): HasOne
-    {
-        return $this->hasOne(AgentConfiguration::class);
-    }
 
     public function agentPermissions(): HasMany
     {

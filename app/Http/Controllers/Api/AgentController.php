@@ -194,8 +194,6 @@ class AgentController extends Controller
             'mustWaitForApproval' => $agent->must_wait_for_approval ?? false,
             'awaitingApprovalId' => $agent->awaiting_approval_id,
             'identity' => $identity,
-            'personality' => $filesByType['SOUL'] ?? null,
-            'instructions' => $filesByType['AGENTS'] ?? null,
             'capabilities' => $capabilities,
             'appGroups' => $toolRegistry->getAppGroupsMeta(),
             'enabledIntegrations' => app(AgentPermissionService::class)->getEnabledIntegrations($agent),
@@ -203,8 +201,6 @@ class AgentController extends Controller
             'folderPermissions' => $folderPermissions,
             'agentChannels' => $agentChannels,
             'documentFolders' => $documentFolders,
-            'toolNotes' => $filesByType['TOOLS']['content'] ?? '',
-            'memoryContent' => $filesByType['MEMORY']['content'] ?? '',
             'stats' => [
                 'tasksCompleted' => (int) ($taskStats->completed ?? 0),
                 'totalTasks' => (int) ($taskStats->total ?? 0),
