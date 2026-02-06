@@ -4,7 +4,6 @@
     <header class="px-4 md:px-6 py-3 md:py-0 md:h-14 border-b border-neutral-200 dark:border-neutral-700 flex flex-col md:flex-row md:items-center gap-3 bg-white dark:bg-neutral-900 shrink-0">
       <div class="flex items-center justify-between md:gap-4">
         <div class="flex items-center gap-3 md:gap-4">
-          <!-- Page tabs -->
           <div class="flex items-center gap-1">
             <span class="text-xl font-bold text-neutral-900 dark:text-white">Tasks</span>
             <Link
@@ -22,7 +21,6 @@
             <span class="text-green-400">{{ taskCounts.completed }} done</span>
           </div>
         </div>
-        <!-- Mobile: New Task button -->
         <button
           class="md:hidden flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg"
           @click="createModalOpen = true"
@@ -38,7 +36,7 @@
             v-for="filter in statusFilters"
             :key="filter.value"
             :class="[
-              'px-3 py-1 text-sm font-medium rounded-md transition-colors',
+              'px-3 py-1 text-sm font-medium rounded-md transition-colors whitespace-nowrap',
               currentFilter === filter.value
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
@@ -48,6 +46,26 @@
             {{ filter.label }}
           </button>
         </div>
+        <!-- Agent Filter -->
+        <select
+          v-model="agentFilter"
+          class="px-2 py-1 text-sm bg-neutral-100 dark:bg-neutral-800 border-0 rounded-lg text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
+        >
+          <option value="">All agents</option>
+          <option v-for="agent in agents" :key="agent.id" :value="agent.id">
+            {{ agent.name }}
+          </option>
+        </select>
+        <!-- Source Filter -->
+        <select
+          v-model="sourceFilter"
+          class="px-2 py-1 text-sm bg-neutral-100 dark:bg-neutral-800 border-0 rounded-lg text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
+        >
+          <option value="">All sources</option>
+          <option value="chat">Chat</option>
+          <option value="manual">Manual</option>
+          <option value="automation">Automation</option>
+        </select>
         <button
           class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0"
           @click="createModalOpen = true"
@@ -58,97 +76,96 @@
       </div>
     </header>
 
-    <!-- Task List -->
-    <div class="flex-1 overflow-auto p-4 md:p-6">
-      <div class="space-y-3">
+    <!-- Compact Task List -->
+    <div class="flex-1 overflow-auto">
+      <!-- Table Header -->
+      <div class="sticky top-0 bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-700 px-4 md:px-6">
+        <div class="flex items-center gap-3 h-8 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+          <span class="w-4" />
+          <span class="flex-1 min-w-0">Task</span>
+          <span class="w-28 hidden md:block">Agent</span>
+          <span class="w-16 text-center hidden sm:block">Source</span>
+          <span class="w-16 text-center hidden sm:block">Steps</span>
+          <span class="w-20 text-right">Time</span>
+        </div>
+      </div>
+
+      <!-- Task Rows -->
+      <div class="divide-y divide-neutral-100 dark:divide-neutral-800">
         <div
           v-for="task in filteredTasks"
           :key="task.id"
-          class="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors"
+          class="flex items-center gap-3 px-4 md:px-6 h-10 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
           @click="openTaskDetail(task)"
         >
-          <div class="flex items-start justify-between gap-4 mb-3">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1">
-                <span
-                  :class="[
-                    'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
-                    typeClasses[task.type]
-                  ]"
-                >
-                  <Icon :name="typeIcons[task.type]" class="w-3 h-3" />
-                  {{ typeLabels[task.type] }}
-                </span>
-                <span
-                  :class="[
-                    'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
-                    statusClasses[task.status]
-                  ]"
-                >
-                  <span :class="['w-1.5 h-1.5 rounded-full', statusDots[task.status]]" />
-                  {{ statusLabels[task.status] }}
-                </span>
-              </div>
-              <h4 class="font-medium text-neutral-900 dark:text-white truncate">
-                {{ task.title }}
-              </h4>
-              <p v-if="task.description" class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2 mt-1">
-                {{ task.description }}
-              </p>
-            </div>
-            <div class="flex flex-col items-end gap-2 shrink-0">
-              <span
-                :class="[
-                  'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full',
-                  priorityClasses[task.priority]
-                ]"
-              >
-                <Icon :name="priorityIcons[task.priority]" class="w-3 h-3" />
-                {{ task.priority }}
-              </span>
-              <span class="text-xs text-neutral-400">
-                {{ formatDate(task.createdAt) }}
-              </span>
-            </div>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div v-if="task.agent" class="flex items-center gap-1.5">
-                <AgentAvatar :user="task.agent" size="xs" />
-                <span class="text-sm text-neutral-600 dark:text-neutral-300">{{ task.agent.name }}</span>
-              </div>
-              <span v-else class="text-sm text-neutral-400 dark:text-neutral-500">Unassigned</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span v-if="task.steps && task.steps.length > 0" class="text-xs text-neutral-500 dark:text-neutral-400">
-                {{ task.steps.filter(s => s.status === 'completed').length }}/{{ task.steps.length }} steps
-              </span>
-              <button
-                v-if="task.channelId"
-                class="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-                @click.stop="goToChannel(task.channelId)"
-              >
-                <Icon name="ph:chat-circle" class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
+          <!-- Status dot -->
+          <span :class="['w-2 h-2 rounded-full shrink-0', statusDots[task.status]]" />
 
-        <!-- Empty State -->
-        <div v-if="filteredTasks.length === 0" class="text-center py-12">
-          <Icon name="ph:briefcase" class="w-16 h-16 text-neutral-300 dark:text-neutral-600 mx-auto mb-4" />
-          <h3 class="text-lg font-medium text-neutral-900 dark:text-white mb-2">No tasks found</h3>
-          <p class="text-neutral-500 dark:text-neutral-400 mb-4">
-            {{ currentFilter === 'all' ? 'Create your first task to get started' : 'No tasks match the current filter' }}
-          </p>
-          <button
-            class="inline-flex items-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
-            @click="createModalOpen = true"
-          >
-            <Icon name="ph:plus-bold" class="w-4 h-4" />
-            <span>Create Task</span>
-          </button>
+          <!-- Title -->
+          <span class="flex-1 min-w-0 text-sm text-neutral-900 dark:text-white truncate">
+            {{ task.title }}
+          </span>
+
+          <!-- Agent -->
+          <div class="w-28 hidden md:flex items-center gap-1.5 shrink-0">
+            <template v-if="task.agent">
+              <AgentAvatar :user="task.agent" size="xs" />
+              <span class="text-xs text-neutral-600 dark:text-neutral-400 truncate">{{ task.agent.name }}</span>
+            </template>
+            <span v-else class="text-xs text-neutral-400">—</span>
+          </div>
+
+          <!-- Source icon -->
+          <div class="w-16 hidden sm:flex items-center justify-center shrink-0">
+            <Icon
+              v-if="task.source === 'chat'"
+              name="ph:chat-circle"
+              class="w-4 h-4 text-neutral-400"
+              title="Chat"
+            />
+            <Icon
+              v-else-if="task.source === 'automation'"
+              name="ph:lightning"
+              class="w-4 h-4 text-neutral-400"
+              title="Automation"
+            />
+            <Icon
+              v-else
+              name="ph:hand"
+              class="w-4 h-4 text-neutral-400"
+              title="Manual"
+            />
+          </div>
+
+          <!-- Steps count -->
+          <div class="w-16 hidden sm:flex items-center justify-center shrink-0">
+            <span v-if="task.steps && task.steps.length > 0" class="text-xs text-neutral-500 dark:text-neutral-400">
+              {{ task.steps.filter(s => s.status === 'completed').length }}/{{ task.steps.length }}
+            </span>
+            <span v-else class="text-xs text-neutral-400">—</span>
+          </div>
+
+          <!-- Time ago -->
+          <span class="w-20 text-right text-xs text-neutral-400 shrink-0">
+            {{ timeAgo(task.createdAt) }}
+          </span>
         </div>
+      </div>
+
+      <!-- Empty State -->
+      <div v-if="filteredTasks.length === 0" class="text-center py-12">
+        <Icon name="ph:briefcase" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+        <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">No tasks found</h3>
+        <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+          {{ currentFilter === 'all' && !agentFilter && !sourceFilter ? 'Create your first task to get started' : 'No tasks match the current filters' }}
+        </p>
+        <button
+          class="inline-flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+          @click="createModalOpen = true"
+        >
+          <Icon name="ph:plus-bold" class="w-4 h-4" />
+          <span>Create Task</span>
+        </button>
       </div>
     </div>
 
@@ -259,7 +276,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import type { AgentTask, TaskStatus, TaskType, Priority, User } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
@@ -279,14 +296,14 @@ const {
   cancelAgentTask,
 } = useApi()
 
-// Current user (would come from auth in real app)
 const currentUserId = ref('h1')
 
-// Fetch data from API
 const { data: tasksData, refresh: refreshTasks } = fetchAgentTasks()
 const { data: agentsData } = fetchAgents()
 
 const currentFilter = ref<'all' | 'pending' | 'active' | 'completed'>('all')
+const agentFilter = ref('')
+const sourceFilter = ref('')
 const selectedTask = ref<AgentTask | null>(null)
 const taskDetailOpen = ref(false)
 const createModalOpen = ref(false)
@@ -310,19 +327,28 @@ const tasks = computed<AgentTask[]>(() => tasksData.value ?? [])
 const agents = computed<User[]>(() => agentsData.value ?? [])
 
 const filteredTasks = computed(() => {
-  if (currentFilter.value === 'all') {
-    return tasks.value
-  }
+  let result = tasks.value
+
+  // Status filter
   if (currentFilter.value === 'pending') {
-    return tasks.value.filter(t => t.status === 'pending')
+    result = result.filter(t => t.status === 'pending')
+  } else if (currentFilter.value === 'active') {
+    result = result.filter(t => t.status === 'active' || t.status === 'paused')
+  } else if (currentFilter.value === 'completed') {
+    result = result.filter(t => ['completed', 'failed', 'cancelled'].includes(t.status))
   }
-  if (currentFilter.value === 'active') {
-    return tasks.value.filter(t => t.status === 'active' || t.status === 'paused')
+
+  // Agent filter
+  if (agentFilter.value) {
+    result = result.filter(t => t.agentId === agentFilter.value)
   }
-  if (currentFilter.value === 'completed') {
-    return tasks.value.filter(t => ['completed', 'failed', 'cancelled'].includes(t.status))
+
+  // Source filter
+  if (sourceFilter.value) {
+    result = result.filter(t => t.source === sourceFilter.value)
   }
-  return tasks.value
+
+  return result
 })
 
 const taskCounts = computed(() => ({
@@ -331,88 +357,28 @@ const taskCounts = computed(() => ({
   completed: tasks.value.filter(t => t.status === 'completed').length,
 }))
 
-// Type styling
-const typeClasses: Record<TaskType, string> = {
-  ticket: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
-  request: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-  analysis: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400',
-  content: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400',
-  research: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400',
-  custom: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
-}
-
-const typeIcons: Record<TaskType, string> = {
-  ticket: 'ph:ticket',
-  request: 'ph:paper-plane-tilt',
-  analysis: 'ph:chart-bar',
-  content: 'ph:note-pencil',
-  research: 'ph:magnifying-glass',
-  custom: 'ph:clipboard-text',
-}
-
-const typeLabels: Record<TaskType, string> = {
-  ticket: 'Ticket',
-  request: 'Request',
-  analysis: 'Analysis',
-  content: 'Content',
-  research: 'Research',
-  custom: 'Custom',
-}
-
 // Status styling
-const statusClasses: Record<TaskStatus, string> = {
-  pending: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
-  active: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-  paused: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-  completed: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-  failed: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-  cancelled: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400',
-}
-
 const statusDots: Record<TaskStatus, string> = {
   pending: 'bg-neutral-400',
-  active: 'bg-blue-500',
+  active: 'bg-blue-500 animate-pulse',
   paused: 'bg-amber-500',
   completed: 'bg-green-500',
   failed: 'bg-red-500',
   cancelled: 'bg-neutral-400',
 }
 
-const statusLabels: Record<TaskStatus, string> = {
-  pending: 'Pending',
-  active: 'Active',
-  paused: 'Paused',
-  completed: 'Completed',
-  failed: 'Failed',
-  cancelled: 'Cancelled',
-}
-
-// Priority styling
-const priorityClasses: Record<Priority, string> = {
-  low: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
-  normal: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-  medium: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-  high: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-  urgent: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-}
-
-const priorityIcons: Record<Priority, string> = {
-  low: 'ph:arrow-down',
-  normal: 'ph:minus',
-  medium: 'ph:minus',
-  high: 'ph:arrow-up',
-  urgent: 'ph:warning',
-}
-
-const formatDate = (date: Date | string) => {
+const timeAgo = (date: Date | string) => {
   const d = new Date(date)
   const now = new Date()
-  const diff = now.getTime() - d.getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const seconds = Math.floor((now.getTime() - d.getTime()) / 1000)
 
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days} days ago`
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
   return d.toLocaleDateString()
 }
 

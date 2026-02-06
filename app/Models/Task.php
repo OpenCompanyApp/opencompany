@@ -40,6 +40,10 @@ class Task extends Model
     public const PRIORITY_HIGH = 'high';
     public const PRIORITY_URGENT = 'urgent';
 
+    public const SOURCE_MANUAL = 'manual';
+    public const SOURCE_CHAT = 'chat';
+    public const SOURCE_AUTOMATION = 'automation';
+
     protected $fillable = [
         'id',
         'title',
@@ -52,6 +56,7 @@ class Task extends Model
         'channel_id',
         'list_item_id',
         'parent_task_id',
+        'source',
         'context',
         'result',
         'started_at',
@@ -84,6 +89,7 @@ class Task extends Model
         $array['channelId'] = $this->channel_id;
         $array['listItemId'] = $this->list_item_id;
         $array['parentTaskId'] = $this->parent_task_id;
+        $array['source'] = $this->source;
         $array['startedAt'] = $this->started_at;
         $array['completedAt'] = $this->completed_at;
         $array['dueAt'] = $this->due_at;

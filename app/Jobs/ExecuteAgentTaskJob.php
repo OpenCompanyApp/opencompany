@@ -18,8 +18,9 @@ class ExecuteAgentTaskJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
-    public int $timeout = 300;
+    public int $tries = 2;
+    public int $timeout = 1800;
+    public array $backoff = [10];
 
     public function __construct(
         private Task $task,
@@ -54,7 +55,7 @@ class ExecuteAgentTaskJob implements ShouldQueue
             // Create agent and execute
             $agent->update(['status' => 'working']);
 
-            $agentInstance = OpenCompanyAgent::for($agent, $channelId);
+            $agentInstance = OpenCompanyAgent::for($agent, $channelId, $this->task->id);
             $response = $agentInstance->prompt($prompt);
 
             $analyzeStep->complete();

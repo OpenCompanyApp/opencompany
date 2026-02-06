@@ -46,8 +46,8 @@ class ToolRegistry
             'description' => 'Kanban board items',
         ],
         'tasks' => [
-            'tools' => ['create_task_step'],
-            'label' => 'log_step',
+            'tools' => ['update_current_task', 'create_task_step'],
+            'label' => 'update, log_step',
             'description' => 'Work progress tracking',
         ],
         'telegram' => [
@@ -204,6 +204,13 @@ class ToolRegistry
             'icon' => 'ph:list-plus',
         ],
         // Tasks
+        'update_current_task' => [
+            'class' => UpdateCurrentTask::class,
+            'type' => 'write',
+            'name' => 'Update Current Task',
+            'description' => 'Update your running task: rename, add/update steps, or set final status.',
+            'icon' => 'ph:list-checks',
+        ],
         'create_task_step' => [
             'class' => CreateTaskStep::class,
             'type' => 'write',
@@ -593,6 +600,7 @@ class ToolRegistry
             ManageCalendarEvent::class => new ManageCalendarEvent($agent),
             QueryListItems::class => new QueryListItems($agent),
             ManageListItem::class => new ManageListItem($agent),
+            UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
             SendTelegramNotification::class => new SendTelegramNotification($agent),
             PlausibleQueryStats::class => new PlausibleQueryStats($agent),

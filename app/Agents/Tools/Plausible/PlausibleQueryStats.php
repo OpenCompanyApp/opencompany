@@ -54,7 +54,7 @@ class PlausibleQueryStats implements Tool
             }
 
             if (isset($request['limit'])) {
-                $body['limit'] = (int) $request['limit'];
+                $body['pagination'] = ['limit' => (int) $request['limit']];
             }
 
             $result = $plausible->query($body);
@@ -97,7 +97,7 @@ class PlausibleQueryStats implements Tool
                 ->description('Order results, e.g., [["visitors", "desc"]].'),
             'limit' => $schema
                 ->integer()
-                ->description('Maximum number of results to return (default: 10000).'),
+                ->description('Maximum number of results to return. Sent as pagination.limit (default: 10000).'),
         ];
     }
 }

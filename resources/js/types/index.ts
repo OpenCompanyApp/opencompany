@@ -180,6 +180,7 @@ export interface AgentTask {
   listItemId?: string
   parentTask?: AgentTask
   parentTaskId?: string
+  source?: 'manual' | 'chat' | 'automation'
   subtasks?: AgentTask[]
   steps?: TaskStep[]
   context?: Record<string, unknown>

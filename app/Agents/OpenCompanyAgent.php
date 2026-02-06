@@ -6,6 +6,7 @@ use App\Agents\Conversations\ChannelConversationLoader;
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Agents\Tools\ToolRegistry;
 use App\Models\Channel;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentDocumentService;
 use Laravel\Ai\Contracts\Agent;
@@ -26,6 +27,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         private ChannelConversationLoader $conversationLoader,
         private DynamicProviderResolver $providerResolver,
         private ToolRegistry $toolRegistry,
+        private ?string $taskId = null,
     ) {
         $this->resolvedProvider = $this->providerResolver->resolve($this->agent);
     }
@@ -33,11 +35,12 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
     /**
      * Create an agent instance for a given user and channel.
      */
-    public static function for(User $agent, string $channelId): static
+    public static function for(User $agent, string $channelId, ?string $taskId = null): static
     {
         return app(static::class, [
             'agent' => $agent,
             'channelId' => $channelId,
+            'taskId' => $taskId,
         ]);
     }
 
@@ -53,6 +56,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         if ($identityFiles->isEmpty()) {
             $fallback = "You are {$this->agent->name}, a helpful AI assistant working within a company workspace.\n\n";
             $fallback .= $this->buildChannelContext();
+            $fallback .= $this->buildTaskContext();
             $fallback .= "## Apps\n\n";
             $fallback .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
             $fallback .= "Call get_tool_info(name) for parameter details before using an unfamiliar tool.\n";
@@ -71,8 +75,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             }
         }
 
-        // Add current channel context
+        // Add current channel and task context
         $prompt .= $this->buildChannelContext();
+        $prompt .= $this->buildTaskContext();
 
         $prompt .= "## Apps\n\n";
         $prompt .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
@@ -115,6 +120,14 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
     }
 
     /**
+     * Get the timeout for LLM requests (in seconds).
+     */
+    public function timeout(): int
+    {
+        return (int) config('prism.request_timeout', 600);
+    }
+
+    /**
      * Build context about the current channel for the system prompt.
      */
     private function buildChannelContext(): string
@@ -139,6 +152,42 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         }
 
         $prompt .= "\nYour response text is sent directly to this channel — you do NOT need to use send_channel_message or read_channel for the current conversation. Use those tools only to interact with OTHER channels.\n\n";
+
+        return $prompt;
+    }
+
+    /**
+     * Build context about the current task for the system prompt.
+     */
+    private function buildTaskContext(): string
+    {
+        if (!$this->taskId) {
+            return '';
+        }
+
+        $task = Task::with('steps')->find($this->taskId);
+        if (!$task) {
+            return '';
+        }
+
+        $prompt = "## Current Task\n\n";
+        $prompt .= "You are working on task \"{$task->title}\" (id: {$task->id}).\n";
+        $prompt .= "Status: {$task->status} | Priority: {$task->priority} | Type: {$task->type}\n";
+
+        if ($task->description) {
+            $prompt .= "Description: {$task->description}\n";
+        }
+
+        if ($task->steps->isNotEmpty()) {
+            $prompt .= "\nSteps:\n";
+            foreach ($task->steps as $step) {
+                $prompt .= "- [{$step->status}] {$step->name}\n";
+            }
+        }
+
+        $prompt .= "\nTask management is internal — NEVER mention tasks, steps, or task status in your response to the user.\n";
+        $prompt .= "Call update_current_task(action: \"update_task\") to set title to a short action summary (e.g., \"Generate pirate jokes\").\n";
+        $prompt .= "Before the task completes, set description to a brief summary of what was done. The task cannot complete without a description.\n\n";
 
         return $prompt;
     }

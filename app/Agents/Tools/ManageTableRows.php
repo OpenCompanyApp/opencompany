@@ -3,6 +3,7 @@
 namespace App\Agents\Tools;
 
 use App\Models\DataTable;
+use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -42,6 +43,8 @@ class ManageTableRows implements Tool
         $table = DataTable::findOrFail($request['tableId']);
         $data = isset($request['data']) ? json_decode($request['data'], true) : [];
 
+        $data = $this->resolveDataKeys($table, $data);
+
         $row = DataTableRow::create([
             'table_id' => $table->id,
             'data' => $data,
@@ -55,6 +58,9 @@ class ManageTableRows implements Tool
     {
         $row = DataTableRow::findOrFail($request['rowId']);
         $data = isset($request['data']) ? json_decode($request['data'], true) : [];
+
+        $table = DataTable::findOrFail($row->table_id);
+        $data = $this->resolveDataKeys($table, $data);
 
         $row->data = array_merge($row->data ?? [], $data);
         $row->save();
@@ -75,17 +81,97 @@ class ManageTableRows implements Tool
         $table = DataTable::findOrFail($request['tableId']);
         $rows = json_decode($request['rows'], true);
 
+        // Pre-resolve columns from the first row so we don't re-create per row
+        if (!empty($rows)) {
+            $this->resolveDataKeys($table, $rows[0]);
+        }
+
         $count = 0;
         foreach ($rows as $rowData) {
             DataTableRow::create([
                 'table_id' => $table->id,
-                'data' => $rowData,
+                'data' => $this->resolveDataKeys($table, $rowData),
                 'created_by' => $this->agent->id,
             ]);
             $count++;
         }
 
         return "Added {$count} rows.";
+    }
+
+    /**
+     * Resolve human-readable data keys to column UUIDs, auto-creating columns as needed.
+     */
+    private function resolveDataKeys(DataTable $table, array $data): array
+    {
+        if (empty($data)) {
+            return $data;
+        }
+
+        $columns = $table->columns()->get();
+        $columnById = $columns->keyBy('id');
+        $columnByName = $columns->keyBy(fn ($col) => strtolower($col->name));
+
+        $resolved = [];
+        $maxOrder = $columns->max('order') ?? -1;
+
+        foreach ($data as $key => $value) {
+            // Key is already a valid column UUID
+            if ($columnById->has($key)) {
+                $resolved[$key] = $value;
+                continue;
+            }
+
+            // Key matches an existing column name
+            $lowerKey = strtolower($key);
+            if ($columnByName->has($lowerKey)) {
+                $resolved[$columnByName->get($lowerKey)->id] = $value;
+                continue;
+            }
+
+            // Auto-create a new column
+            $maxOrder++;
+            $column = DataTableColumn::create([
+                'table_id' => $table->id,
+                'name' => str_replace('_', ' ', ucfirst($key)),
+                'type' => $this->inferColumnType($value),
+                'order' => $maxOrder,
+                'required' => false,
+            ]);
+
+            // Cache for subsequent keys/rows
+            $columnByName->put($lowerKey, $column);
+            $columnById->put($column->id, $column);
+
+            $resolved[$column->id] = $value;
+        }
+
+        return $resolved;
+    }
+
+    private function inferColumnType(mixed $value): string
+    {
+        if (is_bool($value)) {
+            return 'checkbox';
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return 'number';
+        }
+
+        if (is_string($value)) {
+            if (filter_var($value, FILTER_VALIDATE_URL)) {
+                return 'url';
+            }
+            if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                return 'email';
+            }
+            if (preg_match('/^\d{4}-\d{2}-\d{2}/', $value)) {
+                return 'date';
+            }
+        }
+
+        return 'text';
     }
 
     public function schema(JsonSchema $schema): array
@@ -104,10 +190,10 @@ class ManageTableRows implements Tool
                 ->description('The UUID of the row. Required for update_row and delete_row.'),
             'data' => $schema
                 ->string()
-                ->description('JSON string of column_id:value pairs for the row data.'),
+                ->description('JSON string of key:value pairs for the row data. Keys can be column names (e.g. "status") or column UUIDs. New columns are auto-created for unknown keys.'),
             'rows' => $schema
                 ->string()
-                ->description('JSON array of row data objects for bulk_add. Each element is a column_id:value map.'),
+                ->description('JSON array of row data objects for bulk_add. Each element is a key:value map. Keys can be column names or UUIDs.'),
         ];
     }
 }

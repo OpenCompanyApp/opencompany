@@ -48,6 +48,11 @@ class TaskController extends Controller
             $query->where('priority', $request->input('priority'));
         }
 
+        // Filter by source
+        if ($request->has('source')) {
+            $query->where('source', $request->input('source'));
+        }
+
         // Order by
         $orderBy = $request->input('orderBy', 'created_at');
         $orderDir = $request->input('orderDir', 'desc');
@@ -83,6 +88,7 @@ class TaskController extends Controller
             'channel_id' => $request->input('channelId'),
             'list_item_id' => $request->input('listItemId'),
             'parent_task_id' => $request->input('parentTaskId'),
+            'source' => $request->input('source', Task::SOURCE_MANUAL),
             'context' => $request->input('context'),
             'due_at' => $request->input('dueAt'),
         ]);

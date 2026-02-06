@@ -3,7 +3,11 @@
 namespace App\Agents\Providers;
 
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Gateway\Prism\PrismGateway;
+use Laravel\Ai\Gateway\TextGenerationOptions;
 use Laravel\Ai\Providers\Provider;
 
 /**
@@ -36,6 +40,42 @@ class GlmPrismGateway extends PrismGateway
             array_filter([
                 'api_key' => $provider->providerCredentials()['key'],
             ]),
+        );
+    }
+
+    /**
+     * Override to use config-based timeout (instead of hardcoded 60s)
+     * and add HTTP-level retries for transient failures.
+     */
+    protected function createPrismTextRequest(
+        Provider $provider,
+        string $model,
+        ?array $schema,
+        ?TextGenerationOptions $options = null,
+        ?int $timeout = null,
+    ) {
+        $resolvedTimeout = $timeout ?? (int) config('prism.request_timeout', 600);
+
+        Log::info('GlmPrismGateway timeout debug', [
+            'incoming_timeout' => $timeout,
+            'config_value' => config('prism.request_timeout'),
+            'resolved_timeout' => $resolvedTimeout,
+        ]);
+
+        return parent::createPrismTextRequest(
+            $provider,
+            $model,
+            $schema,
+            $options,
+            $resolvedTimeout,
+        )->withClientOptions(['timeout' => $resolvedTimeout])
+        ->withClientRetry(
+            times: 2,
+            sleepMilliseconds: 1000,
+            when: fn ($exception) => $exception instanceof ConnectionException
+                || ($exception instanceof RequestException
+                    && in_array($exception->response?->status(), [408, 429, 500, 502, 503, 504])),
+            throw: true,
         );
     }
 }
