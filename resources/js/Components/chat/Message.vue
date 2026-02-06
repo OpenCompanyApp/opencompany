@@ -141,22 +141,29 @@
 
         <!-- Attachments -->
         <div v-if="message.attachments?.length" :class="attachmentsClasses">
-          <div
-            v-for="attachment in message.attachments"
-            :key="attachment.id"
-            :class="attachmentClasses"
-          >
-            <Icon :name="getAttachmentIcon(attachment.type)" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
-            <span class="text-sm truncate flex-1">{{ attachment.name }}</span>
-            <span class="text-xs text-neutral-400 dark:text-neutral-400">{{ formatFileSize(attachment.size) }}</span>
-            <button
-              type="button"
-              class="p-1.5 rounded-lg transition-colors duration-150 hover:bg-neutral-100 dark:hover:bg-neutral-700"
-              @click="handleDownload(attachment)"
-            >
-              <Icon name="ph:download-simple" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
-            </button>
-          </div>
+          <template v-for="attachment in message.attachments" :key="attachment.id">
+            <!-- Image attachments render inline -->
+            <img
+              v-if="attachment.mime_type?.startsWith('image/')"
+              :src="attachment.url"
+              :alt="attachment.original_name || attachment.name"
+              class="max-w-full rounded-lg my-2"
+              loading="lazy"
+            />
+            <!-- Non-image attachments render as download links -->
+            <div v-else :class="attachmentClasses">
+              <Icon :name="getAttachmentIcon(attachment.type)" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+              <span class="text-sm truncate flex-1">{{ attachment.name }}</span>
+              <span class="text-xs text-neutral-400 dark:text-neutral-400">{{ formatFileSize(attachment.size) }}</span>
+              <button
+                type="button"
+                class="p-1.5 rounded-lg transition-colors duration-150 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                @click="handleDownload(attachment)"
+              >
+                <Icon name="ph:download-simple" class="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+              </button>
+            </div>
+          </template>
         </div>
 
         <!-- Code Blocks -->
@@ -498,9 +505,21 @@ const formattedContent = computed(() => {
   // Convert @mentions to styled spans
   content = content.replace(/@(\w+)/g, '<span class="text-neutral-900 dark:text-white font-medium cursor-pointer hover:underline">@$1</span>')
 
-  // Convert URLs to links
+  // Convert markdown images ![alt](url)
   content = content.replace(
-    /(https?:\/\/[^\s<]+)/g,
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    '<img src="$2" alt="$1" class="max-w-full rounded-lg my-2" loading="lazy" />'
+  )
+
+  // Convert markdown links [text](url)
+  content = content.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener" class="text-blue-500 hover:underline">$1</a>'
+  )
+
+  // Convert URLs to links (skip URLs already inside href or src attributes)
+  content = content.replace(
+    /(?<!="|='|=)(https?:\/\/[^\s<"']+)/g,
     '<a href="$1" target="_blank" rel="noopener" class="text-blue-500 hover:underline">$1</a>'
   )
 

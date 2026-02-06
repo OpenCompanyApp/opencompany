@@ -126,6 +126,46 @@ class TelegramService
     }
 
     /**
+     * Send a photo to a Telegram chat by uploading a file from disk.
+     */
+    public function sendPhoto(string $chatId, string $filePath, ?string $caption = null): array
+    {
+        if (!$this->botToken) {
+            throw new \RuntimeException('Telegram bot token is not configured.');
+        }
+
+        if (!file_exists($filePath)) {
+            throw new \RuntimeException("Photo file not found: {$filePath}");
+        }
+
+        $url = self::BASE_URL . $this->botToken . '/sendPhoto';
+
+        try {
+            $request = Http::timeout(30)
+                ->attach('photo', file_get_contents($filePath), basename($filePath));
+
+            $params = ['chat_id' => $chatId];
+            if ($caption) {
+                $params['caption'] = substr($caption, 0, 1024);
+            }
+
+            $response = $request->post($url, $params);
+            $data = $response->json();
+
+            if (!$response->successful() || !($data['ok'] ?? false)) {
+                $errorDescription = $data['description'] ?? 'Unknown Telegram API error';
+                Log::error('Telegram sendPhoto error', ['error' => $errorDescription]);
+                throw new \RuntimeException("Telegram API error: {$errorDescription}");
+            }
+
+            return $data['result'] ?? [];
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('Telegram sendPhoto connection error', ['error' => $e->getMessage()]);
+            throw new \RuntimeException("Failed to connect to Telegram API: {$e->getMessage()}");
+        }
+    }
+
+    /**
      * Check if the service has a valid bot token configured.
      */
     public function isConfigured(): bool

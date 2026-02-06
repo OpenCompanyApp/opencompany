@@ -10,3 +10,16 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('agent:resume-waiting')->everyMinute();
+
+Schedule::call(function () {
+    $dir = storage_path('app/public/charts');
+    if (!is_dir($dir)) {
+        return;
+    }
+    $cutoff = now()->subDays(7)->getTimestamp();
+    foreach (glob($dir . '/*.png') as $file) {
+        if (filemtime($file) < $cutoff) {
+            unlink($file);
+        }
+    }
+})->daily()->name('cleanup-charts');

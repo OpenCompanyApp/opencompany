@@ -8,6 +8,7 @@ use App\Events\TaskUpdated;
 use App\Models\Channel;
 use App\Models\DirectMessage;
 use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -109,6 +110,9 @@ class AgentRespondJob implements ShouldQueue
                 'timestamp' => now(),
             ]);
 
+            // Save chart images from tool results as message attachments
+            $this->saveChartAttachments($response, $agentMessage);
+
             // Update channel timestamp
             Channel::where('id', $this->channelId)
                 ->update(['last_message_at' => now()]);
@@ -179,6 +183,39 @@ class AgentRespondJob implements ShouldQueue
             } else {
                 $this->agent->update(['status' => 'idle']);
             }
+        }
+    }
+
+    /**
+     * Save chart images from tool call results as message attachments.
+     */
+    private function saveChartAttachments($response, Message $message): void
+    {
+        try {
+            foreach ($response->toolResults as $toolResult) {
+                if ($toolResult->name !== 'create_jpgraph_chart') {
+                    continue;
+                }
+
+                $result = $toolResult->result ?? '';
+                if (preg_match('#(/storage/charts/[a-f0-9-]+\.png)#', $result, $m)) {
+                    $url = $m[1];
+                    $filePath = storage_path('app/public/' . str_replace('/storage/', '', $url));
+
+                    MessageAttachment::create([
+                        'id' => Str::uuid()->toString(),
+                        'message_id' => $message->id,
+                        'filename' => basename($url),
+                        'original_name' => basename($url),
+                        'mime_type' => 'image/png',
+                        'size' => file_exists($filePath) ? filesize($filePath) : 0,
+                        'url' => $url,
+                        'uploaded_by_id' => $this->agent->id,
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to save chart attachments', ['error' => $e->getMessage()]);
         }
     }
 

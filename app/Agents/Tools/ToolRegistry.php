@@ -50,6 +50,11 @@ class ToolRegistry
             'label' => 'update, log_step',
             'description' => 'Work progress tracking',
         ],
+        'jpgraph_charts' => [
+            'tools' => ['create_jpgraph_chart'],
+            'label' => 'create',
+            'description' => 'Generate chart images (JpGraph)',
+        ],
         'telegram' => [
             'tools' => ['send_telegram_notification'],
             'label' => 'notify',
@@ -71,7 +76,7 @@ class ToolRegistry
      * Apps that are external integrations (can be toggled per agent).
      * Built-in apps are always available.
      */
-    public const INTEGRATION_APPS = ['telegram', 'plausible'];
+    public const INTEGRATION_APPS = ['telegram', 'plausible', 'jpgraph_charts'];
 
     /**
      * Icons for each app group.
@@ -83,6 +88,7 @@ class ToolRegistry
         'calendar' => 'ph:calendar',
         'lists' => 'ph:kanban',
         'tasks' => 'ph:list-checks',
+        'jpgraph_charts' => 'ph:chart-bar',
         'telegram' => 'ph:telegram-logo',
         'plausible' => 'ph:chart-line-up',
         'system' => 'ph:gear',
@@ -94,6 +100,7 @@ class ToolRegistry
     private const INTEGRATION_LOGOS = [
         'telegram' => 'logos:telegram',
         'plausible' => 'simple-icons:plausibleanalytics',
+        'jpgraph_charts' => 'ph:chart-bar',
     ];
 
     /**
@@ -217,6 +224,14 @@ class ToolRegistry
             'name' => 'Create Task Step',
             'description' => 'Log a progress step on a task you are working on.',
             'icon' => 'ph:list-checks',
+        ],
+        // Charts (JpGraph)
+        'create_jpgraph_chart' => [
+            'class' => CreateJpGraphChart::class,
+            'type' => 'write',
+            'name' => 'Create JpGraph Chart',
+            'description' => 'Generate chart images (bar, line, pie, scatter, radar, stock, gantt, and 14 more types) from data.',
+            'icon' => 'ph:chart-bar',
         ],
         // External
         'send_telegram_notification' => [
@@ -602,6 +617,7 @@ class ToolRegistry
             ManageListItem::class => new ManageListItem($agent),
             UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
+            CreateJpGraphChart::class => new CreateJpGraphChart($agent),
             SendTelegramNotification::class => new SendTelegramNotification($agent),
             PlausibleQueryStats::class => new PlausibleQueryStats($agent),
             PlausibleRealtimeVisitors::class => new PlausibleRealtimeVisitors($agent),

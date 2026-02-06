@@ -37,19 +37,113 @@ class ForwardMessageToTelegram implements ShouldQueue
             return;
         }
 
-        // Format message with author name, converting markdown to Telegram HTML
         $authorName = htmlspecialchars($message->author?->name ?? 'System', ENT_QUOTES, 'UTF-8');
-        $content = TelegramService::markdownToTelegramHtml($message->content);
-        $text = "<b>{$authorName}</b>\n{$content}";
 
         try {
-            $telegram->sendMessage($chatId, $text);
+            // Extract and send chart images as photos (from inline markdown)
+            $sentPaths = $this->sendChartImages($telegram, $chatId, $message->content);
+
+            // Send image attachments (charts saved as structured data)
+            $this->sendAttachmentImages($telegram, $chatId, $message, $sentPaths);
+
+            // Strip image markdown from content before sending as text
+            $textContent = preg_replace('/!\[[^\]]*\]\([^)]+\)\s*/', '', $message->content);
+
+            if (trim($textContent) !== '') {
+                $content = TelegramService::markdownToTelegramHtml($textContent);
+                $text = "<b>{$authorName}</b>\n{$content}";
+                $telegram->sendMessage($chatId, $text);
+            }
         } catch (\Throwable $e) {
             Log::error('Failed to forward message to Telegram', [
                 'channel_id' => $channel->id,
                 'chat_id' => $chatId,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * Extract chart image URLs from message content and send as Telegram photos.
+     *
+     * @return string[] File paths that were successfully sent
+     */
+    private function sendChartImages(TelegramService $telegram, string $chatId, string $content): array
+    {
+        $sentPaths = [];
+
+        if (!preg_match_all('/!\[([^\]]*)\]\(([^)]+)\)/', $content, $matches, PREG_SET_ORDER)) {
+            return $sentPaths;
+        }
+
+        foreach ($matches as $match) {
+            $alt = $match[1];
+            $url = $match[2];
+
+            // Only handle local storage URLs (chart images)
+            if (!str_starts_with($url, '/storage/')) {
+                continue;
+            }
+
+            // Convert URL path to disk path
+            $relativePath = str_replace('/storage/', '', $url);
+            $filePath = storage_path('app/public/' . $relativePath);
+
+            if (!file_exists($filePath)) {
+                Log::warning('Chart image not found for Telegram forwarding', ['path' => $filePath]);
+                continue;
+            }
+
+            try {
+                $telegram->sendPhoto($chatId, $filePath, $alt ?: null);
+                $sentPaths[] = $filePath;
+            } catch (\Throwable $e) {
+                Log::error('Failed to send chart photo to Telegram', [
+                    'error' => $e->getMessage(),
+                    'path' => $filePath,
+                ]);
+            }
+        }
+
+        return $sentPaths;
+    }
+
+    /**
+     * Send image attachments as Telegram photos, skipping any already sent via inline markdown.
+     */
+    private function sendAttachmentImages(TelegramService $telegram, string $chatId, $message, array $alreadySentPaths): void
+    {
+        foreach ($message->attachments as $attachment) {
+            if (!str_starts_with($attachment->mime_type ?? '', 'image/')) {
+                continue;
+            }
+
+            $url = $attachment->url ?? '';
+            if (!str_starts_with($url, '/storage/')) {
+                continue;
+            }
+
+            $relativePath = str_replace('/storage/', '', $url);
+            $filePath = storage_path('app/public/' . $relativePath);
+
+            // Skip if already sent from inline markdown parsing
+            if (in_array($filePath, $alreadySentPaths, true)) {
+                continue;
+            }
+
+            if (!file_exists($filePath)) {
+                Log::warning('Attachment image not found for Telegram forwarding', ['path' => $filePath]);
+                continue;
+            }
+
+            try {
+                $telegram->sendPhoto($chatId, $filePath, $attachment->original_name);
+            } catch (\Throwable $e) {
+                Log::error('Failed to send attachment photo to Telegram', [
+                    'error' => $e->getMessage(),
+                    'path' => $filePath,
+                ]);
+            }
         }
     }
 }

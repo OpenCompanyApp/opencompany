@@ -44,6 +44,12 @@
 | [feature-test-map.md](testing/feature-test-map.md) | Checklist of every feature, button, and interaction to test (~500 items) | Manual QA testing |
 | [qa-strategy.md](testing/qa-strategy.md) | Testing pyramid, CI/CD pipeline, coverage targets, test data management | Setting up automated test infrastructure |
 
+## Tools & Features
+
+| Document | What it covers | Read when... |
+|----------|---------------|--------------|
+| [charts.md](tools/charts.md) | Chart generation JSON adapter — all 21 chart types, series formats, options, examples | Using or extending the `create_jpgraph_chart` agent tool |
+
 ## Research
 
 | Document | What it covers | Read when... |
