@@ -19,6 +19,9 @@ Route::get('/welcome', function () {
     ]);
 })->name('welcome');
 
+// Public calendar feed (no auth — uses token)
+Route::get('/cal/{token}.ics', [\App\Http\Controllers\Api\CalendarFeedController::class, 'feed']);
+
 // Main application routes (with auth middleware)
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard (home)

@@ -15,11 +15,13 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\ListItemController;
 use App\Http\Controllers\Api\ListItemCommentController;
+use App\Http\Controllers\Api\ListStatusController;
 use App\Http\Controllers\Api\ListTemplateController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\CalendarEventController;
 use App\Http\Controllers\Api\CalendarEventAttendeeController;
+use App\Http\Controllers\Api\CalendarFeedController;
 use App\Http\Controllers\Api\DataTableController;
 use App\Http\Controllers\Api\DataTableColumnController;
 use App\Http\Controllers\Api\DataTableRowController;
@@ -58,6 +60,13 @@ Route::post('/messages/{id}/reactions', [MessageController::class, 'addReaction'
 Route::delete('/messages/{messageId}/reactions/{reactionId}', [MessageController::class, 'removeReaction']);
 Route::get('/messages/{id}/thread', [MessageController::class, 'thread']);
 Route::post('/messages/{id}/pin', [MessageController::class, 'pin']);
+
+// List Statuses
+Route::get('/list-statuses', [ListStatusController::class, 'index']);
+Route::post('/list-statuses', [ListStatusController::class, 'store']);
+Route::post('/list-statuses/reorder', [ListStatusController::class, 'reorder']);
+Route::patch('/list-statuses/{id}', [ListStatusController::class, 'update']);
+Route::delete('/list-statuses/{id}', [ListStatusController::class, 'destroy']);
 
 // List Items (formerly Tasks - kanban board items)
 Route::get('/list-items', [ListItemController::class, 'index']);
@@ -163,6 +172,14 @@ Route::post('/dm/{userId}/read', [DmController::class, 'markRead']);
 Route::get('/search', [SearchController::class, 'index']);
 
 // Calendar Events
+Route::get('/calendar/events/export.ics', [CalendarEventController::class, 'export']);
+Route::post('/calendar/events/import', [CalendarEventController::class, 'import']);
+Route::post('/calendar/events/import-url', [CalendarEventController::class, 'importFromUrl']);
+
+// Calendar Feeds
+Route::get('/calendar/feeds', [CalendarFeedController::class, 'index']);
+Route::post('/calendar/feeds', [CalendarFeedController::class, 'store']);
+Route::delete('/calendar/feeds/{id}', [CalendarFeedController::class, 'destroy']);
 Route::get('/calendar/events', [CalendarEventController::class, 'index']);
 Route::post('/calendar/events', [CalendarEventController::class, 'store']);
 Route::get('/calendar/events/{id}', [CalendarEventController::class, 'show']);

@@ -11,7 +11,10 @@ import type {
   Document,
   Activity,
   Stats,
-  ApprovalRequest
+  ApprovalRequest,
+  CalendarEvent,
+  CalendarFeed,
+  ListStatus
 } from '@/types'
 
 const api = axios.create({
@@ -103,10 +106,21 @@ export const useApi = () => {
   const fetchPinnedMessages = (channelId: string) =>
     useFetch<Message[]>(`/channels/${channelId}/pinned`)
 
+  // List Statuses
+  const fetchListStatuses = () => useFetch<ListStatus[]>('/list-statuses')
+  const createListStatus = (data: { name: string; color: string; icon: string; isDone?: boolean }) =>
+    api.post('/list-statuses', data)
+  const updateListStatus = (id: string, data: Partial<{ name: string; color: string; icon: string; isDone: boolean; isDefault: boolean }>) =>
+    api.patch(`/list-statuses/${id}`, data)
+  const deleteListStatus = (id: string, replacementSlug?: string) =>
+    api.delete(`/list-statuses/${id}`, { data: { replacementSlug } })
+  const reorderListStatuses = (orders: { id: string; position: number }[]) =>
+    api.post('/list-statuses/reorder', { orders })
+
   // List Items (kanban board items - formerly Tasks)
   const fetchListItems = () => useFetch<ListItem[]>('/list-items')
   const fetchListItem = (id: string) => useFetch<ListItem>(`/list-items/${id}`)
-  const createListItem = (data: { title: string; description?: string; assigneeId?: string; priority?: string; status?: string; channelId?: string | null; estimatedCost?: number | null; collaboratorIds?: string[]; parentId?: string | null; isFolder?: boolean }) =>
+  const createListItem = (data: { title: string; description?: string; assigneeId?: string; priority?: string; status?: string; channelId?: string | null; dueDate?: string | null; collaboratorIds?: string[]; parentId?: string | null; isFolder?: boolean }) =>
     api.post('/list-items', data)
   const updateListItem = (id: string, data: Partial<ListItem>) =>
     api.patch(`/list-items/${id}`, data)
@@ -358,6 +372,38 @@ export const useApi = () => {
   const updateTableView = (tableId: string, viewId: string, data: Record<string, unknown>) =>
     api.patch(`/tables/${tableId}/views/${viewId}`, data)
 
+  // Calendar Events
+  const fetchCalendarEvents = (filters?: { start?: string; end?: string; userId?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.start) params.append('start', filters.start)
+    if (filters?.end) params.append('end', filters.end)
+    if (filters?.userId) params.append('userId', filters.userId)
+    return useFetch<CalendarEvent[]>(`/calendar/events?${params.toString()}`)
+  }
+  const createCalendarEvent = (data: { title: string; startAt: string; endAt?: string; allDay?: boolean; description?: string; location?: string; color?: string; recurrenceRule?: string; recurrenceEnd?: string; attendeeIds?: string[] }) =>
+    api.post<CalendarEvent>('/calendar/events', data)
+  const updateCalendarEvent = (id: string, data: Partial<CalendarEvent>) =>
+    api.patch<CalendarEvent>(`/calendar/events/${id}`, data)
+  const deleteCalendarEvent = (id: string) =>
+    api.delete(`/calendar/events/${id}`)
+  const importCalendarEvents = async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await api.post<{ imported: number; events: CalendarEvent[] }>('/calendar/events/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  }
+  const importCalendarEventsFromUrl = (url: string) =>
+    api.post<{ imported: number; events: CalendarEvent[] }>('/calendar/events/import-url', { url })
+
+  // Calendar Feeds
+  const fetchCalendarFeeds = () => useFetch<CalendarFeed[]>('/calendar/feeds')
+  const createCalendarFeed = (data: { name?: string }) =>
+    api.post<CalendarFeed>('/calendar/feeds', data)
+  const deleteCalendarFeed = (id: string) =>
+    api.delete(`/calendar/feeds/${id}`)
+
   // Notifications
   const fetchNotifications = (userId?: string, unreadOnly?: boolean) => {
     const params = new URLSearchParams()
@@ -399,6 +445,12 @@ export const useApi = () => {
     pinMessage,
     fetchPinnedMessages,
     uploadMessageAttachment,
+    // List Statuses
+    fetchListStatuses,
+    createListStatus,
+    updateListStatus,
+    deleteListStatus,
+    reorderListStatuses,
     // List Items (kanban board)
     fetchListItems,
     fetchListItem,
@@ -493,6 +545,17 @@ export const useApi = () => {
     updateAgentChannelPermissions,
     updateAgentFolderPermissions,
     updateAgentIntegrations,
+    // Calendar Events
+    fetchCalendarEvents,
+    createCalendarEvent,
+    updateCalendarEvent,
+    deleteCalendarEvent,
+    importCalendarEvents,
+    importCalendarEventsFromUrl,
+    // Calendar Feeds
+    fetchCalendarFeeds,
+    createCalendarFeed,
+    deleteCalendarFeed,
     // Search
     search,
     // Direct Messages

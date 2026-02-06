@@ -1,9 +1,5 @@
 <template>
-  <Modal :open="true" size="md" @close="$emit('close')">
-    <template #title>
-      {{ event ? 'Edit Event' : 'New Event' }}
-    </template>
-
+  <Modal :open="true" size="md" :title="event ? 'Edit Event' : 'New Event'" @close="$emit('close')">
     <form class="space-y-4" @submit.prevent="handleSubmit">
       <!-- Title -->
       <div>
@@ -49,6 +45,46 @@
         >
         <span class="text-sm text-neutral-700 dark:text-neutral-300">All day event</span>
       </label>
+
+      <!-- Recurrence -->
+      <div>
+        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+          Repeat
+        </label>
+        <select
+          v-model="recurrencePreset"
+          class="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="none">No repeat</option>
+          <option value="daily">Daily</option>
+          <option value="weekdays">Every weekday (Mon–Fri)</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="custom">Custom cron...</option>
+        </select>
+
+        <!-- Custom cron input -->
+        <div v-if="recurrencePreset === 'custom'" class="mt-2">
+          <Input
+            v-model="form.recurrenceRule"
+            placeholder="e.g. 0 9 * * 1 (every Monday at 9am)"
+          />
+          <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+            Format: minute hour day-of-month month day-of-week
+          </p>
+        </div>
+
+        <!-- Recurrence end date -->
+        <div v-if="recurrencePreset !== 'none'" class="mt-2">
+          <label class="block text-xs text-neutral-500 dark:text-neutral-400 mb-1">
+            Ends on (optional)
+          </label>
+          <Input
+            v-model="form.recurrenceEnd"
+            type="date"
+          />
+        </div>
+      </div>
 
       <!-- Description -->
       <div>
@@ -149,12 +185,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Input from '@/Components/shared/Input.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import type { CalendarEvent } from '@/types'
+import { calendarColors, calendarColorHex } from './calendar-colors'
+
+type RecurrencePreset = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'custom'
 
 const props = defineProps<{
   event: CalendarEvent | null
@@ -167,19 +206,11 @@ const emit = defineEmits<{
   delete: []
 }>()
 
-const colors = ['blue', 'green', 'red', 'purple', 'yellow', 'orange', 'pink', 'indigo'] as const
-const colorValues: Record<string, string> = {
-  blue: '#3b82f6',
-  green: '#22c55e',
-  red: '#ef4444',
-  purple: '#a855f7',
-  yellow: '#eab308',
-  orange: '#f97316',
-  pink: '#ec4899',
-  indigo: '#6366f1',
-}
+const colors = calendarColors
+const colorValues = calendarColorHex
 
 const attendeeInput = ref('')
+const recurrencePreset = ref<RecurrencePreset>('none')
 
 const formatDateForInput = (date: Date | null, allDay: boolean): string => {
   if (!date) return ''
@@ -197,8 +228,66 @@ const form = reactive({
   allDay: false,
   location: '',
   color: 'blue' as string,
+  recurrenceRule: '' as string,
+  recurrenceEnd: '' as string,
   attendeeIds: [] as string[],
 })
+
+/**
+ * Build a cron expression from a preset and the current start time.
+ */
+const buildCronFromPreset = (preset: RecurrencePreset): string | null => {
+  if (preset === 'none') return null
+  if (preset === 'custom') return form.recurrenceRule || null
+
+  // Extract minute and hour from start time
+  let minute = 0
+  let hour = 9
+  if (form.startAt) {
+    const date = new Date(form.startAt)
+    if (!isNaN(date.getTime())) {
+      minute = date.getMinutes()
+      hour = date.getHours()
+    }
+  }
+
+  switch (preset) {
+    case 'daily':
+      return `${minute} ${hour} * * *`
+    case 'weekdays':
+      return `${minute} ${hour} * * 1-5`
+    case 'weekly': {
+      const dow = form.startAt ? new Date(form.startAt).getDay() : 1
+      return `${minute} ${hour} * * ${dow}`
+    }
+    case 'monthly': {
+      const dom = form.startAt ? new Date(form.startAt).getDate() : 1
+      return `${minute} ${hour} ${dom} * *`
+    }
+    default:
+      return null
+  }
+}
+
+/**
+ * Detect which preset matches an existing cron expression.
+ */
+const detectPreset = (cron: string | null | undefined): RecurrencePreset => {
+  if (!cron) return 'none'
+
+  const parts = cron.split(' ')
+  if (parts.length !== 5) return 'custom'
+
+  const [, , dom, month, dow] = parts
+  if (month !== '*') return 'custom'
+
+  if (dom === '*' && dow === '*') return 'daily'
+  if (dom === '*' && dow === '1-5') return 'weekdays'
+  if (dom === '*' && /^\d$/.test(dow)) return 'weekly'
+  if (/^\d+$/.test(dom) && dow === '*') return 'monthly'
+
+  return 'custom'
+}
 
 // Initialize form
 watch(
@@ -212,13 +301,42 @@ watch(
       form.allDay = event.allDay
       form.location = event.location || ''
       form.color = event.color || 'blue'
+      form.recurrenceRule = event.recurrenceRule || ''
+      form.recurrenceEnd = event.recurrenceEnd ? event.recurrenceEnd.split('T')[0] : ''
       form.attendeeIds = event.attendees?.map((a) => a.userId) || []
+      recurrencePreset.value = detectPreset(event.recurrenceRule)
     } else if (props.initialDate) {
       form.startAt = formatDateForInput(props.initialDate, false)
     }
   },
   { immediate: true }
 )
+
+// Reformat date values when toggling all-day
+watch(() => form.allDay, (allDay) => {
+  if (form.startAt) {
+    const date = new Date(form.startAt)
+    if (!isNaN(date.getTime())) {
+      form.startAt = formatDateForInput(date, allDay)
+    }
+  }
+  if (form.endAt) {
+    const date = new Date(form.endAt)
+    if (!isNaN(date.getTime())) {
+      form.endAt = formatDateForInput(date, allDay)
+    }
+  }
+})
+
+// Update the cron expression when preset changes (but not for 'custom')
+watch(recurrencePreset, (preset) => {
+  if (preset !== 'custom') {
+    form.recurrenceRule = buildCronFromPreset(preset) || ''
+  }
+  if (preset === 'none') {
+    form.recurrenceEnd = ''
+  }
+})
 
 const addAttendee = () => {
   if (attendeeInput.value && !form.attendeeIds.includes(attendeeInput.value)) {
@@ -235,6 +353,8 @@ const removeAttendee = (id: string) => {
 }
 
 const handleSubmit = () => {
+  const cronValue = buildCronFromPreset(recurrencePreset.value)
+
   emit('save', {
     title: form.title,
     description: form.description || undefined,
@@ -243,6 +363,8 @@ const handleSubmit = () => {
     allDay: form.allDay,
     location: form.location || undefined,
     color: form.color,
+    recurrenceRule: cronValue || undefined,
+    recurrenceEnd: form.recurrenceEnd || undefined,
   })
 }
 </script>

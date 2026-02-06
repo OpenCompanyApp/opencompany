@@ -59,19 +59,60 @@
       <div class="space-y-6">
             <!-- Description -->
             <div>
-              <label class="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">
-                Description
-              </label>
-              <textarea
-                v-if="editing"
-                v-model="editedTask.description"
-                rows="4"
-                class="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-200 resize-none focus:border-neutral-300 dark:focus:border-neutral-600 focus:outline-none"
-                placeholder="Add a description..."
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                  Description
+                </label>
+                <span v-if="editing" class="text-xs text-neutral-400 dark:text-neutral-500">Markdown supported</span>
+              </div>
+              <template v-if="editing">
+                <div class="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+                  <div class="flex border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
+                    <button
+                      type="button"
+                      :class="[
+                        'px-3 py-1.5 text-xs font-medium transition-colors',
+                        !descriptionPreview
+                          ? 'text-neutral-900 dark:text-white border-b-2 border-neutral-900 dark:border-white'
+                          : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
+                      ]"
+                      @click="descriptionPreview = false"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      :class="[
+                        'px-3 py-1.5 text-xs font-medium transition-colors',
+                        descriptionPreview
+                          ? 'text-neutral-900 dark:text-white border-b-2 border-neutral-900 dark:border-white'
+                          : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
+                      ]"
+                      @click="descriptionPreview = true"
+                    >
+                      Preview
+                    </button>
+                  </div>
+                  <textarea
+                    v-if="!descriptionPreview"
+                    v-model="editedTask.description"
+                    rows="6"
+                    class="w-full px-3 py-2 bg-white dark:bg-neutral-900 text-sm text-neutral-700 dark:text-neutral-200 font-mono resize-none focus:outline-none"
+                    placeholder="Add a description... (Markdown supported)"
+                  />
+                  <div
+                    v-else
+                    class="px-3 py-2 min-h-[9rem] prose prose-sm prose-neutral dark:prose-invert max-w-none"
+                    v-html="renderedEditDescription"
+                  />
+                </div>
+              </template>
+              <div
+                v-else-if="task.description"
+                class="prose prose-sm prose-neutral dark:prose-invert max-w-none"
+                v-html="renderedViewDescription"
               />
-              <p v-else class="text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
-                {{ task.description || 'No description' }}
-              </p>
+              <p v-else class="text-neutral-500 dark:text-neutral-400 text-sm italic">No description</p>
             </div>
 
             <!-- Assignee -->
@@ -107,9 +148,7 @@
                   v-model="editedTask.status"
                   class="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-200 focus:border-neutral-300 dark:focus:border-neutral-600 focus:outline-none"
                 >
-                  <option value="backlog">Backlog</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="done">Done</option>
+                  <option v-for="s in sortedStatuses" :key="s.slug" :value="s.slug">{{ s.name }}</option>
                 </select>
                 <div v-else class="flex items-center gap-2">
                   <span :class="['w-2 h-2 rounded-full', statusDots[task.status]]" />
@@ -137,33 +176,22 @@
               </div>
             </div>
 
-            <!-- Cost -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">
-                  Estimated Cost
-                </label>
-                <input
-                  v-if="editing"
-                  v-model.number="editedTask.estimatedCost"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  class="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-200 focus:border-neutral-300 dark:focus:border-neutral-600 focus:outline-none"
-                  placeholder="0.00"
-                />
-                <p v-else class="text-neutral-700 dark:text-neutral-300">
-                  {{ task.estimatedCost ? `$${parseFloat(String(task.estimatedCost)).toFixed(2)}` : 'Not set' }}
-                </p>
+            <!-- Due Date -->
+            <div>
+              <label class="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">
+                Due Date
+              </label>
+              <input
+                v-if="editing"
+                v-model="editedTask.dueDate"
+                type="date"
+                class="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-200 focus:border-neutral-300 dark:focus:border-neutral-600 focus:outline-none"
+              />
+              <div v-else-if="task.dueDate" class="flex items-center gap-2">
+                <Icon name="ph:calendar" class="w-4 h-4" :class="dueDateColorClass" />
+                <span :class="dueDateColorClass">{{ formatDueDate(task.dueDate) }}</span>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">
-                  Actual Cost
-                </label>
-                <p class="text-neutral-700 dark:text-neutral-300">
-                  {{ task.cost ? `$${parseFloat(String(task.cost)).toFixed(2)}` : 'Not tracked' }}
-                </p>
-              </div>
+              <p v-else class="text-neutral-500 dark:text-neutral-400">Not set</p>
             </div>
 
             <!-- Collaborators -->
@@ -251,9 +279,7 @@
                             <Icon name="ph:trash" class="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <p class="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
-                          {{ comment.content }}
-                        </p>
+                        <div class="text-sm prose prose-sm prose-neutral dark:prose-invert max-w-none" v-html="renderMarkdown(comment.content)" />
                         <button
                           class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white mt-1 transition-colors"
                           @click="replyingTo = replyingTo === comment.id ? null : comment.id"
@@ -264,15 +290,15 @@
                         <!-- Reply input -->
                         <div v-if="replyingTo === comment.id" class="mt-2">
                           <div class="flex gap-2">
-                            <input
+                            <textarea
                               v-model="replyContent"
-                              type="text"
-                              placeholder="Write a reply..."
-                              class="flex-1 px-3 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-200 placeholder-neutral-500 dark:placeholder-neutral-400 focus:border-neutral-300 dark:focus:border-neutral-600 focus:outline-none"
-                              @keyup.enter="submitReply(comment.id)"
+                              rows="2"
+                              placeholder="Write a reply... (Markdown supported)"
+                              class="flex-1 px-3 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-200 placeholder-neutral-500 dark:placeholder-neutral-400 focus:border-neutral-300 dark:focus:border-neutral-600 focus:outline-none resize-none"
+                              @keydown.enter.exact.prevent="submitReply(comment.id)"
                             />
                             <button
-                              class="px-3 py-1.5 text-xs bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                              class="self-end px-3 py-1.5 text-xs bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
                               :disabled="!replyContent.trim() || submittingComment"
                               @click="submitReply(comment.id)"
                             >
@@ -309,9 +335,7 @@
                                   <Icon name="ph:trash" class="w-3 h-3" />
                                 </button>
                               </div>
-                              <p class="text-xs text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
-                                {{ reply.content }}
-                              </p>
+                              <div class="text-xs prose prose-xs prose-neutral dark:prose-invert max-w-none [&_p]:my-0.5" v-html="renderMarkdown(reply.content)" />
                             </div>
                           </div>
                         </div>
@@ -323,15 +347,15 @@
 
               <!-- Add Comment -->
               <div class="flex gap-2">
-                <input
+                <textarea
                   v-model="newComment"
-                  type="text"
-                  placeholder="Add a comment..."
-                  class="flex-1 px-3 py-2 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-200 placeholder-neutral-500 dark:placeholder-neutral-400 focus:border-neutral-300 dark:focus:border-neutral-600 focus:outline-none"
-                  @keyup.enter="submitComment"
+                  rows="2"
+                  placeholder="Add a comment... (Markdown supported)"
+                  class="flex-1 px-3 py-2 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-200 placeholder-neutral-500 dark:placeholder-neutral-400 focus:border-neutral-300 dark:focus:border-neutral-600 focus:outline-none resize-none"
+                  @keydown.enter.exact.prevent="submitComment"
                 />
                 <button
-                  class="px-4 py-2 text-sm bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                  class="self-end px-4 py-2 text-sm bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
                   :disabled="!newComment.trim() || submittingComment"
                   @click="submitComment"
                 >
@@ -357,7 +381,7 @@
       <!-- Quick Actions -->
       <div v-else class="flex items-center gap-2 w-full">
         <Button
-          v-if="task.status !== 'done'"
+          v-if="!isDoneStatus(task.status)"
           class="flex-1"
           @click="markComplete"
         >
@@ -388,15 +412,20 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import type { Task, TaskStatus, Priority } from '@/types'
+import type { Task, TaskStatus, ListStatus, Priority } from '@/types'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import Slideover from '@/Components/shared/Slideover.vue'
+import { useMarkdown } from '@/composables/useMarkdown'
+
+const { renderMarkdown } = useMarkdown()
 
 const props = defineProps<{
   open: boolean
   task: Task
+  statuses?: ListStatus[]
+  comments?: TaskComment[]
 }>()
 
 const emit = defineEmits<{
@@ -427,16 +456,25 @@ interface TaskComment {
 
 const editing = ref(false)
 const saving = ref(false)
+const descriptionPreview = ref(false)
 const editedTask = ref({
   title: '',
   description: '',
   status: 'backlog' as TaskStatus,
   priority: 'medium' as Priority,
-  estimatedCost: null as number | null,
+  dueDate: '' as string,
 })
 
-// Comments state
-const comments = ref<TaskComment[]>([])
+const renderedEditDescription = computed(() =>
+  editedTask.value.description ? renderMarkdown(editedTask.value.description) : '<p class="text-neutral-400">Nothing to preview</p>'
+)
+const renderedViewDescription = computed(() =>
+  props.task.description ? renderMarkdown(props.task.description) : ''
+)
+
+// Comments state — use prop if provided, otherwise internal ref
+const internalComments = ref<TaskComment[]>([])
+const comments = computed(() => props.comments ?? internalComments.value)
 const loadingComments = ref(false)
 const newComment = ref('')
 const replyContent = ref('')
@@ -457,23 +495,53 @@ const priorityDots: Record<Priority, string> = {
   urgent: 'bg-red-400',
 }
 
-const statusClasses: Record<TaskStatus, string> = {
-  backlog: 'bg-neutral-500/20 text-neutral-400',
-  in_progress: 'bg-neutral-100 text-neutral-900',
-  done: 'bg-green-500/20 text-green-400',
+const statusColorMap: Record<string, { badge: string; dot: string }> = {
+  neutral: { badge: 'bg-neutral-500/20 text-neutral-400', dot: 'bg-neutral-400' },
+  blue: { badge: 'bg-blue-500/20 text-blue-400', dot: 'bg-blue-400' },
+  green: { badge: 'bg-green-500/20 text-green-400', dot: 'bg-green-400' },
+  yellow: { badge: 'bg-yellow-500/20 text-yellow-400', dot: 'bg-yellow-400' },
+  orange: { badge: 'bg-orange-500/20 text-orange-400', dot: 'bg-orange-400' },
+  red: { badge: 'bg-red-500/20 text-red-400', dot: 'bg-red-400' },
+  purple: { badge: 'bg-purple-500/20 text-purple-400', dot: 'bg-purple-400' },
+  pink: { badge: 'bg-pink-500/20 text-pink-400', dot: 'bg-pink-400' },
 }
 
-const statusLabels: Record<TaskStatus, string> = {
-  backlog: 'Backlog',
-  in_progress: 'In Progress',
-  done: 'Done',
-}
+const getStatusObj = (slug: string) => props.statuses?.find(s => s.slug === slug)
+const statusClasses = computed(() => {
+  const map: Record<string, string> = {}
+  for (const s of props.statuses ?? []) {
+    map[s.slug] = statusColorMap[s.color]?.badge ?? 'bg-neutral-500/20 text-neutral-400'
+  }
+  return map
+})
+const statusLabels = computed(() => {
+  const map: Record<string, string> = {}
+  for (const s of props.statuses ?? []) {
+    map[s.slug] = s.name
+  }
+  return map
+})
+const statusDots = computed(() => {
+  const map: Record<string, string> = {}
+  for (const s of props.statuses ?? []) {
+    map[s.slug] = statusColorMap[s.color]?.dot ?? 'bg-neutral-400'
+  }
+  return map
+})
 
-const statusDots: Record<TaskStatus, string> = {
-  backlog: 'bg-neutral-400',
-  in_progress: 'bg-neutral-900',
-  done: 'bg-green-400',
-}
+const isDoneStatus = (slug: string) => getStatusObj(slug)?.isDone ?? false
+
+const sortedStatuses = computed(() =>
+  [...(props.statuses ?? [])].sort((a, b) => a.position - b.position)
+)
+
+const firstDoneSlug = computed(() =>
+  sortedStatuses.value.find(s => s.isDone)?.slug
+)
+
+const defaultSlug = computed(() =>
+  sortedStatuses.value.find(s => s.isDefault)?.slug ?? sortedStatuses.value[0]?.slug ?? 'backlog'
+)
 
 const formatDate = (date: Date | string): string => {
   const d = new Date(date)
@@ -492,8 +560,9 @@ const startEditing = () => {
     description: props.task.description,
     status: props.task.status,
     priority: props.task.priority,
-    estimatedCost: props.task.estimatedCost ?? null,
+    dueDate: props.task.dueDate ? String(props.task.dueDate).slice(0, 10) : '',
   }
+  descriptionPreview.value = false
   editing.value = true
 }
 
@@ -510,7 +579,7 @@ const saveChanges = async () => {
       description: editedTask.value.description,
       status: editedTask.value.status,
       priority: editedTask.value.priority,
-      estimatedCost: editedTask.value.estimatedCost,
+      dueDate: editedTask.value.dueDate || null,
     })
     editing.value = false
   } finally {
@@ -523,7 +592,7 @@ const markComplete = async () => {
   try {
     emit('update', {
       id: props.task.id,
-      status: 'done',
+      status: firstDoneSlug.value ?? 'done',
       completedAt: new Date(),
     })
   } finally {
@@ -536,7 +605,7 @@ const reopenTask = async () => {
   try {
     emit('update', {
       id: props.task.id,
-      status: 'in_progress',
+      status: defaultSlug.value,
       completedAt: undefined,
     })
   } finally {
@@ -582,6 +651,34 @@ const handleDeleteComment = async (commentId: string) => {
   emit('deleteComment', commentId)
 }
 
+const formatDueDate = (dateStr: string): string => {
+  const date = new Date(dateStr + (dateStr.length === 10 ? 'T00:00:00' : ''))
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return `Overdue (${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Tomorrow'
+  if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'long' })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const dueDateColorClass = computed(() => {
+  if (!props.task.dueDate || props.task.status === 'done') return 'text-neutral-500 dark:text-neutral-400'
+  const date = new Date(props.task.dueDate + (String(props.task.dueDate).length === 10 ? 'T00:00:00' : ''))
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return 'text-red-600 dark:text-red-400'
+  if (diffDays === 0) return 'text-orange-600 dark:text-orange-400'
+  if (diffDays === 1) return 'text-yellow-600 dark:text-yellow-400'
+  return 'text-neutral-500 dark:text-neutral-400'
+})
+
 const formatRelativeTime = (date: Date | string): string => {
   const d = new Date(date)
   const now = new Date()
@@ -598,14 +695,14 @@ const formatRelativeTime = (date: Date | string): string => {
 }
 
 // Reset state when dialog opens/closes
-watch(() => props.open, (isOpen) => {
-  if (!isOpen) {
-    // Reset state when closing
-    comments.value = []
+watch(() => props.open, (open) => {
+  if (!open) {
+    internalComments.value = []
     newComment.value = ''
     replyContent.value = ''
     replyingTo.value = null
     editing.value = false
+    descriptionPreview.value = false
   }
 }, { immediate: true })
 </script>

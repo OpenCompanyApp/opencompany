@@ -39,9 +39,7 @@
               v-model="form.status"
               class="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-700 focus:border-neutral-300 focus:outline-none"
             >
-              <option value="backlog">Backlog</option>
-              <option value="in_progress">In Progress</option>
-              <option value="done">Done</option>
+              <option v-for="s in sortedStatuses" :key="s.slug" :value="s.slug">{{ s.name }}</option>
             </select>
           </div>
           <div>
@@ -63,14 +61,13 @@
         <!-- Assignee -->
         <div>
           <label class="block text-sm font-medium text-neutral-500 mb-2">
-            Assignee <span class="text-red-400">*</span>
+            Assignee
           </label>
           <select
             v-model="form.assigneeId"
             class="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-700 focus:border-neutral-300 focus:outline-none"
-            required
           >
-            <option value="" disabled>Select assignee...</option>
+            <option value="">No assignee</option>
             <optgroup label="Agents">
               <option v-for="agent in agents" :key="agent.id" :value="agent.id">
                 {{ agent.name }} ({{ agent.agentType }})
@@ -84,22 +81,16 @@
           </select>
         </div>
 
-        <!-- Estimated Cost -->
+        <!-- Due Date -->
         <div>
           <label class="block text-sm font-medium text-neutral-500 mb-2">
-            Estimated Cost
+            Due Date
           </label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
-            <input
-              v-model.number="form.estimatedCost"
-              type="number"
-              step="0.01"
-              min="0"
-              class="w-full pl-7 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-700 placeholder:text-neutral-500 focus:border-neutral-300 focus:outline-none"
-              placeholder="0.00"
-            />
-          </div>
+          <input
+            v-model="form.dueDate"
+            type="date"
+            class="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-700 focus:border-neutral-300 focus:outline-none"
+          />
         </div>
 
         <!-- Channel -->
@@ -129,7 +120,7 @@
           Cancel
         </Button>
         <Button
-          :disabled="creating || !form.title.trim() || !form.assigneeId"
+          :disabled="creating || !form.title.trim()"
           :loading="creating"
           @click="createTask"
         >
@@ -142,7 +133,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { TaskStatus, Priority, User } from '@/types'
+import type { TaskStatus, ListStatus, Priority, User } from '@/types'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 
@@ -154,6 +145,7 @@ interface Channel {
 const props = defineProps<{
   open: boolean
   initialStatus?: TaskStatus
+  statuses?: ListStatus[]
   parentId?: string | null
   users?: User[]
   channels?: Channel[]
@@ -167,7 +159,7 @@ const emit = defineEmits<{
     status: TaskStatus
     priority: Priority
     assigneeId: string
-    estimatedCost: number | null
+    dueDate: string | null
     channelId: string | null
     parentId: string | null
   }]
@@ -176,15 +168,21 @@ const emit = defineEmits<{
 const agents = computed(() => (props.users ?? []).filter((u: User) => u.type === 'agent'))
 const humans = computed(() => (props.users ?? []).filter((u: User) => u.type === 'human'))
 const channels = computed<Channel[]>(() => props.channels ?? [])
+const sortedStatuses = computed(() =>
+  [...(props.statuses ?? [])].sort((a, b) => a.position - b.position)
+)
+const defaultStatusSlug = computed(() =>
+  sortedStatuses.value.find(s => s.isDefault)?.slug ?? 'backlog'
+)
 
 const creating = ref(false)
 const form = ref({
   title: '',
   description: '',
-  status: props.initialStatus || 'backlog' as TaskStatus,
+  status: (props.initialStatus || defaultStatusSlug.value) as TaskStatus,
   priority: 'medium' as Priority,
   assigneeId: '',
-  estimatedCost: null as number | null,
+  dueDate: '',
   channelId: '',
 })
 
@@ -194,17 +192,17 @@ watch(() => props.open, (open) => {
     form.value = {
       title: '',
       description: '',
-      status: props.initialStatus || 'backlog',
+      status: props.initialStatus || defaultStatusSlug.value,
       priority: 'medium',
       assigneeId: '',
-      estimatedCost: null,
+      dueDate: '',
       channelId: '',
     }
   }
 })
 
 const createTask = async () => {
-  if (!form.value.title.trim() || !form.value.assigneeId) return
+  if (!form.value.title.trim()) return
 
   creating.value = true
   try {
@@ -214,7 +212,7 @@ const createTask = async () => {
       status: form.value.status,
       priority: form.value.priority,
       assigneeId: form.value.assigneeId,
-      estimatedCost: form.value.estimatedCost,
+      dueDate: form.value.dueDate || null,
       channelId: form.value.channelId || null,
       parentId: props.parentId || null,
     })

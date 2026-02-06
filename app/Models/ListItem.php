@@ -30,20 +30,18 @@ class ListItem extends Model
         'assignee_id',
         'creator_id',
         'priority',
-        'cost',
-        'estimated_cost',
         'channel_id',
         'position',
         'completed_at',
+        'due_date',
     ];
 
     protected function casts(): array
     {
         return [
             'is_folder' => 'boolean',
-            'cost' => 'decimal:2',
-            'estimated_cost' => 'decimal:2',
             'completed_at' => 'datetime',
+            'due_date' => 'date',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -61,10 +59,10 @@ class ListItem extends Model
         $array['isFolder'] = $this->is_folder;
         $array['createdAt'] = $this->created_at;
         $array['completedAt'] = $this->completed_at;
-        $array['estimatedCost'] = $this->estimated_cost;
         $array['assigneeId'] = $this->assignee_id;
         $array['creatorId'] = $this->creator_id;
         $array['channelId'] = $this->channel_id;
+        $array['dueDate'] = $this->due_date;
 
         return $array;
     }

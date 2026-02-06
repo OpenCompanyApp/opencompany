@@ -40,6 +40,13 @@
           v-model:view="currentView"
         />
         <button
+          class="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors shrink-0"
+          title="Manage statuses"
+          @click="statusManagerOpen = true"
+        >
+          <Icon name="ph:gear" class="w-4 h-4" />
+        </button>
+        <button
           class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0"
           @click="openCreateModal()"
         >
@@ -53,6 +60,7 @@
     <ListsItemBoard
       v-if="currentView === 'board'"
       :tasks="filteredItems"
+      :statuses="statuses"
       class="flex-1"
       @update="handleItemUpdate"
       @task-click="openItemDetail"
@@ -60,168 +68,33 @@
     />
 
     <!-- List View -->
-    <div v-else-if="currentView === 'list'" class="flex-1 overflow-auto p-4 md:p-6">
-      <!-- Mobile Card View -->
-      <div class="md:hidden space-y-3">
-        <div
-          v-for="item in filteredItems"
-          :key="item.id"
-          class="p-4 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer active:bg-neutral-50 dark:active:bg-neutral-700/50"
-          @click="openItemDetail(item)"
-        >
-          <div class="flex items-start justify-between gap-3 mb-2">
-            <h4 :class="['font-medium text-neutral-900 dark:text-white', item.status === 'done' && 'line-through text-neutral-500 dark:text-neutral-400']">
-              {{ item.title }}
-            </h4>
-            <span
-              :class="[
-                'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full shrink-0',
-                statusClasses[item.status]
-              ]"
-            >
-              <span :class="['w-1.5 h-1.5 rounded-full', statusDots[item.status]]" />
-              {{ statusLabels[item.status] }}
-            </span>
-          </div>
-          <p v-if="item.description" class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2 mb-3">
-            {{ item.description }}
-          </p>
-          <div class="flex items-center gap-3 text-sm">
-            <span
-              :class="[
-                'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full',
-                priorityClasses[item.priority]
-              ]"
-            >
-              {{ item.priority }}
-            </span>
-            <div v-if="item.assignee" class="flex items-center gap-1.5">
-              <AgentAvatar :user="item.assignee" size="xs" />
-              <span class="text-neutral-600 dark:text-neutral-300">{{ item.assignee.name }}</span>
-            </div>
-            <CostBadge
-              v-if="item.cost || item.estimatedCost"
-              :cost="item.cost || item.estimatedCost!"
-              :variant="item.cost ? 'actual' : 'estimated'"
-              size="xs"
-              class="ml-auto"
-            />
-          </div>
-        </div>
-        <!-- Mobile Empty State -->
-        <div v-if="filteredItems.length === 0" class="text-center py-12">
-          <Icon name="ph:list-checks" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
-          <p class="text-neutral-500 dark:text-neutral-400">No items found</p>
-        </div>
-      </div>
-
-      <!-- Desktop Table View -->
-      <div class="hidden md:block bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-        <!-- Table Header -->
-        <div class="grid grid-cols-12 gap-4 px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-          <div class="col-span-5">Item</div>
-          <div class="col-span-2">Status</div>
-          <div class="col-span-2">Priority</div>
-          <div class="col-span-2">Assignee</div>
-          <div class="col-span-1 text-right">Cost</div>
-        </div>
-
-        <!-- Item Rows -->
-        <div class="divide-y divide-neutral-200 dark:divide-neutral-700">
-          <div
-            v-for="item in filteredItems"
-            :key="item.id"
-            class="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 cursor-pointer transition-colors"
-            @click="openItemDetail(item)"
-          >
-            <!-- Item Title & Description -->
-            <div class="col-span-5">
-              <h4 :class="['font-medium text-neutral-900 dark:text-white truncate', item.status === 'done' && 'line-through text-neutral-500 dark:text-neutral-400']">
-                {{ item.title }}
-              </h4>
-              <p v-if="item.description" class="text-sm text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
-                {{ item.description }}
-              </p>
-            </div>
-
-            <!-- Status -->
-            <div class="col-span-2 flex items-center">
-              <span
-                :class="[
-                  'inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full',
-                  statusClasses[item.status]
-                ]"
-              >
-                <span :class="['w-1.5 h-1.5 rounded-full', statusDots[item.status]]" />
-                {{ statusLabels[item.status] }}
-              </span>
-            </div>
-
-            <!-- Priority -->
-            <div class="col-span-2 flex items-center">
-              <span
-                :class="[
-                  'inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full',
-                  priorityClasses[item.priority]
-                ]"
-              >
-                <span :class="['w-1.5 h-1.5 rounded-full', priorityDots[item.priority]]" />
-                {{ item.priority }}
-              </span>
-            </div>
-
-            <!-- Assignee -->
-            <div class="col-span-2 flex items-center">
-              <div v-if="item.assignee" class="flex items-center gap-2">
-                <AgentAvatar :user="item.assignee" size="xs" />
-                <span class="text-sm text-neutral-700 dark:text-neutral-300 truncate">{{ item.assignee.name }}</span>
-              </div>
-              <span v-else class="text-sm text-neutral-400 dark:text-neutral-500">Unassigned</span>
-            </div>
-
-            <!-- Cost -->
-            <div class="col-span-1 flex items-center justify-end">
-              <CostBadge
-                v-if="item.cost || item.estimatedCost"
-                :cost="item.cost || item.estimatedCost!"
-                :variant="item.cost ? 'actual' : 'estimated'"
-                size="xs"
-              />
-              <span v-else class="text-sm text-neutral-400 dark:text-neutral-500">-</span>
-            </div>
-          </div>
-
-          <!-- Empty State -->
-          <div v-if="filteredItems.length === 0" class="px-4 py-12 text-center">
-            <Icon name="ph:list-checks" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
-            <p class="text-neutral-500 dark:text-neutral-400">No items found</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Timeline View (placeholder) -->
-    <div v-else-if="currentView === 'timeline'" class="flex-1 flex items-center justify-center">
-      <div class="text-center">
-        <Icon name="ph:chart-line" class="w-16 h-16 text-neutral-300 dark:text-neutral-600 mx-auto mb-4" />
-        <h3 class="text-lg font-medium text-neutral-900 dark:text-white mb-2">Timeline View</h3>
-        <p class="text-neutral-500 dark:text-neutral-400">Coming soon</p>
-      </div>
-    </div>
+    <ListsListView
+      v-else-if="currentView === 'list'"
+      :items="filteredItems"
+      :statuses="statuses"
+      @select="openItemDetail"
+      @update="handleQuickUpdate"
+      @create="handleQuickCreate"
+    />
 
     <!-- Item Detail Drawer -->
     <ListsItemDetail
       v-if="selectedItem"
       v-model:open="itemDetailOpen"
       :task="selectedItem"
+      :statuses="statuses"
+      :comments="itemComments"
       @update="handleItemDetailUpdate"
       @delete="handleItemDelete"
+      @add-comment="handleAddComment"
+      @delete-comment="handleDeleteComment"
     />
 
     <!-- Item Create Modal -->
     <ListsItemCreateModal
       v-model:open="createModalOpen"
       :initial-status="createInitialStatus"
+      :statuses="statuses"
       :parent-id="selectedProjectId"
       :users="users"
       :channels="channels"
@@ -261,39 +134,53 @@
         </div>
       </form>
     </Modal>
+
+    <!-- Status Manager Modal -->
+    <StatusManager
+      v-model:open="statusManagerOpen"
+      :statuses="statuses"
+      @updated="handleStatusesUpdated"
+    />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { ListItem, ListItemStatus, Priority } from '@/types'
+import { ref, computed, watch } from 'vue'
+import type { ListItem, ListItemStatus, ListStatus, Priority } from '@/types'
 import ListsItemFilters from '@/Components/lists/TaskFilters.vue'
 import ListsItemBoard from '@/Components/lists/TaskBoard.vue'
 import ListsItemDetail from '@/Components/lists/TaskDetail.vue'
 import ListsItemCreateModal from '@/Components/lists/TaskCreateModal.vue'
 import ListsProjectList from '@/Components/lists/ProjectList.vue'
+import ListsListView from '@/Components/lists/ListsListView.vue'
+import StatusManager from '@/Components/lists/StatusManager.vue'
 import Icon from '@/Components/shared/Icon.vue'
-import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
-import CostBadge from '@/Components/shared/CostBadge.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import { useApi } from '@/composables/useApi'
 
-type ViewType = 'board' | 'list' | 'timeline'
+type ViewType = 'board' | 'list'
 
-const { fetchListItems, fetchUsers, fetchChannels, updateListItem, reorderListItems, createListItem, deleteListItem } = useApi()
+const { fetchListItems, fetchUsers, fetchChannels, fetchListStatuses, updateListItem, reorderListItems, createListItem, deleteListItem, fetchListItemComments, addListItemComment, deleteListItemComment } = useApi()
 
 // Fetch data from API
 const { data: listItemsData, refresh: refreshListItems } = fetchListItems()
 const { data: usersData } = fetchUsers()
 const { data: channelsData } = fetchChannels()
+const { data: listStatusesData, refresh: refreshListStatuses } = fetchListStatuses()
 
 const currentFilter = ref('all')
-const currentView = ref<ViewType>('board')
+const currentView = ref<ViewType>('list')
 const selectedItem = ref<ListItem | null>(null)
 const itemDetailOpen = ref(false)
 const createModalOpen = ref(false)
 const createInitialStatus = ref<ListItemStatus>('backlog')
+
+// Comments
+const itemComments = ref<any[]>([])
+
+// Status manager
+const statusManagerOpen = ref(false)
 
 // Project state
 const selectedProjectId = ref<string | null>(null)
@@ -303,6 +190,7 @@ const newProjectName = ref('')
 const listItems = computed<ListItem[]>(() => listItemsData.value ?? [])
 const users = computed(() => usersData.value ?? [])
 const channels = computed(() => channelsData.value ?? [])
+const statuses = computed<ListStatus[]>(() => listStatusesData.value ?? [])
 
 const filteredItems = computed(() => {
   // Start with non-folder items only
@@ -323,44 +211,12 @@ const filteredItems = computed(() => {
   return result
 })
 
+const doneSlugs = computed(() => statuses.value.filter(s => s.isDone).map(s => s.slug))
+
 const itemCounts = computed(() => ({
-  total: listItems.value.length,
-  done: listItems.value.filter(t => t.status === 'done').length,
+  total: filteredItems.value.length,
+  done: filteredItems.value.filter(t => doneSlugs.value.includes(t.status)).length,
 }))
-
-// Status styling
-const statusClasses: Record<ListItemStatus, string> = {
-  backlog: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
-  in_progress: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-  done: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-}
-
-const statusDots: Record<ListItemStatus, string> = {
-  backlog: 'bg-neutral-400',
-  in_progress: 'bg-blue-500',
-  done: 'bg-green-500',
-}
-
-const statusLabels: Record<ListItemStatus, string> = {
-  backlog: 'Backlog',
-  in_progress: 'In Progress',
-  done: 'Done',
-}
-
-// Priority styling
-const priorityClasses: Record<Priority, string> = {
-  low: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
-  medium: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-  high: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-  urgent: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-}
-
-const priorityDots: Record<Priority, string> = {
-  low: 'bg-neutral-400',
-  medium: 'bg-blue-500',
-  high: 'bg-amber-500',
-  urgent: 'bg-red-500',
-}
 
 const handleItemUpdate = async (itemId: string, newStatus: ListItemStatus, newIndex: number) => {
   // Get items in the target status column
@@ -394,12 +250,46 @@ const handleItemUpdate = async (itemId: string, newStatus: ListItemStatus, newIn
   await refreshListItems()
 }
 
-const openItemDetail = (item: ListItem) => {
-  selectedItem.value = item
-  itemDetailOpen.value = true
+// Quick update from list view (status change, etc.)
+const handleQuickUpdate = async (itemId: string, data: Record<string, unknown>) => {
+  await updateListItem(itemId, data as Partial<ListItem>)
+  await refreshListItems()
 }
 
-const handleItemDetailUpdate = async () => {
+// Quick create from list view inline add
+const handleQuickCreate = async (data: { title: string; status: ListItemStatus }) => {
+  await createListItem({
+    title: data.title,
+    status: data.status,
+    parentId: selectedProjectId.value,
+  })
+  await refreshListItems()
+}
+
+const openItemDetail = async (item: ListItem) => {
+  selectedItem.value = item
+  itemDetailOpen.value = true
+  // Load comments
+  try {
+    const { data, promise } = fetchListItemComments(item.id)
+    await promise
+    itemComments.value = (data.value as any[]) ?? []
+  } catch {
+    itemComments.value = []
+  }
+}
+
+// Reload comments when selected item changes
+watch(itemDetailOpen, (open) => {
+  if (!open) {
+    itemComments.value = []
+  }
+})
+
+const handleItemDetailUpdate = async (taskData?: Partial<ListItem>) => {
+  if (taskData?.id) {
+    await updateListItem(taskData.id, taskData)
+  }
   await refreshListItems()
   // Update selected item with refreshed data
   if (selectedItem.value) {
@@ -411,9 +301,28 @@ const handleItemDetailUpdate = async () => {
 }
 
 const handleItemDelete = async (itemId: string) => {
+  await deleteListItem(itemId)
   await refreshListItems()
   selectedItem.value = null
   itemDetailOpen.value = false
+}
+
+const handleAddComment = async (content: string, parentId?: string) => {
+  if (!selectedItem.value) return
+  await addListItemComment(selectedItem.value.id, { content, parentId })
+  // Refresh comments
+  const { data: commentsData, promise } = fetchListItemComments(selectedItem.value.id)
+  await promise
+  itemComments.value = (commentsData.value as any[]) ?? []
+}
+
+const handleDeleteComment = async (commentId: string) => {
+  if (!selectedItem.value) return
+  await deleteListItemComment(selectedItem.value.id, commentId)
+  // Refresh comments
+  const { data: commentsData, promise } = fetchListItemComments(selectedItem.value.id)
+  await promise
+  itemComments.value = (commentsData.value as any[]) ?? []
 }
 
 const openCreateModal = (status?: ListItemStatus) => {
@@ -427,9 +336,9 @@ const handleItemCreated = async (itemData: {
   status: ListItemStatus
   priority: Priority
   assigneeId: string
-  estimatedCost: number | null
   channelId: string | null
   parentId: string | null
+  dueDate?: string | null
 }) => {
   await createListItem(itemData)
   await refreshListItems()
@@ -475,5 +384,11 @@ const handleDeleteProject = async (project: ListItem) => {
     }
     await refreshListItems()
   }
+}
+
+// Status manager
+const handleStatusesUpdated = async () => {
+  await refreshListStatuses()
+  await refreshListItems()
 }
 </script>

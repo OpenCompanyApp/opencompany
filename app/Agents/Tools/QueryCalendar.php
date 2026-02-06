@@ -72,8 +72,9 @@ class QueryCalendar implements Tool
                 ? $event->start_at->format('Y-m-d') . ' (all day)'
                 : $event->start_at->format('Y-m-d H:i') . ' - ' . ($event->end_at ? $event->end_at->format('H:i') : 'TBD');
             $location = $event->location ? " | Location: {$event->location}" : '';
+            $recurrence = $event->recurrence_rule ? " | Recurring: {$event->recurrence_rule}" : '';
             $attendeeCount = $event->attendees->count();
-            $lines[] = "- {$event->title} | {$date}{$location} | {$attendeeCount} attendee(s)";
+            $lines[] = "- {$event->title} | {$date}{$location}{$recurrence} | {$attendeeCount} attendee(s)";
             $lines[] = "  ID: {$event->id}";
         }
 
@@ -104,6 +105,7 @@ class QueryCalendar implements Tool
             "Description: " . ($event->description ?? 'None'),
             "Created by: {$creator}",
             "Recurrence: " . ($event->recurrence_rule ?? 'None'),
+            "Recurrence End: " . ($event->recurrence_end ? $event->recurrence_end->format('Y-m-d') : 'None'),
         ];
 
         if ($event->attendees->isNotEmpty()) {

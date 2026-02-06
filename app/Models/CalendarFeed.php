@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
+
+class CalendarFeed extends Model
+{
+    use HasUuids;
+
+    protected $fillable = [
+        'user_id',
+        'token',
+        'name',
+    ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (CalendarFeed $feed) {
+            if (empty($feed->token)) {
+                $feed->token = Str::random(48);
+            }
+        });
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}

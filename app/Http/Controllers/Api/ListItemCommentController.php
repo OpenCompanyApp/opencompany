@@ -11,8 +11,9 @@ class ListItemCommentController extends Controller
 {
     public function index(string $listItemId)
     {
-        return ListItemComment::with(['author', 'parent'])
+        return ListItemComment::with(['author', 'replies.author'])
             ->where('list_item_id', $listItemId)
+            ->whereNull('parent_id')
             ->orderBy('created_at', 'asc')
             ->get();
     }
@@ -22,7 +23,7 @@ class ListItemCommentController extends Controller
         $comment = ListItemComment::create([
             'id' => Str::uuid()->toString(),
             'list_item_id' => $listItemId,
-            'author_id' => $request->input('authorId'),
+            'author_id' => $request->input('authorId') ?? auth()->id(),
             'content' => $request->input('content'),
             'parent_id' => $request->input('parentId'),
         ]);

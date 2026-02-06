@@ -1,5 +1,10 @@
 <template>
-  <div class="w-64 shrink-0 border-r border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50 dark:bg-neutral-900/50">
+  <div
+    :class="[
+      'shrink-0 p-4 bg-neutral-50 dark:bg-neutral-900/50',
+      embedded ? 'w-full' : 'w-64 border-r border-neutral-200 dark:border-neutral-700'
+    ]"
+  >
     <!-- Mini Calendar -->
     <div class="mb-6">
       <div class="flex items-center justify-between mb-3">
@@ -64,25 +69,28 @@
       </h3>
       <label class="flex items-center gap-2 cursor-pointer">
         <input
-          v-model="filters.myEvents"
+          :checked="filters.myEvents"
           type="checkbox"
           class="rounded border-neutral-300 dark:border-neutral-600 text-blue-500 focus:ring-blue-500"
+          @change="updateFilter('myEvents', ($event.target as HTMLInputElement).checked)"
         >
         <span class="text-sm text-neutral-700 dark:text-neutral-300">My Events</span>
       </label>
       <label class="flex items-center gap-2 cursor-pointer">
         <input
-          v-model="filters.attending"
+          :checked="filters.attending"
           type="checkbox"
           class="rounded border-neutral-300 dark:border-neutral-600 text-green-500 focus:ring-green-500"
+          @change="updateFilter('attending', ($event.target as HTMLInputElement).checked)"
         >
         <span class="text-sm text-neutral-700 dark:text-neutral-300">Attending</span>
       </label>
       <label class="flex items-center gap-2 cursor-pointer">
         <input
-          v-model="filters.agentEvents"
+          :checked="filters.agentEvents"
           type="checkbox"
           class="rounded border-neutral-300 dark:border-neutral-600 text-purple-500 focus:ring-purple-500"
+          @change="updateFilter('agentEvents', ($event.target as HTMLInputElement).checked)"
         >
         <span class="text-sm text-neutral-700 dark:text-neutral-300">Agent Events</span>
       </label>
@@ -94,22 +102,31 @@
 import { ref, computed } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 
-const props = defineProps<{
+interface CalendarFilters {
+  myEvents: boolean
+  attending: boolean
+  agentEvents: boolean
+}
+
+const props = withDefaults(defineProps<{
   currentDate: Date
   selectedDate: Date | null
-}>()
+  filters: CalendarFilters
+  embedded?: boolean
+}>(), {
+  embedded: false,
+})
 
 const emit = defineEmits<{
   selectDate: [date: Date]
+  'update:filters': [filters: CalendarFilters]
 }>()
 
 const miniCalendarDate = ref(new Date())
 
-const filters = ref({
-  myEvents: true,
-  attending: true,
-  agentEvents: true,
-})
+const updateFilter = (key: keyof CalendarFilters, value: boolean) => {
+  emit('update:filters', { ...props.filters, [key]: value })
+}
 
 const miniCalendarLabel = computed(() => {
   return miniCalendarDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })

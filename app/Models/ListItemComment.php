@@ -40,6 +40,31 @@ class ListItemComment extends Model
 
     public function replies(): HasMany
     {
-        return $this->hasMany(ListItemComment::class, 'parent_id');
+        return $this->hasMany(ListItemComment::class, 'parent_id')->orderBy('created_at', 'asc');
+    }
+
+    public function toArray()
+    {
+        $array = parent::toArray();
+
+        $result = [
+            'id' => $array['id'],
+            'listItemId' => $array['list_item_id'],
+            'authorId' => $array['author_id'],
+            'content' => $array['content'],
+            'parentId' => $array['parent_id'] ?? null,
+            'createdAt' => $array['created_at'],
+            'updatedAt' => $array['updated_at'],
+        ];
+
+        if ($this->relationLoaded('author')) {
+            $result['author'] = $this->author;
+        }
+
+        if ($this->relationLoaded('replies')) {
+            $result['replies'] = $this->replies;
+        }
+
+        return $result;
     }
 }

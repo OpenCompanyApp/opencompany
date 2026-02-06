@@ -297,13 +297,6 @@
           <span>{{ task.attachmentsCount }}</span>
         </div>
 
-        <!-- Cost -->
-        <CostBadge
-          v-if="task.cost || task.estimatedCost"
-          :cost="task.cost || task.estimatedCost!"
-          :variant="task.cost ? 'actual' : 'estimated'"
-          :size="costBadgeSize"
-        />
       </div>
     </div>
 
@@ -370,7 +363,6 @@ import { ref, computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import type { Task, Priority } from '@/types'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
-import CostBadge from '@/Components/shared/CostBadge.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
@@ -638,10 +630,6 @@ const taskActions: TaskAction[] = [
 // Computed
 const avatarSize = computed(() => {
   return props.size === 'sm' ? 'xs' : props.size === 'lg' ? 'md' : 'sm'
-})
-
-const costBadgeSize = computed(() => {
-  return props.size === 'sm' ? 'xs' : props.size === 'lg' ? 'sm' : 'xs'
 })
 
 const completedSubtasks = computed(() => {

@@ -278,7 +278,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import type { ListItem, ListItemStatus } from '@/types'
+import type { ListItem, ListItemStatus, ListStatus } from '@/types'
 import TaskColumn from '@/Components/lists/TaskColumn.vue'
 import TaskCard from '@/Components/lists/TaskCard.vue'
 import Icon from '@/Components/shared/Icon.vue'
@@ -328,6 +328,7 @@ interface SizeConfig {
 // Props
 const props = withDefaults(defineProps<{
   tasks: Task[]
+  statuses?: ListStatus[]
   title?: string
   showHeader?: boolean
   size?: BoardSize
@@ -423,12 +424,37 @@ const sizeConfig: Record<BoardSize, SizeConfig> = {
   },
 }
 
-// Columns configuration
-const columns: Column[] = [
+// Color mapping for board column dots
+const boardColorMap: Record<string, string> = {
+  neutral: 'bg-neutral-400',
+  blue: 'bg-blue-500',
+  green: 'bg-green-500',
+  yellow: 'bg-yellow-500',
+  orange: 'bg-orange-500',
+  red: 'bg-red-500',
+  purple: 'bg-purple-500',
+  pink: 'bg-pink-500',
+}
+
+// Fallback columns if statuses prop not provided
+const fallbackColumns: Column[] = [
   { status: 'backlog', title: 'Backlog', icon: 'ph:circle-dashed', color: 'bg-neutral-400' },
   { status: 'in_progress', title: 'In Progress', icon: 'ph:circle-half', color: 'bg-neutral-600' },
   { status: 'done', title: 'Done', icon: 'ph:check-circle', color: 'bg-neutral-800' },
 ]
+
+// Dynamic columns from statuses prop
+const columns = computed<Column[]>(() => {
+  if (!props.statuses?.length) return fallbackColumns
+  return [...props.statuses]
+    .sort((a, b) => a.position - b.position)
+    .map(s => ({
+      status: s.slug,
+      title: s.name,
+      icon: s.icon,
+      color: boardColorMap[s.color] ?? 'bg-neutral-400',
+    }))
+})
 
 // State
 const boardRef = ref<HTMLElement | null>(null)
@@ -439,13 +465,12 @@ const draggedTask = ref<Task | null>(null)
 const dragPosition = ref({ x: 0, y: 0 })
 
 // Computed
-const visibleColumns = computed(() => columns)
+const visibleColumns = computed(() => columns.value)
 
 const tasksByStatus = computed(() => {
-  const grouped: Record<TaskStatus, Task[]> = {
-    backlog: [],
-    in_progress: [],
-    done: [],
+  const grouped: Record<string, Task[]> = {}
+  for (const col of columns.value) {
+    grouped[col.status] = []
   }
 
   props.tasks.forEach(task => {
@@ -460,9 +485,9 @@ const tasksByStatus = computed(() => {
 const totalTasks = computed(() => props.tasks.length)
 
 const columnStats = computed<ColumnStat[]>(() => {
-  return columns.map(column => ({
+  return columns.value.map(column => ({
     status: column.status,
-    count: tasksByStatus.value[column.status].length,
+    count: tasksByStatus.value[column.status]?.length ?? 0,
     color: column.color,
   }))
 })

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ListItem;
 use App\Models\ListItemCollaborator;
+use App\Models\ListStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -47,12 +48,14 @@ class ListItemController extends Controller
             'is_folder' => $isFolder,
             'title' => $request->input('title'),
             'description' => $request->input('description', ''),
-            'status' => $isFolder ? 'backlog' : $request->input('status', 'backlog'),
+            'status' => $isFolder
+                ? (ListStatus::where('is_default', true)->value('slug') ?? 'backlog')
+                : $request->input('status', ListStatus::where('is_default', true)->value('slug') ?? 'backlog'),
             'priority' => $isFolder ? 'medium' : $request->input('priority', 'medium'),
             'assignee_id' => $request->input('assigneeId'),
             'creator_id' => $request->input('creatorId'),
             'channel_id' => $request->input('channelId'),
-            'estimated_cost' => $request->input('estimatedCost'),
+            'due_date' => $request->input('dueDate'),
             'position' => $maxPosition + 1,
         ]);
 
@@ -93,23 +96,23 @@ class ListItemController extends Controller
         if ($request->has('channelId')) {
             $data['channel_id'] = $request->input('channelId');
         }
-        if ($request->has('estimatedCost')) {
-            $data['estimated_cost'] = $request->input('estimatedCost');
-        }
-        if ($request->has('actualCost')) {
-            $data['cost'] = $request->input('actualCost');
-        }
         if ($request->has('dueDate')) {
             $data['due_date'] = $request->input('dueDate');
         }
 
         // Handle status changes
         if (isset($data['status'])) {
-            if ($data['status'] === 'in_progress' && !$listItem->started_at) {
-                $data['started_at'] = now();
-            }
-            if ($data['status'] === 'completed' && !$listItem->completed_at) {
-                $data['completed_at'] = now();
+            $newStatus = ListStatus::where('slug', $data['status'])->first();
+            if ($newStatus) {
+                if (!$newStatus->is_done && !$listItem->started_at) {
+                    $data['started_at'] = now();
+                }
+                if ($newStatus->is_done && !$listItem->completed_at) {
+                    $data['completed_at'] = now();
+                }
+                if (!$newStatus->is_done && $listItem->completed_at) {
+                    $data['completed_at'] = null;
+                }
             }
         }
 

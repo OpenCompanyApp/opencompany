@@ -1,7 +1,7 @@
 export type AgentStatus = 'idle' | 'working' | 'offline' | 'paused' | 'online' | 'busy' | 'awaiting_approval' | 'sleeping'
 export type UserStatus = 'online' | 'away' | 'busy' | 'dnd' | 'offline'
 export type PresenceStatus = 'online' | 'away' | 'busy' | 'offline'
-export type ListItemStatus = 'backlog' | 'in_progress' | 'done'
+export type ListItemStatus = string
 export type TaskStatus = 'pending' | 'active' | 'paused' | 'completed' | 'failed' | 'cancelled'
 export type TaskType = 'ticket' | 'request' | 'analysis' | 'content' | 'research' | 'custom'
 export type TaskStepType = 'action' | 'decision' | 'approval' | 'sub_task' | 'message'
@@ -132,6 +132,17 @@ export interface ApprovalRequest {
   createdAt?: Date
 }
 
+export interface ListStatus {
+  id: string
+  name: string
+  slug: string
+  color: string
+  icon: string
+  isDone: boolean
+  isDefault: boolean
+  position: number
+}
+
 /**
  * ListItem - Items in a kanban board (formerly Task)
  * For discrete agent work items, see the Task interface instead.
@@ -146,10 +157,9 @@ export interface ListItem {
   assignee: User
   collaborators?: User[]
   priority: Priority
-  cost?: number
-  estimatedCost?: number
   createdAt: Date
   completedAt?: Date
+  dueDate?: string
   channelId?: string
 }
 
@@ -392,9 +402,20 @@ export interface CalendarEvent {
   location?: string
   color?: string
   recurrenceRule?: string
+  recurrenceEnd?: string
+  isRecurrenceInstance?: boolean
+  originalEventId?: string
   createdBy: string
   creator?: User
   attendees: CalendarEventAttendee[]
+}
+
+export interface CalendarFeed {
+  id: string
+  name: string
+  token: string
+  url: string
+  createdAt: string
 }
 
 // Data Tables Types

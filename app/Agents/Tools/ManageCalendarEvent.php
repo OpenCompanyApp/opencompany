@@ -45,6 +45,9 @@ class ManageCalendarEvent implements Tool
             'end_at' => $request['endAt'] ?? null,
             'all_day' => $request['allDay'] ?? false,
             'location' => $request['location'] ?? null,
+            'color' => $request['color'] ?? null,
+            'recurrence_rule' => $request['recurrenceRule'] ?? null,
+            'recurrence_end' => $request['recurrenceEnd'] ?? null,
             'created_by' => $this->agent->id,
         ]);
 
@@ -60,7 +63,9 @@ class ManageCalendarEvent implements Tool
             }
         }
 
-        return "Event created: '{$event->title}' (ID: {$event->id})";
+        $recurrence = $event->recurrence_rule ? " (recurring: {$event->recurrence_rule})" : '';
+
+        return "Event created: '{$event->title}' (ID: {$event->id}){$recurrence}";
     }
 
     private function update(Request $request): string
@@ -89,6 +94,18 @@ class ManageCalendarEvent implements Tool
 
         if (isset($request['location'])) {
             $event->location = $request['location'];
+        }
+
+        if (isset($request['color'])) {
+            $event->color = $request['color'];
+        }
+
+        if (isset($request['recurrenceRule'])) {
+            $event->recurrence_rule = $request['recurrenceRule'];
+        }
+
+        if (isset($request['recurrenceEnd'])) {
+            $event->recurrence_end = $request['recurrenceEnd'];
         }
 
         $event->save();
@@ -149,6 +166,15 @@ class ManageCalendarEvent implements Tool
             'location' => $schema
                 ->string()
                 ->description('The event location.'),
+            'color' => $schema
+                ->string()
+                ->description('Event color: blue, green, red, purple, yellow, orange, pink, indigo.'),
+            'recurrenceRule' => $schema
+                ->string()
+                ->description('Cron expression for recurring events (e.g. "0 9 * * 1" for every Monday at 9am, "0 10 * * 1-5" for weekdays at 10am).'),
+            'recurrenceEnd' => $schema
+                ->string()
+                ->description('ISO 8601 date when the recurrence stops (e.g. "2026-12-31").'),
             'attendeeIds' => $schema
                 ->string()
                 ->description('Comma-separated UUIDs of users to invite as attendees.'),

@@ -21,6 +21,7 @@ class CalendarEvent extends Model
         'location',
         'color',
         'recurrence_rule',
+        'recurrence_end',
         'created_by',
     ];
 
@@ -30,6 +31,7 @@ class CalendarEvent extends Model
             'start_at' => 'datetime',
             'end_at' => 'datetime',
             'all_day' => 'boolean',
+            'recurrence_end' => 'datetime',
         ];
     }
 
@@ -42,6 +44,9 @@ class CalendarEvent extends Model
         $array['allDay'] = $this->all_day;
         $array['createdBy'] = $this->created_by;
         $array['recurrenceRule'] = $this->recurrence_rule;
+        $array['recurrenceEnd'] = $this->recurrence_end;
+        $array['isRecurrenceInstance'] = $this->getAttribute('is_recurrence_instance') ?? false;
+        $array['originalEventId'] = $this->getAttribute('original_event_id');
         $array['createdAt'] = $this->created_at;
         $array['updatedAt'] = $this->updated_at;
 
