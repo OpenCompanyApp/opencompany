@@ -185,7 +185,6 @@ const sizeConfig: Record<ChannelItemSize, {
 
 // Channel icon based on type
 const channelIcon = computed(() => {
-  if (props.channel.type === 'agent') return 'ph:robot'
   if (props.channel.type === 'dm') return 'ph:chat-circle'
   if (props.channel.type === 'external') {
     // Provider-specific icons for external channels
@@ -207,7 +206,6 @@ const channelIcon = computed(() => {
 // Icon color based on channel type and state
 const iconColorClass = computed(() => {
   if (props.selected) return 'text-neutral-900 dark:text-white'
-  if (props.channel.type === 'agent') return 'text-neutral-600 dark:text-neutral-200'
   if (props.muted) return 'text-neutral-400 dark:text-neutral-400'
   return 'text-neutral-500 dark:text-neutral-300 group-hover:text-neutral-900 dark:group-hover:text-white'
 })

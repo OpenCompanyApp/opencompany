@@ -505,7 +505,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
       id: `channel-${channel.id}`,
       label: `#${channel.name}`,
       description: channel.description,
-      icon: channel.type === 'agent' ? 'ph:robot' : 'ph:hash',
+      icon: 'ph:hash',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
       meta: channel.unreadCount ? `${channel.unreadCount} unread` : undefined,
       action: () => router.visit(`/chat?channel=${channel.id}`),

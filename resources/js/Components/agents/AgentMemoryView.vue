@@ -115,35 +115,33 @@
 
     <!-- Add Memory Modal -->
     <Modal v-model:open="showAddMemory" title="Add Memory">
-      <template #body>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-              Memory Note
-            </label>
-            <textarea
-              v-model="newMemoryContent"
-              rows="3"
-              class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400 resize-none"
-              placeholder="Enter a note to remember..."
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-              Category
-            </label>
-            <select
-              v-model="newMemoryCategory"
-              class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
-            >
-              <option value="note">Note</option>
-              <option value="fact">Fact</option>
-              <option value="preference">Preference</option>
-              <option value="context">Context</option>
-            </select>
-          </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+            Memory Note
+          </label>
+          <textarea
+            v-model="newMemoryContent"
+            rows="3"
+            class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400 resize-none"
+            placeholder="Enter a note to remember..."
+          />
         </div>
-      </template>
+        <div>
+          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+            Category
+          </label>
+          <select
+            v-model="newMemoryCategory"
+            class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
+          >
+            <option value="note">Note</option>
+            <option value="fact">Fact</option>
+            <option value="preference">Preference</option>
+            <option value="context">Context</option>
+          </select>
+        </div>
+      </div>
       <template #footer>
         <div class="flex justify-end gap-2">
           <button

@@ -173,7 +173,7 @@ import { useTypingIndicator } from '@/composables/useTypingIndicator'
 import { useIsMobile } from '@/composables/useMediaQuery'
 
 const page = usePage()
-const { fetchChannels, fetchMessages, sendMessage, markChannelRead, addMessageReaction, fetchMessageThread, removeChannelMember, pinMessage, fetchPinnedMessages, sendTypingIndicator, uploadMessageAttachment } = useApi()
+const { fetchChannels, fetchMessages, sendMessage, markChannelRead, addMessageReaction, fetchMessageThread, removeChannelMember, pinMessage, fetchPinnedMessages, sendTypingIndicator, uploadMessageAttachment, fetchDm } = useApi()
 const isMobile = useIsMobile()
 
 interface Thread {
@@ -192,7 +192,6 @@ const showMobileChannelList = ref(false)
 // Channel icon for mobile toolbar
 const channelIcon = computed(() => {
   if (!selectedChannel.value) return 'ph:hash'
-  if (selectedChannel.value.type === 'agent') return 'ph:robot'
   if (selectedChannel.value.type === 'dm') return 'ph:chat-circle'
   if (selectedChannel.value.private) return 'ph:lock-simple'
   return 'ph:hash'
@@ -455,9 +454,28 @@ const handleMemberClick = (member: User) => {
   router.visit(`/users/${member.id}`)
 }
 
-const handleMemberMessage = (member: User) => {
-  // TODO: Navigate to DM with this user or open DM modal
-  console.log('Message member:', member.name)
+const handleMemberMessage = async (member: User) => {
+  // Find existing DM channel with this member
+  const existingDm = channelsData.value.find(c =>
+    c.type === 'dm' && c.members?.some(m => m.id === member.id)
+  )
+  if (existingDm) {
+    selectedChannel.value = existingDm
+    return
+  }
+  // No existing DM — create one via API, refresh channels, then select
+  try {
+    const response = await fetchDm(member.id)
+    await refreshChannels()
+    const newDm = channelsData.value.find(c =>
+      c.type === 'dm' && c.members?.some(m => m.id === member.id)
+    )
+    if (newDm) {
+      selectedChannel.value = newDm
+    }
+  } catch (e) {
+    console.error('Failed to open DM:', e)
+  }
 }
 
 // Channel creation

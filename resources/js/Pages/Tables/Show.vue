@@ -366,9 +366,21 @@ const handleAddView = async (type: DataTableViewType) => {
   activeViewId.value = newView.id
 }
 
-const handleRenameView = (viewId: string) => {
-  // TODO: Show rename modal
-  console.log('Rename view:', viewId)
+const handleRenameView = async (viewId: string) => {
+  const view = views.value.find(v => v.id === viewId)
+  if (!view) return
+  const newName = window.prompt('Rename view', view.name)
+  if (!newName || newName === view.name) return
+  try {
+    await fetch(`/api/tables/${props.tableId}/views/${viewId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName }),
+    })
+    view.name = newName
+  } catch (error) {
+    console.error('Failed to rename view:', error)
+  }
 }
 
 const handleDuplicateView = (viewId: string) => {

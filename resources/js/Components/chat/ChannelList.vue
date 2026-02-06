@@ -316,7 +316,7 @@ import type { Channel } from '@/types'
 
 type ChannelListSize = 'sm' | 'md' | 'lg'
 type ChannelListVariant = 'default' | 'compact' | 'floating'
-type ChannelType = 'public' | 'private' | 'dm' | 'agent' | 'external'
+type ChannelType = 'public' | 'private' | 'dm' | 'external'
 type StatusFilter = 'unread' | 'muted' | 'pinned' | 'starred'
 type QuickFilter = 'unread' | 'dms'
 

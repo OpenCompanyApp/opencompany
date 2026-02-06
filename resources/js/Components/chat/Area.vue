@@ -256,7 +256,6 @@ const showPinnedPanel = ref(false)
 
 // Channel icon
 const channelIcon = computed(() => {
-  if (props.channel.type === 'agent') return 'ph:robot'
   if (props.channel.type === 'dm') return 'ph:chat-circle'
   if (props.channel.private) return 'ph:lock-simple'
   return 'ph:hash'

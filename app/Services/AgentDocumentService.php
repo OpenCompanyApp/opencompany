@@ -142,8 +142,51 @@ class AgentDocumentService
         $file = $this->getIdentityFile($agent, $fileType);
         if ($file) {
             $file->update(['content' => $content]);
+            return $file;
         }
-        return $file;
+
+        // File doesn't exist — find the identity folder and create it
+        $identityFolder = $this->findOrCreateIdentityFolder($agent);
+        if (!$identityFolder) {
+            return null;
+        }
+
+        return Document::create([
+            'id' => Str::uuid()->toString(),
+            'title' => strtoupper($fileType) . '.md',
+            'parent_id' => $identityFolder->id,
+            'content' => $content,
+            'author_id' => $agent->id,
+            'is_folder' => false,
+        ]);
+    }
+
+    /**
+     * Find or create the identity folder for an agent
+     */
+    private function findOrCreateIdentityFolder(User $agent): Document
+    {
+        // Try via docs_folder_id
+        if ($agent->docs_folder_id) {
+            $agentFolder = Document::find($agent->docs_folder_id);
+            if ($agentFolder) {
+                return Document::firstOrCreate(
+                    ['parent_id' => $agentFolder->id, 'title' => 'identity', 'is_folder' => true],
+                    ['id' => Str::uuid()->toString(), 'author_id' => $agent->id, 'content' => '']
+                );
+            }
+        }
+
+        // Fallback: find or create full structure
+        $agentFolder = $this->createAgentDocumentStructure($agent);
+
+        // Update the agent's docs_folder_id for future lookups
+        $agent->update(['docs_folder_id' => $agentFolder->id]);
+
+        return Document::where('parent_id', $agentFolder->id)
+            ->where('title', 'identity')
+            ->where('is_folder', true)
+            ->first();
     }
 
     /**

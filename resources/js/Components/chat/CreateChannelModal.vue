@@ -209,7 +209,6 @@ const allUsers = ref<User[]>([])
 const channelTypes = [
   { value: 'public' as ChannelType, label: 'Public', icon: 'ph:hash', description: 'Anyone in the organization can join and view messages' },
   { value: 'private' as ChannelType, label: 'Private', icon: 'ph:lock-simple', description: 'Only invited members can see and join this channel' },
-  { value: 'agent' as ChannelType, label: 'Agent', icon: 'ph:robot', description: 'A dedicated channel for AI agents to collaborate' },
 ]
 
 // Computed

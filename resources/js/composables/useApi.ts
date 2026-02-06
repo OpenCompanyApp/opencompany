@@ -349,6 +349,12 @@ export const useApi = () => {
     api.post(`/direct-messages/${id}/read`, { userId })
   const getUnreadDMCount = (userId: string) =>
     api.get(`/direct-messages/unread-count?userId=${userId}`)
+  const fetchDm = (userId: string) =>
+    api.get(`/dm/${userId}`)
+
+  // Data Table Views
+  const updateTableView = (tableId: string, viewId: string, data: Record<string, unknown>) =>
+    api.patch(`/tables/${tableId}/views/${viewId}`, data)
 
   // Notifications
   const fetchNotifications = (userId?: string, unreadOnly?: boolean) => {
@@ -491,6 +497,9 @@ export const useApi = () => {
     createDirectMessage,
     markDirectMessageRead,
     getUnreadDMCount,
+    fetchDm,
+    // Data Table Views
+    updateTableView,
     // Notifications
     fetchNotifications,
     markNotificationRead,

@@ -240,7 +240,7 @@
           <div v-if="activeTab === 'memory'">
             <AgentMemoryView
               :session="agent.currentSession"
-              :memory-entries="agent.memoryEntries || []"
+              :memory-entries="parsedMemoryEntries"
               @new-session="startNewSession"
               @view-history="viewSessionHistory"
               @add-memory="addMemoryEntry"
@@ -339,7 +339,7 @@ import AgentMemoryView from '@/Components/agents/AgentMemoryView.vue'
 import AgentSettingsPanel from '@/Components/agents/AgentSettingsPanel.vue'
 import TaskDetailDrawer from '@/Components/tasks/TaskDetailDrawer.vue'
 import { useApi } from '@/composables/useApi'
-import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask } from '@/types'
+import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask, AgentMemoryEntry } from '@/types'
 
 const { fetchAgentDetail, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions } = useApi()
 
@@ -361,6 +361,7 @@ const loading = ref(true)
 const agent = ref<Agent | null>(null)
 const activityLog = ref<ActivityItem[]>([])
 const capabilityNotes = ref('')
+const memoryContent = ref('')
 const agentTasks = ref<AgentTask[]>([])
 const selectedTask = ref<AgentTask | null>(null)
 const taskDrawerOpen = ref(false)
@@ -371,6 +372,25 @@ const folderPermissions = ref<string[]>([])
 const agentChannels = ref<{ id: string; name: string; type: string }[]>([])
 const documentFolders = ref<{ id: string; title: string }[]>([])
 
+
+const parsedMemoryEntries = computed<AgentMemoryEntry[]>(() => {
+  if (!memoryContent.value) return []
+  const entries: AgentMemoryEntry[] = []
+  const lines = memoryContent.value.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    const match = line.match(/^-\s*\[(\w+)\]\s*(.+)$/)
+    if (match) {
+      entries.push({
+        id: `mem-${i}`,
+        content: match[2],
+        category: match[1] as AgentMemoryEntry['category'],
+        createdAt: new Date(),
+      })
+    }
+  }
+  return entries
+})
 
 const activeTab = ref<TabId>('overview')
 
@@ -487,6 +507,7 @@ const fetchData = async () => {
     } as Agent
 
     capabilityNotes.value = (raw.toolNotes as string) || ''
+    memoryContent.value = (raw.memoryContent as string) || ''
     behaviorMode.value = (raw.behaviorMode as AgentBehaviorMode) || 'autonomous'
     mustWaitForApproval.value = (raw.mustWaitForApproval as boolean) || false
     channelPermissions.value = (raw.channelPermissions as string[]) || []
@@ -612,21 +633,30 @@ const viewSessionHistory = () => {
 }
 
 const addMemoryEntry = async (entry: { content: string; category: string }) => {
-  // Append to MEMORY.md identity file
-  const currentMemory = (agent.value as Record<string, unknown>)?.memoryContent as string || ''
-  const newContent = currentMemory
-    ? `${currentMemory}\n\n- [${entry.category}] ${entry.content}`
+  const newContent = memoryContent.value
+    ? `${memoryContent.value}\n- [${entry.category}] ${entry.content}`
     : `# Long-term Memory\n\n- [${entry.category}] ${entry.content}`
   try {
     await updateAgentIdentityFile(props.id, 'MEMORY', newContent)
+    memoryContent.value = newContent
   } catch (e) {
     console.error('Failed to add memory entry:', e)
   }
 }
 
-const deleteMemoryEntry = (id: string) => {
-  // Memory entry management deferred to Sprint 2
-  console.log('Delete memory entry:', id)
+const deleteMemoryEntry = async (id: string) => {
+  // id is "mem-{lineIndex}" — find and remove that line from memoryContent
+  const lineIndex = parseInt(id.replace('mem-', ''), 10)
+  const lines = memoryContent.value.split('\n')
+  if (lineIndex < 0 || lineIndex >= lines.length) return
+  lines.splice(lineIndex, 1)
+  const newContent = lines.join('\n')
+  try {
+    await updateAgentIdentityFile(props.id, 'MEMORY', newContent)
+    memoryContent.value = newContent
+  } catch (e) {
+    console.error('Failed to delete memory entry:', e)
+  }
 }
 
 const updateSettings = async (settings: AgentSettings) => {
