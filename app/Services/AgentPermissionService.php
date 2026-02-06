@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\AgentPermission;
-use App\Models\ChannelMember;
 use App\Models\User;
 
 class AgentPermissionService
@@ -59,6 +58,26 @@ class AgentPermissionService
         }
 
         return $channelPerms->contains($channelId);
+    }
+
+    /**
+     * Get the list of channel IDs an agent can access.
+     *
+     * Returns null if unrestricted (no channel permissions set).
+     * Returns array of channel UUIDs if restricted.
+     */
+    public function getAllowedChannelIds(User $agent): ?array
+    {
+        $channelPerms = AgentPermission::forAgent($agent->id)
+            ->channels()
+            ->allowed()
+            ->pluck('scope_key');
+
+        if ($channelPerms->isEmpty()) {
+            return null;
+        }
+
+        return $channelPerms->toArray();
     }
 
     /**

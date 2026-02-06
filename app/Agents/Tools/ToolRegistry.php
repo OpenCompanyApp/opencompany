@@ -643,7 +643,7 @@ class ToolRegistry
             SearchDocuments::class => new SearchDocuments($agent, $this->permissionService),
             ManageDocument::class => new ManageDocument($agent, $this->permissionService),
             CommentOnDocument::class => new CommentOnDocument($agent, $this->permissionService),
-            ListChannels::class => new ListChannels($agent),
+            ListChannels::class => new ListChannels($agent, $this->permissionService),
             GetToolInfo::class => new GetToolInfo($agent, $this),
             // Tools needing only agent
             QueryTable::class => new QueryTable($agent),
@@ -657,7 +657,7 @@ class ToolRegistry
             CreateTaskStep::class => new CreateTaskStep($agent),
             CreateJpGraphChart::class => new CreateJpGraphChart($agent),
             RenderSvg::class => new RenderSvg($agent),
-            SendTelegramNotification::class => new SendTelegramNotification($agent),
+            SendTelegramNotification::class => new SendTelegramNotification($agent, $this->permissionService),
             PlausibleQueryStats::class => new PlausibleQueryStats($agent),
             PlausibleRealtimeVisitors::class => new PlausibleRealtimeVisitors($agent),
             PlausibleListSites::class => new PlausibleListSites($agent),

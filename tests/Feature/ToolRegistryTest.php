@@ -3,6 +3,12 @@
 namespace Tests\Feature;
 
 use App\Agents\Tools\ApprovalWrappedTool;
+use App\Agents\Tools\GetToolInfo;
+use App\Agents\Tools\ListChannels;
+use App\Agents\Tools\Plausible\PlausibleListGoals;
+use App\Agents\Tools\Plausible\PlausibleListSites;
+use App\Agents\Tools\Plausible\PlausibleQueryStats;
+use App\Agents\Tools\Plausible\PlausibleRealtimeVisitors;
 use App\Agents\Tools\QueryCalendar;
 use App\Agents\Tools\QueryListItems;
 use App\Agents\Tools\QueryTable;
@@ -45,11 +51,11 @@ class ToolRegistryTest extends TestCase
 
     // ── getToolsForAgent Tests ─────────────────────────────────────────
 
-    public function test_returns_sixteen_tools_with_no_permissions(): void
+    public function test_returns_all_tools_with_no_permissions(): void
     {
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(16, $tools);
+        $this->assertCount(30, $tools);
 
         foreach ($tools as $tool) {
             $this->assertNotInstanceOf(ApprovalWrappedTool::class, $tool);
@@ -66,7 +72,7 @@ class ToolRegistryTest extends TestCase
 
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(15, $tools);
+        $this->assertCount(29, $tools);
     }
 
     public function test_wraps_tools_with_db_approval_required(): void
@@ -80,7 +86,7 @@ class ToolRegistryTest extends TestCase
 
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(16, $tools);
+        $this->assertCount(30, $tools);
 
         $wrappedTools = array_filter($tools, fn ($t) => $t instanceof ApprovalWrappedTool);
         $this->assertCount(1, $wrappedTools);
@@ -95,14 +101,20 @@ class ToolRegistryTest extends TestCase
 
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(16, $tools);
+        $this->assertCount(30, $tools);
 
         $readToolClasses = [
             SearchDocuments::class,
             ReadChannel::class,
+            ListChannels::class,
             QueryTable::class,
             QueryCalendar::class,
             QueryListItems::class,
+            PlausibleQueryStats::class,
+            PlausibleRealtimeVisitors::class,
+            PlausibleListSites::class,
+            PlausibleListGoals::class,
+            GetToolInfo::class,
         ];
 
         $unwrappedTools = [];
@@ -119,7 +131,7 @@ class ToolRegistryTest extends TestCase
             }
         }
 
-        $this->assertCount(5, $unwrappedTools);
+        $this->assertCount(11, $unwrappedTools);
 
         foreach ($unwrappedTools as $tool) {
             $isReadTool = false;
@@ -139,7 +151,7 @@ class ToolRegistryTest extends TestCase
 
         $tools = $this->registry->getToolsForAgent($this->agent);
 
-        $this->assertCount(16, $tools);
+        $this->assertCount(30, $tools);
 
         foreach ($tools as $tool) {
             $this->assertInstanceOf(ApprovalWrappedTool::class, $tool);
@@ -152,7 +164,7 @@ class ToolRegistryTest extends TestCase
     {
         $meta = $this->registry->getAllToolsMeta($this->agent);
 
-        $this->assertCount(16, $meta);
+        $this->assertCount(30, $meta);
 
         $expectedKeys = ['id', 'name', 'description', 'type', 'icon', 'enabled', 'requiresApproval'];
 

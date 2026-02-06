@@ -4,6 +4,7 @@ namespace App\Agents\Tools;
 
 use App\Models\Channel;
 use App\Models\User;
+use App\Services\AgentPermissionService;
 use App\Services\TelegramService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
@@ -13,6 +14,7 @@ class SendTelegramNotification implements Tool
 {
     public function __construct(
         private User $agent,
+        private AgentPermissionService $permissionService,
     ) {}
 
     public function description(): string
@@ -25,6 +27,11 @@ class SendTelegramNotification implements Tool
         try {
             $channelId = $request['channelId'];
             $content = $request['content'];
+
+            // Check channel access permission
+            if (!$this->permissionService->canAccessChannel($this->agent, $channelId)) {
+                return "Error: You do not have permission to send notifications to this channel.";
+            }
 
             $channel = Channel::where('id', $channelId)
                 ->where('external_provider', 'telegram')

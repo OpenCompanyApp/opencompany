@@ -40,7 +40,7 @@ class AgentPermissionControllerTest extends TestCase
 
         $data = $response->json();
 
-        $this->assertCount(16, $data['tools']);
+        $this->assertCount(30, $data['tools']);
         $this->assertIsArray($data['channelIds']);
         $this->assertIsArray($data['folderIds']);
         $this->assertIsString($data['behaviorMode']);

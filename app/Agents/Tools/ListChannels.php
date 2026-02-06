@@ -4,6 +4,7 @@ namespace App\Agents\Tools;
 
 use App\Models\Channel;
 use App\Models\User;
+use App\Services\AgentPermissionService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
@@ -12,6 +13,7 @@ class ListChannels implements Tool
 {
     public function __construct(
         private User $agent,
+        private AgentPermissionService $permissionService,
     ) {}
 
     public function description(): string
@@ -32,6 +34,12 @@ class ListChannels implements Tool
 
             // Exclude DM channels — those are private between two users
             $query->where('type', '!=', 'dm');
+
+            // Filter by permitted channels if restrictions are set
+            $allowedChannelIds = $this->permissionService->getAllowedChannelIds($this->agent);
+            if ($allowedChannelIds !== null) {
+                $query->whereIn('id', $allowedChannelIds);
+            }
 
             $channels = $query->orderBy('name')->get();
 
