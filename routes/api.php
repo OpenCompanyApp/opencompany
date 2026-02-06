@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\AgentPermissionController;
 use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\IntegrationController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // Users
@@ -223,3 +224,7 @@ Route::get('/integrations/models', [IntegrationController::class, 'enabledModels
 Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConfig']);
 Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
 Route::post('/integrations/{id}/test', [IntegrationController::class, 'testConnection']);
+Route::post('/integrations/{id}/setup-webhook', [IntegrationController::class, 'setupWebhook']);
+
+// Webhooks (external, no auth)
+Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']);

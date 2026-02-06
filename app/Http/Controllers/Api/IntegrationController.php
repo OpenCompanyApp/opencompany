@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\IntegrationSetting;
+use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -26,8 +27,8 @@ class IntegrationController extends Controller
                 'name' => $info['name'],
                 'description' => $info['description'],
                 'icon' => $info['icon'],
-                'models' => $info['models'],
-                'defaultUrl' => $info['default_url'],
+                'models' => $info['models'] ?? null,
+                'defaultUrl' => $info['default_url'] ?? null,
                 'enabled' => $setting?->enabled ?? false,
                 'configured' => $setting?->hasValidConfig() ?? false,
             ];
@@ -48,18 +49,28 @@ class IntegrationController extends Controller
 
         $setting = IntegrationSetting::where('integration_id', $id)->first();
 
+        $config = [
+            'apiKey' => $setting?->getMaskedApiKey(),
+        ];
+
+        // Telegram-specific config
+        if ($id === 'telegram') {
+            $config['defaultAgentId'] = $setting?->getConfigValue('default_agent_id') ?? '';
+            $config['notifyChatId'] = $setting?->getConfigValue('notify_chat_id') ?? '';
+            $config['allowedTelegramUsers'] = $setting?->getConfigValue('allowed_telegram_users', []) ?? [];
+        } else {
+            $config['url'] = $setting?->getConfigValue('url') ?? ($available[$id]['default_url'] ?? '');
+            $config['defaultModel'] = $setting?->getConfigValue('default_model') ?? array_key_first($available[$id]['models'] ?? []);
+        }
+
         return response()->json([
             'id' => $id,
             'name' => $available[$id]['name'],
             'description' => $available[$id]['description'],
-            'models' => $available[$id]['models'],
-            'defaultUrl' => $available[$id]['default_url'],
+            'models' => $available[$id]['models'] ?? null,
+            'defaultUrl' => $available[$id]['default_url'] ?? null,
             'enabled' => $setting?->enabled ?? false,
-            'config' => [
-                'apiKey' => $setting?->getMaskedApiKey(),
-                'url' => $setting?->getConfigValue('url') ?? $available[$id]['default_url'],
-                'defaultModel' => $setting?->getConfigValue('default_model') ?? array_key_first($available[$id]['models']),
-            ],
+            'config' => $config,
         ]);
     }
 
@@ -92,10 +103,20 @@ class IntegrationController extends Controller
             $config['api_key'] = $request->input('apiKey');
         }
         if ($request->has('url')) {
-            $config['url'] = $request->input('url') ?: $available[$id]['default_url'];
+            $config['url'] = $request->input('url') ?: ($available[$id]['default_url'] ?? '');
         }
         if ($request->has('defaultModel')) {
             $config['default_model'] = $request->input('defaultModel');
+        }
+        // Telegram-specific fields
+        if ($request->has('defaultAgentId')) {
+            $config['default_agent_id'] = $request->input('defaultAgentId');
+        }
+        if ($request->has('notifyChatId')) {
+            $config['notify_chat_id'] = $request->input('notifyChatId');
+        }
+        if ($request->has('allowedTelegramUsers')) {
+            $config['allowed_telegram_users'] = $request->input('allowedTelegramUsers', []);
         }
 
         $setting->config = $config;
@@ -137,11 +158,15 @@ class IntegrationController extends Controller
             ], 400);
         }
 
-        $url = $request->input('url') ?: $available[$id]['default_url'];
-        $model = $request->input('defaultModel') ?: array_key_first($available[$id]['models']);
-
         // Test the connection based on integration type
         try {
+            if ($id === 'telegram') {
+                return $this->testTelegramConnection($apiKey);
+            }
+
+            $url = $request->input('url') ?: ($available[$id]['default_url'] ?? '');
+            $model = $request->input('defaultModel') ?: array_key_first($available[$id]['models'] ?? []);
+
             if ($id === 'glm' || $id === 'glm-coding') {
                 return $this->testGlmConnection($apiKey, $url, $model);
             }
@@ -190,6 +215,102 @@ class IntegrationController extends Controller
     }
 
     /**
+     * Test Telegram bot connection
+     */
+    private function testTelegramConnection(string $apiKey)
+    {
+        $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/getMe");
+
+        $data = $response->json();
+
+        if ($response->successful() && ($data['ok'] ?? false)) {
+            $result = $data['result'];
+            return response()->json([
+                'success' => true,
+                'botName' => $result['first_name'] ?? 'Unknown',
+                'username' => $result['username'] ?? 'Unknown',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'error' => $data['description'] ?? 'Failed to connect to Telegram',
+        ], 400);
+    }
+
+    /**
+     * Set up webhook for an integration (currently Telegram only)
+     */
+    public function setupWebhook(Request $request, string $id)
+    {
+        if ($id !== 'telegram') {
+            return response()->json(['error' => 'Webhooks not supported for this integration'], 400);
+        }
+
+        $setting = IntegrationSetting::where('integration_id', 'telegram')->first();
+        $apiKey = $request->input('apiKey');
+
+        if (!$apiKey || str_contains($apiKey, '*')) {
+            $apiKey = $setting?->getConfigValue('api_key');
+        }
+
+        if (!$apiKey) {
+            return response()->json(['success' => false, 'error' => 'No bot token configured'], 400);
+        }
+
+        // Ensure setting exists and save the API key
+        if (!$setting) {
+            $setting = IntegrationSetting::create([
+                'id' => Str::uuid()->toString(),
+                'integration_id' => 'telegram',
+                'config' => ['api_key' => $apiKey],
+                'enabled' => true,
+            ]);
+        } elseif (!$setting->getConfigValue('api_key')) {
+            $setting->setConfigValue('api_key', $apiKey);
+            $setting->save();
+        }
+
+        // Generate webhook secret if not set
+        $webhookSecret = $setting->getConfigValue('webhook_secret');
+        if (!$webhookSecret) {
+            $webhookSecret = Str::random(64);
+            $setting->setConfigValue('webhook_secret', $webhookSecret);
+            $setting->save();
+        }
+
+        $appUrl = config('app.url');
+        $webhookUrl = rtrim($appUrl, '/') . '/api/webhooks/telegram';
+
+        try {
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/setWebhook", [
+                'url' => $webhookUrl,
+                'secret_token' => $webhookSecret,
+                'allowed_updates' => json_encode(['message', 'callback_query']),
+            ]);
+
+            $data = $response->json();
+
+            if ($response->successful() && ($data['ok'] ?? false)) {
+                return response()->json([
+                    'success' => true,
+                    'webhookUrl' => $webhookUrl,
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'error' => $data['description'] ?? 'Failed to set webhook',
+            ], 400);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get enabled AI models for agent brain selection
      */
     public function enabledModels()
@@ -204,6 +325,9 @@ class IntegrationController extends Controller
             }
 
             $info = $available[$setting->integration_id];
+            if (empty($info['models'])) {
+                continue;
+            }
             foreach ($info['models'] as $modelId => $modelName) {
                 $models[] = [
                     'id' => $setting->integration_id . ':' . $modelId,

@@ -5,6 +5,7 @@ namespace App\Agents;
 use App\Agents\Conversations\ChannelConversationLoader;
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Agents\Tools\ToolRegistry;
+use App\Models\Channel;
 use App\Models\User;
 use App\Services\AgentDocumentService;
 use Laravel\Ai\Contracts\Agent;
@@ -50,7 +51,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         $identityFiles = $this->docService->getIdentityFiles($this->agent);
 
         if ($identityFiles->isEmpty()) {
-            return "You are {$this->agent->name}, a helpful AI assistant working within a company workspace. You can search documents, send messages, and track task progress.";
+            return "You are {$this->agent->name}, a helpful AI assistant working within a company workspace. You can search documents, send messages, and track task progress.\n\n" . $this->buildChannelContext();
         }
 
         $prompt = "# Project Context\n\n";
@@ -64,6 +65,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
                 $prompt .= "## {$type}.md\n\n{$file->content}\n\n";
             }
         }
+
+        // Add current channel context
+        $prompt .= $this->buildChannelContext();
 
         $prompt .= "## Available Tools\n\n";
         $prompt .= "You have access to the following tools:\n";
@@ -149,6 +153,35 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
     public function model(): string
     {
         return $this->resolvedProvider['model'];
+    }
+
+    /**
+     * Build context about the current channel for the system prompt.
+     */
+    private function buildChannelContext(): string
+    {
+        $channel = Channel::with('users')->find($this->channelId);
+        if (!$channel) {
+            return '';
+        }
+
+        $prompt = "## Current Context\n\n";
+        $prompt .= "You are responding in channel \"{$channel->name}\" (id: {$channel->id}, type: {$channel->type}).";
+
+        if ($channel->type === 'external' && $channel->external_provider) {
+            $prompt .= " This is a {$channel->external_provider} external channel.";
+        }
+        $prompt .= "\n";
+
+        // List channel members
+        $members = $channel->users->pluck('name')->toArray();
+        if (!empty($members)) {
+            $prompt .= "Channel members: " . implode(', ', $members) . "\n";
+        }
+
+        $prompt .= "\nYour response text is sent directly to this channel — you do NOT need to use send_channel_message or read_channel for the current conversation. Use those tools only to interact with OTHER channels.\n\n";
+
+        return $prompt;
     }
 
     /**

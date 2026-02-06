@@ -25,6 +25,7 @@ class Message extends Model
         'pinned_by_id',
         'pinned_at',
         'timestamp',
+        'source',
     ];
 
     protected function casts(): array

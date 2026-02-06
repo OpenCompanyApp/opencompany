@@ -104,6 +104,7 @@ export interface Message {
   threadCount?: number
   threadParticipants?: User[]
   lastThreadReplyAt?: Date
+  source?: string | null
 }
 
 export interface ApprovalRequest {

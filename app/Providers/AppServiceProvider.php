@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Agents\Providers\GlmPrismGateway;
+use App\Models\ApprovalRequest;
+use App\Observers\ApprovalRequestObserver;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Vite;
@@ -28,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // Approval request observer
+        ApprovalRequest::observe(ApprovalRequestObserver::class);
 
         // Disable JSON wrapping for API resources
         JsonResource::withoutWrapping();

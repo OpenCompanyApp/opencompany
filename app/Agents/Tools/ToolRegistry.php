@@ -26,6 +26,13 @@ class ToolRegistry
             'description' => 'Read recent messages, threads, or pinned messages from a channel.',
             'icon' => 'ph:chat-dots',
         ],
+        'list_channels' => [
+            'class' => ListChannels::class,
+            'type' => 'read',
+            'name' => 'List Channels',
+            'description' => 'List channels in the workspace that you have access to.',
+            'icon' => 'ph:list-bullets',
+        ],
         'manage_message' => [
             'class' => ManageMessage::class,
             'type' => 'write',
@@ -114,6 +121,14 @@ class ToolRegistry
             'name' => 'Create Task Step',
             'description' => 'Log a progress step on a task you are working on.',
             'icon' => 'ph:list-checks',
+        ],
+        // External
+        'send_telegram_notification' => [
+            'class' => SendTelegramNotification::class,
+            'type' => 'write',
+            'name' => 'Send Telegram Notification',
+            'description' => 'Send a notification to a Telegram chat.',
+            'icon' => 'ph:telegram-logo',
         ],
         // Control Flow
         'wait_for_approval' => [
@@ -219,6 +234,7 @@ class ToolRegistry
             SearchDocuments::class => new SearchDocuments($agent, $this->permissionService),
             ManageDocument::class => new ManageDocument($agent, $this->permissionService),
             CommentOnDocument::class => new CommentOnDocument($agent, $this->permissionService),
+            ListChannels::class => new ListChannels($agent),
             // Tools needing only agent
             QueryTable::class => new QueryTable($agent),
             ManageTable::class => new ManageTable($agent),
@@ -228,6 +244,7 @@ class ToolRegistry
             QueryListItems::class => new QueryListItems($agent),
             ManageListItem::class => new ManageListItem($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
+            SendTelegramNotification::class => new SendTelegramNotification($agent),
             WaitForApproval::class => new WaitForApproval($agent),
             Wait::class => new Wait($agent),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),

@@ -13,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Services\TelegramService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -41,6 +42,9 @@ class AgentRespondJob implements ShouldQueue
         try {
             // Update agent status to working
             $this->agent->update(['status' => 'working']);
+
+            // Send typing indicator for Telegram channels
+            $this->sendTypingIndicator();
 
             // Create the agent and get a response
             $agentInstance = OpenCompanyAgent::for($this->agent, $this->channelId);
@@ -97,6 +101,24 @@ class AgentRespondJob implements ShouldQueue
             } else {
                 $this->agent->update(['status' => 'idle']);
             }
+        }
+    }
+
+    /**
+     * Send a typing indicator if this is a Telegram external channel.
+     */
+    private function sendTypingIndicator(): void
+    {
+        try {
+            $channel = Channel::find($this->channelId);
+            if ($channel?->type === 'external' && $channel?->external_provider === 'telegram' && $channel?->external_id) {
+                $telegram = app(TelegramService::class);
+                if ($telegram->isConfigured()) {
+                    $telegram->sendChatAction($channel->external_id);
+                }
+            }
+        } catch (\Throwable) {
+            // Non-critical
         }
     }
 

@@ -98,6 +98,11 @@ class IntegrationSetting extends Model
                 ],
                 'default_url' => 'https://api.z.ai/api/coding/paas/v4',
             ],
+            'telegram' => [
+                'name' => 'Telegram',
+                'description' => 'Telegram Bot for DMs, notifications, and approvals',
+                'icon' => 'ph:telegram-logo',
+            ],
         ];
     }
 }

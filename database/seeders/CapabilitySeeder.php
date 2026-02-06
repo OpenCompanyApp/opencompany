@@ -157,6 +157,17 @@ class CapabilitySeeder extends Seeder
                 'default_enabled' => true,
                 'default_requires_approval' => false,
             ],
+            // External
+            [
+                'name' => 'send_telegram_notification',
+                'display_name' => 'Send Telegram Notification',
+                'description' => 'Send a notification message to a Telegram chat.',
+                'icon' => 'ph:telegram-logo',
+                'category' => 'communication',
+                'kind' => 'write',
+                'default_enabled' => false,
+                'default_requires_approval' => false,
+            ],
             // Control flow
             [
                 'name' => 'wait_for_approval',

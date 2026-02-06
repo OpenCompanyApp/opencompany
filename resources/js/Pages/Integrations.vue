@@ -256,6 +256,12 @@
         @saved="handleGlmSaved"
       />
 
+      <!-- Telegram Config Modal -->
+      <TelegramConfigModal
+        v-model:open="showTelegramConfigModal"
+        @saved="handleTelegramSaved"
+      />
+
       <!-- Webhook Modal -->
       <Modal v-model:open="showWebhookModal" title="Add Webhook">
         <template #body>
@@ -323,6 +329,7 @@ import Modal from '@/Components/shared/Modal.vue'
 import SearchInput from '@/Components/shared/SearchInput.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
 import GlmConfigModal from '@/Components/integrations/GlmConfigModal.vue'
+import TelegramConfigModal from '@/Components/integrations/TelegramConfigModal.vue'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
 // Tab state
@@ -383,6 +390,9 @@ const librarySearch = ref('')
 // GLM Config modal
 const showGlmConfigModal = ref(false)
 const activeGlmIntegrationId = ref<'glm' | 'glm-coding'>('glm-coding')
+
+// Telegram Config modal
+const showTelegramConfigModal = ref(false)
 
 // Load integration status from backend
 onMounted(async () => {
@@ -607,6 +617,12 @@ const handleInstall = (integration: Integration) => {
     return
   }
 
+  // For Telegram, open config modal
+  if (integration.id === 'telegram') {
+    showTelegramConfigModal.value = true
+    return
+  }
+
   // Find and update the integration
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === integration.id)
@@ -634,6 +650,19 @@ const handleConfigure = (integration: Integration) => {
   if (integration.id === 'glm' || integration.id === 'glm-coding') {
     activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
     showGlmConfigModal.value = true
+  } else if (integration.id === 'telegram') {
+    showTelegramConfigModal.value = true
+  }
+}
+
+// Handle Telegram config saved
+const handleTelegramSaved = (result: { enabled: boolean; configured: boolean }) => {
+  for (const category of integrationCategories.value) {
+    const found = category.integrations.find(i => i.id === 'telegram')
+    if (found) {
+      found.installed = result.enabled
+      break
+    }
   }
 }
 
