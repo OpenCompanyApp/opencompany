@@ -38,7 +38,7 @@
     <aside
       :class="[
         'border-r border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0 bg-white dark:bg-neutral-900',
-        'fixed inset-0 z-30 md:relative md:w-72',
+        'fixed inset-0 z-30 md:relative md:w-56',
         showMobileDocList ? 'flex' : 'hidden md:flex'
       ]"
     >
@@ -56,6 +56,8 @@
         @select="handleSelectDocumentMobile"
         @create="handleCreateDocument"
         @create-folder="handleCreateFolder"
+        @delete="handleDeleteDocument"
+        @rename="handleRenameDocument"
       />
     </aside>
 
@@ -67,10 +69,12 @@
       :has-changes="hasChanges"
       :saving="saving"
       class="flex-1"
-      @edit="isEditing = true"
+      @edit="handleStartEdit"
       @cancel="handleCancelEdit"
       @save="handleSaveDocument"
       @content-change="handleContentChange"
+      @update:color="handleUpdateColor"
+      @update:icon="handleUpdateIcon"
       @version-history="showVersionHistory = true"
     />
 
@@ -292,6 +296,7 @@ const {
   fetchDocuments,
   createDocument,
   updateDocument,
+  deleteDocument,
   fetchDocumentComments,
   addDocumentComment,
   updateDocumentComment,
@@ -398,11 +403,19 @@ const handleSelectDocumentMobile = async (doc: Document) => {
   showMobileDocList.value = false
 }
 
+// Determine current folder context for creating new items
+const currentFolderId = computed(() => {
+  if (!selectedDoc.value) return undefined
+  if (selectedDoc.value.isFolder) return selectedDoc.value.id
+  return selectedDoc.value.parentId ?? undefined
+})
+
 const handleCreateDocument = async () => {
   const newDoc = await createDocument({
     title: 'Untitled Document',
-    content: '# New Document\n\nStart writing here...',
+    content: '',
     authorId: 'h1',
+    parentId: currentFolderId.value,
   })
   await refreshDocuments()
   if (newDoc) {
@@ -416,8 +429,47 @@ const handleCreateFolder = async () => {
     content: '',
     authorId: 'h1',
     isFolder: true,
+    parentId: currentFolderId.value,
   })
   await refreshDocuments()
+}
+
+const handleDeleteDocument = async (doc: Document) => {
+  const msg = doc.isFolder
+    ? `Delete folder "${doc.title}" and all its contents?`
+    : `Delete "${doc.title}"?`
+  if (!confirm(msg)) return
+
+  try {
+    await deleteDocument(doc.id)
+    if (selectedDoc.value?.id === doc.id) {
+      selectedDoc.value = null
+    }
+    await refreshDocuments()
+  } catch (error) {
+    console.error('Failed to delete document:', error)
+  }
+}
+
+const handleRenameDocument = async (doc: Document) => {
+  const newTitle = prompt('Rename:', doc.title)
+  if (!newTitle || newTitle === doc.title) return
+
+  try {
+    await updateDocument(doc.id, { title: newTitle })
+    await refreshDocuments()
+    if (selectedDoc.value?.id === doc.id) {
+      const updated = documents.value.find(d => d.id === doc.id)
+      if (updated) selectedDoc.value = updated
+    }
+  } catch (error) {
+    console.error('Failed to rename document:', error)
+  }
+}
+
+const handleStartEdit = () => {
+  isEditing.value = true
+  editedContent.value = selectedDoc.value?.content ?? ''
 }
 
 const handleContentChange = (content: string) => {
@@ -454,6 +506,30 @@ const handleCancelEdit = () => {
   isEditing.value = false
   hasChanges.value = false
   editedContent.value = selectedDoc.value?.content ?? ''
+}
+
+const handleUpdateColor = async (color: string | null) => {
+  if (!selectedDoc.value) return
+  try {
+    await updateDocument(selectedDoc.value.id, { color })
+    await refreshDocuments()
+    const updatedDoc = documents.value.find(d => d.id === selectedDoc.value?.id)
+    if (updatedDoc) selectedDoc.value = updatedDoc
+  } catch (error) {
+    console.error('Failed to update color:', error)
+  }
+}
+
+const handleUpdateIcon = async (icon: string | null) => {
+  if (!selectedDoc.value) return
+  try {
+    await updateDocument(selectedDoc.value.id, { icon })
+    await refreshDocuments()
+    const updatedDoc = documents.value.find(d => d.id === selectedDoc.value?.id)
+    if (updatedDoc) selectedDoc.value = updatedDoc
+  } catch (error) {
+    console.error('Failed to update icon:', error)
+  }
 }
 
 const handleRestoreVersion = async (version: DocumentVersion) => {

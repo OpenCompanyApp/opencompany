@@ -38,6 +38,8 @@ class DocumentController extends Controller
             'author_id' => $request->input('authorId'),
             'parent_id' => $request->input('parentId'),
             'is_folder' => $request->input('isFolder', false),
+            'color' => $request->input('color'),
+            'icon' => $request->input('icon'),
             'status' => 'draft',
         ]);
 
@@ -91,6 +93,8 @@ class DocumentController extends Controller
             'title',
             'content',
             'status',
+            'color',
+            'icon',
         ]);
 
         if ($request->has('parentId')) {
@@ -110,7 +114,13 @@ class DocumentController extends Controller
 
     public function destroy(string $id)
     {
-        Document::findOrFail($id)->delete();
+        $document = Document::findOrFail($id);
+
+        if ($document->is_system) {
+            return response()->json(['error' => 'System documents cannot be deleted.'], 403);
+        }
+
+        $document->delete();
 
         return response()->json(['success' => true]);
     }

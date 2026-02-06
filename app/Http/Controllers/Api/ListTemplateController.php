@@ -86,10 +86,16 @@ class ListTemplateController extends Controller
     {
         $template = ListTemplate::findOrFail($templateId);
 
+        $parentId = $request->input('parentId');
+        if (!$parentId) {
+            return response()->json(['error' => 'Items must belong to a project (parentId is required).'], 422);
+        }
+
         $maxPosition = ListItem::where('status', 'todo')->max('position') ?? 0;
 
         $listItem = ListItem::create([
             'id' => Str::uuid()->toString(),
+            'parent_id' => $parentId,
             'title' => $request->input('title', $template->default_title),
             'description' => $request->input('description', $template->default_description),
             'status' => 'todo',

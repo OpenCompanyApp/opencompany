@@ -36,6 +36,8 @@
       :is-starred="item.isStarred"
       :is-pinned="item.isPinned"
       :is-locked="item.isLocked"
+      :custom-color="item.color"
+      :custom-icon="item.icon"
       :tags="item.tags"
       :size="size"
       :selectable="selectable"
@@ -204,6 +206,8 @@ interface ExtendedDocument extends Document {
   tags?: string[]
   path?: string
   createdAt?: Date
+  color?: string | null
+  icon?: string | null
 }
 
 interface DropEvent {

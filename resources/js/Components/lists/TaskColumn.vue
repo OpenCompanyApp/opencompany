@@ -350,7 +350,7 @@
       leave-to-class="opacity-0"
     >
       <button
-        v-if="!collapsed && showAddButton"
+        v-if="!collapsed && showAddButton && canCreate"
         :class="[
           'flex items-center justify-center gap-2 w-full border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-lg',
           'hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800',
@@ -519,6 +519,7 @@ const props = withDefaults(defineProps<{
   maxTasks?: number
   wipLimit?: number
   showAddButton?: boolean
+  canCreate?: boolean
   emptyText?: string
   emptySubtext?: string
   emptyIcon?: string
@@ -528,6 +529,7 @@ const props = withDefaults(defineProps<{
   collapsed: false,
   loading: false,
   showAddButton: true,
+  canCreate: true,
   emptyText: 'No tasks',
   emptyIcon: 'ph:tray',
 })

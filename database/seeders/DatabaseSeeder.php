@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             ListItemSeeder::class,
             AgentTaskSeeder::class,
             DocumentSeeder::class,
+            AgentIdentitySeeder::class,
             ApprovalSeeder::class,
             ActivitySeeder::class,
             NotificationSeeder::class,

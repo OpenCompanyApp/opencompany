@@ -91,6 +91,10 @@ class ManageDocument implements Tool
     {
         $document = Document::findOrFail($request['documentId']);
 
+        if ($document->is_system) {
+            return 'This is a system document and cannot be deleted.';
+        }
+
         if ($allowedFolderIds !== null && ! in_array($document->parent_id, $allowedFolderIds)) {
             return 'Permission denied: you do not have access to this document.';
         }

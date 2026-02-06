@@ -41,9 +41,9 @@ class ToolRegistry
             'description' => 'Events and scheduling',
         ],
         'lists' => [
-            'tools' => ['query_list_items', 'manage_list_item'],
-            'label' => 'query, manage',
-            'description' => 'Kanban board items',
+            'tools' => ['query_list_items', 'manage_list_item', 'manage_list_status'],
+            'label' => 'query, manage items, manage statuses',
+            'description' => 'Kanban board items and workflow statuses',
         ],
         'tasks' => [
             'tools' => ['update_current_task', 'create_task_step'],
@@ -215,6 +215,13 @@ class ToolRegistry
             'name' => 'Manage List Item',
             'description' => 'Create, update, or delete list items and their comments.',
             'icon' => 'ph:list-plus',
+        ],
+        'manage_list_status' => [
+            'class' => ManageListStatus::class,
+            'type' => 'write',
+            'name' => 'Manage List Status',
+            'description' => 'Create, update, or delete list statuses (workflow columns).',
+            'icon' => 'ph:columns',
         ],
         // Tasks
         'update_current_task' => [
@@ -653,6 +660,7 @@ class ToolRegistry
             ManageCalendarEvent::class => new ManageCalendarEvent($agent),
             QueryListItems::class => new QueryListItems($agent),
             ManageListItem::class => new ManageListItem($agent),
+            ManageListStatus::class => new ManageListStatus($agent),
             UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
             CreateJpGraphChart::class => new CreateJpGraphChart($agent),

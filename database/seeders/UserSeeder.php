@@ -111,7 +111,7 @@ class UserSeeder extends Seeder
                 'brain' => $agent['brain'],
                 'behavior_mode' => $agent['behavior_mode'] ?? null,
                 'must_wait_for_approval' => $agent['must_wait_for_approval'] ?? false,
-                'manager_id' => $agent['id'] !== 'a1' ? 'a1' : null, // Atlas manages other agents
+                'manager_id' => $agent['id'] !== 'a1' ? 'a1' : 'h1', // Atlas reports to Rutger, other agents report to Atlas
             ]);
         }
     }

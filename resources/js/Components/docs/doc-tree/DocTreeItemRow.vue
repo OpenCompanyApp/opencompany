@@ -71,7 +71,7 @@
           :class="toggleIconClasses"
         />
       </button>
-      <div v-else :class="togglePlaceholderClasses" />
+      <div v-else-if="size !== 'sm'" :class="togglePlaceholderClasses" />
 
       <!-- Loading spinner (replaces icon when loading) -->
       <div v-if="loading" :class="iconContainerClasses">
@@ -151,15 +151,9 @@
 
         <!-- Metadata row -->
         <div v-if="showMetadata && hasMetadata" :class="metadataRowClasses">
-          <!-- Date/item count -->
+          <!-- Item count (folders only) -->
           <span
-            v-if="!isFolder && updatedAt"
-            :class="metaTextClasses"
-          >
-            Updated {{ formatDate(updatedAt) }}
-          </span>
-          <span
-            v-else-if="isFolder"
+            v-if="isFolder"
             :class="metaTextClasses"
           >
             {{ childCount }} {{ childCount === 1 ? 'item' : 'items' }}
@@ -188,14 +182,18 @@
         </div>
       </div>
 
-      <!-- Quick actions -->
+      <!-- Quick actions (absolutely positioned to avoid stealing title space) -->
       <Transition name="actions">
         <div
           v-if="showActions && !disabled"
           :class="[
-            'flex items-center gap-1 shrink-0 ml-2',
+            'absolute right-0 top-0 bottom-0 flex items-center gap-0.5',
             'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
             'transition-opacity duration-150 ease-out',
+            'pl-6 pr-1',
+            selected
+              ? 'bg-gradient-to-l from-neutral-100 via-neutral-100 to-transparent dark:from-neutral-800 dark:via-neutral-800 dark:to-transparent'
+              : 'bg-gradient-to-l from-neutral-50 via-neutral-50 to-transparent dark:from-neutral-800 dark:via-neutral-800 dark:to-transparent',
           ]"
           @click.stop
         >
@@ -270,28 +268,28 @@ const sizeConfig: Record<RowSize, {
   gap: string
 }> = {
   sm: {
+    padding: { x: 4, y: 2 },
+    indent: 14,
+    iconContainer: 'w-5 h-5',
+    iconSize: 'w-3 h-3',
+    toggleSize: 'w-3.5 h-3.5',
+    titleSize: 'text-xs',
+    metaSize: 'text-[10px]',
+    actionSize: 'w-5 h-5',
+    actionIconSize: 'w-3 h-3',
+    gap: 'gap-1',
+  },
+  md: {
     padding: { x: 6, y: 4 },
     indent: 16,
     iconContainer: 'w-5 h-5',
-    iconSize: 'w-3 h-3',
+    iconSize: 'w-3.5 h-3.5',
     toggleSize: 'w-4 h-4',
     titleSize: 'text-xs',
     metaSize: 'text-[10px]',
     actionSize: 'w-5 h-5',
     actionIconSize: 'w-3 h-3',
     gap: 'gap-1.5',
-  },
-  md: {
-    padding: { x: 8, y: 8 },
-    indent: 20,
-    iconContainer: 'w-7 h-7',
-    iconSize: 'w-4 h-4',
-    toggleSize: 'w-5 h-5',
-    titleSize: 'text-sm',
-    metaSize: 'text-xs',
-    actionSize: 'w-6 h-6',
-    actionIconSize: 'w-3.5 h-3.5',
-    gap: 'gap-2',
   },
   lg: {
     padding: { x: 10, y: 10 },
@@ -354,6 +352,8 @@ const props = withDefaults(defineProps<{
   isStarred?: boolean
   isPinned?: boolean
   isLocked?: boolean
+  customColor?: string | null
+  customIcon?: string | null
   tags?: string[]
   size?: RowSize
   selectable?: boolean
@@ -374,6 +374,8 @@ const props = withDefaults(defineProps<{
   isStarred: false,
   isPinned: false,
   isLocked: false,
+  customColor: null,
+  customIcon: null,
   tags: () => [],
   size: 'md',
   selectable: false,
@@ -420,7 +422,7 @@ const config = computed(() => sizeConfig[props.size])
 // ============================================================================
 
 const rowClasses = computed(() => [
-  'w-full flex items-start rounded-lg text-left group outline-none relative overflow-hidden',
+  'w-full flex items-center rounded-lg text-left group outline-none relative overflow-hidden',
   'transition-all duration-150 ease-out',
   'focus-visible:ring-2 focus-visible:ring-neutral-900/50 dark:focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-900',
   config.value.gap,
@@ -472,14 +474,39 @@ const toggleIconClasses = computed(() => [
   props.size === 'sm' ? 'w-2.5 h-2.5' : props.size === 'lg' ? 'w-3.5 h-3.5' : 'w-3 h-3',
 ])
 
-const iconContainerClasses = computed(() => [
-  'relative rounded-lg flex items-center justify-center shrink-0',
-  'transition-colors duration-150 ease-out',
-  config.value.iconContainer,
-  props.selected
-    ? 'bg-neutral-200 dark:bg-neutral-700'
-    : 'bg-neutral-100 dark:bg-neutral-800',
-])
+const colorBgMap: Record<string, { bg: string; bgSelected: string }> = {
+  neutral: { bg: 'bg-neutral-100 dark:bg-neutral-800', bgSelected: 'bg-neutral-200 dark:bg-neutral-700' },
+  blue: { bg: 'bg-blue-50 dark:bg-blue-950', bgSelected: 'bg-blue-100 dark:bg-blue-900' },
+  green: { bg: 'bg-green-50 dark:bg-green-950', bgSelected: 'bg-green-100 dark:bg-green-900' },
+  yellow: { bg: 'bg-yellow-50 dark:bg-yellow-950', bgSelected: 'bg-yellow-100 dark:bg-yellow-900' },
+  orange: { bg: 'bg-orange-50 dark:bg-orange-950', bgSelected: 'bg-orange-100 dark:bg-orange-900' },
+  red: { bg: 'bg-red-50 dark:bg-red-950', bgSelected: 'bg-red-100 dark:bg-red-900' },
+  purple: { bg: 'bg-purple-50 dark:bg-purple-950', bgSelected: 'bg-purple-100 dark:bg-purple-900' },
+  pink: { bg: 'bg-pink-50 dark:bg-pink-950', bgSelected: 'bg-pink-100 dark:bg-pink-900' },
+}
+
+const colorIconMap: Record<string, string> = {
+  neutral: 'text-neutral-500 dark:text-neutral-400',
+  blue: 'text-blue-500 dark:text-blue-400',
+  green: 'text-green-500 dark:text-green-400',
+  yellow: 'text-yellow-600 dark:text-yellow-400',
+  orange: 'text-orange-500 dark:text-orange-400',
+  red: 'text-red-500 dark:text-red-400',
+  purple: 'text-purple-500 dark:text-purple-400',
+  pink: 'text-pink-500 dark:text-pink-400',
+}
+
+const iconContainerClasses = computed(() => {
+  const color = props.customColor && colorBgMap[props.customColor]
+  return [
+    'relative rounded-lg flex items-center justify-center shrink-0',
+    'transition-colors duration-150 ease-out',
+    config.value.iconContainer,
+    props.selected
+      ? (color?.bgSelected ?? 'bg-neutral-200 dark:bg-neutral-700')
+      : (color?.bg ?? 'bg-neutral-100 dark:bg-neutral-800'),
+  ]
+})
 
 const iconSizeStyle = computed(() => {
   const sizes = { sm: '12px', md: '16px', lg: '20px' }
@@ -488,6 +515,7 @@ const iconSizeStyle = computed(() => {
 
 const iconColorClasses = computed(() => {
   if (props.selected) return 'text-neutral-700 dark:text-neutral-300'
+  if (props.customColor && colorIconMap[props.customColor]) return colorIconMap[props.customColor]
   return documentTypeColors[effectiveDocType.value] || 'text-neutral-500 dark:text-neutral-400'
 })
 
@@ -537,6 +565,7 @@ const effectiveDocType = computed(() => {
 })
 
 const iconName = computed(() => {
+  if (props.customIcon) return props.customIcon
   return documentTypeIcons[effectiveDocType.value] || 'ph:file-text-fill'
 })
 

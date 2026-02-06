@@ -21,6 +21,7 @@ class AgentDocumentService
                 'id' => Str::uuid()->toString(),
                 'author_id' => $agent->id,
                 'content' => '',
+                'is_system' => true,
             ]
         );
 
@@ -30,6 +31,7 @@ class AgentDocumentService
             'title' => Str::slug($agent->name),
             'parent_id' => $agentsFolder->id,
             'is_folder' => true,
+            'is_system' => true,
             'author_id' => $agent->id,
             'content' => '',
         ]);
@@ -40,6 +42,7 @@ class AgentDocumentService
             'title' => 'identity',
             'parent_id' => $agentFolder->id,
             'is_folder' => true,
+            'is_system' => true,
             'author_id' => $agent->id,
             'content' => '',
         ]);
@@ -50,6 +53,7 @@ class AgentDocumentService
             'title' => 'memory',
             'parent_id' => $agentFolder->id,
             'is_folder' => true,
+            'is_system' => true,
             'author_id' => $agent->id,
             'content' => '',
         ]);
@@ -64,10 +68,44 @@ class AgentDocumentService
                 'content' => $identityContent[$type] ?? $this->getDefaultTemplate($type, $agent),
                 'author_id' => $agent->id,
                 'is_folder' => false,
+                'is_system' => true,
             ]);
         }
 
         return $agentFolder;
+    }
+
+    /**
+     * Delete the entire document structure for an agent (used during agent deletion).
+     * Bypasses the is_system guard by unsetting the flag before deleting.
+     */
+    public function deleteAgentDocumentStructure(User $agent): void
+    {
+        if (!$agent->docs_folder_id) {
+            return;
+        }
+
+        $agentFolder = Document::find($agent->docs_folder_id);
+        if (!$agentFolder) {
+            return;
+        }
+
+        // Collect all child folder IDs (identity/, memory/)
+        $childFolderIds = Document::where('parent_id', $agentFolder->id)->pluck('id');
+
+        // Unset is_system on nested children (identity files, memory logs)
+        if ($childFolderIds->isNotEmpty()) {
+            Document::whereIn('parent_id', $childFolderIds)->update(['is_system' => false]);
+        }
+
+        // Unset is_system on direct children (identity/, memory/ folders)
+        Document::where('parent_id', $agentFolder->id)->update(['is_system' => false]);
+
+        // Unset is_system on the agent folder itself
+        $agentFolder->update(['is_system' => false]);
+
+        // Delete — cascade handles children
+        $agentFolder->delete();
     }
 
     /**
@@ -158,6 +196,7 @@ class AgentDocumentService
             'content' => $content,
             'author_id' => $agent->id,
             'is_folder' => false,
+            'is_system' => true,
         ]);
     }
 

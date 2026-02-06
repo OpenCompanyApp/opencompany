@@ -91,6 +91,7 @@
           :class="[scrollSnap && 'snap-center']"
           @drop="handleDrop"
           @toggle="toggleColumnCollapse(column.status)"
+          :can-create="props.canCreate"
           @add="$emit('addTask', column.status)"
           @task-click="(task) => $emit('taskClick', task)"
         />
@@ -190,6 +191,7 @@
           Create your first task to get started with your project board
         </p>
         <button
+          v-if="props.canCreate"
           :class="[
             'mt-4 flex items-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg font-medium',
             'hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors',
@@ -338,6 +340,7 @@ const props = withDefaults(defineProps<{
   maxTasksPerColumn?: number
   scrollSnap?: boolean
   showKeyboardHints?: boolean
+  canCreate?: boolean
 }>(), {
   title: 'Task Board',
   showHeader: true,
@@ -347,6 +350,7 @@ const props = withDefaults(defineProps<{
   allowAddColumn: false,
   scrollSnap: false,
   showKeyboardHints: true,
+  canCreate: true,
 })
 
 // Emits
@@ -522,8 +526,10 @@ const handleKeydown = (event: KeyboardEvent) => {
 
   switch (event.key.toLowerCase()) {
     case 'n':
-      event.preventDefault()
-      emit('addTask', 'backlog')
+      if (props.canCreate) {
+        event.preventDefault()
+        emit('addTask', 'backlog')
+      }
       break
   }
 }

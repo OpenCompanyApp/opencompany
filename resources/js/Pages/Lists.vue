@@ -27,7 +27,9 @@
         </div>
         <!-- Mobile: New Task button -->
         <button
-          class="md:hidden flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg"
+          class="md:hidden flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+          :disabled="!selectedProjectId"
+          :title="selectedProjectId ? '' : 'Select a project first'"
           @click="openCreateModal()"
         >
           <Icon name="ph:plus-bold" class="w-4 h-4" />
@@ -47,7 +49,9 @@
           <Icon name="ph:gear" class="w-4 h-4" />
         </button>
         <button
-          class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0"
+          class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-neutral-900 dark:disabled:hover:bg-white"
+          :disabled="!selectedProjectId"
+          :title="selectedProjectId ? '' : 'Select a project first'"
           @click="openCreateModal()"
         >
           <Icon name="ph:plus-bold" class="w-4 h-4" />
@@ -61,6 +65,7 @@
       v-if="currentView === 'board'"
       :tasks="filteredItems"
       :statuses="statuses"
+      :can-create="!!selectedProjectId"
       class="flex-1"
       @update="handleItemUpdate"
       @task-click="openItemDetail"
@@ -72,6 +77,7 @@
       v-else-if="currentView === 'list'"
       :items="filteredItems"
       :statuses="statuses"
+      :can-create="!!selectedProjectId"
       @select="openItemDetail"
       @update="handleQuickUpdate"
       @create="handleQuickCreate"

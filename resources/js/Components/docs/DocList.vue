@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full bg-white dark:bg-neutral-900">
     <!-- Header -->
-    <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
+    <div class="p-3 border-b border-neutral-200 dark:border-neutral-700">
       <!-- Title Row -->
       <div class="flex items-center justify-between mb-3">
         <div>
@@ -51,7 +51,7 @@
     </div>
 
     <!-- Tree Content -->
-    <div class="flex-1 overflow-y-auto p-2">
+    <div class="flex-1 overflow-y-auto p-1">
       <!-- Loading State -->
       <div v-if="loading" class="space-y-1 p-2">
         <div v-for="i in 5" :key="i" class="flex items-center gap-2 p-2 animate-pulse">
@@ -70,7 +70,12 @@
           :level="0"
           :selected-id="selected?.id ?? null"
           :highlight-query="searchQuery"
+          :show-actions="true"
+          :show-metadata="false"
+          size="sm"
           @select="handleSelect"
+          @delete="(doc) => emit('delete', doc)"
+          @rename="(doc) => emit('rename', doc)"
         />
       </template>
 
@@ -140,6 +145,8 @@ const emit = defineEmits<{
   select: [doc: Document]
   create: []
   createFolder: []
+  delete: [doc: Document]
+  rename: [doc: Document]
 }>()
 
 // State

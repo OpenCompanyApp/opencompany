@@ -36,6 +36,15 @@ class ListItem extends Model
         'due_date',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (ListItem $item) {
+            if (!$item->is_folder && !$item->parent_id) {
+                throw new \InvalidArgumentException('List items must belong to a project (parent_id is required).');
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [

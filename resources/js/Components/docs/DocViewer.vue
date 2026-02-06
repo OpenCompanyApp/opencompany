@@ -22,12 +22,16 @@
         :is-starred="document.isStarred"
         :is-pinned="document.isPinned"
         :is-locked="document.isLocked"
+        :custom-color="document.color"
+        :custom-icon="document.icon"
         :read-only="readOnly"
         @edit="handleEdit"
         @share="handleShare"
         @menu="handleMenu"
         @star="handleStar"
         @pin="handlePin"
+        @update:color="(color) => emit('update:color', color)"
+        @update:icon="(icon) => emit('update:icon', icon)"
         @version-history="emit('versionHistory')"
         @breadcrumb-click="emit('breadcrumbClick', $event)"
       />
@@ -137,16 +141,26 @@
         </aside>
       </Transition>
 
-      <!-- Document Content -->
-      <DocViewerContent
-        :content="document.content"
-        :size="size"
-        :editable="isEditing"
-        :show-line-numbers="showLineNumbers"
-        :highlight-syntax="highlightSyntax"
-        @content-change="handleContentChange"
-        @section-visible="activeSection = $event"
-      />
+      <!-- Document Content (read mode) -->
+      <div v-if="!isEditing" class="flex-1 overflow-auto">
+        <div
+          class="max-w-3xl mx-auto px-8 py-6 prose prose-neutral dark:prose-invert max-w-none"
+          v-html="renderedContent"
+        />
+      </div>
+
+      <!-- Edit Mode: Raw markdown textarea -->
+      <div v-else class="flex-1 overflow-auto bg-neutral-50 dark:bg-neutral-800/30">
+        <textarea
+          ref="editorTextarea"
+          v-model="editorContent"
+          class="w-full min-h-[calc(100vh-200px)] px-8 py-6 max-w-3xl mx-auto block bg-transparent text-neutral-900 dark:text-white font-mono text-sm leading-relaxed resize-none outline-none"
+          placeholder="Write your document in Markdown..."
+          @input="autoResize"
+          @keydown.tab.prevent="handleTabKey"
+          @keydown="handleKeyboardShortcuts"
+        />
+      </div>
 
       <!-- Comments Panel -->
       <Transition name="slide-left">
@@ -246,7 +260,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, defineComponent, ref, computed, watch } from 'vue'
+import { h, defineComponent, ref, computed, watch, nextTick } from 'vue'
 import type { Document, User } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
@@ -255,7 +269,8 @@ import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 import Skeleton from '@/Components/shared/Skeleton.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import DocViewerHeader from './doc-viewer/DocViewerHeader.vue'
-import DocViewerContent from './doc-viewer/DocViewerContent.vue'
+import { useMarkdown } from '@/composables/useMarkdown'
+const { renderMarkdown } = useMarkdown()
 
 type DocViewerSize = 'sm' | 'md' | 'lg'
 
@@ -356,17 +371,100 @@ const emit = defineEmits<{
   versionHistory: []
   breadcrumbClick: [item: BreadcrumbItem]
   contentChange: [content: string]
+  'update:color': [color: string | null]
+  'update:icon': [icon: string | null]
 }>()
 
 // State
 const showComments = ref(false)
 const showTableOfContents = ref(props.showTableOfContents)
 const activeSection = ref<string | null>(null)
+const editorContent = ref('')
+const editorTextarea = ref<HTMLTextAreaElement | null>(null)
 
 // Watch for prop changes
 watch(() => props.showTableOfContents, (val) => {
   showTableOfContents.value = val
 })
+
+// Rendered markdown content for read mode
+const renderedContent = computed(() => renderMarkdown(props.document?.content ?? ''))
+
+// Initialize editor content when entering edit mode
+watch(() => props.isEditing, (editing) => {
+  if (editing && props.document) {
+    editorContent.value = props.document.content ?? ''
+    nextTick(() => autoResize())
+  }
+})
+
+// Emit content changes as user types
+watch(editorContent, (content) => {
+  if (props.isEditing) {
+    emit('contentChange', content)
+  }
+})
+
+// Auto-resize textarea to fit content
+const autoResize = () => {
+  const el = editorTextarea.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+
+// Tab key inserts 2 spaces at cursor
+const handleTabKey = (e: Event) => {
+  const textarea = e.target as HTMLTextAreaElement
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  editorContent.value = editorContent.value.substring(0, start) + '  ' + editorContent.value.substring(end)
+  nextTick(() => {
+    textarea.selectionStart = textarea.selectionEnd = start + 2
+  })
+}
+
+// Wrap selected text with prefix/suffix
+const wrapSelection = (prefix: string, suffix: string) => {
+  const textarea = editorTextarea.value
+  if (!textarea) return
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const selected = editorContent.value.substring(start, end)
+  editorContent.value =
+    editorContent.value.substring(0, start) +
+    prefix + selected + suffix +
+    editorContent.value.substring(end)
+  nextTick(() => {
+    textarea.selectionStart = start + prefix.length
+    textarea.selectionEnd = end + prefix.length
+  })
+}
+
+// Keyboard shortcuts for markdown formatting
+const handleKeyboardShortcuts = (e: KeyboardEvent) => {
+  const mod = e.metaKey || e.ctrlKey
+  if (!mod) return
+
+  switch (e.key.toLowerCase()) {
+    case 'b':
+      e.preventDefault()
+      wrapSelection('**', '**')
+      break
+    case 'i':
+      e.preventDefault()
+      wrapSelection('*', '*')
+      break
+    case 'e':
+      e.preventDefault()
+      wrapSelection('`', '`')
+      break
+    case 's':
+      e.preventDefault()
+      handleSave()
+      break
+  }
+}
 
 // Text formatting actions
 const textFormattingActions = [
@@ -527,7 +625,7 @@ const handlePin = () => {
 }
 
 const handleSave = () => {
-  emit('save', props.document?.content || '')
+  emit('save', editorContent.value || props.document?.content || '')
 }
 
 const handleCancelEdit = () => {

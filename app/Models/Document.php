@@ -20,13 +20,26 @@ class Document extends Model
         'author_id',
         'parent_id',
         'is_folder',
+        'color',
+        'icon',
+        'is_system',
     ];
 
     protected function casts(): array
     {
         return [
             'is_folder' => 'boolean',
+            'is_system' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Document $doc) {
+            if ($doc->is_system) {
+                throw new \LogicException('System documents cannot be deleted.');
+            }
+        });
     }
 
     public function toArray()
@@ -34,10 +47,13 @@ class Document extends Model
         $array = parent::toArray();
 
         $array['isFolder'] = $this->is_folder;
+        $array['isSystem'] = $this->is_system;
         $array['parentId'] = $this->parent_id;
         $array['authorId'] = $this->author_id;
         $array['createdAt'] = $this->created_at;
         $array['updatedAt'] = $this->updated_at;
+        $array['color'] = $this->color;
+        $array['icon'] = $this->icon;
 
         return $array;
     }

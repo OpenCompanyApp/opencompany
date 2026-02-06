@@ -91,8 +91,8 @@
             <span v-else class="w-5 shrink-0" />
           </div>
 
-          <!-- Inline Quick Add (not for Done groups) -->
-          <div v-if="!group.isDone" class="px-2 py-1">
+          <!-- Inline Quick Add (not for Done groups, requires project selected) -->
+          <div v-if="!group.isDone && props.canCreate !== false" class="px-2 py-1">
             <div
               v-if="addingInGroup === group.slug"
               class="flex items-center gap-3"
@@ -142,6 +142,7 @@ import Tooltip from '@/Components/shared/Tooltip.vue'
 const props = defineProps<{
   items: ListItem[]
   statuses: ListStatus[]
+  canCreate?: boolean
 }>()
 
 const emit = defineEmits<{

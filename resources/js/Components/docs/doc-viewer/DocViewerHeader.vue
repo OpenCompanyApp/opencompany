@@ -40,20 +40,87 @@
 
         <!-- Title row -->
         <div class="flex items-center gap-3">
-          <!-- Document type icon -->
-          <div
-            v-if="showIcon"
-            :class="[
-              'shrink-0 flex items-center justify-center rounded-lg',
-              'transition-colors duration-150',
-              iconContainerClasses,
-            ]"
-          >
-            <Icon
-              :name="documentIcon"
-              :class="['transition-colors duration-150', iconClasses]"
-            />
+          <!-- Document type icon (clickable for color/icon picker) -->
+          <div v-if="showIcon" class="relative">
+            <button
+              type="button"
+              :class="[
+                'shrink-0 flex items-center justify-center rounded-lg',
+                'transition-colors duration-150 hover:ring-2 hover:ring-neutral-300 dark:hover:ring-neutral-600',
+                iconContainerClasses,
+              ]"
+              @click="showIconPicker = !showIconPicker"
+            >
+              <Icon
+                :name="effectiveIcon"
+                :class="['transition-colors duration-150', effectiveIconClasses]"
+              />
+            </button>
+
+            <!-- Icon/Color Picker Popover -->
+            <Transition name="picker">
+              <div
+                v-if="showIconPicker"
+                class="absolute top-full left-0 mt-2 z-50 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg p-3 w-[240px]"
+              >
+                <!-- Color Palette -->
+                <div class="mb-3">
+                  <p class="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Color</p>
+                  <div class="flex items-center gap-1.5">
+                    <button
+                      v-for="c in colorOptions"
+                      :key="c.name"
+                      type="button"
+                      :class="[
+                        'w-6 h-6 rounded-full transition-transform',
+                        c.bg,
+                        customColor === c.name ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-neutral-800 ring-neutral-900 dark:ring-white scale-110' : 'hover:scale-110'
+                      ]"
+                      @click="handleColorSelect(c.name)"
+                    />
+                  </div>
+                </div>
+
+                <!-- Icon Grid -->
+                <div>
+                  <p class="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Icon</p>
+                  <div class="grid grid-cols-7 gap-1">
+                    <button
+                      v-for="ic in docIconOptions"
+                      :key="ic"
+                      type="button"
+                      :class="[
+                        'p-1.5 rounded-lg transition-colors',
+                        customIcon === ic
+                          ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                          : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                      ]"
+                      @click="handleIconSelect(ic)"
+                    >
+                      <Icon :name="ic" class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Reset -->
+                <button
+                  v-if="customColor || customIcon"
+                  type="button"
+                  class="mt-2 w-full text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+                  @click="handleResetAppearance"
+                >
+                  Reset to default
+                </button>
+              </div>
+            </Transition>
           </div>
+
+          <!-- Click-outside overlay to close picker -->
+          <div
+            v-if="showIconPicker"
+            class="fixed inset-0 z-40"
+            @click="showIconPicker = false"
+          />
 
           <!-- Title with edit mode -->
           <div class="flex-1 min-w-0">
@@ -140,21 +207,6 @@
               </template>
             </Tooltip>
           </div>
-
-          <span v-if="author && (updatedAt || createdAt)" class="text-neutral-300 dark:text-neutral-600">/</span>
-
-          <!-- Dates -->
-          <Tooltip v-if="updatedAt" :delay-open="300">
-            <span class="cursor-help">{{ formatRelativeDate(updatedAt) }}</span>
-            <template #content>
-              <div class="text-xs">
-                <p>Last updated: {{ formatFullDate(updatedAt) }}</p>
-                <p v-if="createdAt" class="text-neutral-500">
-                  Created: {{ formatFullDate(createdAt) }}
-                </p>
-              </div>
-            </template>
-          </Tooltip>
 
           <!-- Version indicator -->
           <template v-if="version">
@@ -477,6 +529,8 @@ const props = withDefaults(defineProps<{
   wordCount?: number
   readTime?: number
   tags?: string[]
+  customColor?: string | null
+  customIcon?: string | null
   isStarred?: boolean
   isLocked?: boolean
   isTemplate?: boolean
@@ -492,6 +546,8 @@ const props = withDefaults(defineProps<{
   documentType: 'document',
   breadcrumbs: () => [],
   tags: () => [],
+  customColor: null,
+  customIcon: null,
   isStarred: false,
   isLocked: false,
   isTemplate: false,
@@ -521,6 +577,8 @@ const emit = defineEmits<{
   'tags-expand': []
   navigate: [crumb: Breadcrumb]
   'title-change': [title: string]
+  'update:color': [color: string | null]
+  'update:icon': [icon: string | null]
 }>()
 
 // ============================================================================
@@ -537,6 +595,48 @@ const maxVisibleViewers = 3
 const isEditingTitle = ref(false)
 const editedTitle = ref('')
 const titleInputRef = ref<HTMLInputElement | null>(null)
+const showIconPicker = ref(false)
+
+// Color and icon options
+const colorOptions = [
+  { name: 'neutral', bg: 'bg-neutral-400' },
+  { name: 'blue', bg: 'bg-blue-500' },
+  { name: 'green', bg: 'bg-green-500' },
+  { name: 'yellow', bg: 'bg-yellow-500' },
+  { name: 'orange', bg: 'bg-orange-500' },
+  { name: 'red', bg: 'bg-red-500' },
+  { name: 'purple', bg: 'bg-purple-500' },
+  { name: 'pink', bg: 'bg-pink-500' },
+]
+
+const docIconOptions = [
+  'ph:file-text', 'ph:notebook', 'ph:book-open', 'ph:article',
+  'ph:clipboard-text', 'ph:note', 'ph:scroll',
+  'ph:lightning', 'ph:star', 'ph:heart', 'ph:flag',
+  'ph:rocket', 'ph:gear', 'ph:code',
+]
+
+const colorIconMap: Record<string, string> = {
+  neutral: 'text-neutral-500 dark:text-neutral-400',
+  blue: 'text-blue-500 dark:text-blue-400',
+  green: 'text-green-500 dark:text-green-400',
+  yellow: 'text-yellow-600 dark:text-yellow-400',
+  orange: 'text-orange-500 dark:text-orange-400',
+  red: 'text-red-500 dark:text-red-400',
+  purple: 'text-purple-500 dark:text-purple-400',
+  pink: 'text-pink-500 dark:text-pink-400',
+}
+
+const colorBgMap: Record<string, string> = {
+  neutral: 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800',
+  blue: 'text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-950',
+  green: 'text-green-500 dark:text-green-400 bg-green-50 dark:bg-green-950',
+  yellow: 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950',
+  orange: 'text-orange-500 dark:text-orange-400 bg-orange-50 dark:bg-orange-950',
+  red: 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950',
+  purple: 'text-purple-500 dark:text-purple-400 bg-purple-50 dark:bg-purple-950',
+  pink: 'text-pink-500 dark:text-pink-400 bg-pink-50 dark:bg-pink-950',
+}
 
 // ============================================================================
 // Computed - Configuration
@@ -566,12 +666,26 @@ const metadataClasses = computed(() => [
 
 const iconContainerClasses = computed(() => [
   config.value.iconContainer,
-  documentTypeColors[props.documentType],
+  props.customColor && colorBgMap[props.customColor]
+    ? colorBgMap[props.customColor]
+    : documentTypeColors[props.documentType],
 ])
 
 const iconClasses = computed(() => [
   config.value.iconSize,
 ])
+
+const effectiveIcon = computed(() => {
+  if (props.customIcon) return props.customIcon
+  return documentTypeIcons[props.documentType] || 'ph:file-text-fill'
+})
+
+const effectiveIconClasses = computed(() => {
+  if (props.customColor && colorIconMap[props.customColor]) {
+    return [config.value.iconSize, colorIconMap[props.customColor]]
+  }
+  return [config.value.iconSize]
+})
 
 const tagClasses = computed(() => [
   'px-2 py-0.5 rounded-md text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
@@ -690,6 +804,20 @@ const saveTitle = () => {
 const cancelTitleEdit = () => {
   isEditingTitle.value = false
   editedTitle.value = ''
+}
+
+const handleColorSelect = (color: string) => {
+  emit('update:color', color === props.customColor ? null : color)
+}
+
+const handleIconSelect = (icon: string) => {
+  emit('update:icon', icon === props.customIcon ? null : icon)
+}
+
+const handleResetAppearance = () => {
+  emit('update:color', null)
+  emit('update:icon', null)
+  showIconPicker.value = false
 }
 </script>
 
@@ -811,5 +939,20 @@ const cancelTitleEdit = () => {
 .progress-enter-from,
 .progress-leave-to {
   opacity: 0;
+}
+
+/* Picker popover */
+.picker-enter-active {
+  transition: all 0.15s ease-out;
+}
+
+.picker-leave-active {
+  transition: all 0.1s ease-in;
+}
+
+.picker-enter-from,
+.picker-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.95);
 }
 </style>

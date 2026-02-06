@@ -4,6 +4,7 @@ namespace App\Agents\Tools;
 
 use App\Models\ListItem;
 use App\Models\ListItemComment;
+use App\Models\ListStatus;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
@@ -18,7 +19,7 @@ class ManageListItem implements Tool
 
     public function description(): string
     {
-        return 'Create, update, or delete list items and their comments. Use this to manage kanban board items and track work.';
+        return 'Create, update, or delete list items and their comments. Items should be placed inside projects using parentId. Create a project first (isFolder=true), then create items with that project\'s ID as parentId.';
     }
 
     public function handle(Request $request): string
@@ -41,16 +42,50 @@ class ManageListItem implements Tool
 
     private function create(Request $request): string
     {
+        $isFolder = $request['isFolder'] ?? false;
+        $parentId = $request['parentId'] ?? null;
+        $status = $request['status'] ?? null;
+
+        if (!$isFolder && !$parentId) {
+            return "Error: 'parentId' is required — items must belong to a project. "
+                 . "Use query_list_items with action 'list_projects' to find existing projects, "
+                 . "or create a project first with action 'create' and isFolder=true.";
+        }
+
+        if (!$status) {
+            $status = ListStatus::where('is_default', true)->value('slug') ?? 'backlog';
+        }
+
+        // Calculate position (matching ListItemController logic)
+        if ($isFolder) {
+            $maxPosition = ListItem::where('parent_id', $parentId)
+                ->where('is_folder', true)
+                ->max('position') ?? 0;
+        } else {
+            $maxPosition = ListItem::where('parent_id', $parentId)
+                ->where('is_folder', false)
+                ->where('status', $status)
+                ->max('position') ?? 0;
+        }
+
         $item = ListItem::create([
             'id' => Str::uuid()->toString(),
             'title' => $request['title'],
             'description' => $request['description'] ?? '',
-            'status' => $request['status'] ?? 'backlog',
-            'priority' => $request['priority'] ?? 'medium',
-            'assignee_id' => $request['assigneeId'] ?? $this->agent->id,
-            'parent_id' => $request['parentId'] ?? null,
+            'status' => $status,
+            'priority' => $isFolder ? 'medium' : ($request['priority'] ?? 'medium'),
+            'assignee_id' => $request['assigneeId'] ?? ($isFolder ? null : $this->agent->id),
+            'parent_id' => $parentId,
             'creator_id' => $this->agent->id,
+            'is_folder' => $isFolder,
+            'channel_id' => $request['channelId'] ?? null,
+            'due_date' => $request['dueDate'] ?? null,
+            'position' => $maxPosition + 1,
         ]);
+
+        if ($isFolder) {
+            return "Project created: '{$item->title}' (ID: {$item->id}). Use this ID as parentId when creating items in this project.";
+        }
 
         return "List item created: '{$item->title}' (ID: {$item->id})";
     }
@@ -79,11 +114,25 @@ class ManageListItem implements Tool
             $item->parent_id = $request['parentId'];
         }
 
+        if (isset($request['dueDate'])) {
+            $item->due_date = $request['dueDate'];
+        }
+
+        if (isset($request['channelId'])) {
+            $item->channel_id = $request['channelId'];
+        }
+
         if (isset($request['status'])) {
             $item->status = $request['status'];
 
-            if ($request['status'] === 'done') {
-                $item->completed_at = now();
+            $newStatus = ListStatus::where('slug', $request['status'])->first();
+            if ($newStatus) {
+                if ($newStatus->is_done && !$item->completed_at) {
+                    $item->completed_at = now();
+                }
+                if (!$newStatus->is_done && $item->completed_at) {
+                    $item->completed_at = null;
+                }
             }
         }
 
@@ -141,7 +190,7 @@ class ManageListItem implements Tool
                 ->description('A description of the list item.'),
             'status' => $schema
                 ->string()
-                ->description("The list item status: 'backlog', 'in_progress', or 'done'."),
+                ->description("The status slug. Use query_list_items with action 'list_statuses' to see available statuses."),
             'priority' => $schema
                 ->string()
                 ->description("The list item priority: 'low', 'medium', 'high', or 'urgent'."),
@@ -150,7 +199,16 @@ class ManageListItem implements Tool
                 ->description('The UUID of the user to assign the list item to.'),
             'parentId' => $schema
                 ->string()
-                ->description('The UUID of the parent list item (for nesting).'),
+                ->description("Required for items. The UUID of a project/folder to put this item in. Use query_list_items with action 'list_projects' to see available projects."),
+            'isFolder' => $schema
+                ->boolean()
+                ->description('Set to true to create a project/folder instead of a regular item. Used with create.'),
+            'dueDate' => $schema
+                ->string()
+                ->description('The due date in YYYY-MM-DD format.'),
+            'channelId' => $schema
+                ->string()
+                ->description('The UUID of the channel to link this item to.'),
             'commentContent' => $schema
                 ->string()
                 ->description('The content of the comment. Required for add_comment.'),

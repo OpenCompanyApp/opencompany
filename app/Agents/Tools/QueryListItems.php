@@ -3,8 +3,10 @@
 namespace App\Agents\Tools;
 
 use App\Models\ListItem;
+use App\Models\ListStatus;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
@@ -29,7 +31,9 @@ class QueryListItems implements Tool
                 'get_item' => $this->getItem($request),
                 'list_by_status' => $this->listByStatus($request),
                 'list_by_assignee' => $this->listByAssignee($request),
-                default => "Error: Unknown action '{$action}'. Use 'list_all', 'get_item', 'list_by_status', or 'list_by_assignee'.",
+                'list_projects' => $this->listProjects($request),
+                'list_statuses' => $this->listStatuses(),
+                default => "Error: Unknown action '{$action}'. Use 'list_all', 'get_item', 'list_by_status', 'list_by_assignee', 'list_projects', or 'list_statuses'.",
             };
         } catch (\Throwable $e) {
             return "Error querying list items: {$e->getMessage()}";
@@ -62,6 +66,9 @@ class QueryListItems implements Tool
             $folder = $item->is_folder ? ' (folder)' : '';
             $lines[] = "- {$item->title} | Status: {$item->status} | Assignee: {$assignee}{$priority}{$folder}";
             $lines[] = "  ID: {$item->id}";
+            if ($item->description) {
+                $lines[] = "  Description: " . Str::limit($item->description, 120);
+            }
         }
 
         return implode("\n", $lines);
@@ -74,7 +81,7 @@ class QueryListItems implements Tool
             return "Error: 'listItemId' is required for the 'get_item' action.";
         }
 
-        $item = ListItem::with(['assignee', 'collaborators', 'comments', 'creator'])->find($listItemId);
+        $item = ListItem::with(['assignee', 'collaborators', 'comments.author', 'creator'])->find($listItemId);
         if (!$item) {
             return "Error: List item '{$listItemId}' not found.";
         }
@@ -85,14 +92,15 @@ class QueryListItems implements Tool
 
         $lines = [
             "Title: {$item->title}",
-            "Description: " . ($item->description ?? 'None'),
+            "Description: " . ($item->description ?: 'None'),
             "Status: {$item->status}",
             "Priority: " . ($item->priority ?? 'None'),
             "Assignee: {$assignee}",
             "Creator: {$creator}",
             "Is Folder: " . ($item->is_folder ? 'Yes' : 'No'),
             "Parent ID: " . ($item->parent_id ?? 'None'),
-            "Comments: {$commentCount}",
+            "Due Date: " . ($item->due_date ?? 'None'),
+            "Channel ID: " . ($item->channel_id ?? 'None'),
             "Created: " . $item->created_at->format('Y-m-d H:i'),
             "Completed: " . ($item->completed_at ? $item->completed_at->format('Y-m-d H:i') : 'Not completed'),
         ];
@@ -100,6 +108,17 @@ class QueryListItems implements Tool
         if ($item->collaborators->isNotEmpty()) {
             $collabNames = $item->collaborators->pluck('name')->implode(', ');
             $lines[] = "Collaborators: {$collabNames}";
+        }
+
+        $lines[] = "Comments: {$commentCount}";
+        if ($item->comments->isNotEmpty()) {
+            foreach ($item->comments->take(20) as $comment) {
+                $author = $comment->author?->name ?? 'Unknown';
+                $date = $comment->created_at->format('Y-m-d H:i');
+                $content = Str::limit($comment->content, 200);
+                $lines[] = "  [{$date}] {$author}: {$content}";
+                $lines[] = "    Comment ID: {$comment->id}";
+            }
         }
 
         return implode("\n", $lines);
@@ -167,12 +186,65 @@ class QueryListItems implements Tool
         return implode("\n", $lines);
     }
 
+    private function listProjects(Request $request): string
+    {
+        $parentId = $request['parentId'] ?? null;
+
+        $query = ListItem::where('is_folder', true)
+            ->withCount(['children as item_count' => function ($q) {
+                $q->where('is_folder', false);
+            }])
+            ->orderBy('position');
+
+        if ($parentId) {
+            $query->where('parent_id', $parentId);
+        } else {
+            $query->whereNull('parent_id');
+        }
+
+        $projects = $query->get();
+
+        if ($projects->isEmpty()) {
+            return 'No projects found.' . ($parentId ? '' : ' Use manage_list_item with isFolder=true to create one.');
+        }
+
+        $lines = ["Projects ({$projects->count()}):"];
+        foreach ($projects as $project) {
+            $lines[] = "- {$project->title} ({$project->item_count} items)";
+            $lines[] = "  ID: {$project->id}";
+            if ($project->description) {
+                $lines[] = "  Description: " . Str::limit($project->description, 120);
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function listStatuses(): string
+    {
+        $statuses = ListStatus::orderBy('position')->get();
+
+        if ($statuses->isEmpty()) {
+            return 'No statuses configured.';
+        }
+
+        $lines = ["Available statuses ({$statuses->count()}):"];
+        foreach ($statuses as $status) {
+            $default = $status->is_default ? ' (default)' : '';
+            $done = $status->is_done ? ' [marks as done]' : '';
+            $lines[] = "- {$status->name} (slug: {$status->slug}) | Color: {$status->color} | Icon: {$status->icon}{$default}{$done}";
+            $lines[] = "  ID: {$status->id}";
+        }
+
+        return implode("\n", $lines);
+    }
+
     public function schema(JsonSchema $schema): array
     {
         return [
             'action' => $schema
                 ->string()
-                ->description("The query action: 'list_all', 'get_item', 'list_by_status', or 'list_by_assignee'.")
+                ->description("The query action: 'list_all', 'get_item', 'list_by_status', 'list_by_assignee', 'list_projects', or 'list_statuses'.")
                 ->required(),
             'listItemId' => $schema
                 ->string()

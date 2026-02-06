@@ -226,6 +226,8 @@ export interface Document {
   editors?: User[]
   parentId?: string | null
   isFolder?: boolean
+  color?: string | null
+  icon?: string | null
 }
 
 export interface Activity {

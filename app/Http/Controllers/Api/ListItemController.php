@@ -29,6 +29,10 @@ class ListItemController extends Controller
         $isFolder = $request->input('isFolder', false);
         $parentId = $request->input('parentId');
 
+        if (!$isFolder && !$parentId) {
+            return response()->json(['error' => 'Items must belong to a project (parentId is required).'], 422);
+        }
+
         // For folders, calculate max position among siblings
         // For items, calculate max position within parent and status
         if ($isFolder) {

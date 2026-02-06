@@ -20,6 +20,8 @@ class DocumentResource extends JsonResource
             'content' => $this->content,
             'isFolder' => $this->is_folder,
             'parentId' => $this->parent_id,
+            'color' => $this->color,
+            'icon' => $this->icon,
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
             'author' => $this->whenLoaded('author', fn() => new UserResource($this->author)),

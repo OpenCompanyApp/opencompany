@@ -318,6 +318,7 @@ class AgentController extends Controller
     public function destroy(string $id)
     {
         $agent = User::where('type', 'agent')->findOrFail($id);
+        $this->agentDocumentService->deleteAgentDocumentStructure($agent);
         $agent->delete();
 
         return response()->json(['success' => true]);
