@@ -262,6 +262,12 @@
         @saved="handleTelegramSaved"
       />
 
+      <!-- Plausible Config Modal -->
+      <PlausibleConfigModal
+        v-model:open="showPlausibleConfigModal"
+        @saved="handlePlausibleSaved"
+      />
+
       <!-- Webhook Modal -->
       <Modal v-model:open="showWebhookModal" title="Add Webhook">
         <template #body>
@@ -330,6 +336,7 @@ import SearchInput from '@/Components/shared/SearchInput.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
 import GlmConfigModal from '@/Components/integrations/GlmConfigModal.vue'
 import TelegramConfigModal from '@/Components/integrations/TelegramConfigModal.vue'
+import PlausibleConfigModal from '@/Components/integrations/PlausibleConfigModal.vue'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
 // Tab state
@@ -393,6 +400,9 @@ const activeGlmIntegrationId = ref<'glm' | 'glm-coding'>('glm-coding')
 
 // Telegram Config modal
 const showTelegramConfigModal = ref(false)
+
+// Plausible Config modal
+const showPlausibleConfigModal = ref(false)
 
 // Load integration status from backend
 onMounted(async () => {
@@ -461,6 +471,15 @@ const integrationCategories = ref<IntegrationCategory[]>([
     integrations: [
       { id: 'glm', name: 'GLM (Zhipu AI)', icon: 'ph:brain', description: 'General-purpose Chinese LLM', installed: false, popular: true },
       { id: 'glm-coding', name: 'GLM Coding Plan', icon: 'ph:code', description: 'Specialized coding LLM', installed: false, popular: true },
+    ],
+  },
+  {
+    id: 'analytics',
+    name: 'Analytics',
+    icon: 'ph:chart-line-up',
+    integrations: [
+      { id: 'plausible', name: 'Plausible Analytics', icon: 'ph:chart-line-up', description: 'Privacy-friendly website analytics', installed: false },
+      { id: 'google-analytics', name: 'Google Analytics', icon: 'ph:google-logo', description: 'Website traffic analytics', installed: false },
     ],
   },
   {
@@ -623,6 +642,12 @@ const handleInstall = (integration: Integration) => {
     return
   }
 
+  // For Plausible, open config modal
+  if (integration.id === 'plausible') {
+    showPlausibleConfigModal.value = true
+    return
+  }
+
   // Find and update the integration
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === integration.id)
@@ -652,6 +677,19 @@ const handleConfigure = (integration: Integration) => {
     showGlmConfigModal.value = true
   } else if (integration.id === 'telegram') {
     showTelegramConfigModal.value = true
+  } else if (integration.id === 'plausible') {
+    showPlausibleConfigModal.value = true
+  }
+}
+
+// Handle Plausible config saved
+const handlePlausibleSaved = (result: { enabled: boolean; configured: boolean }) => {
+  for (const category of integrationCategories.value) {
+    const found = category.integrations.find(i => i.id === 'plausible')
+    if (found) {
+      found.installed = result.enabled
+      break
+    }
   }
 }
 

@@ -103,6 +103,12 @@ class IntegrationSetting extends Model
                 'description' => 'Telegram Bot for DMs, notifications, and approvals',
                 'icon' => 'ph:telegram-logo',
             ],
+            'plausible' => [
+                'name' => 'Plausible Analytics',
+                'description' => 'Privacy-friendly website analytics',
+                'icon' => 'ph:chart-line-up',
+                'default_url' => 'https://plausible.io',
+            ],
         ];
     }
 }

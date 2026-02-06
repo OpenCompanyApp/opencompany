@@ -2,6 +2,14 @@
 
 namespace App\Agents\Tools;
 
+use App\Agents\Tools\Plausible\PlausibleCreateGoal;
+use App\Agents\Tools\Plausible\PlausibleCreateSite;
+use App\Agents\Tools\Plausible\PlausibleDeleteGoal;
+use App\Agents\Tools\Plausible\PlausibleDeleteSite;
+use App\Agents\Tools\Plausible\PlausibleListGoals;
+use App\Agents\Tools\Plausible\PlausibleListSites;
+use App\Agents\Tools\Plausible\PlausibleQueryStats;
+use App\Agents\Tools\Plausible\PlausibleRealtimeVisitors;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 
@@ -47,6 +55,11 @@ class ToolRegistry
             'label' => 'notify',
             'description' => 'External notifications',
         ],
+        'plausible' => [
+            'tools' => ['plausible_query_stats', 'plausible_realtime_visitors', 'plausible_list_sites', 'plausible_create_site', 'plausible_delete_site', 'plausible_list_goals', 'plausible_create_goal', 'plausible_delete_goal'],
+            'label' => 'query, realtime, sites, goals',
+            'description' => 'Website analytics',
+        ],
         'system' => [
             'tools' => ['wait', 'wait_for_approval'],
             'label' => 'wait, wait_for_approval',
@@ -58,7 +71,7 @@ class ToolRegistry
      * Apps that are external integrations (can be toggled per agent).
      * Built-in apps are always available.
      */
-    public const INTEGRATION_APPS = ['telegram'];
+    public const INTEGRATION_APPS = ['telegram', 'plausible'];
 
     /**
      * Icons for each app group.
@@ -71,6 +84,7 @@ class ToolRegistry
         'lists' => 'ph:kanban',
         'tasks' => 'ph:list-checks',
         'telegram' => 'ph:telegram-logo',
+        'plausible' => 'ph:chart-line-up',
         'system' => 'ph:gear',
     ];
 
@@ -79,6 +93,7 @@ class ToolRegistry
      */
     private const INTEGRATION_LOGOS = [
         'telegram' => 'logos:telegram',
+        'plausible' => 'simple-icons:plausibleanalytics',
     ];
 
     /**
@@ -203,6 +218,63 @@ class ToolRegistry
             'name' => 'Send Telegram Notification',
             'description' => 'Send a notification to a Telegram chat.',
             'icon' => 'ph:telegram-logo',
+        ],
+        // Plausible Analytics
+        'plausible_query_stats' => [
+            'class' => PlausibleQueryStats::class,
+            'type' => 'read',
+            'name' => 'Query Stats',
+            'description' => 'Query website analytics (aggregate, timeseries, breakdown).',
+            'icon' => 'ph:chart-line-up',
+        ],
+        'plausible_realtime_visitors' => [
+            'class' => PlausibleRealtimeVisitors::class,
+            'type' => 'read',
+            'name' => 'Realtime Visitors',
+            'description' => 'Get current realtime visitor count.',
+            'icon' => 'ph:users',
+        ],
+        'plausible_list_sites' => [
+            'class' => PlausibleListSites::class,
+            'type' => 'read',
+            'name' => 'List Sites',
+            'description' => 'List all tracked websites.',
+            'icon' => 'ph:globe',
+        ],
+        'plausible_create_site' => [
+            'class' => PlausibleCreateSite::class,
+            'type' => 'write',
+            'name' => 'Create Site',
+            'description' => 'Register a new website for tracking.',
+            'icon' => 'ph:globe',
+        ],
+        'plausible_delete_site' => [
+            'class' => PlausibleDeleteSite::class,
+            'type' => 'write',
+            'name' => 'Delete Site',
+            'description' => 'Remove a website from tracking.',
+            'icon' => 'ph:trash',
+        ],
+        'plausible_list_goals' => [
+            'class' => PlausibleListGoals::class,
+            'type' => 'read',
+            'name' => 'List Goals',
+            'description' => 'List conversion goals for a site.',
+            'icon' => 'ph:target',
+        ],
+        'plausible_create_goal' => [
+            'class' => PlausibleCreateGoal::class,
+            'type' => 'write',
+            'name' => 'Create Goal',
+            'description' => 'Create a conversion goal (page or event).',
+            'icon' => 'ph:target',
+        ],
+        'plausible_delete_goal' => [
+            'class' => PlausibleDeleteGoal::class,
+            'type' => 'write',
+            'name' => 'Delete Goal',
+            'description' => 'Delete a conversion goal.',
+            'icon' => 'ph:trash',
         ],
         // Meta
         'get_tool_info' => [
@@ -523,6 +595,14 @@ class ToolRegistry
             ManageListItem::class => new ManageListItem($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
             SendTelegramNotification::class => new SendTelegramNotification($agent),
+            PlausibleQueryStats::class => new PlausibleQueryStats($agent),
+            PlausibleRealtimeVisitors::class => new PlausibleRealtimeVisitors($agent),
+            PlausibleListSites::class => new PlausibleListSites($agent),
+            PlausibleCreateSite::class => new PlausibleCreateSite($agent),
+            PlausibleDeleteSite::class => new PlausibleDeleteSite($agent),
+            PlausibleListGoals::class => new PlausibleListGoals($agent),
+            PlausibleCreateGoal::class => new PlausibleCreateGoal($agent),
+            PlausibleDeleteGoal::class => new PlausibleDeleteGoal($agent),
             WaitForApproval::class => new WaitForApproval($agent),
             Wait::class => new Wait($agent),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),
