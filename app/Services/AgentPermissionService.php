@@ -82,6 +82,37 @@ class AgentPermissionService
     }
 
     /**
+     * Get the list of enabled integrations for an agent.
+     * If no integration records exist, all integrations are enabled (backward-compatible).
+     *
+     * @return string[] List of enabled integration app names
+     */
+    public function getEnabledIntegrations(User $agent): array
+    {
+        $integrationPerms = AgentPermission::forAgent($agent->id)
+            ->where('scope_type', 'integration')
+            ->get();
+
+        // No records = all integrations enabled (backward-compatible)
+        if ($integrationPerms->isEmpty()) {
+            return \App\Agents\Tools\ToolRegistry::INTEGRATION_APPS;
+        }
+
+        return $integrationPerms
+            ->where('permission', 'allow')
+            ->pluck('scope_key')
+            ->toArray();
+    }
+
+    /**
+     * Check if a specific integration is enabled for an agent.
+     */
+    public function isIntegrationEnabled(User $agent, string $appName): bool
+    {
+        return in_array($appName, $this->getEnabledIntegrations($agent));
+    }
+
+    /**
      * Determine if the behavior mode requires approval for a given tool type.
      *
      * - autonomous: no additional approval requirement

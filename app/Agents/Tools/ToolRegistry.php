@@ -55,6 +55,33 @@ class ToolRegistry
     ];
 
     /**
+     * Apps that are external integrations (can be toggled per agent).
+     * Built-in apps are always available.
+     */
+    public const INTEGRATION_APPS = ['telegram'];
+
+    /**
+     * Icons for each app group.
+     */
+    private const APP_ICONS = [
+        'chat' => 'ph:chat-circle',
+        'docs' => 'ph:file-text',
+        'tables' => 'ph:table',
+        'calendar' => 'ph:calendar',
+        'lists' => 'ph:kanban',
+        'tasks' => 'ph:list-checks',
+        'telegram' => 'ph:telegram-logo',
+        'system' => 'ph:gear',
+    ];
+
+    /**
+     * Colored brand logos for integration apps (Iconify logo set).
+     */
+    private const INTEGRATION_LOGOS = [
+        'telegram' => 'logos:telegram',
+    ];
+
+    /**
      * Registry of all available tools with metadata.
      */
     private const TOOL_MAP = [
@@ -214,9 +241,17 @@ class ToolRegistry
      */
     public function getToolsForAgent(User $agent): array
     {
+        $enabledIntegrations = $this->permissionService->getEnabledIntegrations($agent);
+        $appLookup = $this->buildAppLookup();
         $tools = [];
 
         foreach (self::TOOL_MAP as $slug => $meta) {
+            // Skip tools from disabled integrations
+            $app = $appLookup[$slug] ?? 'other';
+            if (in_array($app, self::INTEGRATION_APPS) && !in_array($app, $enabledIntegrations)) {
+                continue;
+            }
+
             $result = $this->permissionService->resolveToolPermission(
                 $agent, $slug, $meta['type']
             );
@@ -243,9 +278,16 @@ class ToolRegistry
      */
     public function getAllToolsMeta(User $agent): array
     {
+        $appLookup = $this->buildAppLookup();
+        $enabledIntegrations = $this->permissionService->getEnabledIntegrations($agent);
+
         $result = [];
 
         foreach (self::TOOL_MAP as $slug => $meta) {
+            $app = $appLookup[$slug] ?? 'other';
+            $isIntegration = in_array($app, self::INTEGRATION_APPS);
+            $integrationEnabled = !$isIntegration || in_array($app, $enabledIntegrations);
+
             $permission = $this->permissionService->resolveToolPermission(
                 $agent, $slug, $meta['type']
             );
@@ -256,12 +298,49 @@ class ToolRegistry
                 'description' => $meta['description'],
                 'type' => $meta['type'],
                 'icon' => $meta['icon'],
-                'enabled' => $permission['allowed'],
+                'app' => $app,
+                'isIntegration' => $isIntegration,
+                'enabled' => $permission['allowed'] && $integrationEnabled,
                 'requiresApproval' => $permission['requires_approval'],
             ];
         }
 
         return $result;
+    }
+
+    /**
+     * Get app group metadata for the frontend capabilities UI.
+     */
+    public function getAppGroupsMeta(): array
+    {
+        $result = [];
+        foreach (self::APP_GROUPS as $name => $group) {
+            $meta = [
+                'name' => $name,
+                'description' => $group['description'],
+                'icon' => self::APP_ICONS[$name] ?? 'ph:puzzle-piece',
+                'isIntegration' => in_array($name, self::INTEGRATION_APPS),
+            ];
+
+            if (isset(self::INTEGRATION_LOGOS[$name])) {
+                $meta['logo'] = self::INTEGRATION_LOGOS[$name];
+            }
+
+            $result[] = $meta;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get metadata for integration apps only (for the UI integrations section).
+     */
+    public function getIntegrationAppsMeta(): array
+    {
+        return array_values(array_filter(
+            $this->getAppGroupsMeta(),
+            fn ($app) => $app['isIntegration']
+        ));
     }
 
     /**
@@ -282,9 +361,15 @@ class ToolRegistry
      */
     public function getAppCatalog(User $agent): string
     {
+        $enabledIntegrations = $this->permissionService->getEnabledIntegrations($agent);
         $lines = [];
 
         foreach (self::APP_GROUPS as $appName => $group) {
+            // Skip disabled integrations
+            if (in_array($appName, self::INTEGRATION_APPS) && !in_array($appName, $enabledIntegrations)) {
+                continue;
+            }
+
             // Check which tools in this app the agent has access to
             $allowedSlugs = [];
             $hasApproval = false;
@@ -297,7 +382,6 @@ class ToolRegistry
                     $agent, $slug, self::TOOL_MAP[$slug]['type']
                 );
                 if ($result['allowed']) {
-                    // Use short action name from slug (last part after underscore prefix)
                     $allowedSlugs[] = $slug;
                     if ($result['requires_approval']) {
                         $hasApproval = true;
@@ -443,5 +527,20 @@ class ToolRegistry
             Wait::class => new Wait($agent),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),
         };
+    }
+
+    /**
+     * Build reverse lookup: tool slug → app name.
+     */
+    private function buildAppLookup(): array
+    {
+        $lookup = [];
+        foreach (self::APP_GROUPS as $appName => $group) {
+            foreach ($group['tools'] as $slug) {
+                $lookup[$slug] = $appName;
+            }
+        }
+
+        return $lookup;
     }
 }

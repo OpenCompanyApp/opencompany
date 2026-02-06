@@ -64,115 +64,216 @@
       </div>
     </section>
 
+    <!-- Integrations -->
+    <section v-if="integrationApps.length > 0">
+      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">Integrations</h3>
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-3">External services this agent can access</p>
+      <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-200 dark:divide-neutral-700">
+        <div
+          v-for="app in integrationApps"
+          :key="app.name"
+          class="px-4 py-3 flex items-center gap-3"
+        >
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-neutral-100 dark:bg-neutral-700/50">
+            <Icon
+              :name="app.logo || app.icon"
+              :class="[
+                'w-5 h-5',
+                !app.logo && (localIntegrations.includes(app.name)
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-neutral-400 dark:text-neutral-500')
+              ]"
+            />
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-neutral-900 dark:text-white capitalize">{{ app.name }}</p>
+            <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ app.description }}</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="localIntegrations.includes(app.name)"
+            :class="[
+              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0',
+              localIntegrations.includes(app.name)
+                ? 'bg-green-500'
+                : 'bg-neutral-300 dark:bg-neutral-600'
+            ]"
+            @click="toggleIntegration(app.name)"
+          >
+            <span
+              :class="[
+                'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
+                localIntegrations.includes(app.name) ? 'translate-x-[18px]' : 'translate-x-[3px]'
+              ]"
+            />
+          </button>
+        </div>
+      </div>
+    </section>
+
     <!-- Tool Permissions -->
     <section>
       <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">Tool Permissions</h3>
       <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-3">Control which tools this agent can use</p>
-      <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-200 dark:divide-neutral-700">
-        <div
-          v-for="tool in localTools"
-          :key="tool.id"
-          class="px-4 py-3 flex items-center gap-3"
-        >
+      <div class="space-y-2">
+        <template v-for="(group, idx) in groupedTools" :key="group.name">
+          <!-- Separator between integration and built-in tools -->
           <div
-            :class="[
-              'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-              tool.enabled
-                ? 'bg-green-100 dark:bg-green-900/30'
-                : 'bg-neutral-100 dark:bg-neutral-700'
-            ]"
+            v-if="!group.isIntegration && idx > 0 && groupedTools[idx - 1].isIntegration"
+            class="flex items-center gap-3 pt-2 pb-1"
           >
-            <Icon
-              :name="tool.icon || 'ph:wrench'"
-              :class="[
-                'w-4 h-4',
-                tool.enabled
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-neutral-400 dark:text-neutral-500'
-              ]"
-            />
+            <div class="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
+            <span class="text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 font-medium">Built-in</span>
+            <div class="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
           </div>
 
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
-              <p class="text-sm font-medium text-neutral-900 dark:text-white">
-                {{ tool.name }}
-              </p>
-              <span
+          <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+          <!-- Group header -->
+          <button
+            type="button"
+            class="w-full px-4 py-3 flex items-center gap-3 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
+            @click="toggleGroup(group.name)"
+          >
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-neutral-200 dark:bg-neutral-700/50">
+              <Icon
+                :name="group.logo || group.icon"
                 :class="[
-                  'px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded',
-                  tool.type === 'write'
-                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
-                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                ]"
-              >
-                {{ tool.type }}
-              </span>
-              <span
-                v-if="tool.enabled && tool.requiresApproval"
-                class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
-              >
-                Approval required
-              </span>
-            </div>
-            <p v-if="tool.description" class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-              {{ tool.description }}
-            </p>
-          </div>
-
-          <div class="flex items-center gap-3 shrink-0">
-            <!-- Require Approval toggle (only for enabled write tools) -->
-            <label
-              v-if="tool.enabled && tool.type === 'write'"
-              class="flex items-center gap-1.5 cursor-pointer"
-              title="Require approval before execution"
-            >
-              <span class="text-xs text-neutral-500 dark:text-neutral-400">Approval</span>
-              <button
-                type="button"
-                role="switch"
-                :aria-checked="tool.requiresApproval"
-                :class="[
-                  'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                  tool.requiresApproval
-                    ? 'bg-amber-500'
-                    : 'bg-neutral-300 dark:bg-neutral-600'
-                ]"
-                @click="toggleApproval(tool)"
-              >
-                <span
-                  :class="[
-                    'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                    tool.requiresApproval ? 'translate-x-[18px]' : 'translate-x-[3px]'
-                  ]"
-                />
-              </button>
-            </label>
-
-            <!-- Enable/Disable toggle -->
-            <button
-              type="button"
-              role="switch"
-              :aria-checked="tool.enabled"
-              :class="[
-                'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                tool.enabled
-                  ? 'bg-green-500'
-                  : 'bg-neutral-300 dark:bg-neutral-600'
-              ]"
-              @click="toggleTool(tool)"
-            >
-              <span
-                :class="[
-                  'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                  tool.enabled ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                  group.logo ? 'w-5 h-5' : 'w-4 h-4 text-neutral-600 dark:text-neutral-300'
                 ]"
               />
-            </button>
+            </div>
+            <div class="flex-1 min-w-0 text-left">
+              <p class="text-sm font-medium text-neutral-900 dark:text-white capitalize">
+                {{ group.name }}
+              </p>
+              <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                {{ group.description }}
+              </p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="text-xs text-neutral-400 dark:text-neutral-500">
+                {{ group.tools.filter(t => t.enabled).length }}/{{ group.tools.length }}
+              </span>
+              <Icon
+                name="ph:caret-right"
+                :class="[
+                  'w-4 h-4 text-neutral-400 dark:text-neutral-500 transition-transform',
+                  expandedGroups[group.name] ? 'rotate-90' : ''
+                ]"
+              />
+            </div>
+          </button>
+
+          <!-- Group tools (collapsible) -->
+          <div v-if="expandedGroups[group.name]" class="divide-y divide-neutral-200 dark:divide-neutral-700 border-t border-neutral-200 dark:border-neutral-700">
+            <div
+              v-for="tool in group.tools"
+              :key="tool.id"
+              class="px-4 py-3 flex items-center gap-3"
+            >
+              <div
+                :class="[
+                  'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                  tool.enabled
+                    ? 'bg-green-100 dark:bg-green-900/30'
+                    : 'bg-neutral-100 dark:bg-neutral-700'
+                ]"
+              >
+                <Icon
+                  :name="tool.icon || 'ph:wrench'"
+                  :class="[
+                    'w-4 h-4',
+                    tool.enabled
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-neutral-400 dark:text-neutral-500'
+                  ]"
+                />
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-medium text-neutral-900 dark:text-white">
+                    {{ tool.name }}
+                  </p>
+                  <span
+                    :class="[
+                      'px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded',
+                      tool.type === 'write'
+                        ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
+                        : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    ]"
+                  >
+                    {{ tool.type }}
+                  </span>
+                  <span
+                    v-if="tool.enabled && tool.requiresApproval"
+                    class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                  >
+                    Approval required
+                  </span>
+                </div>
+                <p v-if="tool.description" class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  {{ tool.description }}
+                </p>
+              </div>
+
+              <div class="flex items-center gap-3 shrink-0">
+                <!-- Require Approval toggle (only for enabled write tools) -->
+                <label
+                  v-if="tool.enabled && tool.type === 'write'"
+                  class="flex items-center gap-1.5 cursor-pointer"
+                  title="Require approval before execution"
+                >
+                  <span class="text-xs text-neutral-500 dark:text-neutral-400">Approval</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    :aria-checked="tool.requiresApproval"
+                    :class="[
+                      'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
+                      tool.requiresApproval
+                        ? 'bg-amber-500'
+                        : 'bg-neutral-300 dark:bg-neutral-600'
+                    ]"
+                    @click="toggleApproval(tool)"
+                  >
+                    <span
+                      :class="[
+                        'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
+                        tool.requiresApproval ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                      ]"
+                    />
+                  </button>
+                </label>
+
+                <!-- Enable/Disable toggle -->
+                <button
+                  type="button"
+                  role="switch"
+                  :aria-checked="tool.enabled"
+                  :class="[
+                    'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
+                    tool.enabled
+                      ? 'bg-green-500'
+                      : 'bg-neutral-300 dark:bg-neutral-600'
+                  ]"
+                  @click="toggleTool(tool)"
+                >
+                  <span
+                    :class="[
+                      'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
+                      tool.enabled ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                    ]"
+                  />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
+        </template>
 
-        <div v-if="localTools.length === 0" class="p-6 text-center">
+        <div v-if="localTools.length === 0" class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 text-center">
           <Icon name="ph:wrench" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
           <p class="text-sm text-neutral-500 dark:text-neutral-400">No tools available</p>
         </div>
@@ -380,7 +481,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import type { AgentCapability, AgentBehaviorMode } from '@/types'
 
@@ -395,8 +496,18 @@ interface FolderInfo {
   title: string
 }
 
+interface AppGroupInfo {
+  name: string
+  description: string
+  icon: string
+  logo?: string
+  isIntegration?: boolean
+}
+
 const props = defineProps<{
   capabilities: AgentCapability[]
+  appGroups: AppGroupInfo[]
+  enabledIntegrations: string[]
   notes?: string
   behaviorMode: AgentBehaviorMode
   mustWaitForApproval: boolean
@@ -409,6 +520,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   updateBehaviorMode: [mode: AgentBehaviorMode]
   updateMustWaitForApproval: [value: boolean]
+  updateIntegrations: [integrations: string[]]
   updateToolPermissions: [tools: { scopeKey: string; permission: string; requiresApproval: boolean }[]]
   updateChannelPermissions: [channels: string[]]
   updateFolderPermissions: [folders: string[]]
@@ -421,21 +533,101 @@ const localMustWait = ref(props.mustWaitForApproval)
 const localTools = ref<AgentCapability[]>(props.capabilities.map(c => ({ ...c })))
 const localChannelIds = ref<string[]>([...props.channelPermissions])
 const localFolderIds = ref<string[]>([...props.folderPermissions])
+const localIntegrations = ref<string[]>([...props.enabledIntegrations])
 const editingNotes = ref(false)
 const localNotes = ref(props.notes || '')
 const channelSectionOpen = ref(false)
 const folderSectionOpen = ref(false)
+const expandedGroups = reactive<Record<string, boolean>>({})
 
 // Dirty tracking
 const toolsDirty = ref(false)
 const channelsDirty = ref(false)
 const foldersDirty = ref(false)
 
+// Integration apps (external services only)
+const integrationApps = computed(() =>
+  props.appGroups.filter(g => g.isIntegration)
+)
+
+interface ToolGroup {
+  name: string
+  description: string
+  icon: string
+  logo?: string
+  isIntegration: boolean
+  tools: AgentCapability[]
+}
+
+// Group tools by app category, filtering out disabled integrations
+// Built-in apps first, then integration apps (so the separator works correctly)
+const groupedTools = computed<ToolGroup[]>(() => {
+  const builtIn: ToolGroup[] = []
+  const integrations: ToolGroup[] = []
+
+  for (const appGroup of props.appGroups) {
+    // Skip disabled integration apps
+    if (appGroup.isIntegration && !localIntegrations.value.includes(appGroup.name)) {
+      continue
+    }
+
+    const tools = localTools.value.filter(t => t.app === appGroup.name)
+    if (tools.length > 0) {
+      const group: ToolGroup = {
+        name: appGroup.name,
+        description: appGroup.description,
+        icon: appGroup.icon,
+        logo: appGroup.logo,
+        isIntegration: !!appGroup.isIntegration,
+        tools,
+      }
+      if (appGroup.isIntegration) {
+        integrations.push(group)
+      } else {
+        builtIn.push(group)
+      }
+    }
+  }
+
+  // Catch any tools not in a known app group
+  const knownApps = new Set(props.appGroups.map(g => g.name))
+  const ungrouped = localTools.value.filter(t => !t.app || !knownApps.has(t.app))
+  if (ungrouped.length > 0) {
+    builtIn.push({
+      name: 'other',
+      description: 'Other tools',
+      icon: 'ph:puzzle-piece',
+      isIntegration: false,
+      tools: ungrouped,
+    })
+  }
+
+  return [...integrations, ...builtIn]
+})
+
+const toggleGroup = (name: string) => {
+  expandedGroups[name] = !expandedGroups[name]
+}
+
+const toggleIntegration = (name: string) => {
+  const idx = localIntegrations.value.indexOf(name)
+  if (idx >= 0) {
+    localIntegrations.value.splice(idx, 1)
+  } else {
+    localIntegrations.value.push(name)
+  }
+  emit('updateIntegrations', [...localIntegrations.value])
+}
+
 // Watch for prop changes
 watch(() => props.capabilities, (newCaps) => {
   localTools.value = newCaps.map(c => ({ ...c }))
   toolsDirty.value = false
 }, { deep: true })
+
+watch(() => props.enabledIntegrations, (newIntegrations) => {
+  localIntegrations.value = [...newIntegrations]
+})
 
 watch(() => props.channelPermissions, (newIds) => {
   localChannelIds.value = [...newIds]

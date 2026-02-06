@@ -220,6 +220,8 @@
           <div v-if="activeTab === 'capabilities'">
             <AgentCapabilities
               :capabilities="agent.capabilities"
+              :app-groups="appGroups"
+              :enabled-integrations="enabledIntegrations"
               :notes="capabilityNotes"
               :behavior-mode="behaviorMode"
               :must-wait-for-approval="mustWaitForApproval"
@@ -228,6 +230,7 @@
               :agent-channels="agentChannels"
               :document-folders="documentFolders"
               @update-behavior-mode="handleBehaviorModeChange"
+              @update-integrations="handleIntegrations"
               @update-tool-permissions="handleToolPermissions"
               @update-channel-permissions="handleChannelPermissions"
               @update-folder-permissions="handleFolderPermissions"
@@ -341,7 +344,7 @@ import TaskDetailDrawer from '@/Components/tasks/TaskDetailDrawer.vue'
 import { useApi } from '@/composables/useApi'
 import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask, AgentMemoryEntry } from '@/types'
 
-const { fetchAgentDetail, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions } = useApi()
+const { fetchAgentDetail, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions, updateAgentIntegrations } = useApi()
 
 type TabId = 'overview' | 'tasks' | 'personality' | 'instructions' | 'capabilities' | 'memory' | 'activity' | 'settings'
 
@@ -371,7 +374,8 @@ const channelPermissions = ref<string[]>([])
 const folderPermissions = ref<string[]>([])
 const agentChannels = ref<{ id: string; name: string; type: string }[]>([])
 const documentFolders = ref<{ id: string; title: string }[]>([])
-
+const appGroups = ref<{ name: string; description: string; icon: string; logo?: string; isIntegration?: boolean }[]>([])
+const enabledIntegrations = ref<string[]>([])
 
 const parsedMemoryEntries = computed<AgentMemoryEntry[]>(() => {
   if (!memoryContent.value) return []
@@ -514,6 +518,8 @@ const fetchData = async () => {
     folderPermissions.value = (raw.folderPermissions as string[]) || []
     agentChannels.value = (raw.agentChannels as { id: string; name: string; type: string }[]) || []
     documentFolders.value = (raw.documentFolders as { id: string; title: string }[]) || []
+    appGroups.value = (raw.appGroups as typeof appGroups.value) || []
+    enabledIntegrations.value = (raw.enabledIntegrations as string[]) || []
 
     // Map tasks from the detail response
     const rawTasks = (raw.tasks as AgentTask[]) || []
@@ -593,6 +599,16 @@ const handleBehaviorModeChange = async (mode: AgentBehaviorMode) => {
     behaviorMode.value = mode
   } catch (e) {
     console.error('Failed to update behavior mode:', e)
+  }
+}
+
+const handleIntegrations = async (integrations: string[]) => {
+  try {
+    await updateAgentIntegrations(props.id, integrations)
+    enabledIntegrations.value = integrations
+    await fetchData()
+  } catch (e) {
+    console.error('Failed to update integrations:', e)
   }
 }
 

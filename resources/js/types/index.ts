@@ -297,6 +297,7 @@ export interface AgentCapability {
   requiresApproval: boolean
   notes?: string
   icon?: string
+  app?: string
 }
 
 export interface AgentConfiguration {

@@ -10,6 +10,7 @@ use App\Models\IntegrationSetting;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentDocumentService;
+use App\Services\AgentPermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -196,6 +197,8 @@ class AgentController extends Controller
             'personality' => $filesByType['SOUL'] ?? null,
             'instructions' => $filesByType['AGENTS'] ?? null,
             'capabilities' => $capabilities,
+            'appGroups' => $toolRegistry->getAppGroupsMeta(),
+            'enabledIntegrations' => app(AgentPermissionService::class)->getEnabledIntegrations($agent),
             'channelPermissions' => $channelPermissions,
             'folderPermissions' => $folderPermissions,
             'agentChannels' => $agentChannels,

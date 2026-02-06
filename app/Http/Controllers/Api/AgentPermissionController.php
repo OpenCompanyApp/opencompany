@@ -100,6 +100,41 @@ class AgentPermissionController extends Controller
     }
 
     /**
+     * Set enabled integrations for an agent.
+     * Accepts list of enabled integration app names.
+     */
+    public function updateIntegrations(Request $request, string $id)
+    {
+        User::where('type', 'agent')->findOrFail($id);
+
+        $validated = $request->validate([
+            'integrations' => 'present|array',
+            'integrations.*' => 'string|in:' . implode(',', ToolRegistry::INTEGRATION_APPS),
+        ]);
+
+        $enabled = $validated['integrations'];
+
+        // Delete existing integration permissions
+        AgentPermission::forAgent($id)->where('scope_type', 'integration')->delete();
+
+        // Create records for all integration apps
+        foreach (ToolRegistry::INTEGRATION_APPS as $app) {
+            AgentPermission::create([
+                'id' => Str::uuid()->toString(),
+                'agent_id' => $id,
+                'scope_type' => 'integration',
+                'scope_key' => $app,
+                'permission' => in_array($app, $enabled) ? 'allow' : 'deny',
+                'requires_approval' => false,
+            ]);
+        }
+
+        return response()->json([
+            'enabledIntegrations' => $enabled,
+        ]);
+    }
+
+    /**
      * Set allowed document folders for an agent.
      * Empty array = unrestricted (no folder permissions enforced).
      */

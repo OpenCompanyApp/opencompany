@@ -217,6 +217,7 @@ Route::get('/agents/{id}/permissions', [AgentPermissionController::class, 'index
 Route::put('/agents/{id}/permissions/tools', [AgentPermissionController::class, 'updateTools']);
 Route::put('/agents/{id}/permissions/channels', [AgentPermissionController::class, 'updateChannels']);
 Route::put('/agents/{id}/permissions/folders', [AgentPermissionController::class, 'updateFolders']);
+Route::put('/agents/{id}/permissions/integrations', [AgentPermissionController::class, 'updateIntegrations']);
 
 // Integrations
 Route::get('/integrations', [IntegrationController::class, 'index']);

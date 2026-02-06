@@ -54,6 +54,11 @@ class AgentPermission extends Model
         return $query->where('scope_type', 'folder');
     }
 
+    public function scopeIntegrations(Builder $query): Builder
+    {
+        return $query->where('scope_type', 'integration');
+    }
+
     public function scopeAllowed(Builder $query): Builder
     {
         return $query->where('permission', 'allow');

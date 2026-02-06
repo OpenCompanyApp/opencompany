@@ -332,6 +332,8 @@ export const useApi = () => {
     api.put(`/agents/${id}/permissions/channels`, { channels })
   const updateAgentFolderPermissions = (id: string, folders: string[]) =>
     api.put(`/agents/${id}/permissions/folders`, { folders })
+  const updateAgentIntegrations = (id: string, integrations: string[]) =>
+    api.put(`/agents/${id}/permissions/integrations`, { integrations })
 
   // Search
   const search = (query: string, type?: string) => {
@@ -490,6 +492,7 @@ export const useApi = () => {
     updateAgentToolPermissions,
     updateAgentChannelPermissions,
     updateAgentFolderPermissions,
+    updateAgentIntegrations,
     // Search
     search,
     // Direct Messages
