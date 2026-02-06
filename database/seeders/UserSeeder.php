@@ -87,6 +87,16 @@ class UserSeeder extends Seeder
                 'behavior_mode' => 'strict',
                 'must_wait_for_approval' => true,
             ],
+            [
+                'id' => 'a7',
+                'name' => 'Nexus',
+                'agent_type' => 'coordinator',
+                'status' => 'idle',
+                'current_task' => null,
+                'brain' => 'glm:glm-4-plus',
+                'behavior_mode' => 'autonomous',
+                'must_wait_for_approval' => false,
+            ],
         ];
 
         foreach ($agents as $agent) {

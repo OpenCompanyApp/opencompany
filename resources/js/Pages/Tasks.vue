@@ -280,7 +280,7 @@ const {
 } = useApi()
 
 // Current user (would come from auth in real app)
-const currentUserId = ref('1')
+const currentUserId = ref('h1')
 
 // Fetch data from API
 const { data: tasksData, refresh: refreshTasks } = fetchAgentTasks()

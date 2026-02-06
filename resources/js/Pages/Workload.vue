@@ -231,11 +231,10 @@ const fetchWorkload = async () => {
     // Build workload data from agents and tasks
     const agentWorkloads: AgentWorkload[] = agents.map((agent: any) => {
       // Get tasks assigned to this agent
-      const agentTasks = tasks.filter((t: any) => t.assignee?.id === agent.id)
-      const currentTasks = agentTasks.filter((t: any) => t.status === 'in_progress').length
-      const pendingTasks = agentTasks.filter((t: any) => t.status === 'backlog').length
-      const completedTasks = agentTasks.filter((t: any) => t.status === 'done').length
-      const totalCost = agentTasks.reduce((sum: number, t: any) => sum + (parseFloat(t.cost) || 0), 0)
+      const agentTasks = tasks.filter((t: any) => t.agentId === agent.id || t.agent?.id === agent.id)
+      const currentTasks = agentTasks.filter((t: any) => t.status === 'active').length
+      const pendingTasks = agentTasks.filter((t: any) => t.status === 'pending').length
+      const completedTasks = agentTasks.filter((t: any) => t.status === 'completed').length
 
       // Calculate workload score (based on current + pending tasks)
       const workloadScore = Math.min(100, (currentTasks * 30) + (pendingTasks * 10))
@@ -249,7 +248,7 @@ const fetchWorkload = async () => {
           id: agent.id,
           name: agent.name,
           avatar: agent.avatar || null,
-          agentType: agent.role || agent.agentType || 'agent',
+          agentType: agent.agentType || 'agent',
           status: agent.status || 'idle',
           currentTask: agent.currentTask || null,
         },
@@ -257,7 +256,7 @@ const fetchWorkload = async () => {
           currentTasks,
           completedTasksWeek: completedTasks,
           pendingTasks,
-          totalCostSpent: totalCost,
+          totalCostSpent: 0,
           stepsCompletedToday: 0,
           activitiesThisWeek: currentTasks + completedTasks,
           workloadScore,

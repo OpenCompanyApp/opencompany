@@ -491,7 +491,7 @@ const dmChannels = computed(() =>
 )
 
 const privateChannels = computed(() =>
-  filteredChannels.value.filter(c => c.private && c.type !== 'dm' && !c.pinned && !c.starred && !c.archived),
+  filteredChannels.value.filter(c => (c.type === 'private' || c.private) && c.type !== 'dm' && !c.pinned && !c.starred && !c.archived),
 )
 
 const publicChannels = computed(() =>

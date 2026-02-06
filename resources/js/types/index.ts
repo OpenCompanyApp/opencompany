@@ -9,7 +9,7 @@ export type TaskStepStatus = 'pending' | 'in_progress' | 'completed' | 'skipped'
 export type EntityType = 'human' | 'agent'
 export type AgentType = 'manager' | 'writer' | 'analyst' | 'creative' | 'researcher' | 'coder' | 'coordinator'
 export type ChannelType = 'public' | 'private' | 'agent' | 'dm' | 'external'
-export type ExternalChannelProvider = 'telegram' | 'google_chat' | 'slack' | 'discord'
+export type ExternalChannelProvider = 'telegram' | 'slack'
 export type Priority = 'low' | 'medium' | 'high' | 'urgent' | 'normal'
 export type ActivityType = 'message' | 'task_completed' | 'task_started' | 'agent_spawned' | 'approval_needed' | 'approval_granted' | 'error'
 

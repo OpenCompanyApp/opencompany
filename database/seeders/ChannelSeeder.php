@@ -72,6 +72,14 @@ class ChannelSeeder extends Seeder
                 'description' => null,
                 'members' => ['h1', 'a2'],
             ],
+            // Private channels
+            [
+                'id' => 'ch6',
+                'name' => 'leadership',
+                'type' => 'private',
+                'description' => 'Private leadership and strategy discussions',
+                'members' => ['h1', 'a1', 'a7'],
+            ],
             // External channels - for chatting with agents on the go
             [
                 'id' => 'ext1',
