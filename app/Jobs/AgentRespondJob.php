@@ -217,7 +217,7 @@ class AgentRespondJob implements ShouldQueue
         try {
             foreach ($response->steps as $step) {
                 foreach ($step->toolResults as $toolResult) {
-                    if (!in_array($toolResult->name, ['create_jpgraph_chart', 'render_svg'])) {
+                    if (!in_array($toolResult->name, ['CreateJpGraphChart', 'RenderSvg'])) {
                         continue;
                     }
 
