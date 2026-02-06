@@ -171,7 +171,64 @@ const filteredDocuments = computed(() => {
   )
 })
 
-const displayedDocuments = computed(() => filteredDocuments.value)
+// Icon map for identity files
+const identityFileIcons: Record<string, string> = {
+  'IDENTITY.md': 'ph:identification-card-fill',
+  'SOUL.md': 'ph:sparkle-fill',
+  'USER.md': 'ph:user-fill',
+  'AGENTS.md': 'ph:robot-fill',
+  'TOOLS.md': 'ph:wrench-fill',
+  'HEARTBEAT.md': 'ph:heartbeat-fill',
+  'BOOTSTRAP.md': 'ph:rocket-launch-fill',
+  'MEMORY.md': 'ph:brain-fill',
+}
+
+const displayedDocuments = computed(() => {
+  const docs = filteredDocuments.value
+
+  const agentsRoot = docs.find(d => d.isFolder && d.title === 'agents' && !d.parentId)
+  if (!agentsRoot) return docs
+
+  // Collect agent name folder IDs (direct children of agents root)
+  const agentFolderIds = new Set(
+    docs.filter(d => d.parentId === agentsRoot.id && d.isFolder).map(d => d.id)
+  )
+
+  // Collect identity folder IDs (children of agent folders named "identity")
+  const identityFolderIds = new Set(
+    docs.filter(d => agentFolderIds.has(d.parentId!) && d.isFolder && d.title === 'identity').map(d => d.id)
+  )
+
+  // Collect ALL IDs in the agents tree (for fallback purple)
+  const allAgentIds = new Set<string>()
+  const collect = (parentId: string) => {
+    allAgentIds.add(parentId)
+    docs.filter(d => d.parentId === parentId).forEach(d => collect(d.id))
+  }
+  collect(agentsRoot.id)
+
+  return docs.map(d => {
+    if (d.color || d.icon || !allAgentIds.has(d.id)) return d
+
+    // agents root folder -> purple
+    if (d.id === agentsRoot.id) return { ...d, color: 'purple' }
+
+    // Agent name folders (atlas, echo, etc.) -> blue
+    if (agentFolderIds.has(d.id)) return { ...d, color: 'blue' }
+
+    // Identity folders -> orange
+    if (identityFolderIds.has(d.id)) return { ...d, color: 'orange' }
+
+    // Files inside identity folders -> orange + specific icon
+    if (d.parentId && identityFolderIds.has(d.parentId)) {
+      const icon = identityFileIcons[d.title] || null
+      return { ...d, color: 'orange', ...(icon && { icon }) }
+    }
+
+    // Everything else in agents tree -> purple
+    return { ...d, color: 'purple' }
+  })
+})
 
 const rootDocuments = computed(() =>
   displayedDocuments.value.filter(doc => !doc.parentId)

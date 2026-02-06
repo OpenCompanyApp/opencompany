@@ -184,6 +184,7 @@ import { ref, computed, watch, defineAsyncComponent } from 'vue'
 import type { Document } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import DocTreeItemRow from './doc-tree/DocTreeItemRow.vue'
+import { useDocTreeExpansion } from '@/composables/useDocTreeExpansion'
 
 // Self-reference for recursive component
 const DocTreeItem = defineAsyncComponent(() => import('./DocTreeItem.vue'))
@@ -321,7 +322,8 @@ const emit = defineEmits<{
 // State
 // ============================================================================
 
-const expanded = ref(true)
+const { isExpanded, setExpanded } = useDocTreeExpansion()
+const expanded = ref(props.item.isFolder ? isExpanded(props.item.id) : false)
 const isDragging = ref(false)
 const isDragOver = ref(false)
 const dropPosition = ref<DropPosition>(null)
@@ -423,12 +425,14 @@ const itemPath = computed(() => {
 watch(() => props.expandAll, (val) => {
   if (val && props.item.isFolder) {
     expanded.value = true
+    setExpanded(props.item.id, true)
   }
 })
 
 watch(() => props.collapseAll, (val) => {
   if (val && props.item.isFolder) {
     expanded.value = false
+    setExpanded(props.item.id, false)
   }
 })
 
@@ -450,6 +454,7 @@ const handleToggle = () => {
   if (props.disabled) return
 
   expanded.value = !expanded.value
+  if (props.item.isFolder) setExpanded(props.item.id, expanded.value)
 
   if (expanded.value) {
     emit('expand', props.item)
