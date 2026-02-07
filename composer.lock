@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2937eea76d9bef3ea77e30b055f35eeb",
+    "content-hash": "3db5b3062e3acd31cfa412629b2768d5",
     "packages": [
         {
             "name": "brick/math",
@@ -3035,6 +3035,150 @@
                 }
             ],
             "time": "2025-11-20T02:34:59+00:00"
+        },
+        {
+            "name": "opencompanyapp/ai-tool-celestial",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-celestial",
+                "reference": "8c7167ee6e423ad92ea2dbf4ccfe634f50a6107b"
+            },
+            "require": {
+                "laravel/ai": "^0.1",
+                "opencompanyapp/ai-tool-core": "^1.0 || @dev",
+                "opencompanyapp/astronomy-bundle": "^3.0",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolCelestial\\AiToolCelestialServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolCelestial\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Celestial/astronomy AI tool for Laravel AI SDK — moon phases, sunrise/sunset, planet positions, eclipses, night sky reports. Part of the OpenCompany AI tool ecosystem.",
+            "keywords": [
+                "ai",
+                "astronomy",
+                "celestial",
+                "laravel",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/ai-tool-core",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-core",
+                "reference": "49ac3e4f7ee0428be46f6487dfd55a7c26f95dd8"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "laravel/ai": "^0.1",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolCore\\AiToolCoreServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolCore\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Core framework for OpenCompany AI tool packages — ToolProvider contract, credential abstraction, and auto-discovery for Laravel AI SDK tools.",
+            "keywords": [
+                "agents",
+                "ai",
+                "laravel",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/ai-tool-plausible",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-plausible",
+                "reference": "accc8eacaa8aa78d3aed0f3c2184c55e13ce3b5e"
+            },
+            "require": {
+                "laravel/ai": "^0.1",
+                "opencompanyapp/ai-tool-core": "^1.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolPlausible\\AiToolPlausibleServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolPlausible\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Plausible Analytics AI tool for Laravel AI SDK — query stats, realtime visitors, manage sites and goals. Part of the OpenCompany AI tool ecosystem.",
+            "keywords": [
+                "ai",
+                "analytics",
+                "laravel",
+                "opencompany",
+                "plausible",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "opencompanyapp/astronomy-bundle",
@@ -10030,7 +10174,11 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "opencompanyapp/ai-tool-celestial": 20,
+        "opencompanyapp/ai-tool-core": 20,
+        "opencompanyapp/ai-tool-plausible": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

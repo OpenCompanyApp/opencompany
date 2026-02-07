@@ -13,6 +13,7 @@
 | [laravel-ai-sdk.md](architecture/laravel-ai-sdk.md) | Laravel AI SDK integration strategy — providers, tools, streaming, memory, workflows, QMD adaptation | Implementing AI features |
 | [technology-decisions.md](architecture/technology-decisions.md) | Tech stack choices: Laravel AI SDK over Prism, Laravel queues for orchestration | Understanding why we chose what |
 | [observability.md](architecture/observability.md) | Monitoring, metrics, logging, error tracking, health checks, alerting | Building admin/ops features |
+| [ai-tool-packages.md](architecture/ai-tool-packages.md) | AI tool package ecosystem — ToolProvider contract, credential abstraction, hybrid ToolRegistry, building new tool packages | Creating or modifying AI tool packages, understanding the plugin architecture |
 
 ## Planning & Implementation
 

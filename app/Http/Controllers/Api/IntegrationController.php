@@ -13,6 +13,8 @@ use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use OpenCompany\AiToolCore\Contracts\ConfigurableIntegration;
+use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
 
 class IntegrationController extends Controller
 {
@@ -23,8 +25,11 @@ class IntegrationController extends Controller
     {
         $settings = IntegrationSetting::all()->keyBy('integration_id');
         $available = IntegrationSetting::getAvailableIntegrations();
+        $registry = app(ToolProviderRegistry::class);
 
         $integrations = [];
+
+        // Static integrations (GLM, Telegram — no ToolProvider package)
         foreach ($available as $id => $info) {
             $setting = $settings->get($id);
             $integrations[] = [
@@ -36,6 +41,30 @@ class IntegrationController extends Controller
                 'defaultUrl' => $info['default_url'] ?? null,
                 'enabled' => $setting?->enabled ?? false,
                 'configured' => $setting?->hasValidConfig() ?? false,
+                'configurable' => false,
+            ];
+        }
+
+        // Dynamic integrations from ToolProviderRegistry
+        foreach ($registry->all() as $provider) {
+            if (!($provider instanceof ConfigurableIntegration)) {
+                continue;
+            }
+            $meta = $provider->integrationMeta();
+            $setting = $settings->get($provider->appName());
+            $integrations[] = [
+                'id' => $provider->appName(),
+                'name' => $meta['name'],
+                'description' => $meta['description'],
+                'icon' => $meta['icon'],
+                'logo' => $meta['logo'] ?? null,
+                'category' => $meta['category'] ?? null,
+                'badge' => $meta['badge'] ?? null,
+                'docsUrl' => $meta['docs_url'] ?? null,
+                'enabled' => $setting?->enabled ?? false,
+                'configured' => $setting?->hasValidConfig() ?? false,
+                'configurable' => true,
+                'configSchema' => $provider->configSchema(),
             ];
         }
 
@@ -47,6 +76,35 @@ class IntegrationController extends Controller
      */
     public function showConfig(string $id)
     {
+        // Check dynamic providers first
+        $provider = $this->findConfigurableProvider($id);
+        if ($provider) {
+            $setting = IntegrationSetting::where('integration_id', $id)->first();
+            $schema = $provider->configSchema();
+            $meta = $provider->integrationMeta();
+
+            $config = [];
+            foreach ($schema as $field) {
+                $key = $field['key'];
+                if ($field['type'] === 'secret') {
+                    $config[$key] = $setting?->getMaskedValue($key);
+                } else {
+                    $config[$key] = $setting?->getConfigValue($key, $field['default'] ?? null)
+                        ?? ($field['default'] ?? null);
+                }
+            }
+
+            return response()->json([
+                'id' => $id,
+                'name' => $meta['name'],
+                'description' => $meta['description'],
+                'enabled' => $setting?->enabled ?? false,
+                'config' => $config,
+                'configSchema' => $schema,
+            ]);
+        }
+
+        // Static integrations (GLM, Telegram)
         $available = IntegrationSetting::getAvailableIntegrations();
         if (!isset($available[$id])) {
             return response()->json(['error' => 'Integration not found'], 404);
@@ -58,14 +116,10 @@ class IntegrationController extends Controller
             'apiKey' => $setting?->getMaskedApiKey(),
         ];
 
-        // Integration-specific config
         if ($id === 'telegram') {
             $config['defaultAgentId'] = $setting?->getConfigValue('default_agent_id') ?? '';
             $config['notifyChatId'] = $setting?->getConfigValue('notify_chat_id') ?? '';
             $config['allowedTelegramUsers'] = $setting?->getConfigValue('allowed_telegram_users', []) ?? [];
-        } elseif ($id === 'plausible') {
-            $config['url'] = $setting?->getConfigValue('url') ?? ($available[$id]['default_url'] ?? '');
-            $config['sites'] = $setting?->getConfigValue('sites', []) ?? [];
         } else {
             $config['url'] = $setting?->getConfigValue('url') ?? ($available[$id]['default_url'] ?? '');
             $config['defaultModel'] = $setting?->getConfigValue('default_model') ?? array_key_first($available[$id]['models'] ?? []);
@@ -87,6 +141,51 @@ class IntegrationController extends Controller
      */
     public function updateConfig(Request $request, string $id)
     {
+        // Check dynamic providers first
+        $provider = $this->findConfigurableProvider($id);
+        if ($provider) {
+            $request->validate(array_merge(
+                $provider->validationRules(),
+                ['enabled' => 'nullable|boolean'],
+            ));
+
+            $setting = IntegrationSetting::firstOrNew(['integration_id' => $id]);
+            if (!$setting->id) {
+                $setting->id = Str::uuid()->toString();
+            }
+
+            $config = $setting->config ?? [];
+            foreach ($provider->configSchema() as $field) {
+                $key = $field['key'];
+                if (!$request->has($key)) {
+                    continue;
+                }
+
+                // Skip masked secret values (user didn't change them)
+                if ($field['type'] === 'secret') {
+                    $value = $request->input($key);
+                    if (!$value || str_contains($value, '*')) {
+                        continue;
+                    }
+                }
+
+                $config[$key] = $request->input($key, $field['default'] ?? null);
+            }
+
+            $setting->config = $config;
+            if ($request->has('enabled')) {
+                $setting->enabled = $request->input('enabled');
+            }
+            $setting->save();
+
+            return response()->json([
+                'success' => true,
+                'enabled' => $setting->enabled,
+                'configured' => $setting->hasValidConfig(),
+            ]);
+        }
+
+        // Static integrations (GLM, Telegram)
         $available = IntegrationSetting::getAvailableIntegrations();
         if (!isset($available[$id])) {
             return response()->json(['error' => 'Integration not found'], 404);
@@ -105,7 +204,6 @@ class IntegrationController extends Controller
             $setting->id = Str::uuid()->toString();
         }
 
-        // Only update API key if a new one is provided (not masked)
         $config = $setting->config ?? [];
         if ($request->has('apiKey') && $request->input('apiKey') && !str_contains($request->input('apiKey'), '*')) {
             $config['api_key'] = $request->input('apiKey');
@@ -125,10 +223,6 @@ class IntegrationController extends Controller
         }
         if ($request->has('allowedTelegramUsers')) {
             $config['allowed_telegram_users'] = $request->input('allowedTelegramUsers', []);
-        }
-        // Plausible-specific fields
-        if ($request->has('sites')) {
-            $config['sites'] = $request->input('sites', []);
         }
 
         $setting->config = $config;
@@ -151,12 +245,42 @@ class IntegrationController extends Controller
      */
     public function testConnection(Request $request, string $id)
     {
+        // Check dynamic providers first
+        $provider = $this->findConfigurableProvider($id);
+        if ($provider) {
+            $config = $request->all();
+
+            // Substitute masked secret fields with stored values
+            $setting = IntegrationSetting::where('integration_id', $id)->first();
+            foreach ($provider->configSchema() as $field) {
+                if ($field['type'] === 'secret') {
+                    $key = $field['key'];
+                    $value = $config[$key] ?? '';
+                    if (!$value || str_contains($value, '*')) {
+                        $config[$key] = $setting?->getConfigValue($key);
+                    }
+                }
+            }
+
+            try {
+                $result = $provider->testConnection($config);
+                $status = ($result['success'] ?? false) ? 200 : 400;
+
+                return response()->json($result, $status);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+        }
+
+        // Static integrations (GLM, Telegram)
         $available = IntegrationSetting::getAvailableIntegrations();
         if (!isset($available[$id])) {
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
-        // Get API key from request or existing config
         $apiKey = $request->input('apiKey');
         if (!$apiKey || str_contains($apiKey, '*')) {
             $setting = IntegrationSetting::where('integration_id', $id)->first();
@@ -170,7 +294,6 @@ class IntegrationController extends Controller
             ], 400);
         }
 
-        // Test the connection based on integration type
         try {
             if ($id === 'telegram') {
                 return $this->testTelegramConnection($apiKey);
@@ -181,11 +304,6 @@ class IntegrationController extends Controller
 
             if ($id === 'glm' || $id === 'glm-coding') {
                 return $this->testGlmConnection($apiKey, $url, $model);
-            }
-
-            if ($id === 'plausible') {
-                $url = $request->input('url') ?: ($available[$id]['default_url'] ?? 'https://plausible.io');
-                return $this->testPlausibleConnection($apiKey, $url);
             }
 
             return response()->json([
@@ -228,61 +346,6 @@ class IntegrationController extends Controller
         return response()->json([
             'success' => false,
             'error' => 'API returned error: ' . $error,
-        ], 400);
-    }
-
-    /**
-     * Test Plausible Analytics connection
-     */
-    private function testPlausibleConnection(string $apiKey, string $url)
-    {
-        $baseUrl = rtrim($url, '/');
-
-        // Try the v2 query endpoint. Plausible returns JSON for API requests
-        // (even errors) but HTML for invalid URLs. A JSON response confirms
-        // the API is reachable and the key format is accepted.
-        // Note: Plausible returns 401 for both "bad key" and "key lacks site access",
-        // so we also accept a siteId param to do a real data test.
-        $siteId = request()->input('siteId');
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
-            'Content-Type' => 'application/json',
-        ])->timeout(10)->post($baseUrl . '/api/v2/query', [
-            'site_id' => $siteId ?: '__connection_test__',
-            'metrics' => ['visitors'],
-            'date_range' => '7d',
-        ]);
-
-        $json = $response->json();
-
-        // Got HTML back — wrong URL or API isn't available
-        if ($json === null) {
-            return response()->json([
-                'success' => false,
-                'error' => "Could not reach Plausible API at {$baseUrl}. Check the URL.",
-            ], 400);
-        }
-
-        // If we provided a real siteId and got data back, full success
-        if ($response->successful() && $siteId) {
-            return response()->json([
-                'success' => true,
-                'message' => "Connected to Plausible at {$baseUrl} — site '{$siteId}' accessible.",
-            ]);
-        }
-
-        // Got JSON error but no siteId was provided — API is reachable
-        if (!$siteId) {
-            return response()->json([
-                'success' => true,
-                'message' => "Connected to Plausible API at {$baseUrl}.",
-            ]);
-        }
-
-        // Got JSON error with a real siteId — likely bad key or no access to site
-        return response()->json([
-            'success' => false,
-            'error' => $json['error'] ?? 'API returned an error',
         ], 400);
     }
 
@@ -507,5 +570,20 @@ class IntegrationController extends Controller
         }
 
         return response()->json($models);
+    }
+
+    /**
+     * Find a ToolProvider that implements ConfigurableIntegration for the given ID.
+     */
+    private function findConfigurableProvider(string $id): ?ConfigurableIntegration
+    {
+        $registry = app(ToolProviderRegistry::class);
+        $provider = $registry->get($id);
+
+        if ($provider instanceof ConfigurableIntegration) {
+            return $provider;
+        }
+
+        return null;
     }
 }

@@ -50,17 +50,25 @@ class IntegrationSetting extends Model
      */
     public function getMaskedApiKey(): ?string
     {
-        $apiKey = $this->getConfigValue('api_key');
-        if (!$apiKey) {
+        return $this->getMaskedValue('api_key');
+    }
+
+    /**
+     * Get a masked version of any secret config value.
+     */
+    public function getMaskedValue(string $key): ?string
+    {
+        $value = $this->getConfigValue($key);
+        if (!$value || !is_string($value)) {
             return null;
         }
 
-        $length = strlen($apiKey);
+        $length = strlen($value);
         if ($length <= 8) {
             return str_repeat('*', $length);
         }
 
-        return substr($apiKey, 0, 4) . str_repeat('*', $length - 8) . substr($apiKey, -4);
+        return substr($value, 0, 4) . str_repeat('*', $length - 8) . substr($value, -4);
     }
 
     /**
@@ -102,12 +110,6 @@ class IntegrationSetting extends Model
                 'name' => 'Telegram',
                 'description' => 'Telegram Bot for DMs, notifications, and approvals',
                 'icon' => 'ph:telegram-logo',
-            ],
-            'plausible' => [
-                'name' => 'Plausible Analytics',
-                'description' => 'Privacy-friendly website analytics',
-                'icon' => 'ph:chart-line-up',
-                'default_url' => 'https://plausible.io',
             ],
         ];
     }

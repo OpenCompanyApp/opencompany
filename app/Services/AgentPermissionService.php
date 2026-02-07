@@ -4,9 +4,13 @@ namespace App\Services;
 
 use App\Models\AgentPermission;
 use App\Models\User;
+use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
 
 class AgentPermissionService
 {
+    public function __construct(
+        private ToolProviderRegistry $providerRegistry,
+    ) {}
     /**
      * Resolve the final permission for a tool, combining DB permissions with behavior mode.
      *
@@ -114,7 +118,13 @@ class AgentPermissionService
 
         // No records = all integrations enabled (backward-compatible)
         if ($integrationPerms->isEmpty()) {
-            return \App\Agents\Tools\ToolRegistry::INTEGRATION_APPS;
+            $apps = \App\Agents\Tools\ToolRegistry::INTEGRATION_APPS;
+            foreach ($this->providerRegistry->all() as $provider) {
+                if ($provider->isIntegration() && !in_array($provider->appName(), $apps)) {
+                    $apps[] = $provider->appName();
+                }
+            }
+            return $apps;
         }
 
         return $integrationPerms

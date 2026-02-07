@@ -4,7 +4,6 @@ namespace App\Agents\Tools;
 
 use App\Agents\Tools\Calendar\ManageCalendarEvent;
 use App\Agents\Tools\Calendar\QueryCalendar;
-use App\Agents\Tools\Celestial\QueryCelestial;
 use App\Agents\Tools\Charts\CreateJpGraphChart;
 use App\Agents\Tools\Charts\RenderSvg;
 use App\Agents\Tools\Chat\ListChannels;
@@ -17,14 +16,6 @@ use App\Agents\Tools\Docs\SearchDocuments;
 use App\Agents\Tools\Lists\ManageListItem;
 use App\Agents\Tools\Lists\ManageListStatus;
 use App\Agents\Tools\Lists\QueryListItems;
-use App\Agents\Tools\Plausible\PlausibleCreateGoal;
-use App\Agents\Tools\Plausible\PlausibleCreateSite;
-use App\Agents\Tools\Plausible\PlausibleDeleteGoal;
-use App\Agents\Tools\Plausible\PlausibleDeleteSite;
-use App\Agents\Tools\Plausible\PlausibleListGoals;
-use App\Agents\Tools\Plausible\PlausibleListSites;
-use App\Agents\Tools\Plausible\PlausibleQueryStats;
-use App\Agents\Tools\Plausible\PlausibleRealtimeVisitors;
 use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Agents\Tools\System\GetToolInfo;
 use App\Agents\Tools\System\Wait;
@@ -41,9 +32,11 @@ use App\Agents\Tools\Workspace\ManageAutomation;
 use App\Agents\Tools\Workspace\ManageChannel;
 use App\Agents\Tools\Workspace\ManageIntegration;
 use App\Agents\Tools\Workspace\QueryWorkspace;
+use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\AgentDocumentService;
 use App\Services\AgentPermissionService;
+use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
 
 class ToolRegistry
 {
@@ -97,11 +90,6 @@ class ToolRegistry
         ],
 
         // Integrations & utilities
-        'celestial' => [
-            'tools' => ['query_celestial'],
-            'label' => 'moon, sun, planets, sky, zodiac, eclipses, time',
-            'description' => 'Astronomical calculations and night sky',
-        ],
         'jpgraph_charts' => [
             'tools' => ['create_jpgraph_chart'],
             'label' => 'create',
@@ -117,18 +105,13 @@ class ToolRegistry
             'label' => 'notify',
             'description' => 'External notifications',
         ],
-        'plausible' => [
-            'tools' => ['plausible_query_stats', 'plausible_realtime_visitors', 'plausible_list_sites', 'plausible_create_site', 'plausible_delete_site', 'plausible_list_goals', 'plausible_create_goal', 'plausible_delete_goal'],
-            'label' => 'query, realtime, sites, goals',
-            'description' => 'Website analytics',
-        ],
     ];
 
     /**
      * Apps that are external integrations (can be toggled per agent).
      * Built-in apps are always available.
      */
-    public const INTEGRATION_APPS = ['telegram', 'plausible', 'jpgraph_charts', 'celestial'];
+    public const INTEGRATION_APPS = ['telegram', 'jpgraph_charts'];
 
     /**
      * Icons for each app group.
@@ -140,11 +123,9 @@ class ToolRegistry
         'calendar' => 'ph:calendar',
         'lists' => 'ph:kanban',
         'tasks' => 'ph:list-checks',
-        'celestial' => 'ph:moon-stars',
         'jpgraph_charts' => 'ph:chart-bar',
         'svg' => 'ph:file-svg',
         'telegram' => 'ph:telegram-logo',
-        'plausible' => 'ph:chart-line-up',
         'system' => 'ph:gear',
         'workspace' => 'ph:gear-six',
     ];
@@ -154,8 +135,6 @@ class ToolRegistry
      */
     private const INTEGRATION_LOGOS = [
         'telegram' => 'logos:telegram',
-        'plausible' => 'simple-icons:plausibleanalytics',
-        'celestial' => 'ph:moon-stars',
         'jpgraph_charts' => 'ph:chart-bar',
     ];
 
@@ -288,14 +267,6 @@ class ToolRegistry
             'description' => 'Log a progress step on a task you are working on.',
             'icon' => 'ph:list-checks',
         ],
-        // Celestial
-        'query_celestial' => [
-            'class' => QueryCelestial::class,
-            'type' => 'read',
-            'name' => 'Query Celestial',
-            'description' => 'Moon phases, sun/moon positions, planet tracking, night sky reports, zodiac, solar/lunar eclipses, and astronomical time.',
-            'icon' => 'ph:moon-stars',
-        ],
         // Charts (JpGraph)
         'create_jpgraph_chart' => [
             'class' => CreateJpGraphChart::class,
@@ -319,63 +290,6 @@ class ToolRegistry
             'name' => 'Send Telegram Notification',
             'description' => 'Send a notification to a Telegram chat.',
             'icon' => 'ph:telegram-logo',
-        ],
-        // Plausible Analytics
-        'plausible_query_stats' => [
-            'class' => PlausibleQueryStats::class,
-            'type' => 'read',
-            'name' => 'Query Stats',
-            'description' => 'Query website analytics (aggregate, timeseries, breakdown).',
-            'icon' => 'ph:chart-line-up',
-        ],
-        'plausible_realtime_visitors' => [
-            'class' => PlausibleRealtimeVisitors::class,
-            'type' => 'read',
-            'name' => 'Realtime Visitors',
-            'description' => 'Get current realtime visitor count.',
-            'icon' => 'ph:users',
-        ],
-        'plausible_list_sites' => [
-            'class' => PlausibleListSites::class,
-            'type' => 'read',
-            'name' => 'List Sites',
-            'description' => 'List all tracked websites.',
-            'icon' => 'ph:globe',
-        ],
-        'plausible_create_site' => [
-            'class' => PlausibleCreateSite::class,
-            'type' => 'write',
-            'name' => 'Create Site',
-            'description' => 'Register a new website for tracking.',
-            'icon' => 'ph:globe',
-        ],
-        'plausible_delete_site' => [
-            'class' => PlausibleDeleteSite::class,
-            'type' => 'write',
-            'name' => 'Delete Site',
-            'description' => 'Remove a website from tracking.',
-            'icon' => 'ph:trash',
-        ],
-        'plausible_list_goals' => [
-            'class' => PlausibleListGoals::class,
-            'type' => 'read',
-            'name' => 'List Goals',
-            'description' => 'List conversion goals for a site.',
-            'icon' => 'ph:target',
-        ],
-        'plausible_create_goal' => [
-            'class' => PlausibleCreateGoal::class,
-            'type' => 'write',
-            'name' => 'Create Goal',
-            'description' => 'Create a conversion goal (page or event).',
-            'icon' => 'ph:target',
-        ],
-        'plausible_delete_goal' => [
-            'class' => PlausibleDeleteGoal::class,
-            'type' => 'write',
-            'name' => 'Delete Goal',
-            'description' => 'Delete a conversion goal.',
-            'icon' => 'ph:trash',
         ],
         // Meta
         'get_tool_info' => [
@@ -445,9 +359,97 @@ class ToolRegistry
         ],
     ];
 
+    /** @var array<string, array>|null Cached merged tool map */
+    private ?array $effectiveToolMap = null;
+
+    /** @var array<string, array>|null Cached merged app groups */
+    private ?array $effectiveAppGroups = null;
+
+    /** @var string[]|null Cached merged integration apps */
+    private ?array $effectiveIntegrationApps = null;
+
+    /** @var array<string, string>|null Cached merged app icons */
+    private ?array $effectiveAppIcons = null;
+
+    /** @var array<string, string>|null Cached merged integration logos */
+    private ?array $effectiveIntegrationLogos = null;
+
     public function __construct(
         private AgentPermissionService $permissionService,
+        private ToolProviderRegistry $providerRegistry,
     ) {}
+
+    // ─── Effective (merged static + dynamic) accessors ──────────────────
+
+    private function getEffectiveToolMap(): array
+    {
+        if ($this->effectiveToolMap === null) {
+            $this->effectiveToolMap = self::TOOL_MAP;
+            foreach ($this->providerRegistry->all() as $provider) {
+                foreach ($provider->tools() as $slug => $meta) {
+                    $this->effectiveToolMap[$slug] = $meta;
+                }
+            }
+        }
+        return $this->effectiveToolMap;
+    }
+
+    private function getEffectiveAppGroups(): array
+    {
+        if ($this->effectiveAppGroups === null) {
+            $this->effectiveAppGroups = self::APP_GROUPS;
+            foreach ($this->providerRegistry->all() as $provider) {
+                $meta = $provider->appMeta();
+                $this->effectiveAppGroups[$provider->appName()] = [
+                    'tools' => array_keys($provider->tools()),
+                    'label' => $meta['label'] ?? '',
+                    'description' => $meta['description'] ?? '',
+                ];
+            }
+        }
+        return $this->effectiveAppGroups;
+    }
+
+    public function getEffectiveIntegrationApps(): array
+    {
+        if ($this->effectiveIntegrationApps === null) {
+            $this->effectiveIntegrationApps = self::INTEGRATION_APPS;
+            foreach ($this->providerRegistry->all() as $provider) {
+                if ($provider->isIntegration() && !in_array($provider->appName(), $this->effectiveIntegrationApps)) {
+                    $this->effectiveIntegrationApps[] = $provider->appName();
+                }
+            }
+        }
+        return $this->effectiveIntegrationApps;
+    }
+
+    private function getEffectiveAppIcons(): array
+    {
+        if ($this->effectiveAppIcons === null) {
+            $this->effectiveAppIcons = self::APP_ICONS;
+            foreach ($this->providerRegistry->all() as $provider) {
+                $meta = $provider->appMeta();
+                if (isset($meta['icon'])) {
+                    $this->effectiveAppIcons[$provider->appName()] = $meta['icon'];
+                }
+            }
+        }
+        return $this->effectiveAppIcons;
+    }
+
+    private function getEffectiveIntegrationLogos(): array
+    {
+        if ($this->effectiveIntegrationLogos === null) {
+            $this->effectiveIntegrationLogos = self::INTEGRATION_LOGOS;
+            foreach ($this->providerRegistry->all() as $provider) {
+                $meta = $provider->appMeta();
+                if (isset($meta['logo'])) {
+                    $this->effectiveIntegrationLogos[$provider->appName()] = $meta['logo'];
+                }
+            }
+        }
+        return $this->effectiveIntegrationLogos;
+    }
 
     /**
      * Get tools available for a given agent, filtered by permissions.
@@ -461,10 +463,10 @@ class ToolRegistry
         $appLookup = $this->buildAppLookup();
         $tools = [];
 
-        foreach (self::TOOL_MAP as $slug => $meta) {
+        foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             // Skip tools from disabled integrations
             $app = $appLookup[$slug] ?? 'other';
-            if (in_array($app, self::INTEGRATION_APPS) && !in_array($app, $enabledIntegrations)) {
+            if (in_array($app, $this->getEffectiveIntegrationApps()) && !in_array($app, $enabledIntegrations)) {
                 continue;
             }
 
@@ -497,9 +499,9 @@ class ToolRegistry
         $appLookup = $this->buildAppLookup();
         $slugs = [];
 
-        foreach (self::TOOL_MAP as $slug => $meta) {
+        foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             $app = $appLookup[$slug] ?? 'other';
-            if (in_array($app, self::INTEGRATION_APPS) && !in_array($app, $enabledIntegrations)) {
+            if (in_array($app, $this->getEffectiveIntegrationApps()) && !in_array($app, $enabledIntegrations)) {
                 continue;
             }
 
@@ -523,9 +525,9 @@ class ToolRegistry
 
         $result = [];
 
-        foreach (self::TOOL_MAP as $slug => $meta) {
+        foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             $app = $appLookup[$slug] ?? 'other';
-            $isIntegration = in_array($app, self::INTEGRATION_APPS);
+            $isIntegration = in_array($app, $this->getEffectiveIntegrationApps());
             $integrationEnabled = !$isIntegration || in_array($app, $enabledIntegrations);
 
             $permission = $this->permissionService->resolveToolPermission(
@@ -554,16 +556,16 @@ class ToolRegistry
     public function getAppGroupsMeta(): array
     {
         $result = [];
-        foreach (self::APP_GROUPS as $name => $group) {
+        foreach ($this->getEffectiveAppGroups() as $name => $group) {
             $meta = [
                 'name' => $name,
                 'description' => $group['description'],
-                'icon' => self::APP_ICONS[$name] ?? 'ph:puzzle-piece',
-                'isIntegration' => in_array($name, self::INTEGRATION_APPS),
+                'icon' => $this->getEffectiveAppIcons()[$name] ?? 'ph:puzzle-piece',
+                'isIntegration' => in_array($name, $this->getEffectiveIntegrationApps()),
             ];
 
-            if (isset(self::INTEGRATION_LOGOS[$name])) {
-                $meta['logo'] = self::INTEGRATION_LOGOS[$name];
+            if (isset($this->getEffectiveIntegrationLogos()[$name])) {
+                $meta['logo'] = $this->getEffectiveIntegrationLogos()[$name];
             }
 
             $result[] = $meta;
@@ -588,11 +590,11 @@ class ToolRegistry
      */
     public function instantiateToolBySlug(string $slug, User $agent): ?\Laravel\Ai\Contracts\Tool
     {
-        if (!isset(self::TOOL_MAP[$slug])) {
+        if (!isset($this->getEffectiveToolMap()[$slug])) {
             return null;
         }
 
-        return $this->instantiateTool(self::TOOL_MAP[$slug]['class'], $agent);
+        return $this->instantiateTool($this->getEffectiveToolMap()[$slug]['class'], $agent);
     }
 
     /**
@@ -604,16 +606,19 @@ class ToolRegistry
         $enabledIntegrations = $this->permissionService->getEnabledIntegrations($agent);
 
         // Display order grouped by priority, null = section separator
-        $displayOrder = [
+        // Start with known apps, then append any dynamic provider apps
+        $knownIntegrations = ['jpgraph_charts', 'svg', 'telegram'];
+        $providerApps = array_keys($this->providerRegistry->all());
+        $integrations = array_unique(array_merge($providerApps, $knownIntegrations));
+
+        $displayOrder = array_merge(
             // System & task management
-            'tasks', 'system',
-            null,
+            ['tasks', 'system', null],
             // Internal apps
-            'chat', 'docs', 'tables', 'calendar', 'lists', 'workspace',
-            null,
-            // Integrations & utilities
-            'celestial', 'jpgraph_charts', 'svg', 'telegram', 'plausible',
-        ];
+            ['chat', 'docs', 'tables', 'calendar', 'lists', 'workspace', null],
+            // Integrations & utilities (dynamic + static)
+            $integrations,
+        );
 
         $lines = [];
         $lastWasSeparator = true; // avoid leading blank line
@@ -627,13 +632,13 @@ class ToolRegistry
                 continue;
             }
 
-            $group = self::APP_GROUPS[$appName] ?? null;
+            $group = $this->getEffectiveAppGroups()[$appName] ?? null;
             if (!$group) {
                 continue;
             }
 
             // Skip disabled integrations
-            if (in_array($appName, self::INTEGRATION_APPS) && !in_array($appName, $enabledIntegrations)) {
+            if (in_array($appName, $this->getEffectiveIntegrationApps()) && !in_array($appName, $enabledIntegrations)) {
                 continue;
             }
 
@@ -642,11 +647,11 @@ class ToolRegistry
             $hasApproval = false;
 
             foreach ($group['tools'] as $slug) {
-                if (!isset(self::TOOL_MAP[$slug])) {
+                if (!isset($this->getEffectiveToolMap()[$slug])) {
                     continue;
                 }
                 $result = $this->permissionService->resolveToolPermission(
-                    $agent, $slug, self::TOOL_MAP[$slug]['type']
+                    $agent, $slug, $this->getEffectiveToolMap()[$slug]['type']
                 );
                 if ($result['allowed']) {
                     $allowedSlugs[] = $slug;
@@ -680,38 +685,38 @@ class ToolRegistry
     {
         // Check if query matches an app name
         $queryLower = strtolower(trim($query));
-        if (isset(self::APP_GROUPS[$queryLower])) {
+        if (isset($this->getEffectiveAppGroups()[$queryLower])) {
             return $this->getAppDetail($queryLower, $agent);
         }
 
         // Check if query matches a tool slug
-        if (isset(self::TOOL_MAP[$queryLower])) {
+        if (isset($this->getEffectiveToolMap()[$queryLower])) {
             return $this->getSingleToolDetail($queryLower, $agent);
         }
 
         // Fuzzy search — try to find a matching tool
-        foreach (self::TOOL_MAP as $slug => $meta) {
+        foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             if (str_contains($slug, $queryLower) || str_contains(strtolower($meta['name']), $queryLower)) {
                 return $this->getSingleToolDetail($slug, $agent);
             }
         }
 
         // List available apps
-        $apps = implode(', ', array_keys(self::APP_GROUPS));
-        $tools = implode(', ', array_keys(self::TOOL_MAP));
+        $apps = implode(', ', array_keys($this->getEffectiveAppGroups()));
+        $tools = implode(', ', array_keys($this->getEffectiveToolMap()));
         return "Not found: '{$query}'. Available apps: {$apps}. Or query a specific tool: {$tools}";
     }
 
     private function getAppDetail(string $appName, User $agent): string
     {
-        $group = self::APP_GROUPS[$appName];
+        $group = $this->getEffectiveAppGroups()[$appName];
         $lines = ["App: {$appName} — {$group['description']}", '', 'Tools:'];
 
         foreach ($group['tools'] as $slug) {
-            if (!isset(self::TOOL_MAP[$slug])) {
+            if (!isset($this->getEffectiveToolMap()[$slug])) {
                 continue;
             }
-            $meta = self::TOOL_MAP[$slug];
+            $meta = $this->getEffectiveToolMap()[$slug];
             $perm = $this->permissionService->resolveToolPermission($agent, $slug, $meta['type']);
 
             if (!$perm['allowed']) {
@@ -743,7 +748,7 @@ class ToolRegistry
 
     private function getSingleToolDetail(string $slug, User $agent): string
     {
-        $meta = self::TOOL_MAP[$slug];
+        $meta = $this->getEffectiveToolMap()[$slug];
         $perm = $this->permissionService->resolveToolPermission($agent, $slug, $meta['type']);
 
         if (!$perm['allowed']) {
@@ -776,6 +781,19 @@ class ToolRegistry
      */
     private function instantiateTool(string $class, User $agent): \Laravel\Ai\Contracts\Tool
     {
+        // Check if this tool belongs to an external provider
+        foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($provider->tools() as $meta) {
+                if ($meta['class'] === $class) {
+                    return $provider->createTool($class, [
+                        'agent' => $agent,
+                        'timezone' => AppSetting::getValue('org_timezone', 'UTC'),
+                    ]);
+                }
+            }
+        }
+
+        // Built-in tools
         return match ($class) {
             // Tools needing permission service (channel/folder scoping)
             SendChannelMessage::class => new SendChannelMessage($agent, $this->permissionService),
@@ -797,18 +815,9 @@ class ToolRegistry
             ManageListStatus::class => new ManageListStatus($agent),
             UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
-            QueryCelestial::class => new QueryCelestial($agent),
             CreateJpGraphChart::class => new CreateJpGraphChart($agent),
             RenderSvg::class => new RenderSvg($agent),
             SendTelegramNotification::class => new SendTelegramNotification($agent, $this->permissionService),
-            PlausibleQueryStats::class => new PlausibleQueryStats($agent),
-            PlausibleRealtimeVisitors::class => new PlausibleRealtimeVisitors($agent),
-            PlausibleListSites::class => new PlausibleListSites($agent),
-            PlausibleCreateSite::class => new PlausibleCreateSite($agent),
-            PlausibleDeleteSite::class => new PlausibleDeleteSite($agent),
-            PlausibleListGoals::class => new PlausibleListGoals($agent),
-            PlausibleCreateGoal::class => new PlausibleCreateGoal($agent),
-            PlausibleDeleteGoal::class => new PlausibleDeleteGoal($agent),
             WaitForApproval::class => new WaitForApproval($agent),
             Wait::class => new Wait($agent),
             // Workspace Management
@@ -828,7 +837,7 @@ class ToolRegistry
     private function buildAppLookup(): array
     {
         $lookup = [];
-        foreach (self::APP_GROUPS as $appName => $group) {
+        foreach ($this->getEffectiveAppGroups() as $appName => $group) {
             foreach ($group['tools'] as $slug) {
                 $lookup[$slug] = $appName;
             }

@@ -406,10 +406,13 @@
       @saved="handleTelegramSaved"
     />
 
-    <!-- Plausible Config Modal -->
-    <PlausibleConfigModal
-      v-model:open="showPlausibleConfigModal"
-      @saved="handlePlausibleSaved"
+    <!-- Dynamic Config Modal (for package-provided integrations) -->
+    <DynamicConfigModal
+      v-model:open="showDynamicConfigModal"
+      :integration-id="dynamicIntegrationId"
+      :schema="dynamicConfigSchema"
+      :meta="dynamicIntegrationMeta"
+      @saved="handleDynamicSaved"
     />
 
     <!-- Webhook Modal -->
@@ -478,7 +481,7 @@ import Modal from '@/Components/shared/Modal.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
 import GlmConfigModal from '@/Components/integrations/GlmConfigModal.vue'
 import TelegramConfigModal from '@/Components/integrations/TelegramConfigModal.vue'
-import PlausibleConfigModal from '@/Components/integrations/PlausibleConfigModal.vue'
+import DynamicConfigModal from '@/Components/integrations/DynamicConfigModal.vue'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
 // Sidebar state
@@ -534,8 +537,14 @@ const activeGlmIntegrationId = ref<'glm' | 'glm-coding'>('glm-coding')
 // Telegram Config modal
 const showTelegramConfigModal = ref(false)
 
-// Plausible Config modal
-const showPlausibleConfigModal = ref(false)
+// Dynamic Config modal (for package-provided integrations)
+const showDynamicConfigModal = ref(false)
+const dynamicIntegrationId = ref('')
+const dynamicConfigSchema = ref<any[]>([])
+const dynamicIntegrationMeta = ref<any>({ name: '', description: '', icon: 'ph:gear' })
+
+// Track which integrations are configurable (loaded from API)
+const configurableIntegrations = ref<Record<string, any>>({})
 
 // Load integration status from backend
 onMounted(async () => {
@@ -548,11 +557,45 @@ const loadIntegrationStatus = async () => {
     if (response.ok) {
       const integrations = await response.json()
       for (const integration of integrations) {
+        // Store configurable integration data for dynamic modals
+        if (integration.configurable) {
+          configurableIntegrations.value[integration.id] = integration
+        }
+
+        // Update existing category entries
+        let found = false
         for (const category of integrationCategories.value) {
-          const found = category.integrations.find(i => i.id === integration.id)
-          if (found) {
-            found.installed = integration.enabled
+          const entry = category.integrations.find(i => i.id === integration.id)
+          if (entry) {
+            entry.installed = integration.enabled
+            entry.configurable = integration.configurable
+            found = true
+            break
           }
+        }
+
+        // Add dynamic integrations not in static categories
+        if (!found && integration.configurable) {
+          const categoryId = integration.category || 'other'
+          let category = integrationCategories.value.find(c => c.id === categoryId)
+          if (!category) {
+            category = {
+              id: categoryId,
+              name: categoryId.charAt(0).toUpperCase() + categoryId.slice(1),
+              icon: integration.icon || 'ph:puzzle-piece',
+              integrations: [],
+            }
+            integrationCategories.value.push(category)
+          }
+          category.integrations.push({
+            id: integration.id,
+            name: integration.name,
+            icon: integration.icon,
+            description: integration.description,
+            installed: integration.enabled,
+            badge: integration.badge || undefined,
+            configurable: true,
+          })
         }
       }
     }
@@ -791,6 +834,22 @@ const revokeApiKey = (id: string) => {
   apiKeys.value = apiKeys.value.filter(k => k.id !== id)
 }
 
+// Open the dynamic config modal for a configurable integration
+const openDynamicModal = (integrationId: string) => {
+  const data = configurableIntegrations.value[integrationId]
+  if (!data) return
+  dynamicIntegrationId.value = integrationId
+  dynamicConfigSchema.value = data.configSchema || []
+  dynamicIntegrationMeta.value = {
+    name: data.name,
+    description: data.description,
+    icon: data.icon,
+    logo: data.logo,
+    docs_url: data.docsUrl,
+  }
+  showDynamicConfigModal.value = true
+}
+
 // Integration handlers
 const handleInstall = (integration: Integration) => {
   if (integration.id === 'glm' || integration.id === 'glm-coding') {
@@ -804,8 +863,9 @@ const handleInstall = (integration: Integration) => {
     return
   }
 
-  if (integration.id === 'plausible') {
-    showPlausibleConfigModal.value = true
+  // Check if this is a configurable package-provided integration
+  if (configurableIntegrations.value[integration.id]) {
+    openDynamicModal(integration.id)
     return
   }
 
@@ -834,14 +894,15 @@ const handleConfigure = (integration: Integration) => {
     showGlmConfigModal.value = true
   } else if (integration.id === 'telegram') {
     showTelegramConfigModal.value = true
-  } else if (integration.id === 'plausible') {
-    showPlausibleConfigModal.value = true
+  } else if (configurableIntegrations.value[integration.id]) {
+    openDynamicModal(integration.id)
   }
 }
 
-const handlePlausibleSaved = (result: { enabled: boolean; configured: boolean }) => {
+const handleDynamicSaved = (result: { enabled: boolean; configured: boolean }) => {
+  const id = dynamicIntegrationId.value
   for (const category of integrationCategories.value) {
-    const found = category.integrations.find(i => i.id === 'plausible')
+    const found = category.integrations.find(i => i.id === id)
     if (found) {
       found.installed = result.enabled
       break

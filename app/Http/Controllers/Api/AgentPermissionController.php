@@ -109,7 +109,7 @@ class AgentPermissionController extends Controller
 
         $validated = $request->validate([
             'integrations' => 'present|array',
-            'integrations.*' => 'string|in:' . implode(',', ToolRegistry::INTEGRATION_APPS),
+            'integrations.*' => 'string|in:' . implode(',', $this->toolRegistry->getEffectiveIntegrationApps()),
         ]);
 
         $enabled = $validated['integrations'];
@@ -118,7 +118,7 @@ class AgentPermissionController extends Controller
         AgentPermission::forAgent($id)->where('scope_type', 'integration')->delete();
 
         // Create records for all integration apps
-        foreach (ToolRegistry::INTEGRATION_APPS as $app) {
+        foreach ($this->toolRegistry->getEffectiveIntegrationApps() as $app) {
             AgentPermission::create([
                 'id' => Str::uuid()->toString(),
                 'agent_id' => $id,
