@@ -404,6 +404,13 @@ export const useApi = () => {
   const deleteCalendarFeed = (id: string) =>
     api.delete(`/calendar/feeds/${id}`)
 
+  // Settings
+  const fetchSettings = () => useFetch<Record<string, Record<string, unknown>>>('/settings')
+  const updateSettings = (category: string, settings: Record<string, unknown>) =>
+    api.patch('/settings', { category, settings })
+  const dangerAction = (action: string) =>
+    api.post('/settings/danger-action', { action })
+
   // Notifications
   const fetchNotifications = (userId?: string, unreadOnly?: boolean) => {
     const params = new URLSearchParams()
@@ -566,6 +573,10 @@ export const useApi = () => {
     fetchDm,
     // Data Table Views
     updateTableView,
+    // Settings
+    fetchSettings,
+    updateSettings,
+    dangerAction,
     // Notifications
     fetchNotifications,
     markNotificationRead,

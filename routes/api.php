@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\AgentPermissionController;
 use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\IntegrationController;
+use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -235,6 +236,11 @@ Route::put('/agents/{id}/permissions/tools', [AgentPermissionController::class, 
 Route::put('/agents/{id}/permissions/channels', [AgentPermissionController::class, 'updateChannels']);
 Route::put('/agents/{id}/permissions/folders', [AgentPermissionController::class, 'updateFolders']);
 Route::put('/agents/{id}/permissions/integrations', [AgentPermissionController::class, 'updateIntegrations']);
+
+// Settings
+Route::get('/settings', [SettingController::class, 'index']);
+Route::patch('/settings', [SettingController::class, 'update']);
+Route::post('/settings/danger-action', [SettingController::class, 'dangerAction']);
 
 // Integrations
 Route::get('/integrations', [IntegrationController::class, 'index']);

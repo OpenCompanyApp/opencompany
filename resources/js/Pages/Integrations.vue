@@ -1,330 +1,473 @@
 <template>
-  <div class="h-full overflow-y-auto">
-    <div class="max-w-4xl mx-auto p-6">
+  <div class="h-full overflow-hidden flex flex-col">
+    <div class="max-w-6xl mx-auto w-full p-4 md:p-6 flex flex-col flex-1 min-h-0">
       <!-- Header -->
-      <header class="mb-6">
+      <header class="mb-4 md:mb-6 shrink-0">
         <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Integrations</h1>
         <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
           Connect external services and manage API access
         </p>
       </header>
 
-      <!-- Tabs -->
-      <div class="flex gap-2 mb-6">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          type="button"
-          :class="[
-            'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-            activeTab === tab.id
-              ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
-              : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800',
-          ]"
-          @click="activeTab = tab.id"
-        >
-          <Icon :name="tab.icon" class="w-4 h-4 mr-1.5 inline" />
-          {{ tab.label }}
-          <span
-            v-if="tab.id === 'installed' && installedCount > 0"
-            class="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-white/20 dark:bg-neutral-900/20"
-          >
-            {{ installedCount }}
-          </span>
-        </button>
-      </div>
-
-      <!-- Installed Tab -->
-      <div v-if="activeTab === 'installed'" class="space-y-6">
-        <!-- Webhooks Section -->
-        <section>
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-sm font-medium text-neutral-900 dark:text-white">Webhooks</h2>
+      <!-- Sidebar + Content -->
+      <div class="flex flex-col md:flex-row gap-4 md:gap-6 flex-1 min-h-0">
+        <!-- Mobile Nav -->
+        <div class="flex flex-col gap-3 md:hidden shrink-0">
+          <!-- Mobile Search -->
+          <div class="relative">
+            <Icon name="ph:magnifying-glass" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search integrations..."
+              class="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-500"
+            />
             <button
+              v-if="searchQuery"
               type="button"
-              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors duration-150"
-              @click="showWebhookModal = true"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              @click="searchQuery = ''"
             >
-              <Icon name="ph:plus" class="w-3.5 h-3.5" />
-              Add webhook
+              <Icon name="ph:x" class="w-3.5 h-3.5" />
             </button>
           </div>
-
-          <div v-if="webhooks.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
-            <div
-              v-for="webhook in webhooks"
-              :key="webhook.id"
-              class="px-4 py-3"
-            >
-              <div class="flex items-start gap-3">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ webhook.name }}</p>
-                    <span
-                      :class="[
-                        'px-1.5 py-0.5 text-xs rounded',
-                        webhook.enabled
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                          : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
-                      ]"
-                    >
-                      {{ webhook.enabled ? 'Active' : 'Disabled' }}
-                    </span>
-                  </div>
-                  <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-mono">
-                    POST /api/webhooks/{{ webhook.id }}
-                  </p>
-                  <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                    Last triggered: {{ webhook.lastTriggered || 'Never' }}
-                    <span v-if="webhook.callCount"> · {{ webhook.callCount }} calls this week</span>
-                  </p>
-                </div>
-                <div class="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    class="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-                    @click="editWebhook(webhook)"
-                  >
-                    <Icon name="ph:pencil-simple" class="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    class="p-1.5 text-neutral-400 hover:text-red-500 transition-colors"
-                    @click="deleteWebhook(webhook.id)"
-                  >
-                    <Icon name="ph:trash" class="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center">
-            <Icon name="ph:webhooks-logo" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">No webhooks configured</p>
-            <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Add a webhook to receive events from external services</p>
-          </div>
-        </section>
-
-        <!-- API Keys Section -->
-        <section>
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-sm font-medium text-neutral-900 dark:text-white">API Keys</h2>
+          <!-- Mobile Category Pills -->
+          <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4" style="-ms-overflow-style: none; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
             <button
               type="button"
-              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150"
-              @click="generateApiKey"
+              :class="[
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+                activeCategory === 'all' && !searchQuery
+                  ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
+              ]"
+              @click="activeCategory = 'all'; searchQuery = ''"
             >
-              <Icon name="ph:key" class="w-3.5 h-3.5" />
-              Generate key
+              All
+            </button>
+            <button
+              type="button"
+              :class="[
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+                activeCategory === 'installed' && !searchQuery
+                  ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
+              ]"
+              @click="activeCategory = 'installed'; searchQuery = ''"
+            >
+              <Icon name="ph:check-circle" class="w-3.5 h-3.5" />
+              Installed
+              <span
+                v-if="installedCount > 0"
+                class="text-[10px] px-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+              >
+                {{ installedCount }}
+              </span>
+            </button>
+            <button
+              v-for="category in integrationCategories"
+              :key="'mobile-' + category.id"
+              type="button"
+              :class="[
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+                activeCategory === category.id && !searchQuery
+                  ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
+              ]"
+              @click="activeCategory = category.id; searchQuery = ''"
+            >
+              <Icon :name="category.icon" class="w-3.5 h-3.5" />
+              {{ category.name }}
             </button>
           </div>
-
-          <div v-if="apiKeys.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
-            <div
-              v-for="key in apiKeys"
-              :key="key.id"
-              class="px-4 py-3"
-            >
-              <div class="flex items-start gap-3">
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ key.name }}</p>
-                  <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-mono">
-                    {{ key.maskedKey }}
-                  </p>
-                  <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                    Created {{ key.createdAt }} · Last used {{ key.lastUsed || 'Never' }}
-                  </p>
-                </div>
-                <div class="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    class="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-                    @click="copyApiKey(key)"
-                  >
-                    <Icon name="ph:copy" class="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    class="p-1.5 text-neutral-400 hover:text-red-500 transition-colors"
-                    @click="revokeApiKey(key.id)"
-                  >
-                    <Icon name="ph:trash" class="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center">
-            <Icon name="ph:key" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">No API keys</p>
-            <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Generate a key to access the API programmatically</p>
-          </div>
-        </section>
-
-        <!-- Connected Services Section -->
-        <section>
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-sm font-medium text-neutral-900 dark:text-white">Connected Services</h2>
-          </div>
-
-          <div v-if="connectedServices.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
-            <div
-              v-for="service in connectedServices"
-              :key="service.id"
-              class="px-4 py-3"
-            >
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                  <Icon :name="service.icon" class="w-4 h-4 text-green-600 dark:text-green-400" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ service.name }}</p>
-                  <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ service.description }}</p>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                    <Icon name="ph:check-circle-fill" class="w-3.5 h-3.5" />
-                    Connected
-                  </span>
-                  <button
-                    type="button"
-                    class="p-1.5 text-neutral-400 hover:text-red-500 transition-colors"
-                    title="Disconnect"
-                    @click="disconnectService(service.id)"
-                  >
-                    <Icon name="ph:plug" class="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center">
-            <Icon name="ph:plugs-connected" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">No connected services</p>
-            <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-              Browse the
-              <button type="button" class="text-neutral-900 dark:text-white underline" @click="activeTab = 'library'">
-                library
-              </button>
-              to connect integrations
-            </p>
-          </div>
-        </section>
-      </div>
-
-      <!-- Library Tab -->
-      <div v-else-if="activeTab === 'library'" class="space-y-8">
-        <!-- Search -->
-        <SearchInput
-          v-model="librarySearch"
-          placeholder="Search integrations..."
-          :clearable="true"
-        />
-
-        <!-- Empty search state -->
-        <div v-if="librarySearch && filteredCategories.length === 0" class="text-center py-12">
-          <Icon name="ph:magnifying-glass" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
-          <p class="text-sm text-neutral-500 dark:text-neutral-400">No integrations found for "{{ librarySearch }}"</p>
         </div>
 
-        <!-- Categories -->
-        <section v-for="category in filteredCategories" :key="category.id">
-          <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
-            <Icon :name="category.icon" class="w-4 h-4 text-neutral-500" />
-            {{ category.name }}
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <IntegrationCard
-              v-for="integration in category.integrations"
-              :key="integration.id"
-              :integration="integration"
-              @install="handleInstall"
-              @uninstall="handleUninstall"
-              @configure="handleConfigure"
+        <!-- Desktop Sidebar -->
+        <nav class="hidden md:flex w-52 shrink-0 flex-col gap-1 overflow-y-auto">
+          <!-- Search -->
+          <div class="relative mb-3">
+            <Icon name="ph:magnifying-glass" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search..."
+              class="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-500"
             />
+            <button
+              v-if="searchQuery"
+              type="button"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              @click="searchQuery = ''"
+            >
+              <Icon name="ph:x" class="w-3 h-3" />
+            </button>
           </div>
-        </section>
-      </div>
 
-      <!-- GLM Config Modal -->
-      <GlmConfigModal
-        v-model:open="showGlmConfigModal"
-        :integration-id="activeGlmIntegrationId"
-        @saved="handleGlmSaved"
-      />
+          <!-- All -->
+          <button
+            type="button"
+            :class="[
+              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-left w-full',
+              activeCategory === 'all' && !searchQuery
+                ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+            ]"
+            @click="activeCategory = 'all'; searchQuery = ''"
+          >
+            <Icon name="ph:squares-four" class="w-4 h-4" />
+            All
+            <span class="ml-auto text-[10px] opacity-60">{{ totalIntegrationCount }}</span>
+          </button>
 
-      <!-- Telegram Config Modal -->
-      <TelegramConfigModal
-        v-model:open="showTelegramConfigModal"
-        @saved="handleTelegramSaved"
-      />
+          <!-- Installed -->
+          <button
+            type="button"
+            :class="[
+              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-left w-full',
+              activeCategory === 'installed' && !searchQuery
+                ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+            ]"
+            @click="activeCategory = 'installed'; searchQuery = ''"
+          >
+            <Icon name="ph:check-circle" class="w-4 h-4" />
+            Installed
+            <span
+              v-if="installedCount > 0"
+              class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+            >
+              {{ installedCount }}
+            </span>
+          </button>
 
-      <!-- Plausible Config Modal -->
-      <PlausibleConfigModal
-        v-model:open="showPlausibleConfigModal"
-        @saved="handlePlausibleSaved"
-      />
+          <!-- Divider -->
+          <div class="border-t border-neutral-200 dark:border-neutral-700 my-2" />
 
-      <!-- Webhook Modal -->
-      <Modal v-model:open="showWebhookModal" title="Add Webhook">
-        <template #body>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Name</label>
-              <input
-                v-model="webhookForm.name"
-                type="text"
-                class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
-                placeholder="e.g., GitHub PR Notifications"
+          <!-- Categories -->
+          <button
+            v-for="category in integrationCategories"
+            :key="category.id"
+            type="button"
+            :class="[
+              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-left w-full',
+              activeCategory === category.id && !searchQuery
+                ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+            ]"
+            @click="activeCategory = category.id; searchQuery = ''"
+          >
+            <Icon :name="category.icon" class="w-4 h-4" />
+            {{ category.name }}
+            <span class="ml-auto text-[10px] opacity-60">{{ category.integrations.length }}</span>
+          </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 min-w-0 overflow-y-auto">
+          <!-- Search Results -->
+          <template v-if="searchQuery">
+            <div class="mb-4">
+              <h2 class="text-sm font-medium text-neutral-900 dark:text-white">
+                Search results for "{{ searchQuery }}"
+              </h2>
+              <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                {{ searchResults.length }} integration{{ searchResults.length === 1 ? '' : 's' }} found
+              </p>
+            </div>
+
+            <div v-if="searchResults.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <IntegrationCard
+                v-for="integration in searchResults"
+                :key="integration.id"
+                :integration="integration"
+                @install="handleInstall"
+                @uninstall="handleUninstall"
+                @configure="handleConfigure"
               />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Target</label>
-              <select
-                v-model="webhookForm.targetType"
-                class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
-              >
-                <option value="agent">Send to Agent</option>
-                <option value="channel">Send to Channel</option>
-                <option value="task">Create Task</option>
-              </select>
+
+            <div v-else class="text-center py-16">
+              <Icon name="ph:magnifying-glass" class="w-10 h-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+              <p class="text-sm text-neutral-500 dark:text-neutral-400">No integrations match your search</p>
             </div>
-            <div v-if="webhookForm.targetType === 'agent'">
-              <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Agent</label>
-              <select
-                v-model="webhookForm.targetId"
-                class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
-              >
-                <option value="">Select an agent...</option>
-                <option value="agent-1">Logic (Coder)</option>
-                <option value="agent-2">Scout (Researcher)</option>
-              </select>
+          </template>
+
+          <!-- Installed View -->
+          <template v-else-if="activeCategory === 'installed'">
+            <!-- Connected Services -->
+            <section class="mb-8">
+              <h2 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">Connected Services</h2>
+
+              <div v-if="connectedServices.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+                <IntegrationCard
+                  v-for="service in installedIntegrations"
+                  :key="service.id"
+                  :integration="service"
+                  @install="handleInstall"
+                  @uninstall="handleUninstall"
+                  @configure="handleConfigure"
+                />
+              </div>
+
+              <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center mb-6">
+                <Icon name="ph:plugs-connected" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">No connected services</p>
+                <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                  Browse the
+                  <button type="button" class="text-neutral-900 dark:text-white underline" @click="activeCategory = 'all'">
+                    library
+                  </button>
+                  to connect integrations
+                </p>
+              </div>
+            </section>
+
+            <!-- Webhooks Section -->
+            <section class="mb-8">
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-medium text-neutral-900 dark:text-white">Webhooks</h2>
+                <button
+                  type="button"
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors duration-150"
+                  @click="showWebhookModal = true"
+                >
+                  <Icon name="ph:plus" class="w-3.5 h-3.5" />
+                  Add webhook
+                </button>
+              </div>
+
+              <div v-if="webhooks.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
+                <div
+                  v-for="webhook in webhooks"
+                  :key="webhook.id"
+                  class="px-4 py-3"
+                >
+                  <div class="flex items-start gap-3">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ webhook.name }}</p>
+                        <span
+                          :class="[
+                            'px-1.5 py-0.5 text-xs rounded',
+                            webhook.enabled
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                              : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
+                          ]"
+                        >
+                          {{ webhook.enabled ? 'Active' : 'Disabled' }}
+                        </span>
+                      </div>
+                      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-mono">
+                        POST /api/webhooks/{{ webhook.id }}
+                      </p>
+                      <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                        Last triggered: {{ webhook.lastTriggered || 'Never' }}
+                        <span v-if="webhook.callCount"> · {{ webhook.callCount }} calls this week</span>
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        class="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                        @click="editWebhook(webhook)"
+                      >
+                        <Icon name="ph:pencil-simple" class="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        class="p-1.5 text-neutral-400 hover:text-red-500 transition-colors"
+                        @click="deleteWebhook(webhook.id)"
+                      >
+                        <Icon name="ph:trash" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center">
+                <Icon name="ph:webhooks-logo" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">No webhooks configured</p>
+                <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Add a webhook to receive events from external services</p>
+              </div>
+            </section>
+
+            <!-- API Keys Section -->
+            <section>
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-medium text-neutral-900 dark:text-white">API Keys</h2>
+                <button
+                  type="button"
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150"
+                  @click="generateApiKey"
+                >
+                  <Icon name="ph:key" class="w-3.5 h-3.5" />
+                  Generate key
+                </button>
+              </div>
+
+              <div v-if="apiKeys.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
+                <div
+                  v-for="key in apiKeys"
+                  :key="key.id"
+                  class="px-4 py-3"
+                >
+                  <div class="flex items-start gap-3">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ key.name }}</p>
+                      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-mono">
+                        {{ key.maskedKey }}
+                      </p>
+                      <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                        Created {{ key.createdAt }} · Last used {{ key.lastUsed || 'Never' }}
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        class="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                        @click="copyApiKey(key)"
+                      >
+                        <Icon name="ph:copy" class="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        class="p-1.5 text-neutral-400 hover:text-red-500 transition-colors"
+                        @click="revokeApiKey(key.id)"
+                      >
+                        <Icon name="ph:trash" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center">
+                <Icon name="ph:key" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">No API keys</p>
+                <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Generate a key to access the API programmatically</p>
+              </div>
+            </section>
+          </template>
+
+          <!-- All Integrations View -->
+          <template v-else-if="activeCategory === 'all'">
+            <section v-for="category in integrationCategories" :key="category.id" class="mb-8 last:mb-0">
+              <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
+                <Icon :name="category.icon" class="w-4 h-4 text-neutral-500" />
+                {{ category.name }}
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <IntegrationCard
+                  v-for="integration in category.integrations"
+                  :key="integration.id"
+                  :integration="integration"
+                  @install="handleInstall"
+                  @uninstall="handleUninstall"
+                  @configure="handleConfigure"
+                />
+              </div>
+            </section>
+          </template>
+
+          <!-- Single Category View -->
+          <template v-else>
+            <div v-if="selectedCategory" class="mb-4">
+              <h2 class="text-sm font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                <Icon :name="selectedCategory.icon" class="w-4 h-4 text-neutral-500" />
+                {{ selectedCategory.name }}
+              </h2>
             </div>
-          </div>
-        </template>
-        <template #footer>
-          <div class="flex justify-end gap-2">
-            <button
-              type="button"
-              class="px-3 py-1.5 text-sm rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              @click="showWebhookModal = false"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              class="px-3 py-1.5 text-sm font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100"
-              @click="saveWebhook"
-            >
-              Create Webhook
-            </button>
-          </div>
-        </template>
-      </Modal>
+            <div v-if="selectedCategory" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <IntegrationCard
+                v-for="integration in selectedCategory.integrations"
+                :key="integration.id"
+                :integration="integration"
+                @install="handleInstall"
+                @uninstall="handleUninstall"
+                @configure="handleConfigure"
+              />
+            </div>
+          </template>
+        </main>
+      </div>
     </div>
+
+    <!-- GLM Config Modal -->
+    <GlmConfigModal
+      v-model:open="showGlmConfigModal"
+      :integration-id="activeGlmIntegrationId"
+      @saved="handleGlmSaved"
+    />
+
+    <!-- Telegram Config Modal -->
+    <TelegramConfigModal
+      v-model:open="showTelegramConfigModal"
+      @saved="handleTelegramSaved"
+    />
+
+    <!-- Plausible Config Modal -->
+    <PlausibleConfigModal
+      v-model:open="showPlausibleConfigModal"
+      @saved="handlePlausibleSaved"
+    />
+
+    <!-- Webhook Modal -->
+    <Modal v-model:open="showWebhookModal" title="Add Webhook">
+      <template #body>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Name</label>
+            <input
+              v-model="webhookForm.name"
+              type="text"
+              class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
+              placeholder="e.g., GitHub PR Notifications"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Target</label>
+            <select
+              v-model="webhookForm.targetType"
+              class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
+            >
+              <option value="agent">Send to Agent</option>
+              <option value="channel">Send to Channel</option>
+              <option value="task">Create Task</option>
+            </select>
+          </div>
+          <div v-if="webhookForm.targetType === 'agent'">
+            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Agent</label>
+            <select
+              v-model="webhookForm.targetId"
+              class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
+            >
+              <option value="">Select an agent...</option>
+              <option value="agent-1">Logic (Coder)</option>
+              <option value="agent-2">Scout (Researcher)</option>
+            </select>
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <button
+            type="button"
+            class="px-3 py-1.5 text-sm rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            @click="showWebhookModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 text-sm font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100"
+            @click="saveWebhook"
+          >
+            Create Webhook
+          </button>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -332,22 +475,15 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
-import SearchInput from '@/Components/shared/SearchInput.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
 import GlmConfigModal from '@/Components/integrations/GlmConfigModal.vue'
 import TelegramConfigModal from '@/Components/integrations/TelegramConfigModal.vue'
 import PlausibleConfigModal from '@/Components/integrations/PlausibleConfigModal.vue'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
-// Tab state
-type TabId = 'installed' | 'library'
-
-const tabs = [
-  { id: 'installed' as const, label: 'Installed', icon: 'ph:check-circle' },
-  { id: 'library' as const, label: 'Library', icon: 'ph:squares-four' },
-]
-
-const activeTab = ref<TabId>('installed')
+// Sidebar state
+const activeCategory = ref<string>('all')
+const searchQuery = ref('')
 
 // Interfaces
 interface Webhook {
@@ -391,9 +527,6 @@ const webhookForm = reactive({
   targetId: '',
 })
 
-// Library search
-const librarySearch = ref('')
-
 // GLM Config modal
 const showGlmConfigModal = ref(false)
 const activeGlmIntegrationId = ref<'glm' | 'glm-coding'>('glm-coding')
@@ -414,7 +547,6 @@ const loadIntegrationStatus = async () => {
     const response = await fetch('/api/integrations')
     if (response.ok) {
       const integrations = await response.json()
-      // Update the AI Models category with real status
       for (const integration of integrations) {
         for (const category of integrationCategories.value) {
           const found = category.integrations.find(i => i.id === integration.id)
@@ -462,15 +594,15 @@ const apiKeys = ref<ApiKey[]>([
   },
 ])
 
-// Integration categories for Library
+// Integration categories
 const integrationCategories = ref<IntegrationCategory[]>([
   {
     id: 'ai-models',
     name: 'AI Models',
     icon: 'ph:brain',
     integrations: [
-      { id: 'glm', name: 'GLM (Zhipu AI)', icon: 'ph:brain', description: 'General-purpose Chinese LLM', installed: false, popular: true },
-      { id: 'glm-coding', name: 'GLM Coding Plan', icon: 'ph:code', description: 'Specialized coding LLM', installed: false, popular: true },
+      { id: 'glm', name: 'GLM (Zhipu AI)', icon: 'ph:brain', description: 'General-purpose Chinese LLM', installed: false, badge: 'verified' },
+      { id: 'glm-coding', name: 'GLM Coding Plan', icon: 'ph:code', description: 'Specialized coding LLM', installed: false, badge: 'verified' },
     ],
   },
   {
@@ -478,7 +610,7 @@ const integrationCategories = ref<IntegrationCategory[]>([
     name: 'Analytics',
     icon: 'ph:chart-line-up',
     integrations: [
-      { id: 'plausible', name: 'Plausible Analytics', icon: 'ph:chart-line-up', description: 'Privacy-friendly website analytics', installed: false },
+      { id: 'plausible', name: 'Plausible Analytics', icon: 'ph:chart-line-up', description: 'Privacy-friendly website analytics', installed: false, badge: 'verified' },
       { id: 'google-analytics', name: 'Google Analytics', icon: 'ph:google-logo', description: 'Website traffic analytics', installed: false },
     ],
   },
@@ -487,10 +619,10 @@ const integrationCategories = ref<IntegrationCategory[]>([
     name: 'Communication',
     icon: 'ph:chat-circle',
     integrations: [
-      { id: 'slack', name: 'Slack', icon: 'ph:slack-logo', description: 'Team messaging and notifications', installed: false, popular: true },
-      { id: 'discord', name: 'Discord', icon: 'ph:discord-logo', description: 'Community chat and voice', installed: false, popular: true },
+      { id: 'slack', name: 'Slack', icon: 'ph:slack-logo', description: 'Team messaging and notifications', installed: false },
+      { id: 'discord', name: 'Discord', icon: 'ph:discord-logo', description: 'Community chat and voice', installed: false },
       { id: 'teams', name: 'Microsoft Teams', icon: 'ph:microsoft-teams-logo', description: 'Enterprise collaboration', installed: false },
-      { id: 'telegram', name: 'Telegram', icon: 'ph:telegram-logo', description: 'Secure messaging', installed: false },
+      { id: 'telegram', name: 'Telegram', icon: 'ph:telegram-logo', description: 'Secure messaging', installed: false, badge: 'verified' },
       { id: 'matrix', name: 'Matrix', icon: 'ph:chat-centered-dots', description: 'Decentralized chat (self-hosted)', installed: false },
     ],
   },
@@ -499,9 +631,9 @@ const integrationCategories = ref<IntegrationCategory[]>([
     name: 'Developer Tools',
     icon: 'ph:code',
     integrations: [
-      { id: 'github', name: 'GitHub', icon: 'ph:github-logo', description: 'Repos, issues, PRs, actions', installed: true, popular: true },
+      { id: 'github', name: 'GitHub', icon: 'ph:github-logo', description: 'Repos, issues, PRs, actions', installed: true },
       { id: 'gitlab', name: 'GitLab', icon: 'ph:gitlab-logo', description: 'Git hosting and CI/CD', installed: false },
-      { id: 'linear', name: 'Linear', icon: 'ph:square-split-horizontal', description: 'Issue tracking', installed: false, popular: true },
+      { id: 'linear', name: 'Linear', icon: 'ph:square-split-horizontal', description: 'Issue tracking', installed: false },
       { id: 'jira', name: 'Jira', icon: 'ph:kanban', description: 'Project management', installed: false },
     ],
   },
@@ -510,7 +642,7 @@ const integrationCategories = ref<IntegrationCategory[]>([
     name: 'Productivity',
     icon: 'ph:briefcase',
     integrations: [
-      { id: 'notion', name: 'Notion', icon: 'ph:notebook', description: 'Docs and knowledge base', installed: false, popular: true },
+      { id: 'notion', name: 'Notion', icon: 'ph:notebook', description: 'Docs and knowledge base', installed: false },
       { id: 'trello', name: 'Trello', icon: 'ph:trello-logo', description: 'Kanban boards', installed: false },
       { id: 'google-calendar', name: 'Google Calendar', icon: 'ph:calendar', description: 'Calendar sync', installed: false },
       { id: 'obsidian', name: 'Obsidian', icon: 'ph:vault', description: 'Knowledge management', installed: false },
@@ -518,17 +650,36 @@ const integrationCategories = ref<IntegrationCategory[]>([
     ],
   },
   {
+    id: 'automation',
+    name: 'Automation',
+    icon: 'ph:flow-arrow',
+    integrations: [
+      { id: 'n8n', name: 'n8n', icon: 'ph:flow-arrow', description: 'Open-source workflow automation', installed: false },
+      { id: 'zapier', name: 'Zapier', icon: 'ph:lightning', description: 'Connect to 5,000+ apps', installed: false },
+      { id: 'make', name: 'Make (Integromat)', icon: 'ph:circles-three-plus', description: 'Visual automation platform', installed: false },
+    ],
+  },
+  {
     id: 'data',
     name: 'Data & APIs',
     icon: 'ph:database',
     integrations: [
-      { id: 'webhooks', name: 'Webhooks', icon: 'ph:webhooks-logo', description: 'Custom HTTP webhooks', installed: true },
-      { id: 'email', name: 'Email (SMTP)', icon: 'ph:envelope', description: 'Send and receive emails', installed: false },
-      { id: 'rest-api', name: 'REST API', icon: 'ph:plug', description: 'Generic API connector', installed: false },
-      { id: 'zapier', name: 'Zapier', icon: 'ph:lightning', description: 'Connect to 5,000+ apps', installed: false, popular: true },
+      { id: 'webhooks', name: 'Webhooks', icon: 'ph:webhooks-logo', description: 'Custom HTTP webhooks', installed: true, badge: 'built-in' },
+      { id: 'email', name: 'Email (SMTP)', icon: 'ph:envelope', description: 'Send and receive emails', installed: false, badge: 'built-in' },
+      { id: 'rest-api', name: 'REST API', icon: 'ph:plug', description: 'Generic API connector', installed: false, badge: 'built-in' },
     ],
   },
 ])
+
+// Computed - Selected category
+const selectedCategory = computed(() => {
+  return integrationCategories.value.find(c => c.id === activeCategory.value)
+})
+
+// Computed - Total integration count
+const totalIntegrationCount = computed(() => {
+  return integrationCategories.value.reduce((sum, cat) => sum + cat.integrations.length, 0)
+})
 
 // Computed - Connected services (installed integrations)
 const connectedServices = computed<Service[]>(() => {
@@ -549,26 +700,40 @@ const connectedServices = computed<Service[]>(() => {
   return installed
 })
 
-// Computed - Installed count for tab badge
-const installedCount = computed(() => {
-  return webhooks.value.length + apiKeys.value.length + connectedServices.value.length
+// Computed - Installed integrations as Integration objects (for cards)
+const installedIntegrations = computed(() => {
+  const installed: Integration[] = []
+  for (const category of integrationCategories.value) {
+    for (const integration of category.integrations) {
+      if (integration.installed) {
+        installed.push(integration)
+      }
+    }
+  }
+  return installed
 })
 
-// Computed - Filtered categories for search
-const filteredCategories = computed(() => {
-  if (!librarySearch.value) {
-    return integrationCategories.value
-  }
+// Computed - Installed count
+const installedCount = computed(() => {
+  return connectedServices.value.length
+})
 
-  const search = librarySearch.value.toLowerCase()
-  return integrationCategories.value
-    .map(category => ({
-      ...category,
-      integrations: category.integrations.filter(
-        i => i.name.toLowerCase().includes(search) || i.description.toLowerCase().includes(search)
-      ),
-    }))
-    .filter(category => category.integrations.length > 0)
+// Computed - Search results
+const searchResults = computed(() => {
+  if (!searchQuery.value) return []
+  const query = searchQuery.value.toLowerCase()
+  const results: Integration[] = []
+  for (const category of integrationCategories.value) {
+    for (const integration of category.integrations) {
+      if (
+        integration.name.toLowerCase().includes(query) ||
+        integration.description.toLowerCase().includes(query)
+      ) {
+        results.push(integration)
+      }
+    }
+  }
+  return results
 })
 
 // Webhook handlers
@@ -613,7 +778,6 @@ const copyApiKey = async (key: ApiKey) => {
   try {
     await navigator.clipboard.writeText(key.maskedKey)
   } catch {
-    // Fallback for non-HTTPS contexts
     const textarea = document.createElement('textarea')
     textarea.value = key.maskedKey
     document.body.appendChild(textarea)
@@ -629,26 +793,22 @@ const revokeApiKey = (id: string) => {
 
 // Integration handlers
 const handleInstall = (integration: Integration) => {
-  // For AI model integrations, open config modal
   if (integration.id === 'glm' || integration.id === 'glm-coding') {
     activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
     showGlmConfigModal.value = true
     return
   }
 
-  // For Telegram, open config modal
   if (integration.id === 'telegram') {
     showTelegramConfigModal.value = true
     return
   }
 
-  // For Plausible, open config modal
   if (integration.id === 'plausible') {
     showPlausibleConfigModal.value = true
     return
   }
 
-  // Find and update the integration
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === integration.id)
     if (found) {
@@ -658,9 +818,7 @@ const handleInstall = (integration: Integration) => {
   }
 }
 
-// Handle GLM config saved
 const handleGlmSaved = (result: { enabled: boolean; configured: boolean }) => {
-  // Update the specific GLM integration status
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === activeGlmIntegrationId.value)
     if (found) {
@@ -670,7 +828,6 @@ const handleGlmSaved = (result: { enabled: boolean; configured: boolean }) => {
   }
 }
 
-// Handle configure integration
 const handleConfigure = (integration: Integration) => {
   if (integration.id === 'glm' || integration.id === 'glm-coding') {
     activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
@@ -682,7 +839,6 @@ const handleConfigure = (integration: Integration) => {
   }
 }
 
-// Handle Plausible config saved
 const handlePlausibleSaved = (result: { enabled: boolean; configured: boolean }) => {
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === 'plausible')
@@ -693,7 +849,6 @@ const handlePlausibleSaved = (result: { enabled: boolean; configured: boolean })
   }
 }
 
-// Handle Telegram config saved
 const handleTelegramSaved = (result: { enabled: boolean; configured: boolean }) => {
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === 'telegram')
@@ -705,20 +860,8 @@ const handleTelegramSaved = (result: { enabled: boolean; configured: boolean }) 
 }
 
 const handleUninstall = (integration: Integration) => {
-  // Find and update the integration
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === integration.id)
-    if (found) {
-      found.installed = false
-      break
-    }
-  }
-}
-
-const disconnectService = (id: string) => {
-  // Find and disconnect the service
-  for (const category of integrationCategories.value) {
-    const found = category.integrations.find(i => i.id === id)
     if (found) {
       found.installed = false
       break
