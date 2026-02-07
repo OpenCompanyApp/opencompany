@@ -114,6 +114,7 @@
 import { ref, computed, watch } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
+import { useApi } from '@/composables/useApi'
 import type { Channel, User } from '@/types'
 
 const props = defineProps<{
@@ -126,8 +127,7 @@ const emit = defineEmits<{
   'members-added': [userIds: string[]]
 }>()
 
-// Note: useApi needs to be implemented for Laravel/Inertia
-// const { fetchUsers, addChannelMember } = useApi()
+const { fetchUsers, addChannelMember } = useApi()
 
 const searchQuery = ref('')
 const selectedUsers = ref<Set<string>>(new Set())
@@ -142,10 +142,9 @@ watch(() => props.open, async (isOpen) => {
     selectedUsers.value = new Set()
     searchQuery.value = ''
     try {
-      // TODO: Replace with actual API call
-      // const { data } = await fetchUsers()
-      // allUsers.value = data.value ?? []
-      allUsers.value = []
+      const { data, promise } = fetchUsers()
+      await promise
+      allUsers.value = (data.value ?? []).filter(u => u.type !== 'agent' || !('isEphemeral' in u && u.isEphemeral))
     } finally {
       loading.value = false
     }
@@ -183,10 +182,9 @@ async function handleAdd() {
   adding.value = true
   try {
     const userIds = Array.from(selectedUsers.value)
-    // TODO: Replace with actual API call
-    // await Promise.all(
-    //   userIds.map(userId => addChannelMember(props.channel!.id, userId))
-    // )
+    await Promise.all(
+      userIds.map(userId => addChannelMember(props.channel!.id, userId))
+    )
     emit('members-added', userIds)
     emit('update:open', false)
   } catch (error) {
