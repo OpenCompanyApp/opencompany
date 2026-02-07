@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
+use OpenCompany\AiToolCore\Contracts\ConfigurableIntegration;
+use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
 
 class ManageIntegration implements Tool
 {
@@ -26,15 +28,60 @@ class ManageIntegration implements Tool
     {
         try {
             return match ($request['action']) {
+                'get_setup_info' => $this->getSetupInfo($request),
                 'update_config' => $this->updateConfig($request),
                 'test_connection' => $this->testConnection($request),
                 'setup_webhook' => $this->setupWebhook($request),
                 'link_external_user' => $this->linkExternalUser($request),
-                default => "Unknown action: {$request['action']}. Use: update_config, test_connection, setup_webhook, link_external_user",
+                default => "Unknown action: {$request['action']}. Use: get_setup_info, update_config, test_connection, setup_webhook, link_external_user",
             };
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }
+    }
+
+    private function findConfigurableProvider(string $id): ?ConfigurableIntegration
+    {
+        $provider = app(ToolProviderRegistry::class)->get($id);
+
+        return $provider instanceof ConfigurableIntegration ? $provider : null;
+    }
+
+    private function getSetupInfo(Request $request): string
+    {
+        $integrationId = $request['integrationId'] ?? null;
+        if (!$integrationId) {
+            return 'integrationId is required.';
+        }
+
+        $provider = $this->findConfigurableProvider($integrationId);
+        if (!$provider) {
+            return "No configurable integration found for '{$integrationId}'. This action is for dynamic integrations from packages.";
+        }
+
+        $meta = $provider->integrationMeta();
+        $schema = $provider->configSchema();
+
+        $lines = ["{$meta['name']} setup requirements:"];
+        foreach ($schema as $field) {
+            $parts = ["{$field['key']} ({$field['type']})"];
+            if (!empty($field['required'])) {
+                $parts[] = 'REQUIRED';
+            }
+            if (isset($field['default']) && $field['default'] !== '' && $field['default'] !== []) {
+                $defaultStr = is_array($field['default']) ? json_encode($field['default']) : $field['default'];
+                $parts[] = "default: {$defaultStr}";
+            }
+            if (!empty($field['placeholder'])) {
+                $parts[] = "e.g. {$field['placeholder']}";
+            }
+            $lines[] = '- ' . implode(' — ', $parts);
+        }
+
+        $lines[] = '';
+        $lines[] = "Use update_config with integrationId='{$integrationId}' and provide values for the fields above. For string_list fields, pass a JSON array string.";
+
+        return implode("\n", $lines);
     }
 
     private function updateConfig(Request $request): string
@@ -44,9 +91,19 @@ class ManageIntegration implements Tool
             return 'integrationId is required.';
         }
 
+        // Check dynamic providers first, then static
+        $provider = $this->findConfigurableProvider($integrationId);
         $available = IntegrationSetting::getAvailableIntegrations();
-        if (!isset($available[$integrationId])) {
-            return "Integration not found: {$integrationId}. Available: " . implode(', ', array_keys($available));
+
+        if (!$provider && !isset($available[$integrationId])) {
+            $allIds = array_keys($available);
+            foreach (app(ToolProviderRegistry::class)->all() as $p) {
+                if ($p instanceof ConfigurableIntegration) {
+                    $allIds[] = $p->appName();
+                }
+            }
+
+            return "Integration not found: {$integrationId}. Available: " . implode(', ', $allIds);
         }
 
         $setting = IntegrationSetting::firstOrNew(['integration_id' => $integrationId]);
@@ -56,48 +113,68 @@ class ManageIntegration implements Tool
 
         $config = $setting->config ?? [];
 
-        // API key — accept raw keys, never return them unmasked
-        if (!empty($request['apiKey']) && !str_contains($request['apiKey'], '*')) {
-            $config['api_key'] = $request['apiKey'];
-        }
+        if ($provider) {
+            // Dynamic provider — iterate config schema
+            foreach ($provider->configSchema() as $field) {
+                $key = $field['key'];
+                $value = $request[$key] ?? null;
 
-        if (isset($request['url'])) {
-            $config['url'] = $request['url'] ?: ($available[$integrationId]['default_url'] ?? '');
-        }
+                // Also accept 'apiKey' param for 'api_key' schema field
+                if ($key === 'api_key' && $value === null) {
+                    $value = $request['apiKey'] ?? null;
+                }
 
-        if (isset($request['defaultModel'])) {
-            $config['default_model'] = $request['defaultModel'];
-        }
+                if ($value === null) {
+                    continue;
+                }
 
-        // Telegram-specific
-        if (isset($request['defaultAgentId'])) {
-            $config['default_agent_id'] = $request['defaultAgentId'];
-        }
-        if (isset($request['notifyChatId'])) {
-            $config['notify_chat_id'] = $request['notifyChatId'];
-        }
-        if (isset($request['allowedTelegramUsers'])) {
-            $value = $request['allowedTelegramUsers'];
-            if (is_array($value)) {
-                $config['allowed_telegram_users'] = $value;
-            } elseif (is_string($value)) {
-                $decoded = json_decode($value, true);
-                $config['allowed_telegram_users'] = is_array($decoded) ? $decoded : [];
-            } else {
-                $config['allowed_telegram_users'] = [];
+                if ($field['type'] === 'secret') {
+                    if (is_string($value) && str_contains($value, '*')) {
+                        continue; // Skip masked values
+                    }
+                    $config[$key] = $value;
+                } elseif ($field['type'] === 'string_list') {
+                    if (is_array($value)) {
+                        $config[$key] = $value;
+                    } elseif (is_string($value)) {
+                        $decoded = json_decode($value, true);
+                        $config[$key] = is_array($decoded) ? $decoded : [];
+                    }
+                } else {
+                    $config[$key] = $value;
+                }
             }
-        }
+        } else {
+            // Static provider — existing logic
+            if (!empty($request['apiKey']) && !str_contains($request['apiKey'], '*')) {
+                $config['api_key'] = $request['apiKey'];
+            }
 
-        // Plausible-specific
-        if (isset($request['sites'])) {
-            $value = $request['sites'];
-            if (is_array($value)) {
-                $config['sites'] = $value;
-            } elseif (is_string($value)) {
-                $decoded = json_decode($value, true);
-                $config['sites'] = is_array($decoded) ? $decoded : [];
-            } else {
-                $config['sites'] = [];
+            if (isset($request['url'])) {
+                $config['url'] = $request['url'] ?: ($available[$integrationId]['default_url'] ?? '');
+            }
+
+            if (isset($request['defaultModel'])) {
+                $config['default_model'] = $request['defaultModel'];
+            }
+
+            // Telegram-specific
+            if (isset($request['defaultAgentId'])) {
+                $config['default_agent_id'] = $request['defaultAgentId'];
+            }
+            if (isset($request['notifyChatId'])) {
+                $config['notify_chat_id'] = $request['notifyChatId'];
+            }
+            if (isset($request['allowedTelegramUsers'])) {
+                $value = $request['allowedTelegramUsers'];
+                if (is_array($value)) {
+                    $config['allowed_telegram_users'] = $value;
+                } elseif (is_string($value)) {
+                    $decoded = json_decode($value, true);
+                    $config['allowed_telegram_users'] = is_array($decoded) ? $decoded : [];
+                } else {
+                    $config['allowed_telegram_users'] = [];
+                }
             }
         }
 
@@ -109,15 +186,35 @@ class ManageIntegration implements Tool
 
         $setting->save();
 
-        // Return masked info with Telegram-specific details
-        $maskedKey = $setting->getMaskedApiKey();
-        $info = "Integration '{$integrationId}' updated. Enabled: " . ($setting->enabled ? 'yes' : 'no') . ". API Key: {$maskedKey}. Configured: " . ($setting->hasValidConfig() ? 'yes' : 'no') . '.';
+        // Build response
+        $name = $provider ? $provider->integrationMeta()['name'] : ($available[$integrationId]['name'] ?? $integrationId);
+        $info = "Integration '{$name}' updated. Enabled: " . ($setting->enabled ? 'yes' : 'no') . '.';
 
-        if ($integrationId === 'telegram') {
-            $allowedUsers = $config['allowed_telegram_users'] ?? [];
-            $defaultAgent = $config['default_agent_id'] ?? 'none';
-            $notifyChat = $config['notify_chat_id'] ?? 'none';
-            $info .= " Default agent: {$defaultAgent}. Notify chat: {$notifyChat}. Allowed users: " . (empty($allowedUsers) ? 'all (unrestricted)' : implode(', ', $allowedUsers)) . '.';
+        if ($provider) {
+            // Show stored fields from schema (mask secrets)
+            foreach ($provider->configSchema() as $field) {
+                $stored = $config[$field['key']] ?? null;
+                if ($stored === null || $stored === '' || $stored === []) {
+                    continue;
+                }
+                if ($field['type'] === 'secret') {
+                    $info .= " {$field['label']}: " . $setting->getMaskedValue($field['key']) . '.';
+                } elseif ($field['type'] === 'string_list') {
+                    $info .= " {$field['label']}: " . implode(', ', $stored) . '.';
+                } else {
+                    $info .= " {$field['label']}: {$stored}.";
+                }
+            }
+        } else {
+            $maskedKey = $setting->getMaskedApiKey();
+            $info .= " API Key: {$maskedKey}. Configured: " . ($setting->hasValidConfig() ? 'yes' : 'no') . '.';
+
+            if ($integrationId === 'telegram') {
+                $allowedUsers = $config['allowed_telegram_users'] ?? [];
+                $defaultAgent = $config['default_agent_id'] ?? 'none';
+                $notifyChat = $config['notify_chat_id'] ?? 'none';
+                $info .= " Default agent: {$defaultAgent}. Notify chat: {$notifyChat}. Allowed users: " . (empty($allowedUsers) ? 'all (unrestricted)' : implode(', ', $allowedUsers)) . '.';
+            }
         }
 
         return $info;
@@ -130,6 +227,21 @@ class ManageIntegration implements Tool
             return 'integrationId is required.';
         }
 
+        // Check dynamic providers first
+        $provider = $this->findConfigurableProvider($integrationId);
+
+        if ($provider) {
+            $setting = IntegrationSetting::where('integration_id', $integrationId)->first();
+            $config = $setting?->config ?? [];
+
+            $result = $provider->testConnection($config);
+
+            return $result['success']
+                ? ($result['message'] ?? 'Connection OK.')
+                : 'Connection failed: ' . ($result['error'] ?? 'unknown error');
+        }
+
+        // Static providers
         $available = IntegrationSetting::getAvailableIntegrations();
         if (!isset($available[$integrationId])) {
             return "Integration not found: {$integrationId}";
@@ -144,11 +256,6 @@ class ManageIntegration implements Tool
 
         if ($integrationId === 'telegram') {
             return $this->testTelegram($apiKey);
-        }
-
-        if ($integrationId === 'plausible') {
-            $url = $setting->getConfigValue('url') ?? ($available[$integrationId]['default_url'] ?? 'https://plausible.io');
-            return $this->testPlausible($apiKey, $url);
         }
 
         // GLM-style providers
@@ -173,25 +280,6 @@ class ManageIntegration implements Tool
         }
 
         return 'Telegram connection failed: ' . ($data['description'] ?? 'unknown error');
-    }
-
-    private function testPlausible(string $apiKey, string $url): string
-    {
-        $baseUrl = rtrim($url, '/');
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
-            'Content-Type' => 'application/json',
-        ])->timeout(10)->post($baseUrl . '/api/v2/query', [
-            'site_id' => '__connection_test__',
-            'metrics' => ['visitors'],
-            'date_range' => '7d',
-        ]);
-
-        if ($response->json() === null) {
-            return "Could not reach Plausible API at {$baseUrl}. Check the URL.";
-        }
-
-        return "Plausible connection OK at {$baseUrl}.";
     }
 
     private function testChatCompletion(string $apiKey, string $url, string $model): string
@@ -295,11 +383,11 @@ class ManageIntegration implements Tool
         return [
             'action' => $schema
                 ->string()
-                ->description("Action: 'update_config', 'test_connection', 'setup_webhook', 'link_external_user'")
+                ->description("Action: 'get_setup_info', 'update_config', 'test_connection', 'setup_webhook', 'link_external_user'. Use get_setup_info first for dynamic integrations to learn what fields are needed.")
                 ->required(),
             'integrationId' => $schema
                 ->string()
-                ->description('Integration ID (e.g., "telegram", "openai", "glm", "plausible"). Required for all actions.')
+                ->description('Integration ID (e.g., "telegram", "glm", "plausible"). Required for all actions. Includes both static and dynamic package-provided integrations.')
                 ->required(),
             'apiKey' => $schema
                 ->string()
@@ -324,7 +412,7 @@ class ManageIntegration implements Tool
                 ->description('Telegram: JSON array of allowed user IDs, e.g. ["123456","789012"].'),
             'sites' => $schema
                 ->string()
-                ->description('Plausible: JSON array of site domains, e.g. ["example.com"].'),
+                ->description('JSON array of site domains for string_list fields, e.g. ["example.com"].'),
             'provider' => $schema
                 ->string()
                 ->description('External provider name for link_external_user (e.g. "telegram", "whatsapp", "slack").'),
