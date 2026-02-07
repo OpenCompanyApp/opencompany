@@ -34,3 +34,6 @@ components.d.ts
 
 # Inspiration repos
 /inspiration
+
+# Local package development
+/tmp
