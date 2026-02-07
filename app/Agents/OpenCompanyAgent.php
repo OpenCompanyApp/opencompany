@@ -5,6 +5,7 @@ namespace App\Agents;
 use App\Agents\Conversations\ChannelConversationLoader;
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Agents\Tools\ToolRegistry;
+use App\Models\AppSetting;
 use App\Models\Channel;
 use App\Models\Task;
 use App\Models\User;
@@ -61,6 +62,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             $fallback .= "- **Type**: {$this->agent->agent_type}\n";
             $fallback .= "- **Brain**: {$this->agent->brain}\n";
             $fallback .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
+            $fallback .= $this->buildTimeContext();
             $fallback .= $this->buildChannelContext();
             $fallback .= $this->buildTaskContext();
             $fallback .= "## Apps\n\n";
@@ -87,7 +89,8 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             }
         }
 
-        // Add current channel and task context
+        // Add current time, channel, and task context
+        $prompt .= $this->buildTimeContext();
         $prompt .= $this->buildChannelContext();
         $prompt .= $this->buildTaskContext();
 
@@ -201,6 +204,21 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         $prompt .= "ALWAYS call update_current_task(action: \"update_task\") FIRST, before doing anything else, to set:\n";
         $prompt .= "- title: a short action summary (e.g., \"Generate pirate jokes\"), NOT the user's raw message\n";
         $prompt .= "- description: brief context of what was requested and what you plan to do\n\n";
+
+        return $prompt;
+    }
+
+    /**
+     * Build current date/time context for the system prompt.
+     */
+    private function buildTimeContext(): string
+    {
+        $timezone = AppSetting::getValue('org_timezone', 'UTC');
+        $now = now()->timezone($timezone);
+
+        $prompt = "## Current Time\n\n";
+        $prompt .= "- **DateTime**: {$now->format('l, F j, Y g:i A')} ({$timezone})\n";
+        $prompt .= "- **ISO**: {$now->toIso8601String()}\n\n";
 
         return $prompt;
     }

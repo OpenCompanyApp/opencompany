@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AppSetting;
 use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Models\Message;
@@ -115,8 +116,14 @@ class AgentChatService
             . "- **Brain**: {$agent->brain}\n"
             . "- **Behavior**: {$agent->behavior_mode}\n\n";
 
+        $timezone = AppSetting::getValue('org_timezone', 'UTC');
+        $now = now()->timezone($timezone);
+        $timeSection = "## Current Time\n\n"
+            . "- **DateTime**: {$now->format('l, F j, Y g:i A')} ({$timezone})\n"
+            . "- **ISO**: {$now->toIso8601String()}\n\n";
+
         if ($identityFiles->isEmpty()) {
-            return "You are {$agent->name}, a helpful AI assistant.\n\n" . $selfSection;
+            return "You are {$agent->name}, a helpful AI assistant.\n\n" . $selfSection . $timeSection;
         }
 
         $prompt = "# Project Context\n\n";
@@ -132,6 +139,8 @@ class AgentChatService
                 $prompt .= "## {$type}.md\n\n{$file->content}\n\n";
             }
         }
+
+        $prompt .= $timeSection;
 
         return $prompt;
     }
