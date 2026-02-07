@@ -4,7 +4,6 @@ namespace App\Agents\Tools;
 
 use App\Agents\Tools\Calendar\ManageCalendarEvent;
 use App\Agents\Tools\Calendar\QueryCalendar;
-use App\Agents\Tools\Charts\CreateJpGraphChart;
 use App\Agents\Tools\Charts\RenderSvg;
 use App\Agents\Tools\Chat\ListChannels;
 use App\Agents\Tools\Chat\ManageMessage;
@@ -90,11 +89,6 @@ class ToolRegistry
         ],
 
         // Integrations & utilities
-        'jpgraph_charts' => [
-            'tools' => ['create_jpgraph_chart'],
-            'label' => 'create',
-            'description' => 'Generate chart images (JpGraph)',
-        ],
         'svg' => [
             'tools' => ['render_svg'],
             'label' => 'render',
@@ -111,7 +105,7 @@ class ToolRegistry
      * Apps that are external integrations (can be toggled per agent).
      * Built-in apps are always available.
      */
-    public const INTEGRATION_APPS = ['telegram', 'jpgraph_charts'];
+    public const INTEGRATION_APPS = ['telegram'];
 
     /**
      * Icons for each app group.
@@ -123,7 +117,6 @@ class ToolRegistry
         'calendar' => 'ph:calendar',
         'lists' => 'ph:kanban',
         'tasks' => 'ph:list-checks',
-        'jpgraph_charts' => 'ph:chart-bar',
         'svg' => 'ph:file-svg',
         'telegram' => 'ph:telegram-logo',
         'system' => 'ph:gear',
@@ -135,7 +128,6 @@ class ToolRegistry
      */
     private const INTEGRATION_LOGOS = [
         'telegram' => 'logos:telegram',
-        'jpgraph_charts' => 'ph:chart-bar',
     ];
 
     /**
@@ -266,14 +258,6 @@ class ToolRegistry
             'name' => 'Create Task Step',
             'description' => 'Log a progress step on a task you are working on.',
             'icon' => 'ph:list-checks',
-        ],
-        // Charts (JpGraph)
-        'create_jpgraph_chart' => [
-            'class' => CreateJpGraphChart::class,
-            'type' => 'write',
-            'name' => 'Create JpGraph Chart',
-            'description' => 'Generate chart images (bar, line, pie, scatter, radar, stock, gantt, and 14 more types) from data.',
-            'icon' => 'ph:chart-bar',
         ],
         // SVG
         'render_svg' => [
@@ -607,7 +591,7 @@ class ToolRegistry
 
         // Display order grouped by priority, null = section separator
         // Start with known apps, then append any dynamic provider apps
-        $knownIntegrations = ['jpgraph_charts', 'svg', 'telegram'];
+        $knownIntegrations = ['svg', 'telegram'];
         $providerApps = array_keys($this->providerRegistry->all());
         $integrations = array_unique(array_merge($providerApps, $knownIntegrations));
 
@@ -815,7 +799,6 @@ class ToolRegistry
             ManageListStatus::class => new ManageListStatus($agent),
             UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
-            CreateJpGraphChart::class => new CreateJpGraphChart($agent),
             RenderSvg::class => new RenderSvg($agent),
             SendTelegramNotification::class => new SendTelegramNotification($agent, $this->permissionService),
             WaitForApproval::class => new WaitForApproval($agent),

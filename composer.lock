@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3db5b3062e3acd31cfa412629b2768d5",
+    "content-hash": "a0528342f3e5f040bea5ad188d3ea74d",
     "packages": [
         {
             "name": "brick/math",
@@ -3091,7 +3091,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-core",
-                "reference": "49ac3e4f7ee0428be46f6487dfd55a7c26f95dd8"
+                "reference": "01bf5e242495a9281e185278a27876fb8aca5ef6"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3133,12 +3133,56 @@
             }
         },
         {
+            "name": "opencompanyapp/ai-tool-jpgraph",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-jpgraph",
+                "reference": "f82729131b2501d3978cca8a7d82bb286bfa46c5"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "laravel/ai": "^0.1",
+                "mitoteam/jpgraph": "^10.5",
+                "opencompanyapp/ai-tool-core": "^1.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolJpGraph\\AiToolJpGraphServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolJpGraph\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "JpGraph chart generation AI tool for OpenCompany",
+            "keywords": [
+                "ai",
+                "charts",
+                "jpgraph",
+                "laravel",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
             "name": "opencompanyapp/ai-tool-plausible",
             "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-plausible",
-                "reference": "accc8eacaa8aa78d3aed0f3c2184c55e13ce3b5e"
+                "reference": "8eac2bce71228c2fb1dabf65bafc1c6f9f4f6713"
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -10177,6 +10221,7 @@
     "stability-flags": {
         "opencompanyapp/ai-tool-celestial": 20,
         "opencompanyapp/ai-tool-core": 20,
+        "opencompanyapp/ai-tool-jpgraph": 20,
         "opencompanyapp/ai-tool-plausible": 20
     },
     "prefer-stable": true,

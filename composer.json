@@ -19,6 +19,10 @@
             "url": "tmp/ai-tool-plausible"
         },
         {
+            "type": "path",
+            "url": "tmp/ai-tool-jpgraph"
+        },
+        {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/ai-tool-core"
         },
@@ -29,6 +33,10 @@
         {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/ai-tool-plausible"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/ai-tool-jpgraph"
         },
         {
             "type": "vcs",
@@ -43,9 +51,9 @@
         "laravel/reverb": "^1.7",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
-        "mitoteam/jpgraph": "^10.5",
         "opencompanyapp/ai-tool-celestial": "@dev",
         "opencompanyapp/ai-tool-core": "@dev",
+        "opencompanyapp/ai-tool-jpgraph": "@dev",
         "opencompanyapp/ai-tool-plausible": "@dev",
         "opencompanyapp/astronomy-bundle": "^3.0",
         "prism-php/prism": "^0.99.19",
