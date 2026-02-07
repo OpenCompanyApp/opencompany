@@ -5,6 +5,12 @@
     "description": "The skeleton application for the Laravel framework.",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php"
+        }
+    ],
     "require": {
         "php": "^8.2",
         "inertiajs/inertia-laravel": "^2.0",
@@ -14,6 +20,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "mitoteam/jpgraph": "^10.5",
+        "opencompanyapp/astronomy-bundle": "^3.0",
         "prism-php/prism": "^0.99.19",
         "tightenco/ziggy": "^2.0"
     },

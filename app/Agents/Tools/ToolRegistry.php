@@ -4,6 +4,7 @@ namespace App\Agents\Tools;
 
 use App\Agents\Tools\Calendar\ManageCalendarEvent;
 use App\Agents\Tools\Calendar\QueryCalendar;
+use App\Agents\Tools\Celestial\QueryCelestial;
 use App\Agents\Tools\Charts\CreateJpGraphChart;
 use App\Agents\Tools\Charts\RenderSvg;
 use App\Agents\Tools\Chat\ListChannels;
@@ -51,6 +52,19 @@ class ToolRegistry
      * Maps app name => [tool slugs] + description.
      */
     public const APP_GROUPS = [
+        // System & task management
+        'tasks' => [
+            'tools' => ['update_current_task', 'create_task_step'],
+            'label' => 'update, log_step',
+            'description' => 'Work progress tracking',
+        ],
+        'system' => [
+            'tools' => ['wait', 'wait_for_approval'],
+            'label' => 'wait, wait_for_approval',
+            'description' => 'Execution control',
+        ],
+
+        // Internal apps
         'chat' => [
             'tools' => ['send_channel_message', 'read_channel', 'list_channels', 'manage_message'],
             'label' => 'send, read, list, manage',
@@ -76,10 +90,17 @@ class ToolRegistry
             'label' => 'query, manage items, manage statuses',
             'description' => 'Kanban board items and workflow statuses',
         ],
-        'tasks' => [
-            'tools' => ['update_current_task', 'create_task_step'],
-            'label' => 'update, log_step',
-            'description' => 'Work progress tracking',
+        'workspace' => [
+            'tools' => ['query_workspace', 'manage_agent', 'manage_agent_permissions', 'manage_integration', 'manage_channel', 'manage_automation'],
+            'label' => 'query, agents, permissions, integrations, channels, automation',
+            'description' => 'Workspace management',
+        ],
+
+        // Integrations & utilities
+        'celestial' => [
+            'tools' => ['query_celestial'],
+            'label' => 'moon, sun, planets, sky, zodiac, eclipses, time',
+            'description' => 'Astronomical calculations and night sky',
         ],
         'jpgraph_charts' => [
             'tools' => ['create_jpgraph_chart'],
@@ -101,23 +122,13 @@ class ToolRegistry
             'label' => 'query, realtime, sites, goals',
             'description' => 'Website analytics',
         ],
-        'system' => [
-            'tools' => ['wait', 'wait_for_approval'],
-            'label' => 'wait, wait_for_approval',
-            'description' => 'Execution control',
-        ],
-        'workspace' => [
-            'tools' => ['query_workspace', 'manage_agent', 'manage_agent_permissions', 'manage_integration', 'manage_channel', 'manage_automation'],
-            'label' => 'query, agents, permissions, integrations, channels, automation',
-            'description' => 'Workspace management',
-        ],
     ];
 
     /**
      * Apps that are external integrations (can be toggled per agent).
      * Built-in apps are always available.
      */
-    public const INTEGRATION_APPS = ['telegram', 'plausible', 'jpgraph_charts'];
+    public const INTEGRATION_APPS = ['telegram', 'plausible', 'jpgraph_charts', 'celestial'];
 
     /**
      * Icons for each app group.
@@ -129,6 +140,7 @@ class ToolRegistry
         'calendar' => 'ph:calendar',
         'lists' => 'ph:kanban',
         'tasks' => 'ph:list-checks',
+        'celestial' => 'ph:moon-stars',
         'jpgraph_charts' => 'ph:chart-bar',
         'svg' => 'ph:file-svg',
         'telegram' => 'ph:telegram-logo',
@@ -143,6 +155,7 @@ class ToolRegistry
     private const INTEGRATION_LOGOS = [
         'telegram' => 'logos:telegram',
         'plausible' => 'simple-icons:plausibleanalytics',
+        'celestial' => 'ph:moon-stars',
         'jpgraph_charts' => 'ph:chart-bar',
     ];
 
@@ -274,6 +287,14 @@ class ToolRegistry
             'name' => 'Create Task Step',
             'description' => 'Log a progress step on a task you are working on.',
             'icon' => 'ph:list-checks',
+        ],
+        // Celestial
+        'query_celestial' => [
+            'class' => QueryCelestial::class,
+            'type' => 'read',
+            'name' => 'Query Celestial',
+            'description' => 'Moon phases, sun/moon positions, planet tracking, night sky reports, zodiac, solar/lunar eclipses, and astronomical time.',
+            'icon' => 'ph:moon-stars',
         ],
         // Charts (JpGraph)
         'create_jpgraph_chart' => [
@@ -581,9 +602,36 @@ class ToolRegistry
     public function getAppCatalog(User $agent): string
     {
         $enabledIntegrations = $this->permissionService->getEnabledIntegrations($agent);
-        $lines = [];
 
-        foreach (self::APP_GROUPS as $appName => $group) {
+        // Display order grouped by priority, null = section separator
+        $displayOrder = [
+            // System & task management
+            'tasks', 'system',
+            null,
+            // Internal apps
+            'chat', 'docs', 'tables', 'calendar', 'lists', 'workspace',
+            null,
+            // Integrations & utilities
+            'celestial', 'jpgraph_charts', 'svg', 'telegram', 'plausible',
+        ];
+
+        $lines = [];
+        $lastWasSeparator = true; // avoid leading blank line
+
+        foreach ($displayOrder as $appName) {
+            if ($appName === null) {
+                if (!$lastWasSeparator) {
+                    $lines[] = '';
+                }
+                $lastWasSeparator = true;
+                continue;
+            }
+
+            $group = self::APP_GROUPS[$appName] ?? null;
+            if (!$group) {
+                continue;
+            }
+
             // Skip disabled integrations
             if (in_array($appName, self::INTEGRATION_APPS) && !in_array($appName, $enabledIntegrations)) {
                 continue;
@@ -614,6 +662,12 @@ class ToolRegistry
 
             $approval = $hasApproval ? ' *' : '';
             $lines[] = "{$appName}: {$group['label']} — {$group['description']}{$approval}";
+            $lastWasSeparator = false;
+        }
+
+        // Trim trailing blank lines
+        while (!empty($lines) && $lines[count($lines) - 1] === '') {
+            array_pop($lines);
         }
 
         return implode("\n", $lines);
@@ -743,6 +797,7 @@ class ToolRegistry
             ManageListStatus::class => new ManageListStatus($agent),
             UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
+            QueryCelestial::class => new QueryCelestial($agent),
             CreateJpGraphChart::class => new CreateJpGraphChart($agent),
             RenderSvg::class => new RenderSvg($agent),
             SendTelegramNotification::class => new SendTelegramNotification($agent, $this->permissionService),

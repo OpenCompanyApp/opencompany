@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1524040234d938ff597bd1d1fdbb2583",
+    "content-hash": "2937eea76d9bef3ea77e30b055f35eeb",
     "packages": [
         {
             "name": "brick/math",
@@ -3035,6 +3035,54 @@
                 }
             ],
             "time": "2025-11-20T02:34:59+00:00"
+        },
+        {
+            "name": "opencompanyapp/astronomy-bundle",
+            "version": "3.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php.git",
+                "reference": "840370b9d483971c61c95ec06e624d894c46007b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/astronomy-bundle-php/zipball/840370b9d483971c61c95ec06e624d894c46007b",
+                "reference": "840370b9d483971c61c95ec06e624d894c46007b",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "php": "^7.2 || ^8.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^8",
+                "symfony/phpunit-bridge": "^4.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AstronomyBundle\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "OpenCompany\\AstronomyBundle\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Andreas Moeller",
+                    "email": "andrmoel@gmail.com"
+                }
+            ],
+            "description": "Bundle for astronomical calculations such as position of moon, sun and planets, sunrise, sunset or solar eclipses. Most of the calculations are based on Jean Meeus 'Astronomical Algorithms' book and the VSOP87 theory.",
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/astronomy-bundle-php/tree/3.0.0"
+            },
+            "time": "2026-02-07T15:20:06+00:00"
         },
         {
             "name": "paragonie/sodium_compat",
