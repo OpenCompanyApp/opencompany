@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Agents\Tools;
+namespace App\Agents\Tools\Tasks;
 
 use App\Models\Task;
 use App\Models\TaskStep;

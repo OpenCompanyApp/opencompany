@@ -161,6 +161,11 @@ class User extends Authenticatable
     }
 
 
+    public function externalIdentities(): HasMany
+    {
+        return $this->hasMany(UserExternalIdentity::class);
+    }
+
     public function agentPermissions(): HasMany
     {
         return $this->hasMany(AgentPermission::class, 'agent_id');

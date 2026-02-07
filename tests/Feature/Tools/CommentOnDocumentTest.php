@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\CommentOnDocument;
+use App\Agents\Tools\Docs\CommentOnDocument;
 use App\Models\Document;
 use App\Models\DocumentComment;
 use App\Models\User;

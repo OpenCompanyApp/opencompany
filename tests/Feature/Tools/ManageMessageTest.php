@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\ManageMessage;
+use App\Agents\Tools\Chat\ManageMessage;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageReaction;

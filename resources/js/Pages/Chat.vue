@@ -153,6 +153,12 @@
       v-model:open="showCreateChannelModal"
       @channel-created="handleChannelCreated"
     />
+
+    <!-- Create DM Modal -->
+    <ChatCreateDmModal
+      v-model:open="showCreateDmModal"
+      @dm-created="handleDmCreated"
+    />
   </div>
 </template>
 
@@ -165,6 +171,7 @@ import ChatArea from '@/Components/chat/Area.vue'
 import ChatChannelInfo from '@/Components/chat/ChannelInfo.vue'
 import ChatAddMemberModal from '@/Components/chat/AddMemberModal.vue'
 import ChatCreateChannelModal from '@/Components/chat/CreateChannelModal.vue'
+import ChatCreateDmModal from '@/Components/chat/CreateDmModal.vue'
 import Slideover from '@/Components/shared/Slideover.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import { useApi } from '@/composables/useApi'
@@ -205,7 +212,15 @@ const refreshChannels = async () => {
   channels.value = result.data.value ?? []
 }
 
-const channelsData = computed<Channel[]>(() => channels.value ?? [])
+const channelsData = computed<Channel[]>(() =>
+  (channels.value ?? []).map(c => {
+    if (c.type === 'dm' && c.members?.length) {
+      const other = c.members.find(m => m.id !== 'h1') ?? c.members[0]
+      return { ...c, name: other?.name ?? c.name }
+    }
+    return c
+  })
+)
 
 // Selected channel
 const selectedChannel = ref<Channel | null>(null)
@@ -368,14 +383,34 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
     }
   }
 
-  await sendMessage({
+  // Optimistic: show message immediately
+  const tempId = `temp-${Date.now()}`
+  const optimisticMsg = {
+    id: tempId,
     content,
     channelId: selectedChannel.value.id,
+    channel_id: selectedChannel.value.id,
     authorId: 'h1',
-    attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
-  })
+    author: { id: 'h1', name: 'Rutger', type: 'human' },
+    timestamp: new Date().toISOString(),
+    reactions: [],
+    attachments: [],
+  } as Message
+  messages.value = [...messages.value, optimisticMsg]
 
-  await refreshMessages()
+  // Send in background, then reconcile
+  try {
+    await sendMessage({
+      content,
+      channelId: selectedChannel.value.id,
+      authorId: 'h1',
+      attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
+    })
+    await refreshMessages()
+  } catch (error) {
+    messages.value = messages.value.filter(m => m.id !== tempId)
+    console.error('Failed to send message:', error)
+  }
 }
 
 const handleReaction = async (message: Message, emoji: string) => {
@@ -485,6 +520,15 @@ const handleChannelCreated = async (channelId: string) => {
   const newChannel = channelsData.value.find(c => c.id === channelId)
   if (newChannel) {
     selectedChannel.value = newChannel
+  }
+}
+
+// DM creation
+const handleDmCreated = async (channelId: string) => {
+  await refreshChannels()
+  const newDm = channelsData.value.find(c => c.id === channelId)
+  if (newDm) {
+    selectedChannel.value = newDm
   }
 }
 

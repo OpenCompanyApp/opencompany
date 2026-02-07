@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\QueryCalendar;
+use App\Agents\Tools\Calendar\QueryCalendar;
 use App\Models\CalendarEvent;
 use App\Models\CalendarEventAttendee;
 use App\Models\User;

@@ -2,6 +2,20 @@
 
 namespace App\Agents\Tools;
 
+use App\Agents\Tools\Calendar\ManageCalendarEvent;
+use App\Agents\Tools\Calendar\QueryCalendar;
+use App\Agents\Tools\Charts\CreateJpGraphChart;
+use App\Agents\Tools\Charts\RenderSvg;
+use App\Agents\Tools\Chat\ListChannels;
+use App\Agents\Tools\Chat\ManageMessage;
+use App\Agents\Tools\Chat\ReadChannel;
+use App\Agents\Tools\Chat\SendChannelMessage;
+use App\Agents\Tools\Docs\CommentOnDocument;
+use App\Agents\Tools\Docs\ManageDocument;
+use App\Agents\Tools\Docs\SearchDocuments;
+use App\Agents\Tools\Lists\ManageListItem;
+use App\Agents\Tools\Lists\ManageListStatus;
+use App\Agents\Tools\Lists\QueryListItems;
 use App\Agents\Tools\Plausible\PlausibleCreateGoal;
 use App\Agents\Tools\Plausible\PlausibleCreateSite;
 use App\Agents\Tools\Plausible\PlausibleDeleteGoal;
@@ -10,7 +24,24 @@ use App\Agents\Tools\Plausible\PlausibleListGoals;
 use App\Agents\Tools\Plausible\PlausibleListSites;
 use App\Agents\Tools\Plausible\PlausibleQueryStats;
 use App\Agents\Tools\Plausible\PlausibleRealtimeVisitors;
+use App\Agents\Tools\System\ApprovalWrappedTool;
+use App\Agents\Tools\System\GetToolInfo;
+use App\Agents\Tools\System\Wait;
+use App\Agents\Tools\System\WaitForApproval;
+use App\Agents\Tools\Tables\ManageTable;
+use App\Agents\Tools\Tables\ManageTableRows;
+use App\Agents\Tools\Tables\QueryTable;
+use App\Agents\Tools\Tasks\CreateTaskStep;
+use App\Agents\Tools\Tasks\UpdateCurrentTask;
+use App\Agents\Tools\Telegram\SendTelegramNotification;
+use App\Agents\Tools\Workspace\ManageAgent;
+use App\Agents\Tools\Workspace\ManageAgentPermissions;
+use App\Agents\Tools\Workspace\ManageAutomation;
+use App\Agents\Tools\Workspace\ManageChannel;
+use App\Agents\Tools\Workspace\ManageIntegration;
+use App\Agents\Tools\Workspace\QueryWorkspace;
 use App\Models\User;
+use App\Services\AgentDocumentService;
 use App\Services\AgentPermissionService;
 
 class ToolRegistry
@@ -75,6 +106,11 @@ class ToolRegistry
             'label' => 'wait, wait_for_approval',
             'description' => 'Execution control',
         ],
+        'workspace' => [
+            'tools' => ['query_workspace', 'manage_agent', 'manage_agent_permissions', 'manage_integration', 'manage_channel', 'manage_automation'],
+            'label' => 'query, agents, permissions, integrations, channels, automation',
+            'description' => 'Workspace management',
+        ],
     ];
 
     /**
@@ -98,6 +134,7 @@ class ToolRegistry
         'telegram' => 'ph:telegram-logo',
         'plausible' => 'ph:chart-line-up',
         'system' => 'ph:gear',
+        'workspace' => 'ph:gear-six',
     ];
 
     /**
@@ -341,6 +378,49 @@ class ToolRegistry
             'name' => 'Wait',
             'description' => 'Suspend execution for a specified number of minutes, then auto-resume.',
             'icon' => 'ph:timer',
+        ],
+        // Workspace Management
+        'query_workspace' => [
+            'class' => QueryWorkspace::class,
+            'type' => 'read',
+            'name' => 'Query Workspace',
+            'description' => 'List agents, view agent details, permissions, integrations, and available models.',
+            'icon' => 'ph:magnifying-glass',
+        ],
+        'manage_agent' => [
+            'class' => ManageAgent::class,
+            'type' => 'write',
+            'name' => 'Manage Agent',
+            'description' => 'Create, update, or delete agents and their identity files.',
+            'icon' => 'ph:robot',
+        ],
+        'manage_agent_permissions' => [
+            'class' => ManageAgentPermissions::class,
+            'type' => 'write',
+            'name' => 'Manage Agent Permissions',
+            'description' => 'Update tool, channel, folder, and integration permissions for agents.',
+            'icon' => 'ph:shield-check',
+        ],
+        'manage_integration' => [
+            'class' => ManageIntegration::class,
+            'type' => 'write',
+            'name' => 'Manage Integration',
+            'description' => 'Configure API keys, test connections, and set up webhooks for integrations.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'manage_channel' => [
+            'class' => ManageChannel::class,
+            'type' => 'write',
+            'name' => 'Manage Channel',
+            'description' => 'Create channels and manage channel membership.',
+            'icon' => 'ph:hash',
+        ],
+        'manage_automation' => [
+            'class' => ManageAutomation::class,
+            'type' => 'write',
+            'name' => 'Manage Automation',
+            'description' => 'Create and manage automation rules and list templates.',
+            'icon' => 'ph:lightning',
         ],
     ];
 
@@ -676,6 +756,13 @@ class ToolRegistry
             PlausibleDeleteGoal::class => new PlausibleDeleteGoal($agent),
             WaitForApproval::class => new WaitForApproval($agent),
             Wait::class => new Wait($agent),
+            // Workspace Management
+            QueryWorkspace::class => new QueryWorkspace($agent, $this->permissionService, $this),
+            ManageAgent::class => new ManageAgent($agent, app(AgentDocumentService::class), app(\App\Services\AgentAvatarService::class)),
+            ManageAgentPermissions::class => new ManageAgentPermissions($agent, $this->permissionService),
+            ManageIntegration::class => new ManageIntegration($agent),
+            ManageChannel::class => new ManageChannel($agent),
+            ManageAutomation::class => new ManageAutomation($agent),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),
         };
     }

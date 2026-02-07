@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Services\AgentAvatarService;
+use App\Services\HumanAvatarService;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Facades\Hash;
@@ -114,5 +116,9 @@ class UserSeeder extends Seeder
                 'manager_id' => $agent['id'] !== 'a1' ? 'a1' : 'h1', // Atlas reports to Rutger, other agents report to Atlas
             ]);
         }
+
+        // Generate procedural avatars for all users
+        app(AgentAvatarService::class)->generateAll();
+        app(HumanAvatarService::class)->generateAll();
     }
 }

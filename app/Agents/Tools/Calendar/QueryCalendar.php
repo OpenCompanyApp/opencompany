@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Agents\Tools;
+namespace App\Agents\Tools\Calendar;
 
 use App\Models\CalendarEvent;
 use App\Models\CalendarEventAttendee;

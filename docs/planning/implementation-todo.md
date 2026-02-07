@@ -2013,3 +2013,300 @@ config/
 42. Plugin system (3.8.x)
 43. Multi-device support (3.9.x)
 44. Cron & scheduled tasks (3.10.x)
+
+---
+
+## Status Update (February 2026)
+
+> **This section reflects what has actually been built vs. what remains from the original plan above. Many phases were implemented organically and differ from the original spec — some items were superseded, others were built differently.**
+
+### What's Been Built (Completed)
+
+The following are **done and working** — these can be checked off from the phases above:
+
+#### Agent Execution Engine (supersedes Phase 3.12)
+- [x] `OpenCompanyAgent` — single dynamic agent class with identity file-based system prompts
+- [x] `AgentRespondJob` — core agent response lifecycle (LLM call → response → task completion)
+- [x] `ExecuteAgentTaskJob` — queue job for agent task execution
+- [x] `AgentResumeFromSleepJob` — wake sleeping agents
+- [x] `DynamicProviderResolver` — resolves LLM provider/model from `brain` field + IntegrationSettings
+- [x] `ChannelConversationLoader` — loads conversation history for agent context
+- [x] `AgentChatService` — orchestrates agent chat interactions
+- [x] Message controller dispatches agent runs on @mention and DM
+- [x] Response streaming via Reverb WebSocket
+
+#### Agent Tools (supersedes Phase 3.5.1)
+- [x] `ToolRegistry` — maps agent permissions to tool class instances (33 tools total)
+- [x] `ApprovalWrappedTool` — wraps tools that require approval
+- [x] Workspace tools: `SearchDocuments`, `ManageDocument`, `CommentOnDocument`
+- [x] Messaging tools: `SendChannelMessage`, `ManageMessage`, `ReadChannel`, `ListChannels`
+- [x] List tools: `ManageListItem`, `QueryListItems`, `ManageListStatus`
+- [x] Task tools: `CreateTaskStep`, `UpdateCurrentTask`
+- [x] Table tools: `ManageTable`, `ManageTableRows`, `QueryTable`
+- [x] Calendar tools: `ManageCalendarEvent`, `QueryCalendar`
+- [x] Approval tools: `WaitForApproval`, `Wait`
+- [x] Integration tools: `SendTelegramNotification`, Plausible suite (8 tools)
+- [x] Creative tools: `CreateJpGraphChart`, `RenderSvg`
+- [x] Meta tools: `GetToolInfo`
+
+#### Agent Identity System (supersedes Phase 1.1.1, 2.1.1, 3.1.1)
+- [x] Document-based identity (8 `.md` files per agent: IDENTITY, SOUL, USER, AGENTS, TOOLS, MEMORY, HEARTBEAT, BOOTSTRAP)
+- [x] `AgentDocumentService` — creates/manages identity file structure per agent
+- [x] Identity files API (`GET/PUT /api/agents/{id}/identity-files/{type}`)
+- [x] `AgentIdentityFiles.vue` — OpenClaw-style two-panel editor for all 8 files
+- [x] BOOTSTRAP.md auto-clear after first agent interaction (`bootstrapped_at` tracking)
+
+#### Agent Permissions (supersedes Phase 1.1.2-1.1.3, 3.2.1)
+- [x] `AgentPermission` model — unified scope-based permissions (tool, channel, folder)
+- [x] `AgentPermissionService` — resolves enabled tools, channels, folders, integrations
+- [x] `AgentPermissionController` — API for managing all permission types
+- [x] UI: tool toggles, channel access, folder access, integration toggles on Agent/Show.vue
+
+#### Agent Configuration & Settings (partial supersede of Phase 1.1.4, 3.3.1)
+- [x] `behavior_mode` on User model (autonomous/supervised/strict)
+- [x] `must_wait_for_approval` flag
+- [x] `brain` field (provider:model format) with validation
+- [x] `sleeping_until` / `sleeping_reason` for sleep/wake cycle
+- [x] Settings tab in Agent/Show.vue
+
+#### Frontend — Agent Detail Page (supersedes Phase 4)
+- [x] `Agent/Show.vue` — full agent detail page with tabs: Overview, Tasks, Identity, Capabilities, Activity, Settings
+- [x] Real API data (not mocks) for all sections
+- [x] `AgentCapabilities.vue` — tool toggles with app grouping
+- [x] `AgentSettingsPanel.vue` — behavior mode, brain selector, delete agent
+- [x] Task list with step tracking
+
+#### Core Platform (all working)
+- [x] Chat with channels, DMs, threads, reactions, attachments
+- [x] Documents with versioning, comments, attachments, folder tree
+- [x] Lists (kanban) with custom statuses, templates, automation rules
+- [x] Tasks (agent work items) with steps, lifecycle, assignment
+- [x] Calendar with recurrence, attendees, iCal feeds, import
+- [x] Data Tables with 10 column types, 4 view modes, bulk operations
+- [x] Approvals with Telegram forwarding
+- [x] Activity feed, notifications, search
+- [x] Integrations system (Telegram, Plausible configured)
+- [x] Auth (login, register, password reset)
+
+### What Was Dropped / Superseded
+
+These items from the original plan are **no longer needed**:
+
+- ~~`agent_configurations` table~~ → superseded by Document-based identity files
+- ~~`agent_settings` table~~ → superseded by fields on `users` table
+- ~~`capabilities` table~~ → superseded by `agent_permissions` + `ToolRegistry`
+- ~~`stats` table~~ → `StatsController` computes everything dynamically
+- ~~`AgentConfiguration` model~~ → deleted (cleanup commit 33a0147)
+- ~~`AgentSettings` model~~ → deleted
+- ~~`Capability` model~~ → deleted
+- ~~`Stat` model~~ → deleted
+- ~~`AgentPersonalityEditor.vue`~~ → replaced by `AgentIdentityFiles.vue`
+- ~~`AgentInstructionsEditor.vue`~~ → replaced by `AgentIdentityFiles.vue`
+- ~~`AgentMemoryView.vue`~~ → replaced by MEMORY.md in identity files
+- ~~`CapabilitySeeder`~~ → deleted
+- ~~Phase 4.2.1-4.2.4~~ → components replaced by identity file editor
+
+---
+
+## Next Up: Priority Implementation Queue
+
+> **Ordered by impact vs effort. Each item is a self-contained project.**
+
+### N1. Sub-Agent Spawning
+**Impact:** HIGH | **Effort:** MEDIUM | **Priority:** 1
+
+The core "Robo-Company" differentiator. A manager agent spawns worker agents into temporary channels, tracks their work, aggregates results. Foundation already exists (`manager_id` column, `directReports()` relationship).
+
+- [ ] **N1.1** Create `subagent_spawn_permissions` migration
+  - Fields: `id`, `parent_agent_id` (FK), `allowed_agents` (JSON), `max_concurrent`, `auto_archive_minutes`
+- [ ] **N1.2** Create `subagent_runs` migration
+  - Fields: `id`, `parent_agent_id`, `child_agent_id`, `task_description`, `label`, `status` (pending/running/success/error/timeout/cancelled), `runtime_config` (JSON), `result` (JSON), `created_at`, `completed_at`
+- [ ] **N1.3** Create `SubagentSpawnPermission` and `SubagentRun` models
+- [ ] **N1.4** Create `SubagentSpawnService`
+  - Enforce spawn permissions (allowed_agents, max_concurrent)
+  - Create ephemeral channel for parent↔child communication
+  - Dispatch child agent task via queue
+  - Track parent-child relationship in `subagent_runs`
+  - Handle timeout and cancellation
+- [ ] **N1.5** Create `SpawnSubagent` agent tool
+  - Allows manager agents to spawn workers via tool call
+  - Parameters: child_agent_id, task_description, timeout_minutes
+  - Returns run ID for tracking
+- [ ] **N1.6** Create `SubagentController` API
+  - `GET /api/agents/{id}/spawn-permissions` — get spawn permissions
+  - `PUT /api/agents/{id}/spawn-permissions` — update permissions
+  - `POST /api/agents/{id}/spawn` — spawn subagent
+  - `GET /api/agents/{id}/subagent-runs` — list runs
+  - `POST /api/subagent-runs/{id}/cancel` — cancel running subagent
+- [ ] **N1.7** Frontend: spawn dialog, running subagents list, result announcements
+  - Spawn button on agent page (disabled if no spawn permissions)
+  - Real-time status updates via WebSocket
+  - Result announcement in parent agent's chat
+- [ ] **N1.8** Add spawn permissions UI to Agent/Show.vue Settings tab
+
+### N2. MCP Server
+**Impact:** HIGH | **Effort:** LOW-MEDIUM | **Priority:** 2
+
+Expose OpenCompany as an MCP server so external AI tools (Claude Desktop, Cursor, VS Code Copilot) can interact with the workspace. High developer appeal and unique positioning.
+
+- [ ] **N2.1** Install `laravel/mcp` package
+  ```bash
+  composer require laravel/mcp
+  ```
+- [ ] **N2.2** Create MCP server configuration
+  - Define available resources: documents, channels, tasks, list items, agents
+  - Define available tools: search_documents, create_task, send_message, create_list_item, query_table
+- [ ] **N2.3** Create MCP tool implementations
+  - `SearchDocuments` — search workspace documents
+  - `ReadDocument` — read a specific document
+  - `CreateListItem` — create kanban items
+  - `SendMessage` — send messages to channels
+  - `CreateTask` — create agent tasks
+  - `QueryTable` — query data tables
+- [ ] **N2.4** Create MCP resource providers
+  - Documents resource (list, read)
+  - Channels resource (list, read messages)
+  - Agents resource (list, status)
+  - Tasks resource (list, read)
+- [ ] **N2.5** Add authentication (API token-based)
+- [ ] **N2.6** Add MCP server settings to Settings page
+  - Enable/disable MCP server
+  - Generate/revoke API tokens
+  - Show connection URL for clients
+
+### N3. Memory & Vector Search (Hybrid)
+**Impact:** HIGH | **Effort:** HIGH | **Priority:** 3
+
+Agents currently have no semantic memory beyond plain MEMORY.md text. Adding pgvector + hybrid search enables agents to recall past conversations and learnings by meaning, not just keywords.
+
+- [ ] **N3.1** Install pgvector extension
+  ```sql
+  CREATE EXTENSION IF NOT EXISTS vector;
+  ```
+- [ ] **N3.2** Create `memory_chunks` migration
+  - Fields: `id`, `agent_id`, `source_type` (identity/memory/session), `source_id`, `document_id` (FK), `start_line`, `end_line`, `content_hash`, `text`, `embedding` VECTOR(1536)
+- [ ] **N3.3** Create `embedding_cache` migration
+  - Fields: `provider`, `model`, `content_hash`, `embedding` VECTOR(1536), `dims`
+  - Primary key on (provider, model, content_hash)
+- [ ] **N3.4** Create `EmbeddingService`
+  - Generate embeddings via OpenAI text-embedding-3-small (or configured provider)
+  - Batch mode for multiple texts
+  - Cache layer using `embedding_cache` table
+- [ ] **N3.5** Create `ChunkingService`
+  - Split long texts into ~400 token chunks with 80 token overlap
+  - Track start/end line numbers
+  - Content hashing for change detection
+- [ ] **N3.6** Create `MemoryIndexService`
+  - `indexDocument($agentId, $docId)` — chunk + embed single document
+  - `reindexAgent($agentId)` — full reindex
+  - Background job dispatch for async indexing
+- [ ] **N3.7** Create `HybridMemorySearch` service
+  - Vector similarity via pgvector `<=>` operator
+  - Full-text search via `ts_rank` + `to_tsvector`
+  - Combined scoring: 0.7 vector + 0.3 text
+  - Result clamping: max 6 results, 700 chars per snippet, 4000 chars total
+- [ ] **N3.8** Create `RecallMemory` agent tool
+  - Allows agents to search their own memory semantically
+  - Parameters: query, limit, collection (optional)
+  - Returns ranked results with source citations
+- [ ] **N3.9** Create `MemorySearchController` API
+  - `POST /api/agents/{id}/memory/search` — search agent memory
+- [ ] **N3.10** Create `IndexAgentMemoryJob` + `PeriodicReindexJob`
+  - Index on document create/update (via model observer)
+  - Periodic reindex every 5 minutes (delta-based)
+  - Embedding refresh hourly
+- [ ] **N3.11** Add Document model observer for auto-indexing
+  - Trigger on identity/memory document changes
+  - 15-second debounced dispatch
+- [ ] **N3.12** Frontend: `MemorySearchInput.vue` component
+  - Search input with debounced API calls
+  - Show matched chunks with source references
+
+### N4. Test Suite Foundation
+**Impact:** MEDIUM | **Effort:** MEDIUM | **Priority:** 4
+
+0% test coverage is a risk. Set up PHPUnit feature tests for the most critical API endpoints and establish patterns for future tests.
+
+- [ ] **N4.1** Configure test environment
+  - SQLite in-memory for speed
+  - Test factories for User, Channel, Message, Document, Task, ListItem
+  - Base test case with auth helpers
+- [ ] **N4.2** Create model factories
+  - `UserFactory` (human + agent variants)
+  - `ChannelFactory` (public, private, dm)
+  - `MessageFactory`
+  - `DocumentFactory` (file + folder)
+  - `TaskFactory` + `TaskStepFactory`
+  - `ListItemFactory` + `ListStatusFactory`
+  - `CalendarEventFactory`
+  - `DataTableFactory` + `DataTableColumnFactory` + `DataTableRowFactory`
+- [ ] **N4.3** Agent API tests
+  - `AgentControllerTest` — CRUD agents, identity files, show endpoint
+  - `AgentPermissionControllerTest` — tool/channel/folder permission toggles
+  - `AgentChatServiceTest` — message dispatch triggers agent response
+- [ ] **N4.4** Core API tests
+  - `ChannelControllerTest` — CRUD, members, read markers
+  - `MessageControllerTest` — CRUD, reactions, threads, attachments
+  - `DocumentControllerTest` — CRUD, versions, comments, folder tree
+  - `ListItemControllerTest` — CRUD, reorder, status changes
+  - `TaskControllerTest` — CRUD, lifecycle (start/complete/fail), steps
+- [ ] **N4.5** Calendar & Table API tests
+  - `CalendarEventControllerTest` — CRUD, recurrence, attendees, feeds
+  - `DataTableControllerTest` — CRUD, columns, rows, bulk operations
+- [ ] **N4.6** Integration tests
+  - `ApprovalFlowTest` — create approval → approve/reject → agent resumes
+  - `AgentToolExecutionTest` — agent uses tools correctly
+- [ ] **N4.7** Set up CI pipeline (GitHub Actions)
+  - Run tests on push/PR
+  - Report coverage
+
+### N5. Quick Wins & Polish
+**Impact:** VISIBLE | **Effort:** LOW | **Priority:** 5
+
+Small changes that immediately improve the demo experience and align code with documentation.
+
+- [ ] **N5.1** Seed a `coordinator` agent in `UserSeeder`
+  - All 7 TypeScript agent types now demonstrated
+- [ ] **N5.2** Seed a `private` channel in `ChannelSeeder`
+  - All channel types visible in demos
+- [ ] **N5.3** Add `TaskStep` records to `AgentTaskSeeder`
+  - Task detail view shows step tracking (action, decision, approval steps)
+- [ ] **N5.4** Align `ExternalChannelProvider` type with reality
+  - Only list implemented providers (telegram, slack) — remove or comment out others
+- [ ] **N5.5** Add Data Tables section to `features.md`
+  - Major built feature gets marketing visibility
+- [ ] **N5.6** Add Calendar section to `features.md`
+  - Built feature gets marketing visibility
+- [ ] **N5.7** Update `emergent.md` risk assessment
+  - Agent execution engine is now built (was listed as CRITICAL gap)
+  - Update "No Agent Execution Engine" section to reflect current state
+- [ ] **N5.8** Rename automation triggers for clarity
+  - `task_created` → `list_item_created`
+  - `assign_task` → `assign_list_item`
+  - Aligns with the Tasks vs ListItems naming convention
+
+### N6. External Channel: Discord
+**Impact:** MEDIUM | **Effort:** MEDIUM | **Priority:** 6
+
+Prove the external channel architecture scales beyond Telegram. Discord is where the AI/developer community lives.
+
+- [ ] **N6.1** Create `DiscordService` (similar to `TelegramService`)
+  - Bot token management
+  - Send/receive messages via Discord API
+  - Channel mapping (Discord channel ↔ OpenCompany channel)
+- [ ] **N6.2** Create `DiscordWebhookController`
+  - Receive Discord gateway events
+  - Route messages to appropriate channels
+  - Handle Discord-specific formatting (embeds, mentions)
+- [ ] **N6.3** Create Discord integration settings
+  - Add to `IntegrationSeeder` — bot token, guild ID, channel mappings
+  - Add Discord configuration UI to Integrations page
+- [ ] **N6.4** Create `SendDiscordNotification` agent tool
+  - Similar to `SendTelegramNotification`
+  - Support Discord embeds for rich formatting
+- [ ] **N6.5** Update `ExternalChannelProvider` type
+  - Add `discord` to TypeScript union type
+  - Update channel creation flow to support Discord channels
+- [ ] **N6.6** Test bidirectional message flow
+  - Message in Discord → appears in OpenCompany channel
+  - Agent response in OpenCompany → appears in Discord

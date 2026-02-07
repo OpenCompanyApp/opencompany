@@ -3,7 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApprovalRequest;
+use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
+use App\Models\Message;
+use App\Models\User;
+use App\Models\UserExternalIdentity;
 use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -375,6 +380,100 @@ class IntegrationController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Link an external identity to a system user.
+     */
+    public function linkExternalUser(Request $request)
+    {
+        $request->validate([
+            'userId' => 'required|string|exists:users,id',
+            'provider' => 'required|string',
+            'externalId' => 'required|string',
+            'displayName' => 'nullable|string',
+        ]);
+
+        $user = User::findOrFail($request->input('userId'));
+
+        // Check if this external identity is already linked to another user
+        $existing = UserExternalIdentity::where('provider', $request->input('provider'))
+            ->where('external_id', $request->input('externalId'))
+            ->first();
+
+        if ($existing && $existing->user_id !== $user->id) {
+            return response()->json([
+                'error' => "This {$request->input('provider')} ID is already linked to user: {$existing->user->name}",
+            ], 409);
+        }
+
+        // Create or update the identity link
+        $identity = UserExternalIdentity::updateOrCreate(
+            [
+                'provider' => $request->input('provider'),
+                'external_id' => $request->input('externalId'),
+            ],
+            [
+                'id' => $existing->id ?? Str::uuid()->toString(),
+                'user_id' => $user->id,
+                'display_name' => $request->input('displayName'),
+            ]
+        );
+
+        // Clean up shadow user if one exists for this provider/external ID
+        if ($request->input('provider') === 'telegram') {
+            $shadowEmail = "telegram-{$request->input('externalId')}@external.opencompany";
+            $shadow = User::where('email', $shadowEmail)
+                ->where('id', '!=', $user->id)
+                ->first();
+
+            if ($shadow) {
+                // Deduplicate channel memberships before reassigning
+                $existingChannelIds = ChannelMember::where('user_id', $user->id)->pluck('channel_id');
+                ChannelMember::where('user_id', $shadow->id)
+                    ->whereIn('channel_id', $existingChannelIds)
+                    ->delete();
+
+                // Reassign remaining memberships, messages, and approvals
+                ChannelMember::where('user_id', $shadow->id)->update(['user_id' => $user->id]);
+                Message::where('author_id', $shadow->id)->update(['author_id' => $user->id]);
+                ApprovalRequest::where('responded_by_id', $shadow->id)
+                    ->update(['responded_by_id' => $user->id]);
+
+                $shadow->delete();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'identity' => $identity,
+            'user' => $user->fresh(),
+        ]);
+    }
+
+    /**
+     * Unlink an external identity from a user.
+     */
+    public function unlinkExternalUser(string $identityId)
+    {
+        $identity = UserExternalIdentity::findOrFail($identityId);
+        $identity->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Get all external identity links (optionally filtered by provider).
+     */
+    public function externalIdentities(Request $request)
+    {
+        $query = UserExternalIdentity::with('user');
+
+        if ($request->has('provider')) {
+            $query->where('provider', $request->input('provider'));
+        }
+
+        return response()->json($query->get());
     }
 
     /**

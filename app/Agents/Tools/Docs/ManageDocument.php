@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Agents\Tools;
+namespace App\Agents\Tools\Docs;
 
 use App\Models\Document;
 use App\Models\User;

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\SearchDocuments;
+use App\Agents\Tools\Docs\SearchDocuments;
 use App\Models\Document;
 use App\Models\User;
 use App\Services\AgentPermissionService;

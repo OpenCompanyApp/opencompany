@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\ManageTable;
+use App\Agents\Tools\Tables\ManageTable;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\User;

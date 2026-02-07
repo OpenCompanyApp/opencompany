@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Agents\Tools;
+namespace App\Agents\Tools\Chat;
 
 use App\Models\Channel;
 use App\Models\Message;

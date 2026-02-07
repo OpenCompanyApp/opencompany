@@ -48,7 +48,7 @@ class DirectMessageController extends Controller
         $channel = Channel::create([
             'id' => Str::uuid()->toString(),
             'name' => 'DM',
-            'type' => 'direct',
+            'type' => 'dm',
         ]);
 
         // Add both users as members

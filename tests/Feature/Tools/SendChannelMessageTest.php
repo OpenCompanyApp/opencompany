@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\SendChannelMessage;
+use App\Agents\Tools\Chat\SendChannelMessage;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;

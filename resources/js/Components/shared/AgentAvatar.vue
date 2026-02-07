@@ -291,9 +291,12 @@ const handleImageError = () => {
   imageError.value = true
 }
 
+// Effective src — use explicit prop, fall back to user.avatar
+const effectiveSrc = computed(() => props.src || props.user.avatar || undefined)
+
 // Should show image
 const showImage = computed(() => {
-  return props.src && !imageError.value && !props.loading
+  return effectiveSrc.value && !imageError.value && !props.loading
 })
 
 // Icon class mapping for iconify
@@ -341,7 +344,7 @@ const AvatarContent = () => {
 
       // Image
       showImage.value && h('img', {
-        src: props.src,
+        src: effectiveSrc.value,
         alt: props.user.name,
         class: 'w-full h-full object-cover',
         onError: handleImageError,

@@ -55,6 +55,12 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
 
         if ($identityFiles->isEmpty()) {
             $fallback = "You are {$this->agent->name}, a helpful AI assistant working within a company workspace.\n\n";
+            $fallback .= "## You\n\n";
+            $fallback .= "- **ID**: {$this->agent->id}\n";
+            $fallback .= "- **Name**: {$this->agent->name}\n";
+            $fallback .= "- **Type**: {$this->agent->agent_type}\n";
+            $fallback .= "- **Brain**: {$this->agent->brain}\n";
+            $fallback .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
             $fallback .= $this->buildChannelContext();
             $fallback .= $this->buildTaskContext();
             $fallback .= "## Apps\n\n";
@@ -65,6 +71,12 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
 
         $prompt = "# Project Context\n\n";
         $prompt .= "You are an AI agent operating within a company workspace.\n\n";
+        $prompt .= "## You\n\n";
+        $prompt .= "- **ID**: {$this->agent->id}\n";
+        $prompt .= "- **Name**: {$this->agent->name}\n";
+        $prompt .= "- **Type**: {$this->agent->agent_type}\n";
+        $prompt .= "- **Brain**: {$this->agent->brain}\n";
+        $prompt .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
 
         $order = ['IDENTITY', 'SOUL', 'USER', 'AGENTS', 'TOOLS', 'MEMORY', 'HEARTBEAT', 'BOOTSTRAP'];
 

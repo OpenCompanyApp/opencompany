@@ -10,6 +10,7 @@ use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\UserExternalIdentity;
 use App\Services\ApprovalExecutionService;
 use App\Services\TelegramService;
 use Illuminate\Http\Request;
@@ -119,20 +120,8 @@ class TelegramWebhookController extends Controller
             ]
         );
 
-        // Find or create shadow user for the Telegram sender
-        $telegramUserId = $from['id'] ?? 0;
-        $firstName = $from['first_name'] ?? 'User';
-
-        $user = User::firstOrCreate(
-            ['email' => "telegram-{$telegramUserId}@external.opencompany"],
-            [
-                'id' => Str::uuid()->toString(),
-                'name' => "{$firstName} (Telegram)",
-                'type' => 'human',
-                'presence' => 'online',
-                'password' => bcrypt(Str::random(32)),
-            ]
-        );
+        // Resolve the real system user or create an ephemeral shadow
+        $user = $this->resolveTelegramUser($from);
 
         // Ensure the user is a channel member
         ChannelMember::firstOrCreate(
@@ -213,11 +202,10 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        // Determine responder — use the Telegram user's shadow account or first admin
+        // Resolve responder — linked system user or ephemeral shadow
         $from = $callbackQuery['from'] ?? [];
-        $telegramUserId = $from['id'] ?? 0;
-        $responder = User::where('email', "telegram-{$telegramUserId}@external.opencompany")->first();
-        $responderId = $responder?->id ?? User::where('type', 'human')->first()?->id;
+        $responder = $this->resolveTelegramUser($from);
+        $responderId = $responder->id;
 
         // Update the approval
         $approval->update([
@@ -262,5 +250,35 @@ class TelegramWebhookController extends Controller
                 ]);
             }
         }
+    }
+
+    /**
+     * Resolve the system user for a Telegram sender.
+     * Checks for a linked user via external identities first,
+     * then falls back to an ephemeral shadow user.
+     */
+    private function resolveTelegramUser(array $from): User
+    {
+        $telegramUserId = (string) ($from['id'] ?? 0);
+        $firstName = $from['first_name'] ?? 'User';
+
+        // Try to find a real user linked via external identity
+        $linkedUser = UserExternalIdentity::resolveUser('telegram', $telegramUserId);
+        if ($linkedUser) {
+            return $linkedUser;
+        }
+
+        // Fall back to ephemeral shadow user
+        return User::firstOrCreate(
+            ['email' => "telegram-{$telegramUserId}@external.opencompany"],
+            [
+                'id' => Str::uuid()->toString(),
+                'name' => "{$firstName} (Telegram)",
+                'type' => 'human',
+                'presence' => 'online',
+                'password' => bcrypt(Str::random(32)),
+                'is_ephemeral' => true,
+            ]
+        );
     }
 }

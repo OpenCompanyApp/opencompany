@@ -9,6 +9,7 @@ use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\AgentAvatarService;
 use App\Services\AgentDocumentService;
 use App\Services\AgentPermissionService;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ use Illuminate\Support\Str;
 class AgentController extends Controller
 {
     public function __construct(
-        private AgentDocumentService $agentDocumentService
+        private AgentDocumentService $agentDocumentService,
+        private AgentAvatarService $agentAvatarService,
     ) {}
 
     /**
@@ -96,6 +98,9 @@ class AgentController extends Controller
 
         // Store the folder reference
         $agent->update(['docs_folder_id' => $agentFolder->id]);
+
+        // Generate procedural avatar
+        $this->agentAvatarService->generate($agent);
 
         // Create DM channel between creator and agent
         $creatorId = $request->user()?->id ?? 'h1';

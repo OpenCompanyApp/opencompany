@@ -158,7 +158,6 @@
 
         <!-- Direct Messages -->
         <ChannelSection
-          v-if="dmChannels.length > 0"
           title="Direct Messages"
           icon="ph:chat-circle"
           :channels="dmChannels"

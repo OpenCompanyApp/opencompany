@@ -96,6 +96,37 @@
         </p>
       </div>
 
+      <!-- User Mappings -->
+      <div v-if="allowedUsers.length" class="space-y-2">
+        <label class="block text-sm font-medium text-neutral-900 dark:text-white">
+          User Mappings
+        </label>
+        <p class="text-xs text-neutral-500 dark:text-neutral-400">
+          Link Telegram users to their system accounts so messages appear from the correct person.
+        </p>
+        <div class="space-y-1.5">
+          <div
+            v-for="telegramId in allowedUsers"
+            :key="'map-' + telegramId"
+            class="flex items-center gap-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg"
+          >
+            <Icon name="ph:telegram-logo" class="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <span class="font-mono text-sm text-neutral-500 dark:text-neutral-400 shrink-0">{{ telegramId }}</span>
+            <Icon name="ph:arrow-right" class="w-3.5 h-3.5 text-neutral-300 dark:text-neutral-600 shrink-0" />
+            <select
+              :value="userMappings[telegramId] || ''"
+              class="flex-1 px-2 py-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded text-sm text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white outline-none transition-colors"
+              @change="linkUser(telegramId, ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">Unlinked (shadow user)</option>
+              <option v-for="u in humanUsers" :key="u.id" :value="u.id">
+                {{ u.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <!-- Notifications Chat ID -->
       <div class="space-y-2">
         <label class="block text-sm font-medium text-neutral-900 dark:text-white">
@@ -219,8 +250,10 @@ const newUserId = ref('')
 const enabled = ref(false)
 const showToken = ref(false)
 
-// Agents list
+// Agents & human users lists
 const agents = ref<{ id: string; name: string }[]>([])
+const humanUsers = ref<{ id: string; name: string }[]>([])
+const userMappings = ref<Record<string, string>>({}) // telegramId -> userId
 
 // UI state
 const isTesting = ref(false)
@@ -232,7 +265,7 @@ const resultMessage = ref<{ success: boolean; message: string } | null>(null)
 watch(isOpen, async (open) => {
   if (open) {
     resultMessage.value = null
-    await Promise.all([loadConfig(), loadAgents()])
+    await Promise.all([loadConfig(), loadAgents(), loadHumanUsers(), loadExternalIdentities()])
   }
 }, { immediate: true })
 
@@ -268,6 +301,77 @@ const loadAgents = async () => {
     }
   } catch (error) {
     console.error('Failed to load agents:', error)
+  }
+}
+
+const loadHumanUsers = async () => {
+  try {
+    const response = await fetch('/api/users')
+    if (response.ok) {
+      const allUsers = await response.json()
+      humanUsers.value = allUsers.filter((u: any) => u.type === 'human' && !u.isEphemeral)
+    }
+  } catch (error) {
+    console.error('Failed to load users:', error)
+  }
+}
+
+const loadExternalIdentities = async () => {
+  try {
+    const response = await fetch('/api/integrations/external-identities?provider=telegram')
+    if (response.ok) {
+      const identities = await response.json()
+      const mappings: Record<string, string> = {}
+      for (const identity of identities) {
+        mappings[identity.external_id] = identity.user_id
+      }
+      userMappings.value = mappings
+    }
+  } catch (error) {
+    console.error('Failed to load external identities:', error)
+  }
+}
+
+const linkUser = async (telegramId: string, userId: string) => {
+  if (!userId) {
+    // Unlink: find the identity and delete it
+    try {
+      const response = await fetch('/api/integrations/external-identities?provider=telegram')
+      if (response.ok) {
+        const identities = await response.json()
+        const identity = identities.find((i: any) => i.external_id === telegramId)
+        if (identity) {
+          await fetch(`/api/integrations/link-user/${identity.id}`, { method: 'DELETE' })
+        }
+      }
+      const newMappings = { ...userMappings.value }
+      delete newMappings[telegramId]
+      userMappings.value = newMappings
+    } catch (error) {
+      console.error('Failed to unlink user:', error)
+    }
+    return
+  }
+
+  try {
+    const response = await fetch('/api/integrations/link-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        provider: 'telegram',
+        externalId: telegramId,
+      }),
+    })
+
+    if (response.ok) {
+      userMappings.value = { ...userMappings.value, [telegramId]: userId }
+    } else {
+      const data = await response.json()
+      resultMessage.value = { success: false, message: data.error || 'Failed to link user' }
+    }
+  } catch (error) {
+    console.error('Failed to link user:', error)
   }
 }
 

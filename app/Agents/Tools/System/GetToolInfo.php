@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Agents\Tools;
+namespace App\Agents\Tools\System;
 
+use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;

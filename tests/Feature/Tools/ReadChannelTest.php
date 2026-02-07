@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\ReadChannel;
+use App\Agents\Tools\Chat\ReadChannel;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;

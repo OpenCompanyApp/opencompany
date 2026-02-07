@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Agents\Tools;
+namespace App\Agents\Tools\Charts;
 
 use App\Models\User;
 use App\Services\Charts\ChartService;

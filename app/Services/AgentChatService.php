@@ -108,13 +108,20 @@ class AgentChatService
     {
         $identityFiles = $this->agentDocumentService->getIdentityFiles($agent);
 
+        $selfSection = "## You\n\n"
+            . "- **ID**: {$agent->id}\n"
+            . "- **Name**: {$agent->name}\n"
+            . "- **Type**: {$agent->agent_type}\n"
+            . "- **Brain**: {$agent->brain}\n"
+            . "- **Behavior**: {$agent->behavior_mode}\n\n";
+
         if ($identityFiles->isEmpty()) {
-            // Fallback to simple prompt if no identity files exist
-            return "You are {$agent->name}, a helpful AI assistant.";
+            return "You are {$agent->name}, a helpful AI assistant.\n\n" . $selfSection;
         }
 
         $prompt = "# Project Context\n\n";
         $prompt .= "You are an AI agent operating within a company workspace.\n\n";
+        $prompt .= $selfSection;
 
         // Add identity files in a specific order for coherence
         $order = ['IDENTITY', 'SOUL', 'USER', 'AGENTS', 'TOOLS', 'MEMORY', 'HEARTBEAT', 'BOOTSTRAP'];

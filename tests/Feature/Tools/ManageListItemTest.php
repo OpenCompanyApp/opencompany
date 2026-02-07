@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\ManageListItem;
+use App\Agents\Tools\Lists\ManageListItem;
 use App\Models\ListItem;
 use App\Models\ListItemComment;
 use App\Models\User;

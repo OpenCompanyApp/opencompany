@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Agents\Tools\WaitForApproval;
+use App\Agents\Tools\System\WaitForApproval;
 use App\Models\ApprovalRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

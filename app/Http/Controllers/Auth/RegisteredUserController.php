@@ -45,6 +45,8 @@ class RegisteredUserController extends Controller
             'type' => 'human',
         ]);
 
+        app(\App\Services\HumanAvatarService::class)->generate($user);
+
         event(new Registered($user));
 
         Auth::login($user);

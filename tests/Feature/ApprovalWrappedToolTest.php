@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Agents\Tools\ApprovalWrappedTool;
-use App\Agents\Tools\SendChannelMessage;
+use App\Agents\Tools\System\ApprovalWrappedTool;
+use App\Agents\Tools\Chat\SendChannelMessage;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\Message;

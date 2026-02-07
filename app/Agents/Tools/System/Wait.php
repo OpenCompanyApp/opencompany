@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Agents\Tools;
+namespace App\Agents\Tools\System;
 
 use App\Jobs\AgentResumeFromSleepJob;
 use App\Models\User;

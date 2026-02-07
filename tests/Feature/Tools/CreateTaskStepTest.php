@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\CreateTaskStep;
+use App\Agents\Tools\Tasks\CreateTaskStep;
 use App\Models\Task;
 use App\Models\TaskStep;
 use App\Models\User;

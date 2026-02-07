@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\QueryTable;
+use App\Agents\Tools\Tables\QueryTable;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\DataTableRow;

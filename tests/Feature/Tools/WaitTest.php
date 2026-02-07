@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Wait;
+use App\Agents\Tools\System\Wait;
 use App\Jobs\AgentResumeFromSleepJob;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Agents\Tools;
+namespace App\Agents\Tools\Lists;
 
 use App\Models\ListItem;
 use App\Models\ListItemComment;

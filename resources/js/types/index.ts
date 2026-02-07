@@ -13,6 +13,14 @@ export type ExternalChannelProvider = 'telegram' | 'slack'
 export type Priority = 'low' | 'medium' | 'high' | 'urgent' | 'normal'
 export type ActivityType = 'message' | 'task_completed' | 'task_started' | 'agent_spawned' | 'approval_needed' | 'approval_granted' | 'error'
 
+export interface UserExternalIdentity {
+  id: string
+  userId: string
+  provider: string
+  externalId: string
+  displayName?: string
+}
+
 export interface User {
   id: string
   name: string
@@ -30,6 +38,7 @@ export interface User {
   mustWaitForApproval?: boolean
   brain?: string
   role?: 'admin' | 'editor' | 'viewer' | 'owner'
+  externalIdentities?: UserExternalIdentity[]
 }
 
 export interface ActivityStep {

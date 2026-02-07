@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Agents\Tools;
+namespace App\Agents\Tools\Tables;
 
 use App\Models\DataTable;
 use App\Models\DataTableColumn;

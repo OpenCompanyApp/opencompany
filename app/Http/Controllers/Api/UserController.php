@@ -97,6 +97,8 @@ class UserController extends Controller
     public function update(Request $request, string $id)
     {
         $user = User::findOrFail($id);
+        $oldName = $user->name;
+
         $user->update($request->only([
             'name',
             'email',
@@ -105,6 +107,10 @@ class UserController extends Controller
             'agent_type',
             'system_prompt',
         ]));
+
+        if ($user->isHuman() && $request->has('name') && $request->name !== $oldName) {
+            app(\App\Services\HumanAvatarService::class)->generate($user);
+        }
 
         return $user;
     }

@@ -243,6 +243,9 @@ Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConf
 Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
 Route::post('/integrations/{id}/test', [IntegrationController::class, 'testConnection']);
 Route::post('/integrations/{id}/setup-webhook', [IntegrationController::class, 'setupWebhook']);
+Route::get('/integrations/external-identities', [IntegrationController::class, 'externalIdentities']);
+Route::post('/integrations/link-user', [IntegrationController::class, 'linkExternalUser']);
+Route::delete('/integrations/link-user/{identityId}', [IntegrationController::class, 'unlinkExternalUser']);
 
 // Webhooks (external, no auth)
 Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']);

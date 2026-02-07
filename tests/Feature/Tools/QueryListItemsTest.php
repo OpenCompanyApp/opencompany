@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\QueryListItems;
+use App\Agents\Tools\Lists\QueryListItems;
 use App\Models\ListItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
