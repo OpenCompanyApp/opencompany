@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d2ce551aa2c946717fb327cc2e8b4278",
+    "content-hash": "e0a112181170158717280b5e0313a721",
     "packages": [
         {
             "name": "brick/math",
@@ -3122,6 +3122,55 @@
                 "charts",
                 "jpgraph",
                 "laravel",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/ai-tool-mermaid",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-mermaid",
+                "reference": "22631a9a69f670c4f1844726c95ca435c9169b58"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolMermaid\\AiToolMermaidServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolMermaid\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Mermaid diagram rendering AI tool for OpenCompany — flowcharts, sequence diagrams, ER diagrams, and more as PNG images.",
+            "keywords": [
+                "ai",
+                "diagrams",
+                "laravel",
+                "mermaid",
                 "opencompany",
                 "tools"
             ],
@@ -10235,6 +10284,7 @@
     "stability-flags": {
         "opencompanyapp/ai-tool-celestial": 20,
         "opencompanyapp/ai-tool-jpgraph": 20,
+        "opencompanyapp/ai-tool-mermaid": 20,
         "opencompanyapp/ai-tool-plausible": 20,
         "opencompanyapp/integration-core": 20
     },

@@ -23,6 +23,10 @@
             "url": "tmp/ai-tool-jpgraph"
         },
         {
+            "type": "path",
+            "url": "tmp/ai-tool-mermaid"
+        },
+        {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/integration-core"
         },
@@ -40,6 +44,10 @@
         },
         {
             "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/ai-tool-mermaid"
+        },
+        {
+            "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php"
         }
     ],
@@ -54,6 +62,7 @@
         "opencompanyapp/ai-tool-celestial": "@dev",
         "opencompanyapp/integration-core": "@dev",
         "opencompanyapp/ai-tool-jpgraph": "@dev",
+        "opencompanyapp/ai-tool-mermaid": "@dev",
         "opencompanyapp/ai-tool-plausible": "@dev",
         "opencompanyapp/astronomy-bundle": "^3.0",
         "prism-php/prism": "^0.99.19",
