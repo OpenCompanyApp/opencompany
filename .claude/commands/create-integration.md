@@ -1,11 +1,11 @@
 ---
-description: Scaffold a new AI tool package for the OpenCompany ecosystem
+description: Scaffold a new integration package for the OpenCompany ecosystem
 argument-hint: <tool-name>
 ---
 
-# Create AI Tool Package
+# Create Integration Package
 
-Create a new AI tool package called `ai-tool-$ARGUMENTS` in the `tmp/` directory, following the established OpenCompany AI tool package pattern.
+Create a new integration package called `ai-tool-$ARGUMENTS` in the `tmp/` directory, following the established OpenCompany integration package pattern.
 
 ## Before you start
 
@@ -15,8 +15,8 @@ Read the reference implementation to understand the exact patterns:
 2. Read `tmp/ai-tool-celestial/src/AiToolCelestialServiceProvider.php` — ServiceProvider pattern
 3. Read `tmp/ai-tool-celestial/src/Tools/QueryCelestial.php` — Tool class implementing Laravel AI SDK Tool interface
 4. Read `tmp/ai-tool-celestial/composer.json` — Package dependencies
-5. Read `tmp/ai-tool-core/src/Contracts/ToolProvider.php` — The contract to implement
-6. Read `tmp/ai-tool-core/src/Contracts/CredentialResolver.php` — For tools needing API keys
+5. Read `tmp/integration-core/src/Contracts/ToolProvider.php` — The contract to implement
+6. Read `tmp/integration-core/src/Contracts/CredentialResolver.php` — For tools needing API keys
 
 ## Package structure to create
 
@@ -38,12 +38,12 @@ tmp/ai-tool-$ARGUMENTS/
 ### composer.json
 - Name: `opencompanyapp/ai-tool-$ARGUMENTS`
 - Namespace: `OpenCompany\AiTool{Name}\`
-- Require: `php ^8.2`, `opencompanyapp/ai-tool-core ^1.0 || @dev`, `laravel/ai ^0.1`
+- Require: `php ^8.2`, `opencompanyapp/integration-core ^2.0 || @dev`, `laravel/ai ^0.1`
 - Laravel auto-discovery for the ServiceProvider
 - Add any integration-specific PHP dependencies
 
 ### ToolProvider
-- Implement `OpenCompany\AiToolCore\Contracts\ToolProvider`
+- Implement `OpenCompany\IntegrationCore\Contracts\ToolProvider`
 - `appName()` returns the slug (e.g., `'weather'`)
 - `appMeta()` returns label, description, icon (use `ph:` prefix for Phosphor icons), logo
 - `tools()` returns slug => metadata array for each tool
@@ -64,7 +64,7 @@ tmp/ai-tool-$ARGUMENTS/
 - For tools needing API keys, use `CredentialResolver` in the service binding:
   ```php
   $this->app->singleton(MyService::class, function ($app) {
-      $creds = $app->make(\OpenCompany\AiToolCore\Contracts\CredentialResolver::class);
+      $creds = $app->make(\OpenCompany\IntegrationCore\Contracts\CredentialResolver::class);
       return new MyService(
           apiKey: $creds->get('{integration}', 'api_key', ''),
           // ... other config
@@ -100,6 +100,6 @@ tmp/ai-tool-$ARGUMENTS/
 4. Run `composer update`
 5. Verify with `php artisan tinker`:
    ```php
-   $registry = app(\OpenCompany\AiToolCore\Support\ToolProviderRegistry::class);
+   $registry = app(\OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class);
    $registry->has('{name}'); // should be true
    ```

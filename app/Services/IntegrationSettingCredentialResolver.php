@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\IntegrationSetting;
-use OpenCompany\AiToolCore\Contracts\CredentialResolver;
+use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
 
 class IntegrationSettingCredentialResolver implements CredentialResolver
 {

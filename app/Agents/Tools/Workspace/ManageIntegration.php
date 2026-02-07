@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
-use OpenCompany\AiToolCore\Contracts\ConfigurableIntegration;
-use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
+use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class ManageIntegration implements Tool
 {

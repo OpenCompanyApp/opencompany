@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Override the default config-based credential resolver with DB-backed one
         $this->app->singleton(
-            \OpenCompany\AiToolCore\Contracts\CredentialResolver::class,
+            \OpenCompany\IntegrationCore\Contracts\CredentialResolver::class,
             \App\Services\IntegrationSettingCredentialResolver::class
         );
     }

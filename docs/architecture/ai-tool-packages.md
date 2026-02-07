@@ -7,14 +7,14 @@
 OpenCompany's agent tools follow a plugin architecture inspired by n8n community nodes. Instead of a monolithic tool registry where every integration lives inside the app, external integrations are extracted into independent Composer packages:
 
 ```
-opencompanyapp/ai-tool-core          ← Contracts, credential abstraction, registry
+opencompanyapp/integration-core          ← Contracts, credential abstraction, registry
 opencompanyapp/ai-tool-celestial     ← Astronomy: moon phases, planets, eclipses
 opencompanyapp/ai-tool-plausible     ← (planned) Web analytics
 opencompanyapp/ai-tool-telegram      ← (planned) Messaging notifications
 ```
 
 Each package:
-- Implements the `ToolProvider` contract from `ai-tool-core`
+- Implements the `ToolProvider` contract from `integration-core`
 - Contains one or more tools implementing Laravel AI SDK's `Tool` interface
 - Auto-registers with Laravel's service provider discovery
 - Works standalone in any Laravel app, or integrates with OpenCompany's permission system
@@ -52,7 +52,7 @@ Built-in tools (chat, docs, tables, calendar, lists, workspace management) remai
          │                      │
          ▼                      ▼
 ┌─────────────────┐  ┌──────────────────────┐
-│ ai-tool-core    │  │ ai-tool-celestial    │
+│ integration-core    │  │ ai-tool-celestial    │
 │                 │  │                      │
 │ ToolProvider    │◄─│ CelestialToolProvider│
 │ CredResolver    │  │ QueryCelestial       │
@@ -68,11 +68,11 @@ Built-in tools (chat, docs, tables, calendar, lists, workspace management) remai
 
 ---
 
-## ai-tool-core
+## integration-core
 
-**Package:** `opencompanyapp/ai-tool-core`
-**Namespace:** `OpenCompany\AiToolCore`
-**Repo:** [github.com/OpenCompanyApp/ai-tool-core](https://github.com/OpenCompanyApp/ai-tool-core)
+**Package:** `opencompanyapp/integration-core`
+**Namespace:** `OpenCompany\IntegrationCore`
+**Repo:** [github.com/OpenCompanyApp/integration-core](https://github.com/OpenCompanyApp/integration-core)
 
 ### ToolProvider Contract
 
@@ -154,7 +154,7 @@ class ToolProviderRegistry
 
 Tool packages register themselves in their service provider's `boot()` method. The host app reads from the registry to discover available tools.
 
-### AiToolCoreServiceProvider
+### IntegrationCoreServiceProvider
 
 Auto-discovered by Laravel. Binds two things:
 
@@ -176,7 +176,7 @@ Step-by-step guide using the Celestial package as a template.
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "opencompanyapp/ai-tool-core": "^1.0",
+        "opencompanyapp/integration-core": "^1.0",
         "laravel/ai": "^0.1"
     },
     "autoload": {
@@ -251,8 +251,8 @@ Key points:
 namespace OpenCompany\AiToolWeather;
 
 use Laravel\Ai\Contracts\Tool;
-use OpenCompany\AiToolCore\Contracts\CredentialResolver;
-use OpenCompany\AiToolCore\Contracts\ToolProvider;
+use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
+use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 use OpenCompany\AiToolWeather\Tools\GetWeather;
 
 class WeatherToolProvider implements ToolProvider
@@ -313,7 +313,7 @@ class WeatherToolProvider implements ToolProvider
 namespace OpenCompany\AiToolWeather;
 
 use Illuminate\Support\ServiceProvider;
-use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class AiToolWeatherServiceProvider extends ServiceProvider
 {
@@ -321,7 +321,7 @@ class AiToolWeatherServiceProvider extends ServiceProvider
     {
         // Bind any services your tools need
         $this->app->singleton(WeatherClient::class, function () {
-            $credentials = app(\OpenCompany\AiToolCore\Contracts\CredentialResolver::class);
+            $credentials = app(\OpenCompany\IntegrationCore\Contracts\CredentialResolver::class);
             return new WeatherClient($credentials->get('weather', 'api_key'));
         });
     }
@@ -337,7 +337,7 @@ class AiToolWeatherServiceProvider extends ServiceProvider
 }
 ```
 
-The `$this->app->bound()` check makes the package work both with and without `ai-tool-core`. Without core, you can still use the tool directly.
+The `$this->app->bound()` check makes the package work both with and without `integration-core`. Without core, you can still use the tool directly.
 
 ---
 
@@ -411,7 +411,7 @@ $response = Ai::agent()
 ### With Multiple Tool Packages
 
 ```php
-use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 $registry = app(ToolProviderRegistry::class);
 
@@ -512,7 +512,7 @@ OpenCompany overrides the default config-based resolver with a DB-backed one:
 // app/Providers/AppServiceProvider.php
 
 $this->app->singleton(
-    \OpenCompany\AiToolCore\Contracts\CredentialResolver::class,
+    \OpenCompany\IntegrationCore\Contracts\CredentialResolver::class,
     \App\Services\IntegrationSettingCredentialResolver::class
 );
 ```
@@ -541,7 +541,7 @@ This reads encrypted API keys from the `integration_settings` table instead of c
 
 ## Key Files Reference
 
-### Core Package (`tmp/ai-tool-core/`)
+### Core Package (`tmp/integration-core/`)
 
 | File | Role |
 |------|------|
@@ -549,7 +549,7 @@ This reads encrypted API keys from the `integration_settings` table instead of c
 | `src/Contracts/CredentialResolver.php` | API key abstraction |
 | `src/Support/ConfigCredentialResolver.php` | Default: reads from `config/ai-tools.php` |
 | `src/Support/ToolProviderRegistry.php` | Singleton collecting all providers |
-| `src/AiToolCoreServiceProvider.php` | Binds registry + default resolver |
+| `src/IntegrationCoreServiceProvider.php` | Binds registry + default resolver |
 
 ### Celestial Package (`tmp/ai-tool-celestial/`)
 
@@ -574,5 +574,5 @@ This reads encrypted API keys from the `integration_settings` table instead of c
 | File | Relevant Section |
 |------|-----------------|
 | `composer.json` (root) | `repositories` array with path repos for local dev + VCS repos for remote |
-| `tmp/ai-tool-core/composer.json` | Core package definition |
+| `tmp/integration-core/composer.json` | Core package definition |
 | `tmp/ai-tool-celestial/composer.json` | Celestial package definition |

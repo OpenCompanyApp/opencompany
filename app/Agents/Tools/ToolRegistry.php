@@ -35,7 +35,7 @@ use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\AgentDocumentService;
 use App\Services\AgentPermissionService;
-use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class ToolRegistry
 {

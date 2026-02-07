@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\AgentPermission;
 use App\Models\User;
-use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class AgentPermissionService
 {

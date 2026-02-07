@@ -13,8 +13,8 @@ use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use OpenCompany\AiToolCore\Contracts\ConfigurableIntegration;
-use OpenCompany\AiToolCore\Support\ToolProviderRegistry;
+use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class IntegrationController extends Controller
 {

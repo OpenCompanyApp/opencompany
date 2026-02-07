@@ -8,7 +8,7 @@
     "repositories": [
         {
             "type": "path",
-            "url": "tmp/ai-tool-core"
+            "url": "tmp/integration-core"
         },
         {
             "type": "path",
@@ -24,7 +24,7 @@
         },
         {
             "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-core"
+            "url": "https://github.com/OpenCompanyApp/integration-core"
         },
         {
             "type": "vcs",
@@ -52,7 +52,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "opencompanyapp/ai-tool-celestial": "@dev",
-        "opencompanyapp/ai-tool-core": "@dev",
+        "opencompanyapp/integration-core": "@dev",
         "opencompanyapp/ai-tool-jpgraph": "@dev",
         "opencompanyapp/ai-tool-plausible": "@dev",
         "opencompanyapp/astronomy-bundle": "^3.0",

@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a0528342f3e5f040bea5ad188d3ea74d",
+    "content-hash": "d2ce551aa2c946717fb327cc2e8b4278",
     "packages": [
         {
             "name": "brick/math",
-            "version": "0.14.6",
+            "version": "0.14.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/brick/math.git",
-                "reference": "32498d5e1897e7642c0b961ace2df6d7dc9a3bc3"
+                "reference": "07ff363b16ef8aca9692bba3be9e73fe63f34e50"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/brick/math/zipball/32498d5e1897e7642c0b961ace2df6d7dc9a3bc3",
-                "reference": "32498d5e1897e7642c0b961ace2df6d7dc9a3bc3",
+                "url": "https://api.github.com/repos/brick/math/zipball/07ff363b16ef8aca9692bba3be9e73fe63f34e50",
+                "reference": "07ff363b16ef8aca9692bba3be9e73fe63f34e50",
                 "shasum": ""
             },
             "require": {
@@ -56,7 +56,7 @@
             ],
             "support": {
                 "issues": "https://github.com/brick/math/issues",
-                "source": "https://github.com/brick/math/tree/0.14.6"
+                "source": "https://github.com/brick/math/tree/0.14.7"
             },
             "funding": [
                 {
@@ -64,7 +64,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-02-05T07:59:58+00:00"
+            "time": "2026-02-07T10:57:35+00:00"
         },
         {
             "name": "carbonphp/carbon-doctrine-types",
@@ -1301,16 +1301,16 @@
         },
         {
             "name": "laravel/ai",
-            "version": "v0.1.2",
+            "version": "v0.1.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/ai.git",
-                "reference": "26135b487a8681326162e9ebe350217b85192dba"
+                "reference": "457099159a0d14e6d208f16fd50d97016326dddc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/ai/zipball/26135b487a8681326162e9ebe350217b85192dba",
-                "reference": "26135b487a8681326162e9ebe350217b85192dba",
+                "url": "https://api.github.com/repos/laravel/ai/zipball/457099159a0d14e6d208f16fd50d97016326dddc",
+                "reference": "457099159a0d14e6d208f16fd50d97016326dddc",
                 "shasum": ""
             },
             "require": {
@@ -1363,7 +1363,7 @@
                 "issues": "https://github.com/laravel/ai/issues",
                 "source": "https://github.com/laravel/ai"
             },
-            "time": "2026-02-05T17:55:12+00:00"
+            "time": "2026-02-06T12:49:31+00:00"
         },
         {
             "name": "laravel/framework",
@@ -3042,12 +3042,12 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-celestial",
-                "reference": "8c7167ee6e423ad92ea2dbf4ccfe634f50a6107b"
+                "reference": "a2bf11863c803916f54f6b734678b049d3cccb1f"
             },
             "require": {
                 "laravel/ai": "^0.1",
-                "opencompanyapp/ai-tool-core": "^1.0 || @dev",
                 "opencompanyapp/astronomy-bundle": "^3.0",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
             "type": "library",
@@ -3086,65 +3086,18 @@
             }
         },
         {
-            "name": "opencompanyapp/ai-tool-core",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-core",
-                "reference": "01bf5e242495a9281e185278a27876fb8aca5ef6"
-            },
-            "require": {
-                "illuminate/support": "^11.0 || ^12.0",
-                "laravel/ai": "^0.1",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolCore\\AiToolCoreServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolCore\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "Core framework for OpenCompany AI tool packages — ToolProvider contract, credential abstraction, and auto-discovery for Laravel AI SDK tools.",
-            "keywords": [
-                "agents",
-                "ai",
-                "laravel",
-                "opencompany",
-                "tools"
-            ],
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
             "name": "opencompanyapp/ai-tool-jpgraph",
             "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-jpgraph",
-                "reference": "f82729131b2501d3978cca8a7d82bb286bfa46c5"
+                "reference": "f82e43bd0df421456751576fb648328b4693ef7f"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
                 "laravel/ai": "^0.1",
                 "mitoteam/jpgraph": "^10.5",
-                "opencompanyapp/ai-tool-core": "^1.0 || @dev",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
             "type": "library",
@@ -3182,11 +3135,11 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-plausible",
-                "reference": "8eac2bce71228c2fb1dabf65bafc1c6f9f4f6713"
+                "reference": "511a4450b8aae769979fc003cfc3101808c0da2f"
             },
             "require": {
                 "laravel/ai": "^0.1",
-                "opencompanyapp/ai-tool-core": "^1.0 || @dev",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
             "type": "library",
@@ -3230,12 +3183,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php.git",
-                "reference": "840370b9d483971c61c95ec06e624d894c46007b"
+                "reference": "6e2b02342e411973bd37dbb42451c87aa08ea95b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/astronomy-bundle-php/zipball/840370b9d483971c61c95ec06e624d894c46007b",
-                "reference": "840370b9d483971c61c95ec06e624d894c46007b",
+                "url": "https://api.github.com/repos/OpenCompanyApp/astronomy-bundle-php/zipball/6e2b02342e411973bd37dbb42451c87aa08ea95b",
+                "reference": "6e2b02342e411973bd37dbb42451c87aa08ea95b",
                 "shasum": ""
             },
             "require": {
@@ -3264,13 +3217,74 @@
                 {
                     "name": "Andreas Moeller",
                     "email": "andrmoel@gmail.com"
+                },
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Bundle for astronomical calculations such as position of moon, sun and planets, sunrise, sunset or solar eclipses. Most of the calculations are based on Jean Meeus 'Astronomical Algorithms' book and the VSOP87 theory.",
+            "description": "PHP library for astronomical calculations — moon phases, sunrise/sunset, planet positions, solar and lunar eclipses, coordinate transformations. Maintained by OpenCompany for AI agent capabilities. Based on Jean Meeus' Astronomical Algorithms and VSOP87 theory.",
+            "keywords": [
+                "astronomy",
+                "celestial",
+                "coordinates",
+                "eclipse",
+                "moon",
+                "opencompany",
+                "planets",
+                "sun"
+            ],
             "support": {
                 "source": "https://github.com/OpenCompanyApp/astronomy-bundle-php/tree/3.0.0"
             },
-            "time": "2026-02-07T15:20:06+00:00"
+            "time": "2026-02-07T15:24:41+00:00"
+        },
+        {
+            "name": "opencompanyapp/integration-core",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integration-core",
+                "reference": "ac3510e54cd987ab3840bdcae4d755dc259d3e88"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "laravel/ai": "^0.1",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\IntegrationCore\\IntegrationCoreServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\IntegrationCore\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Core framework for OpenCompany integration packages — contracts, credential abstraction, and auto-discovery registry for Laravel.",
+            "keywords": [
+                "agents",
+                "integrations",
+                "laravel",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "paragonie/sodium_compat",
@@ -10220,9 +10234,9 @@
     "minimum-stability": "stable",
     "stability-flags": {
         "opencompanyapp/ai-tool-celestial": 20,
-        "opencompanyapp/ai-tool-core": 20,
         "opencompanyapp/ai-tool-jpgraph": 20,
-        "opencompanyapp/ai-tool-plausible": 20
+        "opencompanyapp/ai-tool-plausible": 20,
+        "opencompanyapp/integration-core": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
