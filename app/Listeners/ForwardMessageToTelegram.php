@@ -96,9 +96,9 @@ class ForwardMessageToTelegram implements ShouldQueue
 
             try {
                 // Send diagram images as documents to preserve resolution
-                $isDiagram = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/');
+                $isDocument = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/') || str_contains($url, '/storage/typst/');
 
-                if ($isDiagram) {
+                if ($isDocument) {
                     $telegram->sendDocument($chatId, $filePath, $alt ?: null);
                 } else {
                     $telegram->sendPhoto($chatId, $filePath, $alt ?: null);
@@ -106,8 +106,8 @@ class ForwardMessageToTelegram implements ShouldQueue
                 $sentPaths[] = $filePath;
             } catch (\Throwable $e) {
                 // Fall back to sendDocument for oversized images (PHOTO_INVALID_DIMENSIONS)
-                $isDiagramFallback = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/');
-                if (!$isDiagramFallback && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
+                $isDocumentFallback = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/') || str_contains($url, '/storage/typst/');
+                if (!$isDocumentFallback && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
                     try {
                         $telegram->sendDocument($chatId, $filePath, $alt ?: null);
                         $sentPaths[] = $filePath;
@@ -135,7 +135,8 @@ class ForwardMessageToTelegram implements ShouldQueue
     private function sendAttachmentImages(TelegramService $telegram, string $chatId, $message, array $alreadySentPaths): void
     {
         foreach ($message->attachments as $attachment) {
-            if (!str_starts_with($attachment->mime_type ?? '', 'image/')) {
+            $mime = $attachment->mime_type ?? '';
+            if (!str_starts_with($mime, 'image/') && $mime !== 'application/pdf') {
                 continue;
             }
 
@@ -158,16 +159,16 @@ class ForwardMessageToTelegram implements ShouldQueue
             }
 
             try {
-                $isDiagram = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/');
+                $isDocument = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/') || str_contains($url, '/storage/typst/');
 
-                if ($isDiagram) {
+                if ($isDocument) {
                     $telegram->sendDocument($chatId, $filePath, $attachment->original_name);
                 } else {
                     $telegram->sendPhoto($chatId, $filePath, $attachment->original_name);
                 }
             } catch (\Throwable $e) {
-                $isDiagramFallback = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/');
-                if (!$isDiagramFallback && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
+                $isDocumentFallback = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/') || str_contains($url, '/storage/typst/');
+                if (!$isDocumentFallback && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
                     try {
                         $telegram->sendDocument($chatId, $filePath, $attachment->original_name);
                     } catch (\Throwable $docError) {

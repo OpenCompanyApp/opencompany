@@ -66,9 +66,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             $fallback .= $this->buildChannelContext();
             $fallback .= $this->buildTaskContext();
             $fallback .= "## Apps\n\n";
+            $fallback .= "**IMPORTANT: Before calling ANY tool you have not used in this conversation, call `get_tool_info(name)` first to get its parameters. Do NOT guess parameters.**\n\n";
             $fallback .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
-            $fallback .= "Call get_tool_info(name) for parameter details before using an unfamiliar tool.\n";
-            $fallback .= "To generate images (charts, diagrams, SVG), ALWAYS call the appropriate rendering tool (render_mermaid, render_plantuml, render_svg, create_jpgraph_chart). NEVER fabricate or hallucinate image URLs.\n";
+            $fallback .= "To generate images: use render_mermaid, render_plantuml, render_svg, or create_jpgraph_chart. To generate PDFs: use render_typst. NEVER fabricate image/document URLs.\n";
             return $fallback;
         }
 
@@ -96,9 +96,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         $prompt .= $this->buildTaskContext();
 
         $prompt .= "## Apps\n\n";
+        $prompt .= "**IMPORTANT: Before calling ANY tool you have not used in this conversation, call `get_tool_info(name)` first to get its parameters. Do NOT guess parameters.**\n\n";
         $prompt .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
-        $prompt .= "Call get_tool_info(name) for parameter details before using an unfamiliar tool.\n";
-        $prompt .= "To generate images (charts, diagrams, SVG), ALWAYS call the appropriate rendering tool (render_mermaid, render_plantuml, render_svg, create_jpgraph_chart). NEVER fabricate or hallucinate image URLs.\n";
+        $prompt .= "To generate images: use render_mermaid, render_plantuml, render_svg, or create_jpgraph_chart. To generate PDFs: use render_typst. NEVER fabricate image/document URLs.\n";
         $prompt .= "Tools marked with * require approval.\n";
 
         return $prompt;

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "81ab3716af168440dd1d0ef3267c6c9e",
+    "content-hash": "94ad87c476c1055ed0f235fd7f483efc",
     "packages": [
         {
             "name": "brick/math",
@@ -3271,6 +3271,56 @@
                 "opencompany",
                 "plausible",
                 "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/ai-tool-typst",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-typst",
+                "reference": "883440b4d0e315be26629f34f52ac5cc41772dcf"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolTypst\\AiToolTypstServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolTypst\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Typst document rendering AI tool for OpenCompany — generate PDF reports, invoices, proposals, and formatted documents.",
+            "keywords": [
+                "ai",
+                "documents",
+                "laravel",
+                "opencompany",
+                "pdf",
+                "tools",
+                "typst"
             ],
             "transport-options": {
                 "relative": true
@@ -10337,6 +10387,7 @@
         "opencompanyapp/ai-tool-mermaid": 20,
         "opencompanyapp/ai-tool-plantuml": 20,
         "opencompanyapp/ai-tool-plausible": 20,
+        "opencompanyapp/ai-tool-typst": 20,
         "opencompanyapp/integration-core": 20
     },
     "prefer-stable": true,

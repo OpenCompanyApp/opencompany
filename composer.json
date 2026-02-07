@@ -31,6 +31,10 @@
             "url": "tmp/ai-tool-plantuml"
         },
         {
+            "type": "path",
+            "url": "tmp/ai-tool-typst"
+        },
+        {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/integration-core"
         },
@@ -56,6 +60,10 @@
         },
         {
             "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/ai-tool-typst"
+        },
+        {
+            "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php"
         }
     ],
@@ -68,12 +76,13 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "opencompanyapp/ai-tool-celestial": "@dev",
-        "opencompanyapp/integration-core": "@dev",
         "opencompanyapp/ai-tool-jpgraph": "@dev",
         "opencompanyapp/ai-tool-mermaid": "@dev",
         "opencompanyapp/ai-tool-plantuml": "@dev",
         "opencompanyapp/ai-tool-plausible": "@dev",
+        "opencompanyapp/ai-tool-typst": "@dev",
         "opencompanyapp/astronomy-bundle": "^3.0",
+        "opencompanyapp/integration-core": "@dev",
         "prism-php/prism": "^0.99.19",
         "tightenco/ziggy": "^2.0"
     },

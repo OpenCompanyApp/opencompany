@@ -229,12 +229,12 @@ class AgentRespondJob implements ShouldQueue
         try {
             foreach ($response->steps as $step) {
                 foreach ($step->toolResults as $toolResult) {
-                    if (!in_array($toolResult->name, ['CreateJpGraphChart', 'RenderSvg', 'RenderMermaid', 'RenderPlantUml'])) {
+                    if (!in_array($toolResult->name, ['CreateJpGraphChart', 'RenderSvg', 'RenderMermaid', 'RenderPlantUml', 'RenderTypst'])) {
                         continue;
                     }
 
                     $result = $toolResult->result ?? '';
-                    if (preg_match('#(/storage/(?:charts|svg|mermaid|plantuml)/[a-f0-9-]+\.png)#', $result, $m)) {
+                    if (preg_match('#(/storage/(?:charts|svg|mermaid|plantuml)/[a-f0-9-]+\.png|/storage/typst/[a-f0-9-]+\.pdf)#', $result, $m)) {
                         $url = $m[1];
                         $filePath = storage_path('app/public/' . str_replace('/storage/', '', $url));
 
@@ -243,7 +243,7 @@ class AgentRespondJob implements ShouldQueue
                             'message_id' => $message->id,
                             'filename' => basename($url),
                             'original_name' => basename($url),
-                            'mime_type' => 'image/png',
+                            'mime_type' => str_ends_with($url, '.pdf') ? 'application/pdf' : 'image/png',
                             'size' => file_exists($filePath) ? filesize($filePath) : 0,
                             'url' => $url,
                             'uploaded_by_id' => $this->agent->id,
@@ -273,7 +273,12 @@ class AgentRespondJob implements ShouldQueue
 
                 // Truncate large string results to prevent DB bloat
                 if (is_string($result) && strlen($result) > 2000) {
-                    $result = substr($result, 0, 2000) . '... [truncated]';
+                    $result = mb_strcut($result, 0, 2000, 'UTF-8') . '... [truncated]';
+                }
+
+                // Sanitize to valid UTF-8 to prevent JSON encoding failures
+                if (is_string($result)) {
+                    $result = mb_convert_encoding($result, 'UTF-8', 'UTF-8');
                 }
 
                 $toolStep = $task->addStep(
