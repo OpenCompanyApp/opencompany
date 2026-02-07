@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e0a112181170158717280b5e0313a721",
+    "content-hash": "56450fbf7fe031af9d9a8d4914791d0a",
     "packages": [
         {
             "name": "brick/math",
@@ -3135,7 +3135,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-mermaid",
-                "reference": "22631a9a69f670c4f1844726c95ca435c9169b58"
+                "reference": "fd2031430ef193933cab35c39f59e1d491e92763"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",

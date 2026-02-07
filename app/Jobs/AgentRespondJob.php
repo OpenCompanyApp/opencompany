@@ -153,9 +153,9 @@ class AgentRespondJob implements ShouldQueue
             DirectMessage::where('channel_id', $this->channelId)
                 ->update(['last_message_at' => now()]);
 
-            // Broadcast agent's response (non-critical — message is already saved to DB)
+            // Dispatch event (fires listeners like ForwardMessageToTelegram, then broadcasts)
             try {
-                broadcast(new MessageSent($agentMessage));
+                event(new MessageSent($agentMessage));
             } catch (\Throwable $broadcastError) {
                 Log::warning('Failed to broadcast agent message', [
                     'error' => $broadcastError->getMessage(),
@@ -229,12 +229,12 @@ class AgentRespondJob implements ShouldQueue
         try {
             foreach ($response->steps as $step) {
                 foreach ($step->toolResults as $toolResult) {
-                    if (!in_array($toolResult->name, ['CreateJpGraphChart', 'RenderSvg'])) {
+                    if (!in_array($toolResult->name, ['CreateJpGraphChart', 'RenderSvg', 'RenderMermaid'])) {
                         continue;
                     }
 
                     $result = $toolResult->result ?? '';
-                    if (preg_match('#(/storage/(?:charts|svg)/[a-f0-9-]+\.png)#', $result, $m)) {
+                    if (preg_match('#(/storage/(?:charts|svg|mermaid)/[a-f0-9-]+\.png)#', $result, $m)) {
                         $url = $m[1];
                         $filePath = storage_path('app/public/' . str_replace('/storage/', '', $url));
 

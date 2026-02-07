@@ -116,21 +116,28 @@ class AgentPermissionService
             ->where('scope_type', 'integration')
             ->get();
 
-        // No records = all integrations enabled (backward-compatible)
-        if ($integrationPerms->isEmpty()) {
-            $apps = \App\Agents\Tools\ToolRegistry::INTEGRATION_APPS;
-            foreach ($this->providerRegistry->all() as $provider) {
-                if ($provider->isIntegration() && !in_array($provider->appName(), $apps)) {
-                    $apps[] = $provider->appName();
-                }
+        // Build full list of all integration app names
+        $allApps = \App\Agents\Tools\ToolRegistry::INTEGRATION_APPS;
+        foreach ($this->providerRegistry->all() as $provider) {
+            if ($provider->isIntegration() && !in_array($provider->appName(), $allApps)) {
+                $allApps[] = $provider->appName();
             }
-            return $apps;
         }
 
-        return $integrationPerms
-            ->where('permission', 'allow')
+        // No records = all integrations enabled (backward-compatible)
+        if ($integrationPerms->isEmpty()) {
+            return $allApps;
+        }
+
+        // When records exist: explicitly denied integrations are blocked,
+        // explicitly allowed and new (unrecorded) integrations are enabled.
+        // This ensures newly installed packages work without manual permission updates.
+        $denied = $integrationPerms
+            ->where('permission', 'deny')
             ->pluck('scope_key')
             ->toArray();
+
+        return array_values(array_filter($allApps, fn ($app) => !in_array($app, $denied)));
     }
 
     /**

@@ -95,13 +95,33 @@ class ForwardMessageToTelegram implements ShouldQueue
             }
 
             try {
-                $telegram->sendPhoto($chatId, $filePath, $alt ?: null);
+                // Send mermaid images as documents to preserve resolution
+                $isMermaid = str_contains($url, '/storage/mermaid/');
+
+                if ($isMermaid) {
+                    $telegram->sendDocument($chatId, $filePath, $alt ?: null);
+                } else {
+                    $telegram->sendPhoto($chatId, $filePath, $alt ?: null);
+                }
                 $sentPaths[] = $filePath;
             } catch (\Throwable $e) {
-                Log::error('Failed to send chart photo to Telegram', [
-                    'error' => $e->getMessage(),
-                    'path' => $filePath,
-                ]);
+                // Fall back to sendDocument for oversized images (PHOTO_INVALID_DIMENSIONS)
+                if (!str_contains($url, '/storage/mermaid/') && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
+                    try {
+                        $telegram->sendDocument($chatId, $filePath, $alt ?: null);
+                        $sentPaths[] = $filePath;
+                    } catch (\Throwable $docError) {
+                        Log::error('Failed to send chart as document to Telegram', [
+                            'error' => $docError->getMessage(),
+                            'path' => $filePath,
+                        ]);
+                    }
+                } else {
+                    Log::error('Failed to send chart image to Telegram', [
+                        'error' => $e->getMessage(),
+                        'path' => $filePath,
+                    ]);
+                }
             }
         }
 
@@ -137,12 +157,29 @@ class ForwardMessageToTelegram implements ShouldQueue
             }
 
             try {
-                $telegram->sendPhoto($chatId, $filePath, $attachment->original_name);
+                $isMermaid = str_contains($url, '/storage/mermaid/');
+
+                if ($isMermaid) {
+                    $telegram->sendDocument($chatId, $filePath, $attachment->original_name);
+                } else {
+                    $telegram->sendPhoto($chatId, $filePath, $attachment->original_name);
+                }
             } catch (\Throwable $e) {
-                Log::error('Failed to send attachment photo to Telegram', [
-                    'error' => $e->getMessage(),
-                    'path' => $filePath,
-                ]);
+                if (!str_contains($url, '/storage/mermaid/') && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
+                    try {
+                        $telegram->sendDocument($chatId, $filePath, $attachment->original_name);
+                    } catch (\Throwable $docError) {
+                        Log::error('Failed to send attachment as document to Telegram', [
+                            'error' => $docError->getMessage(),
+                            'path' => $filePath,
+                        ]);
+                    }
+                } else {
+                    Log::error('Failed to send attachment image to Telegram', [
+                        'error' => $e->getMessage(),
+                        'path' => $filePath,
+                    ]);
+                }
             }
         }
     }

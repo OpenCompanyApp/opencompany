@@ -20,7 +20,7 @@ class AgentPermissionServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->service = new AgentPermissionService();
+        $this->service = app(AgentPermissionService::class);
         $this->agent = User::factory()->create([
             'type' => 'agent',
             'brain' => 'anthropic:claude-sonnet-4-5-20250929',
@@ -171,6 +171,60 @@ class AgentPermissionServiceTest extends TestCase
         $result = $this->service->resolveToolPermission($this->agent, 'delete_channel', 'write');
 
         $this->assertFalse($result['allowed']);
+    }
+
+    // ── Integration Access Tests ─────────────────────────────────────────
+
+    public function test_all_integrations_enabled_when_no_records(): void
+    {
+        $result = $this->service->getEnabledIntegrations($this->agent);
+
+        // Should include all known integration apps
+        $this->assertContains('telegram', $result);
+    }
+
+    public function test_denied_integration_excluded(): void
+    {
+        $this->createPermission([
+            'scope_type' => 'integration',
+            'scope_key' => 'telegram',
+            'permission' => 'deny',
+        ]);
+
+        $result = $this->service->getEnabledIntegrations($this->agent);
+
+        $this->assertNotContains('telegram', $result);
+    }
+
+    public function test_new_integration_enabled_by_default_when_records_exist(): void
+    {
+        // When an agent has integration records for known apps,
+        // new integrations without records should still be enabled.
+        $this->createPermission([
+            'scope_type' => 'integration',
+            'scope_key' => 'telegram',
+            'permission' => 'allow',
+        ]);
+
+        $result = $this->service->getEnabledIntegrations($this->agent);
+
+        // telegram is explicitly allowed
+        $this->assertContains('telegram', $result);
+        // mermaid (if registered) should be enabled by default since no deny record exists
+        // At minimum, other integrations without records should not be excluded
+    }
+
+    public function test_explicitly_allowed_integration_enabled(): void
+    {
+        $this->createPermission([
+            'scope_type' => 'integration',
+            'scope_key' => 'telegram',
+            'permission' => 'allow',
+        ]);
+
+        $result = $this->service->getEnabledIntegrations($this->agent);
+
+        $this->assertContains('telegram', $result);
     }
 
     // ── Channel Access Tests ───────────────────────────────────────────

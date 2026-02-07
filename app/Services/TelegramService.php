@@ -166,6 +166,47 @@ class TelegramService
     }
 
     /**
+     * Send a document to a Telegram chat by uploading a file from disk.
+     * Used as fallback when sendPhoto fails (e.g. oversized images).
+     */
+    public function sendDocument(string $chatId, string $filePath, ?string $caption = null): array
+    {
+        if (!$this->botToken) {
+            throw new \RuntimeException('Telegram bot token is not configured.');
+        }
+
+        if (!file_exists($filePath)) {
+            throw new \RuntimeException("Document file not found: {$filePath}");
+        }
+
+        $url = self::BASE_URL . $this->botToken . '/sendDocument';
+
+        try {
+            $request = Http::timeout(30)
+                ->attach('document', file_get_contents($filePath), basename($filePath));
+
+            $params = ['chat_id' => $chatId];
+            if ($caption) {
+                $params['caption'] = substr($caption, 0, 1024);
+            }
+
+            $response = $request->post($url, $params);
+            $data = $response->json();
+
+            if (!$response->successful() || !($data['ok'] ?? false)) {
+                $errorDescription = $data['description'] ?? 'Unknown Telegram API error';
+                Log::error('Telegram sendDocument error', ['error' => $errorDescription]);
+                throw new \RuntimeException("Telegram API error: {$errorDescription}");
+            }
+
+            return $data['result'] ?? [];
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('Telegram sendDocument connection error', ['error' => $e->getMessage()]);
+            throw new \RuntimeException("Failed to connect to Telegram API: {$e->getMessage()}");
+        }
+    }
+
+    /**
      * Check if the service has a valid bot token configured.
      */
     public function isConfigured(): bool
