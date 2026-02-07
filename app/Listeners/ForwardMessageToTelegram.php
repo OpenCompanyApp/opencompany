@@ -95,10 +95,10 @@ class ForwardMessageToTelegram implements ShouldQueue
             }
 
             try {
-                // Send mermaid images as documents to preserve resolution
-                $isMermaid = str_contains($url, '/storage/mermaid/');
+                // Send diagram images as documents to preserve resolution
+                $isDiagram = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/');
 
-                if ($isMermaid) {
+                if ($isDiagram) {
                     $telegram->sendDocument($chatId, $filePath, $alt ?: null);
                 } else {
                     $telegram->sendPhoto($chatId, $filePath, $alt ?: null);
@@ -106,7 +106,8 @@ class ForwardMessageToTelegram implements ShouldQueue
                 $sentPaths[] = $filePath;
             } catch (\Throwable $e) {
                 // Fall back to sendDocument for oversized images (PHOTO_INVALID_DIMENSIONS)
-                if (!str_contains($url, '/storage/mermaid/') && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
+                $isDiagramFallback = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/');
+                if (!$isDiagramFallback && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
                     try {
                         $telegram->sendDocument($chatId, $filePath, $alt ?: null);
                         $sentPaths[] = $filePath;
@@ -157,15 +158,16 @@ class ForwardMessageToTelegram implements ShouldQueue
             }
 
             try {
-                $isMermaid = str_contains($url, '/storage/mermaid/');
+                $isDiagram = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/');
 
-                if ($isMermaid) {
+                if ($isDiagram) {
                     $telegram->sendDocument($chatId, $filePath, $attachment->original_name);
                 } else {
                     $telegram->sendPhoto($chatId, $filePath, $attachment->original_name);
                 }
             } catch (\Throwable $e) {
-                if (!str_contains($url, '/storage/mermaid/') && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
+                $isDiagramFallback = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/');
+                if (!$isDiagramFallback && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
                     try {
                         $telegram->sendDocument($chatId, $filePath, $attachment->original_name);
                     } catch (\Throwable $docError) {

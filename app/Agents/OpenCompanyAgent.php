@@ -68,7 +68,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             $fallback .= "## Apps\n\n";
             $fallback .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
             $fallback .= "Call get_tool_info(name) for parameter details before using an unfamiliar tool.\n";
-            $fallback .= "To generate images (charts, diagrams, SVG), ALWAYS call the appropriate rendering tool (render_mermaid, render_svg, create_jpgraph_chart). NEVER fabricate or hallucinate image URLs.\n";
+            $fallback .= "To generate images (charts, diagrams, SVG), ALWAYS call the appropriate rendering tool (render_mermaid, render_plantuml, render_svg, create_jpgraph_chart). NEVER fabricate or hallucinate image URLs.\n";
             return $fallback;
         }
 
@@ -98,7 +98,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         $prompt .= "## Apps\n\n";
         $prompt .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
         $prompt .= "Call get_tool_info(name) for parameter details before using an unfamiliar tool.\n";
-        $prompt .= "To generate images (charts, diagrams, SVG), ALWAYS call the appropriate rendering tool (render_mermaid, render_svg, create_jpgraph_chart). NEVER fabricate or hallucinate image URLs.\n";
+        $prompt .= "To generate images (charts, diagrams, SVG), ALWAYS call the appropriate rendering tool (render_mermaid, render_plantuml, render_svg, create_jpgraph_chart). NEVER fabricate or hallucinate image URLs.\n";
         $prompt .= "Tools marked with * require approval.\n";
 
         return $prompt;

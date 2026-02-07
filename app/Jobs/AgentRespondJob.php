@@ -229,12 +229,12 @@ class AgentRespondJob implements ShouldQueue
         try {
             foreach ($response->steps as $step) {
                 foreach ($step->toolResults as $toolResult) {
-                    if (!in_array($toolResult->name, ['CreateJpGraphChart', 'RenderSvg', 'RenderMermaid'])) {
+                    if (!in_array($toolResult->name, ['CreateJpGraphChart', 'RenderSvg', 'RenderMermaid', 'RenderPlantUml'])) {
                         continue;
                     }
 
                     $result = $toolResult->result ?? '';
-                    if (preg_match('#(/storage/(?:charts|svg|mermaid)/[a-f0-9-]+\.png)#', $result, $m)) {
+                    if (preg_match('#(/storage/(?:charts|svg|mermaid|plantuml)/[a-f0-9-]+\.png)#', $result, $m)) {
                         $url = $m[1];
                         $filePath = storage_path('app/public/' . str_replace('/storage/', '', $url));
 
