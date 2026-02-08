@@ -34,6 +34,7 @@ class User extends Authenticatable
         'is_ephemeral',
         'behavior_mode',
         'awaiting_approval_id',
+        'awaiting_delegation_ids',
         'must_wait_for_approval',
         'sleeping_until',
         'sleeping_reason',
@@ -56,6 +57,7 @@ class User extends Authenticatable
             'must_wait_for_approval' => 'boolean',
             'sleeping_until' => 'datetime',
             'bootstrapped_at' => 'datetime',
+            'awaiting_delegation_ids' => 'array',
         ];
     }
 
@@ -75,6 +77,7 @@ class User extends Authenticatable
         $array['isEphemeral'] = $this->is_ephemeral;
         $array['behaviorMode'] = $this->behavior_mode;
         $array['awaitingApprovalId'] = $this->awaiting_approval_id;
+        $array['awaitingDelegationIds'] = $this->awaiting_delegation_ids;
         $array['mustWaitForApproval'] = $this->must_wait_for_approval;
         $array['managerId'] = $this->manager_id;
 
@@ -200,6 +203,25 @@ class User extends Authenticatable
     public function clearAwaitingApproval(): void
     {
         $this->update(['awaiting_approval_id' => null, 'status' => 'idle']);
+    }
+
+    public function addAwaitingDelegation(string $taskId): void
+    {
+        $ids = $this->awaiting_delegation_ids ?? [];
+        $ids[] = $taskId;
+        $this->update(['awaiting_delegation_ids' => array_unique($ids)]);
+    }
+
+    public function removeAwaitingDelegation(string $taskId): void
+    {
+        $ids = $this->awaiting_delegation_ids ?? [];
+        $ids = array_values(array_filter($ids, fn ($id) => $id !== $taskId));
+        $this->update(['awaiting_delegation_ids' => empty($ids) ? null : $ids]);
+    }
+
+    public function isAwaitingDelegation(): bool
+    {
+        return !empty($this->awaiting_delegation_ids);
     }
 
     public function isAgent(): bool

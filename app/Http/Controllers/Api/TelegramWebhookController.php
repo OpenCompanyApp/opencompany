@@ -190,7 +190,7 @@ class TelegramWebhookController extends Controller
 
         // Parse: "approve:{uuid}" or "reject:{uuid}"
         if (!preg_match('/^(approve|reject):(.+)$/', $data, $matches)) {
-            $telegram->answerCallbackQuery($callbackQueryId, 'Unknown action.');
+            try { $telegram->answerCallbackQuery($callbackQueryId, 'Unknown action.'); } catch (\Throwable) {}
             return;
         }
 
@@ -200,7 +200,7 @@ class TelegramWebhookController extends Controller
 
         $approval = ApprovalRequest::find($approvalId);
         if (!$approval || $approval->status !== 'pending') {
-            $telegram->answerCallbackQuery($callbackQueryId, 'This approval has already been decided.');
+            try { $telegram->answerCallbackQuery($callbackQueryId, 'This approval has already been decided.'); } catch (\Throwable) {}
             return;
         }
 
@@ -230,8 +230,8 @@ class TelegramWebhookController extends Controller
             $approvalService->handleRejectedTool($approval);
         }
 
-        // Acknowledge the button press
-        $telegram->answerCallbackQuery($callbackQueryId, ucfirst($status) . '!');
+        // Acknowledge the button press (may fail for expired callbacks)
+        try { $telegram->answerCallbackQuery($callbackQueryId, ucfirst($status) . '!'); } catch (\Throwable) {}
 
         // Update the message to show result and remove buttons
         if ($chatId && $messageId) {

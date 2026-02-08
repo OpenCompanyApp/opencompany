@@ -132,9 +132,9 @@ class AgentPermissionServiceTest extends TestCase
         $this->assertFalse($result['requires_approval']);
     }
 
-    public function test_behavior_mode_or_db_approval_combined(): void
+    public function test_explicit_db_record_overrides_behavior_mode(): void
     {
-        // Case 1: DB says no approval, but supervised + write → requires approval
+        // Case 1: DB says no approval — overrides supervised mode
         $this->agent->update(['behavior_mode' => 'supervised']);
         $this->createPermission([
             'scope_type' => 'tool',
@@ -144,9 +144,9 @@ class AgentPermissionServiceTest extends TestCase
         ]);
 
         $result = $this->service->resolveToolPermission($this->agent, 'send_message', 'write');
-        $this->assertTrue($result['requires_approval']);
+        $this->assertFalse($result['requires_approval']);
 
-        // Case 2: DB says approval required, but autonomous → still requires approval (OR logic)
+        // Case 2: DB says approval required — respected even in autonomous mode
         $this->agent->update(['behavior_mode' => 'autonomous']);
         $this->createPermission([
             'scope_type' => 'tool',
@@ -157,6 +157,25 @@ class AgentPermissionServiceTest extends TestCase
 
         $result = $this->service->resolveToolPermission($this->agent, 'create_document', 'write');
         $this->assertTrue($result['requires_approval']);
+    }
+
+    public function test_system_tools_never_require_approval(): void
+    {
+        $this->agent->update(['behavior_mode' => 'strict']);
+
+        $exemptTools = [
+            'wait_for_approval',
+            'wait',
+            'update_current_task',
+            'create_task_step',
+            'get_tool_info',
+        ];
+
+        foreach ($exemptTools as $tool) {
+            $result = $this->service->resolveToolPermission($this->agent, $tool, 'write');
+            $this->assertTrue($result['allowed'], "Tool {$tool} should be allowed");
+            $this->assertFalse($result['requires_approval'], "Tool {$tool} should never require approval, even in strict mode");
+        }
     }
 
     public function test_deny_overrides_behavior_mode(): void
@@ -290,5 +309,173 @@ class AgentPermissionServiceTest extends TestCase
         $this->assertCount(2, $result);
         $this->assertContains('folder-aaa', $result);
         $this->assertContains('folder-bbb', $result);
+    }
+
+    // ── canContactAgent Tests ─────────────────────────────────────────
+
+    public function test_can_contact_agent_manager_bypass_caller_manages(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+            'manager_id' => $this->agent->id,
+        ]);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertTrue($result['allowed']);
+        $this->assertFalse($result['requires_approval']);
+    }
+
+    public function test_can_contact_agent_manager_bypass_target_manages(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+        ]);
+        $this->agent->update(['manager_id' => $target->id]);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertTrue($result['allowed']);
+        $this->assertFalse($result['requires_approval']);
+    }
+
+    public function test_can_contact_agent_explicit_allow(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+        ]);
+
+        $this->createPermission([
+            'scope_type' => 'agent',
+            'scope_key' => $target->id,
+            'permission' => 'allow',
+            'requires_approval' => false,
+        ]);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertTrue($result['allowed']);
+        $this->assertFalse($result['requires_approval']);
+    }
+
+    public function test_can_contact_agent_explicit_deny(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+        ]);
+
+        $this->createPermission([
+            'scope_type' => 'agent',
+            'scope_key' => $target->id,
+            'permission' => 'deny',
+        ]);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertFalse($result['allowed']);
+    }
+
+    public function test_can_contact_agent_wildcard_allow(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+        ]);
+
+        $this->createPermission([
+            'scope_type' => 'agent',
+            'scope_key' => '*',
+            'permission' => 'allow',
+            'requires_approval' => false,
+        ]);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertTrue($result['allowed']);
+        $this->assertFalse($result['requires_approval']);
+    }
+
+    public function test_can_contact_agent_wildcard_deny(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+        ]);
+
+        $this->createPermission([
+            'scope_type' => 'agent',
+            'scope_key' => '*',
+            'permission' => 'deny',
+        ]);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertFalse($result['allowed']);
+    }
+
+    public function test_can_contact_agent_default_autonomous(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+        ]);
+        $this->agent->update(['behavior_mode' => 'autonomous']);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertTrue($result['allowed']);
+        $this->assertFalse($result['requires_approval']);
+    }
+
+    public function test_can_contact_agent_default_supervised(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+        ]);
+        $this->agent->update(['behavior_mode' => 'supervised']);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertTrue($result['allowed']);
+        $this->assertTrue($result['requires_approval']);
+    }
+
+    public function test_can_contact_agent_default_strict(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+        ]);
+        $this->agent->update(['behavior_mode' => 'strict']);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertTrue($result['allowed']);
+        $this->assertTrue($result['requires_approval']);
+    }
+
+    public function test_can_contact_agent_explicit_with_approval(): void
+    {
+        $target = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
+        ]);
+
+        $this->createPermission([
+            'scope_type' => 'agent',
+            'scope_key' => $target->id,
+            'permission' => 'allow',
+            'requires_approval' => true,
+        ]);
+
+        $result = $this->service->canContactAgent($this->agent, $target);
+
+        $this->assertTrue($result['allowed']);
+        $this->assertTrue($result['requires_approval']);
     }
 }

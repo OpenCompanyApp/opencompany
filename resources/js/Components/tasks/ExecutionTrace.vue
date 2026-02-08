@@ -139,6 +139,7 @@ const toolIconMap: Record<string, string> = {
   manage_calendar: 'ph:calendar',
   set_sleep_timer: 'ph:alarm',
   send_telegram: 'ph:telegram-logo',
+  contact_agent: 'ph:users-three',
 }
 
 const stepTypeIcon = (step: TaskStep): string => {

@@ -53,17 +53,18 @@ class AppServiceProvider extends ServiceProvider
         // Register 'glm' and 'glm-coding' as custom AI SDK drivers.
         // These use GlmPrismGateway which routes to our custom 'glm' Prism provider
         // (chat/completions) instead of the default OpenAI provider (/responses).
-        $aiManager = $this->app->make(AiManager::class);
+        // Use afterResolving because AiManager is scoped (recreated per job in queue workers).
+        $this->app->afterResolving(AiManager::class, function (AiManager $aiManager, $app) {
+            $createGlmDriver = function ($app, array $config) {
+                return new OpenAiProvider(
+                    new GlmPrismGateway($app['events']),
+                    $config,
+                    $app->make(Dispatcher::class)
+                );
+            };
 
-        $createGlmDriver = function ($app, array $config) {
-            return new OpenAiProvider(
-                new GlmPrismGateway($app['events']),
-                $config,
-                $app->make(Dispatcher::class)
-            );
-        };
-
-        $aiManager->extend('glm', $createGlmDriver);
-        $aiManager->extend('glm-coding', $createGlmDriver);
+            $aiManager->extend('glm', $createGlmDriver);
+            $aiManager->extend('glm-coding', $createGlmDriver);
+        });
     }
 }

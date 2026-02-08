@@ -143,31 +143,49 @@ const variantStatusClasses: Record<StatusBadgeVariant, Record<AgentStatus, strin
     idle: 'bg-neutral-500 text-white',
     working: 'bg-neutral-600 text-white',
     offline: 'bg-neutral-400 text-neutral-100',
+    sleeping: 'bg-indigo-500 text-white',
+    awaiting_approval: 'bg-amber-500 text-white',
+    awaiting_delegation: 'bg-indigo-500 text-white',
   },
   soft: {
     idle: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200',
     working: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200',
     offline: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-300',
+    sleeping: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300',
+    awaiting_approval: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300',
+    awaiting_delegation: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300',
   },
   outline: {
     idle: 'bg-transparent border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-200',
     working: 'bg-transparent border border-neutral-400 dark:border-neutral-500 text-neutral-700 dark:text-neutral-200',
     offline: 'bg-transparent border border-neutral-300 dark:border-neutral-600 text-neutral-500 dark:text-neutral-300',
+    sleeping: 'bg-transparent border border-indigo-300 dark:border-indigo-600 text-indigo-600 dark:text-indigo-300',
+    awaiting_approval: 'bg-transparent border border-amber-300 dark:border-amber-600 text-amber-600 dark:text-amber-300',
+    awaiting_delegation: 'bg-transparent border border-indigo-300 dark:border-indigo-600 text-indigo-600 dark:text-indigo-300',
   },
   ghost: {
     idle: 'bg-transparent text-neutral-600 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700',
     working: 'bg-transparent text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700',
     offline: 'bg-transparent text-neutral-500 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700',
+    sleeping: 'bg-transparent text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20',
+    awaiting_approval: 'bg-transparent text-amber-600 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20',
+    awaiting_delegation: 'bg-transparent text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20',
   },
   'dot-only': {
     idle: '',
     working: '',
     offline: '',
+    sleeping: '',
+    awaiting_approval: '',
+    awaiting_delegation: '',
   },
   minimal: {
     idle: 'text-neutral-600 dark:text-neutral-200',
     working: 'text-neutral-700 dark:text-neutral-200',
     offline: 'text-neutral-500 dark:text-neutral-300',
+    sleeping: 'text-indigo-600 dark:text-indigo-300',
+    awaiting_approval: 'text-amber-600 dark:text-amber-300',
+    awaiting_delegation: 'text-indigo-600 dark:text-indigo-300',
   },
 }
 
@@ -176,6 +194,9 @@ const dotColors: Record<AgentStatus, string> = {
   idle: 'bg-neutral-400',
   working: 'bg-green-500',
   offline: 'bg-neutral-300',
+  sleeping: 'bg-indigo-400',
+  awaiting_approval: 'bg-amber-500',
+  awaiting_delegation: 'bg-indigo-500',
 }
 
 // Status icons
@@ -183,6 +204,9 @@ const statusIcons: Record<AgentStatus, string> = {
   idle: 'ph:pause-circle',
   working: 'ph:spinner',
   offline: 'ph:prohibit',
+  sleeping: 'ph:moon',
+  awaiting_approval: 'ph:shield-check',
+  awaiting_delegation: 'ph:users-three',
 }
 
 // Labels
@@ -190,6 +214,9 @@ const labels: Record<AgentStatus, string> = {
   idle: 'Idle',
   working: 'Working',
   offline: 'Offline',
+  sleeping: 'Sleeping',
+  awaiting_approval: 'Awaiting Approval',
+  awaiting_delegation: 'Delegating',
 }
 
 // Status descriptions for tooltip
@@ -197,6 +224,9 @@ const statusDescriptions: Record<AgentStatus, string> = {
   idle: 'Agent is available and waiting for tasks',
   working: 'Agent is actively processing a task',
   offline: 'Agent is currently unavailable',
+  sleeping: 'Agent is sleeping and will wake at a scheduled time',
+  awaiting_approval: 'Agent is waiting for human approval to proceed',
+  awaiting_delegation: 'Agent is waiting for delegated subtasks to complete',
 }
 
 // Tooltip content
@@ -311,5 +341,8 @@ const statusIconClasses: Record<AgentStatus, string> = {
   idle: 'i-ph:pause-circle',
   working: 'i-ph:spinner',
   offline: 'i-ph:prohibit',
+  sleeping: 'i-ph:moon',
+  awaiting_approval: 'i-ph:shield-check',
+  awaiting_delegation: 'i-ph:users-three',
 }
 </script>

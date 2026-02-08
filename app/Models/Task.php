@@ -43,6 +43,9 @@ class Task extends Model
     public const SOURCE_MANUAL = 'manual';
     public const SOURCE_CHAT = 'chat';
     public const SOURCE_AUTOMATION = 'automation';
+    public const SOURCE_AGENT_DELEGATION = 'agent_delegation';
+    public const SOURCE_AGENT_ASK = 'agent_ask';
+    public const SOURCE_AGENT_NOTIFY = 'agent_notify';
 
     protected $fillable = [
         'id',

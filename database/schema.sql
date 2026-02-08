@@ -872,7 +872,7 @@ CREATE TABLE public.users (
     sleeping_until timestamp(0) without time zone,
     sleeping_reason character varying(255),
     CONSTRAINT users_presence_check CHECK (((presence)::text = ANY ((ARRAY['online'::character varying, 'away'::character varying, 'busy'::character varying, 'offline'::character varying])::text[]))),
-    CONSTRAINT users_status_check CHECK (((status)::text = ANY ((ARRAY['idle'::character varying, 'working'::character varying, 'offline'::character varying])::text[]))),
+    CONSTRAINT users_status_check CHECK (((status)::text = ANY ((ARRAY['idle'::character varying, 'working'::character varying, 'offline'::character varying, 'sleeping'::character varying, 'awaiting_approval'::character varying, 'awaiting_delegation'::character varying])::text[]))),
     CONSTRAINT users_type_check CHECK (((type)::text = ANY ((ARRAY['human'::character varying, 'agent'::character varying])::text[])))
 );
 

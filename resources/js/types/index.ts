@@ -1,4 +1,4 @@
-export type AgentStatus = 'idle' | 'working' | 'offline' | 'paused' | 'online' | 'busy' | 'awaiting_approval' | 'sleeping'
+export type AgentStatus = 'idle' | 'working' | 'offline' | 'paused' | 'online' | 'busy' | 'awaiting_approval' | 'sleeping' | 'awaiting_delegation'
 export type UserStatus = 'online' | 'away' | 'busy' | 'dnd' | 'offline'
 export type PresenceStatus = 'online' | 'away' | 'busy' | 'offline'
 export type ListItemStatus = string
@@ -199,7 +199,7 @@ export interface AgentTask {
   listItemId?: string
   parentTask?: AgentTask
   parentTaskId?: string
-  source?: 'manual' | 'chat' | 'automation'
+  source?: 'manual' | 'chat' | 'automation' | 'agent_delegation' | 'agent_ask' | 'agent_notify'
   subtasks?: AgentTask[]
   steps?: TaskStep[]
   context?: Record<string, unknown>

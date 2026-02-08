@@ -109,47 +109,102 @@ Use this exact template as your base. Replace the placeholder content with actua
   ]
 }
 
-// ─── Title page ───
+// ─── Cover page (no header/footer) ───
 
-#v(2cm)
+#set page(header: none, footer: none)
 
+// Top accent strip
+#place(top + left, dx: -12mm, dy: -12mm)[
+  #rect(width: 105mm + 24mm, height: 3.5mm, fill: rgb("#4338ca"))
+]
+
+// Background watermark — large faded arc bottom-right
+#place(bottom + right, dx: 8mm, dy: 8mm)[
+  #circle(radius: 38mm, fill: rgb("#eef2ff").lighten(40%), stroke: none)
+]
+
+#v(1.8cm)
+
+// Logomark — rounded square with "O"
 #align(center)[
-  #block(width: 100%)[
-    #text(10pt, tracking: 0.15em, fill: rgb("#6366f1"), weight: "medium")[OPENCOMPANY]
-    #v(0.6cm)
-    #text(22pt, weight: "bold", fill: rgb("#1e1b4b"))[
-      TITLE_LINE_1\ TITLE_LINE_2
-    ]
-    #v(0.5cm)
-    #text(9.5pt, fill: luma(100))[
-      SUBTITLE_LINE
-    ]
-    #v(1cm)
-    #line(length: 30%, stroke: 0.8pt + rgb("#c7d2fe"))
-    #v(0.5cm)
-    #text(8pt, fill: luma(130))[
-      Version X.X --- MONTH YEAR
+  #box(
+    width: 28pt,
+    height: 28pt,
+    fill: rgb("#4338ca"),
+    radius: 6pt,
+  )[
+    #align(center + horizon)[
+      #text(20pt, weight: "regular", fill: white, font: "Didot")[O]
     ]
   ]
 ]
 
-#v(1.5cm)
+#v(0.5cm)
 
+#align(center)[
+  #text(9pt, tracking: 0.2em, fill: rgb("#6366f1"), weight: "regular", font: "Didot")[OPENCOMPANY]
+]
+
+#v(1.2cm)
+
+#align(center)[
+  #text(20pt, weight: "regular", fill: rgb("#1e1b4b"), font: "Didot")[
+    TITLE_LINE_1\ TITLE_LINE_2
+  ]
+]
+
+#v(0.4cm)
+
+#align(center)[
+  #text(9.5pt, fill: luma(100))[SUBTITLE_LINE]
+]
+
+#v(0.8cm)
+
+#align(center)[
+  #line(length: 25%, stroke: 0.8pt + rgb("#c7d2fe"))
+]
+
+#v(0.4cm)
+
+#align(center)[
+  #text(8pt, fill: luma(140))[Version X.X #sym.dot.c MONTH YEAR]
+]
+
+#v(1fr)
+
+// Abstract at bottom of cover
 #block(
   width: 100%,
-  inset: 12pt,
+  inset: (left: 10pt, rest: 10pt),
+  stroke: (left: 2.5pt + rgb("#6366f1")),
   fill: rgb("#f8fafc"),
-  radius: 6pt,
-  stroke: 0.5pt + luma(215),
+  radius: (right: 4pt),
 )[
-  #text(9pt, weight: "bold", fill: rgb("#1e1b4b"))[Abstract]
+  #text(8.5pt, weight: "bold", fill: rgb("#1e1b4b"))[Abstract]
   #v(3pt)
-  #text(8pt, fill: luma(50))[
-    ABSTRACT_TEXT
-  ]
+  #text(7.5pt, fill: luma(60))[ABSTRACT_TEXT]
 ]
 
 #pagebreak()
+
+// Restore header/footer for subsequent pages
+#set page(
+  header: context [
+    #if counter(page).get().first() > 1 [
+      #set text(6pt, fill: luma(160))
+      #smallcaps[HEADER_LEFT]
+      #h(1fr)
+      #smallcaps[OpenCompany]
+    ]
+  ],
+  footer: context [
+    #set text(6.5pt, fill: luma(150))
+    #h(1fr)
+    #counter(page).display("1 / 1", both: true)
+    #h(1fr)
+  ],
+)
 
 #outline(
   title: text(12pt, weight: "bold", fill: rgb("#1e1b4b"))[Contents],

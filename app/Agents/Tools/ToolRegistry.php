@@ -25,6 +25,7 @@ use App\Agents\Tools\Tables\QueryTable;
 use App\Agents\Tools\Tasks\CreateTaskStep;
 use App\Agents\Tools\Tasks\UpdateCurrentTask;
 use App\Agents\Tools\Telegram\SendTelegramNotification;
+use App\Agents\Tools\Agents\ContactAgent;
 use App\Agents\Tools\Workspace\ManageAgent;
 use App\Agents\Tools\Workspace\ManageAgentPermissions;
 use App\Agents\Tools\Workspace\ManageAutomation;
@@ -57,6 +58,11 @@ class ToolRegistry
         ],
 
         // Internal apps
+        'agents' => [
+            'tools' => ['contact_agent'],
+            'label' => 'ask, delegate, notify',
+            'description' => 'Inter-agent communication',
+        ],
         'chat' => [
             'tools' => ['send_channel_message', 'read_channel', 'list_channels', 'manage_message'],
             'label' => 'send, read, list, manage',
@@ -111,6 +117,7 @@ class ToolRegistry
      * Icons for each app group.
      */
     private const APP_ICONS = [
+        'agents' => 'ph:users-three',
         'chat' => 'ph:chat-circle',
         'docs' => 'ph:file-text',
         'tables' => 'ph:table',
@@ -134,6 +141,14 @@ class ToolRegistry
      * Registry of all available tools with metadata.
      */
     private const TOOL_MAP = [
+        // Agents
+        'contact_agent' => [
+            'class' => ContactAgent::class,
+            'type' => 'write',
+            'name' => 'Contact Agent',
+            'description' => 'Send a message, ask a question, or delegate work to another agent.',
+            'icon' => 'ph:users-three',
+        ],
         // Chat
         'send_channel_message' => [
             'class' => SendChannelMessage::class,
@@ -599,7 +614,7 @@ class ToolRegistry
             // System & task management
             ['tasks', 'system', null],
             // Internal apps
-            ['chat', 'docs', 'tables', 'calendar', 'lists', 'workspace', null],
+            ['agents', 'chat', 'docs', 'tables', 'calendar', 'lists', 'workspace', null],
             // Integrations & utilities (dynamic + static)
             $integrations,
         );
@@ -779,6 +794,8 @@ class ToolRegistry
 
         // Built-in tools
         return match ($class) {
+            // Inter-agent communication
+            ContactAgent::class => new ContactAgent($agent, $this->permissionService, app(\App\Services\AgentCommunicationService::class)),
             // Tools needing permission service (channel/folder scoping)
             SendChannelMessage::class => new SendChannelMessage($agent, $this->permissionService),
             ReadChannel::class => new ReadChannel($agent, $this->permissionService),

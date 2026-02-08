@@ -17,6 +17,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Services\AgentCommunicationService;
 use App\Services\AgentDocumentService;
 use App\Services\TelegramService;
 use Illuminate\Support\Facades\Log;
@@ -47,24 +48,49 @@ class AgentRespondJob implements ShouldQueue
         private Message $userMessage,
         private User $agent,
         private string $channelId,
+        private ?string $taskId = null,
     ) {}
 
     public function handle(): void
     {
-        // Create a task to track this chat interaction
-        $task = Task::create([
-            'id' => Str::uuid()->toString(),
-            'title' => Str::limit($this->userMessage->content, 80),
-            'description' => $this->userMessage->content,
-            'type' => Task::TYPE_CUSTOM,
-            'status' => Task::STATUS_ACTIVE,
-            'priority' => Task::PRIORITY_NORMAL,
-            'source' => Task::SOURCE_CHAT,
-            'agent_id' => $this->agent->id,
-            'requester_id' => $this->userMessage->author_id,
-            'channel_id' => $this->channelId,
-            'started_at' => now(),
-        ]);
+        $task = null;
+
+        // Resume an existing task (delegation callback re-invoking parent)
+        if ($this->taskId) {
+            $task = Task::find($this->taskId);
+            if ($task) {
+                $task->resume();
+            }
+        }
+
+        if (!$task) {
+            // Check for a pending delegation subtask for this agent on this channel
+            $task = Task::where('agent_id', $this->agent->id)
+                ->where('channel_id', $this->channelId)
+                ->where('source', Task::SOURCE_AGENT_DELEGATION)
+                ->where('status', Task::STATUS_PENDING)
+                ->latest('created_at')
+                ->first();
+
+            if ($task) {
+                $task->start();
+            } else {
+                // Create a task to track this chat interaction
+                $task = Task::create([
+                    'id' => Str::uuid()->toString(),
+                    'title' => Str::limit($this->userMessage->content, 80),
+                    'description' => $this->userMessage->content,
+                    'type' => Task::TYPE_CUSTOM,
+                    'status' => Task::STATUS_ACTIVE,
+                    'priority' => Task::PRIORITY_NORMAL,
+                    'source' => Task::SOURCE_CHAT,
+                    'agent_id' => $this->agent->id,
+                    'requester_id' => $this->userMessage->author_id,
+                    'channel_id' => $this->channelId,
+                    'started_at' => now(),
+                ]);
+            }
+        }
 
         try {
             broadcast(new TaskUpdated($task, 'started'));
@@ -131,6 +157,21 @@ class AgentRespondJob implements ShouldQueue
             // Log tool usage as task steps
             $this->logToolSteps($task, $response);
 
+            // Hold response if agent delegated work — wait for all results
+            $this->agent->refresh();
+            if (!empty($this->agent->awaiting_delegation_ids)) {
+                $task->addStep('Awaiting delegation results', 'action');
+
+                Log::info('Agent holding response while awaiting delegations', [
+                    'agent' => $this->agent->name,
+                    'task' => $task->id,
+                    'awaiting' => $this->agent->awaiting_delegation_ids,
+                ]);
+
+                // Task stays active, agent goes to awaiting_delegation (in finally block)
+                return;
+            }
+
             // Step 2: Deliver response
             $deliveryStep = $task->addStep('Response delivered', 'message');
             $deliveryStep->start();
@@ -177,6 +218,11 @@ class AgentRespondJob implements ShouldQueue
                 'tool_calls_count' => $response->toolCalls->count(),
             ]);
 
+            // If this was a delegated task, send result back to the delegating agent
+            if ($task->parent_task_id && $task->source === Task::SOURCE_AGENT_DELEGATION) {
+                $this->handleDelegationCallback($task, $responseText);
+            }
+
             try {
                 broadcast(new TaskUpdated($task, 'completed'));
             } catch (\Throwable $broadcastError) {
@@ -199,6 +245,12 @@ class AgentRespondJob implements ShouldQueue
 
             $task->addStep("Error: {$e->getMessage()}", 'action');
             $task->fail($e->getMessage());
+
+            // If this was a delegated task, send error back to the delegating agent
+            if ($task->parent_task_id && $task->source === Task::SOURCE_AGENT_DELEGATION) {
+                $this->handleDelegationCallback($task, "Error: {$this->agent->name} failed to complete the task: {$e->getMessage()}");
+            }
+
             try {
                 broadcast(new TaskUpdated($task, 'failed'));
             } catch (\Throwable $broadcastError) {
@@ -217,6 +269,8 @@ class AgentRespondJob implements ShouldQueue
                 $this->agent->update(['status' => 'sleeping']);
             } elseif ($this->agent->awaiting_approval_id) {
                 $this->agent->update(['status' => 'awaiting_approval']);
+            } elseif (!empty($this->agent->awaiting_delegation_ids)) {
+                $this->agent->update(['status' => 'awaiting_delegation']);
             } else {
                 $this->agent->update(['status' => 'idle']);
             }
@@ -346,6 +400,78 @@ class AgentRespondJob implements ShouldQueue
         $this->telegramChatId = null;
         if (function_exists('pcntl_alarm')) {
             pcntl_alarm(0);
+        }
+    }
+
+    /**
+     * Handle delegation callback: send result back to the delegating agent.
+     */
+    private function handleDelegationCallback(Task $subtask, string $resultText): void
+    {
+        try {
+            $parentTask = $subtask->parentTask;
+            if (!$parentTask) {
+                return;
+            }
+
+            $parentAgent = User::find($parentTask->agent_id);
+            if (!$parentAgent) {
+                return;
+            }
+
+            $commService = app(AgentCommunicationService::class);
+
+            // Post result to agent-to-agent DM (observability)
+            $dmChannelId = $commService->getOrCreateDmChannel($this->agent, $parentAgent);
+            $commService->postMessage(
+                $dmChannelId,
+                $this->agent,
+                $commService->formatResultMessage($this->agent, $subtask->id, $resultText),
+                'delegation_result'
+            );
+
+            // Remove from parent's pending list
+            $parentAgent->removeAwaitingDelegation($subtask->id);
+            $parentAgent->refresh();
+
+            // When ALL delegations are done, resume the parent agent's task
+            if (empty($parentAgent->awaiting_delegation_ids)) {
+                // Collect all completed subtask results
+                $completedSubtasks = Task::where('parent_task_id', $parentTask->id)
+                    ->where('source', Task::SOURCE_AGENT_DELEGATION)
+                    ->whereIn('status', [Task::STATUS_COMPLETED, Task::STATUS_FAILED])
+                    ->get();
+
+                $summary = $completedSubtasks->map(function ($st) {
+                    $agent = User::find($st->agent_id);
+                    $agentName = $agent?->name ?? 'Unknown';
+                    $response = $st->result['response'] ?? ($st->result['error'] ?? 'Completed.');
+                    return "--- {$agentName}'s response ---\n{$response}";
+                })->join("\n\n");
+
+                // Create synthetic message with parent as author (not child)
+                $resultMessage = Message::create([
+                    'id' => Str::uuid()->toString(),
+                    'content' => $summary,
+                    'channel_id' => $parentTask->channel_id,
+                    'author_id' => $parentAgent->id,
+                    'timestamp' => now(),
+                    'source' => 'delegation_result',
+                ]);
+
+                // Resume parent task with delegation results
+                AgentRespondJob::dispatch(
+                    $resultMessage,
+                    $parentAgent,
+                    $parentTask->channel_id,
+                    $parentTask->id
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::error('Delegation callback failed', [
+                'subtask' => $subtask->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

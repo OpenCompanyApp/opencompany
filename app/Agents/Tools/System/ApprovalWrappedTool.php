@@ -17,6 +17,13 @@ class ApprovalWrappedTool implements Tool
         private string $toolSlug,
     ) {}
 
+    public function name(): string
+    {
+        return method_exists($this->innerTool, 'name')
+            ? $this->innerTool->name()
+            : class_basename($this->innerTool);
+    }
+
     public function description(): string
     {
         return $this->innerTool->description() .

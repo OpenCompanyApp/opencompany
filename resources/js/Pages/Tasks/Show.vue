@@ -99,6 +99,40 @@
           <p class="text-sm text-red-700 dark:text-red-400">{{ task.result.error }}</p>
         </div>
 
+        <!-- Delegation Banner -->
+        <div
+          v-if="task.source === 'agent_delegation' || task.source === 'agent_ask' || task.source === 'agent_notify'"
+          :class="[
+            'mb-6 p-4 rounded-lg border',
+            task.source === 'agent_notify'
+              ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+              : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
+          ]"
+        >
+          <div class="flex items-center gap-3">
+            <Icon :name="sourceIcons[task.source] || 'ph:users-three'" :class="['w-5 h-5 shrink-0', task.source === 'agent_notify' ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400']" />
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span :class="['text-sm font-medium', task.source === 'agent_notify' ? 'text-amber-800 dark:text-amber-300' : 'text-indigo-800 dark:text-indigo-300']">
+                  {{ task.source === 'agent_delegation' ? 'Delegated' : task.source === 'agent_ask' ? 'Asked' : 'Notified' }} by
+                </span>
+                <template v-if="task.requester">
+                  <AgentAvatar :user="task.requester" size="xs" :show-status="false" />
+                  <span :class="['text-sm font-medium', task.source === 'agent_notify' ? 'text-amber-700 dark:text-amber-300' : 'text-indigo-700 dark:text-indigo-300']">{{ task.requester.name }}</span>
+                </template>
+              </div>
+              <button
+                v-if="task.parentTask"
+                :class="['mt-1 text-xs hover:underline flex items-center gap-1', task.source === 'agent_notify' ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400']"
+                @click="router.visit(`/tasks/${task.parentTask.id}`)"
+              >
+                <Icon name="ph:arrow-bend-up-left" class="w-3 h-3" />
+                View parent task: {{ task.parentTask.title }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Metadata Grid -->
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
           <div>
@@ -145,6 +179,16 @@
             <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Completed</label>
             <span class="text-sm text-neutral-700 dark:text-neutral-300">{{ formatDateTime(task.completedAt) }}</span>
           </div>
+          <div v-if="task.parentTask">
+            <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Parent Task</label>
+            <button
+              class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              @click="router.visit(`/tasks/${task.parentTask.id}`)"
+            >
+              <Icon name="ph:arrow-bend-up-left" class="w-3.5 h-3.5" />
+              {{ task.parentTask.title }}
+            </button>
+          </div>
         </div>
 
         <!-- Input -->
@@ -161,6 +205,40 @@
         <!-- Execution Trace -->
         <div v-if="task.steps && task.steps.length > 0" class="mb-6">
           <ExecutionTrace :steps="task.steps" />
+        </div>
+
+        <!-- Subtasks -->
+        <div v-if="task.subtasks && task.subtasks.length > 0" class="mb-6">
+          <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
+            <Icon name="ph:tree-structure" class="w-4 h-4 text-indigo-500" />
+            Subtasks
+            <span class="text-xs text-neutral-400 font-normal">{{ task.subtasks.length }}</span>
+          </h3>
+          <div class="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
+            <div
+              v-for="subtask in task.subtasks"
+              :key="subtask.id"
+              class="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+              @click="router.visit(`/tasks/${subtask.id}`)"
+            >
+              <span :class="['w-2 h-2 rounded-full shrink-0', statusDots[subtask.status]]" />
+              <div class="flex-1 min-w-0">
+                <span class="text-sm text-neutral-900 dark:text-white truncate block">{{ subtask.title }}</span>
+              </div>
+              <template v-if="subtask.agent">
+                <AgentAvatar :user="subtask.agent" size="xs" :show-status="false" />
+                <span class="text-xs text-neutral-500 dark:text-neutral-400 shrink-0">{{ subtask.agent.name }}</span>
+              </template>
+              <span
+                :class="[
+                  'text-xs font-medium px-2 py-0.5 rounded-full shrink-0',
+                  statusClasses[subtask.status]
+                ]"
+              >
+                {{ statusLabels[subtask.status] }}
+              </span>
+            </div>
+          </div>
         </div>
 
         <!-- Output -->
@@ -491,6 +569,9 @@ const sourceIcons: Record<string, string> = {
   chat: 'ph:chat-circle',
   manual: 'ph:hand',
   automation: 'ph:lightning',
+  agent_delegation: 'ph:users-three',
+  agent_ask: 'ph:question',
+  agent_notify: 'ph:megaphone',
 }
 
 // Computed

@@ -71,6 +71,9 @@
           <option value="chat">Chat</option>
           <option value="manual">Manual</option>
           <option value="automation">Automation</option>
+          <option value="agent_delegation">Delegation</option>
+          <option value="agent_ask">Agent Ask</option>
+          <option value="agent_notify">Notification</option>
         </select>
         <button
           class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0"
@@ -89,7 +92,7 @@
         <div class="flex items-center gap-3 h-8 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
           <span class="w-4" />
           <span class="flex-1 min-w-0">Task</span>
-          <span class="w-28 hidden md:block">Agent</span>
+          <span class="w-32 hidden md:block">Agent</span>
           <span class="w-16 text-center hidden sm:block">Source</span>
           <span class="w-16 text-center hidden sm:block">Steps</span>
           <span class="w-20 text-right">Time</span>
@@ -99,22 +102,55 @@
       <!-- Task Rows -->
       <div class="divide-y divide-neutral-100 dark:divide-neutral-800">
         <div
-          v-for="task in filteredTasks"
+          v-for="{ task, depth, childCount } in treeifiedTasks"
           :key="task.id"
-          class="flex items-center gap-3 px-4 md:px-6 h-10 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+          :class="[
+            'flex items-center gap-2 md:gap-3 h-10 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors',
+            depth > 0 && 'bg-neutral-50/40 dark:bg-neutral-800/20'
+          ]"
+          :style="{ paddingLeft: `${16 + depth * 20}px`, paddingRight: '16px' }"
           @click="openTaskDetail(task)"
         >
+          <!-- Collapse/expand toggle for parent tasks -->
+          <button
+            v-if="childCount > 0"
+            class="w-4 h-4 flex items-center justify-center shrink-0 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+            @click.stop="toggleCollapsed(task.id)"
+          >
+            <Icon
+              :name="collapsedIds.has(task.id) ? 'ph:caret-right' : 'ph:caret-down'"
+              class="w-3 h-3 text-neutral-400"
+            />
+          </button>
+          <span v-else class="w-4 shrink-0" />
+
           <!-- Status dot -->
           <span :class="['w-2 h-2 rounded-full shrink-0', statusDots[task.status]]" />
 
-          <!-- Title -->
-          <span class="flex-1 min-w-0 text-sm text-neutral-900 dark:text-white truncate">
-            {{ task.title }}
+          <!-- Nesting arrows + Title -->
+          <span class="flex-1 min-w-0 text-sm text-neutral-900 dark:text-white truncate flex items-center gap-0.5">
+            <Icon
+              v-for="i in depth"
+              :key="i"
+              name="ph:arrow-bend-down-right"
+              class="w-3.5 h-3.5 text-indigo-400/60 shrink-0"
+            />
+            <span class="truncate" :class="depth > 0 && 'ml-0.5'">{{ task.title }}</span>
+            <span v-if="childCount > 0" class="ml-1 flex items-center gap-0.5 text-xs text-indigo-400/80 shrink-0" :title="`${childCount} subtask${childCount > 1 ? 's' : ''}`">
+              <Icon name="ph:tree-structure" class="w-3 h-3" />
+              {{ childCount }}
+            </span>
           </span>
 
-          <!-- Agent -->
-          <div class="w-28 hidden md:flex items-center gap-1.5 shrink-0">
-            <template v-if="task.agent">
+          <!-- Agent (with delegation flow for delegated tasks) -->
+          <div class="w-32 hidden md:flex items-center gap-1 shrink-0">
+            <template v-if="['agent_delegation', 'agent_ask', 'agent_notify'].includes(task.source) && task.requester && task.agent">
+              <AgentAvatar :user="task.requester" size="xs" :show-status="false" />
+              <Icon name="ph:arrow-right" class="w-3 h-3 text-neutral-400 shrink-0" />
+              <AgentAvatar :user="task.agent" size="xs" :show-status="false" />
+              <span class="text-xs text-neutral-600 dark:text-neutral-400 truncate">{{ task.agent.name }}</span>
+            </template>
+            <template v-else-if="task.agent">
               <AgentAvatar :user="task.agent" size="xs" :show-status="false" />
               <span class="text-xs text-neutral-600 dark:text-neutral-400 truncate">{{ task.agent.name }}</span>
             </template>
@@ -134,6 +170,24 @@
               name="ph:lightning"
               class="w-4 h-4 text-neutral-400"
               title="Automation"
+            />
+            <Icon
+              v-else-if="task.source === 'agent_delegation'"
+              name="ph:users-three"
+              class="w-4 h-4 text-indigo-400"
+              title="Delegation"
+            />
+            <Icon
+              v-else-if="task.source === 'agent_ask'"
+              name="ph:question"
+              class="w-4 h-4 text-indigo-400"
+              title="Agent Ask"
+            />
+            <Icon
+              v-else-if="task.source === 'agent_notify'"
+              name="ph:megaphone"
+              class="w-4 h-4 text-amber-400"
+              title="Notification"
             />
             <Icon
               v-else
@@ -159,7 +213,7 @@
       </div>
 
       <!-- Empty State -->
-      <div v-if="filteredTasks.length === 0" class="text-center py-12">
+      <div v-if="treeifiedTasks.length === 0" class="text-center py-12">
         <Icon name="ph:briefcase" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
         <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">No tasks found</h3>
         <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
@@ -336,6 +390,123 @@ const filteredTasks = computed(() => {
   // Source filter
   if (sourceFilter.value) {
     result = result.filter(t => t.source === sourceFilter.value)
+  }
+
+  return result
+})
+
+// ── Tree structure for hierarchical nesting ──────────────────────
+const collapsedIds = ref(new Set<string>())
+let collapsedInitialized = false
+
+const toggleCollapsed = (id: string) => {
+  const next = new Set(collapsedIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  collapsedIds.value = next
+}
+
+interface TaskWithDepth {
+  task: AgentTask
+  depth: number
+  childCount: number
+}
+
+const treeifiedTasks = computed<TaskWithDepth[]>(() => {
+  const items = filteredTasks.value
+  if (!items.length) return []
+
+  // Build lookup maps
+  const byId = new Map<string, AgentTask>()
+  const childrenOf = new Map<string, AgentTask[]>()
+
+  for (const t of items) {
+    byId.set(t.id, t)
+  }
+
+  for (const t of items) {
+    if (t.parentTaskId && byId.has(t.parentTaskId)) {
+      const siblings = childrenOf.get(t.parentTaskId) ?? []
+      siblings.push(t)
+      childrenOf.set(t.parentTaskId, siblings)
+    }
+  }
+
+  // Identify root tasks
+  const roots: AgentTask[] = []
+  for (const t of items) {
+    if (!t.parentTaskId || !byId.has(t.parentTaskId)) {
+      roots.push(t)
+    }
+  }
+
+  // Auto-collapse on first load: collapse all roots except the most recent one
+  if (!collapsedInitialized && roots.length > 0) {
+    collapsedInitialized = true
+    const rootsWithChildren = roots.filter(r => childrenOf.has(r.id))
+    if (rootsWithChildren.length > 1) {
+      // Most recent root is first in the list (sorted by created_at desc from API)
+      const next = new Set(collapsedIds.value)
+      for (let i = 1; i < rootsWithChildren.length; i++) {
+        next.add(rootsWithChildren[i].id)
+      }
+      collapsedIds.value = next
+    }
+  }
+
+  // Count all descendants (not just direct children)
+  const countDescendants = (id: string): number => {
+    const children = childrenOf.get(id) ?? []
+    let count = children.length
+    for (const child of children) {
+      count += countDescendants(child.id)
+    }
+    return count
+  }
+
+  // Walk depth-first
+  const result: TaskWithDepth[] = []
+  const visited = new Set<string>()
+
+  const walk = (task: AgentTask, depth: number) => {
+    if (visited.has(task.id)) return
+    visited.add(task.id)
+
+    const childCount = countDescendants(task.id)
+    result.push({ task, depth, childCount })
+
+    const children = childrenOf.get(task.id) ?? []
+    if (!collapsedIds.value.has(task.id)) {
+      for (const child of children) {
+        walk(child, depth + 1)
+      }
+    } else {
+      // Mark collapsed descendants as visited so they don't appear as orphans
+      const markVisited = (id: string) => {
+        visited.add(id)
+        for (const c of childrenOf.get(id) ?? []) {
+          markVisited(c.id)
+        }
+      }
+      for (const child of children) {
+        markVisited(child.id)
+      }
+    }
+  }
+
+  // Start with root tasks (no parent in filtered set)
+  for (const t of roots) {
+    walk(t, 0)
+  }
+
+  // Any orphans not visited (shouldn't happen, but safety)
+  for (const t of items) {
+    if (!visited.has(t.id)) {
+      walk(t, 0)
+    }
   }
 
   return result

@@ -8,11 +8,27 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class AgentPermissionService
 {
+    /**
+     * Tools that should never require approval regardless of behavior_mode or DB settings.
+     * These are system/control-flow tools where requiring approval would be nonsensical
+     * (e.g. wait_for_approval requiring approval creates an infinite loop).
+     */
+    private const APPROVAL_EXEMPT_TOOLS = [
+        'wait_for_approval',
+        'wait',
+        'update_current_task',
+        'create_task_step',
+        'get_tool_info',
+        'contact_agent',
+    ];
+
     public function __construct(
         private ToolProviderRegistry $providerRegistry,
     ) {}
     /**
      * Resolve the final permission for a tool, combining DB permissions with behavior mode.
+     *
+     * Priority: deny → exempt tools → explicit DB record → behavior_mode default.
      *
      * @return array{allowed: bool, requires_approval: bool}
      */
@@ -28,18 +44,23 @@ class AgentPermissionService
             return ['allowed' => false, 'requires_approval' => false];
         }
 
-        // If allow record exists, use its requires_approval flag
-        // If no record exists, tool is allowed by default (backwards-compatible)
-        $dbRequiresApproval = $permission ? $permission->requires_approval : false;
+        // System/control-flow tools never require approval
+        if (in_array($toolSlug, self::APPROVAL_EXEMPT_TOOLS)) {
+            return ['allowed' => true, 'requires_approval' => false];
+        }
 
-        // Layer behavior mode on top
-        $behaviorRequiresApproval = $this->behaviorModeRequiresApproval(
-            $agent, $toolType
-        );
+        // Explicit DB record overrides behavior mode
+        if ($permission) {
+            return [
+                'allowed' => true,
+                'requires_approval' => $permission->requires_approval,
+            ];
+        }
 
+        // No explicit record — fall back to behavior mode defaults
         return [
             'allowed' => true,
-            'requires_approval' => $dbRequiresApproval || $behaviorRequiresApproval,
+            'requires_approval' => $this->behaviorModeRequiresApproval($agent, $toolType),
         ];
     }
 
@@ -146,6 +167,52 @@ class AgentPermissionService
     public function isIntegrationEnabled(User $agent, string $appName): bool
     {
         return in_array($appName, $this->getEnabledIntegrations($agent));
+    }
+
+    /**
+     * Check if an agent is allowed to contact another agent.
+     *
+     * @return array{allowed: bool, requires_approval: bool}
+     */
+    public function canContactAgent(User $caller, User $target): array
+    {
+        // Manager hierarchy bypass — always allow without approval
+        if ($target->id === $caller->manager_id || $caller->id === $target->manager_id) {
+            return ['allowed' => true, 'requires_approval' => false];
+        }
+
+        // Check explicit agent-scoped permission
+        $explicit = AgentPermission::forAgent($caller->id)
+            ->where('scope_type', 'agent')
+            ->where('scope_key', $target->id)
+            ->first();
+
+        if ($explicit) {
+            if ($explicit->permission === 'deny') {
+                return ['allowed' => false, 'requires_approval' => false];
+            }
+
+            return ['allowed' => true, 'requires_approval' => $explicit->requires_approval];
+        }
+
+        // Check wildcard agent permission
+        $wildcard = AgentPermission::forAgent($caller->id)
+            ->where('scope_type', 'agent')
+            ->where('scope_key', '*')
+            ->first();
+
+        if ($wildcard) {
+            if ($wildcard->permission === 'deny') {
+                return ['allowed' => false, 'requires_approval' => false];
+            }
+
+            return ['allowed' => true, 'requires_approval' => $wildcard->requires_approval];
+        }
+
+        // Default: allow, layer behavior mode
+        $requiresApproval = $this->behaviorModeRequiresApproval($caller, 'write');
+
+        return ['allowed' => true, 'requires_approval' => $requiresApproval];
     }
 
     /**

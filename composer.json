@@ -120,11 +120,11 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan pail --timeout=0\" \"npm run dev\" \"php artisan reverb:start\" \"php artisan queue:work --tries=3 --timeout=90\" --names=logs,vite,reverb,queue --kill-others"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#a3e635,#a3e635\" \"php artisan pail --timeout=0\" \"npm run dev\" \"php artisan reverb:start\" \"php artisan queue:work --tries=3 --timeout=300\" \"php artisan queue:work --tries=3 --timeout=300\" \"php artisan queue:work --tries=3 --timeout=300\" --names=logs,vite,reverb,queue1,queue2,queue3 --kill-others"
         ],
         "dev:full": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#a3e635\" \"php artisan serve\" \"php artisan pail --timeout=0\" \"npm run dev\" \"php artisan reverb:start\" \"php artisan queue:work --tries=3 --timeout=90\" --names=server,logs,vite,reverb,queue --kill-others"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#a3e635,#a3e635,#a3e635\" \"php artisan serve\" \"php artisan pail --timeout=0\" \"npm run dev\" \"php artisan reverb:start\" \"php artisan queue:work --tries=3 --timeout=300\" \"php artisan queue:work --tries=3 --timeout=300\" \"php artisan queue:work --tries=3 --timeout=300\" --names=server,logs,vite,reverb,queue1,queue2,queue3 --kill-others"
         ],
         "test": [
             "@php artisan config:clear --ansi",

@@ -21,6 +21,11 @@ class ForwardMessageToTelegram implements ShouldQueue
             return;
         }
 
+        // Skip delegation results (parent agent will respond naturally)
+        if ($message->source === 'delegation_result') {
+            return;
+        }
+
         // Check if channel is a Telegram external channel
         $channel = $message->channel;
         if (!$channel || $channel->type !== 'external' || $channel->external_provider !== 'telegram') {

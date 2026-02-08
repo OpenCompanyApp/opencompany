@@ -58,7 +58,10 @@ class TaskController extends Controller
         $orderDir = $request->input('orderDir', 'desc');
         $query->orderBy($orderBy, $orderDir);
 
-        return $query->get();
+        return $query->get()->map(function ($task) {
+            $task->makeHidden(['context']);
+            return $task;
+        });
     }
 
     public function show(string $id)
@@ -69,7 +72,7 @@ class TaskController extends Controller
             'channel',
             'listItem',
             'parentTask',
-            'subtasks',
+            'subtasks.agent',
             'steps',
         ])->findOrFail($id);
     }

@@ -33,24 +33,16 @@ class TaskUpdated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        $task = $this->task->load(['agent', 'requester', 'steps']);
-        $data = $task->toArray();
-
-        // Strip large JSON fields to stay within Reverb payload limit (~10KB)
-        unset($data['context']);
-        unset($data['result']);
-
-        // Strip step metadata (tool arguments/results) — keep description, status, timing
-        if (isset($data['steps'])) {
-            $data['steps'] = array_map(function ($step) {
-                unset($step['metadata']);
-                return $step;
-            }, $data['steps']);
-        }
-
+        // Minimal payload — frontend uses this as a refresh trigger only.
+        // Full task data is fetched via API when needed.
         return [
             'action' => $this->action,
-            'task' => $data,
+            'task' => [
+                'id' => $this->task->id,
+                'status' => $this->task->status,
+                'title' => $this->task->title,
+                'parentTaskId' => $this->task->parent_task_id,
+            ],
         ];
     }
 }
