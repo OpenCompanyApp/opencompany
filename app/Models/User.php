@@ -10,6 +10,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * @property string|null $status
+ * @property string|null $type
+ * @property array<string>|null $awaiting_delegation_ids
+ * @property \Carbon\Carbon|null $sleeping_until
+ * @property \Carbon\Carbon|null $bootstrapped_at
+ * @property \Carbon\Carbon|null $last_seen_at
+ * @property \Carbon\Carbon|null $email_verified_at
+ */
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
@@ -85,11 +94,14 @@ class User extends Authenticatable
     }
 
     // Relationships
+
+    /** @return BelongsTo<ApprovalRequest, $this> */
     public function awaitingApproval(): BelongsTo
     {
         return $this->belongsTo(ApprovalRequest::class, 'awaiting_approval_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
@@ -110,6 +122,7 @@ class User extends Authenticatable
         return $this->hasMany(ChannelMember::class);
     }
 
+    /** @return BelongsToMany<Channel, $this> */
     public function channels(): BelongsToMany
     {
         return $this->belongsToMany(Channel::class, 'channel_members')
@@ -131,6 +144,7 @@ class User extends Authenticatable
         return $this->hasMany(Document::class, 'author_id');
     }
 
+    /** @return BelongsTo<Document, $this> */
     public function docsFolder(): BelongsTo
     {
         return $this->belongsTo(Document::class, 'docs_folder_id');

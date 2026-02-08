@@ -22,7 +22,8 @@ class ApprovalExecutionService
      */
     public function executeApprovedTool(ApprovalRequest $approval, bool $agentIsWaiting): void
     {
-        $context = $approval->tool_execution_context;
+        $context = $approval->tool_execution_context ?? [];
+        /** @var \App\Models\User|null $agent */
         $agent = $approval->requester;
         $toolSlug = $context['tool_slug'] ?? null;
 
@@ -77,7 +78,12 @@ class ApprovalExecutionService
      */
     public function handleRejectedTool(ApprovalRequest $approval): void
     {
+        /** @var \App\Models\User|null $agent */
         $agent = $approval->requester;
+        if (!$agent) {
+            return;
+        }
+
         $context = $approval->tool_execution_context ?? [];
         $channelId = $approval->channel_id ?? ($context['parameters']['channelId'] ?? null);
 

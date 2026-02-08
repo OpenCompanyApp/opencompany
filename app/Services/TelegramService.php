@@ -326,7 +326,7 @@ class TelegramService
         foreach ($lines as $line) {
             $cells = array_map('trim', explode('|', trim($line, '|')));
             // Skip separator rows (----, :---:, etc.)
-            if (!empty($cells) && preg_match('/^[-: ]+$/', $cells[0])) {
+            if (preg_match('/^[-: ]+$/', $cells[0])) {
                 continue;
             }
             // Clean markdown formatting from cell content

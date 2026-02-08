@@ -38,16 +38,19 @@ class Message extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
     }
 
+    /** @return BelongsTo<Channel, $this> */
     public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
     }
 
+    /** @return BelongsTo<Message, $this> */
     public function replyTo(): BelongsTo
     {
         return $this->belongsTo(Message::class, 'reply_to_id');
@@ -58,11 +61,13 @@ class Message extends Model
         return $this->hasMany(Message::class, 'reply_to_id');
     }
 
+    /** @return BelongsTo<ApprovalRequest, $this> */
     public function approvalRequest(): BelongsTo
     {
         return $this->belongsTo(ApprovalRequest::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function pinnedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'pinned_by_id');

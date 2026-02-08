@@ -2,7 +2,6 @@
 
 namespace App\Agents\Tools\Charts;
 
-use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -12,9 +11,6 @@ use Symfony\Component\Process\Process;
 
 class RenderSvg implements Tool
 {
-    public function __construct(
-        private User $agent,
-    ) {}
 
     public function description(): string
     {

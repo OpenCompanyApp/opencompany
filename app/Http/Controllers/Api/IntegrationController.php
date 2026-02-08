@@ -32,6 +32,7 @@ class IntegrationController extends Controller
 
         // Static integrations (GLM, Telegram — no ToolProvider package)
         foreach ($available as $id => $info) {
+            /** @var IntegrationSetting|null $setting */
             $setting = $settings->get($id);
             $integrations[] = [
                 'id' => $id,
@@ -40,8 +41,8 @@ class IntegrationController extends Controller
                 'icon' => $info['icon'],
                 'models' => $info['models'] ?? null,
                 'defaultUrl' => $info['default_url'] ?? null,
-                'enabled' => $setting?->enabled ?? false,
-                'configured' => $setting?->hasValidConfig() ?? false,
+                'enabled' => $setting ? $setting->enabled : false,
+                'configured' => $setting ? $setting->hasValidConfig() : false,
                 'configurable' => false,
             ];
         }
@@ -52,6 +53,7 @@ class IntegrationController extends Controller
                 continue;
             }
             $meta = $provider->integrationMeta();
+            /** @var IntegrationSetting|null $setting */
             $setting = $settings->get($provider->appName());
             $integrations[] = [
                 'id' => $provider->appName(),
@@ -59,11 +61,11 @@ class IntegrationController extends Controller
                 'description' => $meta['description'],
                 'icon' => $meta['icon'],
                 'logo' => $meta['logo'] ?? null,
-                'category' => $meta['category'] ?? null,
+                'category' => $meta['category'],
                 'badge' => $meta['badge'] ?? null,
                 'docsUrl' => $meta['docs_url'] ?? null,
-                'enabled' => $setting?->enabled ?? false,
-                'configured' => $setting?->hasValidConfig() ?? false,
+                'enabled' => $setting ? $setting->enabled : false,
+                'configured' => $setting ? $setting->hasValidConfig() : false,
                 'configurable' => true,
                 'configSchema' => $provider->configSchema(),
             ];
@@ -104,6 +106,7 @@ class IntegrationController extends Controller
             $meta = $provider->integrationMeta();
 
             $config = [];
+            /** @var array{key: string, type: string, label: string, default?: mixed} $field */
             foreach ($schema as $field) {
                 $key = $field['key'];
                 if ($field['type'] === 'secret') {
@@ -118,7 +121,7 @@ class IntegrationController extends Controller
                 'id' => $id,
                 'name' => $meta['name'],
                 'description' => $meta['description'],
-                'enabled' => $setting?->enabled ?? false,
+                'enabled' => $setting ? $setting->enabled : false,
                 'config' => $config,
                 'configSchema' => $schema,
             ]);
@@ -151,7 +154,7 @@ class IntegrationController extends Controller
             'description' => $available[$id]['description'],
             'models' => $available[$id]['models'] ?? null,
             'defaultUrl' => $available[$id]['default_url'] ?? null,
-            'enabled' => $setting?->enabled ?? false,
+            'enabled' => $setting ? $setting->enabled : false,
             'config' => $config,
         ]);
     }
@@ -175,6 +178,7 @@ class IntegrationController extends Controller
             }
 
             $config = $setting->config ?? [];
+            /** @var array{key: string, type: string, label: string, default?: mixed} $field */
             foreach ($provider->configSchema() as $field) {
                 $key = $field['key'];
                 if (!$request->has($key)) {
@@ -284,7 +288,7 @@ class IntegrationController extends Controller
 
             try {
                 $result = $provider->testConnection($config);
-                $status = ($result['success'] ?? false) ? 200 : 400;
+                $status = $result['success'] ? 200 : 400;
 
                 return response()->json($result, $status);
             } catch (\Exception $e) {
@@ -485,8 +489,10 @@ class IntegrationController extends Controller
             ->first();
 
         if ($existing && $existing->user_id !== $user->id) {
+            /** @var \App\Models\User $existingUser */
+            $existingUser = $existing->user;
             return response()->json([
-                'error' => "This {$request->input('provider')} ID is already linked to user: {$existing->user->name}",
+                'error' => "This {$request->input('provider')} ID is already linked to user: {$existingUser->name}",
             ], 409);
         }
 

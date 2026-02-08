@@ -204,8 +204,8 @@ class CalendarFeedController extends Controller
 
         if ($event->relationLoaded('attendees')) {
             foreach ($event->attendees as $attendee) {
-                $name = $attendee->user?->name ?? 'Unknown';
-                $lines[] = 'ATTENDEE;CN=' . $this->escapeIcsText($name) . ':mailto:' . ($attendee->user?->email ?? 'noreply@opencompany');
+                $name = $attendee->user->name ?? 'Unknown';
+                $lines[] = 'ATTENDEE;CN=' . $this->escapeIcsText($name) . ':mailto:' . ($attendee->user->email ?? 'noreply@opencompany');
             }
         }
 

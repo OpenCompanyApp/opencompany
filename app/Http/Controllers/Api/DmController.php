@@ -61,19 +61,23 @@ class DmController extends Controller
             ->where('channel_id', $dm->channel_id)
             ->orderBy('created_at', 'asc')
             ->get()
-            ->map(fn ($msg) => [
-                'id' => $msg->id,
-                'content' => $msg->content,
-                'author' => [
-                    'id' => $msg->author->id,
-                    'name' => $msg->author->name,
-                    'avatar' => $msg->author->avatar,
-                    'type' => $msg->author->type,
-                    'agentType' => $msg->author->agent_type,
-                    'status' => $msg->author->status,
-                ],
-                'timestamp' => $msg->created_at->toISOString(),
-            ]);
+            ->map(function (Message $msg) {
+                /** @var \App\Models\User $author */
+                $author = $msg->author;
+                return [
+                    'id' => $msg->id,
+                    'content' => $msg->content,
+                    'author' => [
+                        'id' => $author->id,
+                        'name' => $author->name,
+                        'avatar' => $author->avatar,
+                        'type' => $author->type,
+                        'agentType' => $author->agent_type,
+                        'status' => $author->status,
+                    ],
+                    'timestamp' => $msg->created_at->toISOString(),
+                ];
+            });
 
         return response()->json([
             'id' => $dm->id,

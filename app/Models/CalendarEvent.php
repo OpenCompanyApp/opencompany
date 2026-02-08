@@ -8,6 +8,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property string $title
+ * @property string|null $description
+ * @property string|null $location
+ * @property string|null $color
+ * @property string|null $recurrence_rule
+ * @property bool $all_day
+ * @property string|null $created_by
+ * @property \Carbon\Carbon|null $start_at
+ * @property \Carbon\Carbon|null $end_at
+ * @property \Carbon\Carbon|null $recurrence_end
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class CalendarEvent extends Model
 {
     use HasFactory, HasUuids;
@@ -53,11 +67,13 @@ class CalendarEvent extends Model
         return $array;
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** @return HasMany<CalendarEventAttendee, $this> */
     public function attendees(): HasMany
     {
         return $this->hasMany(CalendarEventAttendee::class, 'event_id');

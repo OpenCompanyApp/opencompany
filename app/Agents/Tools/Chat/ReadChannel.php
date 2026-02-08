@@ -65,7 +65,9 @@ class ReadChannel implements Tool
         $lines = ["Recent messages in #{$channel->name}:"];
         foreach ($messages as $message) {
             $time = $message->created_at->format('Y-m-d H:i');
-            $author = $message->author?->name ?? 'Unknown';
+            /** @var User|null $messageAuthor */
+            $messageAuthor = $message->author;
+            $author = $messageAuthor->name ?? 'Unknown';
             $lines[] = "[{$time}] {$author}: {$message->content}";
         }
 
@@ -90,14 +92,18 @@ class ReadChannel implements Tool
             ->get();
 
         $time = $parent->created_at->format('Y-m-d H:i');
-        $author = $parent->author?->name ?? 'Unknown';
+        /** @var User|null $parentAuthor */
+        $parentAuthor = $parent->author;
+        $author = $parentAuthor->name ?? 'Unknown';
         $lines = ["Thread for message by {$author}:"];
         $lines[] = "[{$time}] {$author}: {$parent->content}";
         $lines[] = "--- Replies ({$replies->count()}) ---";
 
         foreach ($replies as $reply) {
             $rTime = $reply->created_at->format('Y-m-d H:i');
-            $rAuthor = $reply->author?->name ?? 'Unknown';
+            /** @var User|null $replyAuthor */
+            $replyAuthor = $reply->author;
+            $rAuthor = $replyAuthor->name ?? 'Unknown';
             $lines[] = "[{$rTime}] {$rAuthor}: {$reply->content}";
         }
 
@@ -119,7 +125,9 @@ class ReadChannel implements Tool
         $lines = ["Pinned messages in #{$channel->name}:"];
         foreach ($messages as $message) {
             $time = $message->created_at->format('Y-m-d H:i');
-            $author = $message->author?->name ?? 'Unknown';
+            /** @var User|null $pinnedAuthor */
+            $pinnedAuthor = $message->author;
+            $author = $pinnedAuthor->name ?? 'Unknown';
             $lines[] = "[{$time}] {$author}: {$message->content}";
         }
 

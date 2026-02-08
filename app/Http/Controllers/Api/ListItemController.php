@@ -108,9 +108,6 @@ class ListItemController extends Controller
         if (isset($data['status'])) {
             $newStatus = ListStatus::where('slug', $data['status'])->first();
             if ($newStatus) {
-                if (!$newStatus->is_done && !$listItem->started_at) {
-                    $data['started_at'] = now();
-                }
                 if ($newStatus->is_done && !$listItem->completed_at) {
                     $data['completed_at'] = now();
                 }

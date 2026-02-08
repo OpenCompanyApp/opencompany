@@ -27,7 +27,7 @@ class SendApprovalToTelegramJob implements ShouldQueue
     {
         $this->approval->loadMissing('requester');
 
-        $requesterName = htmlspecialchars($this->approval->requester?->name ?? 'Unknown', ENT_QUOTES, 'UTF-8');
+        $requesterName = htmlspecialchars($this->approval->requester->name ?? 'Unknown', ENT_QUOTES, 'UTF-8');
         $type = ucfirst($this->approval->type ?? 'action');
         $title = htmlspecialchars($this->approval->title, ENT_QUOTES, 'UTF-8');
 

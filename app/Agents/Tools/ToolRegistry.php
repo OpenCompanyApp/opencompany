@@ -409,8 +409,8 @@ class ToolRegistry
                 $meta = $provider->appMeta();
                 $this->effectiveAppGroups[$provider->appName()] = [
                     'tools' => array_keys($provider->tools()),
-                    'label' => $meta['label'] ?? '',
-                    'description' => $meta['description'] ?? '',
+                    'label' => $meta['label'],
+                    'description' => $meta['description'],
                 ];
             }
         }
@@ -436,9 +436,7 @@ class ToolRegistry
             $this->effectiveAppIcons = self::APP_ICONS;
             foreach ($this->providerRegistry->all() as $provider) {
                 $meta = $provider->appMeta();
-                if (isset($meta['icon'])) {
-                    $this->effectiveAppIcons[$provider->appName()] = $meta['icon'];
-                }
+                $this->effectiveAppIcons[$provider->appName()] = $meta['icon'];
             }
         }
         return $this->effectiveAppIcons;
@@ -815,26 +813,26 @@ class ToolRegistry
             ListChannels::class => new ListChannels($agent, $this->permissionService),
             GetToolInfo::class => new GetToolInfo($agent, $this),
             // Tools needing only agent
-            QueryTable::class => new QueryTable($agent),
+            QueryTable::class => new QueryTable(),
             ManageTable::class => new ManageTable($agent),
             ManageTableRows::class => new ManageTableRows($agent),
-            QueryCalendar::class => new QueryCalendar($agent),
+            QueryCalendar::class => new QueryCalendar(),
             ManageCalendarEvent::class => new ManageCalendarEvent($agent),
-            QueryListItems::class => new QueryListItems($agent),
+            QueryListItems::class => new QueryListItems(),
             ManageListItem::class => new ManageListItem($agent),
-            ManageListStatus::class => new ManageListStatus($agent),
+            ManageListStatus::class => new ManageListStatus(),
             UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
-            RenderSvg::class => new RenderSvg($agent),
+            RenderSvg::class => new RenderSvg(),
             SendTelegramNotification::class => new SendTelegramNotification($agent, $this->permissionService),
             WaitForApproval::class => new WaitForApproval($agent),
             Wait::class => new Wait($agent),
             // Workspace Management
-            QueryWorkspace::class => new QueryWorkspace($agent, $this->permissionService, $this),
+            QueryWorkspace::class => new QueryWorkspace($this->permissionService, $this),
             ManageAgent::class => new ManageAgent($agent, app(AgentDocumentService::class), app(\App\Services\AgentAvatarService::class)),
             ManageAgentPermissions::class => new ManageAgentPermissions($agent, $this->permissionService),
-            ManageIntegration::class => new ManageIntegration($agent),
-            ManageMcpServer::class => new ManageMcpServer($agent),
+            ManageIntegration::class => new ManageIntegration(),
+            ManageMcpServer::class => new ManageMcpServer(),
             ManageChannel::class => new ManageChannel($agent),
             ManageAutomation::class => new ManageAutomation($agent),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),

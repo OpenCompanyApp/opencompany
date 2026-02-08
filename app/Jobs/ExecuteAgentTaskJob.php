@@ -72,7 +72,7 @@ class ExecuteAgentTaskJob implements ShouldQueue
             $this->task->update([
                 'result' => [
                     'response' => $response->text,
-                    'tokens' => $response->usage?->totalTokens ?? null,
+                    'tokens' => $response->usage->promptTokens + $response->usage->completionTokens,
                 ],
             ]);
 
@@ -81,7 +81,7 @@ class ExecuteAgentTaskJob implements ShouldQueue
             Log::info('Agent task completed', [
                 'task' => $this->task->id,
                 'agent' => $agent->name,
-                'tokens' => $response->usage?->totalTokens ?? 'unknown',
+                'tokens' => $response->usage->promptTokens + $response->usage->completionTokens,
             ]);
         } catch (\Throwable $e) {
             Log::error('Agent task failed', [
@@ -130,12 +130,14 @@ class ExecuteAgentTaskJob implements ShouldQueue
 
     private function getDefaultChannel(User $agent): string
     {
-        $channelMember = $agent->channels()->first();
-        if ($channelMember) {
-            return $channelMember->id;
+        /** @var Channel|null $channel */
+        $channel = $agent->channels()->first();
+        if ($channel) {
+            return $channel->id;
         }
 
+        /** @var Channel|null $publicChannel */
         $publicChannel = Channel::where('type', 'public')->first();
-        return $publicChannel?->id ?? '';
+        return $publicChannel->id ?? '';
     }
 }

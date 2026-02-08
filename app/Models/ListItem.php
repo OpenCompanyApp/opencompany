@@ -11,6 +11,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 /**
  * ListItem - Items in a kanban board/list (renamed from Task)
  * For discrete work tracking, see the Task model instead.
+ *
+ * @property string $title
+ * @property string|null $description
+ * @property string $status
+ * @property string|null $priority
+ * @property bool $is_folder
+ * @property string|null $parent_id
+ * @property string|null $assignee_id
+ * @property string|null $creator_id
+ * @property string|null $channel_id
+ * @property int $position
+ * @property int $item_count
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property \Carbon\Carbon|null $completed_at
+ * @property \Carbon\Carbon|null $due_date
  */
 class ListItem extends Model
 {
@@ -76,21 +92,25 @@ class ListItem extends Model
         return $array;
     }
 
+    /** @return BelongsTo<User, $this> */
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assignee_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_id');
     }
 
+    /** @return BelongsTo<Channel, $this> */
     public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
     }
 
+    /** @return HasMany<ListItemCollaborator, $this> */
     public function collaboratorPivots(): HasMany
     {
         return $this->hasMany(ListItemCollaborator::class);
@@ -101,16 +121,19 @@ class ListItem extends Model
         return $this->belongsToMany(User::class, 'list_item_collaborators', 'list_item_id', 'user_id');
     }
 
+    /** @return HasMany<ListItemComment, $this> */
     public function comments(): HasMany
     {
         return $this->hasMany(ListItemComment::class);
     }
 
+    /** @return BelongsTo<ListItem, $this> */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(ListItem::class, 'parent_id');
     }
 
+    /** @return HasMany<ListItem, $this> */
     public function children(): HasMany
     {
         return $this->hasMany(ListItem::class, 'parent_id');
@@ -128,7 +151,7 @@ class ListItem extends Model
             'type' => 'custom',
             'status' => 'pending',
             'priority' => $this->priority ?? 'normal',
-            'agent_id' => $agent?->id ?? $this->assignee_id,
+            'agent_id' => ($agent ? $agent->id : $this->assignee_id),
             'requester_id' => $requester->id,
             'channel_id' => $this->channel_id,
             'list_item_id' => $this->id,

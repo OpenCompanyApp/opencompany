@@ -4,16 +4,12 @@ namespace App\Agents\Tools\Calendar;
 
 use App\Models\CalendarEvent;
 use App\Models\CalendarEventAttendee;
-use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
 class QueryCalendar implements Tool
 {
-    public function __construct(
-        private User $agent,
-    ) {}
 
     public function description(): string
     {
@@ -93,7 +89,7 @@ class QueryCalendar implements Tool
             return "Error: Event '{$eventId}' not found.";
         }
 
-        $creator = $event->creator?->name ?? 'Unknown';
+        $creator = ($event->creator ? $event->creator->name : 'Unknown');
         $date = $event->all_day
             ? $event->start_at->format('Y-m-d') . ' (all day)'
             : $event->start_at->format('Y-m-d H:i') . ' - ' . ($event->end_at ? $event->end_at->format('Y-m-d H:i') : 'TBD');
@@ -111,7 +107,7 @@ class QueryCalendar implements Tool
         if ($event->attendees->isNotEmpty()) {
             $lines[] = "Attendees ({$event->attendees->count()}):";
             foreach ($event->attendees as $attendee) {
-                $name = $attendee->user?->name ?? 'Unknown';
+                $name = ($attendee->user ? $attendee->user->name : 'Unknown');
                 $status = $attendee->status ?? 'pending';
                 $lines[] = "- {$name} ({$status})";
             }

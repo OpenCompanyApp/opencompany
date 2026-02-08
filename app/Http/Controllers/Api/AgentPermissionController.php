@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AgentPermission;
 use App\Models\User;
-use App\Services\AgentPermissionService;
 use App\Agents\Tools\ToolRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -13,7 +12,6 @@ use Illuminate\Support\Str;
 class AgentPermissionController extends Controller
 {
     public function __construct(
-        private AgentPermissionService $permissionService,
         private ToolRegistry $toolRegistry,
     ) {}
 

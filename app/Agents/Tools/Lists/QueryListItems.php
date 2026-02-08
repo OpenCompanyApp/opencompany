@@ -12,9 +12,6 @@ use Laravel\Ai\Tools\Request;
 
 class QueryListItems implements Tool
 {
-    public function __construct(
-        private User $agent,
-    ) {}
 
     public function description(): string
     {
@@ -61,7 +58,7 @@ class QueryListItems implements Tool
 
         $lines = ["List items ({$items->count()}):"];
         foreach ($items as $item) {
-            $assignee = $item->assignee?->name ?? 'Unassigned';
+            $assignee = ($item->assignee ? $item->assignee->name : 'Unassigned');
             $priority = $item->priority ? " [{$item->priority}]" : '';
             $folder = $item->is_folder ? ' (folder)' : '';
             $lines[] = "- {$item->title} | Status: {$item->status} | Assignee: {$assignee}{$priority}{$folder}";
@@ -86,8 +83,8 @@ class QueryListItems implements Tool
             return "Error: List item '{$listItemId}' not found.";
         }
 
-        $assignee = $item->assignee?->name ?? 'Unassigned';
-        $creator = $item->creator?->name ?? 'Unknown';
+        $assignee = ($item->assignee ? $item->assignee->name : 'Unassigned');
+        $creator = ($item->creator ? $item->creator->name : 'Unknown');
         $commentCount = $item->comments->count();
 
         $lines = [
@@ -113,7 +110,7 @@ class QueryListItems implements Tool
         $lines[] = "Comments: {$commentCount}";
         if ($item->comments->isNotEmpty()) {
             foreach ($item->comments->take(20) as $comment) {
-                $author = $comment->author?->name ?? 'Unknown';
+                $author = ($comment->author ? $comment->author->name : 'Unknown');
                 $date = $comment->created_at->format('Y-m-d H:i');
                 $content = Str::limit($comment->content, 200);
                 $lines[] = "  [{$date}] {$author}: {$content}";
@@ -145,7 +142,7 @@ class QueryListItems implements Tool
 
         $lines = ["List items with status '{$status}' ({$items->count()}):"];
         foreach ($items as $item) {
-            $assignee = $item->assignee?->name ?? 'Unassigned';
+            $assignee = ($item->assignee ? $item->assignee->name : 'Unassigned');
             $priority = $item->priority ? " [{$item->priority}]" : '';
             $lines[] = "- {$item->title} | Assignee: {$assignee}{$priority}";
             $lines[] = "  ID: {$item->id}";
@@ -170,7 +167,7 @@ class QueryListItems implements Tool
             ->get();
 
         $assignee = User::find($assigneeId);
-        $assigneeName = $assignee?->name ?? $assigneeId;
+        $assigneeName = ($assignee ? $assignee->name : $assigneeId);
 
         if ($items->isEmpty()) {
             return "No list items found assigned to '{$assigneeName}'.";

@@ -252,8 +252,8 @@ class CalendarEventController extends Controller
             }
 
             foreach ($event->attendees as $attendee) {
-                $name = $attendee->user?->name ?? 'Unknown';
-                $lines[] = 'ATTENDEE;CN=' . $this->escapeIcsText($name) . ':mailto:' . ($attendee->user?->email ?? 'noreply@opencompany');
+                $name = $attendee->user->name ?? 'Unknown';
+                $lines[] = 'ATTENDEE;CN=' . $this->escapeIcsText($name) . ':mailto:' . ($attendee->user->email ?? 'noreply@opencompany');
             }
 
             $lines[] = 'CREATED:' . Carbon::parse($event->created_at)->utc()->format('Ymd\THis\Z');

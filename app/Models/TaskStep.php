@@ -71,6 +71,7 @@ class TaskStep extends Model
 
     // Relationships
 
+    /** @return BelongsTo<Task, $this> */
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);

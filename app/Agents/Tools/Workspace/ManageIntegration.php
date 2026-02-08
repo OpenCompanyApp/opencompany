@@ -15,9 +15,6 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class ManageIntegration implements Tool
 {
-    public function __construct(
-        private User $agent,
-    ) {}
 
     public function description(): string
     {
@@ -63,6 +60,7 @@ class ManageIntegration implements Tool
         $schema = $provider->configSchema();
 
         $lines = ["{$meta['name']} setup requirements:"];
+        /** @var array{key: string, type: string, label: string, required?: bool, default?: mixed, placeholder?: string} $field */
         foreach ($schema as $field) {
             $parts = ["{$field['key']} ({$field['type']})"];
             if (!empty($field['required'])) {
@@ -232,7 +230,7 @@ class ManageIntegration implements Tool
 
         if ($provider) {
             $setting = IntegrationSetting::where('integration_id', $integrationId)->first();
-            $config = $setting?->config ?? [];
+            $config = $setting->config ?? [];
 
             $result = $provider->testConnection($config);
 
@@ -363,7 +361,9 @@ class ManageIntegration implements Tool
             ->first();
 
         if ($existing && $existing->user_id !== $user->id) {
-            return "{$provider} ID {$externalId} is already linked to user: {$existing->user->name}";
+            /** @var User $existingUser */
+            $existingUser = $existing->user;
+            return "{$provider} ID {$externalId} is already linked to user: {$existingUser->name}";
         }
 
         UserExternalIdentity::updateOrCreate(

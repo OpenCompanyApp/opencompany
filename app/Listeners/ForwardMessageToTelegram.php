@@ -42,7 +42,7 @@ class ForwardMessageToTelegram implements ShouldQueue
             return;
         }
 
-        $authorName = htmlspecialchars($message->author?->name ?? 'System', ENT_QUOTES, 'UTF-8');
+        $authorName = htmlspecialchars($message->author->name ?? 'System', ENT_QUOTES, 'UTF-8');
 
         try {
             // Extract and send chart images as photos (from inline markdown)

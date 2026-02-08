@@ -23,6 +23,7 @@ class ActivityController extends Controller
             ->limit($limit)
             ->get();
 
+        /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $taskActivities */
         $taskActivities = $tasks->map(function (Task $task) {
             $type = match ($task->status) {
                 'completed' => 'task_completed',
@@ -57,8 +58,11 @@ class ActivityController extends Controller
             ->limit($limit)
             ->get();
 
+        /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $messageActivities */
         $messageActivities = $messages->map(function (Message $msg) {
-            $channelName = $msg->channel?->name ?? 'unknown';
+            /** @var \App\Models\Channel|null $msgChannel */
+            $msgChannel = $msg->channel;
+            $channelName = $msgChannel->name ?? 'unknown';
 
             return [
                 'id' => "msg-{$msg->id}",

@@ -97,7 +97,10 @@ class DataTableRowController extends Controller
             ]);
         }
 
-        return collect($rows)->load('creator');
+        /** @var \Illuminate\Database\Eloquent\Collection<int, DataTableRow> $collection */
+        $collection = (new DataTableRow)->newCollection($rows);
+
+        return $collection->load('creator');
     }
 
     public function bulkDelete(Request $request, string $tableId)

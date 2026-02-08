@@ -110,7 +110,7 @@ class ManageTableRows implements Tool
 
         $columns = $table->columns()->get();
         $columnById = $columns->keyBy('id');
-        $columnByName = $columns->keyBy(fn ($col) => strtolower($col->name));
+        $columnByName = $columns->keyBy(fn (DataTableColumn $col) => strtolower($col->name));
 
         $resolved = [];
         $maxOrder = $columns->max('order') ?? -1;
@@ -125,7 +125,9 @@ class ManageTableRows implements Tool
             // Key matches an existing column name
             $lowerKey = strtolower($key);
             if ($columnByName->has($lowerKey)) {
-                $resolved[$columnByName->get($lowerKey)->id] = $value;
+                /** @var DataTableColumn $matchedCol */
+                $matchedCol = $columnByName->get($lowerKey);
+                $resolved[$matchedCol->id] = $value;
                 continue;
             }
 

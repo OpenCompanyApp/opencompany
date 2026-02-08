@@ -50,6 +50,7 @@ class ApprovalController extends Controller
             'responded_at' => now(),
         ]);
 
+        /** @var \App\Models\User|null $agent */
         $agent = $approval->requester;
         $agentIsWaiting = $agent
             && $agent->type === 'agent'

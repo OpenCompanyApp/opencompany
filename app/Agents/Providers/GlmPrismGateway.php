@@ -67,7 +67,7 @@ class GlmPrismGateway extends PrismGateway
             sleepMilliseconds: 1000,
             when: fn ($exception) => $exception instanceof ConnectionException
                 || ($exception instanceof RequestException
-                    && in_array($exception->response?->status(), [408, 429, 500, 502, 503, 504])),
+                    && in_array($exception->response->status(), [408, 429, 500, 502, 503, 504])),
             throw: true,
         );
     }

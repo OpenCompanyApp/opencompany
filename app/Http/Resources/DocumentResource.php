@@ -5,6 +5,9 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin \App\Models\Document
+ */
 class DocumentResource extends JsonResource
 {
     /**
@@ -27,12 +30,12 @@ class DocumentResource extends JsonResource
             'author' => $this->whenLoaded('author', fn() => new UserResource($this->author)),
             'parent' => $this->whenLoaded('parent', fn() => new DocumentResource($this->parent)),
             'children' => $this->whenLoaded('children', fn() => DocumentResource::collection($this->children)),
-            'permissions' => $this->whenLoaded('permissions', fn() => $this->permissions->map(fn($p) => [
+            'permissions' => $this->whenLoaded('permissions', fn() => $this->permissions->map(fn(\App\Models\DocumentPermission $p) => [
                 'id' => $p->id,
                 'userId' => $p->user_id,
                 'role' => $p->role,
                 'user' => $p->relationLoaded('user') ? new UserResource($p->user) : null,
-            ])),
+            ])->values()->all()),
         ];
     }
 }

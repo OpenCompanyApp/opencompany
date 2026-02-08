@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property-read User|null $user
+ */
 class UserExternalIdentity extends Model
 {
     protected $keyType = 'string';
@@ -19,6 +22,7 @@ class UserExternalIdentity extends Model
         'display_name',
     ];
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

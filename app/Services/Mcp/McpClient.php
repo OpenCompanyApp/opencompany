@@ -21,9 +21,9 @@ class McpClient
     /**
      * Create a client from an McpServer model.
      */
-    public static function fromServer(McpServer $server): static
+    public static function fromServer(McpServer $server): self
     {
-        return new static(
+        return new self(
             url: $server->url,
             authHeaders: $server->getAuthHeaders(),
             timeout: $server->timeout,
@@ -101,7 +101,7 @@ class McpClient
             $this->sessionId = $sessionId;
         }
 
-        $contentType = $response->header('Content-Type', '');
+        $contentType = $response->header('Content-Type');
 
         // Handle SSE responses
         if (str_contains($contentType, 'text/event-stream')) {

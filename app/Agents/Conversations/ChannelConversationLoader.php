@@ -39,7 +39,9 @@ class ChannelConversationLoader
                 $sdkMessages[] = new AssistantMessage($message->content);
             } else {
                 // Prefix with author name for multi-user context
-                $authorName = $message->author?->name ?? 'User';
+                /** @var User|null $author */
+                $author = $message->author;
+                $authorName = $author->name ?? 'User';
                 $content = "[{$authorName}]: {$message->content}";
                 $sdkMessages[] = new UserMessage($content);
             }

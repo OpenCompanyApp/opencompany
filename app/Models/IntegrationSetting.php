@@ -5,6 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property array<string, mixed> $config
+ * @property bool $enabled
+ * @property string $integration_id
+ */
 class IntegrationSetting extends Model
 {
     use HasFactory;

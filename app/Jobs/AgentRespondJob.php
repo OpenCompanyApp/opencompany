@@ -211,10 +211,10 @@ class AgentRespondJob implements ShouldQueue
             // Complete the task
             $task->complete([
                 'response' => $responseText,
-                'prompt_tokens' => $response->usage?->promptTokens ?? null,
-                'completion_tokens' => $response->usage?->completionTokens ?? null,
-                'cache_read_tokens' => $response->usage?->cacheReadInputTokens ?? null,
-                'cache_write_tokens' => $response->usage?->cacheWriteInputTokens ?? null,
+                'prompt_tokens' => $response->usage->promptTokens,
+                'completion_tokens' => $response->usage->completionTokens,
+                'cache_read_tokens' => $response->usage->cacheReadInputTokens,
+                'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
                 'tool_calls_count' => $response->toolCalls->count(),
             ]);
 
@@ -233,7 +233,7 @@ class AgentRespondJob implements ShouldQueue
                 'agent' => $this->agent->name,
                 'channel' => $this->channelId,
                 'task' => $task->id,
-                'tokens' => $response->usage?->totalTokens ?? 'unknown',
+                'tokens' => $response->usage->promptTokens + $response->usage->completionTokens,
             ]);
         } catch (\Throwable $e) {
             Log::error('Agent response failed', [
@@ -361,7 +361,7 @@ class AgentRespondJob implements ShouldQueue
     {
         try {
             $channel = Channel::find($this->channelId);
-            if ($channel?->type !== 'external' || $channel?->external_provider !== 'telegram' || !$channel?->external_id) {
+            if ($channel?->type !== 'external' || $channel->external_provider !== 'telegram' || !$channel->external_id) {
                 return;
             }
 
@@ -442,9 +442,9 @@ class AgentRespondJob implements ShouldQueue
                     ->whereIn('status', [Task::STATUS_COMPLETED, Task::STATUS_FAILED])
                     ->get();
 
-                $summary = $completedSubtasks->map(function ($st) {
+                $summary = $completedSubtasks->map(function (Task $st) {
                     $agent = User::find($st->agent_id);
-                    $agentName = $agent?->name ?? 'Unknown';
+                    $agentName = ($agent ? $agent->name : 'Unknown');
                     $response = $st->result['response'] ?? ($st->result['error'] ?? 'Completed.');
                     return "--- {$agentName}'s response ---\n{$response}";
                 })->join("\n\n");

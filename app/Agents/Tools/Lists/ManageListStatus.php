@@ -4,7 +4,6 @@ namespace App\Agents\Tools\Lists;
 
 use App\Models\ListItem;
 use App\Models\ListStatus;
-use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -12,9 +11,6 @@ use Laravel\Ai\Tools\Request;
 
 class ManageListStatus implements Tool
 {
-    public function __construct(
-        private User $agent,
-    ) {}
 
     public function description(): string
     {

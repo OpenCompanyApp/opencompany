@@ -103,11 +103,11 @@ class AgentController extends Controller
         $this->agentAvatarService->generate($agent);
 
         // Create DM channel between creator and agent
-        $creatorId = $request->user()?->id ?? 'h1';
+        $creatorId = $request->user()->id ?? 'h1';
         $creator = User::find($creatorId);
         $dmChannel = Channel::create([
             'id' => Str::uuid()->toString(),
-            'name' => 'DM: ' . ($creator?->name ?? 'User') . ' ↔ ' . $agent->name,
+            'name' => 'DM: ' . ($creator->name ?? 'User') . ' ↔ ' . $agent->name,
             'type' => 'dm',
             'is_ephemeral' => false,
         ]);
@@ -158,6 +158,7 @@ class AgentController extends Controller
         );
 
         // Task stats
+        /** @var object{total: int, completed: int}|null $taskStats */
         $taskStats = Task::where('agent_id', $agent->id)
             ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
             ->first();
@@ -251,14 +252,6 @@ class AgentController extends Controller
         }
 
         return $identity;
-    }
-
-    /**
-     * Convert PascalCase class name to human-readable string
-     */
-    private function humanizeClassName(string $className): string
-    {
-        return trim(preg_replace('/([A-Z])/', ' $1', $className));
     }
 
     /**

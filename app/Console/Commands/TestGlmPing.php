@@ -35,16 +35,14 @@ class TestGlmPing extends Command
             $this->line($response->text);
             $this->newLine();
 
-            if ($response->usage) {
-                $this->table(
-                    ['Metric', 'Value'],
-                    [
-                        ['Prompt Tokens', $response->usage->promptTokens],
-                        ['Completion Tokens', $response->usage->completionTokens],
-                        ['Total Tokens', $response->usage->promptTokens + $response->usage->completionTokens],
-                    ]
-                );
-            }
+            $this->table(
+                ['Metric', 'Value'],
+                [
+                    ['Prompt Tokens', $response->usage->promptTokens],
+                    ['Completion Tokens', $response->usage->completionTokens],
+                    ['Total Tokens', $response->usage->promptTokens + $response->usage->completionTokens],
+                ]
+            );
 
             $this->newLine();
             $this->info('GLM 4.7 connection successful!');

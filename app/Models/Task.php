@@ -12,6 +12,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * Examples: support tickets, content requests, research tasks, analysis jobs
  * For kanban board items, see the ListItem model instead.
+ *
+ * @property array<string, mixed>|null $result
+ * @property array<string, mixed>|null $context
+ * @property string $status
+ * @property string|null $agent_id
+ * @property string|null $channel_id
+ * @property string|null $parent_task_id
+ * @property \Carbon\Carbon|null $started_at
+ * @property \Carbon\Carbon|null $completed_at
+ * @property \Carbon\Carbon|null $due_at
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
  */
 class Task extends Model
 {
@@ -104,36 +116,43 @@ class Task extends Model
 
     // Relationships
 
+    /** @return BelongsTo<User, $this> */
     public function agent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'agent_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requester_id');
     }
 
+    /** @return BelongsTo<Channel, $this> */
     public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
     }
 
+    /** @return BelongsTo<ListItem, $this> */
     public function listItem(): BelongsTo
     {
         return $this->belongsTo(ListItem::class);
     }
 
+    /** @return BelongsTo<Task, $this> */
     public function parentTask(): BelongsTo
     {
         return $this->belongsTo(Task::class, 'parent_task_id');
     }
 
+    /** @return HasMany<Task, $this> */
     public function subtasks(): HasMany
     {
         return $this->hasMany(Task::class, 'parent_task_id');
     }
 
+    /** @return HasMany<TaskStep, $this> */
     public function steps(): HasMany
     {
         return $this->hasMany(TaskStep::class)->orderBy('created_at');
@@ -250,6 +269,7 @@ class Task extends Model
 
     public function addStep(string $description, string $type = 'action', array $metadata = []): TaskStep
     {
+        /** @var TaskStep */
         return $this->steps()->create([
             'id' => (string) \Illuminate\Support\Str::uuid(),
             'description' => $description,

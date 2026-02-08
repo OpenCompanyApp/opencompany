@@ -5,6 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property string $name
+ * @property string $slug
+ * @property string $color
+ * @property string $icon
+ * @property bool $is_done
+ * @property bool $is_default
+ * @property int $position
+ */
 class ListStatus extends Model
 {
     protected $table = 'list_statuses';

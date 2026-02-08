@@ -56,7 +56,7 @@ class SearchController extends Controller
 
         // Search tasks
         if (!$type || $type === 'tasks') {
-            $results['tasks'] = Task::with(['assignee'])
+            $results['tasks'] = Task::with(['agent'])
                 ->where('title', 'ilike', "%{$query}%")
                 ->orWhere('description', 'ilike', "%{$query}%")
                 ->limit(10)

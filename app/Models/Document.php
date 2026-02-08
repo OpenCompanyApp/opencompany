@@ -73,6 +73,7 @@ class Document extends Model
         return $this->hasMany(Document::class, 'parent_id');
     }
 
+    /** @return HasMany<DocumentPermission, $this> */
     public function permissions(): HasMany
     {
         return $this->hasMany(DocumentPermission::class);

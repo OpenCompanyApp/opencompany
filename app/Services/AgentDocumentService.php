@@ -203,7 +203,7 @@ class AgentDocumentService
     /**
      * Find or create the identity folder for an agent
      */
-    private function findOrCreateIdentityFolder(User $agent): Document
+    private function findOrCreateIdentityFolder(User $agent): ?Document
     {
         // Try via docs_folder_id
         if ($agent->docs_folder_id) {

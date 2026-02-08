@@ -7,6 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property string $id
+ * @property string $list_item_id
+ * @property string|null $author_id
+ * @property string $content
+ * @property string|null $parent_id
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class ListItemComment extends Model
 {
     use HasFactory;
@@ -23,21 +32,25 @@ class ListItemComment extends Model
         'parent_id',
     ];
 
+    /** @return BelongsTo<ListItem, $this> */
     public function listItem(): BelongsTo
     {
         return $this->belongsTo(ListItem::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
     }
 
+    /** @return BelongsTo<ListItemComment, $this> */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(ListItemComment::class, 'parent_id');
     }
 
+    /** @return HasMany<ListItemComment, $this> */
     public function replies(): HasMany
     {
         return $this->hasMany(ListItemComment::class, 'parent_id')->orderBy('created_at', 'asc');

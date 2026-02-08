@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $name
+ * @property string $type
+ * @property bool $required
+ */
 class DataTableColumn extends Model
 {
     use HasFactory, HasUuids;

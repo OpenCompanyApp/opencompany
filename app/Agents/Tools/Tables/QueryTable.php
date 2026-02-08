@@ -5,16 +5,12 @@ namespace App\Agents\Tools\Tables;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
-use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
 class QueryTable implements Tool
 {
-    public function __construct(
-        private User $agent,
-    ) {}
 
     public function description(): string
     {
@@ -50,7 +46,7 @@ class QueryTable implements Tool
 
         $lines = ["Data tables ({$tables->count()}):"];
         foreach ($tables as $table) {
-            $creator = $table->creator?->name ?? 'Unknown';
+            $creator = ($table->creator ? $table->creator->name : 'Unknown');
             $desc = $table->description ? " - {$table->description}" : '';
             $lines[] = "- {$table->name}{$desc} ({$table->columnsCount} columns, {$table->rowsCount} rows, created by {$creator})";
             $lines[] = "  ID: {$table->id}";
@@ -71,7 +67,7 @@ class QueryTable implements Tool
             return "Error: Table '{$tableId}' not found.";
         }
 
-        $creator = $table->creator?->name ?? 'Unknown';
+        $creator = ($table->creator ? $table->creator->name : 'Unknown');
         $lines = [
             "Table: {$table->name}",
             "Description: " . ($table->description ?? 'None'),

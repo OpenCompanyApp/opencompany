@@ -198,7 +198,8 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         if ($task->steps->isNotEmpty()) {
             $prompt .= "\nSteps:\n";
             foreach ($task->steps as $step) {
-                $prompt .= "- [{$step->status}] {$step->name}\n";
+                /** @var \App\Models\TaskStep $step */
+                $prompt .= "- [{$step->status}] {$step->description}\n";
             }
         }
 

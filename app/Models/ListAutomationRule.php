@@ -36,11 +36,13 @@ class ListAutomationRule extends Model
         ];
     }
 
+    /** @return BelongsTo<ListTemplate, $this> */
     public function template(): BelongsTo
     {
         return $this->belongsTo(ListTemplate::class, 'list_template_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');

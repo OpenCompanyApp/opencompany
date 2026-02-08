@@ -4,7 +4,6 @@ namespace App\Agents\Tools\Workspace;
 
 use App\Models\AgentPermission;
 use App\Models\McpServer;
-use App\Models\User;
 use App\Services\Mcp\McpClient;
 use App\Services\Mcp\McpToolProvider;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -15,9 +14,6 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class ManageMcpServer implements Tool
 {
-    public function __construct(
-        private User $agent,
-    ) {}
 
     public function description(): string
     {

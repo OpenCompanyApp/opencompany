@@ -5,6 +5,23 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
+/**
+ * @property array<int, array<string, mixed>>|null $discovered_tools
+ * @property array<string, mixed>|null $auth_config
+ * @property array<string, string>|null $headers
+ * @property array<string, mixed>|null $server_info
+ * @property string $url
+ * @property string|null $auth_type
+ * @property bool $enabled
+ * @property int $timeout
+ * @property string|null $icon
+ * @property string|null $description
+ * @property string $name
+ * @property string $slug
+ * @property \Carbon\Carbon|null $tools_discovered_at
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ */
 class McpServer extends Model
 {
     protected $keyType = 'string';

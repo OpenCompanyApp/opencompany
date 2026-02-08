@@ -217,6 +217,7 @@ class TelegramWebhookController extends Controller
         ]);
 
         // Execute the post-approval logic
+        /** @var \App\Models\User|null $agent */
         $agent = $approval->requester;
         $agentIsWaiting = $agent
             && $agent->type === 'agent'

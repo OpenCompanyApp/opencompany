@@ -17,7 +17,6 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 class QueryWorkspace implements Tool
 {
     public function __construct(
-        private User $agent,
         private AgentPermissionService $permissionService,
         private ToolRegistry $toolRegistry,
     ) {}
@@ -141,9 +140,10 @@ class QueryWorkspace implements Tool
 
         // Static integrations
         foreach ($available as $id => $info) {
+            /** @var \App\Models\IntegrationSetting|null $setting */
             $setting = $settings->get($id);
-            $enabled = ($setting?->enabled ?? false) ? 'enabled' : 'disabled';
-            $configured = ($setting?->hasValidConfig() ?? false) ? 'configured' : 'not configured';
+            $enabled = ($setting && $setting->enabled) ? 'enabled' : 'disabled';
+            $configured = ($setting && $setting->hasValidConfig()) ? 'configured' : 'not configured';
             $lines[] = "- {$id}: {$info['name']} — {$enabled}, {$configured}";
         }
 
@@ -157,9 +157,10 @@ class QueryWorkspace implements Tool
                 continue; // Already listed as static
             }
             $meta = $provider->integrationMeta();
+            /** @var \App\Models\IntegrationSetting|null $setting */
             $setting = $settings->get($id);
-            $enabled = ($setting?->enabled ?? false) ? 'enabled' : 'disabled';
-            $hasConfig = !empty($setting?->config);
+            $enabled = ($setting && $setting->enabled) ? 'enabled' : 'disabled';
+            $hasConfig = $setting && !empty($setting->config);
             $configured = $hasConfig ? 'configured' : 'not configured';
             $lines[] = "- {$id}: {$meta['name']} — {$enabled}, {$configured}";
         }
@@ -193,13 +194,14 @@ class QueryWorkspace implements Tool
             return "Integration not found: {$integrationId}. Available: " . implode(', ', $allIds);
         }
 
+        /** @var \App\Models\IntegrationSetting|null $setting */
         $setting = IntegrationSetting::where('integration_id', $integrationId)->first();
         $info = $available[$integrationId];
 
         $lines = [
             "Integration: {$info['name']} ({$integrationId})",
             "Description: {$info['description']}",
-            "Enabled: " . (($setting?->enabled ?? false) ? 'yes' : 'no'),
+            "Enabled: " . (($setting && $setting->enabled) ? 'yes' : 'no'),
             "Configured: " . (($setting?->hasValidConfig() ?? false) ? 'yes' : 'no'),
             "API Key: " . ($setting?->getMaskedApiKey() ?? 'not set'),
         ];
@@ -224,15 +226,17 @@ class QueryWorkspace implements Tool
     {
         $meta = $provider->integrationMeta();
         $schema = $provider->configSchema();
+        /** @var \App\Models\IntegrationSetting|null $setting */
         $setting = IntegrationSetting::where('integration_id', $integrationId)->first();
-        $config = $setting?->config ?? [];
+        $config = $setting ? $setting->config : [];
 
         $lines = [
             "Integration: {$meta['name']} ({$integrationId})",
-            "Description: " . ($meta['description'] ?? ''),
-            "Enabled: " . (($setting?->enabled ?? false) ? 'yes' : 'no'),
+            "Description: {$meta['description']}",
+            "Enabled: " . (($setting && $setting->enabled) ? 'yes' : 'no'),
         ];
 
+        /** @var array{key: string, type: string, label: string, default?: mixed} $field */
         foreach ($schema as $field) {
             $value = $config[$field['key']] ?? null;
 
@@ -243,7 +247,7 @@ class QueryWorkspace implements Tool
                 $items = is_array($value) ? $value : [];
                 $lines[] = "{$field['label']}: " . ($items ? implode(', ', $items) : 'none');
             } else {
-                $display = $value ?? $field['default'] ?? 'not set';
+                $display = $value ?? ($field['default'] ?? 'not set');
                 $lines[] = "{$field['label']}: {$display}";
             }
         }
