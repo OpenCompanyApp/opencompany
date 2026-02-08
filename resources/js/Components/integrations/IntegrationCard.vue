@@ -42,6 +42,14 @@
             class="w-3.5 h-3.5 text-green-500 dark:text-green-400 shrink-0"
             title="Officially supported"
           />
+          <span
+            v-else-if="integration.badge === 'mcp'"
+            class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
+            title="Remote MCP Server"
+          >
+            <Icon name="ph:plugs-connected" class="w-3 h-3" />
+            MCP
+          </span>
         </div>
         <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">{{ integration.description }}</p>
       </div>
@@ -93,8 +101,17 @@ export interface Integration {
   description: string
   category?: string
   installed: boolean
-  badge?: 'built-in' | 'verified'
+  badge?: 'built-in' | 'verified' | 'mcp'
   configurable?: boolean
+  type?: 'native' | 'mcp'
+  mcpServerId?: string
+  toolCount?: number
+  suggestedMcpConfig?: {
+    url: string
+    auth_type: 'none' | 'bearer' | 'header'
+    icon: string
+    description: string
+  }
 }
 
 defineProps<{

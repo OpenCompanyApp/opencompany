@@ -31,6 +31,7 @@ use App\Agents\Tools\Workspace\ManageAgentPermissions;
 use App\Agents\Tools\Workspace\ManageAutomation;
 use App\Agents\Tools\Workspace\ManageChannel;
 use App\Agents\Tools\Workspace\ManageIntegration;
+use App\Agents\Tools\Workspace\ManageMcpServer;
 use App\Agents\Tools\Workspace\QueryWorkspace;
 use App\Models\AppSetting;
 use App\Models\User;
@@ -89,8 +90,8 @@ class ToolRegistry
             'description' => 'Kanban board items and workflow statuses',
         ],
         'workspace' => [
-            'tools' => ['query_workspace', 'manage_agent', 'manage_agent_permissions', 'manage_integration', 'manage_channel', 'manage_automation'],
-            'label' => 'query, agents, permissions, integrations, channels, automation',
+            'tools' => ['query_workspace', 'manage_agent', 'manage_agent_permissions', 'manage_integration', 'manage_mcp_server', 'manage_channel', 'manage_automation'],
+            'label' => 'query, agents, permissions, integrations, mcp_servers, channels, automation',
             'description' => 'Workspace management',
         ],
 
@@ -342,6 +343,13 @@ class ToolRegistry
             'description' => 'Configure API keys, test connections, and set up webhooks for integrations.',
             'icon' => 'ph:plugs-connected',
         ],
+        'manage_mcp_server' => [
+            'class' => ManageMcpServer::class,
+            'type' => 'write',
+            'name' => 'Manage MCP Server',
+            'description' => 'Add, configure, test, and remove remote MCP servers to expose their tools to agents.',
+            'icon' => 'ph:plugs-connected',
+        ],
         'manage_channel' => [
             'class' => ManageChannel::class,
             'type' => 'write',
@@ -477,7 +485,7 @@ class ToolRegistry
                 continue;
             }
 
-            $tool = $this->instantiateTool($meta['class'], $agent);
+            $tool = $this->instantiateTool($meta['class'], $agent, $slug);
 
             if ($result['requires_approval']) {
                 $tool = new ApprovalWrappedTool($tool, $agent, $slug);
@@ -593,7 +601,7 @@ class ToolRegistry
             return null;
         }
 
-        return $this->instantiateTool($this->getEffectiveToolMap()[$slug]['class'], $agent);
+        return $this->instantiateTool($this->getEffectiveToolMap()[$slug]['class'], $agent, $slug);
     }
 
     /**
@@ -723,7 +731,7 @@ class ToolRegistry
             }
 
             $approval = $perm['requires_approval'] ? ' (requires approval)' : '';
-            $tool = $this->instantiateTool($meta['class'], $agent);
+            $tool = $this->instantiateTool($meta['class'], $agent, $slug);
             $schema = $tool->schema(new \Illuminate\JsonSchema\JsonSchemaTypeFactory);
 
             $params = [];
@@ -755,7 +763,7 @@ class ToolRegistry
         }
 
         $approval = $perm['requires_approval'] ? 'yes' : 'no';
-        $tool = $this->instantiateTool($meta['class'], $agent);
+        $tool = $this->instantiateTool($meta['class'], $agent, $slug);
         $schema = $tool->schema(new \Illuminate\JsonSchema\JsonSchemaTypeFactory);
 
         $lines = [
@@ -778,15 +786,16 @@ class ToolRegistry
     /**
      * Instantiate a tool class with the appropriate constructor arguments.
      */
-    private function instantiateTool(string $class, User $agent): \Laravel\Ai\Contracts\Tool
+    private function instantiateTool(string $class, User $agent, string $slug = ''): \Laravel\Ai\Contracts\Tool
     {
         // Check if this tool belongs to an external provider
         foreach ($this->providerRegistry->all() as $provider) {
-            foreach ($provider->tools() as $meta) {
-                if ($meta['class'] === $class) {
+            foreach ($provider->tools() as $toolSlug => $meta) {
+                if ($meta['class'] === $class && ($slug === '' || $toolSlug === $slug)) {
                     return $provider->createTool($class, [
                         'agent' => $agent,
                         'timezone' => AppSetting::getValue('org_timezone', 'UTC'),
+                        'tool_slug' => $toolSlug,
                     ]);
                 }
             }
@@ -825,6 +834,7 @@ class ToolRegistry
             ManageAgent::class => new ManageAgent($agent, app(AgentDocumentService::class), app(\App\Services\AgentAvatarService::class)),
             ManageAgentPermissions::class => new ManageAgentPermissions($agent, $this->permissionService),
             ManageIntegration::class => new ManageIntegration($agent),
+            ManageMcpServer::class => new ManageMcpServer($agent),
             ManageChannel::class => new ManageChannel($agent),
             ManageAutomation::class => new ManageAutomation($agent),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),

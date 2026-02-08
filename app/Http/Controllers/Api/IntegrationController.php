@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovalRequest;
 use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
+use App\Models\McpServer;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\UserExternalIdentity;
@@ -65,6 +66,25 @@ class IntegrationController extends Controller
                 'configured' => $setting?->hasValidConfig() ?? false,
                 'configurable' => true,
                 'configSchema' => $provider->configSchema(),
+            ];
+        }
+
+        // MCP servers (remote tool providers)
+        $mcpServers = McpServer::where('enabled', true)->get();
+        foreach ($mcpServers as $server) {
+            $integrations[] = [
+                'id' => 'mcp_' . $server->slug,
+                'name' => $server->name,
+                'description' => $server->description ?? 'Remote MCP server',
+                'icon' => $server->icon,
+                'enabled' => true,
+                'configured' => true,
+                'configurable' => false,
+                'type' => 'mcp',
+                'badge' => 'mcp',
+                'mcpServerId' => $server->id,
+                'toolCount' => count($server->discovered_tools ?? []),
+                'url' => $server->url,
             ];
         }
 

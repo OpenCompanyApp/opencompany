@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\AgentPermissionController;
 use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\IntegrationController;
+use App\Http\Controllers\Api\McpServerController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -252,6 +253,15 @@ Route::post('/integrations/{id}/setup-webhook', [IntegrationController::class, '
 Route::get('/integrations/external-identities', [IntegrationController::class, 'externalIdentities']);
 Route::post('/integrations/link-user', [IntegrationController::class, 'linkExternalUser']);
 Route::delete('/integrations/link-user/{identityId}', [IntegrationController::class, 'unlinkExternalUser']);
+
+// MCP Servers
+Route::get('/mcp-servers', [McpServerController::class, 'index']);
+Route::post('/mcp-servers', [McpServerController::class, 'store']);
+Route::get('/mcp-servers/{id}', [McpServerController::class, 'show']);
+Route::patch('/mcp-servers/{id}', [McpServerController::class, 'update']);
+Route::delete('/mcp-servers/{id}', [McpServerController::class, 'destroy']);
+Route::post('/mcp-servers/{id}/test', [McpServerController::class, 'testConnection']);
+Route::post('/mcp-servers/{id}/discover', [McpServerController::class, 'discoverTools']);
 
 // Webhooks (external, no auth)
 Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']);

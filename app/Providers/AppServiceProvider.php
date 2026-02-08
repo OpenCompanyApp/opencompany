@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Agents\Providers\GlmPrismGateway;
 use App\Models\ApprovalRequest;
+use App\Services\Mcp\McpServerRegistrar;
 use App\Observers\ApprovalRequestObserver;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -40,6 +41,13 @@ class AppServiceProvider extends ServiceProvider
 
         // Disable JSON wrapping for API resources
         JsonResource::withoutWrapping();
+
+        // Register MCP servers as tool providers
+        if ($this->app->bound(\OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class)) {
+            McpServerRegistrar::registerAll(
+                $this->app->make(\OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class)
+            );
+        }
 
         // Register GLM (Zhipu AI) as a custom Prism provider
         // GLM uses OpenAI-compatible chat/completions API (same as DeepSeek)

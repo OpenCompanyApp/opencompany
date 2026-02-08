@@ -65,7 +65,7 @@
               </span>
             </button>
             <button
-              v-for="category in integrationCategories"
+              v-for="category in nativeCategories"
               :key="'mobile-' + category.id"
               type="button"
               :class="[
@@ -78,6 +78,19 @@
             >
               <Icon :name="category.icon" class="w-3.5 h-3.5" />
               {{ category.name }}
+            </button>
+            <button
+              type="button"
+              :class="[
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+                activeCategory === 'mcp-servers' && !searchQuery
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400',
+              ]"
+              @click="activeCategory = 'mcp-servers'; searchQuery = ''"
+            >
+              <Icon name="ph:plugs-connected" class="w-3.5 h-3.5" />
+              MCP
             </button>
           </div>
         </div>
@@ -145,7 +158,7 @@
 
           <!-- Categories -->
           <button
-            v-for="category in integrationCategories"
+            v-for="category in nativeCategories"
             :key="category.id"
             type="button"
             :class="[
@@ -159,6 +172,34 @@
             <Icon :name="category.icon" class="w-4 h-4" />
             {{ category.name }}
             <span class="ml-auto text-[10px] opacity-60">{{ category.integrations.length }}</span>
+          </button>
+
+          <!-- MCP Servers Section -->
+          <div class="border-t border-neutral-200 dark:border-neutral-700 my-2" />
+          <button
+            type="button"
+            :class="[
+              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-left w-full',
+              activeCategory === 'mcp-servers' && !searchQuery
+                ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+            ]"
+            @click="activeCategory = 'mcp-servers'; searchQuery = ''"
+          >
+            <Icon name="ph:plugs-connected" class="w-4 h-4" />
+            MCP Servers
+            <span v-if="mcpCategory" class="ml-auto text-[10px] opacity-60">{{ mcpCategory.integrations.length }}</span>
+          </button>
+
+          <!-- Add MCP Server -->
+          <div class="border-t border-neutral-200 dark:border-neutral-700 my-2" />
+          <button
+            type="button"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left w-full"
+            @click="openAddMcpServer"
+          >
+            <Icon name="ph:plus-circle" class="w-4 h-4" />
+            Add MCP Server
           </button>
         </nav>
 
@@ -352,7 +393,7 @@
 
           <!-- All Integrations View -->
           <template v-else-if="activeCategory === 'all'">
-            <section v-for="category in integrationCategories" :key="category.id" class="mb-8 last:mb-0">
+            <section v-for="category in nativeCategories" :key="category.id" class="mb-8 last:mb-0">
               <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
                 <Icon :name="category.icon" class="w-4 h-4 text-neutral-500" />
                 {{ category.name }}
@@ -368,17 +409,56 @@
                 />
               </div>
             </section>
+
+            <!-- MCP Servers in All view -->
+            <section v-if="mcpCategory" class="mb-8">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                  <Icon name="ph:plugs-connected" class="w-4 h-4 text-purple-500" />
+                  MCP Servers
+                </h3>
+                <button
+                  type="button"
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                  @click="openAddMcpServer"
+                >
+                  <Icon name="ph:plus" class="w-3.5 h-3.5" />
+                  Add Server
+                </button>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <IntegrationCard
+                  v-for="integration in mcpCategory.integrations"
+                  :key="integration.id"
+                  :integration="integration"
+                  @install="handleInstall"
+                  @uninstall="handleUninstall"
+                  @configure="handleConfigure"
+                />
+              </div>
+            </section>
           </template>
 
           <!-- Single Category View -->
           <template v-else>
             <div v-if="selectedCategory" class="mb-4">
-              <h2 class="text-sm font-medium text-neutral-900 dark:text-white flex items-center gap-2">
-                <Icon :name="selectedCategory.icon" class="w-4 h-4 text-neutral-500" />
-                {{ selectedCategory.name }}
-              </h2>
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                  <Icon :name="selectedCategory.icon" class="w-4 h-4 text-neutral-500" />
+                  {{ selectedCategory.name }}
+                </h2>
+                <button
+                  v-if="activeCategory === 'mcp-servers'"
+                  type="button"
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                  @click="openAddMcpServer"
+                >
+                  <Icon name="ph:plus" class="w-3.5 h-3.5" />
+                  Add MCP Server
+                </button>
+              </div>
             </div>
-            <div v-if="selectedCategory" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div v-if="selectedCategory && selectedCategory.integrations.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               <IntegrationCard
                 v-for="integration in selectedCategory.integrations"
                 :key="integration.id"
@@ -387,6 +467,21 @@
                 @uninstall="handleUninstall"
                 @configure="handleConfigure"
               />
+            </div>
+            <div v-else-if="activeCategory === 'mcp-servers'" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-12 text-center">
+              <Icon name="ph:plugs-connected" class="w-10 h-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+              <p class="text-sm text-neutral-500 dark:text-neutral-400">No MCP servers connected</p>
+              <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1 mb-4">
+                Connect a remote MCP server to expose its tools to your agents
+              </p>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                @click="openAddMcpServer"
+              >
+                <Icon name="ph:plus" class="w-3.5 h-3.5" />
+                Add MCP Server
+              </button>
             </div>
           </template>
         </main>
@@ -413,6 +508,14 @@
       :schema="dynamicConfigSchema"
       :meta="dynamicIntegrationMeta"
       @saved="handleDynamicSaved"
+    />
+
+    <!-- MCP Server Config Modal -->
+    <McpConfigModal
+      v-model:open="showMcpConfigModal"
+      :server-id="activeMcpServerId"
+      @saved="handleMcpSaved"
+      @deleted="handleMcpDeleted"
     />
 
     <!-- Webhook Modal -->
@@ -476,12 +579,14 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import axios from 'axios'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
 import GlmConfigModal from '@/Components/integrations/GlmConfigModal.vue'
 import TelegramConfigModal from '@/Components/integrations/TelegramConfigModal.vue'
 import DynamicConfigModal from '@/Components/integrations/DynamicConfigModal.vue'
+import McpConfigModal from '@/Components/integrations/McpConfigModal.vue'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
 // Sidebar state
@@ -543,6 +648,13 @@ const dynamicIntegrationId = ref('')
 const dynamicConfigSchema = ref<any[]>([])
 const dynamicIntegrationMeta = ref<any>({ name: '', description: '', icon: 'ph:gear' })
 
+// MCP Config modal
+const showMcpConfigModal = ref(false)
+const activeMcpServerId = ref<string | undefined>(undefined)
+
+// Type filter
+const typeFilter = ref<'all' | 'native' | 'mcp'>('all')
+
 // Track which integrations are configurable (loaded from API)
 const configurableIntegrations = ref<Record<string, any>>({})
 
@@ -553,9 +665,9 @@ onMounted(async () => {
 
 const loadIntegrationStatus = async () => {
   try {
-    const response = await fetch('/api/integrations')
-    if (response.ok) {
-      const integrations = await response.json()
+    const response = await axios.get('/api/integrations')
+    if (response.status === 200) {
+      const integrations = response.data
       for (const integration of integrations) {
         // Store configurable integration data for dynamic modals
         if (integration.configurable) {
@@ -574,9 +686,25 @@ const loadIntegrationStatus = async () => {
           }
         }
 
+        // For MCP integrations, try to match against suggested entries by URL
+        if (!found && integration.type === 'mcp') {
+          const mcpCat = integrationCategories.value.find(c => c.id === 'mcp-servers')
+          if (mcpCat) {
+            const suggested = mcpCat.integrations.find(
+              i => i.suggestedMcpConfig && i.suggestedMcpConfig.url === integration.url
+            )
+            if (suggested) {
+              suggested.installed = true
+              suggested.mcpServerId = integration.mcpServerId
+              suggested.toolCount = integration.toolCount
+              found = true
+            }
+          }
+        }
+
         // Add dynamic integrations not in static categories
-        if (!found && integration.configurable) {
-          const categoryId = integration.category || 'other'
+        if (!found && (integration.configurable || integration.type === 'mcp')) {
+          const categoryId = integration.type === 'mcp' ? 'mcp-servers' : (integration.category || 'other')
           let category = integrationCategories.value.find(c => c.id === categoryId)
           if (!category) {
             category = {
@@ -587,15 +715,21 @@ const loadIntegrationStatus = async () => {
             }
             integrationCategories.value.push(category)
           }
-          category.integrations.push({
-            id: integration.id,
-            name: integration.name,
-            icon: integration.icon,
-            description: integration.description,
-            installed: integration.enabled,
-            badge: integration.badge || undefined,
-            configurable: true,
-          })
+          // Avoid duplicates
+          if (!category.integrations.find(i => i.id === integration.id)) {
+            category.integrations.push({
+              id: integration.id,
+              name: integration.name,
+              icon: integration.icon,
+              description: integration.description,
+              installed: integration.enabled,
+              badge: integration.badge || undefined,
+              configurable: integration.configurable ?? false,
+              type: integration.type || 'native',
+              mcpServerId: integration.mcpServerId,
+              toolCount: integration.toolCount,
+            })
+          }
         }
       }
     }
@@ -712,7 +846,84 @@ const integrationCategories = ref<IntegrationCategory[]>([
       { id: 'rest-api', name: 'REST API', icon: 'ph:plug', description: 'Generic API connector', installed: false, badge: 'built-in' },
     ],
   },
+  {
+    id: 'mcp-servers',
+    name: 'MCP Servers',
+    icon: 'ph:plugs-connected',
+    integrations: [
+      {
+        id: 'mcp-suggested-deepwiki',
+        name: 'DeepWiki',
+        icon: 'ph:book-open',
+        description: 'GitHub repo documentation & code understanding',
+        installed: false,
+        badge: 'mcp' as const,
+        type: 'mcp' as const,
+        suggestedMcpConfig: {
+          url: 'https://mcp.deepwiki.com/mcp',
+          auth_type: 'none' as const,
+          icon: 'ph:book-open',
+          description: 'GitHub repo documentation & code understanding',
+        },
+      },
+      {
+        id: 'mcp-suggested-context7',
+        name: 'Context7',
+        icon: 'ph:books',
+        description: 'Library & framework documentation search',
+        installed: false,
+        badge: 'mcp' as const,
+        type: 'mcp' as const,
+        suggestedMcpConfig: {
+          url: 'https://context7.liam.sh/mcp',
+          auth_type: 'none' as const,
+          icon: 'ph:books',
+          description: 'Library & framework documentation search',
+        },
+      },
+      {
+        id: 'mcp-suggested-cloudflare',
+        name: 'Cloudflare Docs',
+        icon: 'ph:cloud',
+        description: 'Cloudflare technical documentation',
+        installed: false,
+        badge: 'mcp' as const,
+        type: 'mcp' as const,
+        suggestedMcpConfig: {
+          url: 'https://docs.mcp.cloudflare.com/mcp',
+          auth_type: 'none' as const,
+          icon: 'ph:cloud',
+          description: 'Cloudflare technical documentation',
+        },
+      },
+      {
+        id: 'mcp-suggested-exa',
+        name: 'Exa Search',
+        icon: 'ph:magnifying-glass',
+        description: 'Web search, company research & code discovery',
+        installed: false,
+        badge: 'mcp' as const,
+        type: 'mcp' as const,
+        suggestedMcpConfig: {
+          url: 'https://mcp.exa.ai/mcp',
+          auth_type: 'none' as const,
+          icon: 'ph:magnifying-glass',
+          description: 'Web search, company research & code discovery',
+        },
+      },
+    ],
+  },
 ])
+
+// Computed - Native categories (exclude MCP)
+const nativeCategories = computed(() => {
+  return integrationCategories.value.filter(c => c.id !== 'mcp-servers')
+})
+
+// Computed - MCP category
+const mcpCategory = computed(() => {
+  return integrationCategories.value.find(c => c.id === 'mcp-servers')
+})
 
 // Computed - Selected category
 const selectedCategory = computed(() => {
@@ -850,8 +1061,53 @@ const openDynamicModal = (integrationId: string) => {
   showDynamicConfigModal.value = true
 }
 
+// Quick install for suggested MCP servers (one-click)
+const installingMcpId = ref<string | null>(null)
+
+const handleQuickInstallMcp = async (integration: Integration) => {
+  if (!integration.suggestedMcpConfig || installingMcpId.value) return
+
+  installingMcpId.value = integration.id
+  try {
+    const { data } = await axios.post('/api/mcp-servers', {
+      name: integration.name,
+      url: integration.suggestedMcpConfig.url,
+      auth_type: integration.suggestedMcpConfig.auth_type,
+      icon: integration.suggestedMcpConfig.icon,
+      description: integration.suggestedMcpConfig.description,
+    })
+
+    // Update the suggested entry to show as installed
+    integration.installed = true
+    integration.mcpServerId = data.server?.id || data.id
+    integration.toolCount = data.server?.discovered_tools?.length || data.toolCount || 0
+    if (data.warning) {
+      console.warn(`MCP install warning for ${integration.name}:`, data.warning)
+    }
+  } catch (error: any) {
+    console.error(`Failed to install MCP server ${integration.name}:`, error)
+    const message = error.response?.data?.message || error.message || 'Unknown error'
+    alert(`Failed to install ${integration.name}: ${message}`)
+  } finally {
+    installingMcpId.value = null
+  }
+}
+
 // Integration handlers
 const handleInstall = (integration: Integration) => {
+  // Suggested MCP server — one-click install
+  if (integration.suggestedMcpConfig && !integration.mcpServerId) {
+    handleQuickInstallMcp(integration)
+    return
+  }
+
+  // MCP integrations go to MCP modal
+  if (integration.type === 'mcp' && integration.mcpServerId) {
+    activeMcpServerId.value = integration.mcpServerId
+    showMcpConfigModal.value = true
+    return
+  }
+
   if (integration.id === 'glm' || integration.id === 'glm-coding') {
     activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
     showGlmConfigModal.value = true
@@ -889,7 +1145,10 @@ const handleGlmSaved = (result: { enabled: boolean; configured: boolean }) => {
 }
 
 const handleConfigure = (integration: Integration) => {
-  if (integration.id === 'glm' || integration.id === 'glm-coding') {
+  if (integration.type === 'mcp' && integration.mcpServerId) {
+    activeMcpServerId.value = integration.mcpServerId
+    showMcpConfigModal.value = true
+  } else if (integration.id === 'glm' || integration.id === 'glm-coding') {
     activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
     showGlmConfigModal.value = true
   } else if (integration.id === 'telegram') {
@@ -921,6 +1180,24 @@ const handleTelegramSaved = (result: { enabled: boolean; configured: boolean }) 
 }
 
 const handleUninstall = (integration: Integration) => {
+  if (integration.type === 'mcp' && integration.mcpServerId) {
+    // For MCP, delete via API
+    axios.delete(`/api/mcp-servers/${integration.mcpServerId}`)
+      .then(() => {
+        // If it's a suggested entry, reset it back to uninstalled
+        if (integration.suggestedMcpConfig) {
+          integration.installed = false
+          integration.mcpServerId = undefined
+          integration.toolCount = undefined
+        } else {
+          // Dynamic MCP server — remove from list entirely
+          loadIntegrationStatus()
+        }
+      })
+      .catch(console.error)
+    return
+  }
+
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === integration.id)
     if (found) {
@@ -928,5 +1205,18 @@ const handleUninstall = (integration: Integration) => {
       break
     }
   }
+}
+
+const openAddMcpServer = () => {
+  activeMcpServerId.value = undefined
+  showMcpConfigModal.value = true
+}
+
+const handleMcpSaved = () => {
+  loadIntegrationStatus()
+}
+
+const handleMcpDeleted = () => {
+  loadIntegrationStatus()
 }
 </script>

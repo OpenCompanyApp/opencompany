@@ -11,6 +11,8 @@ Artisan::command('inspire', function () {
 
 Schedule::command('agent:resume-waiting')->everyMinute();
 
+Schedule::job(new \App\Jobs\RefreshMcpToolsJob)->hourly();
+
 Schedule::call(function () {
     $dir = storage_path('app/public/charts');
     if (!is_dir($dir)) {
