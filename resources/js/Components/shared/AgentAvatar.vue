@@ -368,19 +368,34 @@ const AvatarContent = () => {
       }, initials.value),
     ]),
 
-    // Status indicator - shows presence for all users, or agent status for agents
-    props.showStatus && h('div', {
+    // Spinning ring around the avatar when agent is working
+    props.showStatus && props.user.type === 'agent' && props.user.status === 'working' && h('svg', {
+      class: 'absolute inset-0 w-full h-full animate-spin',
+      viewBox: '0 0 24 24',
+    }, [
+      h('circle', {
+        cx: 12, cy: 12, r: 11,
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': 1.5,
+        'stroke-dasharray': '48 20',
+        'stroke-linecap': 'round',
+        class: 'text-green-500',
+      }),
+    ]),
+
+    // Status dot — static indicator for non-working states
+    props.showStatus && props.user.type !== 'agent' && h('div', {
       class: [
         'absolute rounded-full border-white',
         dotSizes[props.size],
         dotBorderSizes[props.size],
         dotPositions[props.statusPosition][props.size],
-        // For agents, show agent status (working/idle); for humans, show presence
         props.user.type === 'agent' && props.user.status
           ? statusColors[props.user.status]
           : props.user.presence
             ? presenceColors[props.user.presence]
-            : 'bg-neutral-300 dark:bg-neutral-600', // Default to offline/unknown
+            : 'bg-neutral-300 dark:bg-neutral-600',
       ],
     }),
 

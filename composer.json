@@ -20,10 +20,6 @@
         },
         {
             "type": "path",
-            "url": "tmp/ai-tool-jpgraph"
-        },
-        {
-            "type": "path",
             "url": "tmp/ai-tool-mermaid"
         },
         {
@@ -33,6 +29,10 @@
         {
             "type": "path",
             "url": "tmp/ai-tool-typst"
+        },
+        {
+            "type": "path",
+            "url": "tmp/ai-tool-vegalite"
         },
         {
             "type": "vcs",
@@ -48,10 +48,6 @@
         },
         {
             "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-jpgraph"
-        },
-        {
-            "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/ai-tool-mermaid"
         },
         {
@@ -61,6 +57,10 @@
         {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/ai-tool-typst"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/ai-tool-vegalite"
         },
         {
             "type": "vcs",
@@ -76,11 +76,11 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "opencompanyapp/ai-tool-celestial": "@dev",
-        "opencompanyapp/ai-tool-jpgraph": "@dev",
         "opencompanyapp/ai-tool-mermaid": "@dev",
         "opencompanyapp/ai-tool-plantuml": "@dev",
         "opencompanyapp/ai-tool-plausible": "@dev",
         "opencompanyapp/ai-tool-typst": "@dev",
+        "opencompanyapp/ai-tool-vegalite": "@dev",
         "opencompanyapp/astronomy-bundle": "^3.0",
         "opencompanyapp/integration-core": "@dev",
         "prism-php/prism": "^0.99.19",

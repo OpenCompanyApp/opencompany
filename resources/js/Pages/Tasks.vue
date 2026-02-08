@@ -12,6 +12,12 @@
             >
               Workload
             </Link>
+            <Link
+              href="/activity"
+              class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+            >
+              Activity
+            </Link>
           </div>
           <div class="hidden md:flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-300">
             <span>{{ taskCounts.total }} tasks</span>
@@ -109,7 +115,7 @@
           <!-- Agent -->
           <div class="w-28 hidden md:flex items-center gap-1.5 shrink-0">
             <template v-if="task.agent">
-              <AgentAvatar :user="task.agent" size="xs" />
+              <AgentAvatar :user="task.agent" size="xs" :show-status="false" />
               <span class="text-xs text-neutral-600 dark:text-neutral-400 truncate">{{ task.agent.name }}</span>
             </template>
             <span v-else class="text-xs text-neutral-400">—</span>
@@ -263,13 +269,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import type { AgentTask, TaskStatus, TaskType, Priority, User } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import { useApi } from '@/composables/useApi'
+import { useRealtime } from '@/composables/useRealtime'
 
 const {
   fetchAgentTasks,
@@ -280,6 +287,10 @@ const {
 const currentUserId = ref('h1')
 
 const { data: tasksData, refresh: refreshTasks } = fetchAgentTasks()
+
+// Real-time task updates
+const { on } = useRealtime()
+const unsubTask = on('task:updated', () => refreshTasks())
 const { data: agentsData } = fetchAgents()
 
 const currentFilter = ref<'all' | 'pending' | 'active' | 'completed'>('all')
@@ -391,4 +402,6 @@ const handleCreateTask = async () => {
 const goToChannel = (channelId: string) => {
   router.visit(`/chat?channel=${channelId}`)
 }
+
+onUnmounted(() => unsubTask())
 </script>

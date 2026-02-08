@@ -18,6 +18,11 @@ class TaskUpdated implements ShouldBroadcast
         public string $action = 'updated'
     ) {}
 
+    public function broadcastAs(): string
+    {
+        return 'TaskUpdated';
+    }
+
     public function broadcastOn(): array
     {
         return [

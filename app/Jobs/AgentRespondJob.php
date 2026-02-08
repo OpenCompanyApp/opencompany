@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Agents\OpenCompanyAgent;
+use App\Events\AgentStatusUpdated;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
 use App\Models\Channel;
@@ -74,6 +75,7 @@ class AgentRespondJob implements ShouldQueue
         try {
             // Update agent status to working
             $this->agent->update(['status' => 'working']);
+            broadcast(new AgentStatusUpdated($this->agent));
 
             // Start periodic typing indicator for Telegram channels
             $this->startTypingIndicator();
@@ -218,6 +220,7 @@ class AgentRespondJob implements ShouldQueue
             } else {
                 $this->agent->update(['status' => 'idle']);
             }
+            broadcast(new AgentStatusUpdated($this->agent));
         }
     }
 
@@ -229,12 +232,12 @@ class AgentRespondJob implements ShouldQueue
         try {
             foreach ($response->steps as $step) {
                 foreach ($step->toolResults as $toolResult) {
-                    if (!in_array($toolResult->name, ['CreateJpGraphChart', 'RenderSvg', 'RenderMermaid', 'RenderPlantUml', 'RenderTypst'])) {
+                    if (!in_array($toolResult->name, ['RenderSvg', 'RenderMermaid', 'RenderPlantUml', 'RenderTypst', 'RenderVegaLite'])) {
                         continue;
                     }
 
                     $result = $toolResult->result ?? '';
-                    if (preg_match('#(/storage/(?:charts|svg|mermaid|plantuml)/[a-f0-9-]+\.png|/storage/typst/[a-f0-9-]+\.pdf)#', $result, $m)) {
+                    if (preg_match('#(/storage/(?:svg|mermaid|plantuml|vegalite)/[a-f0-9-]+\.png|/storage/typst/[a-f0-9-]+\.pdf)#', $result, $m)) {
                         $url = $m[1];
                         $filePath = storage_path('app/public/' . str_replace('/storage/', '', $url));
 

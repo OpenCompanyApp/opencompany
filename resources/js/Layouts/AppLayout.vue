@@ -13,7 +13,9 @@ import Icon from '@/Components/shared/Icon.vue'
 import SpawnAgentModal from '@/Components/agents/SpawnAgentModal.vue'
 import { useKeyboardShortcuts, useCommandPalette } from '@/composables/useKeyboardShortcuts'
 import { usePresence } from '@/composables/usePresence'
+import { useChannelListener } from '@/composables/useRealtime'
 import { useApi } from '@/composables/useApi'
+import type { AgentStatus } from '@/types'
 
 useKeyboardShortcuts()
 const { isOpen: commandPaletteOpen } = useCommandPalette()
@@ -30,15 +32,7 @@ const userId = (page.props.auth as any)?.user?.id || 'guest'
 const { fetchAgents } = useApi()
 const { data: agentsData, refresh: refreshAgents } = fetchAgents()
 
-const sidebarAgents = computed(() =>
-  (agentsData.value ?? []).map(a => ({
-    id: a.id,
-    name: a.name,
-    status: a.status as 'online' | 'busy' | 'idle' | 'offline' | undefined,
-    currentTask: a.currentTask,
-    isAI: true,
-  }))
-)
+const sidebarAgents = computed(() => agentsData.value ?? [])
 
 const onlineAgentCount = computed(() =>
   (agentsData.value ?? []).filter(a =>
@@ -47,6 +41,19 @@ const onlineAgentCount = computed(() =>
 )
 
 const totalAgentCount = computed(() => (agentsData.value ?? []).length)
+
+// Real-time agent status updates
+useChannelListener<{ id: string; status: string }>(
+  'agents',
+  '.AgentStatusUpdated',
+  (data) => {
+    if (!agentsData.value) return
+    const agent = agentsData.value.find(a => a.id === data.id)
+    if (agent) {
+      agent.status = data.status as AgentStatus
+    }
+  }
+)
 
 const handleSpawnAgent = () => {
   showSpawnModal.value = true

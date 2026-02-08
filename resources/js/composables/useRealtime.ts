@@ -27,8 +27,32 @@ export function useRealtime() {
     echoInstance.value = (window as { Echo?: Echo }).Echo || null
 
     if (echoInstance.value) {
-      isConnected.value = true
-      console.log('[Realtime] Connected via Laravel Echo')
+      console.log('[Realtime] Echo instance found, monitoring connection...')
+
+      // Monitor actual WebSocket connection state via Pusher connector
+      const connector = (echoInstance.value as any).connector?.pusher
+      if (connector) {
+        connector.connection.bind('connected', () => {
+          isConnected.value = true
+          console.log('[Realtime] WebSocket connected')
+        })
+        connector.connection.bind('disconnected', () => {
+          isConnected.value = false
+          console.warn('[Realtime] WebSocket disconnected')
+        })
+        connector.connection.bind('error', (err: any) => {
+          console.error('[Realtime] WebSocket error', err)
+        })
+        // Check if already connected
+        if (connector.connection.state === 'connected') {
+          isConnected.value = true
+          console.log('[Realtime] WebSocket already connected')
+        }
+      } else {
+        // Fallback: assume connected if Echo exists
+        isConnected.value = true
+        console.log('[Realtime] Connected via Laravel Echo (no Pusher connector)')
+      }
     } else {
       console.warn('[Realtime] Laravel Echo not configured. Real-time features will be disabled.')
     }

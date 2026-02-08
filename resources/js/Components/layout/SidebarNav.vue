@@ -42,14 +42,6 @@
       <NavItem v-for="item in officeItems" :key="item.to" :item="item" :collapsed="collapsed" />
     </div>
 
-    <!-- Separator -->
-    <div class="my-2.5 mx-3 border-t border-neutral-200 dark:border-neutral-800" />
-
-    <!-- Monitoring Items -->
-    <div class="space-y-0.5">
-      <NavItem v-for="item in monitoringItems" :key="item.to" :item="item" :collapsed="collapsed" />
-    </div>
-
     <!-- Agents Section (collapsible) -->
     <CollapsibleRoot v-model:open="agentsSectionOpen" class="mt-3 mb-3">
       <div v-if="!collapsed" class="flex items-center gap-1 px-3">
@@ -64,13 +56,6 @@
             ]"
           />
           <span>Agents</span>
-          <span
-            v-if="onlineAgents > 0"
-            class="ml-auto flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500"
-          >
-            <span class="w-1.5 h-1.5 bg-green-500 rounded-full" />
-            {{ onlineAgents }}
-          </span>
         </CollapsibleTrigger>
         <button
           type="button"
@@ -86,28 +71,33 @@
         <div class="mt-1 space-y-0.5">
           <template v-if="loading">
             <div
-              v-for="i in 2"
+              v-for="i in 3"
               :key="i"
               class="flex items-center gap-2 px-3 py-1.5 animate-pulse"
             >
-              <div class="w-5 h-5 rounded-full bg-neutral-200 dark:bg-neutral-800" />
+              <div class="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-800" />
               <div class="h-3 w-20 bg-neutral-200 dark:bg-neutral-800 rounded" />
             </div>
           </template>
           <template v-else>
-            <button
-              v-for="agent in displayedAgents"
+            <Link
+              v-for="agent in agents"
               :key="agent.id"
-              class="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors duration-150 text-left"
-              @click="handleAgentClick(agent)"
+              :href="`/agent/${agent.id}`"
+              :class="[
+                'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors duration-150 text-left outline-none',
+                isActive(`/agent/${agent.id}`)
+                  ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
+                  : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white',
+                'focus-visible:ring-1 focus-visible:ring-neutral-400',
+              ]"
             >
-              <AgentAvatar :user="agent" size="xs" :show-status="true" />
-              <span class="truncate flex-1">{{ agent.name }}</span>
-              <span
-                v-if="agent.status === 'busy'"
-                class="w-1.5 h-1.5 bg-amber-500 rounded-full shrink-0"
-              />
-            </button>
+              <AgentAvatar :user="agent" size="xs" :show-status="true" :show-tooltip="false" />
+              <div class="flex-1 min-w-0">
+                <span class="text-sm truncate block leading-tight">{{ agent.name }}</span>
+                <span v-if="agent.agentType" class="text-[11px] text-neutral-400 dark:text-neutral-500 truncate block leading-tight">{{ agent.agentType }}</span>
+              </div>
+            </Link>
           </template>
         </div>
       </CollapsibleContent>
@@ -116,12 +106,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, defineComponent } from 'vue'
+import { ref, watch, computed, h, defineComponent } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
-import { router } from '@inertiajs/vue3'
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import type { User } from '@/types'
 
 // Types
 interface NavItemType {
@@ -132,32 +122,16 @@ interface NavItemType {
   badge?: number
 }
 
-interface Agent {
-  id: string
-  name: string
-  status?: 'online' | 'busy' | 'idle' | 'offline'
-  currentTask?: string
-  role?: string
-  avatar?: string
-  isAI: boolean
-}
-
 // Props
 const props = withDefaults(defineProps<{
   collapsed?: boolean
   loading?: boolean
-  showShortcuts?: boolean
-  showQuickActions?: boolean
-  maxVisibleAgents?: number
-  agents?: Agent[]
+  agents?: User[]
   totalAgents?: number
   onlineAgents?: number
 }>(), {
   collapsed: false,
   loading: false,
-  showShortcuts: false,
-  showQuickActions: false,
-  maxVisibleAgents: 4,
   agents: () => [],
   totalAgents: 0,
   onlineAgents: 0,
@@ -171,8 +145,14 @@ const emit = defineEmits<{
 // Composables
 const page = usePage()
 
-// State
-const agentsSectionOpen = ref(false)
+// State — default expanded, persist to localStorage
+const agentsSectionOpen = ref(
+  localStorage.getItem('sidebar-agents-open') !== 'false'
+)
+
+watch(agentsSectionOpen, (val) => {
+  localStorage.setItem('sidebar-agents-open', String(val))
+})
 
 // Agent Work - Tasks, approvals, organization
 const agentWorkItems = ref<NavItemType[]>([
@@ -190,33 +170,11 @@ const officeItems = ref<NavItemType[]>([
   { to: '/lists', icon: 'ph:kanban', iconActive: 'ph:kanban-fill', label: 'Lists' },
 ])
 
-// Monitoring - Activity feed
-const monitoringItems = ref<NavItemType[]>([
-  { to: '/activity', icon: 'ph:activity', iconActive: 'ph:activity-fill', label: 'Activity' },
-])
-
-
-// Computed
-const agents = computed(() => props.agents)
-const onlineAgents = computed(() => props.onlineAgents)
-
-const displayedAgents = computed(() => {
-  return agents.value.slice(0, props.maxVisibleAgents)
-})
-
 // Methods
 const isActive = (path: string): boolean => {
   const currentUrl = page.url
   if (path === '/') return currentUrl === '/'
   return currentUrl.startsWith(path)
-}
-
-const handleAgentClick = (agent: Agent) => {
-  if (agent.isAI) {
-    router.visit(`/agent/${agent.id}`)
-  } else {
-    router.visit(`/profile/${agent.id}`)
-  }
 }
 
 // NavItem subcomponent

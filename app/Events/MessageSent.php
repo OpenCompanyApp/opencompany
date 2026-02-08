@@ -19,6 +19,11 @@ class MessageSent implements ShouldBroadcast
         public Message $message
     ) {}
 
+    public function broadcastAs(): string
+    {
+        return 'MessageSent';
+    }
+
     public function broadcastOn(): array
     {
         return [

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Agents\OpenCompanyAgent;
+use App\Events\AgentStatusUpdated;
 use App\Events\TaskUpdated;
 use App\Models\Channel;
 use App\Models\Task;
@@ -54,6 +55,7 @@ class ExecuteAgentTaskJob implements ShouldQueue
 
             // Create agent and execute
             $agent->update(['status' => 'working']);
+            broadcast(new AgentStatusUpdated($agent));
 
             $agentInstance = OpenCompanyAgent::for($agent, $channelId, $this->task->id);
             $response = $agentInstance->prompt($prompt);
@@ -100,6 +102,7 @@ class ExecuteAgentTaskJob implements ShouldQueue
             broadcast(new TaskUpdated($this->task, 'failed'));
         } finally {
             $agent->update(['status' => 'idle']);
+            broadcast(new AgentStatusUpdated($agent));
         }
     }
 

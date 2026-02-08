@@ -1,75 +1,87 @@
 <template>
   <div class="h-full flex flex-col">
     <!-- Header -->
-    <header class="shrink-0 px-6 py-4 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Activity Feed</h1>
-          <p class="text-sm text-neutral-500 dark:text-neutral-300 mt-1">
-            Track all activities across your organization
-          </p>
+    <header class="px-4 md:px-6 py-3 md:py-0 md:h-14 border-b border-neutral-200 dark:border-neutral-700 flex flex-col md:flex-row md:items-center gap-3 bg-white dark:bg-neutral-900 shrink-0">
+      <div class="flex items-center justify-between md:gap-4">
+        <div class="flex items-center gap-3 md:gap-4">
+          <div class="flex items-center gap-1">
+            <Link
+              href="/tasks"
+              class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+            >
+              Tasks
+            </Link>
+            <Link
+              href="/workload"
+              class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+            >
+              Workload
+            </Link>
+            <span class="text-xl font-bold text-neutral-900 dark:text-white">Activity</span>
+          </div>
+          <div class="hidden md:flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-300">
+            <span>{{ filteredActivities.length }} activities</span>
+          </div>
         </div>
-        <div class="flex items-center gap-3">
-          <button
-            class="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors"
-            @click="refreshActivities"
-          >
-            <Icon name="ph:arrows-clockwise" class="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      <!-- Filters -->
-      <div class="flex items-center gap-3 mt-4">
-        <!-- Type Filter -->
-        <div class="flex items-center gap-1 p-1 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
-          <button
-            v-for="type in activityTypes"
-            :key="type.value"
-            :class="[
-              'px-3 py-1.5 text-sm rounded-md transition-colors',
-              selectedType === type.value
-                ? 'bg-neutral-900 text-white'
-                : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200'
-            ]"
-            @click="selectedType = type.value"
-          >
-            {{ type.label }}
-          </button>
-        </div>
-
-        <!-- User Filter -->
-        <select
-          v-model="selectedUserId"
-          class="bg-neutral-50 dark:bg-neutral-800 rounded-lg px-3 py-2 text-sm outline-none border border-neutral-200 dark:border-neutral-700 focus:border-neutral-300 dark:text-white"
-        >
-          <option value="">All users</option>
-          <option v-for="user in users" :key="user.id" :value="user.id">
-            {{ user.name }}
-          </option>
-        </select>
-
-        <!-- Date Filter -->
-        <select
-          v-model="selectedDateRange"
-          class="bg-neutral-50 dark:bg-neutral-800 rounded-lg px-3 py-2 text-sm outline-none border border-neutral-200 dark:border-neutral-700 focus:border-neutral-300 dark:text-white"
-        >
-          <option value="today">Today</option>
-          <option value="week">This Week</option>
-          <option value="month">This Month</option>
-          <option value="all">All Time</option>
-        </select>
-
-        <!-- Clear Filters -->
         <button
-          v-if="hasActiveFilters"
-          class="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
-          @click="clearFilters"
+          class="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+          @click="refreshActivities"
         >
-          Clear filters
+          <Icon name="ph:arrows-clockwise" class="w-4 h-4" />
         </button>
       </div>
     </header>
+
+    <!-- Filters -->
+    <div class="px-4 md:px-6 py-2.5 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shrink-0 flex items-center gap-3 overflow-x-auto">
+      <!-- Type Filter -->
+      <div class="flex items-center gap-1 p-1 bg-neutral-50 dark:bg-neutral-800 rounded-lg shrink-0">
+        <button
+          v-for="type in activityTypes"
+          :key="type.value"
+          :class="[
+            'px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap',
+            selectedType === type.value
+              ? 'bg-neutral-900 dark:bg-neutral-600 text-white'
+              : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200'
+          ]"
+          @click="selectedType = type.value"
+        >
+          {{ type.label }}
+        </button>
+      </div>
+
+      <!-- User Filter -->
+      <select
+        v-model="selectedUserId"
+        class="bg-neutral-50 dark:bg-neutral-800 rounded-lg px-3 py-2 text-sm outline-none border border-neutral-200 dark:border-neutral-700 focus:border-neutral-300 dark:text-white shrink-0"
+      >
+        <option value="">All users</option>
+        <option v-for="user in users" :key="user.id" :value="user.id">
+          {{ user.name }}
+        </option>
+      </select>
+
+      <!-- Date Filter -->
+      <select
+        v-model="selectedDateRange"
+        class="bg-neutral-50 dark:bg-neutral-800 rounded-lg px-3 py-2 text-sm outline-none border border-neutral-200 dark:border-neutral-700 focus:border-neutral-300 dark:text-white shrink-0"
+      >
+        <option value="today">Today</option>
+        <option value="week">This Week</option>
+        <option value="month">This Month</option>
+        <option value="all">All Time</option>
+      </select>
+
+      <!-- Clear Filters -->
+      <button
+        v-if="hasActiveFilters"
+        class="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-300 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors whitespace-nowrap shrink-0"
+        @click="clearFilters"
+      >
+        Clear filters
+      </button>
+    </div>
 
     <!-- Activity List -->
     <div class="flex-1 overflow-y-auto">
@@ -232,7 +244,7 @@ const filteredActivities = computed(() => {
 
   // Filter by user
   if (selectedUserId.value) {
-    result = result.filter(a => a.actorId === selectedUserId.value)
+    result = result.filter(a => a.actor?.id === selectedUserId.value)
   }
 
   // Filter by date range

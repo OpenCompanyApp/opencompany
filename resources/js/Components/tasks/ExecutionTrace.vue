@@ -128,7 +128,7 @@ const toolIconMap: Record<string, string> = {
   manage_document: 'ph:file-text',
   web_search: 'ph:globe',
   web_fetch: 'ph:download',
-  create_jpgraph_chart: 'ph:chart-bar',
+  render_vegalite: 'ph:chart-bar',
   render_svg: 'ph:file-svg',
   query_table: 'ph:table',
   manage_table_rows: 'ph:rows',

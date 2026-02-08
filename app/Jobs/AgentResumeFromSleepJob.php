@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\AgentStatusUpdated;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -34,6 +35,8 @@ class AgentResumeFromSleepJob implements ShouldQueue
             'sleeping_reason' => null,
             'status' => 'idle',
         ]);
+
+        broadcast(new AgentStatusUpdated($this->agent));
 
         Log::info('Agent resumed from sleep', [
             'agent' => $this->agent->name,

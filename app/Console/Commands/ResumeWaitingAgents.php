@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Events\AgentStatusUpdated;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +26,8 @@ class ResumeWaitingAgents extends Command
                 'sleeping_reason' => null,
                 'status' => 'idle',
             ]);
+
+            broadcast(new AgentStatusUpdated($agent));
 
             Log::info('Agent resumed from sleep by scheduler', [
                 'agent' => $agent->name,

@@ -543,8 +543,22 @@ const handlePinMessage = async (message: Message) => {
   }
 }
 
-// Real-time updates
-const { on } = useRealtime()
+// Real-time updates — subscribe to Echo private chat channel
+const { on, emit: emitEvent, privateChannel, leaveChannel } = useRealtime()
+
+// Bridge Echo channel events into the internal event bus
+watch(selectedChannel, (newChannel, oldChannel) => {
+  if (oldChannel) leaveChannel(`chat.${oldChannel.id}`)
+  if (newChannel) {
+    console.log('[Realtime] Subscribing to chat.' + newChannel.id)
+    const ch = privateChannel(`chat.${newChannel.id}`)
+    ch?.listen('.MessageSent', (data: { message: Message }) => {
+      console.log('[Realtime] MessageSent on channel', newChannel.id, data)
+      emitEvent('message:new', { channelId: newChannel.id, message: data.message })
+    })
+  }
+}, { immediate: true })
+
 let unsubscribeMessage: (() => void) | null = null
 let unsubscribeReactionAdded: (() => void) | null = null
 let unsubscribeReactionRemoved: (() => void) | null = null

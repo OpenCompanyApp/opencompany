@@ -23,6 +23,11 @@ Broadcast::channel('online', function ($user) {
     ];
 });
 
+// Task updates - all authenticated users
+Broadcast::channel('tasks', function ($user) {
+    return true;
+});
+
 // User notifications - only the owner
 Broadcast::channel('notifications.{userId}', function ($user, $userId) {
     return $user->id === $userId;

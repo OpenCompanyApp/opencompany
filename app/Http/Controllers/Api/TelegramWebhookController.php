@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Jobs\AgentRespondJob;
 use App\Models\ApprovalRequest;
@@ -155,6 +156,7 @@ class TelegramWebhookController extends Controller
             'source' => 'telegram',
         ]);
 
+        broadcast(new MessageSent($internalMessage));
         $channel->update(['last_message_at' => now()]);
 
         // Show typing indicator and dispatch agent response

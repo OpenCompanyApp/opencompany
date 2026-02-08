@@ -220,11 +220,16 @@ export const agentBorderColors: Record<AgentType, string> = {
   coordinator: 'border-neutral-400',
 }
 
-// Status colors - simple green for working, gray for others
+// Status colors
 export const statusColors: Record<AgentStatus, string> = {
   idle: 'bg-neutral-400',
   working: 'bg-green-500',
   offline: 'bg-neutral-300',
+  sleeping: 'bg-indigo-400',
+  awaiting_approval: 'bg-amber-500',
+  busy: 'bg-amber-500',
+  paused: 'bg-neutral-400',
+  online: 'bg-green-500',
 }
 
 // Presence colors - for all user types
@@ -240,6 +245,11 @@ export const statusGlowColors: Record<AgentStatus, string> = {
   idle: '',
   working: '',
   offline: '',
+  sleeping: '',
+  awaiting_approval: '',
+  busy: '',
+  paused: '',
+  online: '',
 }
 
 // Human avatar colors - all neutral gray

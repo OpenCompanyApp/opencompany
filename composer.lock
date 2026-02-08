@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "94ad87c476c1055ed0f235fd7f483efc",
+    "content-hash": "4eed81a2d2e3cca85bca32ed1d7262ea",
     "packages": [
         {
             "name": "brick/math",
@@ -2475,61 +2475,6 @@
             "time": "2026-01-15T06:54:53+00:00"
         },
         {
-            "name": "mitoteam/jpgraph",
-            "version": "10.5.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/mitoteam/jpgraph.git",
-                "reference": "8bb38880ef4c2e0cc0daa59c2bb722979d1b1bf0"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/mitoteam/jpgraph/zipball/8bb38880ef4c2e0cc0daa59c2bb722979d1b1bf0",
-                "reference": "8bb38880ef4c2e0cc0daa59c2bb722979d1b1bf0",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=5.5"
-            },
-            "replace": {
-                "jpgraph/jpgraph": "4.0.2",
-                "rulin132/jpgraph": "4.3.5"
-            },
-            "type": "library",
-            "autoload": {
-                "classmap": [
-                    "src/MtJpGraph.php"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "QPL-1.0"
-            ],
-            "authors": [
-                {
-                    "name": "JpGraph team",
-                    "homepage": "https://jpgraph.net",
-                    "role": "Original Library Developers"
-                },
-                {
-                    "name": "MiTo Team",
-                    "email": "info@mito-team.com",
-                    "homepage": "https://www.mito-team.com",
-                    "role": "Composer package maintenance, PHP-compatibility patches"
-                }
-            ],
-            "description": "JpGraph library composer package with PHP 8.5 support",
-            "homepage": "https://github.com/mitoteam/jpgraph",
-            "keywords": [
-                "jpgraph"
-            ],
-            "support": {
-                "issues": "https://github.com/mitoteam/jpgraph/issues",
-                "source": "https://github.com/mitoteam/jpgraph/tree/10.5.2"
-            },
-            "time": "2025-12-08T10:10:34+00:00"
-        },
-        {
             "name": "monolog/monolog",
             "version": "3.10.0",
             "source": {
@@ -3086,50 +3031,6 @@
             }
         },
         {
-            "name": "opencompanyapp/ai-tool-jpgraph",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-jpgraph",
-                "reference": "f82e43bd0df421456751576fb648328b4693ef7f"
-            },
-            "require": {
-                "illuminate/support": "^11.0 || ^12.0",
-                "laravel/ai": "^0.1",
-                "mitoteam/jpgraph": "^10.5",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolJpGraph\\AiToolJpGraphServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolJpGraph\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "JpGraph chart generation AI tool for OpenCompany",
-            "keywords": [
-                "ai",
-                "charts",
-                "jpgraph",
-                "laravel",
-                "opencompany",
-                "tools"
-            ],
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
             "name": "opencompanyapp/ai-tool-mermaid",
             "version": "dev-main",
             "dist": {
@@ -3322,6 +3223,41 @@
                 "tools",
                 "typst"
             ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/ai-tool-vegalite",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-vegalite",
+                "reference": "c4d45a1bd01706861faa3f6552311a6fc7b8e641"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolVegaLite\\AiToolVegaLiteServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolVegaLite\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Vega-Lite data visualization tool for OpenCompany AI agents",
             "transport-options": {
                 "relative": true
             }
@@ -10383,11 +10319,11 @@
     "minimum-stability": "stable",
     "stability-flags": {
         "opencompanyapp/ai-tool-celestial": 20,
-        "opencompanyapp/ai-tool-jpgraph": 20,
         "opencompanyapp/ai-tool-mermaid": 20,
         "opencompanyapp/ai-tool-plantuml": 20,
         "opencompanyapp/ai-tool-plausible": 20,
         "opencompanyapp/ai-tool-typst": 20,
+        "opencompanyapp/ai-tool-vegalite": 20,
         "opencompanyapp/integration-core": 20
     },
     "prefer-stable": true,
