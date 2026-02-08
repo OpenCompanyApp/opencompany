@@ -43,8 +43,10 @@ class ManageTableRowsTest extends TestCase
 
         $row = DataTableRow::where('table_id', $table->id)->first();
         $this->assertNotNull($row);
-        $this->assertEquals('Alice', $row->data['name']);
-        $this->assertEquals('alice@example.com', $row->data['email']);
+
+        $columns = $table->columns()->get()->keyBy(fn ($c) => strtolower($c->name));
+        $this->assertEquals('Alice', $row->data[$columns->get('name')->id]);
+        $this->assertEquals('alice@example.com', $row->data[$columns->get('email')->id]);
     }
 
     public function test_updates_row(): void
@@ -56,28 +58,33 @@ class ManageTableRowsTest extends TestCase
             'created_by' => $agent->id,
         ]);
 
-        $row = DataTableRow::create([
-            'table_id' => $table->id,
-            'data' => ['name' => 'Alice', 'email' => 'alice@example.com'],
-            'created_by' => $agent->id,
-        ]);
-
+        // Create row through the tool so data keys are column UUIDs
         $tool = new ManageTableRows($agent);
-        $request = new Request([
+        $addRequest = new Request([
+            'action' => 'add_row',
+            'tableId' => $table->id,
+            'data' => '{"name":"Alice","email":"alice@example.com"}',
+        ]);
+        $tool->handle($addRequest);
+
+        $row = DataTableRow::where('table_id', $table->id)->first();
+
+        $updateRequest = new Request([
             'action' => 'update_row',
             'tableId' => $table->id,
             'rowId' => $row->id,
             'data' => '{"email":"alice@newdomain.com","phone":"555-1234"}',
         ]);
 
-        $result = $tool->handle($request);
+        $result = $tool->handle($updateRequest);
 
         $this->assertStringContainsString('Row updated', $result);
 
         $row->refresh();
-        $this->assertEquals('Alice', $row->data['name']);
-        $this->assertEquals('alice@newdomain.com', $row->data['email']);
-        $this->assertEquals('555-1234', $row->data['phone']);
+        $columns = $table->columns()->get()->keyBy(fn ($c) => strtolower($c->name));
+        $this->assertEquals('Alice', $row->data[$columns->get('name')->id]);
+        $this->assertEquals('alice@newdomain.com', $row->data[$columns->get('email')->id]);
+        $this->assertEquals('555-1234', $row->data[$columns->get('phone')->id]);
     }
 
     public function test_deletes_row(): void

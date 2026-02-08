@@ -34,7 +34,7 @@ class ApprovalWrappedToolTest extends TestCase
 
         $this->channel = Channel::factory()->create();
 
-        $permissionService = new AgentPermissionService();
+        $permissionService = app(AgentPermissionService::class);
         $this->innerTool = new SendChannelMessage($this->agent, $permissionService);
         $this->wrappedTool = new ApprovalWrappedTool(
             $this->innerTool,

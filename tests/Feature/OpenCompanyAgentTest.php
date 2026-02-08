@@ -79,7 +79,9 @@ class OpenCompanyAgentTest extends TestCase
         $agentInstance = OpenCompanyAgent::for($agent, 'channel-1');
         $tools = iterator_to_array($agentInstance->tools());
 
-        $this->assertCount(37, $tools);
+        $registry = app(\App\Agents\Tools\ToolRegistry::class);
+        $expectedToolCount = count($registry->getToolsForAgent($agent));
+        $this->assertCount($expectedToolCount, $tools);
     }
 
     public function test_fake_prevents_real_api_calls(): void

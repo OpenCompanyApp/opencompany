@@ -139,8 +139,9 @@ class ExecuteAgentTaskJobTest extends TestCase
         OpenCompanyAgent::fake(['Done.']);
         Event::fake([TaskUpdated::class]);
 
+        $taskId = \Illuminate\Support\Str::uuid()->toString();
         $task = Task::create([
-            'id' => 'task-4',
+            'id' => $taskId,
             'title' => 'API triggered task',
             'type' => 'custom',
             'status' => 'pending',
@@ -150,7 +151,7 @@ class ExecuteAgentTaskJobTest extends TestCase
         ]);
 
         // Since queue is sync in test, this will execute immediately
-        $response = $this->postJson("/api/tasks/{$task->id}/start");
+        $response = $this->postJson("/api/tasks/{$taskId}/start");
 
         $response->assertOk();
 

@@ -15,6 +15,20 @@ class ManageListItemTest extends TestCase
 {
     use RefreshDatabase;
 
+    private ListItem $folder;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->folder = ListItem::create([
+            'id' => Str::uuid()->toString(),
+            'title' => 'Test Project',
+            'description' => '',
+            'is_folder' => true,
+        ]);
+    }
+
     private function makeTool(?User $agent = null): array
     {
         $agent = $agent ?? User::factory()->create(['type' => 'agent']);
@@ -31,6 +45,7 @@ class ManageListItemTest extends TestCase
             'description' => 'Default description',
             'status' => 'backlog',
             'priority' => 'medium',
+            'parent_id' => $this->folder->id,
         ], $attributes));
     }
 
@@ -42,6 +57,7 @@ class ManageListItemTest extends TestCase
             'action' => 'create',
             'title' => 'New Task',
             'description' => 'A brand new task',
+            'parentId' => $this->folder->id,
         ]);
 
         $result = $tool->handle($request);

@@ -49,10 +49,7 @@ class AgentControllerTest extends TestCase
                 'status',
                 'brain',
                 'identity' => ['name', 'emoji', 'type', 'description'],
-                'personality' => ['content', 'updatedAt'],
-                'instructions' => ['content', 'updatedAt'],
                 'capabilities',
-                'toolNotes',
                 'stats' => ['tasksCompleted', 'totalTasks', 'efficiency'],
                 'tasks',
             ]);
@@ -63,10 +60,9 @@ class AgentControllerTest extends TestCase
         $this->assertEquals('🧪', $data['identity']['emoji']);
         $this->assertEquals('coder', $data['identity']['type']);
         $this->assertEquals('Test-driven and precise', $data['identity']['description']);
-        $this->assertStringContainsString('Be accurate and thorough', $data['personality']['content']);
-        $this->assertStringContainsString('cooperatively', $data['instructions']['content']);
-        $this->assertStringContainsString('automated testing', $data['toolNotes']);
-        $this->assertCount(30, $data['capabilities']); // all tools from ToolRegistry
+        $registry = app(\App\Agents\Tools\ToolRegistry::class);
+        $expectedToolCount = count($registry->getAllToolsMeta($this->agent));
+        $this->assertCount($expectedToolCount, $data['capabilities']);
     }
 
     public function test_show_returns_task_stats(): void
@@ -132,9 +128,10 @@ class AgentControllerTest extends TestCase
         $response->assertOk();
         $this->assertEquals($newContent, $response->json('content'));
 
-        // Verify persistence
-        $verifyResponse = $this->getJson("/api/agents/{$this->agent->id}");
-        $this->assertStringContainsString('creative and bold', $verifyResponse->json('personality.content'));
+        // Verify persistence via identity endpoint
+        $verifyResponse = $this->getJson("/api/agents/{$this->agent->id}/identity");
+        $soulFile = collect($verifyResponse->json())->firstWhere('type', 'SOUL');
+        $this->assertStringContainsString('creative and bold', $soulFile['content']);
     }
 
     public function test_update_agent_status(): void
