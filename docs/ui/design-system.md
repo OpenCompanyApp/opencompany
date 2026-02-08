@@ -113,11 +113,25 @@ Light Mode Hierarchy          Dark Mode Hierarchy
 
 ### 2.8 Agent Status Colors
 
-| Token | Light Mode | Dark Mode | Usage |
-|---|---|---|---|
-| `--color-agent-working` | `oklch(0.50 0.10 145)` | `oklch(0.60 0.12 145)` | Agent actively processing |
-| `--color-agent-idle` | `oklch(0.60 0 0)` | `oklch(0.50 0 0)` | Agent available but idle |
-| `--color-agent-offline` | `oklch(0.75 0 0)` | `oklch(0.35 0 0)` | Agent unavailable |
+| Token | Light Mode | Dark Mode | Usage | Tailwind class |
+|---|---|---|---|---|
+| `--color-agent-working` | `oklch(0.50 0.10 145)` | `oklch(0.60 0.12 145)` | Agent actively processing | `bg-green-500` |
+| `--color-agent-idle` | `oklch(0.60 0 0)` | `oklch(0.50 0 0)` | Agent available but idle | `bg-neutral-400` |
+| `--color-agent-offline` | `oklch(0.75 0 0)` | `oklch(0.35 0 0)` | Agent unavailable | `bg-neutral-300` |
+| `--color-agent-sleeping` | `oklch(0.55 0.12 250)` | `oklch(0.60 0.12 250)` | Agent in scheduled sleep | `bg-indigo-400` |
+| `--color-agent-awaiting-approval` | `oklch(0.55 0.10 70)` | `oklch(0.65 0.10 70)` | Waiting for human approval | `bg-amber-500` |
+| `--color-agent-awaiting-delegation` | `oklch(0.50 0.12 250)` | `oklch(0.55 0.12 250)` | Waiting for delegated work | `bg-indigo-500` |
+
+**Status icons** (from `StatusBadge.vue`):
+
+| Status | Icon | Label |
+|---|---|---|
+| idle | `ph:pause-circle` | Idle |
+| working | `ph:spinner` (animated) | Working |
+| offline | `ph:prohibit` | Offline |
+| sleeping | `ph:moon` | Sleeping |
+| awaiting_approval | `ph:shield-check` | Awaiting Approval |
+| awaiting_delegation | `ph:users-three` | Delegating |
 
 ### 2.9 Agent Type Colors
 
@@ -800,6 +814,9 @@ both light and dark mode.
 | `--color-agent-working` | `oklch(0.50 0.10 145)` | `oklch(0.60 0.12 145)` |
 | `--color-agent-idle` | `oklch(0.60 0 0)` | `oklch(0.50 0 0)` |
 | `--color-agent-offline` | `oklch(0.75 0 0)` | `oklch(0.35 0 0)` |
+| `--color-agent-sleeping` | `oklch(0.55 0.12 250)` | `oklch(0.60 0.12 250)` |
+| `--color-agent-awaiting-approval` | `oklch(0.55 0.10 70)` | `oklch(0.65 0.10 70)` |
+| `--color-agent-awaiting-delegation` | `oklch(0.50 0.12 250)` | `oklch(0.55 0.12 250)` |
 | `--color-agent-manager` | `oklch(0.45 0 0)` | -- |
 | `--color-agent-writer` | `oklch(0.45 0 0)` | -- |
 | `--color-agent-analyst` | `oklch(0.45 0 0)` | -- |

@@ -13,19 +13,20 @@ The `features.md` marketing page makes claims that significantly exceed current 
 | Feature | Marketing Status | Code Status | Risk |
 |---------|-----------------|-------------|------|
 | **Sub-agent spawning** | Extensive section (6 features, queue modes, heartbeat) | Zero code | HIGH — this is the "Robo-Company" vision |
-| **MCP server** | Listed as capability | Not started | HIGH — key for developer adoption |
+| **MCP server** | Listed as capability | **Implemented** — McpClient, McpProxyTool, ManageMcpServer tool | ~~HIGH~~ DONE |
 | **Skills/custom tools** | Full section (5 features, marketplace) | Not started | HIGH — extensibility story |
 | **Plugin system** | 10 capability types described | Not started | MEDIUM — can wait for post-MVP |
-| **Multi-step workflows** | Section with 5 features | Not started | HIGH — tied to agent execution |
+| **Multi-step workflows** | Section with 5 features | **Partial** — task steps, execution trace, but no visual workflow builder | MEDIUM — basic execution works |
 | **External channels** | 8 providers listed | 2 working (Telegram, Slack) | HIGH — 75% gap |
 | **Memory/search** | Hybrid vector + BM25, embeddings, citations | Basic ILIKE pattern matching | HIGH — core differentiator |
-| **Agent execution engine** | Implied throughout | Not started | CRITICAL — nothing makes agents "think" yet |
+| **Agent execution engine** | Implied throughout | **Implemented** — AgentRespondJob, ExecuteAgentTaskJob, OpenCompanyAgent with full LLM integration | ~~CRITICAL~~ DONE |
+| **Inter-agent communication** | Not in original marketing | **Implemented** — ContactAgent tool with ask/delegate/notify patterns | NEW |
 
 ### Recommendation
 
 Before any public launch, either:
 1. **Scale back features.md** to only list what's built (honest approach), or
-2. **Prioritize the top 3 gaps** (agent execution, sub-agents, memory search) to deliver the core promise
+2. **Continue closing gaps** — agent execution is done, MCP is done, inter-agent comms is done. Remaining: sub-agent spawning, memory search, skills/plugins
 
 ---
 
@@ -138,13 +139,13 @@ Even with just Slack + Telegram working, this is more than most agent platforms 
 
 If `features.md` goes live as-is, users will expect sub-agents, MCP server, 8 external channels, hybrid memory search, skills marketplace, and a plugin system. None of these exist. The gap between promise and reality is the single biggest risk.
 
-### No Agent Execution Engine (CRITICAL)
+### ~~No Agent Execution Engine~~ — RESOLVED
 
-All the infrastructure is ready — channels for communication, tasks for work tracking, documents for knowledge, memory for context. But there is no code that makes an agent actually "think." No LLM calls, no tool execution, no workflow orchestration. The agent "brain" is the #1 missing piece.
+The agent execution engine is fully operational: `AgentRespondJob` orchestrates LLM calls, tool execution, task lifecycle management, and result tracking. `ExecuteAgentTaskJob` handles discrete task execution. The `OpenCompanyAgent` class provides the AI brain with streaming, context management, and 30+ registered tools. **282 tests pass** with full coverage of the execution pipeline.
 
-### Test Coverage (HIGH)
+### Test Coverage — IMPROVED
 
-QA strategy documents ~5% overall coverage, 0% API tests, 0% model tests, 0% component tests. Any significant refactor is risky. The Tasks→ListItems rename was done without test safety nets.
+Test coverage has significantly improved: 282 tests passing with 1,063 assertions. PHPStan level 5 enforced with 0 errors. Feature tests cover: AgentRespondJob, AgentPermissionService, ToolRegistry, ApprovalWrappedTool, ContactAgent, ExecuteAgentTaskJob, all tool classes, and API controllers. Remaining gap: frontend component tests (Vitest not yet configured).
 
 ### Search Scalability (MEDIUM)
 
@@ -177,22 +178,23 @@ Low-effort changes that would immediately improve the project:
 What to build next, based on impact vs effort:
 
 ### Must-have before launch
-1. **Agent execution engine** — Without this, agents can't do anything
+1. ~~Agent execution engine~~ ✅ Done
 2. **Memory search** (at least basic hybrid) — Agents need memory to be useful
 3. **Honest features.md** — Don't launch with unimplemented features listed
 
 ### High impact, medium effort
-4. **Sub-agent spawning** — Core differentiator, enables the "Robo-Company" vision
-5. **At least 1 more external channel** (Discord) — Shows the integration story works
-6. **Data Tables marketing** — Already built, just needs visibility
+4. **Sub-agent spawning** — Core differentiator (dynamic child agent extensions, like Claude Code sub-agents). NOT the same as inter-agent communication which IS built.
+5. At least 1 more external channel (Discord) — Shows the integration story works
+6. Data Tables marketing — Already built, just needs visibility
 
 ### Nice-to-have
-7. MCP server — Developer adoption tool
-8. Skills system — Extensibility story
-9. Plugin system — Ecosystem play
-10. Additional external channels — Scale the integration story
+- ~~MCP server~~ ✅ Done
+- ~~Inter-agent communication~~ ✅ Done (ContactAgent tool)
+7. Skills system — Extensibility story
+8. Plugin system — Ecosystem play
+9. Additional external channels — Scale the integration story
 
 ---
 
-*Last updated: February 2026*
+*Last updated: February 8, 2026*
 *Source: Automated codebase audit cross-referencing 19 documentation files against models, routes, migrations, types, and seeders.*

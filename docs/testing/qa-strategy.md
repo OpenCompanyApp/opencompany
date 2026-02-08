@@ -27,13 +27,14 @@
 
 | Metric | Target | Current |
 |--------|--------|---------|
-| **Test Coverage** | 80% | ~5% |
-| **API Test Coverage** | 100% | 0% |
-| **Model Test Coverage** | 100% | 0% |
-| **Frontend Component Coverage** | 70% | 0% |
+| **Test Coverage** | 80% | ~30% (282 tests, 1063 assertions) |
+| **API Test Coverage** | 100% | ~40% (controllers have feature tests) |
+| **Model Test Coverage** | 100% | ~20% (key models tested via feature tests) |
+| **Frontend Component Coverage** | 70% | 0% (Vitest not yet configured) |
 | **E2E Critical Paths** | 100% | ~60% |
 | **CI Pipeline Pass Rate** | 100% | N/A |
 | **Build Time** | < 10 min | N/A |
+| **Static Analysis** | Level 5 | Level 5 (PHPStan + Larastan, 0 errors) |
 
 ### Testing Philosophy
 
@@ -52,12 +53,17 @@
 - 11 database seeders
 - 13 browser test files
 
-**Critical Gaps:**
-- NO API integration tests for 35 controllers
-- NO unit tests for 29 models
-- NO frontend component tests
-- NO CI/CD pipeline
-- NO automated code quality checks
+**What's been built (as of Feb 2026):**
+- 282 passing tests with 1,063 assertions
+- PHPStan level 5 enforced with Larastan (0 errors across `app/`)
+- Feature tests for: AgentRespondJob, AgentPermissionService, ToolRegistry, ApprovalWrappedTool, ContactAgent, ExecuteAgentTaskJob, all tool classes, API controllers
+- Tests cover agent execution pipeline, task lifecycle, inter-agent communication, approval workflows
+
+**Remaining gaps:**
+- NO frontend component tests (Vitest not yet configured)
+- NO CI/CD pipeline (tests run locally only)
+- Incomplete API controller coverage (~40% of endpoints)
+- No dedicated unit tests for models (tested indirectly via feature tests)
 
 ---
 

@@ -215,6 +215,7 @@ Clicking a task opens TaskDetailDrawer (right-side panel, 480px)
 | `AgentMemoryView` | Displays current session context usage bar, persistent memory entries list, and "Add Memory" modal |
 | `AgentSettingsPanel` | Behavior mode selector (autonomous/supervised/strict), session reset policy, and danger zone actions |
 | `TaskDetailDrawer` | Right-side slide-over drawer (480px) showing task metadata, step timeline, result/error, and action buttons |
+| `StatusBadge` | Agent status badge with full variant support; renders `sleeping`, `awaiting_approval`, `awaiting_delegation` statuses with appropriate icons and tooltips |
 | `SharedSkeleton` | Placeholder shimmer used during loading state |
 | `Icon` | Shared Iconify wrapper using Phosphor icons (`ph:` prefix) |
 
@@ -235,12 +236,45 @@ Clicking a task opens TaskDetailDrawer (right-side panel, 480px)
 - Button text and icon change based on `agent.status`
 - Working agents show "Pause" (amber); idle/paused agents show "Resume" (green)
 
+### Sleep/Wake
+- Agents have a `sleeping_until` datetime field and a `sleeping_reason` text field on the backend
+- Agents can be put to sleep via the `set_sleep_timer` tool (Wait tool), specifying a duration
+- Sleeping agents auto-wake when the scheduled `sleeping_until` time is reached
+- When sleeping, the agent shows the `sleeping` status with:
+  - Indigo status dot in avatar
+  - "Sleeping" label on the `StatusBadge` component
+  - Moon icon (`ph:moon`) when icon mode is enabled
+  - Tooltip: "Agent is sleeping and will wake at a scheduled time"
+- The Overview tab can display the sleep reason and scheduled wake time when the agent is in sleeping status
+
+### Delegation Tracking
+- Agents have an `awaiting_delegation_ids` JSON array field tracking the IDs of pending delegated tasks
+- When an agent has one or more pending delegated tasks, their status appears as `awaiting_delegation`
+- The `StatusBadge` shows:
+  - Indigo status dot
+  - Label: "Delegating"
+  - Icon: `ph:users-three`
+  - Tooltip: "Agent is waiting for delegated subtasks to complete"
+- The Overview tab should show pending delegations with links to the delegated subtask(s)
+
 ### Agent Tasks
 - Fetched via `useApi().fetchAgentTasks({ agentId })`
 - Each task card shows status badge, type label, title, description, and step progress
 - Clicking a task opens `TaskDetailDrawer`
 - Task statuses: pending, active, paused, completed, failed, cancelled
 - Task types: ticket, request, analysis, content, research, custom
+- Tasks created via delegation show their source (`agent_delegation`, `agent_ask`, `agent_notify`)
+
+### Agent Status Badges
+The `StatusBadge` component renders the full set of agent statuses:
+- `idle` -- gray dot, "Idle"
+- `working` -- green dot, spinning icon, "Working"
+- `offline` -- light gray dot, "Offline"
+- `sleeping` -- indigo dot, moon icon, "Sleeping"
+- `awaiting_approval` -- amber dot, shield-check icon, "Awaiting Approval"
+- `awaiting_delegation` -- indigo dot, users-three icon, "Delegating"
+
+Status badges appear in the agent header next to the agent name, and support multiple variants (filled, soft, outline, ghost, dot-only, minimal) with rich tooltips including last activity and current task info.
 
 ### Personality & Instructions Editors
 - Markdown content stored as string, rendered via `marked` library
@@ -251,6 +285,16 @@ Clicking a task opens TaskDetailDrawer (right-side panel, 480px)
 ### Capabilities Management
 - Read-only list of tool capabilities with enabled/disabled and approval-required badges
 - Tool notes section editable inline with save/cancel buttons
+
+### Inter-Agent Communication
+- Agents can use the `contact_agent` tool to communicate with other agents
+- Three communication patterns:
+  - **Ask** (synchronous) -- Agent sends a question and waits for a response; creates a task with source `agent_ask`
+  - **Delegate** (asynchronous) -- Agent assigns work to another agent and continues; creates a task with source `agent_delegation`; the delegating agent enters `awaiting_delegation` status
+  - **Notify** (fire-and-forget) -- Agent sends a one-way notification; creates a task with source `agent_notify`; no response expected
+- The `contact_agent` tool appears in the Capabilities tab tool list with icon `ph:users-three`
+- Delegated tasks create a parent-child relationship visible in the task tree view on the Tasks page
+- The `ExecutionTrace` component shows `contact_agent` tool calls with the `ph:users-three` icon
 
 ### Memory Management
 - Current session displays: start time, message count, context token usage bar

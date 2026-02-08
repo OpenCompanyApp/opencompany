@@ -28,7 +28,7 @@
 > **Why:** Before building the agent system, we need the core AI package installed. Laravel AI SDK provides official first-party LLM integration. Laravel queues handle async task processing.
 
 ### 0.1 Install Core Packages
-- [ ] **0.1.1** Install Laravel AI SDK
+- [x] **0.1.1** Install Laravel AI SDK — ✅ `laravel/ai` v0.1.2 in composer.json (also `prism-php/prism` installed)
   - **What:** Official first-party Laravel package for AI/LLM integration with multiple providers
   - **Why:** Laravel AI SDK is the official package from the Laravel team. It supports agents, tools, streaming, embeddings, image generation, audio, and comprehensive testing utilities.
   - **Context:** We chose Laravel AI SDK over Prism (community package) for its first-party support, multimodal capabilities, and built-in testing.
@@ -36,21 +36,21 @@
   composer require laravel/ai
   ```
 
-- [ ] **0.1.2** Publish AI SDK config
+- [x] **0.1.2** Publish AI SDK config — ✅ config/ai.php exists
   - **What:** Creates `config/ai.php` with provider settings
   - **Why:** Need to configure API keys and provider-specific settings. Also enables adding custom providers like GLM via OpenAI-compatible endpoint.
   ```bash
   php artisan vendor:publish --provider="Laravel\Ai\AiServiceProvider"
   ```
 
-- [ ] **0.1.3** Configure providers in `config/ai.php`
+- [x] **0.1.3** Configure providers in `config/ai.php` — ✅ DynamicProviderResolver + IntegrationSettings handle provider config
   - **What:** Set up API credentials for all LLM providers
   - **Why:** Anthropic/Claude is our primary LLM for agent tasks. OpenAI, Gemini, Groq, xAI are available as alternatives/fallbacks.
   - **Context:** GLM/Zhipu AI uses OpenAI-compatible endpoint with custom base URL. Provider failover is built-in.
   - Set `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. in `.env`
 
 ### 0.2 Verify Setup
-- [ ] **0.2.1** Test Laravel AI SDK agent ← depends on: [0.1.3]
+- [x] **0.2.1** Test Laravel AI SDK agent ← depends on: [0.1.3] — ✅ agents operational with OpenCompanyAgent + AgentRespondJob
   - **What:** Simple test to verify provider APIs are working
   - **Why:** Catch configuration errors early before building dependent features.
   - **Context:** Should return a response and log token usage.
@@ -63,7 +63,7 @@
   ```
 
 ### 0.3 Optional: Install Extensions
-- [ ] **0.3.1** Install Laravel MCP
+- [ ] **0.3.1** Install Laravel MCP — NOT built (MCP Client integration exists for connecting TO external servers, but not exposing OpenCompany AS a server)
   - **What:** Expose OpenCompany workspace as MCP server for external AI clients
   - **Why:** Allows Claude Desktop, VS Code Copilot, and other MCP-compatible tools to interact with OpenCompany data.
   - **Context:** Provides tools (search_documents, create_task, send_message) and resources (documents, agent configs) via MCP protocol.
@@ -78,7 +78,7 @@
 > **Why:** The database schema is the foundation of the agent system. Each table maps to a core concept from OpenClaw's architecture, translated to business-friendly naming.
 
 ### 1.1 Core Agent Tables
-- [ ] **1.1.1** Create `agent_configurations` migration
+- [x] **1.1.1** Create `agent_configurations` migration — ✅ superseded: agent identity stored in Document-based files per agent; agent fields on `users` table
   - **What:** Stores the core identity and personality of each AI agent
   - **Why:** Agents need persistent personality (SOUL.md), instructions (AGENTS.md), and identity metadata. This is what makes each agent unique and consistent across sessions.
   - **Context:** In OpenClaw, these are markdown files in the workspace. We store them in DB for easier management via UI.
@@ -88,20 +88,20 @@
   - `identity` = JSON (`{name, emoji, type, avatar, description}`) - Visual identity for UI
   - `tool_notes` = TEXT (TOOLS.md equivalent) - Environment-specific tool notes (SSH hosts, device nicknames)
 
-- [ ] **1.1.2** Create `agent_capabilities` migration ← depends on: [1.1.1]
+- [x] **1.1.2** Create `agent_capabilities` migration ← depends on: [1.1.1] — ✅ superseded by `agent_permissions` table + AgentPermission model
   - **What:** Junction table linking agents to their enabled capabilities/tools
   - **Why:** Different agents need different tools. A code assistant needs git/file access, while a research agent needs web search. Per-agent capability control enables safe, scoped tool access.
   - **Context:** This enables the "capabilities" tab in the agent settings UI where users can toggle tools on/off.
   - Fields: `id`, `agent_config_id` (FK), `capability_id` (FK), `enabled`, `requires_approval`, `notes`, `created_at`
 
-- [ ] **1.1.3** Create `capabilities` migration (master list)
+- [x] **1.1.3** Create `capabilities` migration (master list) — ✅ superseded by ToolRegistry + AgentPermissionService (no separate capabilities table needed)
   - **What:** Master list of all available tools/capabilities in the system
   - **Why:** Centralizes tool definitions so new tools can be added system-wide and assigned to agents. Defines default approval requirements per tool type.
   - **Context:** Seeded with common tools. Each has an icon for UI display and category for grouping.
   - Fields: `id`, `name`, `description`, `icon`, `category`, `default_enabled`, `default_requires_approval`, `created_at`
   - Seed with: code_execution, file_operations, git_operations, api_requests, database_access, production_deployment
 
-- [ ] **1.1.4** Create `agent_settings` migration ← depends on: [1.1.1]
+- [x] **1.1.4** Create `agent_settings` migration ← depends on: [1.1.1] — ✅ superseded by fields on `users` table (behavior_mode, brain, sleeping_until, etc.)
   - **What:** Runtime behavior settings for each agent (how autonomous, cost limits, when to reset)
   - **Why:** Different use cases need different autonomy levels. A production deployment agent should be strict (require approval for everything), while a dev assistant can be more autonomous.
   - **Context:** The OpenClaw fields enable sophisticated execution control - allowlisting commands, reserving context space, auto-pruning old data.
@@ -117,7 +117,7 @@
   - `auto_allow_skills` BOOLEAN (default: true) - Auto-allow trusted tool binaries (jq, grep, etc.)
   - `soft_threshold_tokens` INTEGER (default: 4000) - Buffer before triggering memory flush
 
-- [ ] **1.1.5** Update `capabilities` migration with tool kind
+- [x] **1.1.5** Update `capabilities` migration with tool kind — ✅ superseded: tool classification handled by ToolRegistry APP_GROUPS
   - **What:** Classifies each tool by its operation type (read/edit/delete/execute/etc.)
   - **Why:** Enables intelligent approval rules - auto-approve reads but require approval for deletes. Different risk levels for different operation types.
   - **Context:** OpenClaw uses `inferToolKind()` to classify tools. We store it in DB for faster lookup.
@@ -127,7 +127,7 @@
 
 > **Why:** Agents need persistent memory across conversations. Sessions track the current conversation, while memories persist facts and learnings long-term.
 
-- [ ] **1.2.1** Create `agent_sessions` migration ← depends on: [1.1.1]
+- [ ] **1.2.1** Create `agent_sessions` migration ← depends on: [1.1.1] — NOT built (superseded by channel-based conversation; `agent_conversations` table exists but no formal sessions)
   - **What:** Tracks individual conversation sessions with an agent
   - **Why:** Sessions isolate conversations, track token usage for billing, and enable session reset policies. Token tracking is critical for knowing when to compact/prune.
   - **Context:** Each session has a lifecycle: active → archived → deleted. Compaction count tracks how many times context was compressed.
@@ -187,15 +187,15 @@
 
 > **Why:** Execute all database changes to create the foundation. Must run before creating models or any dependent code.
 
-- [ ] **1.4.1** Run `php artisan migrate` ← depends on: [1.1.1-1.3.2]
+- [x] **1.4.1** Run `php artisan migrate` ← depends on: [1.1.1-1.3.2] — ✅ 60+ migrations exist and run successfully
   - **What:** Execute all migration files to create tables
   - **Why:** Database must exist before models can query it.
 
-- [ ] **1.4.2** Verify all tables created correctly
+- [x] **1.4.2** Verify all tables created correctly — ✅ all tables operational
   - **What:** Check that all tables, indexes, and constraints exist
   - **Why:** Catch any migration errors early. Use `php artisan migrate:status` and check foreign keys.
 
-- [ ] **1.4.3** Seed capabilities table with default capabilities
+- [x] **1.4.3** Seed capabilities table with default capabilities — ✅ superseded: ToolRegistry provides capability list dynamically
   - **What:** Populate the `capabilities` table with our 6 default tools
   - **Why:** Agents need capabilities to choose from. These are system-wide definitions used by all agents.
   - **Context:** Default capabilities: code_execution, file_operations, git_operations, api_requests, database_access, production_deployment
@@ -281,26 +281,26 @@
 
 ### 2.1 Core Models
 
-- [ ] **2.1.1** Create `AgentConfiguration` model ← depends on: [1.4.1]
+- [x] **2.1.1** Create `AgentConfiguration` model ← depends on: [1.4.1] — ✅ superseded by Document-based identity files + AgentDocumentService
   - **What:** Primary model for agent identity - personality, instructions, and visual identity
   - **Why:** Central model that all other agent-related models reference. Contains the agent's "soul" (personality) and "brain" (instructions).
   - **Context:** Uses soft deletes so deleted agents can be restored. Casts ensure JSON fields are handled as arrays.
   - Relationships: `belongsTo(User)`, `hasMany(AgentCapability)`, `hasOne(AgentSettings)`, `hasMany(AgentSession)`, `hasMany(AgentMemory)`
   - Casts: `identity` → array, `personality` → string, `instructions` → string
 
-- [ ] **2.1.2** Create `Capability` model ← depends on: [1.4.1]
+- [x] **2.1.2** Create `Capability` model ← depends on: [1.4.1] — ✅ superseded by ToolRegistry + AgentPermission model
   - **What:** System-wide capability/tool definitions
   - **Why:** Master list of available tools that agents can be granted. Includes tool kind for approval logic.
   - **Context:** Read-only from application perspective - admin-seeded. Agents reference these via AgentCapability pivot.
   - Relationships: `belongsToMany(AgentConfiguration)` through `agent_capabilities`
 
-- [ ] **2.1.3** Create `AgentCapability` model (pivot with extra fields) ← depends on: [2.1.1, 2.1.2]
+- [x] **2.1.3** Create `AgentCapability` model (pivot with extra fields) ← depends on: [2.1.1, 2.1.2] — ✅ superseded by AgentPermission model (scope-based: tool, channel, folder, integration)
   - **What:** Junction table linking agents to their enabled tools with per-agent settings
   - **Why:** Each agent can have different tool permissions. One agent might have code_execution with approval required, another without.
   - **Context:** The `notes` field stores agent-specific tool notes (e.g., "Use this for the staging server only").
   - Relationships: `belongsTo(AgentConfiguration)`, `belongsTo(Capability)`
 
-- [ ] **2.1.4** Create `AgentSettings` model ← depends on: [2.1.1]
+- [x] **2.1.4** Create `AgentSettings` model ← depends on: [2.1.1] — ✅ superseded by fields on User model (behavior_mode, brain, sleeping_until, etc.)
   - **What:** Runtime behavior configuration for each agent
   - **Why:** Controls autonomy level, cost limits, context management, and security modes. Separating from AgentConfiguration keeps identity separate from behavior.
   - **Context:** Includes OpenClaw fields for reserve tokens, pruning TTL, security modes, etc.
@@ -355,7 +355,7 @@
 
 ### 2.4 Extend User Model
 
-- [ ] **2.4.1** Add relationships to User model ← depends on: [2.1.1-2.3.2]
+- [x] **2.4.1** Add relationships to User model ← depends on: [2.1.1-2.3.2] — ✅ User model has agent relationships (permissions, tasks, channels, documents, etc.)
   - **What:** Connect User model to agent-related models
   - **Why:** Users own agents. A user can have one agent configuration (if they are an agent user). Also tracks spawn permissions and runs.
   - **Context:** The `hasOne(AgentConfiguration)` is for "agent users" - users that are actually AI agents in the system.
@@ -364,7 +364,7 @@
   - `hasMany(SubagentRun, 'parent_agent_id')`
   - `hasMany(SubagentRun, 'child_agent_id')`
 
-- [ ] **2.4.2** Add helper methods to User model
+- [x] **2.4.2** Add helper methods to User model — ✅ User model has isAgent(), agent-related scopes, permission helpers
   - **What:** Convenience methods for common agent operations
   - **Why:** Encapsulates agent-related logic in the model. `canSpawnAgent()` centralizes permission checking.
   - **Context:** These methods are used throughout controllers and services.
@@ -380,7 +380,7 @@
 
 ### 3.1 Agent Configuration Controller
 
-- [ ] **3.1.1** Create `AgentConfigurationController` ← depends on: [2.1.1]
+- [x] **3.1.1** Create `AgentConfigurationController` ← depends on: [2.1.1] — ✅ superseded by AgentController with identity files API (GET/PUT /api/agents/{id}/identity/{fileType})
   - **What:** CRUD operations for agent personality, instructions, and identity
   - **Why:** Frontend needs to fetch and update agent configuration. Separate PATCH endpoints allow updating individual fields without sending the entire config.
   - **Context:** Personality and instructions are large text fields (markdown). Separate endpoints reduce payload size and enable autosave on specific fields.
@@ -393,7 +393,7 @@
 
 ### 3.2 Agent Capabilities Controller
 
-- [ ] **3.2.1** Create `AgentCapabilityController` ← depends on: [2.1.3]
+- [x] **3.2.1** Create `AgentCapabilityController` ← depends on: [2.1.3] — ✅ superseded by AgentPermissionController (tool/channel/folder/integration permissions)
   - **What:** Manage which tools/capabilities are enabled for an agent
   - **Why:** Agents need different tools. This API enables the UI to toggle capabilities and set per-agent approval requirements.
   - **Context:** Bulk update is important for "save all changes" UX. Individual PATCH allows toggling single capability without affecting others.
@@ -401,7 +401,7 @@
   - `PUT /api/agents/{id}/capabilities` - bulk update capabilities
   - `PATCH /api/agents/{id}/capabilities/{capabilityId}` - update single capability
 
-- [ ] **3.2.2** Create `CapabilityController` ← depends on: [2.1.2]
+- [x] **3.2.2** Create `CapabilityController` ← depends on: [2.1.2] — ✅ superseded: ToolRegistry provides tool list; AgentPermissionController serves capability data
   - **What:** Read-only access to system-wide capability definitions
   - **Why:** Frontend needs the master list of available capabilities to render the capability assignment UI.
   - **Context:** Capabilities are admin-seeded, not user-created. This is read-only.
@@ -409,7 +409,7 @@
 
 ### 3.3 Agent Settings Controller
 
-- [ ] **3.3.1** Create `AgentSettingsController` ← depends on: [2.1.4]
+- [x] **3.3.1** Create `AgentSettingsController` ← depends on: [2.1.4] — ✅ superseded: agent settings managed via AgentController (PATCH /api/agents/{id}) + Settings tab in Agent/Show.vue
   - **What:** Manage agent runtime behavior settings
   - **Why:** Users need to control agent autonomy, cost limits, and reset policies. Settings affect how the agent operates, not who it is.
   - **Context:** Includes OpenClaw settings (security_mode, ask_mode, reserve_tokens, etc.). Behavior mode enum: autonomous/supervised/strict.
@@ -460,7 +460,7 @@
 
 ### 3.7 Register Routes
 
-- [ ] **3.7.1** Add all routes to `routes/api.php` ← depends on: [3.1.1-3.6.1]
+- [x] **3.7.1** Add all routes to `routes/api.php` ← depends on: [3.1.1-3.6.1] — ✅ comprehensive routes for all controllers (268 lines in routes/api.php)
   - **What:** Wire up all controller methods to URL routes
   - **Why:** Routes connect HTTP requests to controller actions. Must be registered before frontend can call the API.
   - **Context:** Group under `/api/agents` prefix. Auth middleware ensures only authenticated users access their agents.
@@ -476,11 +476,11 @@
 
 ### 3.5.1 Create Agent Tools
 
-- [ ] **3.5.1.1** Create `app/Agents/Tools/` directory
+- [x] **3.5.1.1** Create `app/Agents/Tools/` directory — ✅ exists with 30+ tool classes across Chat/, Docs/, Lists/, Tables/, Calendar/, Tasks/, System/, Workspace/, Charts/, Telegram/, Agents/ subdirs
   - **What:** Directory for Laravel AI SDK tool definitions
   - **Why:** Organizes AI tools separately from services. Each tool class implements the SDK `Tool` contract.
 
-- [ ] **3.5.1.2** Create tool classes for agent capabilities
+- [x] **3.5.1.2** Create tool classes for agent capabilities — ✅ 30+ tools implemented
   - **What:** Laravel AI SDK `Tool` implementations for each capability type
   - **Why:** Tools are how agents interact with the system. Each tool wraps a system capability (documents, tasks, messaging, etc.) with parameter validation and execution logic.
   - **Context:** Tools implement the SDK `Tool` contract with `description()`, `handle()`, and `schema()` methods. Use `php artisan make:tool` to scaffold.
@@ -493,7 +493,7 @@
   - `QueryDataTable` - data table queries
   - `WebSearch` / `WebFetch` - web capabilities (SDK built-in)
 
-- [ ] **3.5.1.3** Create tool registry service
+- [x] **3.5.1.3** Create tool registry service — ✅ app/Agents/Tools/ToolRegistry.php with APP_GROUPS and getToolsForAgent()
   - **What:** Service that provides tools to agents based on their DB-stored capabilities
   - **Why:** Agents should only see tools they're allowed to use. The registry maps capability strings from the DB to tool class instances.
   - **Context:** Called by `OpenCompanyAgent::tools()` to resolve the tool list dynamically.
@@ -517,18 +517,18 @@
 
 > **Why:** Jobs are the building blocks of agent task execution. Each job does one thing: fetch config, execute AI, save message, etc. Jobs are retryable and queued for async processing.
 
-- [ ] **3.5.2.1** Create `app/Jobs/Agent/` directory
+- [x] **3.5.2.1** Create `app/Jobs/Agent/` directory — ✅ superseded: agent jobs live directly in app/Jobs/ (AgentRespondJob, ExecuteAgentTaskJob, etc.)
   - **What:** Directory for agent-specific job classes
   - **Why:** Organizes agent jobs separately from other system jobs. Each class handles one atomic operation.
 
-- [ ] **3.5.2.2** Create `FetchAgentConfigJob`
+- [x] **3.5.2.2** Create `FetchAgentConfigJob` — ✅ superseded: config fetching is inline in AgentRespondJob + OpenCompanyAgent
   - **What:** Load agent configuration and enabled tools from database
   - **Why:** Agent tasks need agent config to operate. This job fetches who the agent is and what they can do.
   - **Context:** Returns AgentConfiguration with relationships (capabilities, settings) loaded.
   - Fetch agent configuration from database
   - Return config with enabled tools
 
-- [ ] **3.5.2.3** Create `ExecuteAgentJob` ← depends on: [3.5.1.2]
+- [x] **3.5.2.3** Create `ExecuteAgentJob` ← depends on: [3.5.1.2] — ✅ implemented as AgentRespondJob + ExecuteAgentTaskJob in app/Jobs/
   - **What:** Execute Laravel AI SDK agent call with tools
   - **Why:** This is the core AI execution - send prompt to LLM, get response, handle tool calls. This job wraps `OpenCompanyAgent` for queued execution.
   - **Context:** Uses SDK's `#[MaxSteps]` attribute for multi-turn tool use. Token tracking is critical for billing and context management.
@@ -550,7 +550,7 @@
   }
   ```
 
-- [ ] **3.5.2.4** Create `CreateApprovalRequestJob`
+- [x] **3.5.2.4** Create `CreateApprovalRequestJob` — ✅ superseded: approval creation handled by ApprovalWrappedTool + SendApprovalToTelegramJob
   - **What:** Create an approval request record and notify users
   - **Why:** When agent wants to do something risky (database access, deployment), humans must approve. This job creates the approval request.
   - **Context:** Approval requests appear in the Approvals page. Users are notified via WebSocket.
@@ -558,14 +558,14 @@
   - Notify relevant users
   - Return approval request ID
 
-- [ ] **3.5.2.5** Create approval handling service
+- [x] **3.5.2.5** Create approval handling service — ✅ ApprovalExecutionService + WaitForApproval tool + ApprovalController
   - **What:** Service that polls/waits for approval decisions
   - **Why:** Agent execution must pause and wait for human decision. This service checks approval status and resumes execution when approved/rejected.
   - **Context:** Can use polling or event-based approach. Rejection cancels the task.
   - Check approval status
   - Resume execution when approved/rejected
 
-- [ ] **3.5.2.6** Create `ExecuteApprovedActionJob`
+- [x] **3.5.2.6** Create `ExecuteApprovedActionJob` — ✅ superseded: ApprovalExecutionService handles executing approved actions inline
   - **What:** Execute the action that was approved
   - **Why:** After approval, the original tool call needs to be executed. This job runs the approved action safely.
   - **Context:** Logs the execution for audit trail. Updates task status to completed.
@@ -604,11 +604,11 @@
 
 > **Why:** Services orchestrate jobs into complete agent operations. They handle the full lifecycle: load config → check context → execute AI → save results → handle approvals.
 
-- [ ] **3.5.3.1** Create `app/Services/Agent/` directory
+- [x] **3.5.3.1** Create `app/Services/Agent/` directory — ✅ superseded: agent services live in app/Services/ (AgentChatService, AgentPermissionService, AgentDocumentService, etc.)
   - **What:** Directory for agent orchestration services
   - **Why:** Organizes agent services separately. Each service class defines a complete agent operation.
 
-- [ ] **3.5.3.2** Create `AgentTaskService` ← depends on: [3.5.2.2-3.5.2.10]
+- [x] **3.5.3.2** Create `AgentTaskService` ← depends on: [3.5.2.2-3.5.2.10] — ✅ superseded: implemented as AgentChatService + AgentRespondJob orchestration
   - **What:** Main service for executing an agent task (responding to user input)
   - **Why:** This is the core agent loop. It handles OpenClaw patterns (memory flush, pruning), executes the AI, saves messages, and manages approvals.
   - **Context:** Uses Laravel's queue system for async execution. Jobs can be retried on failure.
@@ -674,7 +674,7 @@
 
 > **Why:** Agent jobs need queue workers to process them and APIs to monitor/control them. This infrastructure makes agent execution operational.
 
-- [ ] **3.5.4.1** Configure queue workers for agent jobs
+- [x] **3.5.4.1** Configure queue workers for agent jobs — ✅ queue config exists; agent jobs dispatched to queue
   - **What:** Set up queue configuration for agent job processing
   - **Why:** Agent jobs need dedicated queue configuration. May need separate queues for high-priority vs background tasks.
   - **Context:** Configure in `config/queue.php`. Consider separate connection for agent jobs.
@@ -682,7 +682,7 @@
   php artisan queue:work --queue=agents,default
   ```
 
-- [ ] **3.5.4.2** Add agent task status endpoints
+- [x] **3.5.4.2** Add agent task status endpoints — ✅ TaskController with full lifecycle endpoints (start/pause/resume/complete/fail/cancel)
   - **What:** API endpoints to check agent task status and manage execution
   - **Why:** Frontend needs to display task progress (e.g., "waiting for approval", "executing"). Endpoints enable monitoring and control.
   - **Context:** Status updates broadcast via WebSocket for real-time UI updates.
@@ -1058,28 +1058,28 @@
 
 > **Why:** Components exist with mock data. This phase connects them to real APIs, making the UI functional.
 
-- [ ] **4.2.1** Connect `AgentPersonalityEditor.vue` to API ← depends on: [4.1.1]
+- [x] **4.2.1** Connect `AgentPersonalityEditor.vue` to API ← depends on: [4.1.1] — ✅ superseded by AgentIdentityFiles.vue two-panel editor for all 8 identity files
   - **What:** Wire personality editor to backend
   - **Why:** Users need to edit and save agent personality. Currently uses mock data.
   - **Context:** Should show loading state while saving, success toast on save, error handling for failures.
   - Replace mock save with `updateAgentPersonality()`
   - Add error handling and success feedback
 
-- [ ] **4.2.2** Connect `AgentInstructionsEditor.vue` to API ← depends on: [4.1.1]
+- [x] **4.2.2** Connect `AgentInstructionsEditor.vue` to API ← depends on: [4.1.1] — ✅ superseded by AgentIdentityFiles.vue two-panel editor
   - **What:** Wire instructions editor to backend
   - **Why:** Users need to edit and save agent instructions. Currently uses mock data.
   - **Context:** Same UX patterns as personality editor - loading, success, error states.
   - Replace mock save with `updateAgentInstructions()`
   - Add error handling and success feedback
 
-- [ ] **4.2.3** Connect `AgentCapabilities.vue` to API ← depends on: [4.1.2]
+- [x] **4.2.3** Connect `AgentCapabilities.vue` to API ← depends on: [4.1.2] — ✅ AgentCapabilities.vue with real tool toggles via AgentPermissionController
   - **What:** Wire capabilities toggles to backend
   - **Why:** Users need to enable/disable tools and set approval requirements. Currently uses mock data.
   - **Context:** Should fetch system capabilities list and agent's current assignments. Save should bulk update.
   - Fetch real capabilities list
   - Save capability changes and notes
 
-- [ ] **4.2.4** Connect `AgentMemoryView.vue` to API ← depends on: [4.1.4, 4.1.5]
+- [x] **4.2.4** Connect `AgentMemoryView.vue` to API ← depends on: [4.1.4, 4.1.5] — ✅ superseded: MEMORY.md managed via identity file editor
   - **What:** Wire memory and session display to backend
   - **Why:** Users need to view sessions, messages, and memories. Also need to add memories and start new sessions.
   - **Context:** Session list should be paginated. Memory add/delete should update list in real-time.
@@ -1088,7 +1088,7 @@
   - Implement new session creation
   - Implement memory add/delete
 
-- [ ] **4.2.5** Connect `AgentSettingsPanel.vue` to API ← depends on: [4.1.3]
+- [x] **4.2.5** Connect `AgentSettingsPanel.vue` to API ← depends on: [4.1.3] — ✅ AgentSettingsPanel.vue connected with real behavior mode, brain selector, delete
   - **What:** Wire settings form to backend
   - **Why:** Users need to configure agent behavior, cost limits, and reset policies.
   - **Context:** Some actions (reset, delete) need confirmation dialogs. Pause/resume should update status badge.
@@ -1096,7 +1096,7 @@
   - Save settings changes
   - Implement reset/pause/delete actions
 
-- [ ] **4.2.6** Connect `AgentIdentityCard.vue` to real data ← depends on: [4.1.1]
+- [x] **4.2.6** Connect `AgentIdentityCard.vue` to real data ← depends on: [4.1.1] — ✅ agent identity data fetched from real API
   - **What:** Wire identity display to backend
   - **Why:** Agent card should show real name, emoji, type, and stats (sessions, messages, cost).
   - **Context:** Stats may need separate endpoint or be included in config response.
@@ -1133,7 +1133,7 @@
 
 > **Why:** The main agent page needs to coordinate all components with real data. Replace mock `fetchData()` with actual API calls.
 
-- [ ] **4.3.1** Replace mock `fetchData()` with real API calls ← depends on: [4.2.1-4.2.6]
+- [x] **4.3.1** Replace mock `fetchData()` with real API calls ← depends on: [4.2.1-4.2.6] — ✅ Agent/Show.vue fetches real data from API (not mocks)
   - **What:** Load all agent data from API on page mount
   - **Why:** Page currently shows mock data. Need to fetch real configuration, capabilities, settings, session, and memories.
   - **Context:** Consider parallel fetching for better performance. Handle loading and error states for each section.
@@ -1143,7 +1143,7 @@
   - Fetch current session
   - Fetch memories
 
-- [ ] **4.3.2** Implement all event handlers with real API calls
+- [x] **4.3.2** Implement all event handlers with real API calls — ✅ Agent/Show.vue uses real API for all operations
   - **What:** Wire all component events to API methods
   - **Why:** User actions (save, delete, etc.) must persist to backend. Currently many handlers just log or show toasts.
   - **Context:** Destructive actions (reset, delete) need confirmation dialogs. Success/error feedback via toasts.
@@ -1166,7 +1166,7 @@
 
 ### 5.1 Agent Status Management
 
-- [ ] **5.1.1** Add status control endpoints to `UserController` ← depends on: [2.4.1]
+- [x] **5.1.1** Add status control endpoints to `UserController` ← depends on: [2.4.1] — ✅ AgentController handles status (PATCH /api/agents/{id})
   - **What:** API endpoints for controlling agent operational status
   - **Why:** Users need to pause agents (stop processing), resume them, or hard-stop current work. Essential for managing runaway or misbehaving agents.
   - **Context:** Pause prevents new tasks from starting. Stop cancels the currently running task.
@@ -1174,7 +1174,7 @@
   - `POST /api/agents/{id}/resume` - resume agent
   - `POST /api/agents/{id}/stop` - stop agent (cancel current task)
 
-- [ ] **5.1.2** Implement pause/resume logic
+- [x] **5.1.2** Implement pause/resume logic — ✅ agent status management (idle/working/sleeping) with AgentStatusUpdated broadcast event
   - **What:** Business logic for status transitions and task cancellation
   - **Why:** Status changes must update the database and notify connected clients. Stopping requires cancelling the active task.
   - **Context:** WebSocket broadcast ensures all open tabs see status change immediately.
@@ -1184,7 +1184,7 @@
 
 ### 5.2 Agent Deletion
 
-- [ ] **5.2.1** Add agent deletion endpoint ← depends on: [2.4.1]
+- [x] **5.2.1** Add agent deletion endpoint ← depends on: [2.4.1] — ✅ DELETE /api/agents/{id} exists in routes + AgentController
   - **What:** Soft-delete endpoint for removing an agent
   - **Why:** Users need to delete agents they no longer need. Soft delete allows recovery if deletion was accidental.
   - **Context:** Must clean up related data: archive sessions, clear/archive memories, remove from any channels.
@@ -1259,7 +1259,7 @@
 
 ### 7.1 Backend Tests
 
-- [ ] **7.1.1** Create `AgentConfigurationTest` feature test ← depends on: [3.1.1]
+- [x] **7.1.1** Create `AgentConfigurationTest` feature test ← depends on: [3.1.1] — ✅ AgentControllerTest exists in tests/Feature/
   - **What:** Test agent configuration API endpoints
   - **Why:** Configuration is core functionality. Tests ensure CRUD works, authorization prevents unauthorized access, and validation rejects bad data.
   - **Context:** Use Laravel's testing helpers. Test as authenticated user and verify cannot access other users' agents.
@@ -1267,7 +1267,7 @@
   - Test authorization (only owners can edit)
   - Test validation
 
-- [ ] **7.1.2** Create `AgentCapabilityTest` feature test ← depends on: [3.2.1]
+- [x] **7.1.2** Create `AgentCapabilityTest` feature test ← depends on: [3.2.1] — ✅ AgentPermissionControllerTest + AgentPermissionServiceTest + ToolRegistryTest exist
   - **What:** Test capability management API
   - **Why:** Capabilities control what tools agents can use. Tests ensure assignment works and bulk updates don't break relationships.
   - **Context:** Test both individual capability toggle and bulk update. Verify pivot table data (enabled, requires_approval) persists correctly.
@@ -1416,7 +1416,7 @@
 
 > **Why:** Agents need to be triggered by external events (GitHub commits, Slack messages, etc.). Webhooks enable event-driven agent activation.
 
-- [ ] **8.5.1** Already implemented basic UI (Integrations.vue)
+- [x] **8.5.1** Already implemented basic UI (Integrations.vue) — ✅ Integrations.vue exists with Telegram and Plausible configured
   - **What:** UI skeleton for integrations exists
   - **Why:** Placeholder for webhook management interface.
 
@@ -1682,27 +1682,27 @@
 
 > **This is the most critical phase.** Without this, agents cannot process messages or execute tasks. All other agent features (memory, heartbeat, sub-agents) depend on this.
 
-- [ ] **3.12.1** Create `AgentPromptBuilder` service ← depends on: [2.1.x, 3.1.1]
+- [x] **3.12.1** Create `AgentPromptBuilder` service ← depends on: [2.1.x, 3.1.1] — ✅ superseded: system prompt assembly built into OpenCompanyAgent using Document-based identity files
   - **What:** Service that assembles the system prompt from agent config fields (personality, instructions), user context, tool documentation, and memory. Follows OpenClaw's injection order: identity → personality → user → instructions → tools → memory.
   - **Why:** Clean separation of prompt assembly from execution. Handles sub-agent restrictions (only instructions, no personality/user context).
 
-- [ ] **3.12.2** Create `AgentToolExecutor` service ← depends on: [3.5.1.x]
+- [x] **3.12.2** Create `AgentToolExecutor` service ← depends on: [3.5.1.x] — ✅ superseded: tool resolution handled by ToolRegistry.getToolsForAgent() + AgentPermissionService
   - **What:** Service that resolves available tools for an agent (based on capabilities/permissions), executes tool calls from LLM responses, and returns results.
   - **Why:** Adapted from OpenClaw's tool execution loop. Handles the tool call → result → feed back cycle.
   - Tool resolution follows permission stack: profile → allow/deny → agent-specific restrictions
 
-- [ ] **3.12.3** Create `ProcessAgentMessageJob` ← depends on: [3.12.1, 3.12.2]
+- [x] **3.12.3** Create `ProcessAgentMessageJob` ← depends on: [3.12.1, 3.12.2] — ✅ implemented as AgentRespondJob (core agent brain)
   - **What:** The core agent runner job. Dispatched when an agent is mentioned or receives a DM. Loads context, builds prompt, calls AI SDK with streaming, processes tool calls, stores response, broadcasts via Reverb.
   - **Why:** This is the "agent brain" — the single most important piece of the system. Replaces OpenClaw's `runEmbeddedPiAgent()`.
   - Queue: `agent-{id}` (serialized per agent to prevent race conditions)
   - Includes: conversation history loading, streaming response broadcast, post-processing (memory indexing, compaction check)
 
-- [ ] **3.12.4** Wire message controller to dispatch agent runs ← depends on: [3.12.3]
+- [x] **3.12.4** Wire message controller to dispatch agent runs ← depends on: [3.12.3] — ✅ MessageController dispatches AgentRespondJob on @mention and DM
   - **What:** Update `MessageController::store()` to detect @mentions of agents and dispatch `ProcessAgentMessageJob`. Also handle DM channels where the other participant is an agent.
   - **Why:** This is the trigger that makes agents respond to messages.
   - Detection: check message content for @mentions matching agent names, or check if channel is a DM with an agent member
 
-- [ ] **3.12.5** Add response streaming via Reverb ← depends on: [3.12.3]
+- [x] **3.12.5** Add response streaming via Reverb ← depends on: [3.12.3] — ✅ streaming via Reverb WebSocket (MessageSent, AgentStatusUpdated, TypingIndicator events)
   - **What:** Create `AgentTyping` broadcast event for partial response streaming. Clients receive chunks as the agent generates them, showing real-time typing.
   - **Why:** UX requirement — users should see agents "typing" in real-time, not wait for complete responses.
   - Broadcast on channel: `channel.{id}`
@@ -1718,8 +1718,8 @@
 ## Verification Checklist
 
 ### Functional Verification
-- [ ] Navigate to `/agent/{id}` - page loads without errors
-- [ ] All 7 tabs render correctly (Overview, Personality, Instructions, Capabilities, Memory, Activity, Settings)
+- [x] Navigate to `/agent/{id}` - page loads without errors — ✅ Agent/Show.vue with Inertia route
+- [x] All 7 tabs render correctly (Overview, Personality, Instructions, Capabilities, Memory, Activity, Settings) — ✅ tabs: Overview, Tasks, Identity, Capabilities, Activity, Settings
 - [ ] Edit personality → saves to database → persists on refresh
 - [ ] Edit instructions → saves to database → persists on refresh
 - [ ] Toggle capability → saves to database → persists on refresh
@@ -2240,7 +2240,7 @@ Agents currently have no semantic memory beyond plain MEMORY.md text. Adding pgv
   - `ListItemFactory` + `ListStatusFactory`
   - `CalendarEventFactory`
   - `DataTableFactory` + `DataTableColumnFactory` + `DataTableRowFactory`
-- [ ] **N4.3** Agent API tests
+- [x] **N4.3** Agent API tests — ✅ 20+ test files exist in tests/Feature/ and tests/Feature/Tools/
   - `AgentControllerTest` — CRUD agents, identity files, show endpoint
   - `AgentPermissionControllerTest` — tool/channel/folder permission toggles
   - `AgentChatServiceTest` — message dispatch triggers agent response

@@ -1,515 +1,391 @@
-# Chart Generation — JSON Adapter Reference
+# Visualization Tools — Reference
 
-> Complete reference for the `create_jpgraph_chart` tool. Agents pass a JSON config object and receive a markdown image embed.
-
----
-
-## Common Config
-
-Every chart call requires a `type` and at least one data source (`series`, `items`, or `matrix`).
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `type` | string | Yes | Chart type (see below) |
-| `title` | string | No | Title displayed at top of chart |
-| `labels` | string[] | No | Category labels — x-axis (bar/line/combo), slice names (pie/donut), spoke names (radar) |
-| `series` | object[] | Depends | Data series (all types except `gantt` and `contour`) |
-| `items` | object[] | Gantt only | Gantt timeline items |
-| `matrix` | number[][] | Contour only | 2D numeric grid for heatmap/contour |
-| `width` | integer | No | Image width in pixels (default: 1400, range: 100–4000) |
-| `height` | integer | No | Image height in pixels (default: 800, range: 100–4000) |
-| `options` | object | No | Styling and behavior options (see Options table) |
-
-Fonts, margins, markers, and line weights all scale proportionally to width. At 700px reference width, base sizes apply unchanged. At 1400px (default), everything is 2x.
+> Reference for the five visualization tools available to agents. Each tool accepts markup or a spec and returns an image embed (or PDF).
 
 ---
 
-## Series Object
+## Overview
 
-Used by all chart types except `gantt` and `contour`.
+Agents have five tools for generating visual output:
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | string | — | Series name (shown in legend) |
-| `values` | array | **Required** | Data values — format depends on chart type |
-| `color` | string | Auto | Hex color (`"#4F46E5"`) |
-| `lineWeight` | integer | 2 | Line thickness (line/area/spline/combo/impulse) |
-| `fillColor` | string | Auto | Fill color with alpha (`"#4F46E5@0.5"`) |
-| `marker` | string | None | Marker type: `"circle"`, `"square"`, `"diamond"`, `"triangle"`, `"triangle_down"`, `"star"`, `"cross"`, `"x"` |
-| `markerSize` | integer | 6 | Marker diameter in pixels (scales with resolution) |
-| `plotType` | string | Auto | **Combo only.** `"bar"` or `"line"`. Default: first series = bar, rest = line |
+| Tool | Input | Output | Provider |
+|------|-------|--------|----------|
+| `render_svg` | Raw SVG markup | PNG image | Built-in |
+| `render_vegalite` | Vega-Lite JSON spec | PNG image | External (MCP) |
+| `render_mermaid` | Mermaid diagram markup | PNG image | External (MCP) |
+| `render_plantuml` | PlantUML markup | PNG image | External (MCP) |
+| `render_typst` | Typst markup | PDF document | External (MCP) |
 
-### Values format by type
+All image tools return a markdown image embed (`![title](/storage/...png)`). The Typst tool returns a markdown link to the generated PDF.
 
-| Type | Values format | Example |
-|------|--------------|---------|
-| bar, horizontal_bar, grouped_bar, stacked_bar | `number[]` | `[10, 20, 30]` |
-| line, area, stacked_area, spline | `number[]` | `[10, 25, 18, 35]` |
-| combo | `number[]` | `[120, 150, 180]` |
-| error_line | `[value, errMin, errMax][]` | `[[50, 2, 3], [55, 1, 2]]` |
-| scatter, impulse | `[x, y][]` | `[[1, 5], [3, 8], [5, 2]]` |
-| polar | `[angle, radius][]` | `[[0, 3], [90, 8], [180, 6]]` |
-| pie, pie_3d, donut | `number[]` | `[30, 25, 20, 15, 10]` |
-| radar | `number[]` | `[5, 8, 6, 9, 4]` |
-| stock | `[open, close, min, max][]` | `[[100, 105, 98, 107]]` |
-| box | `[low, q1, median, q3, high][]` | `[[10, 25, 50, 75, 90]]` |
+**Rule:** Never fabricate image or document URLs. Always use these tools and embed the returned path.
 
 ---
 
-## Gantt Items
+## `render_svg` — SVG to PNG (Built-in)
 
-Used only by `type: "gantt"`. Replaces `series`.
+Converts raw SVG markup to a PNG image using `rsvg-convert`. Use this for custom diagrams, icons, illustrations, infographics, or any visual that does not fit neatly into a data-charting spec.
 
-Each item has a `type` field:
+### Parameters
 
-### Bar item
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `type` | `"bar"` | Yes | |
-| `label` | string | Yes | Task name |
-| `start` | string | Yes | Start date (`"YYYY-MM-DD"`) |
-| `end` | string | Yes | End date (`"YYYY-MM-DD"`) |
-| `progress` | integer | No | Completion percentage (0–100) |
-| `color` | string | No | Bar fill color |
-| `caption` | string | No | Text after the bar |
-| `heightFactor` | float | No | Bar height (0–1, default 0.6) |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `svg` | string | Yes | — | Complete SVG markup. Must include a root `<svg>` element with `xmlns` and `viewBox`. |
+| `title` | string | No | `"Image"` | Alt text for the returned markdown image embed. |
+| `width` | integer | No | `1400` | Output width in pixels (100--4000). Height scales from viewBox unless set explicitly. |
+| `height` | integer | No | — | Output height in pixels (100--4000). Omit to preserve the SVG aspect ratio. |
 
-### Milestone item
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `type` | `"milestone"` | Yes | |
-| `label` | string | Yes | Milestone name |
-| `date` | string | Yes | Target date |
-| `color` | string | No | Diamond marker color |
+### Tips
 
-### Vertical line item
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `type` | `"vline"` | Yes | |
-| `date` | string | Yes | Date position |
-| `label` | string | No | Line label |
-| `color` | string | No | Line color |
+- Always include `xmlns="http://www.w3.org/2000/svg"` and a `viewBox` on the root element.
+- Use `font-family="sans-serif"` — named fonts are not guaranteed.
+- Use hex colors (`#rrggbb`), not CSS named colors.
+- Supported features: shapes, paths, text, gradients (linear/radial), filters (blur, drop-shadow), clip-paths, masks, patterns, transforms.
+- For crisp output, stick to vector elements. Avoid embedded raster images.
 
----
-
-## Contour Matrix
-
-Used only by `type: "contour"`. Replaces `series`.
-
-A 2D array of numbers representing Z-values on a grid. Minimum 2x2. All rows must have the same length.
+### Example — Simple Infographic
 
 ```json
 {
-  "type": "contour",
-  "matrix": [
-    [1, 2, 3, 4, 5],
-    [2, 4, 6, 8, 10],
-    [3, 6, 9, 12, 15],
-    [4, 8, 12, 16, 20]
-  ]
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 400 300\"><rect width=\"400\" height=\"300\" fill=\"#1e1e2e\" rx=\"12\"/><circle cx=\"200\" cy=\"120\" r=\"60\" fill=\"#89b4fa\"/><text x=\"200\" y=\"240\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"24\" fill=\"#cdd6f4\">Hello World</text></svg>",
+  "title": "Hello World Graphic",
+  "width": 1400
+}
+```
+
+### Example — Status Indicators
+
+```json
+{
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 100\"><rect width=\"600\" height=\"100\" fill=\"#f8fafc\" rx=\"8\"/><circle cx=\"60\" cy=\"50\" r=\"16\" fill=\"#10b981\"/><text x=\"90\" y=\"56\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#334155\">Online (12)</text><circle cx=\"250\" cy=\"50\" r=\"16\" fill=\"#f59e0b\"/><text x=\"280\" y=\"56\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#334155\">Busy (3)</text><circle cx=\"430\" cy=\"50\" r=\"16\" fill=\"#ef4444\"/><text x=\"460\" y=\"56\" font-family=\"sans-serif\" font-size=\"16\" fill=\"#334155\">Offline (5)</text></svg>",
+  "title": "Agent Status Summary"
 }
 ```
 
 ---
 
-## Options
+## `render_vegalite` — Vega-Lite Charts (External)
 
-All fields are optional. Pass in the `options` object.
+Accepts a [Vega-Lite](https://vega.github.io/vega-lite/) JSON specification and renders it to a PNG image. This is the primary tool for data charts — bar, line, area, pie, scatter, and everything else Vega-Lite supports.
 
-### Layout & Axes
+Call `get_tool_info("render_vegalite")` to confirm exact parameters before first use.
 
-| Option | Type | Default | Applies to |
-|--------|------|---------|------------|
-| `xAxisLabel` | string | — | Bar, line, area, combo, error_line, scatter, impulse |
-| `yAxisLabel` | string | — | Same as above |
-| `yMin` | number | Auto | Any with Y axis |
-| `yMax` | number | Auto | Any with Y axis |
-| `labelAngle` | integer | Auto (45 if >8 labels) | Any with X labels |
-| `margin` | object | Auto-scaled | All types. Keys: `left`, `right`, `top`, `bottom` (px at 700px reference) |
+### Spec Format
 
-### Legend
+Pass a standard Vega-Lite v5 specification. At minimum you need `mark`, `encoding`, and either inline `data` or a `data.values` array.
 
-| Option | Type | Default | Applies to |
-|--------|------|---------|------------|
-| `legend` | boolean | true | All (shown when >1 series) |
-| `legendPosition` | string | `"top"` | All. Values: `"top"`, `"bottom"`, `"right"` |
+### Example — Vertical Bar Chart
 
-### Values & Grid
-
-| Option | Type | Default | Applies to |
-|--------|------|---------|------------|
-| `showValues` | boolean | false | Bar types, combo |
-| `valueFormat` | string | `"%d"` | Bar types, combo. Printf format |
-| `showGrid` | boolean | true | All with axes |
-| `gridColor` | string | `"#E5E7EB"` | All with axes |
-
-### Colors & Style
-
-| Option | Type | Default | Applies to |
-|--------|------|---------|------------|
-| `backgroundColor` | string | `"white"` | All |
-| `colors` | string[] | Built-in palette | All. Array of hex colors as palette override |
-| `lineWeight` | integer | 2 | Line, area, spline, combo (global default) |
-
-### Pie-specific
-
-| Option | Type | Default | Applies to |
-|--------|------|---------|------------|
-| `percentage` | boolean | false | pie, pie_3d, donut — show % labels |
-| `threeDAngle` | integer | 50 | pie_3d — 3D perspective angle |
-| `donutSize` | float | 0.5 | donut — hole size (0–1) |
-
-### Radar-specific
-
-| Option | Type | Default | Applies to |
-|--------|------|---------|------------|
-| `radarFill` | boolean | true | radar — fill area under lines |
-
-### Spline-specific
-
-| Option | Type | Default | Applies to |
-|--------|------|---------|------------|
-| `splineDensity` | integer | 50 | spline — interpolated points (10–500) |
-
-### Contour-specific
-
-| Option | Type | Default | Applies to |
-|--------|------|---------|------------|
-| `isobar` | integer | 10 | contour — number of contour levels |
-| `interpolation` | integer | 1 | contour — smoothing factor (1–5) |
-
----
-
-## Chart Types
-
-### Bar Charts
-
-#### `bar` — Vertical Bar
 ```json
 {
-  "type": "bar",
-  "title": "Monthly Sales",
-  "labels": ["Jan", "Feb", "Mar", "Apr"],
-  "series": [{"name": "Sales", "values": [120, 150, 180, 200]}],
-  "options": {"showValues": true, "valueFormat": "$%d"}
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": "Monthly Revenue",
+  "width": 500,
+  "height": 300,
+  "data": {
+    "values": [
+      {"month": "Jan", "revenue": 120},
+      {"month": "Feb", "revenue": 150},
+      {"month": "Mar", "revenue": 180},
+      {"month": "Apr", "revenue": 200}
+    ]
+  },
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "month", "type": "nominal", "axis": {"labelAngle": 0}},
+    "y": {"field": "revenue", "type": "quantitative", "title": "Revenue ($K)"},
+    "color": {"value": "#4F46E5"}
+  }
 }
 ```
 
-#### `horizontal_bar` — Horizontal Bar
+### Example — Multi-Series Line Chart
+
 ```json
 {
-  "type": "horizontal_bar",
-  "title": "Department Budget",
-  "labels": ["Engineering", "Marketing", "Sales", "Support"],
-  "series": [{"name": "Budget", "values": [500, 300, 400, 200]}]
-}
-```
-
-#### `grouped_bar` — Grouped (Side-by-Side)
-```json
-{
-  "type": "grouped_bar",
-  "title": "Q1 vs Q2 Revenue",
-  "labels": ["Product A", "Product B", "Product C"],
-  "series": [
-    {"name": "Q1", "values": [120, 90, 150]},
-    {"name": "Q2", "values": [140, 110, 160]}
-  ]
-}
-```
-
-#### `stacked_bar` — Stacked
-```json
-{
-  "type": "stacked_bar",
-  "title": "Revenue Breakdown",
-  "labels": ["2022", "2023", "2024"],
-  "series": [
-    {"name": "Subscriptions", "values": [200, 280, 350]},
-    {"name": "Services", "values": [100, 120, 140]},
-    {"name": "Licenses", "values": [50, 60, 70]}
-  ]
-}
-```
-
-### Line Charts
-
-#### `line` — Line Chart
-```json
-{
-  "type": "line",
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
   "title": "Weekly Active Users",
-  "labels": ["W1", "W2", "W3", "W4", "W5", "W6"],
-  "series": [
-    {"name": "Mobile", "values": [1200, 1350, 1100, 1500, 1400, 1600], "marker": "circle"},
-    {"name": "Desktop", "values": [800, 850, 900, 870, 920, 950], "marker": "square"}
-  ]
+  "width": 500,
+  "height": 300,
+  "data": {
+    "values": [
+      {"week": "W1", "platform": "Mobile", "users": 1200},
+      {"week": "W2", "platform": "Mobile", "users": 1350},
+      {"week": "W3", "platform": "Mobile", "users": 1500},
+      {"week": "W4", "platform": "Mobile", "users": 1600},
+      {"week": "W1", "platform": "Desktop", "users": 800},
+      {"week": "W2", "platform": "Desktop", "users": 850},
+      {"week": "W3", "platform": "Desktop", "users": 920},
+      {"week": "W4", "platform": "Desktop", "users": 950}
+    ]
+  },
+  "mark": {"type": "line", "point": true},
+  "encoding": {
+    "x": {"field": "week", "type": "ordinal"},
+    "y": {"field": "users", "type": "quantitative", "title": "Users"},
+    "color": {"field": "platform", "type": "nominal"}
+  }
 }
 ```
 
-#### `area` — Area Chart
+### Example — Area Chart
+
 ```json
 {
-  "type": "area",
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
   "title": "Traffic Over Time",
-  "labels": ["Mon", "Tue", "Wed", "Thu", "Fri"],
-  "series": [{"name": "Visitors", "values": [500, 700, 600, 800, 750], "fillColor": "#4F46E5@0.3"}]
+  "width": 500,
+  "height": 300,
+  "data": {
+    "values": [
+      {"day": "Mon", "visitors": 500},
+      {"day": "Tue", "visitors": 700},
+      {"day": "Wed", "visitors": 600},
+      {"day": "Thu", "visitors": 800},
+      {"day": "Fri", "visitors": 750}
+    ]
+  },
+  "mark": {"type": "area", "opacity": 0.6, "color": "#4F46E5"},
+  "encoding": {
+    "x": {"field": "day", "type": "ordinal"},
+    "y": {"field": "visitors", "type": "quantitative"}
+  }
 }
 ```
 
-#### `stacked_area` — Stacked Area
+### Example — Pie / Donut Chart
+
+Vega-Lite renders pie charts using `arc` mark with a theta encoding:
+
 ```json
 {
-  "type": "stacked_area",
-  "title": "Resource Usage",
-  "labels": ["00:00", "06:00", "12:00", "18:00", "24:00"],
-  "series": [
-    {"name": "CPU", "values": [20, 45, 80, 60, 30]},
-    {"name": "Memory", "values": [30, 35, 40, 45, 35]},
-    {"name": "Disk I/O", "values": [10, 15, 25, 20, 10]}
-  ]
-}
-```
-
-#### `spline` — Smooth Curved Line
-Automatically interpolates between data points. Requires minimum 3 points.
-```json
-{
-  "type": "spline",
-  "title": "Temperature Curve",
-  "series": [{"name": "Temp", "values": [5, 8, 15, 22, 28, 25, 18, 10]}],
-  "options": {"splineDensity": 100, "yAxisLabel": "Temperature (C)"}
-}
-```
-
-#### `error_line` — Line with Error Bars
-Values are `[value, errorDeltaMin, errorDeltaMax]` triples.
-```json
-{
-  "type": "error_line",
-  "title": "Measurement Accuracy",
-  "labels": ["Trial 1", "Trial 2", "Trial 3", "Trial 4", "Trial 5"],
-  "series": [
-    {"name": "Sensor A", "values": [[50, 2, 3], [55, 1, 2], [48, 3, 4], [60, 2, 2], [52, 1, 3]]},
-    {"name": "Sensor B", "values": [[45, 3, 2], [50, 2, 3], [52, 1, 1], [55, 2, 3], [48, 2, 2]]}
-  ]
-}
-```
-
-### Pie Charts
-
-#### `pie` — Pie Chart
-```json
-{
-  "type": "pie",
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
   "title": "Market Share",
-  "labels": ["Chrome", "Safari", "Firefox", "Edge", "Other"],
-  "series": [{"values": [65, 18, 8, 5, 4]}],
-  "options": {"percentage": true}
-}
-```
-
-#### `pie_3d` — 3D Pie Chart
-```json
-{
-  "type": "pie_3d",
-  "title": "Budget Allocation",
-  "labels": ["Engineering", "Marketing", "Sales", "Ops"],
-  "series": [{"values": [40, 25, 20, 15]}],
-  "options": {"threeDAngle": 45, "percentage": true}
-}
-```
-
-#### `donut` — Donut / Ring Chart
-```json
-{
-  "type": "donut",
-  "title": "Task Status",
-  "labels": ["Done", "In Progress", "Todo", "Blocked"],
-  "series": [{"values": [45, 25, 20, 10]}],
-  "options": {"donutSize": 0.55, "percentage": true}
-}
-```
-
-### Scatter & Impulse
-
-#### `scatter` — Scatter Plot
-Values are `[x, y]` pairs.
-```json
-{
-  "type": "scatter",
-  "title": "Height vs Weight",
-  "series": [
-    {"name": "Male", "values": [[170, 70], [175, 80], [180, 85], [165, 65], [185, 90]], "marker": "circle"},
-    {"name": "Female", "values": [[155, 50], [160, 55], [165, 60], [158, 52], [170, 65]], "marker": "diamond"}
-  ],
-  "options": {"xAxisLabel": "Height (cm)", "yAxisLabel": "Weight (kg)"}
-}
-```
-
-#### `impulse` — Stem / Lollipop Chart
-Same `[x, y]` format as scatter but displays as vertical stems.
-```json
-{
-  "type": "impulse",
-  "title": "Signal Strength",
-  "series": [{"name": "Signal", "values": [[1, 5], [2, 8], [3, 3], [4, 12], [5, 6], [6, 9], [7, 4], [8, 11]]}],
-  "options": {"xAxisLabel": "Frequency", "yAxisLabel": "Amplitude"}
-}
-```
-
-### Radar & Polar
-
-#### `radar` — Spider / Radar Chart
-```json
-{
-  "type": "radar",
-  "title": "Skill Assessment",
-  "labels": ["Frontend", "Backend", "DevOps", "Design", "Leadership"],
-  "series": [
-    {"name": "Alice", "values": [9, 7, 5, 8, 6]},
-    {"name": "Bob", "values": [6, 9, 8, 4, 7]}
-  ],
-  "options": {"radarFill": true}
-}
-```
-
-#### `polar` — Polar Coordinate Chart
-Values are `[angle, radius]` pairs. Angles in degrees.
-```json
-{
-  "type": "polar",
-  "title": "Wind Direction",
-  "series": [
-    {"name": "Winter", "values": [[0, 5], [45, 8], [90, 12], [135, 6], [180, 4], [225, 9], [270, 7], [315, 10]]},
-    {"name": "Summer", "values": [[0, 3], [45, 6], [90, 8], [135, 10], [180, 7], [225, 4], [270, 5], [315, 6]]}
-  ]
-}
-```
-
-### Statistical
-
-#### `stock` — Candlestick / OHLC Chart
-Values are `[open, close, min, max]` tuples.
-```json
-{
-  "type": "stock",
-  "title": "AAPL Weekly",
-  "labels": ["Mon", "Tue", "Wed", "Thu", "Fri"],
-  "series": [{
-    "name": "AAPL",
+  "width": 300,
+  "height": 300,
+  "data": {
     "values": [
-      [150, 155, 148, 157],
-      [155, 152, 150, 158],
-      [152, 158, 149, 160],
-      [158, 156, 154, 161],
-      [156, 160, 153, 162]
+      {"browser": "Chrome", "share": 65},
+      {"browser": "Safari", "share": 18},
+      {"browser": "Firefox", "share": 8},
+      {"browser": "Edge", "share": 5},
+      {"browser": "Other", "share": 4}
     ]
-  }]
+  },
+  "mark": {"type": "arc", "innerRadius": 50},
+  "encoding": {
+    "theta": {"field": "share", "type": "quantitative"},
+    "color": {"field": "browser", "type": "nominal"}
+  }
 }
 ```
 
-#### `box` — Box Plot
-Values are `[low, q1, median, q3, high]` tuples.
+Set `"innerRadius": 0` for a solid pie, or increase it for a donut.
+
+### Example — Grouped Bar Chart
+
 ```json
 {
-  "type": "box",
-  "title": "Response Time Distribution",
-  "labels": ["API v1", "API v2", "API v3"],
-  "series": [{
-    "name": "Latency",
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": "Q1 vs Q2 Revenue",
+  "width": 400,
+  "height": 300,
+  "data": {
     "values": [
-      [50, 120, 200, 350, 500],
-      [30, 80, 150, 250, 400],
-      [20, 60, 100, 180, 300]
+      {"product": "A", "quarter": "Q1", "revenue": 120},
+      {"product": "A", "quarter": "Q2", "revenue": 140},
+      {"product": "B", "quarter": "Q1", "revenue": 90},
+      {"product": "B", "quarter": "Q2", "revenue": 110},
+      {"product": "C", "quarter": "Q1", "revenue": 150},
+      {"product": "C", "quarter": "Q2", "revenue": 160}
     ]
-  }],
-  "options": {"yAxisLabel": "Response Time (ms)"}
+  },
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "product", "type": "nominal"},
+    "xOffset": {"field": "quarter", "type": "nominal"},
+    "y": {"field": "revenue", "type": "quantitative"},
+    "color": {"field": "quarter", "type": "nominal"}
+  }
 }
 ```
 
-### Specialized
+### Vega-Lite Tips
 
-#### `gantt` — Gantt Timeline
-Uses `items` instead of `series`. Three item types: `bar`, `milestone`, `vline`.
-```json
-{
-  "type": "gantt",
-  "title": "Project Timeline",
-  "items": [
-    {"type": "bar", "label": "Research", "start": "2025-01-01", "end": "2025-01-20", "progress": 100, "color": "#10B981"},
-    {"type": "bar", "label": "Design", "start": "2025-01-15", "end": "2025-02-10", "progress": 80, "color": "#4F46E5"},
-    {"type": "milestone", "label": "Design Review", "date": "2025-02-10", "color": "#EF4444"},
-    {"type": "bar", "label": "Development", "start": "2025-02-01", "end": "2025-03-30", "progress": 30, "color": "#F59E0B"},
-    {"type": "bar", "label": "Testing", "start": "2025-03-15", "end": "2025-04-15", "color": "#8B5CF6"},
-    {"type": "vline", "date": "2025-02-20", "label": "Today", "color": "#EF4444"}
-  ]
-}
+- Always include the `$schema` field — it tells the renderer which version to use.
+- Use `"type": "nominal"` for categories, `"ordinal"` for ordered categories, `"quantitative"` for numbers, `"temporal"` for dates.
+- For stacked charts, add `"stack": true` to the y-encoding.
+- For horizontal bars, swap the x and y encodings.
+- Custom colors can be set per-series with `"scale": {"range": ["#4F46E5", "#EF4444", "#10B981"]}` on the color encoding.
+- Vega-Lite handles legends, axes, and labels automatically.
+
+---
+
+## `render_mermaid` — Mermaid Diagrams (External)
+
+Renders [Mermaid](https://mermaid.js.org/) diagram markup to a PNG image. Best for flowcharts, sequence diagrams, class diagrams, ER diagrams, Gantt charts, and similar structural diagrams.
+
+Call `get_tool_info("render_mermaid")` to confirm exact parameters before first use.
+
+### Example — Flowchart
+
+```
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End]
+    D --> E
 ```
 
-#### `contour` — Contour / Heatmap
-Uses `matrix` instead of `series`. 2D grid of Z-values.
-```json
-{
-  "type": "contour",
-  "title": "Heat Distribution",
-  "matrix": [
-    [10, 15, 20, 25, 20, 15, 10],
-    [15, 25, 35, 40, 35, 25, 15],
-    [20, 35, 50, 60, 50, 35, 20],
-    [25, 40, 60, 80, 60, 40, 25],
-    [20, 35, 50, 60, 50, 35, 20],
-    [15, 25, 35, 40, 35, 25, 15],
-    [10, 15, 20, 25, 20, 15, 10]
-  ],
-  "options": {"isobar": 8, "interpolation": 2}
-}
+### Example — Sequence Diagram
+
+```
+sequenceDiagram
+    participant U as User
+    participant A as API
+    participant D as Database
+    U->>A: POST /tasks
+    A->>D: INSERT task
+    D-->>A: task_id
+    A-->>U: 201 Created
 ```
 
-#### `combo` — Mixed Bar + Line
-Series use `plotType` to specify rendering. Default: first series = bar, rest = line.
-```json
-{
-  "type": "combo",
-  "title": "Revenue vs Growth Rate",
-  "labels": ["Q1", "Q2", "Q3", "Q4"],
-  "series": [
-    {"name": "Revenue ($K)", "values": [120, 150, 180, 220], "plotType": "bar", "color": "#4F46E5"},
-    {"name": "Growth %", "values": [5, 12, 18, 22], "plotType": "line", "color": "#EF4444", "marker": "circle"}
-  ],
-  "options": {"showValues": true, "yAxisLabel": "Revenue ($K)"}
-}
+### Example — Gantt Chart
+
+```
+gantt
+    title Project Timeline
+    dateFormat YYYY-MM-DD
+    section Planning
+    Research       :done, 2025-01-01, 2025-01-20
+    Design         :active, 2025-01-15, 2025-02-10
+    section Development
+    Backend        :2025-02-01, 2025-03-15
+    Frontend       :2025-02-15, 2025-03-30
 ```
 
 ---
 
-## Default Color Palette
+## `render_plantuml` — PlantUML Diagrams (External)
 
-When no colors are specified, series cycle through:
+Renders [PlantUML](https://plantuml.com/) markup to a PNG image. Best for UML diagrams — class, component, activity, state, deployment, use-case, and more.
 
-| Index | Color | Hex |
-|-------|-------|-----|
-| 0 | Indigo | `#4F46E5` |
-| 1 | Red | `#EF4444` |
-| 2 | Emerald | `#10B981` |
-| 3 | Amber | `#F59E0B` |
-| 4 | Violet | `#8B5CF6` |
-| 5 | Pink | `#EC4899` |
-| 6 | Cyan | `#06B6D4` |
-| 7 | Lime | `#84CC16` |
-| 8 | Orange | `#F97316` |
-| 9 | Indigo-alt | `#6366F1` |
+Call `get_tool_info("render_plantuml")` to confirm exact parameters before first use.
 
-Override with `options.colors: ["#hex", ...]`.
+### Example — Class Diagram
+
+```
+@startuml
+class User {
+  +id: int
+  +name: string
+  +email: string
+  +tasks(): HasMany
+}
+
+class Task {
+  +id: int
+  +title: string
+  +status: string
+  +user(): BelongsTo
+}
+
+User "1" -- "*" Task : owns
+@enduml
+```
+
+### Example — Activity Diagram
+
+```
+@startuml
+start
+:Receive request;
+if (Authenticated?) then (yes)
+  :Process request;
+  :Return response;
+else (no)
+  :Return 401;
+endif
+stop
+@enduml
+```
 
 ---
 
-## Resolution & Scaling
+## `render_typst` — Typst to PDF (External)
 
-| Width | Font scale | Best for |
-|-------|-----------|----------|
-| 700 | 1x (base) | Thumbnails, inline previews |
-| 1400 | 2x (default) | Standard display, chat messages |
-| 2800 | 4x | High-DPI, print, presentations |
+Renders [Typst](https://typst.app/) markup to a PDF document. Use this for formatted reports, invoices, letters, or any document that needs precise layout and typography.
 
-All text, margins, markers, and line weights scale linearly with width relative to the 700px reference.
+Call `get_tool_info("render_typst")` to confirm exact parameters before first use.
+
+### Example — Simple Report
+
+```typst
+#set page(margin: 2cm)
+#set text(font: "Inter", size: 11pt)
+
+= Quarterly Report
+
+== Summary
+
+Revenue increased by *18%* compared to the previous quarter.
+
+#table(
+  columns: (1fr, 1fr, 1fr),
+  [*Metric*], [*Q1*], [*Q2*],
+  [Revenue], [$120K], [$142K],
+  [Users], [1,200], [1,580],
+  [Churn], [3.2%], [2.8%],
+)
+
+== Key Highlights
+
+- Launched mobile app (12K downloads in first month)
+- Reduced infrastructure costs by 15%
+- Hired 3 new engineers
+```
+
+### Example — Invoice
+
+```typst
+#set page(margin: 1.5cm)
+#set text(size: 10pt)
+
+#align(right)[
+  *Invoice \#2025-042* \
+  Date: February 8, 2025
+]
+
+#v(1cm)
+
+*Bill To:* \
+Acme Corporation \
+123 Business Ave
+
+#v(0.5cm)
+
+#table(
+  columns: (3fr, 1fr, 1fr, 1fr),
+  [*Description*], [*Qty*], [*Rate*], [*Amount*],
+  [Consulting hours], [40], [$150], [$6,000],
+  [Platform license], [1], [$500], [$500],
+  [Support (monthly)], [1], [$200], [$200],
+)
+
+#align(right)[*Total: $6,700*]
+```
+
+---
+
+## When to Use Which Tool
+
+| Need | Tool |
+|------|------|
+| Data chart (bar, line, area, scatter, pie) | `render_vegalite` |
+| Flowchart, sequence diagram, ER diagram | `render_mermaid` |
+| UML class/component/state diagram | `render_plantuml` |
+| Custom graphic, icon, infographic | `render_svg` |
+| Formatted report, invoice, letter (PDF) | `render_typst` |
+
+When in doubt, prefer `render_vegalite` for anything data-driven and `render_mermaid` for structural diagrams. Use `render_svg` when you need full creative control over the visual.

@@ -14,6 +14,8 @@
 | [technology-decisions.md](architecture/technology-decisions.md) | Tech stack choices: Laravel AI SDK over Prism, Laravel queues for orchestration | Understanding why we chose what |
 | [observability.md](architecture/observability.md) | Monitoring, metrics, logging, error tracking, health checks, alerting | Building admin/ops features |
 | [ai-tool-packages.md](architecture/ai-tool-packages.md) | AI tool package ecosystem — ToolProvider contract, credential abstraction, hybrid ToolRegistry, building new tool packages | Creating or modifying AI tool packages, understanding the plugin architecture |
+| [interagent-comms.md](architecture/interagent-comms.md) | Inter-agent communication protocol — ContactAgent tool with ask/delegate/notify patterns, DM channels, delegation tracking | Building or debugging agent-to-agent communication |
+| [ai-tool-strategy.md](strategy/ai-tool-strategy.md) | AI tool ecosystem strategy — package publishing, MCP export, missing tool analysis, Fair Code growth | Planning tool ecosystem, evaluating new tool integrations |
 
 ## Planning & Implementation
 
@@ -49,7 +51,7 @@
 
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
-| [charts.md](tools/charts.md) | Chart generation JSON adapter — all 21 chart types, series formats, options, examples | Using or extending the `create_jpgraph_chart` agent tool |
+| [charts.md](tools/charts.md) | Visualization tools reference — render_svg, render_vegalite, render_mermaid, render_plantuml, render_typst | Using or extending visualization tools |
 
 ## Research
 
