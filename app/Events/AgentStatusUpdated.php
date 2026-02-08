@@ -34,6 +34,7 @@ class AgentStatusUpdated implements ShouldBroadcast
         return [
             'id' => $this->agent->id,
             'status' => $this->agent->status,
+            'currentTask' => $this->agent->current_task,
         ];
     }
 }

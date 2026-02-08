@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-white dark:bg-neutral-900 p-6">
-    <div class="max-w-5xl mx-auto">
+  <div :class="['min-h-screen bg-white dark:bg-neutral-900', viewMode === 'constellation' ? 'p-6 pb-0' : 'p-6']">
+    <div :class="viewMode === 'constellation' ? 'max-w-full h-full' : 'max-w-5xl mx-auto'">
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
@@ -10,30 +10,60 @@
           </p>
         </div>
 
-        <!-- Inline stats -->
-        <div v-if="!loading" class="flex items-center gap-4 text-sm text-neutral-500 dark:text-neutral-400">
-          <div class="flex items-center gap-1.5">
-            <Icon name="ph:users" class="w-4 h-4" />
-            <span class="font-medium text-neutral-900 dark:text-white">{{ stats.totalMembers }}</span>
-            <span>members</span>
+        <div class="flex items-center gap-4">
+          <!-- Inline stats -->
+          <div v-if="!loading" class="flex items-center gap-4 text-sm text-neutral-500 dark:text-neutral-400">
+            <div class="flex items-center gap-1.5">
+              <Icon name="ph:users" class="w-4 h-4" />
+              <span class="font-medium text-neutral-900 dark:text-white">{{ stats.totalMembers }}</span>
+              <span>members</span>
+            </div>
+            <span class="text-neutral-300 dark:text-neutral-600">·</span>
+            <div class="flex items-center gap-1.5">
+              <Icon name="ph:user" class="w-4 h-4" />
+              <span class="font-medium text-neutral-900 dark:text-white">{{ stats.humans }}</span>
+              <span>human{{ stats.humans !== 1 ? 's' : '' }}</span>
+            </div>
+            <span class="text-neutral-300 dark:text-neutral-600">·</span>
+            <div class="flex items-center gap-1.5">
+              <Icon name="ph:robot" class="w-4 h-4" />
+              <span class="font-medium text-neutral-900 dark:text-white">{{ stats.agents }}</span>
+              <span>agent{{ stats.agents !== 1 ? 's' : '' }}</span>
+            </div>
+            <span class="text-neutral-300 dark:text-neutral-600">·</span>
+            <div class="flex items-center gap-1.5">
+              <div class="w-2 h-2 rounded-full bg-green-500" />
+              <span class="font-medium text-neutral-900 dark:text-white">{{ stats.activeAgents }}</span>
+              <span>active</span>
+            </div>
           </div>
-          <span class="text-neutral-300 dark:text-neutral-600">·</span>
-          <div class="flex items-center gap-1.5">
-            <Icon name="ph:user" class="w-4 h-4" />
-            <span class="font-medium text-neutral-900 dark:text-white">{{ stats.humans }}</span>
-            <span>human{{ stats.humans !== 1 ? 's' : '' }}</span>
-          </div>
-          <span class="text-neutral-300 dark:text-neutral-600">·</span>
-          <div class="flex items-center gap-1.5">
-            <Icon name="ph:robot" class="w-4 h-4" />
-            <span class="font-medium text-neutral-900 dark:text-white">{{ stats.agents }}</span>
-            <span>agent{{ stats.agents !== 1 ? 's' : '' }}</span>
-          </div>
-          <span class="text-neutral-300 dark:text-neutral-600">·</span>
-          <div class="flex items-center gap-1.5">
-            <div class="w-2 h-2 rounded-full bg-green-500" />
-            <span class="font-medium text-neutral-900 dark:text-white">{{ stats.activeAgents }}</span>
-            <span>active</span>
+
+          <!-- View toggle -->
+          <div class="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5">
+            <button
+              :class="[
+                'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
+                viewMode === 'constellation'
+                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300',
+              ]"
+              @click="viewMode = 'constellation'"
+            >
+              <Icon name="ph:graph" class="w-3.5 h-3.5 inline mr-1" />
+              Constellation
+            </button>
+            <button
+              :class="[
+                'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
+                viewMode === 'tree'
+                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300',
+              ]"
+              @click="viewMode = 'tree'"
+            >
+              <Icon name="ph:tree-structure" class="w-3.5 h-3.5 inline mr-1" />
+              Tree
+            </button>
           </div>
         </div>
       </div>
@@ -43,6 +73,15 @@
         <div class="space-y-4">
           <Skeleton v-for="i in 4" :key="i" preset="avatar-text" />
         </div>
+      </div>
+
+      <!-- Constellation View -->
+      <div
+        v-else-if="viewMode === 'constellation'"
+        class="relative -mx-6 -mt-2 overflow-hidden"
+        :style="{ height: 'calc(100vh - 88px)' }"
+      >
+        <ConstellationView :nodes="hierarchy" />
       </div>
 
       <!-- Tree View -->
@@ -59,11 +98,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Skeleton from '@/Components/shared/Skeleton.vue'
 import OrgTreeNode from '@/Components/org/TreeNode.vue'
+import ConstellationView from '@/Components/org/ConstellationView.vue'
 import { useApi } from '@/composables/useApi'
+import { useRealtime } from '@/composables/useRealtime'
 
 interface OrgNode {
   id: string
@@ -71,6 +112,7 @@ interface OrgNode {
   avatar: string | null
   type: 'human' | 'agent'
   agentType: string | null
+  brain: string | null
   status: string | null
   currentTask: string | null
   email: string | null
@@ -82,6 +124,7 @@ interface OrgNode {
 const { fetchUsers } = useApi()
 const loading = ref(true)
 const hierarchy = ref<OrgNode[]>([])
+const viewMode = ref<'constellation' | 'tree'>('tree')
 
 const stats = computed(() => {
   const flatten = (nodes: OrgNode[]): OrgNode[] => {
@@ -128,6 +171,7 @@ const loadHierarchy = async () => {
         avatar: user.avatar || null,
         type: user.type || (user.isAI ? 'agent' : 'human'),
         agentType: user.agentType || user.role || null,
+        brain: user.brain || null,
         status: user.status || null,
         currentTask: user.currentTask || null,
         email: user.email || null,
@@ -156,7 +200,28 @@ const loadHierarchy = async () => {
   }
 }
 
+// Real-time status updates
+const { on } = useRealtime()
+const unsubStatus = on('agent:status', (data: { id: string; status: string; currentTask?: string }) => {
+  const updateNode = (nodes: OrgNode[]): boolean => {
+    for (const node of nodes) {
+      if (node.id === data.id) {
+        node.status = data.status
+        if (data.currentTask !== undefined) node.currentTask = data.currentTask
+        return true
+      }
+      if (updateNode(node.children)) return true
+    }
+    return false
+  }
+  updateNode(hierarchy.value)
+})
+
 onMounted(() => {
   loadHierarchy()
+})
+
+onUnmounted(() => {
+  unsubStatus()
 })
 </script>

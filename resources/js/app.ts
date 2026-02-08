@@ -1,4 +1,5 @@
 import '../css/app.css';
+import '@fontsource-variable/lexend';
 import 'highlight.js/styles/github-dark.css';
 import './bootstrap';
 

@@ -10,6 +10,9 @@
      Clean whites, neutral grays, minimal shadows, no glow effects
      ═══════════════════════════════════════════════════════════════════════════ */
 
+  /* Font Family */
+  --font-sans: 'Lexend Variable', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
   /* Typography Scale */
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
@@ -142,11 +145,10 @@
 
 /* Base styles */
 html {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Lexend Variable', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  letter-spacing: -0.01em;
+  letter-spacing: -0.011em;
 }
 
 body {
