@@ -135,7 +135,12 @@
 
       <!-- User Menu -->
       <slot name="user-menu">
-        <UserMenu :collapsed="collapsed" size="sm" />
+        <UserMenu
+          :collapsed="collapsed"
+          size="sm"
+          :user="authUser"
+          :user-role="(page.props.auth?.user as any)?.type === 'human' ? 'admin' : 'member'"
+        />
       </slot>
     </div>
   </aside>
@@ -178,6 +183,11 @@ const collapsed = defineModel<boolean>('collapsed', { default: false })
 
 const className = computed(() => props.class)
 const page = usePage()
+
+const authUser = computed(() => {
+  const u = (page.props.auth as any)?.user
+  return u ? { name: u.name, email: u.email, avatar: u.avatar } : undefined
+})
 
 const isActive = (path: string): boolean => {
   return page.url.startsWith(path)

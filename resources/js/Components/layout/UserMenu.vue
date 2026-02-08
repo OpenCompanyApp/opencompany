@@ -10,10 +10,10 @@
       <DropdownMenu :items="dropdownItems">
         <button
           :class="[
-            'w-full flex items-center rounded-lg transition-colors duration-150 cursor-pointer outline-none group relative overflow-hidden',
+            'w-full flex items-center rounded-xl transition-all duration-150 cursor-pointer outline-none group relative overflow-hidden',
             sizeConfig[size].trigger,
             'justify-center p-2',
-            'hover:bg-neutral-200 dark:hover:bg-neutral-800',
+            'hover:bg-white/80 dark:hover:bg-white/[0.08]',
             'focus-visible:ring-1 focus-visible:ring-neutral-400'
           ]"
         >
@@ -27,7 +27,7 @@
             <div
               v-if="!currentUser.avatar"
               :class="[
-                'w-full h-full rounded-full flex items-center justify-center text-white font-semibold bg-neutral-600 dark:bg-neutral-500',
+                'w-full h-full rounded-full flex items-center justify-center text-white font-medium bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm',
                 sizeConfig[size].avatarText
               ]"
             >
@@ -38,7 +38,7 @@
               :src="currentUser.avatar"
               :alt="currentUser.name"
               :class="[
-                'w-full h-full rounded-full object-cover ring-2 ring-neutral-200 dark:ring-neutral-700'
+                'w-full h-full rounded-full object-cover ring-2 ring-white/80 dark:ring-neutral-700'
               ]"
             />
             <span
@@ -68,7 +68,7 @@
     <DropdownMenu v-else :items="dropdownItems">
       <button
         :class="[
-          'w-full flex items-center rounded-lg transition-colors duration-150 cursor-pointer outline-none group relative overflow-hidden',
+          'w-full flex items-center rounded-xl transition-all duration-150 cursor-pointer outline-none group relative overflow-hidden',
           sizeConfig[size].trigger,
           'hover:bg-neutral-200 dark:hover:bg-neutral-800',
           'focus-visible:ring-1 focus-visible:ring-neutral-400'
@@ -84,7 +84,7 @@
           <div
             v-if="!currentUser.avatar"
             :class="[
-              'w-full h-full rounded-full flex items-center justify-center text-white font-semibold bg-neutral-600 dark:bg-neutral-500',
+              'w-full h-full rounded-full flex items-center justify-center text-white font-medium bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm',
               sizeConfig[size].avatarText
             ]"
           >
@@ -95,7 +95,7 @@
             :src="currentUser.avatar"
             :alt="currentUser.name"
             :class="[
-              'w-full h-full rounded-full object-cover ring-2 ring-neutral-200 dark:ring-neutral-700'
+              'w-full h-full rounded-full object-cover ring-2 ring-white/80 dark:ring-neutral-700'
             ]"
           />
           <span
@@ -108,27 +108,27 @@
         </div>
 
         <!-- User info -->
-        <div class="flex-1 text-left min-w-0 ml-3">
-          <div class="flex items-center gap-2">
-            <p :class="['font-medium truncate text-neutral-900 dark:text-white', sizeConfig[size].name]">
+        <div class="flex-1 text-left min-w-0 ml-2.5">
+          <div class="flex items-center gap-1.5">
+            <p :class="['font-semibold truncate text-neutral-900 dark:text-white leading-tight', sizeConfig[size].name]">
               {{ currentUser.name }}
             </p>
             <span
               v-if="userRoleValue === 'admin'"
-              class="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 rounded"
+              class="shrink-0 px-1 py-px text-[9px] font-semibold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 rounded"
             >
               Admin
             </span>
           </div>
-          <p :class="['text-neutral-500 dark:text-neutral-400 truncate', sizeConfig[size].status]">
-            {{ statusLabels[userStatusValue] }}
+          <p :class="['text-neutral-500 dark:text-neutral-400 truncate leading-tight mt-0.5', sizeConfig[size].status]">
+            {{ currentUser.email || statusLabels[userStatusValue] }}
           </p>
         </div>
 
         <!-- Dropdown chevron -->
         <Icon
           name="ph:caret-up-down"
-          class="w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-colors duration-150 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+          class="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 shrink-0 transition-colors duration-150 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
         />
       </button>
     </DropdownMenu>
