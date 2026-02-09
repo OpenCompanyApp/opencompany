@@ -1,1 +1,21 @@
-i want to implement compaction/memory (long and short term)/embeddings of memories with qmd search, also embeddings of docs. Check the /docs for more info what we have planned. Also check how it is handled in /inspiration/openclaw (pull first for latest version). I don't want to implement at once so break down int multiple logical steps and put those steps in a md file under /docs. (actually use a section under todo.md)
+we have to keep a mapping somewhere of token limits per model, let's start for all the glm models and claude models.
+
+--
+
+relationship managers/agents below managers, Permissions???
+
+---
+
+in/out a2a
+
+--
+
+cost managemnt
+
+--
+
+imagine business use cases and this platform, -> recommendations, also doc
+
+-- 
+
+wire up command pallette
