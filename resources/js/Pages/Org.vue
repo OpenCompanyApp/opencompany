@@ -124,7 +124,7 @@ interface OrgNode {
 const { fetchUsers } = useApi()
 const loading = ref(true)
 const hierarchy = ref<OrgNode[]>([])
-const viewMode = ref<'constellation' | 'tree'>('tree')
+const viewMode = ref<'constellation' | 'tree'>('constellation')
 
 const stats = computed(() => {
   const flatten = (nodes: OrgNode[]): OrgNode[] => {

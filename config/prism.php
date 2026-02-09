@@ -3,8 +3,8 @@
 return [
     'prism_server' => [
         // The middleware that will be applied to the Prism Server routes.
-        'middleware' => [],
-        'enabled' => env('PRISM_SERVER_ENABLED', false),
+        'middleware' => [\App\Http\Middleware\AuthenticatePrismServer::class],
+        'enabled' => env('PRISM_SERVER_ENABLED', true),
     ],
     'request_timeout' => env('PRISM_REQUEST_TIMEOUT', 30), // The timeout for requests in seconds.
     'providers' => [

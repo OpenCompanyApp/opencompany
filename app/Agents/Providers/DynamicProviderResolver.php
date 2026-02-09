@@ -22,6 +22,16 @@ class DynamicProviderResolver
         $providerKey = $parts[0];
         $model = $parts[1] ?? $this->getDefaultModel($providerKey);
 
+        return $this->resolveFromParts($providerKey, $model);
+    }
+
+    /**
+     * Resolve a provider key + model string to SDK provider + model.
+     *
+     * @return array{provider: string, model: string}
+     */
+    public function resolveFromParts(string $providerKey, string $model): array
+    {
         // Codex uses ChatGPT subscription OAuth — no API key needed
         if ($providerKey === 'codex') {
             $this->registerCodexProvider();

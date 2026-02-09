@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\CodexAuthController;
 use App\Http\Controllers\Api\IntegrationController;
 use App\Http\Controllers\Api\McpServerController;
+use App\Http\Controllers\Api\PrismServerController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -261,6 +262,13 @@ Route::post('/integrations/{id}/setup-webhook', [IntegrationController::class, '
 Route::get('/integrations/external-identities', [IntegrationController::class, 'externalIdentities']);
 Route::post('/integrations/link-user', [IntegrationController::class, 'linkExternalUser']);
 Route::delete('/integrations/link-user/{identityId}', [IntegrationController::class, 'unlinkExternalUser']);
+
+// Prism Server
+Route::get('/prism-server/config', [PrismServerController::class, 'config']);
+Route::put('/prism-server/config', [PrismServerController::class, 'updateConfig']);
+Route::get('/prism-server/api-keys', [PrismServerController::class, 'apiKeys']);
+Route::post('/prism-server/api-keys', [PrismServerController::class, 'createApiKey']);
+Route::delete('/prism-server/api-keys/{id}', [PrismServerController::class, 'deleteApiKey']);
 
 // MCP Servers
 Route::get('/mcp-servers', [McpServerController::class, 'index']);

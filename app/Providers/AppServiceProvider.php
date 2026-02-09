@@ -6,6 +6,7 @@ use App\Agents\Providers\CodexPrismGateway;
 use App\Agents\Providers\GlmPrismGateway;
 use App\Models\ApprovalRequest;
 use App\Services\Mcp\McpServerRegistrar;
+use App\Services\PrismServerService;
 use App\Observers\ApprovalRequestObserver;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -48,6 +49,13 @@ class AppServiceProvider extends ServiceProvider
             McpServerRegistrar::registerAll(
                 $this->app->make(\OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class)
             );
+        }
+
+        // Register enabled models with Prism Server
+        if (config('prism.prism_server.enabled')) {
+            $this->app->booted(function () {
+                app(PrismServerService::class)->registerModels();
+            });
         }
 
         // Register GLM (Zhipu AI) as a custom Prism provider

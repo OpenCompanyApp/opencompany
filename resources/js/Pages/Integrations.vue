@@ -92,6 +92,14 @@
               <Icon name="ph:plugs-connected" class="w-3.5 h-3.5" />
               MCP
             </button>
+            <button
+              type="button"
+              class="prism-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0"
+              @click="showPrismServerConfigModal = true"
+            >
+              <Icon name="ph:diamond" class="w-3.5 h-3.5" />
+              API
+            </button>
           </div>
         </div>
 
@@ -189,6 +197,16 @@
             <Icon name="ph:plugs-connected" class="w-4 h-4" />
             MCP Servers
             <span v-if="mcpCategory" class="ml-auto text-[10px] opacity-60">{{ mcpCategory.integrations.length }}</span>
+          </button>
+
+          <!-- Prism Server -->
+          <button
+            type="button"
+            class="prism-btn flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-left w-full"
+            @click="showPrismServerConfigModal = true"
+          >
+            <Icon name="ph:diamond" class="w-4 h-4" />
+            Prism Server
           </button>
 
           <!-- Add MCP Server -->
@@ -363,22 +381,13 @@
                         Created {{ key.createdAt }} · Last used {{ key.lastUsed || 'Never' }}
                       </p>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        class="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-                        @click="copyApiKey(key)"
-                      >
-                        <Icon name="ph:copy" class="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        class="p-1.5 text-neutral-400 hover:text-red-500 transition-colors"
-                        @click="revokeApiKey(key.id)"
-                      >
-                        <Icon name="ph:trash" class="w-4 h-4" />
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      class="p-1.5 text-neutral-400 hover:text-red-500 transition-colors shrink-0"
+                      @click="revokeApiKey(key.id)"
+                    >
+                      <Icon name="ph:trash" class="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -516,6 +525,12 @@
       @saved="handleDynamicSaved"
     />
 
+    <!-- Prism Server Config Modal -->
+    <PrismServerConfigModal
+      v-model:open="showPrismServerConfigModal"
+      @saved="handlePrismServerSaved"
+    />
+
     <!-- MCP Server Config Modal -->
     <McpConfigModal
       v-model:open="showMcpConfigModal"
@@ -594,6 +609,7 @@ import CodexConfigModal from '@/Components/integrations/CodexConfigModal.vue'
 import TelegramConfigModal from '@/Components/integrations/TelegramConfigModal.vue'
 import DynamicConfigModal from '@/Components/integrations/DynamicConfigModal.vue'
 import McpConfigModal from '@/Components/integrations/McpConfigModal.vue'
+import PrismServerConfigModal from '@/Components/integrations/PrismServerConfigModal.vue'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
 // Sidebar state
@@ -658,6 +674,9 @@ const dynamicIntegrationId = ref('')
 const dynamicConfigSchema = ref<any[]>([])
 const dynamicIntegrationMeta = ref<any>({ name: '', description: '', icon: 'ph:gear' })
 
+// Prism Server Config modal
+const showPrismServerConfigModal = ref(false)
+
 // MCP Config modal
 const showMcpConfigModal = ref(false)
 const activeMcpServerId = ref<string | undefined>(undefined)
@@ -670,8 +689,41 @@ const configurableIntegrations = ref<Record<string, any>>({})
 
 // Load integration status from backend
 onMounted(async () => {
-  await loadIntegrationStatus()
+  await Promise.all([loadIntegrationStatus(), loadApiKeys()])
 })
+
+const loadApiKeys = async () => {
+  try {
+    const { data } = await axios.get('/api/prism-server/api-keys')
+    apiKeys.value = data.map((key: any) => ({
+      id: key.id,
+      name: key.name,
+      maskedKey: key.masked_key,
+      createdAt: key.created_at ? formatRelativeDate(key.created_at) : 'Unknown',
+      lastUsed: key.last_used_at ? formatRelativeDate(key.last_used_at) : undefined,
+    }))
+  } catch (error) {
+    console.error('Failed to load API keys:', error)
+  }
+}
+
+const formatRelativeDate = (dateStr: string): string => {
+  try {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    if (diffMins < 1) return 'just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours}h ago`
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays < 30) return `${diffDays}d ago`
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch {
+    return dateStr
+  }
+}
 
 const loadIntegrationStatus = async () => {
   try {
@@ -770,16 +822,8 @@ const webhooks = ref<Webhook[]>([
   },
 ])
 
-// Mock data - API Keys
-const apiKeys = ref<ApiKey[]>([
-  {
-    id: 'key-1',
-    name: 'Production API Key',
-    maskedKey: 'sk_live_••••••••••••••••4f2a',
-    createdAt: 'Jan 15, 2025',
-    lastUsed: '1h ago',
-  },
-])
+// API Keys (loaded from backend)
+const apiKeys = ref<ApiKey[]>([])
 
 // Integration categories
 const integrationCategories = ref<IntegrationCategory[]>([
@@ -1030,30 +1074,17 @@ const saveWebhook = () => {
 
 // API Key handlers
 const generateApiKey = () => {
-  const newKey: ApiKey = {
-    id: `key-${Date.now()}`,
-    name: 'New API Key',
-    maskedKey: 'sk_live_••••••••••••••••' + Math.random().toString(36).substring(2, 6),
-    createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-  }
-  apiKeys.value.push(newKey)
+  // Open Prism Server modal for key management
+  showPrismServerConfigModal.value = true
 }
 
-const copyApiKey = async (key: ApiKey) => {
+const revokeApiKey = async (id: string) => {
   try {
-    await navigator.clipboard.writeText(key.maskedKey)
-  } catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = key.maskedKey
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
+    await axios.delete(`/api/prism-server/api-keys/${id}`)
+    apiKeys.value = apiKeys.value.filter(k => k.id !== id)
+  } catch (error) {
+    console.error('Failed to revoke API key:', error)
   }
-}
-
-const revokeApiKey = (id: string) => {
-  apiKeys.value = apiKeys.value.filter(k => k.id !== id)
 }
 
 // Open the dynamic config modal for a configurable integration
@@ -1242,6 +1273,10 @@ const openAddMcpServer = () => {
 
 const handleMcpSaved = () => {
   loadIntegrationStatus()
+}
+
+const handlePrismServerSaved = () => {
+  loadApiKeys()
 }
 
 const handleMcpDeleted = () => {
