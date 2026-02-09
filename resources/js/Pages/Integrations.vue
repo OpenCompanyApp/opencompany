@@ -495,6 +495,12 @@
       @saved="handleGlmSaved"
     />
 
+    <!-- Codex Config Modal -->
+    <CodexConfigModal
+      v-model:open="showCodexConfigModal"
+      @saved="handleCodexSaved"
+    />
+
     <!-- Telegram Config Modal -->
     <TelegramConfigModal
       v-model:open="showTelegramConfigModal"
@@ -584,6 +590,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
 import GlmConfigModal from '@/Components/integrations/GlmConfigModal.vue'
+import CodexConfigModal from '@/Components/integrations/CodexConfigModal.vue'
 import TelegramConfigModal from '@/Components/integrations/TelegramConfigModal.vue'
 import DynamicConfigModal from '@/Components/integrations/DynamicConfigModal.vue'
 import McpConfigModal from '@/Components/integrations/McpConfigModal.vue'
@@ -638,6 +645,9 @@ const webhookForm = reactive({
 // GLM Config modal
 const showGlmConfigModal = ref(false)
 const activeGlmIntegrationId = ref<'glm' | 'glm-coding'>('glm-coding')
+
+// Codex Config modal
+const showCodexConfigModal = ref(false)
 
 // Telegram Config modal
 const showTelegramConfigModal = ref(false)
@@ -780,6 +790,7 @@ const integrationCategories = ref<IntegrationCategory[]>([
     integrations: [
       { id: 'glm', name: 'GLM (Zhipu AI)', icon: 'ph:brain', description: 'General-purpose Chinese LLM', installed: false, badge: 'verified' },
       { id: 'glm-coding', name: 'GLM Coding Plan', icon: 'ph:code', description: 'Specialized coding LLM', installed: false, badge: 'verified' },
+      { id: 'codex', name: 'OpenAI Codex', icon: 'ph:open-ai-logo', description: 'ChatGPT Pro/Plus subscription — $0 token costs', installed: false, badge: 'verified' },
     ],
   },
   {
@@ -1114,6 +1125,11 @@ const handleInstall = (integration: Integration) => {
     return
   }
 
+  if (integration.id === 'codex') {
+    showCodexConfigModal.value = true
+    return
+  }
+
   if (integration.id === 'telegram') {
     showTelegramConfigModal.value = true
     return
@@ -1144,6 +1160,16 @@ const handleGlmSaved = (result: { enabled: boolean; configured: boolean }) => {
   }
 }
 
+const handleCodexSaved = (result: { enabled: boolean; configured: boolean }) => {
+  for (const category of integrationCategories.value) {
+    const found = category.integrations.find(i => i.id === 'codex')
+    if (found) {
+      found.installed = result.enabled
+      break
+    }
+  }
+}
+
 const handleConfigure = (integration: Integration) => {
   if (integration.type === 'mcp' && integration.mcpServerId) {
     activeMcpServerId.value = integration.mcpServerId
@@ -1151,6 +1177,8 @@ const handleConfigure = (integration: Integration) => {
   } else if (integration.id === 'glm' || integration.id === 'glm-coding') {
     activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
     showGlmConfigModal.value = true
+  } else if (integration.id === 'codex') {
+    showCodexConfigModal.value = true
   } else if (integration.id === 'telegram') {
     showTelegramConfigModal.value = true
   } else if (configurableIntegrations.value[integration.id]) {

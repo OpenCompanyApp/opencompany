@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\UserExternalIdentity;
 use App\Services\TelegramService;
 use Illuminate\Http\Request;
+use OpenCompany\PrismCodex\CodexTokenStore;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
@@ -30,8 +31,25 @@ class IntegrationController extends Controller
 
         $integrations = [];
 
-        // Static integrations (GLM, Telegram — no ToolProvider package)
+        // Static integrations (GLM, Telegram, Codex — no ToolProvider package)
         foreach ($available as $id => $info) {
+            // Codex uses OAuth tokens, not API keys
+            if ($id === 'codex') {
+                $codexToken = CodexTokenStore::current();
+                $integrations[] = [
+                    'id' => $id,
+                    'name' => $info['name'],
+                    'description' => $info['description'],
+                    'icon' => $info['icon'],
+                    'models' => $info['models'] ?? null,
+                    'enabled' => $codexToken !== null && !$codexToken->isExpired(),
+                    'configured' => $codexToken !== null,
+                    'configurable' => false,
+                    'authType' => 'oauth',
+                ];
+                continue;
+            }
+
             /** @var IntegrationSetting|null $setting */
             $setting = $settings->get($id);
             $integrations[] = [
@@ -592,6 +610,24 @@ class IntegrationController extends Controller
                     'name' => $modelName,
                     'icon' => $info['icon'],
                 ];
+            }
+        }
+
+        // Codex uses OAuth, not IntegrationSetting — check separately
+        $codexToken = CodexTokenStore::current();
+        if ($codexToken && !$codexToken->isExpired()) {
+            $codexInfo = $available['codex'] ?? null;
+            if ($codexInfo && !empty($codexInfo['models'])) {
+                foreach ($codexInfo['models'] as $modelId => $modelName) {
+                    $models[] = [
+                        'id' => 'codex:' . $modelId,
+                        'provider' => 'codex',
+                        'providerName' => $codexInfo['name'],
+                        'model' => $modelId,
+                        'name' => $modelName,
+                        'icon' => $codexInfo['icon'],
+                    ];
+                }
             }
         }
 

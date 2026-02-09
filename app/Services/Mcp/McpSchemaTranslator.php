@@ -69,6 +69,9 @@ class McpSchemaTranslator
 
         if (isset($schema['items'])) {
             $a->items(self::translateProperty($schema['items'], $factory));
+        } else {
+            // Strict providers (e.g. Codex) require items on every array
+            $a->items($factory->string());
         }
 
         return $a;

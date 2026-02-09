@@ -2,14 +2,32 @@
   <div class="space-y-6">
     <!-- Brain / AI Model -->
     <section>
-      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">AI Model</h3>
-      <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 space-y-3">
+      <div class="flex items-center gap-2 mb-3">
+        <h3 class="text-sm font-medium text-neutral-900 dark:text-white">AI Model</h3>
+        <Transition
+          enter-active-class="transition-opacity duration-200"
+          leave-active-class="transition-opacity duration-300"
+          enter-from-class="opacity-0"
+          leave-to-class="opacity-0"
+        >
+          <span v-if="savingBrain" class="text-xs text-neutral-400 flex items-center gap-1">
+            <Icon name="ph:spinner" class="w-3 h-3 animate-spin" /> Saving...
+          </span>
+          <span v-else-if="brainSaved" class="text-xs text-green-500 flex items-center gap-1">
+            <Icon name="ph:check" class="w-3 h-3" /> Saved
+          </span>
+          <span v-else-if="brainError" class="text-xs text-red-500 flex items-center gap-1">
+            <Icon name="ph:x" class="w-3 h-3" /> Failed to save
+          </span>
+        </Transition>
+      </div>
+      <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 space-y-2">
         <div v-if="loadingBrains" class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
           <Icon name="ph:spinner" class="w-4 h-4 animate-spin" />
           Loading available models...
         </div>
 
-        <div v-else-if="availableBrains.length === 0" class="text-sm text-neutral-500 dark:text-neutral-400">
+        <div v-else-if="groupedBrains.length === 0" class="text-sm text-neutral-500 dark:text-neutral-400">
           <p>No AI models configured.</p>
           <a href="/integrations" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
             Configure integrations
@@ -17,39 +35,49 @@
         </div>
 
         <template v-else>
-          <div class="space-y-2">
+          <div v-for="group in groupedBrains" :key="group.provider" class="rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+            <!-- Provider Header -->
             <button
-              v-for="brain in availableBrains"
-              :key="brain.id"
               type="button"
-              :class="[
-                'w-full p-3 rounded-lg border-2 text-left transition-all flex items-center gap-3',
-                selectedBrain === brain.id
-                  ? 'border-neutral-900 dark:border-white bg-neutral-900/5 dark:bg-white/5'
-                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500',
-              ]"
-              @click="changeBrain(brain.id)"
+              class="w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
+              @click="toggleProvider(group.provider)"
             >
-              <div
-                :class="[
-                  'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-                  selectedBrain === brain.id
-                    ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
-                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500',
-                ]"
-              >
-                <Icon :name="brain.icon" class="w-4 h-4" />
+              <div class="w-7 h-7 rounded-md flex items-center justify-center bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 shrink-0">
+                <Icon :name="group.icon" class="w-3.5 h-3.5" />
               </div>
-              <div class="flex-1 min-w-0">
-                <p class="font-medium text-sm text-neutral-900 dark:text-white">{{ brain.name }}</p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ brain.providerName }}</p>
-              </div>
+              <span class="text-sm font-medium text-neutral-900 dark:text-white flex-1 text-left">{{ group.providerName }}</span>
+              <span class="text-xs text-neutral-400 dark:text-neutral-500">{{ group.models.length }}</span>
               <Icon
-                v-if="selectedBrain === brain.id"
-                name="ph:check-circle-fill"
-                class="w-5 h-5 text-green-500 shrink-0"
+                name="ph:caret-down"
+                :class="[
+                  'w-3.5 h-3.5 text-neutral-400 transition-transform duration-200',
+                  expandedProviders.has(group.provider) ? 'rotate-180' : '',
+                ]"
               />
             </button>
+
+            <!-- Models List -->
+            <div v-if="expandedProviders.has(group.provider)" class="border-t border-neutral-200 dark:border-neutral-700 px-2 py-1.5 space-y-1">
+              <button
+                v-for="brain in group.models"
+                :key="brain.id"
+                type="button"
+                :class="[
+                  'w-full px-3 py-2 rounded-md text-left transition-all flex items-center gap-2.5',
+                  selectedBrain === brain.id
+                    ? 'bg-neutral-900/5 dark:bg-white/5'
+                    : 'hover:bg-neutral-100 dark:hover:bg-neutral-700/50',
+                ]"
+                @click="changeBrain(brain.id)"
+              >
+                <span class="flex-1 text-sm text-neutral-700 dark:text-neutral-300">{{ brain.name }}</span>
+                <Icon
+                  v-if="selectedBrain === brain.id"
+                  name="ph:check-circle-fill"
+                  class="w-4 h-4 text-green-500 shrink-0"
+                />
+              </button>
+            </div>
           </div>
         </template>
       </div>
@@ -196,14 +224,21 @@ interface BrainOption {
   icon: string
 }
 
+interface BrainGroup {
+  provider: string
+  providerName: string
+  icon: string
+  models: BrainOption[]
+}
+
 const props = defineProps<{
   settings: AgentSettings
   brain?: string
+  onBrainChange?: (brain: string) => Promise<void>
 }>()
 
 const emit = defineEmits<{
   update: [settings: AgentSettings]
-  updateBrain: [brain: string]
   resetMemory: []
   pauseAgent: []
   deleteAgent: []
@@ -213,6 +248,12 @@ const localSettings = ref<AgentSettings>({ ...props.settings })
 const availableBrains = ref<BrainOption[]>([])
 const loadingBrains = ref(false)
 const selectedBrain = ref(props.brain || '')
+const expandedProviders = ref(new Set<string>())
+
+// Save feedback
+const savingBrain = ref(false)
+const brainSaved = ref(false)
+const brainError = ref(false)
 
 watch(() => props.settings, (newSettings) => {
   localSettings.value = { ...newSettings }
@@ -222,8 +263,30 @@ watch(() => props.brain, (newBrain) => {
   if (newBrain) selectedBrain.value = newBrain
 })
 
+// Group brains by provider
+const groupedBrains = computed<BrainGroup[]>(() => {
+  const groups = new Map<string, BrainGroup>()
+  for (const brain of availableBrains.value) {
+    if (!groups.has(brain.provider)) {
+      groups.set(brain.provider, {
+        provider: brain.provider,
+        providerName: brain.providerName,
+        icon: brain.icon,
+        models: [],
+      })
+    }
+    groups.get(brain.provider)!.models.push(brain)
+  }
+  return Array.from(groups.values())
+})
+
 onMounted(async () => {
   await loadAvailableBrains()
+  // Auto-expand the provider of the currently selected brain
+  if (selectedBrain.value) {
+    const [provider] = selectedBrain.value.split(':')
+    if (provider) expandedProviders.value.add(provider)
+  }
 })
 
 const loadAvailableBrains = async () => {
@@ -240,10 +303,38 @@ const loadAvailableBrains = async () => {
   }
 }
 
-const changeBrain = (brainId: string) => {
+const toggleProvider = (provider: string) => {
+  if (expandedProviders.value.has(provider)) {
+    expandedProviders.value.delete(provider)
+  } else {
+    expandedProviders.value.add(provider)
+  }
+  // Trigger reactivity
+  expandedProviders.value = new Set(expandedProviders.value)
+}
+
+const changeBrain = async (brainId: string) => {
   if (brainId === selectedBrain.value) return
+  const previousBrain = selectedBrain.value
   selectedBrain.value = brainId
-  emit('updateBrain', brainId)
+  savingBrain.value = true
+  brainSaved.value = false
+  brainError.value = false
+
+  try {
+    if (props.onBrainChange) {
+      await props.onBrainChange(brainId)
+    }
+    savingBrain.value = false
+    brainSaved.value = true
+    setTimeout(() => { brainSaved.value = false }, 2000)
+  } catch (e) {
+    console.error('Failed to save brain:', e)
+    savingBrain.value = false
+    brainError.value = true
+    selectedBrain.value = previousBrain
+    setTimeout(() => { brainError.value = false }, 3000)
+  }
 }
 
 const behaviorModes: { value: AgentBehaviorMode; label: string }[] = [

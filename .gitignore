@@ -36,5 +36,4 @@ components.d.ts
 /inspiration
 
 # Local package development
-/tmp/*
-!/tmp/prism-codex
+/tmp

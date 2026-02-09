@@ -22,6 +22,12 @@ class DynamicProviderResolver
         $providerKey = $parts[0];
         $model = $parts[1] ?? $this->getDefaultModel($providerKey);
 
+        // Codex uses ChatGPT subscription OAuth — no API key needed
+        if ($providerKey === 'codex') {
+            $this->registerCodexProvider();
+            return ['provider' => 'codex', 'model' => $model];
+        }
+
         // GLM providers use IntegrationSetting for API keys
         if ($this->isGlmProvider($providerKey)) {
             $this->registerGlmProvider($providerKey);
@@ -91,6 +97,20 @@ class DynamicProviderResolver
     }
 
     /**
+     * Register the Codex provider in AI SDK config.
+     * Codex uses OAuth tokens managed by the prism-codex package.
+     */
+    private function registerCodexProvider(): void
+    {
+        config([
+            'ai.providers.codex' => [
+                'driver' => 'codex',
+                'key' => 'codex-oauth',
+            ],
+        ]);
+    }
+
+    /**
      * Map a brain provider key to an AI SDK provider name.
      */
     private function mapToSdkProvider(string $providerKey): ?string
@@ -130,6 +150,7 @@ class DynamicProviderResolver
         return match ($providerKey) {
             'glm' => 'glm-4-plus',
             'glm-coding' => 'glm-4.7',
+            'codex' => 'gpt-5.3-codex',
             'anthropic' => 'claude-sonnet-4-5-20250929',
             'openai' => 'gpt-4o',
             'gemini' => 'gemini-2.0-flash',

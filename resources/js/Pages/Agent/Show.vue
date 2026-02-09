@@ -280,8 +280,8 @@
             <AgentSettingsPanel
               :settings="agent.settings"
               :brain="agent.brain"
+              :on-brain-change="updateBrain"
               @update="updateSettings"
-              @update-brain="updateBrain"
               @reset-memory="resetAgentMemory"
               @pause-agent="togglePause"
               @delete-agent="deleteAgentHandler"
@@ -583,13 +583,9 @@ const updateSettings = async (settings: AgentSettings) => {
 }
 
 const updateBrain = async (brain: string) => {
-  if (!agent.value) return
-  try {
-    await updateAgent(props.id, { brain })
-    agent.value = { ...agent.value, brain } as Agent
-  } catch (e) {
-    console.error('Failed to update brain:', e)
-  }
+  if (!agent.value) throw new Error('No agent loaded')
+  await updateAgent(props.id, { brain })
+  agent.value = { ...agent.value, brain } as Agent
 }
 
 const resetAgentMemory = async () => {

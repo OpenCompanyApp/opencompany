@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\DataTableViewController;
 use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\AgentPermissionController;
 use App\Http\Controllers\Api\DmController;
+use App\Http\Controllers\Api\CodexAuthController;
 use App\Http\Controllers\Api\IntegrationController;
 use App\Http\Controllers\Api\McpServerController;
 use App\Http\Controllers\Api\SettingController;
@@ -246,6 +247,13 @@ Route::post('/settings/danger-action', [SettingController::class, 'dangerAction'
 // Integrations
 Route::get('/integrations', [IntegrationController::class, 'index']);
 Route::get('/integrations/models', [IntegrationController::class, 'enabledModels']);
+
+// Codex Auth (OAuth — not API key based)
+Route::get('/integrations/codex/auth/status', [CodexAuthController::class, 'status']);
+Route::post('/integrations/codex/auth/device', [CodexAuthController::class, 'device']);
+Route::post('/integrations/codex/auth/device/poll', [CodexAuthController::class, 'devicePoll']);
+Route::post('/integrations/codex/auth/logout', [CodexAuthController::class, 'logout']);
+Route::post('/integrations/codex/test', [CodexAuthController::class, 'test']);
 Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConfig']);
 Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
 Route::post('/integrations/{id}/test', [IntegrationController::class, 'testConnection']);

@@ -9,6 +9,7 @@ use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
 use App\Models\Task;
 use App\Models\User;
+use OpenCompany\PrismCodex\CodexTokenStore;
 use App\Services\AgentAvatarService;
 use App\Services\AgentDocumentService;
 use App\Services\AgentPermissionService;
@@ -285,6 +286,11 @@ class AgentController extends Controller
                 $integration = IntegrationSetting::where('integration_id', $provider)
                     ->where('enabled', true)
                     ->first();
+
+                // Codex uses OAuth tokens, not IntegrationSetting
+                if (!$integration && $provider === 'codex') {
+                    $integration = CodexTokenStore::current() !== null;
+                }
 
                 if (!$integration) {
                     return response()->json([

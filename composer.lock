@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "53d334f0d38eccbda377f995164c989d",
+    "content-hash": "2fb0fcac056753e7b48cc8c3d6cc0e85",
     "packages": [
         {
             "name": "brick/math",
@@ -2980,6 +2980,79 @@
                 }
             ],
             "time": "2025-11-20T02:34:59+00:00"
+        },
+        {
+            "name": "opencompany/prism-codex",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/prism-codex.git",
+                "reference": "7e7c12c58a2bb0bb577787779e571e7ba88920f8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/prism-codex/zipball/7e7c12c58a2bb0bb577787779e571e7ba88920f8",
+                "reference": "7e7c12c58a2bb0bb577787779e571e7ba88920f8",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/console": "^11.0|^12.0",
+                "illuminate/database": "^11.0|^12.0",
+                "illuminate/encryption": "^11.0|^12.0",
+                "illuminate/http": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
+                "php": "^8.2",
+                "prism-php/prism": "^0.99|^1.0"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^9.0|^10.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\PrismCodex\\CodexServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\PrismCodex\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "OpenCompany\\PrismCodex\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Use your ChatGPT Pro/Plus subscription as a Prism PHP provider — $0 token costs via Codex API",
+            "homepage": "https://github.com/OpenCompanyApp/prism-codex",
+            "keywords": [
+                "ai",
+                "chatgpt",
+                "codex",
+                "laravel",
+                "llm",
+                "oauth",
+                "openai",
+                "prism"
+            ],
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/prism-codex/tree/main",
+                "issues": "https://github.com/OpenCompanyApp/prism-codex/issues"
+            },
+            "time": "2026-02-09T21:24:42+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-celestial",
@@ -10502,6 +10575,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
+        "opencompany/prism-codex": 20,
         "opencompanyapp/ai-tool-celestial": 20,
         "opencompanyapp/ai-tool-mermaid": 20,
         "opencompanyapp/ai-tool-plantuml": 20,

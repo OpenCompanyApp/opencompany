@@ -85,37 +85,10 @@ class IntegrationSetting extends Model
     }
 
     /**
-     * Available integration types
+     * Available integration types (from config/integrations.php).
      */
     public static function getAvailableIntegrations(): array
     {
-        return [
-            'glm' => [
-                'name' => 'GLM (Zhipu AI)',
-                'description' => 'General-purpose Chinese LLM',
-                'icon' => 'ph:brain',
-                'models' => [
-                    'glm-4-plus' => 'GLM 4 Plus (Most Capable)',
-                    'glm-4' => 'GLM 4',
-                    'glm-4-air' => 'GLM 4 Air (Balanced)',
-                    'glm-4-flash' => 'GLM 4 Flash (Fast)',
-                ],
-                'default_url' => 'https://open.bigmodel.cn/api/paas/v4',
-            ],
-            'glm-coding' => [
-                'name' => 'GLM Coding Plan',
-                'description' => 'Specialized coding LLM via Zhipu Coding Plan',
-                'icon' => 'ph:code',
-                'models' => [
-                    'glm-4.7' => 'GLM 4.7 (Coding Optimized)',
-                ],
-                'default_url' => 'https://api.z.ai/api/coding/paas/v4',
-            ],
-            'telegram' => [
-                'name' => 'Telegram',
-                'description' => 'Telegram Bot for DMs, notifications, and approvals',
-                'icon' => 'ph:telegram-logo',
-            ],
-        ];
+        return config('integrations', []);
     }
 }

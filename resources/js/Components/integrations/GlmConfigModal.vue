@@ -193,7 +193,10 @@ const modalDescription = computed(() => config.value.description)
 const modalIcon = computed(() => config.value.icon)
 const defaultUrl = computed(() => config.value.defaultUrl)
 const urlHint = computed(() => config.value.urlHint)
-const availableModels = computed(() => config.value.models)
+
+// Models loaded from backend API (falls back to hardcoded defaults)
+const serverModels = ref<Record<string, string> | null>(null)
+const availableModels = computed(() => serverModels.value ?? config.value.models)
 
 // Form state
 const apiKey = ref('')
@@ -218,6 +221,7 @@ const loadConfig = async () => {
   // Reset to defaults first
   apiUrl.value = config.value.defaultUrl
   defaultModel.value = config.value.defaultModel
+  serverModels.value = null
   testResult.value = null
 
   try {
@@ -228,6 +232,9 @@ const loadConfig = async () => {
       apiUrl.value = data.config?.url || config.value.defaultUrl
       defaultModel.value = data.config?.defaultModel || config.value.defaultModel
       enabled.value = data.enabled || false
+      if (data.models && Object.keys(data.models).length > 0) {
+        serverModels.value = data.models
+      }
     }
   } catch (error) {
     console.error('Failed to load config:', error)

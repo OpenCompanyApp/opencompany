@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Agents\Providers\CodexPrismGateway;
 use App\Agents\Providers\GlmPrismGateway;
 use App\Models\ApprovalRequest;
 use App\Services\Mcp\McpServerRegistrar;
@@ -73,6 +74,15 @@ class AppServiceProvider extends ServiceProvider
 
             $aiManager->extend('glm', $createGlmDriver);
             $aiManager->extend('glm-coding', $createGlmDriver);
+
+            // Register Codex driver (ChatGPT subscription via OAuth)
+            $aiManager->extend('codex', function ($app, array $config) {
+                return new OpenAiProvider(
+                    new CodexPrismGateway($app['events']),
+                    $config,
+                    $app->make(Dispatcher::class)
+                );
+            });
         });
     }
 }
