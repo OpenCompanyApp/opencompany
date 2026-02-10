@@ -309,6 +309,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from 'reka-ui'
+import { useColorMode } from '@/composables/useColorMode'
 
 // Types
 type PaletteSize = 'sm' | 'md' | 'lg'
@@ -387,7 +388,10 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
+  'action': [type: string]
 }>()
+
+const { toggleDark, isDark } = useColorMode()
 
 // Size configuration
 const sizeConfig: Record<PaletteSize, SizeConfig> = {
@@ -473,8 +477,6 @@ const commandGroups = computed<CommandGroup[]>(() => [
         icon: 'ph:chat-circle-fill',
         iconColor: 'text-neutral-500 dark:text-neutral-300',
         shortcut: 'G C',
-        badge: '15',
-        badgeVariant: 'default',
         action: () => router.visit('/chat'),
       },
       {
@@ -494,6 +496,81 @@ const commandGroups = computed<CommandGroup[]>(() => [
         iconColor: 'text-neutral-500 dark:text-neutral-300',
         shortcut: 'G D',
         action: () => router.visit('/docs'),
+      },
+      {
+        id: 'nav-approvals',
+        label: 'Approvals',
+        description: 'Review pending approvals',
+        icon: 'ph:seal-check-fill',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        shortcut: 'G A',
+        action: () => router.visit('/approvals'),
+      },
+      {
+        id: 'nav-org',
+        label: 'Organization',
+        description: 'View organization structure',
+        icon: 'ph:tree-structure-fill',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        shortcut: 'G O',
+        action: () => router.visit('/org'),
+      },
+      {
+        id: 'nav-tables',
+        label: 'Tables',
+        description: 'View and manage tables',
+        icon: 'ph:table-fill',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        action: () => router.visit('/tables'),
+      },
+      {
+        id: 'nav-calendar',
+        label: 'Calendar',
+        description: 'View calendar',
+        icon: 'ph:calendar-fill',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        action: () => router.visit('/calendar'),
+      },
+      {
+        id: 'nav-lists',
+        label: 'Lists',
+        description: 'View kanban boards',
+        icon: 'ph:kanban-fill',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        action: () => router.visit('/lists'),
+      },
+      {
+        id: 'nav-automation',
+        label: 'Automation',
+        description: 'Manage automations',
+        icon: 'ph:lightning-fill',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        action: () => router.visit('/automation'),
+      },
+      {
+        id: 'nav-integrations',
+        label: 'Integrations',
+        description: 'Manage integrations',
+        icon: 'ph:plugs-connected-fill',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        action: () => router.visit('/integrations'),
+      },
+      {
+        id: 'nav-settings',
+        label: 'Settings',
+        description: 'Open settings',
+        icon: 'ph:gear-fill',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        shortcut: 'G S',
+        action: () => router.visit('/settings'),
+      },
+      {
+        id: 'nav-activity',
+        label: 'Activity',
+        description: 'View activity feed',
+        icon: 'ph:pulse-fill',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        action: () => router.visit('/activity'),
       },
     ],
   },
@@ -537,7 +614,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         icon: 'ph:plus-circle',
         iconColor: 'text-neutral-600 dark:text-neutral-200',
         shortcut: 'N T',
-        action: () => {},
+        action: () => emit('action', 'new-task'),
       },
       {
         id: 'action-agent',
@@ -546,7 +623,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         icon: 'ph:robot',
         iconColor: 'text-neutral-600 dark:text-neutral-200',
         shortcut: 'N A',
-        action: () => {},
+        action: () => emit('action', 'spawn-agent'),
       },
       {
         id: 'action-channel',
@@ -554,7 +631,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         description: 'Create a new channel',
         icon: 'ph:chats-circle',
         iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => {},
+        action: () => emit('action', 'new-channel'),
       },
       {
         id: 'action-doc',
@@ -562,7 +639,7 @@ const commandGroups = computed<CommandGroup[]>(() => [
         description: 'Create a new document',
         icon: 'ph:file-plus',
         iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => {},
+        action: () => emit('action', 'new-document'),
       },
     ],
   },
@@ -572,11 +649,11 @@ const commandGroups = computed<CommandGroup[]>(() => [
     items: [
       {
         id: 'settings-theme',
-        label: 'Toggle Theme',
-        description: 'Switch between light and dark mode',
-        icon: 'ph:moon',
+        label: isDark.value ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+        description: 'Toggle between light and dark theme',
+        icon: isDark.value ? 'ph:sun' : 'ph:moon',
         iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => {},
+        action: () => toggleDark(),
       },
       {
         id: 'settings-shortcuts',
@@ -584,14 +661,14 @@ const commandGroups = computed<CommandGroup[]>(() => [
         description: 'View all keyboard shortcuts',
         icon: 'ph:keyboard',
         shortcut: '?',
-        action: () => {},
+        action: () => emit('action', 'show-shortcuts'),
       },
       {
         id: 'settings-preferences',
         label: 'Preferences',
         description: 'Open settings panel',
         icon: 'ph:gear-six',
-        action: () => {},
+        action: () => router.visit('/settings'),
       },
     ],
   },

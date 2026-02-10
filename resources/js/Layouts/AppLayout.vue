@@ -28,9 +28,10 @@ const showSpawnModal = ref(false)
 const page = usePage()
 const userId = (page.props.auth as any)?.user?.id || 'guest'
 
-// Load agents for sidebar
-const { fetchAgents } = useApi()
+// Load agents and channels
+const { fetchAgents, fetchChannels } = useApi()
 const { data: agentsData, refresh: refreshAgents } = fetchAgents()
+const { data: channelsData } = fetchChannels()
 
 const sidebarAgents = computed(() => agentsData.value ?? [])
 
@@ -55,8 +56,45 @@ useChannelListener<{ id: string; status: string }>(
   }
 )
 
+// Map data for command palette
+const channelsForPalette = computed(() =>
+  (channelsData.value ?? []).map(c => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+    type: c.type,
+    unreadCount: c.unreadCount,
+  }))
+)
+
+const agentsForPalette = computed(() =>
+  (agentsData.value ?? []).map(a => ({
+    id: a.id,
+    name: a.name,
+    role: (a as any).agentType,
+    status: a.status,
+  }))
+)
+
 const handleSpawnAgent = () => {
   showSpawnModal.value = true
+}
+
+const handlePaletteAction = (type: string) => {
+  switch (type) {
+    case 'spawn-agent':
+      showSpawnModal.value = true
+      break
+    case 'new-task':
+      router.visit('/tasks?action=new')
+      break
+    case 'new-channel':
+      router.visit('/chat?action=new-channel')
+      break
+    case 'new-document':
+      router.visit('/docs?action=new')
+      break
+  }
 }
 
 const handleAgentSpawned = async (agent: { id: string }) => {
@@ -181,7 +219,12 @@ const isActive = (path: string): boolean => {
           <slot />
         </main>
 
-        <CommandPalette v-model="commandPaletteOpen" />
+        <CommandPalette
+          v-model="commandPaletteOpen"
+          :channels="channelsForPalette"
+          :agents="agentsForPalette"
+          @action="handlePaletteAction"
+        />
 
         <!-- Spawn Agent Modal (accessible from sidebar) -->
         <SpawnAgentModal

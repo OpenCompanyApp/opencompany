@@ -37,3 +37,6 @@ components.d.ts
 
 # Local package development
 /tmp
+
+# Confidential business docs
+/docs/confidential

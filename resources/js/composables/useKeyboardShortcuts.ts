@@ -119,6 +119,15 @@ export const useKeyboardShortcuts = () => {
     }, 500)
   })
 
+  // n + t - New task
+  whenever(keys.t, () => {
+    if (isInputFocused()) return
+    if (nPressed.value) {
+      router.visit('/tasks?action=new')
+      nPressed.value = false
+    }
+  })
+
   // n + a - New agent (spawn modal)
   whenever(keys.a, () => {
     if (isInputFocused()) return

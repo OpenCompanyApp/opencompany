@@ -4,7 +4,7 @@
 
 **Status**: Not started
 **Config**: `config/memory.php` (already exists with embedding, chunking, and search defaults)
-**Reference**: OpenClaw memory system (`inspiration/openclaw/src/memory/`)
+**Reference**: OpenClaw memory system (`inspiration/openclaw/src/memory/`, `inspiration/openclaw/docs/concepts/memory.md`; updated for v2026.2.9)
 
 ---
 
@@ -389,6 +389,10 @@ app/Console/Commands/MemoryStatus.php
 tests/Feature/Services/Memory/ChunkingServiceTest.php
 tests/Feature/Services/Memory/EmbeddingServiceTest.php
 ```
+
+### Design Notes
+
+> **v2026.2.9 alignment:** OpenClaw changed batch embeddings to disabled by default (opt-in for backfills). Our `EmbeddingService.embedBatch()` remains available for `DocumentIndexingService.index()` in Phase 2 and the `memory:index-documents --fresh` backfill command, but individual embedding calls use `embed()`. This aligns with upstream's rationale: batch is mainly beneficial for large backfills; sync is adequate for incremental updates.
 
 ---
 
@@ -951,6 +955,8 @@ Add `compaction` section to `config/memory.php`:
     'summary_max_tokens' => 2000,
 ],
 ```
+
+> **Design note (v2026.2.9):** OpenClaw added `memory.qmd.update.waitForBootSync` (default `false`) to control whether QMD initialization blocks gateway startup. This is not needed in our architecture — pgvector indexes are always available via PostgreSQL with no cold-start model download or index warm-up step.
 
 ### Model
 
@@ -1655,11 +1661,13 @@ tests/Feature/Services/Memory/HybridSearchServiceTest.php
 | Compaction | Chunk-based, 0.4 keep ratio | Same, with cumulative summaries |
 | Memory flush | Silent turn with NO_REPLY | Silent turn with `[FLUSH_COMPLETE]`, response discarded |
 | Result clamping | maxResults=6, maxSnippetChars=700, maxInjectedChars=4000 | Same |
-| Memory scope | Per-agent directory isolation | Per-agent `agent_id` column scoping |
+| Batch embeddings | Disabled by default; opt-in for large backfills | Always available via `embedBatch()`; used in bulk indexing jobs |
+| Memory init timing | QMD eager-initialized on gateway startup (non-blocking) | Lazy via Laravel DI container (pgvector always warm) |
+| Memory scope | Per-agent directory isolation + collection scoping (QMD `-c <name>` args) | Per-agent `agent_id` column + `collection` column scoping |
 | Memory write tool | No dedicated save tool (uses filesystem write/edit directly) | Dedicated `save_memory` tool with `target` param |
 | Memory read tools | `memory_search` (semantic) + `memory_get` (read by path/line) | `recall_memory` (semantic search over all LTM) |
 | Memory files | `MEMORY.md` (curated) + `memory/YYYY-MM-DD.md` (daily logs) | Same layout under `agents/{slug}/` |
-| MEMORY.md loading | Only in main/private sessions (never in groups) | Always loaded via identity file system |
+| MEMORY.md loading | Only in private sessions (scope: `chatType: "direct"`) | Always loaded via identity file system |
 | Session memory hook | On `/new` command, saves transcript to `memory/YYYY-MM-DD-slug.md` | Not applicable (our sessions are persistent) |
 
 ---
@@ -1667,7 +1675,7 @@ tests/Feature/Services/Memory/HybridSearchServiceTest.php
 ## Appendix A: OpenClaw Memory Architecture — Deep Dive
 
 > This appendix documents OpenClaw's exact memory implementation as a reference for our adaptation.
-> Source: `inspiration/openclaw/` (commit reference at time of analysis: Feb 2026)
+> Source: `inspiration/openclaw/` (v2026.2.9, Feb 2026)
 
 ### A.1 Memory Files & Layout
 
@@ -1746,6 +1754,7 @@ OpenClaw's compaction is handled by the embedded Pi agent runtime, not by OpenCl
 - **Effect**: Future turns see compaction summary + messages after the kept entry
 - **Config**: `reserveTokens: 16384`, `keepRecentTokens: 20000`
 - **Safety floor**: Minimum 20000 tokens reserve to ensure room for pre-compaction flush
+- **Boot sync**: `memory.qmd.update.waitForBootSync` (default `false`) — when `true`, QMD boot refresh blocks startup. Default non-blocking behavior means first searches may hit a partially warmed index.
 - **Manual**: `/compact` command (optionally with focus instructions)
 - **Compaction is persistent** in the JSONL transcript, unlike session pruning (which is in-memory only)
 
@@ -1793,6 +1802,30 @@ The **memory flush explicitly targets daily logs**, not MEMORY.md: `"Store durab
 3. Future turns see: compaction summary + recent messages
 
 The compaction summary IS the compressed form of STM. It's lossy — hence why the flush exists to promote key info to LTM before compression.
+
+### A.9 v2026.2.9 Changes
+
+The following changes were introduced in OpenClaw v2026.2.9 (tag `v2026.2.9`, Feb 2026):
+
+**1. Config migration: top-level → agents.defaults.memorySearch**
+`memorySearch` config moved from top-level to `agents.defaults.memorySearch`. A legacy migration rule auto-migrates old configs and logs a deprecation warning. OpenClaw's `docs/concepts/memory.md` now explicitly states: *"Configure memory search under `agents.defaults.memorySearch` (not top-level `memorySearch`)."* Per-agent overrides take precedence over the new default location.
+
+**2. QMD eager initialization**
+New `server-startup-memory.ts` module. The QMD memory manager is now initialized immediately on gateway startup (fire-and-forget, non-blocking) instead of lazily on first `memory_search` call. Update/embed timers are armed immediately. This addresses the documented "first search may be slow" problem by warming up GGUF models during startup. Boot refresh runs in background by default; set `memory.qmd.update.waitForBootSync = true` for blocking behavior.
+
+**3. Collection scoping**
+New `buildCollectionFilterArgs()` method in `QmdMemoryManager`. QMD queries are now scoped to managed collections via `-c <name>` CLI args. If no managed collections are configured, the query returns empty results and logs a warning instead of searching undefined scope. Prevents accidental data exposure from misconfigured setups.
+
+**4. Model cache reuse**
+New `symlinkSharedModels()` method. Symlinks the shared `~/.cache/qmd/models/` directory into each agent-specific `XDG_CACHE_HOME` path. This solves the problem of agent isolation (per-agent `XDG_CACHE_HOME` override) causing re-downloads of ~2.1 GB GGUF models. Result: per-agent index isolation + globally shared ML models. Cross-platform: handles `XDG_CACHE_HOME` on Linux/macOS and `LOCALAPPDATA` on Windows. Not directly applicable to our architecture (we use API-based embeddings, not local models).
+
+**5. Batch embeddings default off**
+`agents.defaults.memorySearch.remote.batch.enabled` default changed from `true` to `false`. Batch API is now opt-in. Rationale: synchronous embedding is adequate for incremental updates; batch is mainly beneficial for large backfills. Providers supporting batch: OpenAI Batch API, Gemini async embeddings, Voyage AI.
+
+**6. ChatType unification (`dm` → `direct`)**
+Session key parsing in `QmdMemoryManager.extractAgentIdFromSessionKey()` now accepts both `"direct"` and `"dm"` for backward compatibility. New sessions use `":direct:"` in generated keys. The QMD scope default rule uses `chatType: "direct"`. This is a semantic rename — `"direct"` is clearer than `"dm"`.
+
+> Note: Utility consolidation (commit ec910a235, `formatError` → `formatErrorMessage`) is an internal refactor with no architectural impact.
 
 ---
 
