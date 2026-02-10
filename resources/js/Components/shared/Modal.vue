@@ -5,7 +5,7 @@
       <DialogContent
         :class="[
           'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2',
-          'w-full bg-white dark:bg-neutral-800 shadow-lg',
+          'w-full max-h-[85vh] flex flex-col bg-white dark:bg-neutral-800 shadow-lg',
           'border border-neutral-200 dark:border-neutral-700 rounded-lg',
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
           'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
@@ -18,7 +18,7 @@
         @escape-key-down="closeOnEscape ? undefined : $event.preventDefault()"
       >
         <!-- Header -->
-        <div v-if="icon || $slots.header || title" class="px-6 pt-6 pb-4">
+        <div v-if="icon || $slots.header || title" class="px-6 pt-6 pb-4 shrink-0">
           <slot name="header">
             <div class="flex items-center gap-3">
               <div
@@ -43,12 +43,12 @@
         </div>
 
         <!-- Content -->
-        <div class="px-6 pb-6" :class="{ 'pt-6': !icon && !$slots.header && !title }">
+        <div class="px-6 pb-6 flex-1 min-h-0 overflow-y-auto" :class="{ 'pt-6': !icon && !$slots.header && !title }">
           <slot />
         </div>
 
         <!-- Footer -->
-        <div v-if="$slots.footer" class="px-6 pb-6 pt-2 border-t border-neutral-200 dark:border-neutral-700">
+        <div v-if="$slots.footer" class="px-6 pb-6 pt-2 border-t border-neutral-200 dark:border-neutral-700 shrink-0">
           <slot name="footer" />
         </div>
 
