@@ -57,7 +57,11 @@ class ApprovalController extends Controller
             && $agent->awaiting_approval_id === $approval->id;
 
         if ($approval->status === 'approved' && $approval->tool_execution_context) {
-            $this->approvalService->executeApprovedTool($approval, $agentIsWaiting);
+            if ($approval->type === 'access') {
+                $this->approvalService->executeApprovedAccess($approval, $agentIsWaiting);
+            } else {
+                $this->approvalService->executeApprovedTool($approval, $agentIsWaiting);
+            }
         } elseif ($approval->status === 'rejected' && $agentIsWaiting) {
             $this->approvalService->handleRejectedTool($approval);
         }

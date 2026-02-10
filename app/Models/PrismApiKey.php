@@ -38,7 +38,7 @@ class PrismApiKey extends Model
     /**
      * Generate a new API key.
      *
-     * @return array{key: static, plainTextKey: string}
+     * @return array{key: self, plainTextKey: string}
      */
     public static function generateKey(string $name): array
     {
@@ -56,7 +56,7 @@ class PrismApiKey extends Model
     /**
      * Find a key by its plain-text value.
      */
-    public static function findByPlainText(string $plainText): ?static
+    public static function findByPlainText(string $plainText): ?self
     {
         return static::where('key_hash', hash('sha256', $plainText))->first();
     }

@@ -21,6 +21,32 @@
       </div>
 
       <template v-else-if="agent">
+        <!-- Sleep Status Banner -->
+        <div
+          v-if="agentSleepingUntil"
+          class="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <Icon name="ph:moon" class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Sleeping until {{ new Date(agentSleepingUntil).toLocaleString() }}
+              </p>
+              <p v-if="agentSleepingReason" class="text-xs text-amber-600 dark:text-amber-400 truncate">
+                {{ agentSleepingReason }}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+            @click="handleSleepChange({ sleepingUntil: null, sleepingReason: null })"
+          >
+            <Icon name="ph:sun" class="w-4 h-4 mr-1 inline" />
+            Wake Up
+          </button>
+        </div>
+
         <!-- Simplified Header -->
         <div class="flex items-center justify-between mb-6">
           <div class="flex items-center gap-4">
@@ -102,6 +128,78 @@
           <!-- Overview Tab -->
           <div v-if="activeTab === 'overview'" class="space-y-6">
             <AgentIdentityCard :agent="agent" />
+
+            <!-- Manager & Direct Reports -->
+            <section v-if="agentManager || agentDirectReports.length > 0">
+              <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">Hierarchy</h3>
+              <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-200 dark:divide-neutral-700">
+                <!-- Manager -->
+                <div v-if="agentManager" class="px-4 py-3 flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-sm shrink-0">
+                    {{ agentManager.type === 'agent' ? '🤖' : '👤' }}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400">Reports to</p>
+                    <Link
+                      :href="agentManager.type === 'agent' ? `/agent/${agentManager.id}` : `/profile/${agentManager.id}`"
+                      class="text-sm font-medium text-neutral-900 dark:text-white hover:underline"
+                    >
+                      {{ agentManager.name }}
+                    </Link>
+                  </div>
+                  <Icon name="ph:arrow-up-right" class="w-4 h-4 text-neutral-400 shrink-0" />
+                </div>
+
+                <!-- Direct Reports -->
+                <div v-if="agentDirectReports.length > 0" class="p-4 space-y-2">
+                  <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
+                    {{ agentDirectReports.length }} direct report{{ agentDirectReports.length !== 1 ? 's' : '' }}
+                  </p>
+                  <Link
+                    v-for="report in agentDirectReports"
+                    :key="report.id"
+                    :href="`/agent/${report.id}`"
+                    class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+                  >
+                    <div class="w-7 h-7 rounded-lg bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-xs shrink-0">
+                      🤖
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-neutral-900 dark:text-white truncate">{{ report.name }}</p>
+                      <p class="text-xs text-neutral-500 dark:text-neutral-400 capitalize">{{ report.agent_type || 'agent' }}</p>
+                    </div>
+                    <span
+                      :class="[
+                        'w-2 h-2 rounded-full shrink-0',
+                        report.status === 'working' || report.status === 'idle' ? 'bg-green-500' : 'bg-neutral-400'
+                      ]"
+                    />
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+            <!-- Delegation Queue -->
+            <section v-if="agentAwaitingDelegationIds.length > 0">
+              <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">
+                Awaiting Delegations
+                <span class="ml-1.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                  {{ agentAwaitingDelegationIds.length }}
+                </span>
+              </h3>
+              <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-200 dark:divide-neutral-700">
+                <div
+                  v-for="delegationId in agentAwaitingDelegationIds"
+                  :key="delegationId"
+                  class="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
+                  @click="router.visit(`/tasks/${delegationId}`)"
+                >
+                  <Icon name="ph:arrow-bend-up-right" class="w-4 h-4 text-amber-500 shrink-0" />
+                  <span class="text-sm text-neutral-600 dark:text-neutral-300 truncate">{{ delegationId }}</span>
+                  <Icon name="ph:arrow-right" class="w-3.5 h-3.5 text-neutral-400 shrink-0 ml-auto" />
+                </div>
+              </div>
+            </section>
 
             <!-- Current Task -->
             <section v-if="agent.currentTask">
@@ -280,8 +378,15 @@
             <AgentSettingsPanel
               :settings="agent.settings"
               :brain="agent.brain"
+              :agent-id="agent.id"
+              :manager-id="agentManagerId"
+              :manager="agentManager"
+              :sleeping-until="agentSleepingUntil"
+              :sleeping-reason="agentSleepingReason"
               :on-brain-change="updateBrain"
               @update="updateSettings"
+              @update-manager="handleManagerChange"
+              @update-sleep="handleSleepChange"
               @reset-memory="resetAgentMemory"
               @pause-agent="togglePause"
               @delete-agent="deleteAgentHandler"
@@ -343,6 +448,12 @@ const agentChannels = ref<{ id: string; name: string; type: string }[]>([])
 const documentFolders = ref<{ id: string; title: string }[]>([])
 const appGroups = ref<{ name: string; description: string; icon: string; logo?: string; isIntegration?: boolean }[]>([])
 const enabledIntegrations = ref<string[]>([])
+const agentManagerId = ref<string | null>(null)
+const agentManager = ref<{ id: string; name: string; type: string; agentType?: string; avatar?: string } | null>(null)
+const agentDirectReports = ref<{ id: string; name: string; type: string; agent_type?: string; status: string; avatar?: string }[]>([])
+const agentSleepingUntil = ref<string | null>(null)
+const agentSleepingReason = ref<string | null>(null)
+const agentAwaitingDelegationIds = ref<string[]>([])
 
 const activeTab = ref<TabId>('overview')
 
@@ -456,6 +567,12 @@ const fetchData = async () => {
     documentFolders.value = (raw.documentFolders as { id: string; title: string }[]) || []
     appGroups.value = (raw.appGroups as typeof appGroups.value) || []
     enabledIntegrations.value = (raw.enabledIntegrations as string[]) || []
+    agentManagerId.value = (raw.managerId as string) || null
+    agentManager.value = (raw.manager as typeof agentManager.value) || null
+    agentDirectReports.value = (raw.directReports as typeof agentDirectReports.value) || []
+    agentSleepingUntil.value = (raw.sleepingUntil as string) || null
+    agentSleepingReason.value = (raw.sleepingReason as string) || null
+    agentAwaitingDelegationIds.value = (raw.awaitingDelegationIds as string[]) || []
 
     // Map tasks from the detail response
     const rawTasks = (raw.tasks as AgentTask[]) || []
@@ -567,6 +684,30 @@ const handleFolderPermissions = async (folders: string[]) => {
     folderPermissions.value = folders
   } catch (e) {
     console.error('Failed to update folder permissions:', e)
+  }
+}
+
+const handleManagerChange = async (managerId: string | null) => {
+  try {
+    await updateAgent(props.id, { managerId })
+    agentManagerId.value = managerId
+    // Refresh to get updated manager details
+    await fetchData()
+  } catch (e) {
+    console.error('Failed to update manager:', e)
+  }
+}
+
+const handleSleepChange = async (data: { sleepingUntil: string | null; sleepingReason: string | null }) => {
+  try {
+    await updateAgent(props.id, {
+      sleepingUntil: data.sleepingUntil,
+      sleepingReason: data.sleepingReason,
+    })
+    agentSleepingUntil.value = data.sleepingUntil
+    agentSleepingReason.value = data.sleepingReason
+  } catch (e) {
+    console.error('Failed to update sleep status:', e)
   }
 }
 

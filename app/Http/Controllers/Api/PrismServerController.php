@@ -19,7 +19,7 @@ class PrismServerController extends Controller
         $setting = IntegrationSetting::where('integration_id', 'prism-server')->first();
 
         return response()->json([
-            'enabled' => $setting?->enabled ?? false,
+            'enabled' => $setting->enabled ?? false,
             'enabled_models' => $setting?->getConfigValue('enabled_models', []) ?? [],
         ]);
     }

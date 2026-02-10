@@ -31,7 +31,19 @@ class SendChannelMessage implements Tool
             $content = $request['content'];
 
             // Check channel access permission
-            if (!$this->permissionService->canAccessChannel($this->agent, $channelId)) {
+            $channelAccess = $this->permissionService->canAccessChannel($this->agent, $channelId);
+            if (!$channelAccess['allowed']) {
+                if ($channelAccess['can_request']) {
+                    $channelName = Channel::find($channelId)->name ?? $channelId;
+                    $approval = $this->permissionService->createAccessRequest(
+                        $this->agent, 'channel', $channelId,
+                        "{$this->agent->name} is requesting access to channel #{$channelName}."
+                    );
+
+                    return "Access to this channel requires approval. An access request has been created (ID: {$approval->id}). "
+                        . "Call wait_for_approval with this ID to pause until it's decided, or continue with other work.";
+                }
+
                 return "Error: You do not have permission to send messages to this channel.";
             }
 

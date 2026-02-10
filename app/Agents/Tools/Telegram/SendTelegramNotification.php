@@ -29,7 +29,8 @@ class SendTelegramNotification implements Tool
             $content = $request['content'];
 
             // Check channel access permission
-            if (!$this->permissionService->canAccessChannel($this->agent, $channelId)) {
+            $channelAccess = $this->permissionService->canAccessChannel($this->agent, $channelId);
+            if (!$channelAccess['allowed']) {
                 return "Error: You do not have permission to send notifications to this channel.";
             }
 

@@ -2,6 +2,7 @@
 
 namespace App\Agents\Tools\Workspace;
 
+use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
@@ -69,6 +70,33 @@ class ManageAgent implements Tool
             }
         }
 
+        // Spawn approval for non-autonomous agents
+        $mode = $this->agent->behavior_mode ?? 'autonomous';
+        if ($mode !== 'autonomous') {
+            $approval = ApprovalRequest::create([
+                'id' => \Illuminate\Support\Str::uuid()->toString(),
+                'type' => 'spawn',
+                'title' => "Spawn agent: {$name}",
+                'description' => "{$this->agent->name} wants to create a new {$agentType} agent named {$name}",
+                'requester_id' => $this->agent->id,
+                'status' => 'pending',
+                'tool_execution_context' => [
+                    'tool_slug' => 'manage_agent',
+                    'parameters' => $request->toArray(),
+                ],
+            ]);
+
+            if ($this->agent->must_wait_for_approval) {
+                $this->agent->update(['awaiting_approval_id' => $approval->id]);
+
+                return "Spawn request requires approval. An approval request has been created (ID: {$approval->id}). " .
+                    "You are configured to wait for approvals. Execution will pause after your response.";
+            }
+
+            return "Spawn request requires approval. An approval request has been created (ID: {$approval->id}). " .
+                "You can call wait_for_approval with this ID to pause until it's decided, or continue working.";
+        }
+
         $agent = User::create([
             'id' => Str::uuid()->toString(),
             'name' => $name,
@@ -80,6 +108,7 @@ class ManageAgent implements Tool
             'is_ephemeral' => $request['isEphemeral'] ?? false,
             'behavior_mode' => $request['behavior'] ?? 'autonomous',
             'current_task' => null,
+            'manager_id' => $this->agent->id,
         ]);
 
         // Parse identity content from JSON string

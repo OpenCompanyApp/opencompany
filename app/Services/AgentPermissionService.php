@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\AgentPermission;
+use App\Models\ApprovalRequest;
 use App\Models\User;
+use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class AgentPermissionService
@@ -69,8 +71,10 @@ class AgentPermissionService
      *
      * If the agent has ANY channel-scoped permissions, only those channels are allowed.
      * If the agent has zero channel-scoped permissions, all channels the agent is a member of are allowed.
+     *
+     * @return array{allowed: bool, can_request: bool}
      */
-    public function canAccessChannel(User $agent, string $channelId): bool
+    public function canAccessChannel(User $agent, string $channelId): array
     {
         $channelPerms = AgentPermission::forAgent($agent->id)
             ->channels()
@@ -79,10 +83,15 @@ class AgentPermissionService
 
         // No channel restrictions set — allow all member channels
         if ($channelPerms->isEmpty()) {
-            return true;
+            return ['allowed' => true, 'can_request' => false];
         }
 
-        return $channelPerms->contains($channelId);
+        if ($channelPerms->contains($channelId)) {
+            return ['allowed' => true, 'can_request' => false];
+        }
+
+        // Channel not in whitelist — agent can request access
+        return ['allowed' => false, 'can_request' => true];
     }
 
     /**
@@ -172,13 +181,13 @@ class AgentPermissionService
     /**
      * Check if an agent is allowed to contact another agent.
      *
-     * @return array{allowed: bool, requires_approval: bool}
+     * @return array{allowed: bool, requires_approval: bool, can_request: bool}
      */
     public function canContactAgent(User $caller, User $target): array
     {
         // Manager hierarchy bypass — always allow without approval
         if ($target->id === $caller->manager_id || $caller->id === $target->manager_id) {
-            return ['allowed' => true, 'requires_approval' => false];
+            return ['allowed' => true, 'requires_approval' => false, 'can_request' => false];
         }
 
         // Check explicit agent-scoped permission
@@ -189,10 +198,10 @@ class AgentPermissionService
 
         if ($explicit) {
             if ($explicit->permission === 'deny') {
-                return ['allowed' => false, 'requires_approval' => false];
+                return ['allowed' => false, 'requires_approval' => false, 'can_request' => true];
             }
 
-            return ['allowed' => true, 'requires_approval' => $explicit->requires_approval];
+            return ['allowed' => true, 'requires_approval' => $explicit->requires_approval, 'can_request' => false];
         }
 
         // Check wildcard agent permission
@@ -203,16 +212,39 @@ class AgentPermissionService
 
         if ($wildcard) {
             if ($wildcard->permission === 'deny') {
-                return ['allowed' => false, 'requires_approval' => false];
+                return ['allowed' => false, 'requires_approval' => false, 'can_request' => true];
             }
 
-            return ['allowed' => true, 'requires_approval' => $wildcard->requires_approval];
+            return ['allowed' => true, 'requires_approval' => $wildcard->requires_approval, 'can_request' => false];
         }
 
         // Default: allow, layer behavior mode
         $requiresApproval = $this->behaviorModeRequiresApproval($caller, 'write');
 
-        return ['allowed' => true, 'requires_approval' => $requiresApproval];
+        return ['allowed' => true, 'requires_approval' => $requiresApproval, 'can_request' => false];
+    }
+
+    /**
+     * Create an access-type approval request for a denied resource.
+     */
+    public function createAccessRequest(
+        User $agent,
+        string $scopeType,
+        string $scopeKey,
+        string $description,
+    ): ApprovalRequest {
+        return ApprovalRequest::create([
+            'id' => Str::uuid()->toString(),
+            'type' => 'access',
+            'title' => "Access request: {$scopeType} — {$scopeKey}",
+            'description' => $description,
+            'requester_id' => $agent->id,
+            'status' => 'pending',
+            'tool_execution_context' => [
+                'scope_type' => $scopeType,
+                'scope_key' => $scopeKey,
+            ],
+        ]);
     }
 
     /**

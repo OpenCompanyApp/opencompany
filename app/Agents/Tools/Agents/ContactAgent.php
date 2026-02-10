@@ -58,6 +58,25 @@ class ContactAgent implements Tool
             // Check permission
             $permission = $this->permissionService->canContactAgent($this->agent, $target);
             if (!$permission['allowed']) {
+                if ($permission['can_request']) {
+                    $approval = $this->permissionService->createAccessRequest(
+                        $this->agent,
+                        'agent',
+                        $target->id,
+                        "{$this->agent->name} is requesting permission to contact {$target->name}."
+                    );
+
+                    if ($this->agent->must_wait_for_approval) {
+                        $this->agent->update(['awaiting_approval_id' => $approval->id]);
+
+                        return "Access to contact {$target->name} requires approval. An access request has been created (ID: {$approval->id}). "
+                            . "Execution will pause after your response.";
+                    }
+
+                    return "Access to contact {$target->name} requires approval. An access request has been created (ID: {$approval->id}). "
+                        . "Call wait_for_approval with this ID to pause until it's decided, or continue with other work.";
+                }
+
                 return "Error: You do not have permission to contact {$target->name}.";
             }
 

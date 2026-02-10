@@ -9,8 +9,8 @@
         </p>
       </header>
 
-      <!-- Filters -->
-      <div class="flex items-center gap-1 mb-6">
+      <!-- Status Filters -->
+      <div class="flex items-center gap-1 mb-4">
         <button
           v-for="filter in filters"
           :key="filter.value"
@@ -25,6 +25,26 @@
         >
           {{ filter.label }}
           <span v-if="filter.count > 0" class="ml-1 opacity-60">{{ filter.count }}</span>
+        </button>
+      </div>
+
+      <!-- Type Filters -->
+      <div class="flex items-center gap-1 mb-6">
+        <button
+          v-for="typeFilter in typeFilters"
+          :key="typeFilter.value"
+          type="button"
+          :class="[
+            'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors duration-150',
+            activeTypeFilter === typeFilter.value
+              ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white'
+              : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+          ]"
+          @click="activeTypeFilter = typeFilter.value"
+        >
+          <Icon :name="typeFilter.icon" class="w-3.5 h-3.5" />
+          {{ typeFilter.label }}
+          <span v-if="typeFilter.count > 0" class="opacity-60">{{ typeFilter.count }}</span>
         </button>
       </div>
 
@@ -49,9 +69,19 @@
           class="px-4 py-4"
         >
           <div class="flex items-start gap-3">
+            <!-- Type Badge -->
+            <div :class="['w-8 h-8 rounded-lg flex items-center justify-center shrink-0', approvalTypeBg(approval.type)]">
+              <Icon :name="approvalTypeIcon(approval.type)" :class="['w-4 h-4', approvalTypeColor(approval.type)]" />
+            </div>
+
             <!-- Content -->
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ approval.title }}</p>
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ approval.title }}</p>
+                <span :class="['px-1.5 py-0.5 text-[10px] font-medium rounded capitalize', approvalTypeBadge(approval.type)]">
+                  {{ approval.type }}
+                </span>
+              </div>
               <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                 {{ approval.requester?.name || 'Unknown' }}
                 <span v-if="formatTimeAgo(approval.createdAt)"> · {{ formatTimeAgo(approval.createdAt) }}</span>
@@ -131,6 +161,7 @@ interface ApprovalRequest {
 }
 
 const activeFilter = ref<'all' | 'pending' | 'approved' | 'rejected'>('pending')
+const activeTypeFilter = ref<'all' | 'action' | 'spawn' | 'access'>('all')
 const loading = ref(true)
 const processing = ref<string | null>(null)
 const approvals = ref<ApprovalRequest[]>([])
@@ -142,10 +173,63 @@ const filters = computed(() => [
   { value: 'rejected' as const, label: 'Rejected', count: approvals.value.filter((a) => a.status === 'rejected').length },
 ])
 
+const typeFilters = computed(() => [
+  { value: 'all' as const, label: 'All Types', icon: 'ph:funnel', count: 0 },
+  { value: 'action' as const, label: 'Actions', icon: 'ph:lightning', count: approvals.value.filter(a => a.type === 'action').length },
+  { value: 'spawn' as const, label: 'Spawns', icon: 'ph:robot', count: approvals.value.filter(a => a.type === 'spawn').length },
+  { value: 'access' as const, label: 'Access', icon: 'ph:lock-key', count: approvals.value.filter(a => a.type === 'access').length },
+])
+
 const filteredApprovals = computed(() => {
-  if (activeFilter.value === 'all') return approvals.value
-  return approvals.value.filter((a) => a.status === activeFilter.value)
+  let result = approvals.value
+  if (activeFilter.value !== 'all') {
+    result = result.filter((a) => a.status === activeFilter.value)
+  }
+  if (activeTypeFilter.value !== 'all') {
+    result = result.filter((a) => a.type === activeTypeFilter.value)
+  }
+  return result
 })
+
+const approvalTypeIcon = (type: string): string => {
+  switch (type) {
+    case 'action': return 'ph:lightning'
+    case 'spawn': return 'ph:robot'
+    case 'access': return 'ph:lock-key'
+    case 'budget': return 'ph:currency-circle-dollar'
+    default: return 'ph:question'
+  }
+}
+
+const approvalTypeBg = (type: string): string => {
+  switch (type) {
+    case 'action': return 'bg-blue-100 dark:bg-blue-900/30'
+    case 'spawn': return 'bg-purple-100 dark:bg-purple-900/30'
+    case 'access': return 'bg-amber-100 dark:bg-amber-900/30'
+    case 'budget': return 'bg-green-100 dark:bg-green-900/30'
+    default: return 'bg-neutral-100 dark:bg-neutral-700'
+  }
+}
+
+const approvalTypeColor = (type: string): string => {
+  switch (type) {
+    case 'action': return 'text-blue-600 dark:text-blue-400'
+    case 'spawn': return 'text-purple-600 dark:text-purple-400'
+    case 'access': return 'text-amber-600 dark:text-amber-400'
+    case 'budget': return 'text-green-600 dark:text-green-400'
+    default: return 'text-neutral-500 dark:text-neutral-400'
+  }
+}
+
+const approvalTypeBadge = (type: string): string => {
+  switch (type) {
+    case 'action': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+    case 'spawn': return 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+    case 'access': return 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+    case 'budget': return 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+    default: return 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400'
+  }
+}
 
 const fetchApprovals = async () => {
   loading.value = true

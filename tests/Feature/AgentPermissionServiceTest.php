@@ -252,7 +252,8 @@ class AgentPermissionServiceTest extends TestCase
     {
         $result = $this->service->canAccessChannel($this->agent, 'any-channel-id');
 
-        $this->assertTrue($result);
+        $this->assertTrue($result['allowed']);
+        $this->assertFalse($result['can_request']);
     }
 
     public function test_channel_allowed_when_whitelisted(): void
@@ -265,7 +266,7 @@ class AgentPermissionServiceTest extends TestCase
 
         $result = $this->service->canAccessChannel($this->agent, 'chan-1');
 
-        $this->assertTrue($result);
+        $this->assertTrue($result['allowed']);
     }
 
     public function test_channel_denied_when_not_in_whitelist(): void
@@ -278,7 +279,8 @@ class AgentPermissionServiceTest extends TestCase
 
         $result = $this->service->canAccessChannel($this->agent, 'chan-2');
 
-        $this->assertFalse($result);
+        $this->assertFalse($result['allowed']);
+        $this->assertTrue($result['can_request']);
     }
 
     // ── Folder Access Tests ────────────────────────────────────────────

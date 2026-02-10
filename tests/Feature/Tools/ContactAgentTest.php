@@ -422,7 +422,7 @@ class ContactAgentTest extends TestCase
         Bus::assertDispatched(AgentRespondJob::class);
     }
 
-    public function test_checks_permissions_deny(): void
+    public function test_checks_permissions_deny_creates_access_request(): void
     {
         $caller = User::factory()->agent()->create(['status' => 'idle']);
         $target = User::factory()->agent()->create(['status' => 'idle']);
@@ -445,7 +445,15 @@ class ContactAgentTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('do not have permission', $result);
+        $this->assertStringContainsString('requires approval', $result);
+        $this->assertStringContainsString('access request has been created', $result);
+
+        // Verify an access-type approval was created
+        $this->assertDatabaseHas('approval_requests', [
+            'type' => 'access',
+            'requester_id' => $caller->id,
+            'status' => 'pending',
+        ]);
     }
 
     public function test_requires_approval_creates_approval_request(): void

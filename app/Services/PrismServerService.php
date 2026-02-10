@@ -6,7 +6,7 @@ use App\Agents\Providers\DynamicProviderResolver;
 use App\Models\IntegrationSetting;
 use Illuminate\Support\Facades\Log;
 use Prism\Prism\Facades\PrismServer;
-use Prism\Prism\Prism;
+use Prism\Prism\Facades\Prism;
 
 class PrismServerService
 {

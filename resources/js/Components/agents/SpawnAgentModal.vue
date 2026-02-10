@@ -129,6 +129,27 @@
           </select>
         </div>
 
+        <!-- Report To (Manager) -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-neutral-900 dark:text-white">Report To</label>
+          <select
+            v-model="managerId"
+            class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors"
+          >
+            <option value="">Current user (default)</option>
+            <option
+              v-for="user in availableManagers"
+              :key="user.id"
+              :value="user.id"
+            >
+              {{ user.name }} {{ user.type === 'agent' ? '(Agent)' : '' }}
+            </option>
+          </select>
+          <p class="text-xs text-neutral-500 dark:text-neutral-400">
+            The manager this agent reports to in the org hierarchy
+          </p>
+        </div>
+
         <!-- Ephemeral Agent Toggle -->
         <div class="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
           <div>
@@ -351,6 +372,10 @@ const agentName = ref('')
 const initialTask = ref('')
 const behavior = ref('supervised')
 const isEphemeral = ref(false)
+const managerId = ref('')
+
+// Available managers (users + agents)
+const availableManagers = ref<Array<{ id: string; name: string; type: string }>>([])
 
 // Brain Selection
 const selectedBrain = ref('')
@@ -400,9 +425,9 @@ const templates = [
 
 const isSpawning = ref(false)
 
-// Load available brains from backend
+// Load available brains and managers from backend
 onMounted(async () => {
-  await loadAvailableBrains()
+  await Promise.all([loadAvailableBrains(), loadAvailableManagers()])
 })
 
 // Reset form when modal closes
@@ -415,6 +440,7 @@ watch(isOpen, (open) => {
     selectedBrain.value = ''
     behavior.value = 'supervised'
     isEphemeral.value = false
+    managerId.value = ''
     activeIdentityFile.value = 'IDENTITY'
     identityContent.value = {
       IDENTITY: '',
@@ -428,6 +454,7 @@ watch(isOpen, (open) => {
     }
   } else {
     loadAvailableBrains()
+    loadAvailableManagers()
   }
 })
 
@@ -443,6 +470,22 @@ const loadAvailableBrains = async () => {
     }
   } catch (error) {
     console.error('Failed to load available brains:', error)
+  }
+}
+
+const loadAvailableManagers = async () => {
+  try {
+    const response = await fetch('/api/users')
+    if (response.ok) {
+      const users = await response.json()
+      availableManagers.value = users.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        type: u.type,
+      }))
+    }
+  } catch (error) {
+    console.error('Failed to load available managers:', error)
   }
 }
 
@@ -579,6 +622,7 @@ const handleSpawn = async () => {
         task: initialTask.value.trim() || undefined,
         behavior: behavior.value,
         isEphemeral: isEphemeral.value,
+        managerId: managerId.value || undefined,
         identity: identityContent.value,
       }),
     })

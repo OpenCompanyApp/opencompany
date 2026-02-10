@@ -39,7 +39,7 @@ class CodexAuthController extends Controller
                 'user_code' => $result['user_code'],
                 'verification_url' => 'https://auth.openai.com/codex/device',
                 'device_auth_id' => $result['device_auth_id'],
-                'interval' => ($result['interval'] ?? 5) + 3,
+                'interval' => $result['interval'] + 3,
             ]);
         } catch (\Throwable $e) {
             return response()->json([

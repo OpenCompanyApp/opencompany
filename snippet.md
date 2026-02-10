@@ -16,6 +16,6 @@ cost managemnt
 
 imagine business use cases and this platform, -> recommendations, also doc
 
--- 
+--
 
-wire up command pallette
+feedback modal + tool

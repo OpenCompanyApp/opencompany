@@ -34,7 +34,8 @@ class ManageMessage implements Tool
                 return "Error: Message '{$messageId}' not found.";
             }
 
-            if (!$this->permissionService->canAccessChannel($this->agent, $message->channel_id)) {
+            $channelAccess = $this->permissionService->canAccessChannel($this->agent, $message->channel_id);
+            if (!$channelAccess['allowed']) {
                 return "Error: You do not have permission to manage messages in this channel.";
             }
 

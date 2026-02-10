@@ -45,6 +45,7 @@ class AgentController extends Controller
             'task' => 'nullable|string',
             'behavior' => 'nullable|in:autonomous,supervised,strict',
             'isEphemeral' => 'nullable|boolean',
+            'managerId' => 'nullable|string|exists:users,id',
             'identity' => 'nullable|array',
             'identity.IDENTITY' => 'nullable|string',
             'identity.SOUL' => 'nullable|string',
@@ -91,6 +92,7 @@ class AgentController extends Controller
             'presence' => 'online',
             'is_ephemeral' => $validated['isEphemeral'] ?? false,
             'current_task' => $validated['task'] ?? null,
+            'manager_id' => $validated['managerId'] ?? $request->user()->id,
         ]);
 
         // Create the document structure for this agent
@@ -200,6 +202,20 @@ class AgentController extends Controller
             'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
             'mustWaitForApproval' => $agent->must_wait_for_approval ?? false,
             'awaitingApprovalId' => $agent->awaiting_approval_id,
+            'managerId' => $agent->manager_id,
+            'manager' => $agent->manager ? [
+                'id' => $agent->manager->id,
+                'name' => $agent->manager->name,
+                'type' => $agent->manager->type,
+                'agentType' => $agent->manager->agent_type,
+                'avatar' => $agent->manager->avatar,
+            ] : null,
+            'directReports' => $agent->directReports()
+                ->select('id', 'name', 'type', 'agent_type', 'status', 'avatar')
+                ->get(),
+            'sleepingUntil' => $agent->sleeping_until,
+            'sleepingReason' => $agent->sleeping_reason,
+            'awaitingDelegationIds' => $agent->awaiting_delegation_ids,
             'identity' => $identity,
             'capabilities' => $capabilities,
             'appGroups' => $toolRegistry->getAppGroupsMeta(),
@@ -269,6 +285,9 @@ class AgentController extends Controller
             'currentTask' => 'sometimes|nullable|string',
             'behaviorMode' => 'sometimes|nullable|in:autonomous,supervised,strict',
             'mustWaitForApproval' => 'sometimes|nullable|boolean',
+            'managerId' => 'sometimes|nullable|string|exists:users,id',
+            'sleepingUntil' => 'sometimes|nullable|date',
+            'sleepingReason' => 'sometimes|nullable|string|max:500',
         ]);
 
         // If updating brain, validate the format and integration
@@ -307,6 +326,9 @@ class AgentController extends Controller
             'current_task' => $validated['currentTask'] ?? $agent->current_task,
             'behavior_mode' => $validated['behaviorMode'] ?? $agent->behavior_mode,
             'must_wait_for_approval' => $validated['mustWaitForApproval'] ?? $agent->must_wait_for_approval,
+            'manager_id' => array_key_exists('managerId', $validated) ? $validated['managerId'] : $agent->manager_id,
+            'sleeping_until' => array_key_exists('sleepingUntil', $validated) ? $validated['sleepingUntil'] : $agent->sleeping_until,
+            'sleeping_reason' => array_key_exists('sleepingReason', $validated) ? $validated['sleepingReason'] : $agent->sleeping_reason,
         ]);
 
         return response()->json($agent);
