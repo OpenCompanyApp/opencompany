@@ -275,6 +275,22 @@ class IntegrationController extends Controller
 
         $setting->save();
 
+        // Auto-fetch models if this integration has a valid API key and no models yet
+        if ($setting->hasValidConfig() && $id !== 'telegram') {
+            $existingModels = $setting->getConfigValue('models');
+            if (empty($existingModels)) {
+                try {
+                    $models = $this->fetchModelsFromProvider($id);
+                    if (!empty($models)) {
+                        $setting->setConfigValue('models', $models);
+                        $setting->save();
+                    }
+                } catch (\Throwable) {
+                    // Silently ignore — user can manually fetch later
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'enabled' => $setting->enabled,
@@ -632,6 +648,144 @@ class IntegrationController extends Controller
         }
 
         return response()->json($models);
+    }
+
+    /**
+     * Fetch available models from the provider API and store in database.
+     */
+    public function fetchModels(string $id)
+    {
+        try {
+            $models = $this->fetchModelsFromProvider($id);
+
+            if (empty($models)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No models returned from provider',
+                ], 400);
+            }
+
+            // Store in integration settings
+            $setting = IntegrationSetting::where('integration_id', $id)->first();
+            if ($setting) {
+                $setting->setConfigValue('models', $models);
+                $setting->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'models' => $models,
+                'count' => count($models),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to fetch models: ' . $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Fetch models from a provider's API.
+     *
+     * @return array<string, string> Model ID => display name
+     */
+    private function fetchModelsFromProvider(string $id): array
+    {
+        if ($id === 'codex') {
+            return $this->fetchCodexModels();
+        }
+
+        if ($id === 'glm' || $id === 'glm-coding') {
+            return $this->fetchGlmModels($id);
+        }
+
+        throw new \InvalidArgumentException("Model fetching not supported for: {$id}");
+    }
+
+    /**
+     * Fetch models from an OpenAI-compatible /models endpoint (GLM).
+     *
+     * @return array<string, string>
+     */
+    private function fetchGlmModels(string $id): array
+    {
+        $setting = IntegrationSetting::where('integration_id', $id)->first();
+        $apiKey = $setting?->getConfigValue('api_key');
+
+        if (!$apiKey) {
+            throw new \RuntimeException('API key not configured. Save your API key first.');
+        }
+
+        $available = config('integrations', []);
+        $baseUrl = $setting->getConfigValue('url') ?: ($available[$id]['default_url'] ?? '');
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+        ])->timeout(15)->get($baseUrl . '/models');
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('API returned ' . $response->status() . ': ' . $response->body());
+        }
+
+        $data = $response->json('data', []);
+        $models = [];
+
+        foreach ($data as $model) {
+            $modelId = $model['id'] ?? null;
+            if (!$modelId) {
+                continue;
+            }
+            // Use the model ID as display name, formatted nicely
+            $displayName = strtoupper(str_replace(['-', '_'], [' ', ' '], $modelId));
+            $displayName = ucwords(strtolower($displayName));
+            $models[$modelId] = $displayName;
+        }
+
+        ksort($models);
+
+        return $models;
+    }
+
+    /**
+     * Fetch models from the Codex API.
+     *
+     * @return array<string, string>
+     */
+    private function fetchCodexModels(): array
+    {
+        $oauthService = app(\OpenCompany\PrismCodex\CodexOAuthService::class);
+        $token = $oauthService->getAccessToken();
+
+        if (!$token) {
+            throw new \RuntimeException('Not authenticated. Please connect your Codex account first.');
+        }
+
+        $response = Http::withToken($token)
+            ->withHeaders(array_filter([
+                'ChatGPT-Account-Id' => $oauthService->getAccountId(),
+            ]))
+            ->timeout(15)
+            ->get(config('codex.url', 'https://chatgpt.com/backend-api/codex') . '/models');
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('API returned ' . $response->status() . ': ' . $response->body());
+        }
+
+        $data = $response->json('models', $response->json('data', []));
+        $models = [];
+
+        foreach ($data as $model) {
+            $modelId = is_string($model) ? $model : ($model['id'] ?? $model['slug'] ?? null);
+            if (!$modelId) {
+                continue;
+            }
+            $displayName = strtoupper(str_replace(['-', '_'], [' ', ' '], $modelId));
+            $displayName = ucwords(strtolower($displayName));
+            $models[$modelId] = $displayName;
+        }
+
+        return $models;
     }
 
     /**

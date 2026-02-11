@@ -50,10 +50,22 @@
 
       <!-- Default Model -->
       <div class="space-y-2">
-        <label class="block text-sm font-medium text-neutral-900 dark:text-white">
-          Default Model
-        </label>
+        <div class="flex items-center justify-between">
+          <label class="block text-sm font-medium text-neutral-900 dark:text-white">
+            Default Model
+          </label>
+          <button
+            type="button"
+            class="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+            :disabled="isFetchingModels || !apiKey"
+            @click="refreshModels"
+          >
+            <Icon name="ph:arrow-clockwise" :class="['w-3.5 h-3.5', isFetchingModels && 'animate-spin']" />
+            {{ isFetchingModels ? 'Fetching...' : 'Refresh Models' }}
+          </button>
+        </div>
         <select
+          v-if="availableModels && Object.keys(availableModels).length > 0"
           v-model="defaultModel"
           class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
         >
@@ -61,6 +73,12 @@
             {{ name }}
           </option>
         </select>
+        <p v-else class="text-xs text-neutral-500 dark:text-neutral-400 italic">
+          No models loaded yet. Save your API key, then click "Refresh Models".
+        </p>
+        <p v-if="fetchResult" :class="['text-xs', fetchResult.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400']">
+          {{ fetchResult.message }}
+        </p>
       </div>
 
       <!-- Test Connection -->
@@ -157,7 +175,7 @@ const emit = defineEmits<{
   saved: [{ enabled: boolean; configured: boolean }]
 }>()
 
-// Integration-specific configuration
+// Integration-specific configuration (metadata only — models fetched from API)
 const integrationConfig = {
   'glm': {
     title: 'Configure GLM (Zhipu AI)',
@@ -165,13 +183,6 @@ const integrationConfig = {
     icon: 'ph:brain',
     defaultUrl: 'https://open.bigmodel.cn/api/paas/v4',
     urlHint: 'Standard Zhipu AI endpoint for general-purpose models',
-    models: {
-      'glm-4-plus': 'GLM 4 Plus (Most Capable)',
-      'glm-4': 'GLM 4',
-      'glm-4-air': 'GLM 4 Air (Balanced)',
-      'glm-4-flash': 'GLM 4 Flash (Fast)',
-    } as Record<string, string>,
-    defaultModel: 'glm-4',
   },
   'glm-coding': {
     title: 'Configure GLM Coding Plan',
@@ -179,10 +190,6 @@ const integrationConfig = {
     icon: 'ph:code',
     defaultUrl: 'https://api.z.ai/api/coding/paas/v4',
     urlHint: 'Zhipu Coding Plan endpoint for code-optimized models',
-    models: {
-      'glm-4.7': 'GLM 4.7 (Coding Optimized)',
-    } as Record<string, string>,
-    defaultModel: 'glm-4.7',
   },
 }
 
@@ -194,9 +201,10 @@ const modalIcon = computed(() => config.value.icon)
 const defaultUrl = computed(() => config.value.defaultUrl)
 const urlHint = computed(() => config.value.urlHint)
 
-// Models loaded from backend API (falls back to hardcoded defaults)
-const serverModels = ref<Record<string, string> | null>(null)
-const availableModels = computed(() => serverModels.value ?? config.value.models)
+// Models loaded from backend API
+const availableModels = ref<Record<string, string> | null>(null)
+const isFetchingModels = ref(false)
+const fetchResult = ref<{ success: boolean; message: string } | null>(null)
 
 // Form state
 const apiKey = ref('')
@@ -220,9 +228,10 @@ watch([isOpen, () => props.integrationId], async ([open]) => {
 const loadConfig = async () => {
   // Reset to defaults first
   apiUrl.value = config.value.defaultUrl
-  defaultModel.value = config.value.defaultModel
-  serverModels.value = null
+  defaultModel.value = ''
+  availableModels.value = null
   testResult.value = null
+  fetchResult.value = null
 
   try {
     const response = await fetch(`/api/integrations/${props.integrationId}/config`)
@@ -230,14 +239,41 @@ const loadConfig = async () => {
       const data = await response.json()
       apiKey.value = data.config?.apiKey || ''
       apiUrl.value = data.config?.url || config.value.defaultUrl
-      defaultModel.value = data.config?.defaultModel || config.value.defaultModel
       enabled.value = data.enabled || false
       if (data.models && Object.keys(data.models).length > 0) {
-        serverModels.value = data.models
+        availableModels.value = data.models
       }
+      defaultModel.value = data.config?.defaultModel || Object.keys(data.models || {})[0] || ''
     }
   } catch (error) {
     console.error('Failed to load config:', error)
+  }
+}
+
+const refreshModels = async () => {
+  isFetchingModels.value = true
+  fetchResult.value = null
+
+  try {
+    const response = await fetch(`/api/integrations/${props.integrationId}/fetch-models`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const data = await response.json()
+
+    if (data.success) {
+      availableModels.value = data.models
+      if (!defaultModel.value && data.models) {
+        defaultModel.value = Object.keys(data.models)[0] || ''
+      }
+      fetchResult.value = { success: true, message: `Found ${data.count} model(s)` }
+    } else {
+      fetchResult.value = { success: false, message: data.error || 'Failed to fetch models' }
+    }
+  } catch (error) {
+    fetchResult.value = { success: false, message: 'Failed to fetch models. Check your network.' }
+  } finally {
+    isFetchingModels.value = false
   }
 }
 

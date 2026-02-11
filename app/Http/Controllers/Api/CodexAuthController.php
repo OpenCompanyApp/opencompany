@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\IntegrationSetting;
 use Illuminate\Http\Request;
 use OpenCompany\PrismCodex\CodexOAuthService;
 use OpenCompany\PrismCodex\CodexTokenStore;
@@ -23,7 +24,7 @@ class CodexAuthController extends Controller
             'expires_at' => $stored?->expires_at?->toDateTimeString(),
             'is_expired' => $stored?->isExpired() ?? true,
             'updated_at' => $stored?->updated_at?->toDateTimeString(),
-            'models' => config('integrations.codex.models', []),
+            'models' => IntegrationSetting::getAvailableIntegrations()['codex']['models'] ?? [],
         ]);
     }
 
@@ -110,7 +111,8 @@ class CodexAuthController extends Controller
         }
 
         try {
-            $model = array_key_first(config('integrations.codex.models', [])) ?? 'gpt-5.3-codex';
+            $available = IntegrationSetting::getAvailableIntegrations();
+            $model = array_key_first($available['codex']['models'] ?? []) ?? 'gpt-5.3-codex';
 
             $response = \Illuminate\Support\Facades\Http::withToken($token)
                 ->withHeaders(array_filter([

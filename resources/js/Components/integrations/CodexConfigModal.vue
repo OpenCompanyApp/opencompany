@@ -27,10 +27,22 @@
 
         <!-- Default Model -->
         <div class="space-y-2">
-          <label class="block text-sm font-medium text-neutral-900 dark:text-white">
-            Default Model
-          </label>
+          <div class="flex items-center justify-between">
+            <label class="block text-sm font-medium text-neutral-900 dark:text-white">
+              Default Model
+            </label>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+              :disabled="isFetchingModels"
+              @click="refreshModels"
+            >
+              <Icon name="ph:arrow-clockwise" :class="['w-3.5 h-3.5', isFetchingModels && 'animate-spin']" />
+              {{ isFetchingModels ? 'Fetching...' : 'Refresh Models' }}
+            </button>
+          </div>
           <select
+            v-if="authStatus.models && Object.keys(authStatus.models).length > 0"
             v-model="selectedModel"
             class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
           >
@@ -38,6 +50,12 @@
               {{ name }}
             </option>
           </select>
+          <p v-else class="text-xs text-neutral-500 dark:text-neutral-400 italic">
+            No models loaded yet. Click "Refresh Models" to fetch from Codex API.
+          </p>
+          <p v-if="fetchResult" :class="['text-xs', fetchResult.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400']">
+            {{ fetchResult.message }}
+          </p>
         </div>
 
         <!-- Test Connection -->
@@ -200,7 +218,9 @@ const authStatus = reactive<{
   models: {},
 })
 
-const selectedModel = ref('gpt-5.3-codex')
+const selectedModel = ref('')
+const isFetchingModels = ref(false)
+const fetchResult = ref<{ success: boolean; message: string } | null>(null)
 
 // UI state
 const copied = ref(false)
@@ -236,8 +256,33 @@ const loadStatus = async () => {
   try {
     const { data } = await axios.get('/api/integrations/codex/auth/status')
     Object.assign(authStatus, data)
+    if (data.models && Object.keys(data.models).length > 0 && !selectedModel.value) {
+      selectedModel.value = Object.keys(data.models)[0]
+    }
   } catch (error) {
     console.error('Failed to load Codex status:', error)
+  }
+}
+
+const refreshModels = async () => {
+  isFetchingModels.value = true
+  fetchResult.value = null
+
+  try {
+    const { data } = await axios.post('/api/integrations/codex/fetch-models')
+    if (data.success) {
+      authStatus.models = data.models
+      if (!selectedModel.value && data.models) {
+        selectedModel.value = Object.keys(data.models)[0] || ''
+      }
+      fetchResult.value = { success: true, message: `Found ${data.count} model(s)` }
+    } else {
+      fetchResult.value = { success: false, message: data.error || 'Failed to fetch models' }
+    }
+  } catch (error: any) {
+    fetchResult.value = { success: false, message: error.response?.data?.error || 'Failed to fetch models' }
+  } finally {
+    isFetchingModels.value = false
   }
 }
 

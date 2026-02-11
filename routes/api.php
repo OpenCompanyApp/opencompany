@@ -258,6 +258,7 @@ Route::post('/integrations/codex/test', [CodexAuthController::class, 'test']);
 Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConfig']);
 Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
 Route::post('/integrations/{id}/test', [IntegrationController::class, 'testConnection']);
+Route::post('/integrations/{id}/fetch-models', [IntegrationController::class, 'fetchModels']);
 Route::post('/integrations/{id}/setup-webhook', [IntegrationController::class, 'setupWebhook']);
 Route::get('/integrations/external-identities', [IntegrationController::class, 'externalIdentities']);
 Route::post('/integrations/link-user', [IntegrationController::class, 'linkExternalUser']);

@@ -85,10 +85,27 @@ class IntegrationSetting extends Model
     }
 
     /**
-     * Available integration types (from config/integrations.php).
+     * Available integration types (config metadata + DB-stored models).
      */
     public static function getAvailableIntegrations(): array
     {
-        return config('integrations', []);
+        $base = config('integrations', []);
+
+        try {
+            $settings = static::all()->keyBy('integration_id');
+        } catch (\Throwable) {
+            return $base;
+        }
+
+        foreach ($base as $id => &$info) {
+            /** @var self|null $setting */
+            $setting = $settings->get($id);
+            $models = $setting?->getConfigValue('models');
+            if (is_array($models) && !empty($models)) {
+                $info['models'] = $models;
+            }
+        }
+
+        return $base;
     }
 }

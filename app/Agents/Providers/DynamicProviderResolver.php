@@ -157,6 +157,14 @@ class DynamicProviderResolver
      */
     private function getDefaultModel(string $providerKey): string
     {
+        // Try DB-stored models first
+        $setting = IntegrationSetting::where('integration_id', $providerKey)->first();
+        $models = $setting?->getConfigValue('models', []);
+        if (is_array($models) && !empty($models)) {
+            return array_key_first($models);
+        }
+
+        // Hardcoded fallbacks for providers without DB-stored models
         return match ($providerKey) {
             'glm' => 'glm-4-plus',
             'glm-coding' => 'glm-4.7',
