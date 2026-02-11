@@ -21,7 +21,7 @@ class SendChannelMessage implements Tool
 
     public function description(): string
     {
-        return 'Send a message to a channel in the workspace. Use this to communicate with team members or post updates.';
+        return 'Send a message to any workspace channel, including external channels (Telegram, Slack). Messages to external channels are automatically delivered.';
     }
 
     public function handle(Request $request): string

@@ -24,7 +24,6 @@ use App\Agents\Tools\Tables\ManageTableRows;
 use App\Agents\Tools\Tables\QueryTable;
 use App\Agents\Tools\Tasks\CreateTaskStep;
 use App\Agents\Tools\Tasks\UpdateCurrentTask;
-use App\Agents\Tools\Telegram\SendTelegramNotification;
 use App\Agents\Tools\Agents\ContactAgent;
 use App\Agents\Tools\Workspace\ManageAgent;
 use App\Agents\Tools\Workspace\ManageAgentPermissions;
@@ -67,7 +66,7 @@ class ToolRegistry
         'chat' => [
             'tools' => ['send_channel_message', 'read_channel', 'list_channels', 'manage_message'],
             'label' => 'send, read, list, manage',
-            'description' => 'Channel messaging and operations',
+            'description' => 'Channel messaging (incl. external: Telegram, Slack)',
         ],
         'docs' => [
             'tools' => ['search_documents', 'manage_document', 'comment_on_document'],
@@ -101,18 +100,13 @@ class ToolRegistry
             'label' => 'render',
             'description' => 'Render SVG markup to PNG images',
         ],
-        'telegram' => [
-            'tools' => ['send_telegram_notification'],
-            'label' => 'notify',
-            'description' => 'External notifications',
-        ],
     ];
 
     /**
      * Apps that are external integrations (can be toggled per agent).
      * Built-in apps are always available.
      */
-    public const INTEGRATION_APPS = ['telegram'];
+    public const INTEGRATION_APPS = [];
 
     /**
      * Icons for each app group.
@@ -126,7 +120,6 @@ class ToolRegistry
         'lists' => 'ph:kanban',
         'tasks' => 'ph:list-checks',
         'svg' => 'ph:file-svg',
-        'telegram' => 'ph:telegram-logo',
         'system' => 'ph:gear',
         'workspace' => 'ph:gear-six',
     ];
@@ -134,9 +127,7 @@ class ToolRegistry
     /**
      * Colored brand logos for integration apps (Iconify logo set).
      */
-    private const INTEGRATION_LOGOS = [
-        'telegram' => 'logos:telegram',
-    ];
+    private const INTEGRATION_LOGOS = [];
 
     /**
      * Registry of all available tools with metadata.
@@ -155,7 +146,7 @@ class ToolRegistry
             'class' => SendChannelMessage::class,
             'type' => 'write',
             'name' => 'Send Channel Message',
-            'description' => 'Send a message to a channel in the workspace.',
+            'description' => 'Send a message to any workspace channel, including external channels (Telegram, Slack). Messages to external channels are automatically delivered to the external platform.',
             'icon' => 'ph:chat-circle',
         ],
         'read_channel' => [
@@ -169,7 +160,7 @@ class ToolRegistry
             'class' => ListChannels::class,
             'type' => 'read',
             'name' => 'List Channels',
-            'description' => 'List channels in the workspace that you have access to.',
+            'description' => 'List channels you have access to, including external (Telegram, Slack) channels.',
             'icon' => 'ph:list-bullets',
         ],
         'manage_message' => [
@@ -282,14 +273,6 @@ class ToolRegistry
             'name' => 'Render SVG',
             'description' => 'Convert SVG markup to a PNG image.',
             'icon' => 'ph:file-svg',
-        ],
-        // External
-        'send_telegram_notification' => [
-            'class' => SendTelegramNotification::class,
-            'type' => 'write',
-            'name' => 'Send Telegram Notification',
-            'description' => 'Send a notification to a Telegram chat.',
-            'icon' => 'ph:telegram-logo',
         ],
         // Meta
         'get_tool_info' => [
@@ -612,7 +595,7 @@ class ToolRegistry
 
         // Display order grouped by priority, null = section separator
         // Start with known apps, then append any dynamic provider apps
-        $knownIntegrations = ['svg', 'telegram'];
+        $knownIntegrations = ['svg'];
         $providerApps = array_keys($this->providerRegistry->all());
         $integrations = array_unique(array_merge($providerApps, $knownIntegrations));
 
@@ -824,7 +807,6 @@ class ToolRegistry
             UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
             RenderSvg::class => new RenderSvg(),
-            SendTelegramNotification::class => new SendTelegramNotification($agent, $this->permissionService),
             WaitForApproval::class => new WaitForApproval($agent),
             Wait::class => new Wait($agent),
             // Workspace Management

@@ -11,11 +11,19 @@ use Illuminate\Support\Str;
 
 class ChannelController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $channels = Channel::with(['users', 'creator', 'latestMessage.author'])
-            ->orderBy('updated_at', 'desc')
-            ->get();
+        $query = Channel::with(['users', 'creator', 'latestMessage.author']);
+
+        if ($type = $request->query('type')) {
+            $query->where('type', $type);
+        }
+
+        if ($provider = $request->query('provider')) {
+            $query->where('external_provider', $provider);
+        }
+
+        $channels = $query->orderBy('updated_at', 'desc')->get();
 
         return $channels->map(function ($channel) {
             $channelArray = $channel->toArray();

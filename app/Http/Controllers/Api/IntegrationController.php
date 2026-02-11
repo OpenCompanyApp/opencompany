@@ -161,6 +161,8 @@ class IntegrationController extends Controller
             $config['defaultAgentId'] = $setting?->getConfigValue('default_agent_id') ?? '';
             $config['notifyChatId'] = $setting?->getConfigValue('notify_chat_id') ?? '';
             $config['allowedTelegramUsers'] = $setting?->getConfigValue('allowed_telegram_users', []) ?? [];
+            $config['botUsername'] = $setting?->getConfigValue('bot_username') ?? '';
+            $config['webhookActive'] = (bool) ($setting?->getConfigValue('webhook_active') ?? false);
         } else {
             $config['url'] = $setting?->getConfigValue('url') ?? ($available[$id]['default_url'] ?? '');
             $config['defaultModel'] = $setting?->getConfigValue('default_model') ?? array_key_first($available[$id]['models'] ?? []);
@@ -418,6 +420,14 @@ class IntegrationController extends Controller
 
         if ($response->successful() && ($data['ok'] ?? false)) {
             $result = $data['result'];
+
+            // Persist bot username in config
+            $setting = IntegrationSetting::where('integration_id', 'telegram')->first();
+            if ($setting) {
+                $setting->setConfigValue('bot_username', $result['username'] ?? '');
+                $setting->save();
+            }
+
             return response()->json([
                 'success' => true,
                 'botName' => $result['first_name'] ?? 'Unknown',
@@ -485,6 +495,10 @@ class IntegrationController extends Controller
             $data = $response->json();
 
             if ($response->successful() && ($data['ok'] ?? false)) {
+                // Persist webhook status in config
+                $setting->setConfigValue('webhook_active', true);
+                $setting->save();
+
                 return response()->json([
                     'success' => true,
                     'webhookUrl' => $webhookUrl,

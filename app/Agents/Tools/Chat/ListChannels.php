@@ -18,7 +18,7 @@ class ListChannels implements Tool
 
     public function description(): string
     {
-        return 'List channels in the workspace that you have access to.';
+        return 'List channels in the workspace that you have access to, including external channels (Telegram, Slack).';
     }
 
     public function handle(Request $request): string
