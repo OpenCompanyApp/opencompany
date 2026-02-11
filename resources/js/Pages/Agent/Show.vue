@@ -653,7 +653,6 @@ const handleIntegrations = async (integrations: string[]) => {
   try {
     await updateAgentIntegrations(props.id, integrations)
     enabledIntegrations.value = integrations
-    await fetchData()
   } catch (e) {
     console.error('Failed to update integrations:', e)
   }

@@ -64,58 +64,10 @@
       </div>
     </section>
 
-    <!-- Integrations -->
-    <section v-if="integrationApps.length > 0">
-      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">Integrations</h3>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-3">External services this agent can access</p>
-      <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-200 dark:divide-neutral-700">
-        <div
-          v-for="app in integrationApps"
-          :key="app.name"
-          class="px-4 py-3 flex items-center gap-3"
-        >
-          <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-neutral-100 dark:bg-neutral-700/50">
-            <Icon
-              :name="app.logo || app.icon"
-              :class="[
-                'w-5 h-5',
-                !app.logo && (localIntegrations.includes(app.name)
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-neutral-400 dark:text-neutral-500')
-              ]"
-            />
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-neutral-900 dark:text-white capitalize">{{ app.name }}</p>
-            <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ app.description }}</p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="localIntegrations.includes(app.name)"
-            :class="[
-              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0',
-              localIntegrations.includes(app.name)
-                ? 'bg-green-500'
-                : 'bg-neutral-300 dark:bg-neutral-600'
-            ]"
-            @click="toggleIntegration(app.name)"
-          >
-            <span
-              :class="[
-                'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                localIntegrations.includes(app.name) ? 'translate-x-[18px]' : 'translate-x-[3px]'
-              ]"
-            />
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Tool Permissions -->
+    <!-- Capabilities -->
     <section>
-      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">Tool Permissions</h3>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-3">Control which tools this agent can use</p>
+      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">Capabilities</h3>
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-3">Manage integrations and tool access for this agent</p>
       <div class="space-y-2">
         <template v-for="(group, idx) in groupedTools" :key="group.name">
           <!-- Separator between integration and built-in tools -->
@@ -128,45 +80,75 @@
             <div class="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
           </div>
 
-          <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-          <!-- Group header -->
-          <button
-            type="button"
-            class="w-full px-4 py-3 flex items-center gap-3 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
-            @click="toggleGroup(group.name)"
+          <div
+            :class="[
+              'bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden',
+              group.isIntegration && !isIntegrationEnabled(group.name) ? 'opacity-50' : ''
+            ]"
           >
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-neutral-200 dark:bg-neutral-700/50">
-              <Icon
-                :name="group.logo || group.icon"
+          <!-- Group header -->
+          <div class="flex items-center">
+            <button
+              type="button"
+              class="flex-1 px-4 py-3 flex items-center gap-3 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
+              @click="group.isIntegration && !isIntegrationEnabled(group.name) ? undefined : toggleGroup(group.name)"
+            >
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-neutral-200 dark:bg-neutral-700/50">
+                <Icon
+                  :name="group.logo || group.icon"
+                  :class="[
+                    group.logo ? 'w-5 h-5' : 'w-4 h-4 text-neutral-600 dark:text-neutral-300'
+                  ]"
+                />
+              </div>
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-medium text-neutral-900 dark:text-white capitalize">
+                  {{ group.name }}
+                </p>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                  {{ group.description }}
+                </p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="text-xs text-neutral-400 dark:text-neutral-500">
+                  {{ group.tools.filter(t => t.enabled).length }}/{{ group.tools.length }}
+                </span>
+                <Icon
+                  v-if="!group.isIntegration || isIntegrationEnabled(group.name)"
+                  name="ph:caret-right"
+                  :class="[
+                    'w-4 h-4 text-neutral-400 dark:text-neutral-500 transition-transform',
+                    expandedGroups[group.name] ? 'rotate-90' : ''
+                  ]"
+                />
+              </div>
+            </button>
+
+            <!-- Integration master toggle -->
+            <button
+              v-if="group.isIntegration"
+              type="button"
+              role="switch"
+              :aria-checked="isIntegrationEnabled(group.name)"
+              :class="[
+                'relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 mr-4',
+                isIntegrationEnabled(group.name)
+                  ? 'bg-green-500'
+                  : 'bg-neutral-300 dark:bg-neutral-600'
+              ]"
+              @click.stop="toggleIntegration(group.name)"
+            >
+              <span
                 :class="[
-                  group.logo ? 'w-5 h-5' : 'w-4 h-4 text-neutral-600 dark:text-neutral-300'
+                  'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
+                  isIntegrationEnabled(group.name) ? 'translate-x-[18px]' : 'translate-x-[3px]'
                 ]"
               />
-            </div>
-            <div class="flex-1 min-w-0 text-left">
-              <p class="text-sm font-medium text-neutral-900 dark:text-white capitalize">
-                {{ group.name }}
-              </p>
-              <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                {{ group.description }}
-              </p>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <span class="text-xs text-neutral-400 dark:text-neutral-500">
-                {{ group.tools.filter(t => t.enabled).length }}/{{ group.tools.length }}
-              </span>
-              <Icon
-                name="ph:caret-right"
-                :class="[
-                  'w-4 h-4 text-neutral-400 dark:text-neutral-500 transition-transform',
-                  expandedGroups[group.name] ? 'rotate-90' : ''
-                ]"
-              />
-            </div>
-          </button>
+            </button>
+          </div>
 
           <!-- Group tools (collapsible) -->
-          <div v-if="expandedGroups[group.name]" class="divide-y divide-neutral-200 dark:divide-neutral-700 border-t border-neutral-200 dark:border-neutral-700">
+          <div v-if="expandedGroups[group.name] && (!group.isIntegration || isIntegrationEnabled(group.name))" class="divide-y divide-neutral-200 dark:divide-neutral-700 border-t border-neutral-200 dark:border-neutral-700">
             <div
               v-for="tool in group.tools"
               :key="tool.id"
@@ -490,10 +472,7 @@ const toolsDirty = ref(false)
 const channelsDirty = ref(false)
 const foldersDirty = ref(false)
 
-// Integration apps (external services only)
-const integrationApps = computed(() =>
-  props.appGroups.filter(g => g.isIntegration)
-)
+const isIntegrationEnabled = (name: string) => localIntegrations.value.includes(name)
 
 interface ToolGroup {
   name: string
@@ -504,18 +483,13 @@ interface ToolGroup {
   tools: AgentCapability[]
 }
 
-// Group tools by app category, filtering out disabled integrations
-// Built-in apps first, then integration apps (so the separator works correctly)
+// Group tools by app category
+// Integration apps first, then built-in apps (so the separator works correctly)
 const groupedTools = computed<ToolGroup[]>(() => {
   const builtIn: ToolGroup[] = []
   const integrations: ToolGroup[] = []
 
   for (const appGroup of props.appGroups) {
-    // Skip disabled integration apps
-    if (appGroup.isIntegration && !localIntegrations.value.includes(appGroup.name)) {
-      continue
-    }
-
     const tools = localTools.value.filter(t => t.app === appGroup.name)
     if (tools.length > 0) {
       const group: ToolGroup = {
@@ -558,6 +532,7 @@ const toggleIntegration = (name: string) => {
   const idx = localIntegrations.value.indexOf(name)
   if (idx >= 0) {
     localIntegrations.value.splice(idx, 1)
+    expandedGroups[name] = false
   } else {
     localIntegrations.value.push(name)
   }
