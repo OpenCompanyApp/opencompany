@@ -48,7 +48,7 @@
             />
 
             <Link
-              :href="`/profile/${node.id}`"
+              :href="node.type === 'agent' ? `/agent/${node.id}` : `/profile/${node.id}`"
               :class="[
                 'font-medium truncate hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors duration-150',
                 depth === 0

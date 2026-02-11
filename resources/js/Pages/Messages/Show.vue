@@ -23,7 +23,7 @@
               />
               <div>
                 <Link
-                  :href="`/profile/${conversation.otherUser.id}`"
+                  :href="conversation.otherUser.type === 'agent' ? `/agent/${conversation.otherUser.id}` : `/profile/${conversation.otherUser.id}`"
                   class="font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
                 >
                   {{ conversation.otherUser.name }}
@@ -38,19 +38,11 @@
             <!-- Actions -->
             <div class="flex items-center gap-1">
               <Link
-                v-if="conversation?.otherUser.type === 'agent'"
-                :href="`/agent/${conversation.otherUser.id}`"
+                :href="conversation?.otherUser.type === 'agent' ? `/agent/${conversation.otherUser.id}` : `/profile/${userId}`"
                 class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                title="View agent details"
+                :title="conversation?.otherUser.type === 'agent' ? 'View agent' : 'View profile'"
               >
-                <Icon name="ph:gear" class="w-5 h-5" />
-              </Link>
-              <Link
-                :href="`/profile/${userId}`"
-                class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                title="View profile"
-              >
-                <Icon name="ph:user" class="w-5 h-5" />
+                <Icon :name="conversation?.otherUser.type === 'agent' ? 'ph:robot' : 'ph:user'" class="w-5 h-5" />
               </Link>
             </div>
           </div>

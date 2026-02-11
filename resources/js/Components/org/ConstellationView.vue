@@ -99,7 +99,8 @@ const { init, isReady, updateNodeData } = useConstellation(
   nodesRef,
   isDark,
   (id: string) => {
-    router.visit(`/profile/${id}`)
+    const node = nodesRef.value.find(n => n.id === id)
+    router.visit(node?.type === 'agent' ? `/agent/${id}` : `/profile/${id}`)
   },
   (node: ConstellationNode | null, x: number, y: number) => {
     hoveredNode.value = node

@@ -227,7 +227,7 @@
       <!-- Assignees -->
       <div class="flex items-center">
         <div :class="['flex', sizeConfig[size].avatarStack]">
-          <Link v-if="task.assignee" :href="`/profile/${task.assignee.id}`" @click.stop>
+          <Link v-if="task.assignee" :href="task.assignee.type === 'agent' ? `/agent/${task.assignee.id}` : `/profile/${task.assignee.id}`" @click.stop>
             <AgentAvatar
               :user="task.assignee"
               :size="avatarSize"
@@ -237,7 +237,7 @@
           <Link
             v-for="collab in (task.collaborators || []).slice(0, maxCollaborators)"
             :key="collab.id"
-            :href="`/profile/${collab.id}`"
+            :href="collab.type === 'agent' ? `/agent/${collab.id}` : `/profile/${collab.id}`"
             @click.stop
           >
             <AgentAvatar

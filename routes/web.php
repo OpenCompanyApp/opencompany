@@ -123,6 +123,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Profile pages
     Route::get('/profile/{id}', function (string $id) {
+        $user = \App\Models\User::findOrFail($id);
+        if ($user->type === 'agent') {
+            return redirect("/agent/{$id}");
+        }
+
         return Inertia::render('Profile/Show', ['id' => $id]);
     })->name('profile.show');
 

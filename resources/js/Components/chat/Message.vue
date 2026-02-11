@@ -55,7 +55,7 @@
         <div v-if="showHeader" :class="headerClasses">
           <!-- Author Name -->
           <Link
-            :href="`/profile/${message.author.id}`"
+            :href="message.author.type === 'agent' ? `/agent/${message.author.id}` : `/profile/${message.author.id}`"
             :class="authorNameClasses"
           >
             {{ message.author.name }}
