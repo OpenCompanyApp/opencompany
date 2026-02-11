@@ -82,49 +82,55 @@
     <!-- Messages Area -->
     <div
       ref="messagesContainer"
-      class="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-neutral-200 dark:scrollbar-thumb-neutral-600 scrollbar-track-transparent"
+      class="flex-1 overflow-y-auto px-4 md:px-8 py-4 scrollbar-thin scrollbar-thumb-neutral-200 dark:scrollbar-thumb-neutral-600 scrollbar-track-transparent"
     >
-      <!-- Empty State -->
-      <div v-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center">
-        <div class="w-16 h-16 rounded-full bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center mb-4">
-          <Icon name="ph:chat-circle" class="w-8 h-8 text-neutral-400" />
-        </div>
-        <h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-1">No messages yet</h3>
-        <p class="text-sm text-neutral-500 dark:text-neutral-400">Be the first to send a message in #{{ channel.name }}</p>
-      </div>
-
-      <!-- Messages List -->
-      <template v-else>
-        <div
-          v-for="(message, index) in messages"
-          :key="message.id"
-          :id="`message-${message.id}`"
-          class="group"
-        >
-          <!-- Date Separator -->
-          <div
-            v-if="shouldShowDateSeparator(index)"
-            class="flex items-center gap-4 my-6"
-          >
-            <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
-            <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              {{ formatMessageDate(message.timestamp) }}
-            </span>
-            <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+      <div class="max-w-5xl mx-auto w-full">
+        <!-- Empty State -->
+        <div v-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center">
+          <div class="w-16 h-16 rounded-full bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center mb-4">
+            <Icon name="ph:chat-circle" class="w-8 h-8 text-neutral-400" />
           </div>
-
-          <!-- Message -->
-          <ChatMessage
-            :message="message"
-            :is-own="message.author?.id === currentUserId"
-            :show-avatar="shouldShowAvatar(index)"
-            :show-header="shouldShowName(index)"
-            @reaction="(msg, emoji) => emit('react', msg, emoji)"
-            @open-thread="emit('openThread', message)"
-            @pin="emit('pin', message)"
-          />
+          <h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-1">No messages yet</h3>
+          <p class="text-sm text-neutral-500 dark:text-neutral-400">Be the first to send a message in #{{ channel.name }}</p>
         </div>
-      </template>
+
+        <!-- Messages List -->
+        <template v-else>
+          <div
+            v-for="(message, index) in messages"
+            :key="message.id"
+            :id="`message-${message.id}`"
+            :class="isFirstInGroup(index) ? 'mt-4 first:mt-0' : 'mt-0.5'"
+          >
+            <!-- Date Separator -->
+            <div
+              v-if="shouldShowDateSeparator(index)"
+              class="flex items-center gap-4 my-4"
+            >
+              <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+              <span class="text-xs font-medium text-neutral-400 dark:text-neutral-500 select-none">
+                {{ formatMessageDate(message.timestamp) }}
+              </span>
+              <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+            </div>
+
+            <!-- Message -->
+            <ChatMessage
+              :message="message"
+              variant="bubble"
+              :is-own="message.author?.id === currentUserId"
+              :show-avatar="shouldShowAvatar(index)"
+              :show-header="shouldShowName(index)"
+              :is-first-in-group="isFirstInGroup(index)"
+              :is-last-in-group="isLastInGroup(index)"
+              :show-delivery-status="message.author?.id === currentUserId && isLastInGroup(index)"
+              @reaction="(msg, emoji) => emit('react', msg, emoji)"
+              @open-thread="emit('openThread', message)"
+              @pin="emit('pin', message)"
+            />
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- Thread Panel -->
@@ -149,9 +155,12 @@
         <div class="px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
           <ChatMessage
             :message="activeThread.parentMessage"
+            variant="bubble"
             :is-own="activeThread.parentMessage.author?.id === currentUserId"
             :show-avatar="true"
             :show-header="true"
+            :is-first-in-group="true"
+            :is-last-in-group="true"
             :compact="true"
           />
         </div>
@@ -165,9 +174,12 @@
             v-for="reply in activeThread.replies"
             :key="reply.id"
             :message="reply"
+            variant="bubble"
             :is-own="reply.author?.id === currentUserId"
             :show-avatar="true"
             :show-header="true"
+            :is-first-in-group="true"
+            :is-last-in-group="true"
             :compact="true"
           />
         </div>
@@ -183,10 +195,27 @@
       </div>
     </Transition>
 
-    <!-- Typing Indicator -->
+    <!-- Typing Indicator (inline bubble like ChatGPT/Telegram) -->
     <Transition name="fade">
-      <div v-if="typingUsers.length > 0" class="px-4 py-2 border-t border-neutral-200 dark:border-neutral-700">
-        <ChatTypingIndicator :users="typingUsers" />
+      <div v-if="typingUsers.length > 0" class="px-4 md:px-8 py-2">
+        <div class="max-w-5xl mx-auto flex items-end gap-2">
+          <SharedAgentAvatar
+            v-if="typingUsers[0]"
+            :user="typingUsers[0]"
+            size="sm"
+            :show-status="false"
+            class="shrink-0 mb-0.5"
+          />
+          <div class="bg-neutral-100 dark:bg-neutral-800 rounded-2xl rounded-bl-md px-4 py-2.5">
+            <ChatTypingIndicator
+              :users="typingUsers"
+              variant="minimal"
+              size="sm"
+              :show-avatars="false"
+              :show-typing-ring="false"
+            />
+          </div>
+        </div>
       </div>
     </Transition>
 
@@ -208,6 +237,7 @@ import Tooltip from '@/Components/shared/Tooltip.vue'
 import ChatMessage from '@/Components/chat/Message.vue'
 import ChatMessageInput from '@/Components/chat/MessageInput.vue'
 import ChatTypingIndicator from '@/Components/chat/TypingIndicator.vue'
+import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import type { Channel, Message, User } from '@/types'
 
 interface Thread {
@@ -298,22 +328,33 @@ const shouldShowDateSeparator = (index: number): boolean => {
   return currentDate !== previousDate
 }
 
-// Check if avatar should be shown
-const shouldShowAvatar = (index: number): boolean => {
+// Check if message is first in its group (same author within 5 min)
+const isFirstInGroup = (index: number): boolean => {
   if (index === 0) return true
   const currentMessage = props.messages[index]
   const previousMessage = props.messages[index - 1]
   if (!currentMessage?.author || !previousMessage?.author) return true
-
-  // Show avatar if different author or more than 5 minutes apart
   if (currentMessage.author.id !== previousMessage.author.id) return true
-
   const timeDiff = new Date(currentMessage.timestamp).getTime() - new Date(previousMessage.timestamp).getTime()
   return timeDiff > 5 * 60 * 1000
 }
 
-// Check if name should be shown (same logic as avatar)
-const shouldShowName = shouldShowAvatar
+// Check if message is last in its group
+const isLastInGroup = (index: number): boolean => {
+  if (index === props.messages.length - 1) return true
+  const currentMessage = props.messages[index]
+  const nextMessage = props.messages[index + 1]
+  if (!currentMessage?.author || !nextMessage?.author) return true
+  if (currentMessage.author.id !== nextMessage.author.id) return true
+  const timeDiff = new Date(nextMessage.timestamp).getTime() - new Date(currentMessage.timestamp).getTime()
+  return timeDiff > 5 * 60 * 1000
+}
+
+// Show avatar on last message in group (Telegram convention — avatar at bottom)
+const shouldShowAvatar = (index: number): boolean => isLastInGroup(index)
+
+// Show name on first message in group
+const shouldShowName = (index: number): boolean => isFirstInGroup(index)
 
 // Format message date
 const formatMessageDate = (date: Date | string): string => {

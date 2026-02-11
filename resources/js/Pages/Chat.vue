@@ -214,11 +214,22 @@ const refreshChannels = async () => {
 
 const channelsData = computed<Channel[]>(() =>
   (channels.value ?? []).map(c => {
-    if (c.type === 'dm' && c.members?.length) {
-      const other = c.members.find(m => m.id !== 'h1') ?? c.members[0]
-      return { ...c, name: other?.name ?? c.name }
+    const mapped = { ...c } as any
+
+    // Normalize DM names
+    if (mapped.type === 'dm' && mapped.members?.length) {
+      const other = mapped.members.find((m: any) => m.id !== 'h1') ?? mapped.members[0]
+      mapped.name = other?.name ?? mapped.name
     }
-    return c
+
+    // Normalize latest_message (snake_case from API) to latestMessage
+    if (mapped.latest_message) {
+      mapped.latestMessage = mapped.latest_message
+      mapped.lastMessageAt = mapped.latest_message.timestamp
+      delete mapped.latest_message
+    }
+
+    return mapped as Channel
   })
 )
 

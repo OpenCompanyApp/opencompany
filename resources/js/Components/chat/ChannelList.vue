@@ -1,363 +1,222 @@
 <template>
   <aside :class="containerClasses">
     <!-- Header -->
-    <div v-if="showHeader" :class="headerClasses">
+    <div v-if="showHeader" class="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
       <div class="flex items-center gap-2">
-        <h2 :class="headerTitleClasses">{{ title }}</h2>
-        <SharedBadge v-if="totalUnreadCount > 0" size="xs" variant="primary">
+        <h2 class="text-base font-semibold text-neutral-900 dark:text-white">Chats</h2>
+        <span
+          v-if="totalUnreadCount > 0"
+          class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold bg-neutral-900 dark:bg-white text-white dark:text-neutral-900"
+        >
           {{ totalUnreadCount > 99 ? '99+' : totalUnreadCount }}
-        </SharedBadge>
+        </span>
       </div>
 
       <div class="flex items-center gap-1">
-        <!-- Filter Toggle -->
-        <Tooltip v-if="showFilterButton" text="Filter channels" :delay-open="300" side="bottom" :side-offset="5">
+        <!-- Search Toggle -->
+        <Tooltip text="Search" :delay-open="300" side="bottom" :side-offset="5">
           <button
             type="button"
-            :class="headerButtonClasses(filterOpen)"
-            @click="filterOpen = !filterOpen"
+            :class="headerButtonClasses(searchOpen)"
+            @click="searchOpen = !searchOpen"
           >
-            <Icon name="ph:funnel" class="w-4 h-4" />
+            <Icon name="ph:magnifying-glass" class="w-4 h-4" />
           </button>
         </Tooltip>
 
-        <!-- Create Channel -->
-        <Tooltip text="Create channel" :delay-open="300" side="bottom" :side-offset="5">
-          <button
-            type="button"
-            :class="headerButtonClasses(false)"
-            @click="handleCreateChannel"
-          >
-            <Icon name="ph:plus" class="w-4 h-4" />
-          </button>
-        </Tooltip>
+        <!-- Compose -->
+        <div class="relative">
+          <Tooltip text="New conversation" :delay-open="300" side="bottom" :side-offset="5">
+            <button
+              type="button"
+              :class="headerButtonClasses(composeOpen)"
+              @click="composeOpen = !composeOpen"
+            >
+              <Icon name="ph:pencil-simple-line" class="w-4 h-4" />
+            </button>
+          </Tooltip>
+
+          <!-- Compose Dropdown -->
+          <Transition name="fade-scale">
+            <div
+              v-if="composeOpen"
+              class="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg py-1 z-20"
+            >
+              <button
+                type="button"
+                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                @click="handleCompose('dm')"
+              >
+                <Icon name="ph:chat-circle" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+                New Message
+              </button>
+              <button
+                type="button"
+                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                @click="handleCompose('channel')"
+              >
+                <Icon name="ph:hash" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+                New Channel
+              </button>
+              <button
+                type="button"
+                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                @click="handleCompose('external')"
+              >
+                <Icon name="ph:plug" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+                Connect External
+              </button>
+            </div>
+          </Transition>
+        </div>
       </div>
     </div>
 
-    <!-- Search -->
-    <div :class="searchContainerClasses">
-      <SharedSearchInput
-        v-model="searchQuery"
-        :placeholder="searchPlaceholder"
-        :size="size === 'sm' ? 'sm' : 'md'"
-        :clearable="true"
-        :loading="searching"
-        @focus="searchFocused = true"
-        @blur="searchFocused = false"
-      />
-
-      <!-- Quick Filters (visible when search focused) -->
-      <Transition name="slide-down">
-        <div v-if="showQuickFilters && (searchFocused || searchQuery)" class="mt-2 flex flex-wrap gap-1">
-          <button
-            v-for="filter in quickFilters"
-            :key="filter.value"
-            type="button"
-            :class="quickFilterClasses(filter.value)"
-            @click="toggleQuickFilter(filter.value)"
-          >
-            <Icon v-if="filter.icon" :name="filter.icon" class="w-3 h-3" />
-            {{ filter.label }}
-          </button>
-        </div>
-      </Transition>
-    </div>
-
-    <!-- Filter Panel (collapsible) -->
+    <!-- Search Bar (expandable) -->
     <Transition name="slide-down">
-      <div v-if="filterOpen" :class="filterPanelClasses">
-        <div class="space-y-3">
-          <div>
-            <label class="text-xs font-medium text-neutral-500 dark:text-neutral-300 uppercase tracking-wider mb-2 block">
-              Channel Type
-            </label>
-            <div class="flex flex-wrap gap-1">
-              <button
-                v-for="type in channelTypeFilters"
-                :key="type.value"
-                type="button"
-                :class="filterChipClasses(activeTypeFilters.includes(type.value))"
-                @click="toggleTypeFilter(type.value)"
-              >
-                <Icon v-if="type.icon" :name="type.icon" class="w-3 h-3" />
-                {{ type.label }}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label class="text-xs font-medium text-neutral-500 dark:text-neutral-300 uppercase tracking-wider mb-2 block">
-              Status
-            </label>
-            <div class="flex flex-wrap gap-1">
-              <button
-                v-for="status in statusFilters"
-                :key="status.value"
-                type="button"
-                :class="filterChipClasses(activeStatusFilters.includes(status.value))"
-                @click="toggleStatusFilter(status.value)"
-              >
-                {{ status.label }}
-              </button>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700">
-            <button
-              type="button"
-              class="text-xs text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
-              @click="clearFilters"
-            >
-              Clear all
-            </button>
-            <span class="text-xs text-neutral-400 dark:text-neutral-400">
-              {{ filteredChannelsCount }} channels
-            </span>
-          </div>
-        </div>
+      <div v-if="searchOpen" class="px-3 py-2 border-b border-neutral-200 dark:border-neutral-700">
+        <SearchInput
+          v-model="searchQuery"
+          placeholder="Search conversations..."
+          size="sm"
+          :clearable="true"
+          autofocus
+        />
       </div>
     </Transition>
 
+    <!-- Filter Chips -->
+    <div class="flex gap-1.5 px-3 py-2 overflow-x-auto scrollbar-none border-b border-neutral-100 dark:border-neutral-800">
+      <button
+        v-for="filter in filters"
+        :key="filter.value"
+        type="button"
+        :class="filterChipClasses(filter.value === activeFilter)"
+        @click="activeFilter = filter.value"
+      >
+        <Icon v-if="filter.icon" :name="filter.icon" class="w-3 h-3" />
+        {{ filter.label }}
+        <span v-if="filter.value === 'unread' && totalUnreadCount > 0" class="ml-0.5 opacity-70">
+          {{ totalUnreadCount }}
+        </span>
+      </button>
+    </div>
+
     <!-- Channel List -->
-    <div :class="listContainerClasses">
+    <div class="flex-1 overflow-y-auto scrollbar-thin">
       <!-- Loading State -->
       <template v-if="loading">
-        <ChannelListSkeleton />
+        <div class="p-2 space-y-1">
+          <div v-for="i in 8" :key="i" class="flex items-center gap-3 px-3 py-3 animate-pulse">
+            <div class="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-700 shrink-0" />
+            <div class="flex-1 space-y-2">
+              <div class="flex justify-between">
+                <div class="h-3.5 rounded bg-neutral-200 dark:bg-neutral-700" :style="{ width: `${80 + (i * 13) % 60}px` }" />
+                <div class="h-3 w-8 rounded bg-neutral-200 dark:bg-neutral-700" />
+              </div>
+              <div class="h-3 rounded bg-neutral-100 dark:bg-neutral-800" :style="{ width: `${120 + (i * 17) % 80}px` }" />
+            </div>
+          </div>
+        </div>
       </template>
 
       <template v-else-if="hasChannels">
-        <!-- Pinned Channels -->
-        <ChannelSection
-          v-if="pinnedChannels.length > 0"
-          title="Pinned"
-          icon="ph:push-pin"
-          :channels="pinnedChannels"
-          :selected-id="selectedChannel?.id"
-          :collapsible="true"
-          :default-open="true"
-          :show-count="false"
-          :size="size"
-          @select="handleSelect"
-          @context-action="handleContextAction"
-        />
+        <div class="p-2 space-y-0.5">
+          <!-- Pinned Chats -->
+          <template v-if="pinnedChannels.length > 0">
+            <ChatChannelItem
+              v-for="channel in pinnedChannels"
+              :key="channel.id"
+              :channel="channel"
+              :selected="selectedChannel?.id === channel.id"
+              :muted="channel.muted"
+              :pinned="channel.pinned"
+              @click="handleSelect"
+              @context-action="handleContextAction"
+            />
+            <!-- Pinned divider -->
+            <div class="mx-3 my-1.5 border-b border-neutral-200 dark:border-neutral-700" />
+          </template>
 
-        <!-- Starred Channels -->
-        <ChannelSection
-          v-if="starredChannels.length > 0"
-          title="Starred"
-          icon="ph:star"
-          :channels="starredChannels"
-          :selected-id="selectedChannel?.id"
-          :collapsible="true"
-          :default-open="true"
-          :show-count="false"
-          :size="size"
-          @select="handleSelect"
-          @context-action="handleContextAction"
-        />
-
-        <!-- Direct Messages -->
-        <ChannelSection
-          title="Direct Messages"
-          icon="ph:chat-circle"
-          :channels="dmChannels"
-          :selected-id="selectedChannel?.id"
-          :collapsible="true"
-          :default-open="true"
-          :show-count="true"
-          :show-online-count="true"
-          :size="size"
-          :action="{ icon: 'ph:plus', label: 'New message', onClick: () => emit('createDm') }"
-          @select="handleSelect"
-          @context-action="handleContextAction"
-        />
-
-        <!-- Private Channels -->
-        <ChannelSection
-          v-if="privateChannels.length > 0"
-          title="Private Channels"
-          icon="ph:lock-simple"
-          :channels="privateChannels"
-          :selected-id="selectedChannel?.id"
-          :collapsible="true"
-          :default-open="true"
-          :show-count="true"
-          :size="size"
-          @select="handleSelect"
-          @context-action="handleContextAction"
-        />
-
-        <!-- Public Channels -->
-        <ChannelSection
-          v-if="publicChannels.length > 0"
-          title="Channels"
-          icon="ph:hash"
-          :channels="publicChannels"
-          :selected-id="selectedChannel?.id"
-          :collapsible="true"
-          :default-open="true"
-          :show-count="true"
-          :size="size"
-          :action="{ icon: 'ph:plus', label: 'Add channel', onClick: handleCreateChannel }"
-          @select="handleSelect"
-          @context-action="handleContextAction"
-        />
-
-        <!-- External Channels -->
-        <ChannelSection
-          v-if="externalChannels.length > 0"
-          title="External"
-          icon="ph:plug"
-          :channels="externalChannels"
-          :selected-id="selectedChannel?.id"
-          :collapsible="true"
-          :default-open="true"
-          :show-count="true"
-          :size="size"
-          :action="{ icon: 'ph:plus', label: 'Connect integration', onClick: () => emit('createExternal') }"
-          @select="handleSelect"
-          @context-action="handleContextAction"
-        />
-
-        <!-- Archived (collapsed by default) -->
-        <ChannelSection
-          v-if="archivedChannels.length > 0 && showArchived"
-          title="Archived"
-          icon="ph:archive"
-          :channels="archivedChannels"
-          :selected-id="selectedChannel?.id"
-          :collapsible="true"
-          :default-open="false"
-          :show-count="true"
-          :size="size"
-          :muted="true"
-          @select="handleSelect"
-          @context-action="handleContextAction"
-        />
+          <!-- Unpinned Chats (sorted by latest message) -->
+          <ChatChannelItem
+            v-for="channel in unpinnedChannels"
+            :key="channel.id"
+            :channel="channel"
+            :selected="selectedChannel?.id === channel.id"
+            :muted="channel.muted"
+            :pinned="channel.pinned"
+            @click="handleSelect"
+            @context-action="handleContextAction"
+          />
+        </div>
       </template>
 
-      <!-- Empty State -->
+      <!-- Empty States -->
       <template v-else>
         <!-- No Search Results -->
-        <SharedEmptyState
-          v-if="searchQuery || hasActiveFilters"
-          icon="ph:magnifying-glass"
-          title="No channels found"
-          :description="emptySearchDescription"
-          size="sm"
-        >
-          <template #action>
-            <button
-              type="button"
-              class="text-sm text-neutral-900 dark:text-white hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-              @click="clearSearch"
-            >
-              Clear search
-            </button>
-          </template>
-        </SharedEmptyState>
+        <div v-if="searchQuery" class="flex flex-col items-center justify-center py-12 px-4 text-center">
+          <Icon name="ph:magnifying-glass" class="w-10 h-10 text-neutral-300 dark:text-neutral-600 mb-3" />
+          <p class="text-sm font-medium text-neutral-900 dark:text-white">No results</p>
+          <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+            No conversations match "{{ searchQuery }}"
+          </p>
+          <button
+            type="button"
+            class="mt-3 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+            @click="searchQuery = ''"
+          >
+            Clear search
+          </button>
+        </div>
+
+        <!-- No Channels With Active Filter -->
+        <div v-else-if="activeFilter !== 'all'" class="flex flex-col items-center justify-center py-12 px-4 text-center">
+          <Icon name="ph:funnel" class="w-10 h-10 text-neutral-300 dark:text-neutral-600 mb-3" />
+          <p class="text-sm font-medium text-neutral-900 dark:text-white">Nothing here</p>
+          <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+            No {{ activeFilter === 'unread' ? 'unread' : activeFilter === 'dms' ? 'direct message' : activeFilter === 'channels' ? 'channel' : 'external' }} conversations
+          </p>
+          <button
+            type="button"
+            class="mt-3 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+            @click="activeFilter = 'all'"
+          >
+            Show all chats
+          </button>
+        </div>
 
         <!-- No Channels At All -->
-        <SharedEmptyState
-          v-else
-          icon="ph:chat-circle-dots"
-          title="No channels yet"
-          description="Create a channel to start collaborating"
-          size="sm"
-        >
-          <template #action>
-            <SharedButton size="sm" @click="handleCreateChannel">
-              <Icon name="ph:plus" class="w-4 h-4" />
-              Create channel
-            </SharedButton>
-          </template>
-        </SharedEmptyState>
+        <div v-else class="flex flex-col items-center justify-center py-12 px-4 text-center">
+          <Icon name="ph:chat-circle-dots" class="w-10 h-10 text-neutral-300 dark:text-neutral-600 mb-3" />
+          <p class="text-sm font-medium text-neutral-900 dark:text-white">No conversations</p>
+          <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+            Start a new conversation to get going
+          </p>
+        </div>
       </template>
-    </div>
-
-    <!-- Footer -->
-    <div v-if="showFooter" :class="footerClasses">
-      <!-- Browse All Channels -->
-      <button
-        type="button"
-        :class="footerButtonClasses"
-        @click="emit('browse')"
-      >
-        <Icon name="ph:compass" class="w-4 h-4" />
-        Browse all channels
-      </button>
-
-      <!-- Show Archived Toggle -->
-      <label v-if="archivedChannels.length > 0" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-300 cursor-pointer mt-2">
-        <input
-          v-model="showArchived"
-          type="checkbox"
-          class="w-3.5 h-3.5 rounded text-neutral-900 dark:text-white bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 focus:ring-neutral-400/50 dark:focus:ring-neutral-500/50"
-        >
-        Show archived ({{ archivedChannels.length }})
-      </label>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, defineComponent } from 'vue'
-import { CollapsibleRoot, CollapsibleContent } from 'reka-ui'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import SharedBadge from '@/Components/shared/Badge.vue'
-import Skeleton from '@/Components/shared/Skeleton.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
-import SharedSearchInput from '@/Components/shared/SearchInput.vue'
-import SharedEmptyState from '@/Components/shared/EmptyState.vue'
-import SharedButton from '@/Components/shared/Button.vue'
+import SearchInput from '@/Components/shared/SearchInput.vue'
 import ChatChannelItem from '@/Components/chat/ChannelItem.vue'
 import type { Channel } from '@/types'
 
-type ChannelListSize = 'sm' | 'md' | 'lg'
-type ChannelListVariant = 'default' | 'compact' | 'floating'
-type ChannelType = 'public' | 'private' | 'dm' | 'external'
-type StatusFilter = 'unread' | 'muted' | 'pinned' | 'starred'
-type QuickFilter = 'unread' | 'dms'
-
-interface SectionAction {
-  icon: string
-  label: string
-  onClick: () => void
-}
+type FilterTab = 'all' | 'unread' | 'dms' | 'channels' | 'external'
 
 const props = withDefaults(defineProps<{
-  // Core
   channels: Channel[]
   selectedChannel?: Channel
-
-  // Appearance
-  size?: ChannelListSize
-  variant?: ChannelListVariant
-  width?: string
-  title?: string
-
-  // Features
   showHeader?: boolean
-  showFooter?: boolean
-  showFilterButton?: boolean
-  showQuickFilters?: boolean
-  searchPlaceholder?: string
-
-  // State
   loading?: boolean
-  searching?: boolean
 }>(), {
-  size: 'md',
-  variant: 'default',
-  width: 'w-60',
-  title: 'Channels',
   showHeader: true,
-  showFooter: true,
-  showFilterButton: true,
-  showQuickFilters: true,
-  searchPlaceholder: 'Search channels...',
   loading: false,
-  searching: false,
 })
 
 const emit = defineEmits<{
@@ -365,202 +224,111 @@ const emit = defineEmits<{
   create: []
   createDm: []
   createExternal: []
-  browse: []
   contextAction: [action: string, channel: Channel]
 }>()
 
 // State
 const searchQuery = ref('')
-const searchFocused = ref(false)
-const filterOpen = ref(false)
-const showArchived = ref(false)
-const activeTypeFilters = ref<ChannelType[]>([])
-const activeStatusFilters = ref<StatusFilter[]>([])
-const activeQuickFilters = ref<QuickFilter[]>([])
+const searchOpen = ref(false)
+const composeOpen = ref(false)
+const activeFilter = ref<FilterTab>('all')
+
+// Close compose dropdown when clicking outside
+const handleClickOutside = (e: MouseEvent) => {
+  if (composeOpen.value) {
+    composeOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 // Filter options
-const channelTypeFilters: { value: ChannelType; label: string; icon: string }[] = [
-  { value: 'public', label: 'Public', icon: 'ph:hash' },
-  { value: 'private', label: 'Private', icon: 'ph:lock-simple' },
-  { value: 'dm', label: 'DMs', icon: 'ph:chat-circle' },
+const filters: { value: FilterTab; label: string; icon?: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'unread', label: 'Unread' },
+  { value: 'dms', label: 'DMs', icon: 'ph:chat-circle' },
+  { value: 'channels', label: 'Channels', icon: 'ph:hash' },
   { value: 'external', label: 'External', icon: 'ph:plug' },
 ]
 
-const statusFilters: { value: StatusFilter; label: string }[] = [
-  { value: 'unread', label: 'Unread' },
-  { value: 'muted', label: 'Muted' },
-  { value: 'pinned', label: 'Pinned' },
-  { value: 'starred', label: 'Starred' },
-]
-
-const quickFilters: { value: QuickFilter; label: string; icon?: string }[] = [
-  { value: 'unread', label: 'Unread' },
-  { value: 'dms', label: 'DMs', icon: 'ph:chat-circle' },
-]
-
-// Size configurations
-const sizeConfig: Record<ChannelListSize, {
-  container: string
-  header: string
-  search: string
-  list: string
-  footer: string
-}> = {
-  sm: {
-    container: 'w-52',
-    header: 'px-2 py-2',
-    search: 'px-2 py-1.5',
-    list: 'px-2 pb-2',
-    footer: 'px-2 py-2',
-  },
-  md: {
-    container: 'w-60',
-    header: 'px-3 py-3',
-    search: 'px-3 py-2',
-    list: 'px-3 pb-3',
-    footer: 'px-3 py-3',
-  },
-  lg: {
-    container: 'w-72',
-    header: 'px-4 py-4',
-    search: 'px-4 py-3',
-    list: 'px-4 pb-4',
-    footer: 'px-4 py-4',
-  },
-}
-
-// Filter channels
+// Filtered channels
 const filteredChannels = computed(() => {
-  let result = props.channels
+  let result = props.channels.filter(c => !c.archived)
 
   // Search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(c =>
       c.name.toLowerCase().includes(query) ||
-      c.description?.toLowerCase().includes(query),
+      c.description?.toLowerCase().includes(query) ||
+      c.latestMessage?.content?.toLowerCase().includes(query),
     )
   }
 
-  // Type filters
-  if (activeTypeFilters.value.length > 0) {
-    result = result.filter(c => {
-      if (activeTypeFilters.value.includes('public') && c.type === 'public' && !c.private) return true
-      if (activeTypeFilters.value.includes('private') && c.private) return true
-      if (activeTypeFilters.value.includes('dm') && c.type === 'dm') return true
-      if (activeTypeFilters.value.includes('external') && c.type === 'external') return true
-      return false
-    })
-  }
-
-  // Status filters
-  if (activeStatusFilters.value.length > 0) {
-    result = result.filter(c => {
-      if (activeStatusFilters.value.includes('unread') && (c.unreadCount || 0) > 0) return true
-      if (activeStatusFilters.value.includes('muted') && c.muted) return true
-      if (activeStatusFilters.value.includes('pinned') && c.pinned) return true
-      if (activeStatusFilters.value.includes('starred') && c.starred) return true
-      return false
-    })
-  }
-
-  // Quick filters
-  if (activeQuickFilters.value.length > 0) {
-    result = result.filter(c => {
-      if (activeQuickFilters.value.includes('unread') && (c.unreadCount || 0) > 0) return true
-      if (activeQuickFilters.value.includes('dms') && c.type === 'dm') return true
-      return activeQuickFilters.value.length === 0
-    })
+  // Tab filter
+  switch (activeFilter.value) {
+    case 'unread':
+      result = result.filter(c => (c.unreadCount || 0) > 0)
+      break
+    case 'dms':
+      result = result.filter(c => c.type === 'dm')
+      break
+    case 'channels':
+      result = result.filter(c => c.type === 'public' || c.type === 'private')
+      break
+    case 'external':
+      result = result.filter(c => c.type === 'external')
+      break
   }
 
   return result
 })
 
-// Categorize channels
+// Sort helper
+function sortByLastMessage(a: Channel, b: Channel): number {
+  const aTime = getMessageTime(a)
+  const bTime = getMessageTime(b)
+  return bTime - aTime // descending (most recent first)
+}
+
+function getMessageTime(c: Channel): number {
+  if (c.latestMessage?.timestamp) return new Date(c.latestMessage.timestamp).getTime()
+  if (c.lastMessageAt) return new Date(c.lastMessageAt).getTime()
+  if (c.createdAt) return new Date(c.createdAt).getTime()
+  return 0
+}
+
+// Pinned channels (at top)
 const pinnedChannels = computed(() =>
-  filteredChannels.value.filter(c => c.pinned && !c.archived),
+  filteredChannels.value
+    .filter(c => c.pinned)
+    .sort(sortByLastMessage),
 )
 
-const starredChannels = computed(() =>
-  filteredChannels.value.filter(c => c.starred && !c.pinned && !c.archived),
-)
-
-const dmChannels = computed(() =>
-  filteredChannels.value.filter(c => c.type === 'dm' && !c.pinned && !c.starred && !c.archived),
-)
-
-const privateChannels = computed(() =>
-  filteredChannels.value.filter(c => (c.type === 'private' || c.private) && c.type !== 'dm' && !c.pinned && !c.starred && !c.archived),
-)
-
-const publicChannels = computed(() =>
-  filteredChannels.value.filter(c => c.type === 'public' && !c.private && !c.pinned && !c.starred && !c.archived),
-)
-
-const archivedChannels = computed(() =>
-  filteredChannels.value.filter(c => c.archived),
-)
-
-const externalChannels = computed(() =>
-  filteredChannels.value.filter(c => c.type === 'external' && !c.pinned && !c.starred && !c.archived),
+// Unpinned channels (sorted by latest message)
+const unpinnedChannels = computed(() =>
+  filteredChannels.value
+    .filter(c => !c.pinned)
+    .sort(sortByLastMessage),
 )
 
 // Computed values
 const hasChannels = computed(() => filteredChannels.value.length > 0)
-const filteredChannelsCount = computed(() => filteredChannels.value.length)
-const hasActiveFilters = computed(() =>
-  activeTypeFilters.value.length > 0 ||
-  activeStatusFilters.value.length > 0 ||
-  activeQuickFilters.value.length > 0,
-)
 
 const totalUnreadCount = computed(() =>
   props.channels.reduce((sum, c) => sum + (c.unreadCount || 0), 0),
 )
 
-const emptySearchDescription = computed(() => {
-  if (searchQuery.value) {
-    return `No results for "${searchQuery.value}"`
-  }
-  if (hasActiveFilters.value) {
-    return 'Try adjusting your filters'
-  }
-  return 'No channels match your criteria'
-})
-
 // Container classes
-const containerClasses = computed(() => {
-  const classes = [
-    'bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0',
-    props.width || sizeConfig[props.size].container,
-  ]
-
-  if (props.variant === 'floating') {
-    classes.push('absolute left-0 top-0 h-full shadow-lg z-10')
-  }
-
-  if (props.variant === 'compact') {
-    classes.push('border-r-0')
-  }
-
-  return classes
-})
-
-// Header classes
-const headerClasses = computed(() => [
-  'flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700',
-  sizeConfig[props.size].header,
+const containerClasses = computed(() => [
+  'bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0 w-80',
 ])
-
-// Header title classes
-const headerTitleClasses = computed(() => {
-  const sizeMap: Record<ChannelListSize, string> = {
-    sm: 'text-sm',
-    md: 'text-base',
-    lg: 'text-lg',
-  }
-  return ['font-semibold text-neutral-900 dark:text-white', sizeMap[props.size]]
-})
 
 // Header button classes
 const headerButtonClasses = (active: boolean) => [
@@ -571,253 +339,38 @@ const headerButtonClasses = (active: boolean) => [
     : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800',
 ]
 
-// Search container classes
-const searchContainerClasses = computed(() => [
-  sizeConfig[props.size].search,
-])
-
-// Quick filter classes
-const quickFilterClasses = (filter: QuickFilter) => [
-  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium',
-  'transition-colors duration-150',
-  activeQuickFilters.value.includes(filter)
-    ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white'
-    : 'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800',
-]
-
-// Filter panel classes
-const filterPanelClasses = computed(() => [
-  'border-b border-neutral-200 dark:border-neutral-700',
-  sizeConfig[props.size].search,
-])
-
 // Filter chip classes
 const filterChipClasses = (active: boolean) => [
-  'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs',
-  'transition-colors duration-150',
+  'flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap',
+  'transition-all duration-150 shrink-0',
   active
-    ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white'
-    : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700',
+    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
+    : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700',
 ]
-
-// List container classes
-const listContainerClasses = computed(() => [
-  'flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-300 dark:scrollbar-thumb-neutral-600 scrollbar-track-transparent',
-  sizeConfig[props.size].list,
-])
-
-// Footer classes
-const footerClasses = computed(() => [
-  'border-t border-neutral-200 dark:border-neutral-700',
-  sizeConfig[props.size].footer,
-])
-
-// Footer button classes
-const footerButtonClasses = computed(() => [
-  'w-full flex items-center gap-2 px-3 py-2.5 rounded-lg group',
-  'text-sm text-neutral-500 dark:text-neutral-300',
-  'hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800',
-  'transition-colors duration-150',
-  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
-])
-
-// Filter functions
-const toggleTypeFilter = (type: ChannelType) => {
-  const index = activeTypeFilters.value.indexOf(type)
-  if (index > -1) {
-    activeTypeFilters.value.splice(index, 1)
-  } else {
-    activeTypeFilters.value.push(type)
-  }
-}
-
-const toggleStatusFilter = (status: StatusFilter) => {
-  const index = activeStatusFilters.value.indexOf(status)
-  if (index > -1) {
-    activeStatusFilters.value.splice(index, 1)
-  } else {
-    activeStatusFilters.value.push(status)
-  }
-}
-
-const toggleQuickFilter = (filter: QuickFilter) => {
-  const index = activeQuickFilters.value.indexOf(filter)
-  if (index > -1) {
-    activeQuickFilters.value.splice(index, 1)
-  } else {
-    activeQuickFilters.value.push(filter)
-  }
-}
-
-const clearFilters = () => {
-  activeTypeFilters.value = []
-  activeStatusFilters.value = []
-  activeQuickFilters.value = []
-}
-
-const clearSearch = () => {
-  searchQuery.value = ''
-  clearFilters()
-}
 
 // Handlers
 const handleSelect = (channel: Channel) => {
   emit('select', channel)
 }
 
-const handleCreateChannel = () => {
-  emit('create')
-}
-
 const handleContextAction = (action: string, channel: Channel) => {
   emit('contextAction', action, channel)
 }
 
-// Channel Section Component
-const ChannelSection = defineComponent({
-  name: 'ChannelSection',
-  props: {
-    title: { type: String, required: true },
-    icon: { type: String, default: undefined },
-    channels: { type: Array as () => Channel[], required: true },
-    selectedId: { type: String, default: undefined },
-    collapsible: { type: Boolean, default: true },
-    defaultOpen: { type: Boolean, default: true },
-    showCount: { type: Boolean, default: true },
-    showOnlineCount: { type: Boolean, default: false },
-    size: { type: String as () => ChannelListSize, default: 'md' },
-    action: { type: Object as () => SectionAction | undefined, default: undefined },
-    muted: { type: Boolean, default: false },
-  },
-  emits: ['select', 'contextAction'],
-  setup(sectionProps, { emit: sectionEmit }) {
-    const isOpen = ref(sectionProps.defaultOpen)
-
-    const unreadCount = computed(() =>
-      sectionProps.channels.reduce((sum, c) => sum + (c.unreadCount || 0), 0),
-    )
-
-    const onlineCount = computed(() =>
-      sectionProps.channels.filter(c => c.onlineCount && c.onlineCount > 0).length,
-    )
-
-    const headerContent = () => [
-      h('div', { class: 'flex items-center gap-2' }, [
-        sectionProps.icon && h(Icon, {
-          name: sectionProps.icon,
-          class: ['w-3.5 h-3.5', sectionProps.muted ? 'text-neutral-400 dark:text-neutral-400' : 'text-neutral-500 dark:text-neutral-300'],
-        }),
-        h('span', {
-          class: ['text-xs font-semibold uppercase tracking-wider', sectionProps.muted ? 'text-neutral-400 dark:text-neutral-400' : 'text-neutral-500 dark:text-neutral-300'],
-        }, sectionProps.title),
-        sectionProps.showCount && h('span', {
-          class: 'text-xs text-neutral-400 dark:text-neutral-400',
-        }, `(${sectionProps.channels.length})`),
-        unreadCount.value > 0 && h(SharedBadge, {
-          size: 'xs',
-          variant: 'primary',
-        }, () => unreadCount.value > 99 ? '99+' : unreadCount.value),
-        sectionProps.showOnlineCount && onlineCount.value > 0 && h('span', {
-          class: 'flex items-center gap-1 text-xs text-green-600',
-        }, [
-          h('span', { class: 'w-1.5 h-1.5 rounded-full bg-green-600' }),
-          `${onlineCount.value}`,
-        ]),
-      ]),
-      h('div', { class: 'flex items-center gap-1' }, [
-        sectionProps.action && h('button', {
-          type: 'button',
-          class: [
-            'p-1 rounded-md transition-colors duration-150',
-            'text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700',
-            'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
-            'opacity-0 group-hover:opacity-100',
-          ],
-          onClick: (e: Event) => {
-            e.stopPropagation()
-            sectionProps.action?.onClick()
-          },
-        }, [
-          h(Icon, { name: sectionProps.action.icon, class: 'w-3.5 h-3.5' }),
-        ]),
-        sectionProps.collapsible && h(Icon, {
-          name: 'ph:caret-down',
-          class: [
-            'w-3.5 h-3.5 text-neutral-500 dark:text-neutral-300 transition-transform duration-150',
-            isOpen.value ? 'rotate-180' : '',
-          ],
-        }),
-      ]),
-    ]
-
-    const channelList = () => h('div', { class: 'space-y-0.5 mt-1' },
-      sectionProps.channels.map(channel =>
-        h(ChatChannelItem, {
-          key: channel.id,
-          channel,
-          selected: sectionProps.selectedId === channel.id,
-          size: sectionProps.size,
-          muted: channel.muted,
-          pinned: channel.pinned,
-          onClick: () => sectionEmit('select', channel),
-          onContextAction: (action: string) => sectionEmit('contextAction', action, channel),
-        }),
-      ),
-    )
-
-    if (!sectionProps.collapsible) {
-      return () => h('div', { class: 'mb-4 group' }, [
-        h('div', { class: 'flex items-center justify-between mb-2' }, headerContent()),
-        channelList(),
-      ])
-    }
-
-    return () => h(CollapsibleRoot, {
-      'open': isOpen.value,
-      'onUpdate:open': (val: boolean) => { isOpen.value = val },
-      'class': 'mb-4 group',
-    }, () => [
-      h('div', {
-        class: 'w-full flex items-center justify-between py-1 cursor-pointer',
-        onClick: () => { isOpen.value = !isOpen.value },
-      }, headerContent()),
-      h(CollapsibleContent, {}, () => channelList()),
-    ])
-  },
-})
-
-// Channel List Skeleton Component
-const ChannelListSkeleton = defineComponent({
-  name: 'ChannelListSkeleton',
-  setup() {
-    return () => h('div', { class: 'space-y-4' }, [
-      // Section 1
-      h('div', {}, [
-        h(Skeleton, { class: 'h-3 w-24 mb-3 ml-2' }),
-        h('div', { class: 'space-y-1' },
-          [1, 2, 3].map(i =>
-            h('div', { key: `agent-${i}`, class: 'flex items-center gap-2 px-2 py-2' }, [
-              h(Skeleton, { class: 'w-6 h-6 rounded-full' }),
-              h(Skeleton, { class: 'h-3 w-28' }),
-            ]),
-          ),
-        ),
-      ]),
-      // Section 2
-      h('div', {}, [
-        h(Skeleton, { class: 'h-3 w-20 mb-3 ml-2' }),
-        h('div', { class: 'space-y-1' },
-          [1, 2, 3, 4].map(i =>
-            h('div', { key: `pub-${i}`, class: 'flex items-center gap-2 px-2 py-2' }, [
-              h(Skeleton, { class: 'w-5 h-5 rounded-md' }),
-              h(Skeleton, { class: 'h-3 w-24' }),
-            ]),
-          ),
-        ),
-      ]),
-    ])
-  },
-})
+const handleCompose = (type: 'dm' | 'channel' | 'external') => {
+  composeOpen.value = false
+  switch (type) {
+    case 'dm':
+      emit('createDm')
+      break
+    case 'channel':
+      emit('create')
+      break
+    case 'external':
+      emit('createExternal')
+      break
+  }
+}
 </script>
 
 <style scoped>
@@ -839,6 +392,15 @@ const ChannelListSkeleton = defineComponent({
   background-color: rgb(156 163 175);
 }
 
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Slide down animation */
 .slide-down-enter-active {
   transition: all 0.15s ease-out;
@@ -854,34 +416,18 @@ const ChannelListSkeleton = defineComponent({
   transform: translateY(-8px);
 }
 
-/* Collapsible animation */
-@keyframes collapsible-down {
-  from {
-    height: 0;
-    opacity: 0;
-  }
-  to {
-    height: var(--reka-collapsible-content-height);
-    opacity: 1;
-  }
+/* Fade scale animation for compose dropdown */
+.fade-scale-enter-active {
+  transition: all 0.15s ease-out;
 }
 
-@keyframes collapsible-up {
-  from {
-    height: var(--reka-collapsible-content-height);
-    opacity: 1;
-  }
-  to {
-    height: 0;
-    opacity: 0;
-  }
+.fade-scale-leave-active {
+  transition: all 0.1s ease-in;
 }
 
-.animate-collapsible-down {
-  animation: collapsible-down 0.15s ease-out;
-}
-
-.animate-collapsible-up {
-  animation: collapsible-up 0.1s ease-out;
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-4px);
 }
 </style>

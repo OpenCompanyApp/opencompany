@@ -13,15 +13,29 @@ class ChannelController extends Controller
 {
     public function index()
     {
-        $channels = Channel::with(['users', 'creator'])
+        $channels = Channel::with(['users', 'creator', 'latestMessage.author'])
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        // Map members to return users directly instead of channel_members pivot
         return $channels->map(function ($channel) {
             $channelArray = $channel->toArray();
             $channelArray['members'] = $channel->users->toArray();
             unset($channelArray['users']);
+
+            // Include latest message preview for sidebar
+            if ($channel->latestMessage) {
+                $channelArray['latest_message'] = [
+                    'id' => $channel->latestMessage->id,
+                    'content' => $channel->latestMessage->content,
+                    'author' => $channel->latestMessage->author ? [
+                        'id' => $channel->latestMessage->author->id,
+                        'name' => $channel->latestMessage->author->name,
+                        'type' => $channel->latestMessage->author->type,
+                    ] : null,
+                    'timestamp' => $channel->latestMessage->timestamp ?? $channel->latestMessage->created_at,
+                ];
+            }
+
             return $channelArray;
         });
     }

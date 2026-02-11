@@ -49,6 +49,13 @@ export interface ActivityStep {
   completedAt?: Date
 }
 
+export interface ChannelMessagePreview {
+  id: string
+  content: string
+  author: { id: string; name: string; type: EntityType } | null
+  timestamp: Date | string
+}
+
 export interface Channel {
   id: string
   name: string
@@ -62,6 +69,7 @@ export interface Channel {
   createdBy?: User
   lastMessage?: Message
   lastMessageAt?: Date
+  latestMessage?: ChannelMessagePreview
   onlineCount?: number
   muted?: boolean
   pinned?: boolean
