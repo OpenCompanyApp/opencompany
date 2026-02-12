@@ -22,18 +22,20 @@
           <div class="hidden md:flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-300">
             <span>{{ taskCounts.total }} tasks</span>
             <span class="text-neutral-200 dark:text-neutral-600">/</span>
-            <span class="text-yellow-500">{{ taskCounts.active }} active</span>
+            <span class="text-blue-500">{{ taskCounts.active }} active</span>
             <span class="text-neutral-200 dark:text-neutral-600">/</span>
-            <span class="text-green-400">{{ taskCounts.completed }} done</span>
+            <span class="text-green-500">{{ taskCounts.completed }} done</span>
           </div>
         </div>
-        <button
-          class="md:hidden flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg"
+        <Button
+          variant="primary"
+          size="xs"
+          icon-left="ph:plus-bold"
+          class="md:hidden"
           @click="createModalOpen = true"
         >
-          <Icon name="ph:plus-bold" class="w-4 h-4" />
-          <span>New</span>
-        </button>
+          New
+        </Button>
       </div>
       <div class="flex items-center gap-3 overflow-x-auto md:overflow-visible md:ml-auto pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
         <!-- Status Filters -->
@@ -42,7 +44,7 @@
             v-for="filter in statusFilters"
             :key="filter.value"
             :class="[
-              'px-3 py-1 text-sm font-medium rounded-md transition-colors whitespace-nowrap',
+              'px-3 py-1 h-7 text-sm font-medium rounded-md transition-colors whitespace-nowrap',
               currentFilter === filter.value
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
@@ -55,7 +57,7 @@
         <!-- Agent Filter -->
         <select
           v-model="agentFilter"
-          class="px-2 py-1 text-sm bg-neutral-100 dark:bg-neutral-800 border-0 rounded-lg text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
+          class="h-[30px] px-2 py-1 text-sm bg-neutral-100 dark:bg-neutral-800 border-0 rounded-lg text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
         >
           <option value="">All agents</option>
           <option v-for="agent in agents" :key="agent.id" :value="agent.id">
@@ -65,7 +67,7 @@
         <!-- Source Filter -->
         <select
           v-model="sourceFilter"
-          class="px-2 py-1 text-sm bg-neutral-100 dark:bg-neutral-800 border-0 rounded-lg text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
+          class="h-[30px] px-2 py-1 text-sm bg-neutral-100 dark:bg-neutral-800 border-0 rounded-lg text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
         >
           <option value="">All sources</option>
           <option value="chat">Chat</option>
@@ -75,13 +77,15 @@
           <option value="agent_ask">Agent Ask</option>
           <option value="agent_notify">Notification</option>
         </select>
-        <button
-          class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0"
+        <Button
+          variant="primary"
+          size="xs"
+          icon-left="ph:plus-bold"
+          class="hidden md:inline-flex shrink-0"
           @click="createModalOpen = true"
         >
-          <Icon name="ph:plus-bold" class="w-4 h-4" />
-          <span>New Task</span>
-        </button>
+          New Task
+        </Button>
       </div>
     </header>
 
@@ -326,6 +330,7 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import type { AgentTask, TaskStatus, TaskType, Priority, User } from '@/types'
+import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Modal from '@/Components/shared/Modal.vue'
