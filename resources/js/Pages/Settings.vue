@@ -269,6 +269,571 @@
               </SettingsSection>
             </template>
 
+            <!-- Memory -->
+            <template v-if="activeSection === 'memory'">
+              <SettingsSection title="Memory" icon="ph:brain" description="Configure AI models and parameters for the memory system">
+                <div class="space-y-4">
+                  <SettingsField label="Embedding Model" description="Provider and model used for document embeddings">
+                    <div v-if="loadingEmbeddingModels" class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 py-2">
+                      <Icon name="ph:spinner" class="w-4 h-4 animate-spin" />
+                      Loading embedding models...
+                    </div>
+                    <template v-else>
+                      <!-- Self-hosted section (always visible, prominent) -->
+                      <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 p-4 space-y-3">
+                        <div class="flex items-center gap-2">
+                          <Icon name="ph:cube" class="w-4 h-4 text-neutral-900 dark:text-white" />
+                          <span class="text-sm font-medium text-neutral-900 dark:text-white">Self-Hosted</span>
+                          <span class="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400">Included</span>
+                        </div>
+                        <p class="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                          Ollama runs locally — no API keys, no costs. Just download a model to get started.
+                        </p>
+
+                        <!-- Connection status -->
+                        <div class="flex items-center gap-2 text-xs">
+                          <span
+                            class="w-2 h-2 rounded-full shrink-0"
+                            :class="ollamaStatus.online ? 'bg-green-500' : 'bg-red-400'"
+                          />
+                          <span :class="ollamaStatus.online ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                            {{ ollamaStatus.online ? `Connected at ${ollamaStatus.url}` : 'Ollama not running' }}
+                          </span>
+                          <button
+                            type="button"
+                            class="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                            @click="checkOllamaStatus"
+                          >
+                            <Icon name="ph:arrow-clockwise" class="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <!-- Model list (always visible) -->
+                        <div class="space-y-1.5">
+                          <div
+                            v-for="model in ollamaModels"
+                            :key="model.id"
+                          >
+                            <!-- Row (always visible) -->
+                            <div
+                              class="flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-colors cursor-pointer"
+                              :class="[
+                                embeddingSource === 'self-hosted' && selectedOllamaModel === model.model
+                                  ? 'bg-white dark:bg-neutral-800 border-neutral-900 dark:border-white'
+                                  : 'bg-white/50 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600',
+                                expandedOllamaModel === model.model && 'rounded-b-none',
+                              ]"
+                              @click="model.downloaded && ollamaStatus.online ? selectOllamaModel(model.model) : undefined"
+                            >
+                              <!-- Expand/collapse chevron -->
+                              <button
+                                type="button"
+                                class="p-0.5 -ml-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors shrink-0"
+                                @click.stop="toggleOllamaModelExpand(model.model)"
+                              >
+                                <Icon
+                                  name="ph:caret-right"
+                                  class="w-3.5 h-3.5 transition-transform duration-150"
+                                  :class="{ 'rotate-90': expandedOllamaModel === model.model }"
+                                />
+                              </button>
+                              <!-- Radio indicator -->
+                              <div
+                                class="w-3.5 h-3.5 rounded-full border-2 shrink-0 flex items-center justify-center"
+                                :class="embeddingSource === 'self-hosted' && selectedOllamaModel === model.model
+                                  ? 'border-neutral-900 dark:border-white'
+                                  : 'border-neutral-300 dark:border-neutral-600'"
+                              >
+                                <div
+                                  v-if="embeddingSource === 'self-hosted' && selectedOllamaModel === model.model"
+                                  class="w-1.5 h-1.5 rounded-full bg-neutral-900 dark:bg-white"
+                                />
+                              </div>
+                              <span class="flex-1 text-sm font-mono text-neutral-900 dark:text-white truncate">{{ model.model }}</span>
+                              <span v-if="model.model === 'snowflake-arctic-embed2'" class="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 whitespace-nowrap">Recommended</span>
+                              <span class="text-xs text-neutral-400 dark:text-neutral-500 whitespace-nowrap">{{ model.size }}</span>
+                              <!-- Downloaded / Ready -->
+                              <span v-if="model.downloaded" class="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
+                                <Icon name="ph:check-circle" class="w-3.5 h-3.5" />
+                                Ready
+                              </span>
+                              <!-- Downloading with progress -->
+                              <div v-else-if="pullingModel === model.model" class="flex items-center gap-2 min-w-[140px]">
+                                <div class="flex-1 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                                  <div
+                                    class="h-full bg-indigo-500 rounded-full transition-all duration-300 ease-out"
+                                    :style="{ width: `${pullProgress?.percent ?? 0}%` }"
+                                  />
+                                </div>
+                                <span class="text-[11px] text-neutral-500 dark:text-neutral-400 tabular-nums whitespace-nowrap">
+                                  {{ pullProgress?.percent ?? 0 }}%
+                                </span>
+                              </div>
+                              <!-- Download button -->
+                              <button
+                                v-else
+                                type="button"
+                                class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors whitespace-nowrap"
+                                :disabled="pullingModel !== null || !ollamaStatus.online"
+                                @click.stop="pullOllamaModel(model.model)"
+                              >
+                                <Icon name="ph:download-simple" class="w-3.5 h-3.5" />
+                                Download
+                              </button>
+                            </div>
+
+                            <!-- Expanded detail panel -->
+                            <Transition
+                              enter-active-class="transition-all duration-150 ease-out overflow-hidden"
+                              enter-from-class="max-h-0 opacity-0"
+                              enter-to-class="max-h-[300px] opacity-100"
+                              leave-active-class="transition-all duration-150 ease-out overflow-hidden"
+                              leave-from-class="max-h-[300px] opacity-100"
+                              leave-to-class="max-h-0 opacity-0"
+                            >
+                              <div
+                                v-if="expandedOllamaModel === model.model"
+                                class="px-4 py-3 rounded-b-lg border border-t-0"
+                                :class="embeddingSource === 'self-hosted' && selectedOllamaModel === model.model
+                                  ? 'bg-white dark:bg-neutral-800 border-neutral-900 dark:border-white'
+                                  : 'bg-neutral-50/80 dark:bg-neutral-800/30 border-neutral-200 dark:border-neutral-700'"
+                              >
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2.5">
+                                  <div>
+                                    <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Parameters</span>
+                                    <p class="text-sm font-mono text-neutral-900 dark:text-white mt-0.5">{{ model.parameters }}</p>
+                                  </div>
+                                  <div>
+                                    <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Memory</span>
+                                    <p class="text-sm font-mono text-neutral-900 dark:text-white mt-0.5">{{ model.memory }}</p>
+                                  </div>
+                                  <div>
+                                    <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Dimensions</span>
+                                    <p class="text-sm font-mono text-neutral-900 dark:text-white mt-0.5">{{ model.dimensions }}d</p>
+                                  </div>
+                                  <div>
+                                    <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Context</span>
+                                    <p class="text-sm font-mono text-neutral-900 dark:text-white mt-0.5">{{ model.context?.toLocaleString() }} tokens</p>
+                                  </div>
+                                </div>
+                                <p class="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">{{ model.description }}</p>
+                              </div>
+                            </Transition>
+                          </div>
+                        </div>
+
+                        <!-- Offline hint -->
+                        <p v-if="!ollamaStatus.online" class="text-xs text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+                          <Icon name="ph:info" class="w-3.5 h-3.5" />
+                          Start Ollama to manage and download models
+                        </p>
+
+                      </div>
+
+                      <!-- Divider -->
+                      <div class="flex items-center gap-3 mt-4 mb-3">
+                        <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+                        <span class="text-xs text-neutral-400 dark:text-neutral-500">or use a cloud provider</span>
+                        <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+                      </div>
+
+                      <!-- Cloud provider section -->
+                      <div class="flex gap-2">
+                        <select v-model="selectedCloudProvider" class="settings-input flex-1" @change="onCloudProviderChange">
+                          <option value="" disabled>Select provider</option>
+                          <option
+                            v-for="group in cloudProviders"
+                            :key="group.provider"
+                            :value="group.provider"
+                          >
+                            {{ group.providerName }}{{ !group.configured ? ' (not configured)' : '' }}
+                          </option>
+                        </select>
+                        <select v-model="selectedCloudModel" class="settings-input flex-1" @change="onCloudModelChange" :disabled="!selectedCloudProvider || availableCloudModels.length === 0">
+                          <option value="" disabled>Select model</option>
+                          <option
+                            v-for="model in availableCloudModels"
+                            :key="model.id"
+                            :value="model.model"
+                            :disabled="!model.configured"
+                          >
+                            {{ model.name }}{{ !model.configured ? ' (requires API key)' : '' }}
+                          </option>
+                        </select>
+                      </div>
+
+                      <!-- Cloud provider warning -->
+                      <p v-if="selectedCloudProviderInfo && !selectedCloudProviderInfo.configured" class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
+                        <Icon name="ph:warning" class="w-3.5 h-3.5" />
+                        This provider needs an API key. Configure it in <a href="/integrations" class="underline hover:no-underline">Integrations</a> or via environment variables.
+                      </p>
+                    </template>
+                  </SettingsField>
+
+                  <SettingsField label="Summary Model" description="Model used to summarize conversations during compaction">
+                    <div v-if="loadingProviders" class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 py-2">
+                      <Icon name="ph:spinner" class="w-4 h-4 animate-spin" />
+                      Loading providers...
+                    </div>
+                    <template v-else-if="allProviders.length > 0">
+                      <div class="flex gap-2">
+                        <select v-model="selectedSummaryProvider" class="settings-input flex-1" @change="onSummaryProviderChange">
+                          <option value="" disabled>Select provider</option>
+                          <option
+                            v-for="provider in allProviders"
+                            :key="provider.id"
+                            :value="provider.id"
+                            :disabled="!provider.configured"
+                          >
+                            {{ provider.name }}{{ !provider.configured ? ' (not configured)' : '' }}
+                          </option>
+                        </select>
+                        <select v-model="selectedSummaryModel" class="settings-input flex-1" @change="syncSummaryModel" :disabled="!selectedSummaryProvider || availableSummaryModels.length === 0">
+                          <option value="" disabled>Select model</option>
+                          <option
+                            v-for="model in availableSummaryModels"
+                            :key="model.id"
+                            :value="model.id"
+                          >
+                            {{ model.name }}
+                          </option>
+                          <!-- Show current model if not in the list -->
+                          <option
+                            v-if="selectedSummaryModel && !availableSummaryModels.some(m => m.id === selectedSummaryModel)"
+                            :value="selectedSummaryModel"
+                          >
+                            {{ selectedSummaryModel }} (current)
+                          </option>
+                        </select>
+                      </div>
+                      <p v-if="selectedSummaryProvider && !selectedProviderConfigured" class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
+                        <Icon name="ph:warning" class="w-3.5 h-3.5" />
+                        This provider needs an API key. Configure it in <a href="/integrations" class="underline hover:no-underline">Integrations</a> or via environment variables.
+                      </p>
+                    </template>
+                    <div v-else class="text-sm text-neutral-500 dark:text-neutral-400 py-2">
+                      <p>No AI providers available. <a href="/integrations" class="text-neutral-900 dark:text-white underline hover:no-underline">Configure integrations</a> first.</p>
+                    </div>
+                  </SettingsField>
+
+                  <SettingsField label="Search Reranking" description="Re-score search results with a cross-encoder model for better relevance">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                      <div class="relative">
+                        <input
+                          v-model="memorySettings.memory_reranking_enabled"
+                          type="checkbox"
+                          class="sr-only"
+                        />
+                        <div
+                          class="w-11 h-6 rounded-full transition-colors"
+                          :class="memorySettings.memory_reranking_enabled ? 'bg-neutral-900 dark:bg-white' : 'bg-neutral-200 dark:bg-neutral-700'"
+                        >
+                          <div
+                            class="absolute top-0.5 left-0.5 w-5 h-5 bg-white dark:bg-neutral-900 rounded-full transition-transform"
+                            :class="{ 'translate-x-5': memorySettings.memory_reranking_enabled }"
+                          />
+                        </div>
+                      </div>
+                      <span class="text-sm text-neutral-500 dark:text-neutral-400">
+                        Enable search reranking
+                      </span>
+                    </label>
+
+                    <!-- Model selection (visible when enabled) -->
+                    <Transition
+                      enter-active-class="transition-all duration-150 ease-out overflow-hidden"
+                      enter-from-class="max-h-0 opacity-0"
+                      enter-to-class="max-h-[800px] opacity-100"
+                      leave-active-class="transition-all duration-150 ease-out overflow-hidden"
+                      leave-from-class="max-h-[800px] opacity-100"
+                      leave-to-class="max-h-0 opacity-0"
+                    >
+                      <div v-if="memorySettings.memory_reranking_enabled" class="mt-3 space-y-3">
+                        <div v-if="loadingRerankingModels" class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 py-2">
+                          <Icon name="ph:spinner" class="w-4 h-4 animate-spin" />
+                          Loading reranking models...
+                        </div>
+                        <template v-else>
+                          <!-- Self-hosted section -->
+                          <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 p-4 space-y-3">
+                            <div class="flex items-center gap-2">
+                              <Icon name="ph:cube" class="w-4 h-4 text-neutral-900 dark:text-white" />
+                              <span class="text-sm font-medium text-neutral-900 dark:text-white">Self-Hosted</span>
+                              <span class="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400">Included</span>
+                            </div>
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                              Qwen3-Reranker runs locally via Ollama — no API keys, no costs.
+                            </p>
+
+                            <!-- Connection status (shared with embedding) -->
+                            <div class="flex items-center gap-2 text-xs">
+                              <span
+                                class="w-2 h-2 rounded-full shrink-0"
+                                :class="ollamaStatus.online ? 'bg-green-500' : 'bg-red-400'"
+                              />
+                              <span :class="ollamaStatus.online ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                                {{ ollamaStatus.online ? `Connected at ${ollamaStatus.url}` : 'Ollama not running' }}
+                              </span>
+                              <button
+                                type="button"
+                                class="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                                @click="checkOllamaStatus"
+                              >
+                                <Icon name="ph:arrow-clockwise" class="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <!-- Model list -->
+                            <div class="space-y-1.5">
+                              <div
+                                v-for="model in ollamaRerankModels"
+                                :key="model.id"
+                              >
+                                <!-- Row -->
+                                <div
+                                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-colors cursor-pointer"
+                                  :class="[
+                                    rerankingSource === 'self-hosted' && selectedOllamaRerankModel === model.model
+                                      ? 'bg-white dark:bg-neutral-800 border-neutral-900 dark:border-white'
+                                      : 'bg-white/50 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600',
+                                    expandedOllamaRerankModel === model.model && 'rounded-b-none',
+                                  ]"
+                                  @click="model.downloaded && ollamaStatus.online ? selectOllamaRerankModel(model.model) : undefined"
+                                >
+                                  <!-- Expand/collapse chevron -->
+                                  <button
+                                    type="button"
+                                    class="p-0.5 -ml-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors shrink-0"
+                                    @click.stop="toggleOllamaRerankModelExpand(model.model)"
+                                  >
+                                    <Icon
+                                      name="ph:caret-right"
+                                      class="w-3.5 h-3.5 transition-transform duration-150"
+                                      :class="{ 'rotate-90': expandedOllamaRerankModel === model.model }"
+                                    />
+                                  </button>
+                                  <!-- Radio indicator -->
+                                  <div
+                                    class="w-3.5 h-3.5 rounded-full border-2 shrink-0 flex items-center justify-center"
+                                    :class="rerankingSource === 'self-hosted' && selectedOllamaRerankModel === model.model
+                                      ? 'border-neutral-900 dark:border-white'
+                                      : 'border-neutral-300 dark:border-neutral-600'"
+                                  >
+                                    <div
+                                      v-if="rerankingSource === 'self-hosted' && selectedOllamaRerankModel === model.model"
+                                      class="w-1.5 h-1.5 rounded-full bg-neutral-900 dark:bg-white"
+                                    />
+                                  </div>
+                                  <span class="flex-1 text-sm font-mono text-neutral-900 dark:text-white truncate">{{ model.model }}</span>
+                                  <span v-if="model.model.startsWith('dengcao/Qwen3-Reranker-0.6B')" class="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 whitespace-nowrap">Recommended</span>
+                                  <span class="text-xs text-neutral-400 dark:text-neutral-500 whitespace-nowrap">{{ model.size }}</span>
+                                  <!-- Downloaded / Ready -->
+                                  <span v-if="model.downloaded" class="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
+                                    <Icon name="ph:check-circle" class="w-3.5 h-3.5" />
+                                    Ready
+                                  </span>
+                                  <!-- Downloading with progress -->
+                                  <div v-else-if="pullingRerankModel === model.model" class="flex items-center gap-2 min-w-[140px]">
+                                    <div class="flex-1 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                                      <div
+                                        class="h-full bg-indigo-500 rounded-full transition-all duration-300 ease-out"
+                                        :style="{ width: `${pullRerankProgress?.percent ?? 0}%` }"
+                                      />
+                                    </div>
+                                    <span class="text-[11px] text-neutral-500 dark:text-neutral-400 tabular-nums whitespace-nowrap">
+                                      {{ pullRerankProgress?.percent ?? 0 }}%
+                                    </span>
+                                  </div>
+                                  <!-- Download button -->
+                                  <button
+                                    v-else
+                                    type="button"
+                                    class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors whitespace-nowrap"
+                                    :disabled="pullingRerankModel !== null || !ollamaStatus.online"
+                                    @click.stop="pullOllamaRerankModel(model.model)"
+                                  >
+                                    <Icon name="ph:download-simple" class="w-3.5 h-3.5" />
+                                    Download
+                                  </button>
+                                </div>
+
+                                <!-- Expanded detail panel -->
+                                <Transition
+                                  enter-active-class="transition-all duration-150 ease-out overflow-hidden"
+                                  enter-from-class="max-h-0 opacity-0"
+                                  enter-to-class="max-h-[300px] opacity-100"
+                                  leave-active-class="transition-all duration-150 ease-out overflow-hidden"
+                                  leave-from-class="max-h-[300px] opacity-100"
+                                  leave-to-class="max-h-0 opacity-0"
+                                >
+                                  <div
+                                    v-if="expandedOllamaRerankModel === model.model"
+                                    class="px-4 py-3 rounded-b-lg border border-t-0"
+                                    :class="rerankingSource === 'self-hosted' && selectedOllamaRerankModel === model.model
+                                      ? 'bg-white dark:bg-neutral-800 border-neutral-900 dark:border-white'
+                                      : 'bg-neutral-50/80 dark:bg-neutral-800/30 border-neutral-200 dark:border-neutral-700'"
+                                  >
+                                    <div class="grid grid-cols-3 gap-3 mb-2.5">
+                                      <div>
+                                        <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Parameters</span>
+                                        <p class="text-sm font-mono text-neutral-900 dark:text-white mt-0.5">{{ model.parameters }}</p>
+                                      </div>
+                                      <div>
+                                        <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Memory</span>
+                                        <p class="text-sm font-mono text-neutral-900 dark:text-white mt-0.5">{{ model.memory }}</p>
+                                      </div>
+                                      <div>
+                                        <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Download Size</span>
+                                        <p class="text-sm font-mono text-neutral-900 dark:text-white mt-0.5">{{ model.size }}</p>
+                                      </div>
+                                    </div>
+                                    <p class="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">{{ model.description }}</p>
+                                  </div>
+                                </Transition>
+                              </div>
+                            </div>
+
+                            <!-- Offline hint -->
+                            <p v-if="!ollamaStatus.online" class="text-xs text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+                              <Icon name="ph:info" class="w-3.5 h-3.5" />
+                              Start Ollama to manage and download models
+                            </p>
+                          </div>
+
+                          <!-- Divider -->
+                          <div class="flex items-center gap-3">
+                            <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+                            <span class="text-xs text-neutral-400 dark:text-neutral-500">or use a cloud provider</span>
+                            <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+                          </div>
+
+                          <!-- Cloud provider section -->
+                          <div class="flex gap-2">
+                            <select v-model="selectedRerankCloudProvider" class="settings-input flex-1" @change="onRerankCloudProviderChange">
+                              <option value="" disabled>Select provider</option>
+                              <option
+                                v-for="group in rerankCloudProviders"
+                                :key="group.provider"
+                                :value="group.provider"
+                              >
+                                {{ group.providerName }}{{ !group.configured ? ' (not configured)' : '' }}
+                              </option>
+                            </select>
+                            <select v-model="selectedRerankCloudModel" class="settings-input flex-1" @change="onRerankCloudModelChange" :disabled="!selectedRerankCloudProvider || availableRerankCloudModels.length === 0">
+                              <option value="" disabled>Select model</option>
+                              <option
+                                v-for="model in availableRerankCloudModels"
+                                :key="model.id"
+                                :value="model.model"
+                              >
+                                {{ model.name }}{{ !model.configured ? ' (requires API key)' : '' }}
+                              </option>
+                            </select>
+                          </div>
+
+                          <!-- Cloud provider warning -->
+                          <p v-if="selectedRerankCloudProviderInfo && !selectedRerankCloudProviderInfo.configured" class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <Icon name="ph:warning" class="w-3.5 h-3.5" />
+                            This provider needs an API key. Configure it in <a href="/integrations" class="underline hover:no-underline">Integrations</a> or via environment variables.
+                          </p>
+                        </template>
+                      </div>
+                    </Transition>
+                  </SettingsField>
+
+                  <SettingsField label="Conversation Compaction" description="Automatically summarize older messages when the context window fills up">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                      <div class="relative">
+                        <input
+                          v-model="memorySettings.memory_compaction_enabled"
+                          type="checkbox"
+                          class="sr-only"
+                        />
+                        <div
+                          class="w-11 h-6 rounded-full transition-colors"
+                          :class="memorySettings.memory_compaction_enabled ? 'bg-neutral-900 dark:bg-white' : 'bg-neutral-200 dark:bg-neutral-700'"
+                        >
+                          <div
+                            class="absolute top-0.5 left-0.5 w-5 h-5 bg-white dark:bg-neutral-900 rounded-full transition-transform"
+                            :class="{ 'translate-x-5': memorySettings.memory_compaction_enabled }"
+                          />
+                        </div>
+                      </div>
+                      <span class="text-sm text-neutral-500 dark:text-neutral-400">
+                        Enable conversation compaction
+                      </span>
+                    </label>
+                  </SettingsField>
+
+                  <SettingsField label="Context Window Overrides" description="Override context window sizes for models not in the built-in registry" hint="These take priority over the built-in model registry and Levenshtein matching">
+                    <div class="space-y-2">
+                      <!-- Existing overrides -->
+                      <div
+                        v-for="(tokens, model) in memorySettings.model_context_windows"
+                        :key="model"
+                        class="flex items-center gap-2 p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700"
+                      >
+                        <span class="flex-1 text-sm font-mono text-neutral-900 dark:text-white truncate">{{ model }}</span>
+                        <span class="text-xs text-neutral-500 dark:text-neutral-400 whitespace-nowrap tabular-nums">{{ Number(tokens).toLocaleString() }} tokens</span>
+                        <button
+                          type="button"
+                          class="p-1 text-neutral-400 hover:text-red-500 transition-colors shrink-0"
+                          @click="deleteOverride(model as string)"
+                        >
+                          <Icon name="ph:x" class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <!-- Empty state -->
+                      <div
+                        v-if="Object.keys(memorySettings.model_context_windows).length === 0"
+                        class="py-3 text-center text-xs text-neutral-400 dark:text-neutral-500"
+                      >
+                        No overrides configured
+                      </div>
+
+                      <!-- Add new override -->
+                      <div class="flex items-center gap-2">
+                        <input
+                          v-model="newOverrideModel"
+                          type="text"
+                          class="flex-1 px-3 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono text-neutral-900 dark:text-white focus:border-neutral-400 dark:focus:border-neutral-500 outline-none transition-colors"
+                          placeholder="model name"
+                        />
+                        <input
+                          v-model.number="newOverrideTokens"
+                          type="number"
+                          class="w-32 px-3 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-neutral-900 dark:text-white focus:border-neutral-400 dark:focus:border-neutral-500 outline-none transition-colors tabular-nums"
+                          placeholder="tokens"
+                          min="1"
+                        />
+                        <button
+                          type="button"
+                          class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors shrink-0"
+                          :disabled="!newOverrideModel || !newOverrideTokens"
+                          @click="addOverride"
+                        >
+                          <Icon name="ph:plus" class="w-3.5 h-3.5" />
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </SettingsField>
+                </div>
+
+                <template #actions>
+                  <span v-if="saved === 'memory'" class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <Icon name="ph:check" class="w-3.5 h-3.5" />
+                    Saved
+                  </span>
+                  <span v-else-if="saving === 'memory'" class="text-xs text-neutral-400 flex items-center gap-1">
+                    <Icon name="ph:spinner" class="w-3.5 h-3.5 animate-spin" />
+                    Saving...
+                  </span>
+                </template>
+              </SettingsSection>
+            </template>
+
             <!-- Danger Zone -->
             <template v-if="activeSection === 'danger'">
               <SettingsSection title="Danger Zone" icon="ph:warning" variant="danger">
@@ -424,12 +989,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import SettingsSection from '@/Components/settings/SettingsSection.vue'
 import SettingsField from '@/Components/settings/SettingsField.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import { useApi } from '@/composables/useApi'
+import axios from 'axios'
 
 // --- Sidebar sections ---
 const sections = [
@@ -437,6 +1004,7 @@ const sections = [
   { id: 'agents', name: 'Agent Defaults', icon: 'ph:robot' },
   { id: 'policies', name: 'Action Policies', icon: 'ph:shield-check' },
   { id: 'notifications', name: 'Notifications', icon: 'ph:bell' },
+  { id: 'memory', name: 'Memory', icon: 'ph:brain' },
   { id: 'danger', name: 'Danger Zone', icon: 'ph:warning' },
 ]
 
@@ -465,6 +1033,457 @@ const notificationSettings = reactive({
   slack_notifications: false,
   daily_summary: true,
 })
+
+const memorySettings = reactive({
+  memory_embedding_model: 'openai:text-embedding-3-small',
+  memory_summary_model: 'anthropic:claude-sonnet-4-5-20250929',
+  memory_compaction_enabled: true,
+  memory_reranking_enabled: true,
+  memory_reranking_model: 'ollama:dengcao/Qwen3-Reranker-0.6B:Q8_0',
+  model_context_windows: {} as Record<string, number>,
+})
+
+const newOverrideModel = ref('')
+const newOverrideTokens = ref<number | undefined>(undefined)
+
+// --- Model options (from integrations API) ---
+interface ModelOption {
+  id: string
+  provider: string
+  providerName: string
+  model: string
+  name: string
+  icon?: string
+  configured?: boolean
+}
+
+interface ModelGroup {
+  provider: string
+  providerName: string
+  configured?: boolean
+  models: ModelOption[]
+}
+
+// --- Provider / model selector for summary model ---
+interface ProviderInfo {
+  id: string
+  name: string
+  icon: string
+  configured: boolean
+  source: 'prism' | 'integration' | 'oauth'
+  models: { id: string; name: string }[]
+}
+
+const allProviders = ref<ProviderInfo[]>([])
+const loadingProviders = ref(false)
+
+// Derived from memorySettings.memory_summary_model
+const selectedSummaryProvider = ref('')
+const selectedSummaryModel = ref('')
+
+function parseSummaryModel(value: string) {
+  const parts = value.split(':', 2)
+  selectedSummaryProvider.value = parts[0] || ''
+  selectedSummaryModel.value = parts[1] || ''
+}
+
+const availableSummaryModels = computed(() => {
+  const provider = allProviders.value.find(p => p.id === selectedSummaryProvider.value)
+  return provider?.models ?? []
+})
+
+const selectedProviderConfigured = computed(() => {
+  const provider = allProviders.value.find(p => p.id === selectedSummaryProvider.value)
+  return provider?.configured ?? false
+})
+
+function onSummaryProviderChange() {
+  // When provider changes, auto-select first model
+  const models = availableSummaryModels.value
+  selectedSummaryModel.value = models.length > 0 ? models[0].id : ''
+  syncSummaryModel()
+}
+
+function syncSummaryModel() {
+  if (selectedSummaryProvider.value && selectedSummaryModel.value) {
+    memorySettings.memory_summary_model = `${selectedSummaryProvider.value}:${selectedSummaryModel.value}`
+  }
+}
+
+// --- Reranking model options ---
+interface RerankingModelOption {
+  id: string
+  provider: string
+  providerName: string
+  model: string
+  name: string
+  configured?: boolean
+  type: 'cloud' | 'local'
+  downloaded?: boolean
+  size?: string
+  parameters?: string
+  memory?: string
+  description?: string
+}
+
+const rerankingModelOptions = ref<RerankingModelOption[]>([])
+const loadingRerankingModels = ref(false)
+
+// Source-based selection: self-hosted (Ollama) vs cloud
+const rerankingSource = ref<'self-hosted' | 'cloud'>('self-hosted')
+const selectedOllamaRerankModel = ref('')
+const selectedRerankCloudProvider = ref('')
+const selectedRerankCloudModel = ref('')
+
+// Accordion + pull state (separate from embedding)
+const expandedOllamaRerankModel = ref<string | null>(null)
+const pullingRerankModel = ref<string | null>(null)
+const pullRerankProgress = ref<{ percent: number; status: string } | null>(null)
+
+function toggleOllamaRerankModelExpand(modelId: string) {
+  expandedOllamaRerankModel.value = expandedOllamaRerankModel.value === modelId ? null : modelId
+}
+
+function parseRerankingModel(value: string) {
+  const [provider, model] = value.split(':', 2)
+  if (provider === 'ollama') {
+    rerankingSource.value = 'self-hosted'
+    selectedOllamaRerankModel.value = model || ''
+  } else {
+    rerankingSource.value = 'cloud'
+    selectedRerankCloudProvider.value = provider || ''
+    selectedRerankCloudModel.value = model || ''
+  }
+}
+
+function syncRerankingModel() {
+  if (rerankingSource.value === 'self-hosted' && selectedOllamaRerankModel.value) {
+    memorySettings.memory_reranking_model = `ollama:${selectedOllamaRerankModel.value}`
+  } else if (rerankingSource.value === 'cloud' && selectedRerankCloudProvider.value && selectedRerankCloudModel.value) {
+    memorySettings.memory_reranking_model = `${selectedRerankCloudProvider.value}:${selectedRerankCloudModel.value}`
+  }
+}
+
+function selectOllamaRerankModel(modelId: string) {
+  rerankingSource.value = 'self-hosted'
+  selectedOllamaRerankModel.value = modelId
+  syncRerankingModel()
+}
+
+// Ollama reranking models
+const ollamaRerankModels = computed(() =>
+  rerankingModelOptions.value.filter(m => m.provider === 'ollama')
+)
+
+// Cloud reranking providers (grouped)
+interface RerankCloudProviderGroup {
+  provider: string
+  providerName: string
+  configured: boolean
+  models: RerankingModelOption[]
+}
+
+const rerankCloudProviders = computed<RerankCloudProviderGroup[]>(() => {
+  const groups = new Map<string, RerankCloudProviderGroup>()
+  for (const model of rerankingModelOptions.value) {
+    if (model.provider === 'ollama') continue
+    if (!groups.has(model.provider)) {
+      groups.set(model.provider, {
+        provider: model.provider,
+        providerName: model.providerName,
+        configured: model.configured ?? false,
+        models: [],
+      })
+    }
+    groups.get(model.provider)!.models.push(model)
+  }
+  return Array.from(groups.values())
+})
+
+const availableRerankCloudModels = computed(() =>
+  rerankingModelOptions.value.filter(m => m.provider === selectedRerankCloudProvider.value)
+)
+
+const selectedRerankCloudProviderInfo = computed(() =>
+  rerankCloudProviders.value.find(g => g.provider === selectedRerankCloudProvider.value)
+)
+
+function onRerankCloudProviderChange() {
+  rerankingSource.value = 'cloud'
+  selectedOllamaRerankModel.value = ''
+  const models = availableRerankCloudModels.value
+  selectedRerankCloudModel.value = models[0]?.model ?? ''
+  syncRerankingModel()
+}
+
+function onRerankCloudModelChange() {
+  rerankingSource.value = 'cloud'
+  selectedOllamaRerankModel.value = ''
+  syncRerankingModel()
+}
+
+async function pullOllamaRerankModel(modelId: string) {
+  pullingRerankModel.value = modelId
+  pullRerankProgress.value = { percent: 0, status: 'starting' }
+  try {
+    const response = await fetch('/api/integrations/ollama/pull', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        'X-XSRF-TOKEN': getCsrfToken(),
+      },
+      body: JSON.stringify({ model: modelId }),
+    })
+
+    if (!response.ok || !response.body) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let success = false
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const data = JSON.parse(line.slice(6))
+          if (data.percent !== undefined) {
+            pullRerankProgress.value = { percent: data.percent, status: data.status || 'downloading' }
+          }
+          if (data.done) {
+            success = data.success
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+
+    if (success) {
+      pullRerankProgress.value = { percent: 100, status: 'complete' }
+      await Promise.all([refreshRerankingModels(), checkOllamaStatus()])
+      selectOllamaRerankModel(modelId)
+    }
+  } catch (e) {
+    console.error('Failed to pull reranking model:', e)
+  } finally {
+    pullingRerankModel.value = null
+    pullRerankProgress.value = null
+  }
+}
+
+async function refreshRerankingModels() {
+  try {
+    const { data } = await axios.get('/api/integrations/reranking-models')
+    rerankingModelOptions.value = data
+  } catch { /* ignore */ }
+}
+
+// --- Embedding model options ---
+interface EmbeddingModelOption {
+  id: string
+  provider: string
+  providerName: string
+  model: string
+  name: string
+  configured?: boolean
+  type: 'cloud' | 'local'
+  downloaded?: boolean
+  size?: string
+  parameters?: string
+  memory?: string
+  dimensions?: number
+  context?: number
+  description?: string
+}
+
+const embeddingModelOptions = ref<EmbeddingModelOption[]>([])
+const loadingEmbeddingModels = ref(false)
+
+// Source-based selection: self-hosted (Ollama) vs cloud
+const embeddingSource = ref<'self-hosted' | 'cloud'>('self-hosted')
+const selectedOllamaModel = ref('')
+const selectedCloudProvider = ref('')
+const selectedCloudModel = ref('')
+
+function parseEmbeddingModel(value: string) {
+  const [provider, model] = value.split(':', 2)
+  if (provider === 'ollama') {
+    embeddingSource.value = 'self-hosted'
+    selectedOllamaModel.value = model || ''
+  } else {
+    embeddingSource.value = 'cloud'
+    selectedCloudProvider.value = provider || ''
+    selectedCloudModel.value = model || ''
+  }
+}
+
+function syncEmbeddingModel() {
+  if (embeddingSource.value === 'self-hosted' && selectedOllamaModel.value) {
+    memorySettings.memory_embedding_model = `ollama:${selectedOllamaModel.value}`
+  } else if (embeddingSource.value === 'cloud' && selectedCloudProvider.value && selectedCloudModel.value) {
+    memorySettings.memory_embedding_model = `${selectedCloudProvider.value}:${selectedCloudModel.value}`
+  }
+}
+
+// Ollama models (self-hosted)
+const ollamaModels = computed(() =>
+  embeddingModelOptions.value.filter(m => m.provider === 'ollama')
+)
+
+// Track which Ollama model row is expanded (accordion: only one at a time)
+const expandedOllamaModel = ref<string | null>(null)
+
+function toggleOllamaModelExpand(modelId: string) {
+  expandedOllamaModel.value = expandedOllamaModel.value === modelId ? null : modelId
+}
+
+// Cloud providers (grouped, excluding ollama)
+interface EmbeddingProviderGroup {
+  provider: string
+  providerName: string
+  configured: boolean
+  type: 'cloud' | 'local'
+  models: EmbeddingModelOption[]
+}
+
+const cloudProviders = computed<EmbeddingProviderGroup[]>(() => {
+  const groups = new Map<string, EmbeddingProviderGroup>()
+  for (const model of embeddingModelOptions.value) {
+    if (model.provider === 'ollama') continue
+    if (!groups.has(model.provider)) {
+      groups.set(model.provider, {
+        provider: model.provider,
+        providerName: model.providerName,
+        configured: model.configured ?? false,
+        type: model.type,
+        models: [],
+      })
+    }
+    groups.get(model.provider)!.models.push(model)
+  }
+  return Array.from(groups.values())
+})
+
+const availableCloudModels = computed(() =>
+  embeddingModelOptions.value.filter(m => m.provider === selectedCloudProvider.value)
+)
+
+const selectedCloudProviderInfo = computed(() =>
+  cloudProviders.value.find(g => g.provider === selectedCloudProvider.value)
+)
+
+function selectOllamaModel(modelId: string) {
+  embeddingSource.value = 'self-hosted'
+  selectedOllamaModel.value = modelId
+  syncEmbeddingModel()
+}
+
+function onCloudProviderChange() {
+  embeddingSource.value = 'cloud'
+  selectedOllamaModel.value = ''
+  const models = availableCloudModels.value
+  selectedCloudModel.value = models[0]?.model ?? ''
+  syncEmbeddingModel()
+}
+
+function onCloudModelChange() {
+  embeddingSource.value = 'cloud'
+  selectedOllamaModel.value = ''
+  syncEmbeddingModel()
+}
+
+// --- Ollama status & model pulling ---
+const ollamaStatus = ref<{ online: boolean; models: string[]; url: string }>({ online: false, models: [], url: '' })
+const pullingModel = ref<string | null>(null)
+const pullProgress = ref<{ percent: number; status: string } | null>(null)
+
+function getCsrfToken(): string {
+  const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : ''
+}
+
+async function checkOllamaStatus() {
+  try {
+    const { data } = await axios.get('/api/integrations/ollama/status')
+    ollamaStatus.value = data
+  } catch {
+    ollamaStatus.value = { online: false, models: [], url: '' }
+  }
+}
+
+async function pullOllamaModel(modelId: string) {
+  pullingModel.value = modelId
+  pullProgress.value = { percent: 0, status: 'starting' }
+  try {
+    const response = await fetch('/api/integrations/ollama/pull', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        'X-XSRF-TOKEN': getCsrfToken(),
+      },
+      body: JSON.stringify({ model: modelId }),
+    })
+
+    if (!response.ok || !response.body) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let success = false
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const data = JSON.parse(line.slice(6))
+          if (data.percent !== undefined) {
+            pullProgress.value = { percent: data.percent, status: data.status || 'downloading' }
+          }
+          if (data.done) {
+            success = data.success
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+
+    if (success) {
+      pullProgress.value = { percent: 100, status: 'complete' }
+      await Promise.all([refreshEmbeddingModels(), checkOllamaStatus()])
+      selectOllamaModel(modelId)
+    }
+  } catch (e) {
+    console.error('Failed to pull model:', e)
+  } finally {
+    pullingModel.value = null
+    pullProgress.value = null
+  }
+}
+
+async function refreshEmbeddingModels() {
+  try {
+    const { data } = await axios.get('/api/integrations/embedding-models')
+    embeddingModelOptions.value = data
+  } catch { /* ignore */ }
+}
 
 interface ActionPolicy {
   id: string
@@ -504,10 +1523,56 @@ onMounted(async () => {
       if (s.policies?.action_policies) {
         actionPolicies.value = s.policies.action_policies as ActionPolicy[]
       }
+      // Memory
+      if (s.memory) {
+        memorySettings.memory_embedding_model = (s.memory.memory_embedding_model as string) ?? 'openai:text-embedding-3-small'
+        memorySettings.memory_summary_model = (s.memory.memory_summary_model as string) ?? 'anthropic:claude-sonnet-4-5-20250929'
+        memorySettings.memory_compaction_enabled = s.memory.memory_compaction_enabled !== false
+        memorySettings.memory_reranking_enabled = s.memory.memory_reranking_enabled !== false
+        memorySettings.memory_reranking_model = (s.memory.memory_reranking_model as string) ?? 'ollama:dengcao/Qwen3-Reranker-0.6B:Q8_0'
+        memorySettings.model_context_windows = (s.memory.model_context_windows as Record<string, number>) ?? {}
+      }
     }
   } finally {
     loading.value = false
   }
+
+  // Parse summary + embedding + reranking models into provider + model
+  parseSummaryModel(memorySettings.memory_summary_model)
+  parseEmbeddingModel(memorySettings.memory_embedding_model)
+  parseRerankingModel(memorySettings.memory_reranking_model)
+
+  // Enable auto-save now that settings are hydrated
+  memoryInitialized = true
+
+  // Load available models for dropdowns (in parallel)
+  loadingProviders.value = true
+  loadingEmbeddingModels.value = true
+  loadingRerankingModels.value = true
+
+  const [providersRes, embeddingRes, rerankingRes] = await Promise.allSettled([
+    axios.get('/api/integrations/all-providers'),
+    axios.get('/api/integrations/embedding-models'),
+    axios.get('/api/integrations/reranking-models'),
+  ])
+
+  if (providersRes.status === 'fulfilled') {
+    allProviders.value = providersRes.value.data
+  }
+  loadingProviders.value = false
+
+  if (embeddingRes.status === 'fulfilled') {
+    embeddingModelOptions.value = embeddingRes.value.data
+  }
+  loadingEmbeddingModels.value = false
+
+  if (rerankingRes.status === 'fulfilled') {
+    rerankingModelOptions.value = rerankingRes.value.data
+  }
+  loadingRerankingModels.value = false
+
+  // Check Ollama status
+  checkOllamaStatus()
 })
 
 // --- Save ---
@@ -524,6 +1589,18 @@ async function saveCategory(category: string, settings: Record<string, unknown>)
     saving.value = null
   }
 }
+
+// --- Auto-save memory settings ---
+let memoryInitialized = false
+
+const debouncedSaveMemory = useDebounceFn(() => {
+  saveCategory('memory', { ...memorySettings })
+}, 600)
+
+watch(memorySettings, () => {
+  if (!memoryInitialized) return
+  debouncedSaveMemory()
+}, { deep: true })
 
 async function savePolicies() {
   await saveCategory('policies', { action_policies: actionPolicies.value })
@@ -590,6 +1667,22 @@ const closePolicyModal = () => {
   policyForm.pattern = ''
   policyForm.level = 'require_approval'
   policyForm.costThreshold = undefined
+}
+
+// --- Context Window Overrides ---
+function addOverride() {
+  if (!newOverrideModel.value || !newOverrideTokens.value) return
+  memorySettings.model_context_windows = {
+    ...memorySettings.model_context_windows,
+    [newOverrideModel.value]: newOverrideTokens.value,
+  }
+  newOverrideModel.value = ''
+  newOverrideTokens.value = undefined
+}
+
+function deleteOverride(model: string) {
+  const { [model]: _, ...rest } = memorySettings.model_context_windows
+  memorySettings.model_context_windows = rest
 }
 
 // --- Danger Zone ---

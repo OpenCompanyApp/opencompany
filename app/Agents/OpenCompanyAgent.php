@@ -83,7 +83,15 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
 
         $order = ['IDENTITY', 'SOUL', 'USER', 'AGENTS', 'TOOLS', 'MEMORY', 'HEARTBEAT', 'BOOTSTRAP'];
 
+        // MEMORY.md only loads in private contexts (dm, agent) — never in public/external channels
+        $channel = Channel::find($this->channelId);
+        $privateChannel = $channel && in_array($channel->type, ['dm', 'agent']);
+
         foreach ($order as $type) {
+            if ($type === 'MEMORY' && !$privateChannel) {
+                continue;
+            }
+
             $file = $identityFiles->firstWhere('title', "{$type}.md");
             if ($file && !empty(trim($file->content))) {
                 $prompt .= "## {$type}.md\n\n{$file->content}\n\n";
@@ -106,10 +114,11 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
 
     /**
      * Get the conversation history for context.
+     * Passes the system prompt for accurate token measurement during compaction checks.
      */
     public function messages(): iterable
     {
-        return $this->conversationLoader->load($this->channelId, $this->agent);
+        return $this->conversationLoader->load($this->channelId, $this->agent, $this->instructions());
     }
 
     /**

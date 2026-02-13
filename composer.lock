@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2fb0fcac056753e7b48cc8c3d6cc0e85",
+    "content-hash": "fc86b1e86e13c344f4daf592e7b0c370",
     "packages": [
         {
             "name": "brick/math",
@@ -3060,7 +3060,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-celestial",
-                "reference": "a2bf11863c803916f54f6b734678b049d3cccb1f"
+                "reference": "c4580283af9f96b83d1a1a77bb1a9948c6c0b1ef"
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3109,7 +3109,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-mermaid",
-                "reference": "fd2031430ef193933cab35c39f59e1d491e92763"
+                "reference": "3a8397ff583ce4dbd06340188e55c6f4ccd7b300"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3158,7 +3158,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-plantuml",
-                "reference": "4643b678be1ddd8cd891d84a0383a7301435415d"
+                "reference": "5659c637d8a8d960c121516015d165d3060286e0"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3208,7 +3208,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-plausible",
-                "reference": "511a4450b8aae769979fc003cfc3101808c0da2f"
+                "reference": "36bc17bfb7e38bcfe7380af69dbf6213a250d6e4"
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3256,7 +3256,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-typst",
-                "reference": "883440b4d0e315be26629f34f52ac5cc41772dcf"
+                "reference": "835a35a3fee25832ab0259551481ca1d9def5843"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3306,7 +3306,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-vegalite",
-                "reference": "49da4f54c757cfe854bda85aa0d50b5ba2244b16"
+                "reference": "a5ea702d27ce3d693f36442dbcd7ccae0033df0e"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3403,7 +3403,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/integration-core",
-                "reference": "ac3510e54cd987ab3840bdcae4d755dc259d3e88"
+                "reference": "dbfe65caf88070527cca0190a108aeffbef479f6"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3539,6 +3539,63 @@
                 "source": "https://github.com/paragonie/sodium_compat/tree/v2.5.0"
             },
             "time": "2025-12-30T16:12:18+00:00"
+        },
+        {
+            "name": "pgvector/pgvector",
+            "version": "v0.2.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/pgvector/pgvector-php.git",
+                "reference": "79e2c080df13f38e696ebd66039898dc87bdbcc7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/pgvector/pgvector-php/zipball/79e2c080df13f38e696ebd66039898dc87bdbcc7",
+                "reference": "79e2c080df13f38e696ebd66039898dc87bdbcc7",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">= 8.1"
+            },
+            "require-dev": {
+                "doctrine/dbal": "^4",
+                "doctrine/orm": "^3",
+                "illuminate/database": ">= 10",
+                "laravel/serializable-closure": "^1.3",
+                "phpunit/phpunit": "^10",
+                "symfony/cache": "^6"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Pgvector\\Laravel\\PgvectorServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Pgvector\\": "src/",
+                    "Pgvector\\Laravel\\": "src/laravel/",
+                    "Pgvector\\Doctrine\\": "src/doctrine/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Andrew Kane",
+                    "email": "andrew@ankane.org"
+                }
+            ],
+            "description": "pgvector support for PHP",
+            "support": {
+                "issues": "https://github.com/pgvector/pgvector-php/issues",
+                "source": "https://github.com/pgvector/pgvector-php"
+            },
+            "time": "2025-02-15T23:27:08+00:00"
         },
         {
             "name": "phpoption/phpoption",

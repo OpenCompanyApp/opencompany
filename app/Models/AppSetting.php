@@ -108,6 +108,14 @@ class AppSetting extends Model
             'policies' => [
                 'action_policies' => [],
             ],
+            'memory' => [
+                'memory_embedding_model' => 'openai:text-embedding-3-small',
+                'memory_summary_model' => 'anthropic:claude-sonnet-4-5-20250929',
+                'memory_compaction_enabled' => true,
+                'memory_reranking_enabled' => true,
+                'memory_reranking_model' => 'ollama:dengcao/Qwen3-Reranker-0.6B:Q8_0',
+                'model_context_windows' => [],
+            ],
         ];
     }
 

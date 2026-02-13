@@ -79,6 +79,7 @@
         "laravel/reverb": "^1.7",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "opencompany/prism-codex": "@dev",
         "opencompanyapp/ai-tool-celestial": "@dev",
         "opencompanyapp/ai-tool-mermaid": "@dev",
         "opencompanyapp/ai-tool-plantuml": "@dev",
@@ -86,8 +87,8 @@
         "opencompanyapp/ai-tool-typst": "@dev",
         "opencompanyapp/ai-tool-vegalite": "@dev",
         "opencompanyapp/astronomy-bundle": "^3.0",
-        "opencompany/prism-codex": "@dev",
         "opencompanyapp/integration-core": "@dev",
+        "pgvector/pgvector": "^0.2.2",
         "prism-php/prism": "^0.99.19",
         "tightenco/ziggy": "^2.0"
     },

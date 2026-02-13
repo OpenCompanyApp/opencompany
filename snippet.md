@@ -19,3 +19,11 @@ imagine business use cases and this platform, -> recommendations, also doc
 --
 
 feedback modal + tool
+
+--
+
+adjustable embedding/summary/flush/reranking model
+
+-- 
+
+memory/privacy considerations

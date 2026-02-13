@@ -20,13 +20,13 @@ class ChannelConversationLoaderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->loader = new ChannelConversationLoader();
+        $this->loader = app(ChannelConversationLoader::class);
     }
 
     public function test_loads_messages_as_sdk_objects(): void
     {
         $human = User::factory()->create(['name' => 'Alice', 'type' => 'human']);
-        $agent = User::factory()->create(['name' => 'Logic', 'type' => 'agent']);
+        $agent = User::factory()->create(['name' => 'Logic', 'type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
         $channel = Channel::factory()->create();
 
         Message::create([
@@ -67,7 +67,7 @@ class ChannelConversationLoaderTest extends TestCase
     public function test_skips_empty_messages(): void
     {
         $human = User::factory()->create(['type' => 'human']);
-        $agent = User::factory()->create(['type' => 'agent']);
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
         $channel = Channel::factory()->create();
 
         Message::create([
@@ -91,10 +91,10 @@ class ChannelConversationLoaderTest extends TestCase
         $this->assertCount(1, $messages);
     }
 
-    public function test_respects_limit(): void
+    public function test_loads_recent_messages(): void
     {
         $human = User::factory()->create(['type' => 'human']);
-        $agent = User::factory()->create(['type' => 'agent']);
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
         $channel = Channel::factory()->create();
 
         for ($i = 0; $i < 10; $i++) {
@@ -107,14 +107,14 @@ class ChannelConversationLoaderTest extends TestCase
             ]);
         }
 
-        $messages = $this->loader->load($channel->id, $agent, 3);
+        $messages = $this->loader->load($channel->id, $agent);
 
-        $this->assertCount(3, $messages);
+        $this->assertCount(10, $messages);
     }
 
     public function test_returns_empty_for_no_messages(): void
     {
-        $agent = User::factory()->create(['type' => 'agent']);
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
         $channel = Channel::factory()->create();
 
         $messages = $this->loader->load($channel->id, $agent);

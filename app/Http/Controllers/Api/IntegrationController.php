@@ -665,6 +665,464 @@ class IntegrationController extends Controller
     }
 
     /**
+     * Get all available AI providers with their models for settings dropdowns.
+     *
+     * Returns both integration-based providers (GLM, Codex) and prism-config
+     * providers (Anthropic, OpenAI, etc.) with configuration status.
+     */
+    public function allProviders()
+    {
+        $providers = [];
+
+        // 1. Prism-config providers (API key in .env)
+        $prismProviders = [
+            'anthropic' => [
+                'name' => 'Anthropic',
+                'icon' => 'ph:chat-circle-dots',
+                'models' => [
+                    'claude-sonnet-4-5-20250929' => 'Claude Sonnet 4.5',
+                    'claude-haiku-3-5-20241022' => 'Claude Haiku 3.5',
+                ],
+            ],
+            'openai' => [
+                'name' => 'OpenAI',
+                'icon' => 'ph:open-ai-logo',
+                'models' => [
+                    'gpt-4o' => 'GPT-4o',
+                    'gpt-4o-mini' => 'GPT-4o Mini',
+                    'gpt-4-turbo' => 'GPT-4 Turbo',
+                ],
+            ],
+            'gemini' => [
+                'name' => 'Google Gemini',
+                'icon' => 'ph:google-logo',
+                'models' => [
+                    'gemini-2.0-flash' => 'Gemini 2.0 Flash',
+                    'gemini-2.0-flash-lite' => 'Gemini 2.0 Flash Lite',
+                    'gemini-1.5-pro' => 'Gemini 1.5 Pro',
+                    'gemini-1.5-flash' => 'Gemini 1.5 Flash',
+                ],
+            ],
+            'deepseek' => [
+                'name' => 'DeepSeek',
+                'icon' => 'ph:magnifying-glass',
+                'models' => [
+                    'deepseek-chat' => 'DeepSeek Chat (V3)',
+                    'deepseek-reasoner' => 'DeepSeek Reasoner (R1)',
+                ],
+            ],
+            'groq' => [
+                'name' => 'Groq',
+                'icon' => 'ph:lightning',
+                'models' => [
+                    'llama-3.3-70b-versatile' => 'Llama 3.3 70B',
+                    'llama-3.1-8b-instant' => 'Llama 3.1 8B',
+                    'mixtral-8x7b-32768' => 'Mixtral 8x7B',
+                ],
+            ],
+            'mistral' => [
+                'name' => 'Mistral',
+                'icon' => 'ph:wind',
+                'models' => [
+                    'mistral-large-latest' => 'Mistral Large',
+                    'mistral-small-latest' => 'Mistral Small',
+                    'codestral-latest' => 'Codestral',
+                ],
+            ],
+            'xai' => [
+                'name' => 'xAI',
+                'icon' => 'ph:x-logo',
+                'models' => [
+                    'grok-2' => 'Grok 2',
+                ],
+            ],
+        ];
+
+        foreach ($prismProviders as $providerId => $info) {
+            $apiKey = config("prism.providers.{$providerId}.api_key", '');
+            $providers[] = [
+                'id' => $providerId,
+                'name' => $info['name'],
+                'icon' => $info['icon'],
+                'configured' => !empty($apiKey),
+                'source' => 'prism',
+                'models' => collect($info['models'])->map(fn ($name, $id) => [
+                    'id' => $id,
+                    'name' => $name,
+                ])->values()->all(),
+            ];
+        }
+
+        // 2. Integration-based providers (API key in DB)
+        $integrations = IntegrationSetting::where('enabled', true)->get();
+        $available = IntegrationSetting::getAvailableIntegrations();
+
+        foreach ($integrations as $setting) {
+            if (!isset($available[$setting->integration_id])) {
+                continue;
+            }
+            $info = $available[$setting->integration_id];
+            if (empty($info['models'])) {
+                continue;
+            }
+            $providers[] = [
+                'id' => $setting->integration_id,
+                'name' => $info['name'],
+                'icon' => $info['icon'],
+                'configured' => $setting->hasValidConfig(),
+                'source' => 'integration',
+                'models' => collect($info['models'])->map(fn ($name, $id) => [
+                    'id' => $id,
+                    'name' => $name,
+                ])->values()->all(),
+            ];
+        }
+
+        // 3. Codex (OAuth-based)
+        $codexToken = \OpenCompany\PrismCodex\CodexTokenStore::current();
+        $codexInfo = $available['codex'] ?? null;
+        if ($codexToken && !$codexToken->isExpired() && $codexInfo && !empty($codexInfo['models'])) {
+            $providers[] = [
+                'id' => 'codex',
+                'name' => $codexInfo['name'],
+                'icon' => $codexInfo['icon'],
+                'configured' => true,
+                'source' => 'oauth',
+                'models' => collect($codexInfo['models'])->map(fn ($name, $id) => [
+                    'id' => $id,
+                    'name' => $name,
+                ])->values()->all(),
+            ];
+        }
+
+        return response()->json($providers);
+    }
+
+    /**
+     * Get available embedding models with provider configuration status.
+     */
+    public function embeddingModels()
+    {
+        $embeddingProviders = [
+            'openai' => [
+                'name' => 'OpenAI',
+                'models' => [
+                    'text-embedding-3-small' => 'text-embedding-3-small (1536d)',
+                    'text-embedding-3-large' => 'text-embedding-3-large (3072d)',
+                    'text-embedding-ada-002' => 'text-embedding-ada-002 (1536d)',
+                ],
+            ],
+            'voyageai' => [
+                'name' => 'VoyageAI',
+                'models' => [
+                    'voyage-3' => 'voyage-3',
+                    'voyage-3-lite' => 'voyage-3-lite',
+                    'voyage-code-3' => 'voyage-code-3',
+                ],
+            ],
+            'gemini' => [
+                'name' => 'Gemini',
+                'models' => [
+                    'text-embedding-004' => 'text-embedding-004 (768d)',
+                ],
+            ],
+        ];
+
+        $result = [];
+
+        // Cloud providers
+        foreach ($embeddingProviders as $providerId => $provider) {
+            $apiKey = config("prism.providers.{$providerId}.api_key", '');
+            $configured = !empty($apiKey);
+
+            foreach ($provider['models'] as $modelId => $modelName) {
+                $result[] = [
+                    'id' => "{$providerId}:{$modelId}",
+                    'provider' => $providerId,
+                    'providerName' => $provider['name'],
+                    'model' => $modelId,
+                    'name' => $modelName,
+                    'configured' => $configured,
+                    'type' => 'cloud',
+                ];
+            }
+        }
+
+        // Ollama (self-hosted) embedding models
+        $ollamaModels = [
+            'snowflake-arctic-embed2' => [
+                'name' => 'Snowflake Arctic Embed 2',
+                'size' => '568M',
+                'parameters' => '568M',
+                'memory' => '~1.2 GB',
+                'dimensions' => 1024,
+                'context' => 8192,
+                'description' => 'State-of-the-art multilingual embedding model with 8K context. Best quality for retrieval across multiple languages.',
+            ],
+            'nomic-embed-text' => [
+                'name' => 'Nomic Embed Text v1.5',
+                'size' => '137M',
+                'parameters' => '137M',
+                'memory' => '~0.5 GB',
+                'dimensions' => 768,
+                'context' => 8192,
+                'description' => 'Efficient general-purpose model with Matryoshka dimension support (64–768d). Good balance of quality and speed.',
+            ],
+            'snowflake-arctic-embed:s' => [
+                'name' => 'Snowflake Arctic Embed S',
+                'size' => '33M',
+                'parameters' => '33M',
+                'memory' => '~0.2 GB',
+                'dimensions' => 384,
+                'context' => 512,
+                'description' => 'Ultra-lightweight model for large datasets. Smallest footprint with competitive accuracy. Best for constrained environments.',
+            ],
+            'mxbai-embed-large' => [
+                'name' => 'MxBAI Embed Large',
+                'size' => '335M',
+                'parameters' => '335M',
+                'memory' => '~1.2 GB',
+                'dimensions' => 1024,
+                'context' => 512,
+                'description' => 'High-quality model from Mixedbread AI. Strong benchmark performance, outperforms OpenAI ada-002.',
+            ],
+        ];
+
+        $ollamaStatus = $this->getOllamaStatus();
+        $downloadedModels = $ollamaStatus['models'];
+
+        foreach ($ollamaModels as $modelId => $info) {
+            $baseName = explode(':', $modelId)[0];
+            $downloaded = in_array($baseName, $downloadedModels) || in_array($modelId, $downloadedModels);
+
+            $result[] = [
+                'id' => "ollama:{$modelId}",
+                'provider' => 'ollama',
+                'providerName' => 'Ollama (self-hosted)',
+                'model' => $modelId,
+                'name' => $info['name'],
+                'configured' => $ollamaStatus['online'],
+                'type' => 'local',
+                'downloaded' => $downloaded,
+                'size' => $info['size'],
+                'parameters' => $info['parameters'],
+                'memory' => $info['memory'],
+                'dimensions' => $info['dimensions'],
+                'context' => $info['context'],
+                'description' => $info['description'],
+            ];
+        }
+
+        return response()->json($result);
+    }
+
+    /**
+     * Get available reranking models with provider configuration status.
+     */
+    public function rerankingModels()
+    {
+        $result = [];
+
+        // Ollama (self-hosted) reranking models
+        $ollamaModels = [
+            'dengcao/Qwen3-Reranker-0.6B:Q8_0' => [
+                'name' => 'Qwen3 Reranker 0.6B',
+                'size' => '639 MB',
+                'parameters' => '0.6B',
+                'memory' => '~1 GB',
+                'description' => 'Lightweight reranker based on Qwen3 (Q8_0 quantization). Fast inference on CPU, good accuracy for most use cases.',
+            ],
+            'dengcao/Qwen3-Reranker-4B:Q4_K_M' => [
+                'name' => 'Qwen3 Reranker 4B',
+                'size' => '2.5 GB',
+                'parameters' => '4B',
+                'memory' => '~4 GB',
+                'description' => 'Mid-size reranker with stronger relevance judgments (Q4_K_M quantization). Good balance of quality and speed.',
+            ],
+            'dengcao/Qwen3-Reranker-8B:Q4_K_M' => [
+                'name' => 'Qwen3 Reranker 8B',
+                'size' => '5.0 GB',
+                'parameters' => '8B',
+                'memory' => '~7 GB',
+                'description' => 'Largest Qwen3 Reranker variant (Q4_K_M quantization). State-of-the-art accuracy, best for high-stakes retrieval.',
+            ],
+        ];
+
+        $ollamaStatus = $this->getOllamaStatus();
+        $downloadedModels = $ollamaStatus['models'];
+
+        foreach ($ollamaModels as $modelId => $info) {
+            $baseName = explode(':', $modelId)[0];
+            $downloaded = in_array($baseName, $downloadedModels) || in_array($modelId, $downloadedModels);
+
+            $result[] = [
+                'id' => "ollama:{$modelId}",
+                'provider' => 'ollama',
+                'providerName' => 'Ollama (self-hosted)',
+                'model' => $modelId,
+                'name' => $info['name'],
+                'configured' => $ollamaStatus['online'],
+                'type' => 'local',
+                'downloaded' => $downloaded,
+                'size' => $info['size'],
+                'parameters' => $info['parameters'],
+                'memory' => $info['memory'],
+                'description' => $info['description'],
+            ];
+        }
+
+        // Cloud providers (Cohere, Jina)
+        $cloudProviders = [
+            'cohere' => [
+                'name' => 'Cohere',
+                'models' => [
+                    'rerank-v3.5' => 'Rerank v3.5',
+                    'rerank-english-v3.0' => 'Rerank English v3.0',
+                    'rerank-multilingual-v3.0' => 'Rerank Multilingual v3.0',
+                ],
+            ],
+            'jina' => [
+                'name' => 'Jina AI',
+                'models' => [
+                    'jina-reranker-v2-base-multilingual' => 'Jina Reranker v2 Multilingual',
+                ],
+            ],
+        ];
+
+        foreach ($cloudProviders as $providerId => $provider) {
+            $apiKey = config("ai.providers.{$providerId}.key", '');
+            $configured = ! empty($apiKey);
+
+            foreach ($provider['models'] as $modelId => $modelName) {
+                $result[] = [
+                    'id' => "{$providerId}:{$modelId}",
+                    'provider' => $providerId,
+                    'providerName' => $provider['name'],
+                    'model' => $modelId,
+                    'name' => $modelName,
+                    'configured' => $configured,
+                    'type' => 'cloud',
+                ];
+            }
+        }
+
+        return response()->json($result);
+    }
+
+    /**
+     * Get Ollama connection status and locally available models.
+     */
+    public function ollamaModelStatus()
+    {
+        return response()->json($this->getOllamaStatus());
+    }
+
+    /**
+     * Pull (download) an Ollama model.
+     */
+    public function ollamaPullModel(Request $request)
+    {
+        $request->validate(['model' => 'required|string|max:200']);
+
+        $model = $request->input('model');
+        $url = config('prism.providers.ollama.url', 'http://localhost:11434');
+
+        return response()->stream(function () use ($model, $url) {
+            try {
+                $client = new \GuzzleHttp\Client();
+                $response = $client->post($url . '/api/pull', [
+                    'json' => ['model' => $model, 'stream' => true],
+                    'stream' => true,
+                    'timeout' => 600,
+                    'connect_timeout' => 10,
+                ]);
+
+                $body = $response->getBody();
+                $buffer = '';
+
+                while (! $body->eof()) {
+                    $buffer .= $body->read(8192);
+
+                    while (($newlinePos = strpos($buffer, "\n")) !== false) {
+                        $line = substr($buffer, 0, $newlinePos);
+                        $buffer = substr($buffer, $newlinePos + 1);
+
+                        $line = trim($line);
+                        if ($line === '') {
+                            continue;
+                        }
+
+                        $data = json_decode($line, true);
+                        if (! is_array($data)) {
+                            continue;
+                        }
+
+                        $event = [
+                            'status' => $data['status'] ?? '',
+                        ];
+
+                        if (isset($data['completed'], $data['total']) && $data['total'] > 0) {
+                            $event['completed'] = $data['completed'];
+                            $event['total'] = $data['total'];
+                            $event['percent'] = min(100, (int) round($data['completed'] / $data['total'] * 100));
+                        }
+
+                        if (($data['status'] ?? '') === 'success') {
+                            $event['done'] = true;
+                            $event['success'] = true;
+                        }
+
+                        echo 'data: '.json_encode($event)."\n\n";
+                        ob_flush();
+                        flush();
+                    }
+                }
+
+                // Final event if not already sent
+                echo 'data: '.json_encode(['done' => true, 'success' => true])."\n\n";
+                ob_flush();
+                flush();
+            } catch (\Throwable $e) {
+                echo 'data: '.json_encode(['done' => true, 'success' => false, 'error' => $e->getMessage()])."\n\n";
+                ob_flush();
+                flush();
+            }
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    /**
+     * Check Ollama availability and list downloaded models.
+     */
+    private function getOllamaStatus(): array
+    {
+        $url = config('prism.providers.ollama.url', 'http://localhost:11434');
+
+        try {
+            $response = Http::timeout(3)->get($url . '/api/tags');
+
+            if (!$response->successful()) {
+                return ['online' => false, 'models' => [], 'url' => $url];
+            }
+
+            $models = collect($response->json('models', []))
+                ->pluck('name')
+                ->map(fn ($n) => explode(':', $n)[0])
+                ->unique()
+                ->values()
+                ->toArray();
+
+            return ['online' => true, 'models' => $models, 'url' => $url];
+        } catch (\Throwable) {
+            return ['online' => false, 'models' => [], 'url' => $url];
+        }
+    }
+
+    /**
      * Fetch available models from the provider API and store in database.
      */
     public function fetchModels(string $id)
@@ -750,15 +1208,47 @@ class IntegrationController extends Controller
             if (!$modelId) {
                 continue;
             }
-            // Use the model ID as display name, formatted nicely
-            $displayName = strtoupper(str_replace(['-', '_'], [' ', ' '], $modelId));
-            $displayName = ucwords(strtolower($displayName));
-            $models[$modelId] = $displayName;
+            $models[$modelId] = $this->formatGlmModelName($modelId);
+        }
+
+        // Probe flash/plus variants — GLM's /models endpoint doesn't list all usable models
+        $variants = [];
+        foreach (array_keys($models) as $modelId) {
+            $variants[] = $modelId . '-flash';
+            $variants[] = $modelId . '-plus';
+        }
+
+        foreach ($variants as $variant) {
+            if (isset($models[$variant])) {
+                continue;
+            }
+            try {
+                $probe = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Content-Type' => 'application/json',
+                ])->timeout(8)->post($baseUrl . '/chat/completions', [
+                    'model' => $variant,
+                    'messages' => [['role' => 'user', 'content' => 'hi']],
+                    'max_tokens' => 1,
+                ]);
+                // 200 or 429 (rate limited) means the model exists
+                if ($probe->status() === 200 || $probe->status() === 429) {
+                    $models[$variant] = $this->formatGlmModelName($variant);
+                }
+            } catch (\Throwable) {
+                // Skip on timeout/error
+            }
         }
 
         ksort($models);
 
         return $models;
+    }
+
+    private function formatGlmModelName(string $modelId): string
+    {
+        $displayName = strtoupper(str_replace(['-', '_'], [' ', ' '], $modelId));
+        return ucwords(strtolower($displayName));
     }
 
     /**

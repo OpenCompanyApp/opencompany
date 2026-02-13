@@ -23,7 +23,7 @@ class SettingController extends Controller
     public function update(Request $request)
     {
         $request->validate([
-            'category' => 'required|string|in:organization,agents,notifications,policies',
+            'category' => 'required|string|in:organization,agents,notifications,policies,memory',
             'settings' => 'required|array',
         ]);
 

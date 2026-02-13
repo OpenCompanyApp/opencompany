@@ -248,6 +248,13 @@ Route::post('/settings/danger-action', [SettingController::class, 'dangerAction'
 // Integrations
 Route::get('/integrations', [IntegrationController::class, 'index']);
 Route::get('/integrations/models', [IntegrationController::class, 'enabledModels']);
+Route::get('/integrations/all-providers', [IntegrationController::class, 'allProviders']);
+Route::get('/integrations/embedding-models', [IntegrationController::class, 'embeddingModels']);
+Route::get('/integrations/reranking-models', [IntegrationController::class, 'rerankingModels']);
+
+// Ollama (self-hosted models)
+Route::get('/integrations/ollama/status', [IntegrationController::class, 'ollamaModelStatus']);
+Route::post('/integrations/ollama/pull', [IntegrationController::class, 'ollamaPullModel']);
 
 // Codex Auth (OAuth — not API key based)
 Route::get('/integrations/codex/auth/status', [CodexAuthController::class, 'status']);
