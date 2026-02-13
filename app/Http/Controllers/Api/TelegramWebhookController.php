@@ -146,14 +146,24 @@ class TelegramWebhookController extends Controller
             );
         }
 
+        // Resolve reply threading from Telegram's reply_to_message
+        $replyToId = null;
+        if (isset($message['reply_to_message']['message_id'])) {
+            $replyToId = Message::where('external_message_id', (string) $message['reply_to_message']['message_id'])
+                ->where('channel_id', $channel->id)
+                ->value('id');
+        }
+
         // Create the message
         $internalMessage = Message::create([
             'id' => Str::uuid()->toString(),
             'content' => $text,
             'channel_id' => $channel->id,
             'author_id' => $user->id,
+            'reply_to_id' => $replyToId,
             'timestamp' => now(),
             'source' => 'telegram',
+            'external_message_id' => $telegramMessageId ? (string) $telegramMessageId : null,
         ]);
 
         broadcast(new MessageSent($internalMessage));

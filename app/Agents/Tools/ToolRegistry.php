@@ -5,9 +5,11 @@ namespace App\Agents\Tools;
 use App\Agents\Tools\Calendar\ManageCalendarEvent;
 use App\Agents\Tools\Calendar\QueryCalendar;
 use App\Agents\Tools\Charts\RenderSvg;
+use App\Agents\Tools\Chat\DiscoverExternalChannels;
 use App\Agents\Tools\Chat\ListChannels;
 use App\Agents\Tools\Chat\ManageMessage;
 use App\Agents\Tools\Chat\ReadChannel;
+use App\Agents\Tools\Chat\SearchMessages;
 use App\Agents\Tools\Chat\SendChannelMessage;
 use App\Agents\Tools\Docs\CommentOnDocument;
 use App\Agents\Tools\Docs\ManageDocument;
@@ -64,8 +66,8 @@ class ToolRegistry
             'description' => 'Inter-agent communication',
         ],
         'chat' => [
-            'tools' => ['send_channel_message', 'read_channel', 'list_channels', 'manage_message'],
-            'label' => 'send, read, list, manage',
+            'tools' => ['send_channel_message', 'read_channel', 'list_channels', 'manage_message', 'search_messages', 'discover_external_channels'],
+            'label' => 'send, read, list, manage, search, discover',
             'description' => 'Channel messaging (incl. external: Telegram, Slack)',
         ],
         'docs' => [
@@ -167,8 +169,22 @@ class ToolRegistry
             'class' => ManageMessage::class,
             'type' => 'write',
             'name' => 'Manage Message',
-            'description' => 'Delete, pin, or add/remove reactions on a message.',
+            'description' => 'Edit, delete, pin, or add/remove reactions on a message. Syncs to external platforms.',
             'icon' => 'ph:chat-circle-dots',
+        ],
+        'search_messages' => [
+            'class' => SearchMessages::class,
+            'type' => 'read',
+            'name' => 'Search Messages',
+            'description' => 'Search messages across channels by keyword, with optional channel and author filtering.',
+            'icon' => 'ph:magnifying-glass',
+        ],
+        'discover_external_channels' => [
+            'class' => DiscoverExternalChannels::class,
+            'type' => 'read',
+            'name' => 'Discover External Channels',
+            'description' => 'List, join, or leave external platform channels (Telegram, Discord).',
+            'icon' => 'ph:globe',
         ],
         // Docs
         'search_documents' => [
@@ -790,6 +806,8 @@ class ToolRegistry
             SendChannelMessage::class => new SendChannelMessage($agent, $this->permissionService),
             ReadChannel::class => new ReadChannel($agent, $this->permissionService),
             ManageMessage::class => new ManageMessage($agent, $this->permissionService),
+            SearchMessages::class => new SearchMessages($agent, $this->permissionService),
+            DiscoverExternalChannels::class => new DiscoverExternalChannels($agent, $this->permissionService),
             SearchDocuments::class => new SearchDocuments($agent, $this->permissionService),
             ManageDocument::class => new ManageDocument($agent, $this->permissionService),
             CommentOnDocument::class => new CommentOnDocument($agent, $this->permissionService),

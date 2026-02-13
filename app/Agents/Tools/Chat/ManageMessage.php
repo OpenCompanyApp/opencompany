@@ -2,6 +2,10 @@
 
 namespace App\Agents\Tools\Chat;
 
+use App\Events\MessageDeleted;
+use App\Events\MessageEdited;
+use App\Events\MessagePinned;
+use App\Events\MessageReactionAdded;
 use App\Models\Message;
 use App\Models\MessageReaction;
 use App\Models\User;
@@ -20,7 +24,7 @@ class ManageMessage implements Tool
 
     public function description(): string
     {
-        return 'Manage messages in channels. Delete messages, toggle pins, or add and remove reactions.';
+        return 'Manage messages in channels. Edit, delete, toggle pins, or add and remove reactions. Actions sync to external platforms (Telegram, Discord).';
     }
 
     public function handle(Request $request): string
@@ -29,7 +33,7 @@ class ManageMessage implements Tool
             $messageId = $request['messageId'];
             $action = $request['action'];
 
-            $message = Message::find($messageId);
+            $message = Message::resolveByShortId($messageId);
             if (!$message) {
                 return "Error: Message '{$messageId}' not found.";
             }
@@ -40,22 +44,43 @@ class ManageMessage implements Tool
             }
 
             return match ($action) {
+                'edit' => $this->editMessage($message, $request),
                 'delete' => $this->deleteMessage($message),
                 'pin' => $this->pinMessage($message),
                 'add_reaction' => $this->addReaction($message, $request),
                 'remove_reaction' => $this->removeReaction($request),
-                default => "Error: Unknown action '{$action}'. Use 'delete', 'pin', 'add_reaction', or 'remove_reaction'.",
+                default => "Error: Unknown action '{$action}'. Use 'edit', 'delete', 'pin', 'add_reaction', or 'remove_reaction'.",
             };
         } catch (\Throwable $e) {
             return "Error managing message: {$e->getMessage()}";
         }
     }
 
+    private function editMessage(Message $message, Request $request): string
+    {
+        $content = $request['content'] ?? null;
+        if (!$content) {
+            return "Error: 'content' is required for the 'edit' action.";
+        }
+
+        $message->update(['content' => $content]);
+
+        event(new MessageEdited($message));
+
+        $synced = $this->syncIndicator($message);
+
+        return "Message edited.{$synced}";
+    }
+
     private function deleteMessage(Message $message): string
     {
+        event(new MessageDeleted($message));
+
+        $synced = $this->syncIndicator($message);
+
         $message->delete();
 
-        return "Message deleted.";
+        return "Message deleted.{$synced}";
     }
 
     private function pinMessage(Message $message): string
@@ -76,7 +101,11 @@ class ManageMessage implements Tool
             'pinned_by_id' => $this->agent->id,
         ]);
 
-        return "Message pinned.";
+        event(new MessagePinned($message));
+
+        $synced = $this->syncIndicator($message);
+
+        return "Message pinned.{$synced}";
     }
 
     private function addReaction(Message $message, Request $request): string
@@ -93,7 +122,11 @@ class ManageMessage implements Tool
             'emoji' => $emoji,
         ]);
 
-        return "Reaction added.";
+        event(new MessageReactionAdded($message, $emoji));
+
+        $synced = $this->syncIndicator($message);
+
+        return "Reaction added.{$synced}";
     }
 
     private function removeReaction(Request $request): string
@@ -113,6 +146,19 @@ class ManageMessage implements Tool
         return "Reaction removed.";
     }
 
+    /**
+     * Return a sync indicator suffix when the message is on an external channel.
+     */
+    private function syncIndicator(Message $message): string
+    {
+        $channel = $message->channel;
+        if ($channel && $channel->type === 'external' && $channel->external_provider) {
+            return " Synced to {$channel->external_provider}.";
+        }
+
+        return '';
+    }
+
     public function schema(JsonSchema $schema): array
     {
         return [
@@ -122,8 +168,11 @@ class ManageMessage implements Tool
                 ->required(),
             'action' => $schema
                 ->string()
-                ->description("The management action: 'delete', 'pin', 'add_reaction', or 'remove_reaction'.")
+                ->description("The management action: 'edit', 'delete', 'pin', 'add_reaction', or 'remove_reaction'.")
                 ->required(),
+            'content' => $schema
+                ->string()
+                ->description('The new message content. Required for the edit action.'),
             'emoji' => $schema
                 ->string()
                 ->description('The emoji to add as a reaction. Required for add_reaction.'),

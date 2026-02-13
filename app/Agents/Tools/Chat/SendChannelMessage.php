@@ -64,7 +64,9 @@ class SendChannelMessage implements Tool
 
             broadcast(new MessageSent($message));
 
-            return "Message sent successfully to channel '{$channel->name}'.";
+            $shortId = substr($message->id, 0, 6);
+
+            return "Message sent to '{$channel->name}' (msg:{$shortId}).";
         } catch (\Throwable $e) {
             return "Error sending message: {$e->getMessage()}";
         }

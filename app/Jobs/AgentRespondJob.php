@@ -133,7 +133,7 @@ class AgentRespondJob implements ShouldQueue
                 Log::warning('Failed to capture LLM context', ['error' => $e->getMessage()]);
             }
 
-            $response = $agentInstance->prompt($this->userMessage->content);
+            $response = $agentInstance->prompt($this->buildPromptWithThreadContext($this->userMessage));
 
             $responseText = $response->text;
 
@@ -176,12 +176,13 @@ class AgentRespondJob implements ShouldQueue
             $deliveryStep = $task->addStep('Response delivered', 'message');
             $deliveryStep->start();
 
-            // Create the agent's response message
+            // Create the agent's response message (in the same thread if replying)
             $agentMessage = Message::create([
                 'id' => Str::uuid()->toString(),
                 'content' => $responseText,
                 'channel_id' => $this->channelId,
                 'author_id' => $this->agent->id,
+                'reply_to_id' => $this->userMessage->reply_to_id,
                 'timestamp' => now(),
             ]);
 
@@ -196,7 +197,7 @@ class AgentRespondJob implements ShouldQueue
             DirectMessage::where('channel_id', $this->channelId)
                 ->update(['last_message_at' => now()]);
 
-            // Dispatch event (fires listeners like ForwardMessageToTelegram, then broadcasts)
+            // Dispatch event (fires listeners like SyncToTelegram, then broadcasts)
             try {
                 event(new MessageSent($agentMessage));
             } catch (\Throwable $broadcastError) {
@@ -473,6 +474,29 @@ class AgentRespondJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Build the prompt with thread context when the message is a reply.
+     */
+    private function buildPromptWithThreadContext(Message $message): string
+    {
+        $prompt = $message->content;
+
+        if (!$message->reply_to_id) {
+            return $prompt;
+        }
+
+        $parent = $message->replyTo()->with('author')->first();
+        if (!$parent) {
+            return $prompt;
+        }
+
+        $authorName = $parent->author->name ?? 'Unknown';
+        $time = $parent->created_at->format('Y-m-d H:i');
+        $content = Str::limit($parent->content, 500);
+
+        return "[Replying to {$authorName}'s message from {$time}: \"{$content}\"]\n\n{$prompt}";
     }
 
     /**

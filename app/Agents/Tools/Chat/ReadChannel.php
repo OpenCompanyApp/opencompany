@@ -76,11 +76,7 @@ class ReadChannel implements Tool
 
         $lines = ["Recent messages in #{$channel->name}:"];
         foreach ($messages as $message) {
-            $time = $message->created_at->format('Y-m-d H:i');
-            /** @var User|null $messageAuthor */
-            $messageAuthor = $message->author;
-            $author = $messageAuthor->name ?? 'Unknown';
-            $lines[] = "[{$time}] {$author}: {$message->content}";
+            $lines[] = $this->formatMessage($message);
         }
 
         return implode("\n", $lines);
@@ -93,30 +89,25 @@ class ReadChannel implements Tool
             return "Error: 'messageId' is required for the 'thread' action.";
         }
 
-        $parent = Message::with('author')->find($messageId);
+        $parent = Message::resolveByShortId($messageId)?->load('author');
         if (!$parent) {
             return "Error: Message '{$messageId}' not found.";
         }
 
         $replies = Message::with('author')
-            ->where('reply_to_id', $messageId)
+            ->where('reply_to_id', $parent->id)
             ->orderBy('created_at', 'asc')
             ->get();
 
-        $time = $parent->created_at->format('Y-m-d H:i');
         /** @var User|null $parentAuthor */
         $parentAuthor = $parent->author;
         $author = $parentAuthor->name ?? 'Unknown';
         $lines = ["Thread for message by {$author}:"];
-        $lines[] = "[{$time}] {$author}: {$parent->content}";
+        $lines[] = $this->formatMessage($parent);
         $lines[] = "--- Replies ({$replies->count()}) ---";
 
         foreach ($replies as $reply) {
-            $rTime = $reply->created_at->format('Y-m-d H:i');
-            /** @var User|null $replyAuthor */
-            $replyAuthor = $reply->author;
-            $rAuthor = $replyAuthor->name ?? 'Unknown';
-            $lines[] = "[{$rTime}] {$rAuthor}: {$reply->content}";
+            $lines[] = $this->formatMessage($reply);
         }
 
         return implode("\n", $lines);
@@ -136,14 +127,28 @@ class ReadChannel implements Tool
 
         $lines = ["Pinned messages in #{$channel->name}:"];
         foreach ($messages as $message) {
-            $time = $message->created_at->format('Y-m-d H:i');
-            /** @var User|null $pinnedAuthor */
-            $pinnedAuthor = $message->author;
-            $author = $pinnedAuthor->name ?? 'Unknown';
-            $lines[] = "[{$time}] {$author}: {$message->content}";
+            $lines[] = $this->formatMessage($message);
         }
 
         return implode("\n", $lines);
+    }
+
+    private function formatMessage(Message $message): string
+    {
+        $shortId = substr($message->id, 0, 6);
+        $time = $message->created_at->format('Y-m-d H:i');
+
+        /** @var User|null $author */
+        $author = $message->author;
+        $authorName = $author->name ?? 'Unknown';
+
+        $source = $message->source && $message->source !== 'workspace'
+            ? " (via {$message->source})"
+            : '';
+
+        $pin = $message->is_pinned ? ' 📌' : '';
+
+        return "[msg:{$shortId}] [{$time}] {$authorName}{$source}: {$message->content}{$pin}";
     }
 
     public function schema(JsonSchema $schema): array

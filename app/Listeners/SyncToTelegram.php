@@ -2,41 +2,35 @@
 
 namespace App\Listeners;
 
+use App\Events\MessageDeleted;
+use App\Events\MessageEdited;
+use App\Events\MessagePinned;
+use App\Events\MessageReactionAdded;
 use App\Events\MessageSent;
+use App\Models\Message;
 use App\Services\TelegramService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 
-class ForwardMessageToTelegram implements ShouldQueue
+class SyncToTelegram implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    public function handle(MessageSent $event): void
+    public function handleMessageSent(MessageSent $event): void
     {
         $message = $event->message;
 
-        // Echo loop prevention: skip if message originated from Telegram
-        if ($message->source === 'telegram') {
+        if ($message->source === 'telegram' || $message->source === 'delegation_result') {
             return;
         }
 
-        // Skip delegation results (parent agent will respond naturally)
-        if ($message->source === 'delegation_result') {
-            return;
-        }
-
-        // Check if channel is a Telegram external channel
         $channel = $message->channel;
-        if (!$channel || $channel->type !== 'external' || $channel->external_provider !== 'telegram') {
+        if (!$this->isTelegramChannel($channel)) {
             return;
         }
 
         $chatId = $channel->external_id;
-        if (!$chatId) {
-            return;
-        }
-
         $telegram = app(TelegramService::class);
         if (!$telegram->isConfigured()) {
             return;
@@ -45,27 +39,156 @@ class ForwardMessageToTelegram implements ShouldQueue
         $authorName = htmlspecialchars($message->author->name ?? 'System', ENT_QUOTES, 'UTF-8');
 
         try {
-            // Extract and send chart images as photos (from inline markdown)
             $sentPaths = $this->sendChartImages($telegram, $chatId, $message->content);
-
-            // Send image attachments (charts saved as structured data)
             $this->sendAttachmentImages($telegram, $chatId, $message, $sentPaths);
 
-            // Strip image markdown from content before sending as text
             $textContent = preg_replace('/!\[[^\]]*\]\([^)]+\)\s*/', '', $message->content);
 
             if (trim($textContent) !== '') {
                 $content = TelegramService::markdownToTelegramHtml($textContent);
                 $text = "<b>{$authorName}</b>\n{$content}";
-                $telegram->sendMessage($chatId, $text);
+
+                // Thread the reply on Telegram if replying to a message with an external ID
+                $replyToExternalId = null;
+                if ($message->reply_to_id) {
+                    $replyToExternalId = Message::where('id', $message->reply_to_id)->value('external_message_id');
+                }
+
+                $result = $telegram->sendMessage($chatId, $text, null, $replyToExternalId ? (int) $replyToExternalId : null);
+
+                if (!empty($result['message_id'])) {
+                    $message->update(['external_message_id' => (string) $result['message_id']]);
+                }
             }
         } catch (\Throwable $e) {
-            Log::error('Failed to forward message to Telegram', [
+            Log::error('SyncToTelegram: failed to send message', [
                 'channel_id' => $channel->id,
                 'chat_id' => $chatId,
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    public function handleMessageEdited(MessageEdited $event): void
+    {
+        $message = $event->message;
+
+        if (!$this->canSync($message)) {
+            return;
+        }
+
+        $channel = $message->channel;
+        $telegram = app(TelegramService::class);
+
+        try {
+            $content = TelegramService::markdownToTelegramHtml($message->content);
+            $telegram->editMessageText(
+                $channel->external_id,
+                (int) $message->external_message_id,
+                $content
+            );
+        } catch (\Throwable $e) {
+            Log::error('SyncToTelegram: failed to edit message', [
+                'message_id' => $message->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function handleMessageDeleted(MessageDeleted $event): void
+    {
+        $message = $event->message;
+
+        if (!$this->canSync($message)) {
+            return;
+        }
+
+        $channel = $message->channel;
+        $telegram = app(TelegramService::class);
+
+        try {
+            $telegram->deleteMessage(
+                $channel->external_id,
+                (int) $message->external_message_id
+            );
+        } catch (\Throwable $e) {
+            Log::error('SyncToTelegram: failed to delete message', [
+                'message_id' => $message->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function handleMessagePinned(MessagePinned $event): void
+    {
+        $message = $event->message;
+
+        if (!$this->canSync($message)) {
+            return;
+        }
+
+        $channel = $message->channel;
+        $telegram = app(TelegramService::class);
+
+        try {
+            $telegram->pinChatMessage(
+                $channel->external_id,
+                (int) $message->external_message_id
+            );
+        } catch (\Throwable $e) {
+            Log::error('SyncToTelegram: failed to pin message', [
+                'message_id' => $message->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function handleReactionAdded(MessageReactionAdded $event): void
+    {
+        $message = $event->message;
+
+        if (!$this->canSync($message)) {
+            return;
+        }
+
+        $channel = $message->channel;
+        $telegram = app(TelegramService::class);
+
+        try {
+            $telegram->setMessageReaction(
+                $channel->external_id,
+                (int) $message->external_message_id,
+                $event->emoji
+            );
+        } catch (\Throwable $e) {
+            Log::error('SyncToTelegram: failed to set reaction', [
+                'message_id' => $message->id,
+                'emoji' => $event->emoji,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Check if a message can be synced to Telegram (has external ID and is in a Telegram channel).
+     */
+    private function canSync(Message $message): bool
+    {
+        if (!$message->external_message_id) {
+            return false;
+        }
+
+        $channel = $message->channel;
+
+        return $this->isTelegramChannel($channel) && app(TelegramService::class)->isConfigured();
+    }
+
+    private function isTelegramChannel($channel): bool
+    {
+        return $channel
+            && $channel->type === 'external'
+            && $channel->external_provider === 'telegram'
+            && $channel->external_id;
     }
 
     /**
@@ -85,12 +208,10 @@ class ForwardMessageToTelegram implements ShouldQueue
             $alt = $match[1];
             $url = $match[2];
 
-            // Only handle local storage URLs (chart images)
             if (!str_starts_with($url, '/storage/')) {
                 continue;
             }
 
-            // Convert URL path to disk path
             $relativePath = str_replace('/storage/', '', $url);
             $filePath = storage_path('app/public/' . $relativePath);
 
@@ -100,7 +221,6 @@ class ForwardMessageToTelegram implements ShouldQueue
             }
 
             try {
-                // Send diagram images as documents to preserve resolution
                 $isDocument = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/') || str_contains($url, '/storage/typst/');
 
                 if ($isDocument) {
@@ -110,9 +230,7 @@ class ForwardMessageToTelegram implements ShouldQueue
                 }
                 $sentPaths[] = $filePath;
             } catch (\Throwable $e) {
-                // Fall back to sendDocument for oversized images (PHOTO_INVALID_DIMENSIONS)
-                $isDocumentFallback = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/') || str_contains($url, '/storage/typst/');
-                if (!$isDocumentFallback && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
+                if (!str_contains($url, '/storage/mermaid/') && !str_contains($url, '/storage/plantuml/') && !str_contains($url, '/storage/typst/') && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
                     try {
                         $telegram->sendDocument($chatId, $filePath, $alt ?: null);
                         $sentPaths[] = $filePath;
@@ -153,7 +271,6 @@ class ForwardMessageToTelegram implements ShouldQueue
             $relativePath = str_replace('/storage/', '', $url);
             $filePath = storage_path('app/public/' . $relativePath);
 
-            // Skip if already sent from inline markdown parsing
             if (in_array($filePath, $alreadySentPaths, true)) {
                 continue;
             }
@@ -172,8 +289,7 @@ class ForwardMessageToTelegram implements ShouldQueue
                     $telegram->sendPhoto($chatId, $filePath, $attachment->original_name);
                 }
             } catch (\Throwable $e) {
-                $isDocumentFallback = str_contains($url, '/storage/mermaid/') || str_contains($url, '/storage/plantuml/') || str_contains($url, '/storage/typst/');
-                if (!$isDocumentFallback && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
+                if (!str_contains($url, '/storage/mermaid/') && !str_contains($url, '/storage/plantuml/') && !str_contains($url, '/storage/typst/') && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
                     try {
                         $telegram->sendDocument($chatId, $filePath, $attachment->original_name);
                     } catch (\Throwable $docError) {

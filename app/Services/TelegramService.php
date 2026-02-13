@@ -22,11 +22,11 @@ class TelegramService
     /**
      * Send a text message to a Telegram chat.
      */
-    public function sendMessage(string $chatId, string $text, ?array $replyMarkup = null): array
+    public function sendMessage(string $chatId, string $text, ?array $replyMarkup = null, ?int $replyToMessageId = null): array
     {
         // Split long messages
         if (strlen($text) > self::MAX_MESSAGE_LENGTH && $replyMarkup === null) {
-            return $this->sendLongMessage($chatId, $text);
+            return $this->sendLongMessage($chatId, $text, $replyToMessageId);
         }
 
         $params = [
@@ -37,6 +37,13 @@ class TelegramService
 
         if ($replyMarkup) {
             $params['reply_markup'] = json_encode($replyMarkup);
+        }
+
+        if ($replyToMessageId) {
+            $params['reply_parameters'] = json_encode([
+                'message_id' => $replyToMessageId,
+                'allow_sending_without_reply' => true,
+            ]);
         }
 
         try {
@@ -207,6 +214,41 @@ class TelegramService
     }
 
     /**
+     * Delete a message from a Telegram chat.
+     */
+    public function deleteMessage(string $chatId, int $messageId): array
+    {
+        return $this->request('deleteMessage', [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+        ]);
+    }
+
+    /**
+     * Pin a message in a Telegram chat.
+     */
+    public function pinChatMessage(string $chatId, int $messageId, bool $disableNotification = true): array
+    {
+        return $this->request('pinChatMessage', [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'disable_notification' => $disableNotification,
+        ]);
+    }
+
+    /**
+     * Set a reaction on a message in a Telegram chat.
+     */
+    public function setMessageReaction(string $chatId, int $messageId, string $emoji): array
+    {
+        return $this->request('setMessageReaction', [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'reaction' => json_encode([['type' => 'emoji', 'emoji' => $emoji]]),
+        ]);
+    }
+
+    /**
      * Check if the service has a valid bot token configured.
      */
     public function isConfigured(): bool
@@ -370,13 +412,15 @@ class TelegramService
     /**
      * Send a long message by splitting into chunks at line boundaries.
      */
-    private function sendLongMessage(string $chatId, string $text): array
+    private function sendLongMessage(string $chatId, string $text, ?int $replyToMessageId = null): array
     {
         $chunks = $this->splitAtLineBoundaries($text, self::MAX_MESSAGE_LENGTH);
         $lastResult = [];
 
-        foreach ($chunks as $chunk) {
-            $lastResult = $this->sendChunk($chatId, $chunk);
+        foreach ($chunks as $i => $chunk) {
+            // Only reply-thread the first chunk
+            $replyId = $i === 0 ? $replyToMessageId : null;
+            $lastResult = $this->sendChunk($chatId, $chunk, $replyId);
         }
 
         return $lastResult;
@@ -385,20 +429,28 @@ class TelegramService
     /**
      * Send a single chunk, falling back to plain text if HTML parsing fails.
      */
-    private function sendChunk(string $chatId, string $text): array
+    private function sendChunk(string $chatId, string $text, ?int $replyToMessageId = null): array
     {
-        try {
-            return $this->request('sendMessage', [
-                'chat_id' => $chatId,
-                'text' => $text,
-                'parse_mode' => 'HTML',
+        $params = [
+            'chat_id' => $chatId,
+            'text' => $text,
+            'parse_mode' => 'HTML',
+        ];
+
+        if ($replyToMessageId) {
+            $params['reply_parameters'] = json_encode([
+                'message_id' => $replyToMessageId,
+                'allow_sending_without_reply' => true,
             ]);
+        }
+
+        try {
+            return $this->request('sendMessage', $params);
         } catch (\RuntimeException $e) {
             if (str_contains($e->getMessage(), "can't parse entities")) {
-                return $this->request('sendMessage', [
-                    'chat_id' => $chatId,
-                    'text' => strip_tags($text),
-                ]);
+                $params['text'] = strip_tags($text);
+                unset($params['parse_mode']);
+                return $this->request('sendMessage', $params);
             }
             throw $e;
         }

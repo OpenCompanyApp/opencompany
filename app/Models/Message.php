@@ -26,6 +26,7 @@ class Message extends Model
         'pinned_at',
         'timestamp',
         'source',
+        'external_message_id',
     ];
 
     protected function casts(): array
@@ -81,5 +82,16 @@ class Message extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(MessageAttachment::class);
+    }
+
+    /**
+     * Resolve a message by full UUID or short ID prefix (e.g. "a4d0ed").
+     */
+    public static function resolveByShortId(string $id): ?self
+    {
+        $id = preg_replace('/^msg:/', '', $id);
+
+        return static::find($id)
+            ?? static::where('id', 'LIKE', $id . '%')->first();
     }
 }

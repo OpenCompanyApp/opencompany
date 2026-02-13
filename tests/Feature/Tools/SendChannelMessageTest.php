@@ -28,8 +28,9 @@ class SendChannelMessageTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Message sent successfully', $result);
+        $this->assertStringContainsString('Message sent to', $result);
         $this->assertStringContainsString('general', $result);
+        $this->assertMatchesRegularExpression('/msg:[a-f0-9]{6}/', $result);
 
         $message = Message::where('author_id', $agent->id)->first();
         $this->assertNotNull($message);
