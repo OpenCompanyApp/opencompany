@@ -227,9 +227,7 @@ class IntegrationController extends Controller
             }
 
             $setting->config = $config;
-            if ($request->has('enabled')) {
-                $setting->enabled = $request->input('enabled');
-            }
+            $setting->enabled = $request->input('enabled', true);
             $setting->save();
 
             return response()->json([

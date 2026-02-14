@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0ade2a3c02d0e0fe3cb8d4858bc732a5",
+    "content-hash": "9d96b710b2bbf67677cb0e2334eab6a9",
     "packages": [
         {
             "name": "brick/math",
@@ -3110,7 +3110,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-clickup",
-                "reference": "dc289c7019fa80cf3216a28869ac6b788ce21f78"
+                "reference": "905d9c75db2b01819093aa6f4b8e5dcac23bf5c4"
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3147,6 +3147,55 @@
                 "opencompany",
                 "project-management",
                 "tasks",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/ai-tool-google",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-google",
+                "reference": "ef5a722ac19b44ca008bc2a61d2501dfb6def6b6"
+            },
+            "require": {
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolGoogle\\AiToolGoogleServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolGoogle\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Google Calendar and Gmail AI tools for Laravel AI SDK. Part of the OpenCompany AI tool ecosystem.",
+            "keywords": [
+                "ai",
+                "calendar",
+                "gmail",
+                "google",
+                "laravel",
+                "opencompany",
                 "tools"
             ],
             "transport-options": {
@@ -10733,6 +10782,7 @@
         "opencompany/prism-codex": 20,
         "opencompanyapp/ai-tool-celestial": 20,
         "opencompanyapp/ai-tool-clickup": 20,
+        "opencompanyapp/ai-tool-google": 20,
         "opencompanyapp/ai-tool-mermaid": 20,
         "opencompanyapp/ai-tool-plantuml": 20,
         "opencompanyapp/ai-tool-plausible": 20,

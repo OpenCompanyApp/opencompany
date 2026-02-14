@@ -121,21 +121,41 @@
             >
               Connect with {{ meta?.name || 'service' }}
             </Button>
-            <div v-if="field.redirect_uri" class="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg space-y-1.5">
+            <div v-if="field.redirect_uri" class="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg space-y-2.5">
               <p class="text-xs font-medium text-neutral-700 dark:text-neutral-300">
                 In your
                 <a v-if="meta?.docs_url" :href="meta.docs_url" target="_blank" rel="noopener" class="underline">{{ meta?.name }} developer settings</a>
                 <span v-else>{{ meta?.name }} developer settings</span>, set:
               </p>
-              <div class="space-y-1">
-                <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                  <strong>OAuth redirect URL:</strong>
-                  <code class="ml-1 px-1 py-0.5 bg-neutral-100 dark:bg-neutral-700 rounded text-[11px]">{{ fullRedirectUri(field) }}</code>
-                </p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                  <strong>App Service URL:</strong>
-                  <code class="ml-1 px-1 py-0.5 bg-neutral-100 dark:bg-neutral-700 rounded text-[11px]">{{ origin }}</code>
-                </p>
+              <div class="space-y-2">
+                <div>
+                  <label class="block text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1">OAuth redirect URL</label>
+                  <div class="flex items-center gap-1.5">
+                    <code class="flex-1 min-w-0 px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-md text-[11px] text-neutral-700 dark:text-neutral-300 truncate select-all">{{ fullRedirectUri(field) }}</code>
+                    <button
+                      type="button"
+                      class="shrink-0 p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-md transition-colors"
+                      :title="copied === 'redirect' ? 'Copied!' : 'Copy to clipboard'"
+                      @click="copyToClipboard(fullRedirectUri(field), 'redirect')"
+                    >
+                      <Icon :name="copied === 'redirect' ? 'ph:check' : 'ph:copy'" class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1">App Service URL</label>
+                  <div class="flex items-center gap-1.5">
+                    <code class="flex-1 min-w-0 px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-md text-[11px] text-neutral-700 dark:text-neutral-300 truncate select-all">{{ origin }}</code>
+                    <button
+                      type="button"
+                      class="shrink-0 p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-md transition-colors"
+                      :title="copied === 'origin' ? 'Copied!' : 'Copy to clipboard'"
+                      @click="copyToClipboard(origin, 'origin')"
+                    >
+                      <Icon :name="copied === 'origin' ? 'ph:check' : 'ph:copy'" class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -187,30 +207,6 @@
         </div>
       </div>
 
-      <!-- Enable/Disable Toggle -->
-      <div class="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
-        <div>
-          <p class="font-medium text-neutral-900 dark:text-white">Enable Integration</p>
-          <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Allow agents to use {{ meta?.name || 'this integration' }}
-          </p>
-        </div>
-        <button
-          type="button"
-          :class="[
-            'relative w-11 h-6 rounded-full transition-colors',
-            enabled ? 'bg-green-500' : 'bg-neutral-300 dark:bg-neutral-600',
-          ]"
-          @click="enabled = !enabled"
-        >
-          <span
-            :class="[
-              'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm',
-              enabled && 'translate-x-5',
-            ]"
-          />
-        </button>
-      </div>
     </form>
 
     <template #footer>
@@ -282,7 +278,6 @@ const emit = defineEmits<{
 const formValues = reactive<Record<string, any>>({})
 const listInputs = reactive<Record<string, string>>({})
 const showSecrets = reactive<Record<string, boolean>>({})
-const enabled = ref(false)
 
 // UI state
 const isTesting = ref(false)
@@ -291,6 +286,31 @@ const resultMessage = ref<{ success: boolean; message: string } | null>(null)
 
 // OAuth helpers
 const origin = window.location.origin
+const copied = ref<string | null>(null)
+
+const copyToClipboard = async (text: string, key: string) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    copied.value = key
+    setTimeout(() => {
+      if (copied.value === key) copied.value = null
+    }, 2000)
+  } catch {
+    // Fallback for older browsers
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+    copied.value = key
+    setTimeout(() => {
+      if (copied.value === key) copied.value = null
+    }, 2000)
+  }
+}
 
 const fullRedirectUri = (field: ConfigField): string => {
   return origin + (field.redirect_uri || '')
@@ -299,7 +319,7 @@ const fullRedirectUri = (field: ConfigField): string => {
 const connectOAuth = async (field: ConfigField) => {
   isSaving.value = true
   try {
-    const payload: Record<string, any> = { enabled: enabled.value }
+    const payload: Record<string, any> = { enabled: true }
     for (const f of props.schema) {
       if (f.type === 'oauth_connect') continue
       payload[f.key] = formValues[f.key]
@@ -327,7 +347,6 @@ const disconnectOAuth = async (field: ConfigField) => {
     const response = await fetch(`/api/integrations/${props.integrationId}/disconnect`, { method: 'POST' })
     if (response.ok) {
       formValues[field.key] = ''
-      enabled.value = false
     }
   } catch (error) {
     console.error('Failed to disconnect:', error)
@@ -388,7 +407,6 @@ const loadConfig = async () => {
           formValues[field.key] = data.config[field.key]
         }
       }
-      enabled.value = data.enabled || false
     }
   } catch (error) {
     console.error('Failed to load config:', error)
@@ -447,7 +465,7 @@ const handleSave = async () => {
   isSaving.value = true
 
   try {
-    const payload: Record<string, any> = { enabled: enabled.value }
+    const payload: Record<string, any> = { enabled: true }
     for (const field of props.schema) {
       if (field.type === 'oauth_connect') continue
       payload[field.key] = formValues[field.key]

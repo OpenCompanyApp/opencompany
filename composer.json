@@ -43,6 +43,10 @@
             "url": "tmp/ai-tool-clickup"
         },
         {
+            "type": "path",
+            "url": "tmp/ai-tool-google"
+        },
+        {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/prism-codex"
         },
@@ -84,6 +88,10 @@
         },
         {
             "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/ai-tool-google"
+        },
+        {
+            "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php"
         }
     ],
@@ -101,6 +109,7 @@
         "opencompanyapp/ai-tool-plantuml": "@dev",
         "opencompanyapp/ai-tool-plausible": "@dev",
         "opencompanyapp/ai-tool-clickup": "@dev",
+        "opencompanyapp/ai-tool-google": "@dev",
         "opencompanyapp/ai-tool-ticktick": "@dev",
         "opencompanyapp/ai-tool-typst": "@dev",
         "opencompanyapp/ai-tool-vegalite": "@dev",
