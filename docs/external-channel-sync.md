@@ -2,6 +2,28 @@
 
 Making agents full community participants — not just chatbots.
 
+## Implementation Status (February 2026)
+
+| Phase | Telegram | Discord |
+|-------|----------|---------|
+| Phase 1: External message ID tracking | **Done** | N/A yet |
+| Phase 2: Bidirectional sync (edit/delete/pin/react) | **Done** | Not started |
+| Phase 3: External channel discovery | **Done** (monitored channels) | Not started |
+| Phase 4: Message search | **Done** | Done (DB-level) |
+
+**Key implementation files:**
+- `app/Listeners/SyncToTelegram.php` — Consolidated listener (replaces ForwardMessageToTelegram) handling message send, edit, delete, pin, and reaction sync
+- `app/Events/MessageEdited.php`, `MessageDeleted.php`, `MessagePinned.php`, `MessageReactionAdded.php` — Sync events
+- `app/Services/TelegramService.php` — Platform API methods (edit, delete, pin, react)
+- `app/Agents/Tools/Chat/ManageMessage.php` — Agent tool with edit action + sync indicator
+- `app/Agents/Tools/Chat/SearchMessages.php` — Full-text message search tool
+- `app/Agents/Tools/Chat/DiscoverExternalChannels.php` — Browse external platform channels
+- `database/migrations/2026_02_14_200001_add_external_message_id_to_messages_table.php` — External ID tracking
+
+**What's left:** Discord sync listener (`SyncToDiscord`), Discord channel discovery via REST API, Discord webhook controller for inbound events.
+
+---
+
 ## The Problem
 
 Agents can send messages to external channels (Telegram, Discord) and that's it. Reactions, pins, edits, and deletes are workspace-only — they never sync to the external platform. Agents can't browse Discord server channels, can't react to a Telegram message, can't edit their own response after sending. They're chatbots, not community members.
@@ -14,29 +36,33 @@ Agents should feel like **real team members** on Discord and Telegram — browsi
 
 ## Current State
 
-| Capability | Internal channels | External channels |
-|---|---|---|
-| Send messages | Yes | Yes (auto-forwards) |
-| Read messages | Yes | Yes (from DB only) |
-| Edit messages | **No tool exists** | No |
-| Add reactions | Yes (DB only) | **Not synced** |
-| Pin messages | Yes (DB only) | **Not synced** |
-| Delete messages | Yes (DB only) | **Not synced** |
-| Browse channels | Yes (`list_channels`) | **DB-stored only** — can't discover new Discord channels |
-| Search messages | **No tool exists** | No |
+| Capability | Internal channels | External (Telegram) | External (Discord) |
+|---|---|---|---|
+| Send messages | Yes | Yes (auto-sync) | Yes (auto-forwards) |
+| Read messages | Yes | Yes (from DB) | Yes (from DB) |
+| Edit messages | Yes (`manage_message`) | **Yes (synced)** | No |
+| Add reactions | Yes | **Yes (synced)** | Not synced |
+| Pin messages | Yes | **Yes (synced)** | Not synced |
+| Delete messages | Yes | **Yes (synced)** | Not synced |
+| Browse channels | Yes (`list_channels`) | **Yes** (`discover_external_channels`) | DB-stored only |
+| Search messages | **Yes** (`search_messages`) | **Yes** | **Yes** |
 
-### Root cause
+### Root cause (now resolved for Telegram)
 
-No external message ID tracking. When a message is sent TO Telegram, the returned `message_id` is discarded. When a message comes FROM Telegram, its `message_id` is used for dedup but never stored. Without this mapping, the system can't target a specific message on the external platform for edit/react/pin/delete.
+~~No external message ID tracking. When a message is sent TO Telegram, the returned `message_id` is discarded. When a message comes FROM Telegram, its `message_id` is used for dedup but never stored. Without this mapping, the system can't target a specific message on the external platform for edit/react/pin/delete.~~
+
+**Resolved:** The `external_message_id` column on the `messages` table now tracks platform message IDs for both inbound and outbound messages. Telegram sync is fully operational.
 
 ### Current agent tools (chat group)
 
 | Tool | What it does | External support |
 | ---- | ------------ | ---------------- |
-| `send_channel_message` | Post message to any channel | Yes — auto-forwards to Telegram/Discord |
-| `read_channel` | Read recent messages, threads, pinned | Yes — reads from workspace DB |
+| `send_channel_message` | Post message to any channel | Yes — auto-syncs to Telegram, auto-forwards to Discord |
+| `read_channel` | Read recent messages, threads, pinned | Yes — reads from workspace DB (includes external message IDs) |
 | `list_channels` | List accessible channels by type | Yes — shows external channels from DB |
-| `manage_message` | Delete, pin, add/remove reactions | **Workspace DB only** — nothing syncs to platform |
+| `manage_message` | Edit, delete, pin, add/remove reactions | **Telegram: fully synced** — Discord: workspace DB only |
+| `search_messages` | Full-text search across channels | Yes — searches all channels including external |
+| `discover_external_channels` | Browse external platform channels | **Telegram: implemented** — Discord: not yet |
 
 ---
 

@@ -42,58 +42,6 @@
 
       <!-- Step 1: Basic Info -->
       <div v-show="currentStep === 0" class="space-y-6">
-        <!-- Template Selection -->
-        <div class="space-y-3">
-          <label class="block text-sm font-medium text-neutral-900 dark:text-white">Template (Optional)</label>
-          <p class="text-xs text-neutral-500 dark:text-neutral-400 -mt-1">
-            Choose a template to pre-configure your agent, or use General for a flexible assistant
-          </p>
-          <div class="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
-            <button
-              v-for="template in templates"
-              :key="template.id"
-              type="button"
-              :disabled="template.comingSoon"
-              :class="[
-                'p-3 rounded-xl border-2 text-left transition-all',
-                template.comingSoon
-                  ? 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 opacity-60 cursor-not-allowed'
-                  : selectedTemplate === template.id
-                    ? 'border-neutral-900 dark:border-white bg-neutral-900/5 dark:bg-white/5'
-                    : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500 bg-neutral-50 dark:bg-neutral-800',
-              ]"
-              @click="!template.comingSoon && (selectedTemplate = template.id)"
-            >
-              <div class="flex items-start gap-2">
-                <div
-                  :class="[
-                    'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-                    template.comingSoon
-                      ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400'
-                      : selectedTemplate === template.id
-                        ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
-                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500',
-                  ]"
-                >
-                  <Icon :name="template.icon" class="w-4 h-4" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-1.5">
-                    <p class="font-medium text-sm text-neutral-900 dark:text-white">{{ template.name }}</p>
-                    <span
-                      v-if="template.comingSoon"
-                      class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
-                    >
-                      Soon
-                    </span>
-                  </div>
-                  <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-1">{{ template.description }}</p>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-
         <!-- Agent Name -->
         <div class="space-y-2">
           <label class="block text-sm font-medium text-neutral-900 dark:text-white">Agent Name</label>
@@ -492,7 +440,7 @@ const loadAvailableManagers = async () => {
 // Can proceed to next step
 const canProceed = computed(() => {
   if (currentStep.value === 0) {
-    return selectedTemplate.value && agentName.value.trim()
+    return !!agentName.value.trim()
   }
   if (currentStep.value === 1) {
     return selectedBrain.value && availableBrains.value.length > 0
@@ -503,7 +451,6 @@ const canProceed = computed(() => {
 // Can spawn the agent
 const canSpawn = computed(() => {
   return (
-    selectedTemplate.value &&
     agentName.value.trim() &&
     selectedBrain.value &&
     identityContent.value.IDENTITY?.trim() &&

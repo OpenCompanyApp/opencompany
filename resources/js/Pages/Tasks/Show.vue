@@ -82,7 +82,7 @@
           <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
             <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Tool Calls</div>
             <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
-              {{ task.result?.tool_calls_count ?? toolSteps.length }}
+              {{ task.result?.tool_calls_count || toolSteps.length }}
             </div>
           </div>
         </div>

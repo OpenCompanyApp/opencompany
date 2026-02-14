@@ -258,7 +258,7 @@ class AgentRespondJob implements ShouldQueue
                 'completion_tokens' => $response->usage->completionTokens,
                 'cache_read_tokens' => $response->usage->cacheReadInputTokens,
                 'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
-                'tool_calls_count' => $response->toolCalls->count(),
+                'tool_calls_count' => collect($response->steps)->sum(fn ($step) => count($step->toolCalls)),
             ]);
 
             // Compute token breakdown from actual usage

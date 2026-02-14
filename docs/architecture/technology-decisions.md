@@ -8,7 +8,10 @@
 
 | Component | Choice | Reason |
 |-----------|--------|--------|
-| **AI Framework** | **Laravel AI SDK (`laravel/ai`)** | Official first-party Laravel package, full multimodal, comprehensive testing |
+| **Agent SDK** | **Laravel AI SDK (`laravel/ai`)** | Official first-party Laravel package, class-based agents, tool contracts, testing |
+| **LLM Provider Layer** | **Prism (`prism-php/prism`)** | Multi-provider LLM execution (OpenAI, Anthropic, Ollama, DeepSeek, Mistral), embeddings, streaming |
+
+> **Note (Feb 2026):** Both packages are used together. `laravel/ai` provides the agent SDK (Agent class, Tool contract, conversation persistence). `prism-php/prism` provides the underlying LLM provider layer (provider registration, embeddings, direct text generation for services like ConversationCompactionService and EmbeddingService). Custom provider gateways (`CodexPrismGateway`, `GlmPrismGateway`) extend Prism for self-hosted models.
 
 ---
 

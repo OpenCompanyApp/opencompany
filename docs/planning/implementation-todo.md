@@ -127,61 +127,23 @@
 
 > **Why:** Agents need persistent memory across conversations. Sessions track the current conversation, while memories persist facts and learnings long-term.
 
-- [ ] **1.2.1** Create `agent_sessions` migration ← depends on: [1.1.1] — NOT built (superseded by channel-based conversation; `agent_conversations` table exists but no formal sessions)
-  - **What:** Tracks individual conversation sessions with an agent
-  - **Why:** Sessions isolate conversations, track token usage for billing, and enable session reset policies. Token tracking is critical for knowing when to compact/prune.
-  - **Context:** Each session has a lifecycle: active → archived → deleted. Compaction count tracks how many times context was compressed.
-  - Fields: `id`, `agent_config_id` (FK), `session_key`, `started_at`, `last_activity_at`, `message_count`, `token_count`, `max_tokens`, `compaction_count`, `status` (active/archived/deleted), `created_at`
-  - **OpenClaw fields (memory management):**
-  - `memory_flush_at` TIMESTAMP NULL - When the last pre-compaction memory flush ran
-  - `memory_flush_compaction_count` INTEGER (default: 0) - Prevents duplicate flushes per compaction cycle
-  - `last_api_call_at` TIMESTAMP NULL - Used for TTL-based session pruning
+- [x] **1.2.1** Create `agent_sessions` migration ← depends on: [1.1.1] — ✅ Superseded: conversations are channel-based (messages table + ChannelConversationLoader). Compaction tracked in `conversation_summaries` table.
 
-- [ ] **1.2.2** Create `agent_session_messages` migration ← depends on: [1.2.1]
-  - **What:** Individual messages within a session (user, assistant, tool results, system)
-  - **Why:** Full conversation history enables context for the agent. Token counts per message enable precise context window management.
-  - **Context:** The `compaction` type stores summaries when context is compressed. Metadata stores tool call IDs, timestamps, etc.
-  - Fields: `id`, `session_id` (FK), `type` (enum: user/assistant/tool/system/compaction), `content`, `token_count`, `metadata` (JSON), `created_at`
-  - **OpenClaw fields:**
-  - `is_silent` BOOLEAN (default: false) - Messages starting with NO_REPLY token are silent (memory flushes, housekeeping)
-  - `parent_message_id` UUID NULL (self-referencing FK) - Enables conversation branching for future features
+- [x] **1.2.2** Create `agent_session_messages` migration ← depends on: [1.2.1] — ✅ Superseded: messages stored in `messages` table per channel. Loaded by ChannelConversationLoader.
 
-- [ ] **1.2.3** Create `agent_memories` migration ← depends on: [1.1.1]
-  - **What:** Long-term persistent memories that survive session resets (MEMORY.md equivalent)
-  - **Why:** Agents need to remember facts, user preferences, and important context across sessions. This is the agent's "long-term memory."
-  - **Context:** Categories help organize memories: facts (user's timezone), preferences (communication style), context (project details), notes (learnings).
-  - Fields: `id`, `agent_config_id` (FK), `content`, `category` (enum: fact/preference/context/note), `source`, `created_at`
-  - Index on `agent_config_id` + `created_at`
+- [x] **1.2.3** Create `agent_memories` migration ← depends on: [1.1.1] — ✅ Superseded: LTM stored as Documents in `agents/{slug}/memory/YYYY-MM-DD.md`, chunked into `document_chunks` with pgvector embeddings. Managed by SaveMemory/RecallMemory tools.
 
-- [ ] **1.2.4** Create `agent_memory_daily_logs` migration ← depends on: [1.1.1]
-  - **What:** Append-only daily logs of agent activity (memory/YYYY-MM-DD.md equivalent)
-  - **Why:** Daily logs provide temporal context - agents can reference what happened yesterday. Useful for continuity without loading all history.
-  - **Context:** OpenClaw loads today + yesterday's logs at session start. Append-only design makes concurrent writes safe.
-  - Fields: `id`, `agent_config_id` (FK), `date`, `content` (TEXT, append-only daily log), `created_at`, `updated_at`
-  - Unique constraint on `agent_config_id` + `date`
+- [x] **1.2.4** Create `agent_memory_daily_logs` migration ← depends on: [1.1.1] — ✅ Superseded: daily logs ARE the memory documents (`agents/{slug}/memory/YYYY-MM-DD.md`). Created by SaveMemory tool via AgentDocumentService.
 
-- [ ] **1.2.5** Create `agent_tool_allowlist` migration ← depends on: [1.1.1]
-  - **What:** Stores command patterns that are pre-approved for execution without prompting
-  - **Why:** Reduces friction for common operations. If an agent frequently runs `npm test`, users can allowlist it to skip approval prompts.
-  - **Context:** Patterns can be exact matches or globs. Tracks last usage for auditing and auto-cleanup of stale patterns.
-  - Fields: `id`, `agent_config_id` (FK), `pattern`, `last_used_at`, `last_used_command`, `created_at`
-  - Index on `agent_config_id` + `pattern`
+- [ ] **1.2.5** Create `agent_tool_allowlist` migration ← depends on: [1.1.1] — Not built (low priority: ApprovalWrappedTool handles tool approval; per-command allowlists not needed yet)
 
 ### 1.3 Subagent Tables
 
 > **Why:** Agents need to spawn other agents for complex tasks. A code review agent might spawn a testing agent. These tables control who can spawn whom and track the parent-child relationships.
 
-- [ ] **1.3.1** Create `subagent_spawn_permissions` migration ← depends on: [1.1.1]
-  - **What:** Controls which agents can spawn which other agents and how many
-  - **Why:** Security boundary - not all agents should spawn all agents. A junior agent shouldn't spawn production deployment agents. Also prevents runaway spawning (max_concurrent limit).
-  - **Context:** OpenClaw has similar spawn control. `allowed_agents` can be ["*"] for all, or specific agent IDs.
-  - Fields: `id`, `parent_agent_id` (FK to users), `allowed_agents` (JSON array or "*"), `max_concurrent`, `auto_archive_minutes`, `created_at`
+- [x] **1.3.1** Create `subagent_spawn_permissions` migration ← depends on: [1.1.1] — ✅ Superseded: inter-agent communication uses `contact_agent` tool with ask/delegate/notify patterns. No formal spawn permissions table needed — agent permissions managed via AgentPermissionService.
 
-- [ ] **1.3.2** Create `subagent_runs` migration ← depends on: [1.3.1]
-  - **What:** Tracks each subagent execution - who spawned whom, why, and the result
-  - **Why:** Audit trail for agent spawning. Enables monitoring, debugging, and cost tracking per spawn. The `label` helps identify purpose in UI.
-  - **Context:** Status lifecycle: pending → running → success/error/timeout/cancelled. Runtime config stores parameters passed to child.
-  - Fields: `id`, `parent_agent_id` (FK), `child_agent_id` (FK), `session_id` (FK), `task_description`, `label`, `status` (enum: pending/running/success/error/timeout/cancelled), `runtime_config` (JSON), `result` (JSON), `created_at`, `completed_at`
+- [x] **1.3.2** Create `subagent_runs` migration ← depends on: [1.3.1] — ✅ Superseded: agent task tracking uses the `tasks` + `task_steps` tables. Contact between agents creates tasks visible in the Tasks UI.
 
 ### 1.4 Run All Migrations
 
@@ -206,72 +168,29 @@
 
 #### 1.5.1 Vector Search Setup
 
-- [ ] **1.5.1.1** Install pgvector extension
-  - **What:** PostgreSQL extension for vector similarity search
-  - **Why:** Enables storing embeddings as native VECTOR type and searching with operators like `<=>` (cosine distance). Much faster than application-level vector math.
-  - **Context:** pgvector supports IVFFlat and HNSW indexes for scaling to millions of vectors.
-  ```sql
-  CREATE EXTENSION IF NOT EXISTS vector;
-  ```
+- [x] **1.5.1.1** Install pgvector extension — ✅ Enabled in `create_document_chunks_table` migration via `CREATE EXTENSION IF NOT EXISTS vector`
 
-- [ ] **1.5.1.2** Create `memory_chunks` migration
-  - **What:** Stores text chunks with their embeddings for semantic search
-  - **Why:** Long memories are chunked (~400 tokens) for better retrieval. Each chunk has its own embedding. Source tracking (memory/session) enables filtering by origin.
-  - **Context:** OpenClaw uses 400-token chunks with 80-token overlap. Content hash enables deduplication and change detection.
-  - Fields: `id`, `agent_config_id` (FK), `source_type` (memory/session), `source_id`, `start_line`, `end_line`, `content_hash`, `text`, `embedding` VECTOR(1536), `created_at`
-  - Index on embedding for vector similarity search
+- [x] **1.5.1.2** Create `memory_chunks` migration — ✅ Implemented as `document_chunks` table (unified for all document types). Fields: id, document_id, content, content_hash, embedding VECTOR(1536), collection, agent_id, chunk_index, metadata, search_vector (tsvector). HNSW index for cosine similarity.
 
-- [ ] **1.5.1.3** Create `embedding_cache` migration
-  - **What:** Caches embeddings by content hash to avoid re-embedding unchanged text
-  - **Why:** Embedding API calls cost money. If text hasn't changed (same hash), reuse the cached embedding. Saves ~90% of embedding costs during re-indexing.
-  - **Context:** OpenClaw caches embeddings at provider+model+hash level. Same text, different model = different embedding.
-  - Fields: `provider`, `model`, `content_hash`, `embedding` VECTOR(1536), `dims`, `created_at`
-  - Primary key on (provider, model, content_hash)
+- [x] **1.5.1.3** Create `embedding_cache` migration — ✅ `embedding_cache` table with SHA256 key (provider+model+content), embedding vector column.
 
 #### 1.5.2 Full-Text Search Setup
 
-- [ ] **1.5.2.1** Create PostgreSQL FTS index on memory_chunks
-  - **What:** GIN index for full-text search on chunk content
-  - **Why:** Vector search finds semantic similarity but misses exact matches. FTS catches exact keywords, names, and technical terms that embeddings might miss.
-  - **Context:** PostgreSQL's built-in FTS is fast and requires no external service (unlike Elasticsearch).
-  ```sql
-  CREATE INDEX memory_chunks_fts ON memory_chunks USING gin(to_tsvector('english', text));
-  ```
+- [x] **1.5.2.1** Create PostgreSQL FTS index on memory_chunks — ✅ `search_vector` tsvector column on `document_chunks` with GIN index. Auto-populated via trigger on insert/update.
 
-- [ ] **1.5.2.2** Create hybrid search function
-  - **What:** SQL function that combines vector and FTS scores into final ranking
-  - **Why:** Neither vector nor FTS alone is optimal. Combined scoring captures both semantic similarity and keyword relevance.
-  - **Context:** OpenClaw uses 0.7 vector weight + 0.3 text weight. This weights semantic similarity higher but preserves exact match boost.
-  - Combine vector similarity score with FTS rank
-  - Default weights: 0.7 vector, 0.3 text
+- [x] **1.5.2.2** Create hybrid search function — ✅ Implemented as `HybridSearchService` (app/Services/Memory/HybridSearchService.php). Combines vector similarity + FTS with configurable weights (default 0.7/0.3).
 
 #### 1.5.3 Collection System (QMD)
 
-- [ ] **1.5.3.1** Create `memory_collections` migration
-  - **What:** Stores named collection definitions per agent for scoping memory search
-  - **Why:** QMD uses collections to group indexed paths (memory-root, memory-alt, memory-dir). OpenCompany needs the same concept to scope searches to specific document subsets (identity files, memory logs, session transcripts, custom sets).
-  - **Context:** Default collections created by AgentDocumentService during agent setup. Custom collections addable via API. Each agent has isolated collections.
-  - Fields: `id` (UUID), `agent_config_id` (FK), `name` (string), `type` (enum: identity/memory/sessions/custom), `description` (nullable text), `created_at`, `updated_at`
-  - Unique index on (`agent_config_id`, `name`)
+- [x] **1.5.3.1** Create `memory_collections` migration — ✅ Superseded: simpler approach using `collection` string column on `document_chunks` (values: 'general', 'memory', 'identity') + `agent_id` scoping. No separate collections table needed.
 
-- [ ] **1.5.3.2** Create `memory_collection_documents` pivot migration
-  - **What:** Junction table linking collections to documents
-  - **Why:** A document can belong to multiple collections (e.g., MEMORY.md in both memory-root and identity), and a collection contains multiple documents. Many-to-many relationship.
-  - Fields: `id` (UUID), `collection_id` (FK), `document_id` (FK), `created_at`
-  - Unique constraint on (`collection_id`, `document_id`)
+- [x] **1.5.3.2** Create `memory_collection_documents` pivot migration — ✅ Superseded: collection membership determined by document location in folder hierarchy (DocumentObserver resolves collection from parent folders).
 
 #### 1.5.4 Result Clamping & Citation Support (QMD)
 
-- [ ] **1.5.4.1** Add citation columns to `memory_chunks` migration
-  - **What:** Add `document_id` (FK to documents) and `document_path` (text) columns to memory_chunks
-  - **Why:** QMD returns citations in `path#Lstart-Lend` format. Storing the document reference and denormalized path in chunks enables generating citations without extra joins during search.
-  - **Context:** `document_path` is denormalized from Document model's hierarchical path for fast citation generation.
+- [x] **1.5.4.1** Add citation columns to `memory_chunks` migration — ✅ `document_chunks` has `document_id` FK and `metadata` JSON (stores title, path, dates).
 
-- [ ] **1.5.4.2** Create `config/memory.php` configuration file
-  - **What:** Configuration constants for QMD-equivalent search behavior
-  - **Why:** Centralizes all memory search tuning parameters. Matches QMD's proven defaults while allowing per-deployment customization.
-  - **Context:** Values derived from OpenClaw's QMD defaults.
-  - Constants: `max_results` = 6, `max_snippet_chars` = 700, `max_injected_chars` = 4000, `timeout_ms` = 4000, `vector_weight` = 0.7, `text_weight` = 0.3, `chunk_size` = 400, `chunk_overlap` = 80, `periodic_interval` = 5 (minutes), `embedding_interval` = 60 (minutes), `debounce_seconds` = 15, `scope_default` = 'dm_only'
+- [x] **1.5.4.2** Create `config/memory.php` configuration file — ✅ Comprehensive config with: embedding, chunking, search, reranking, context_windows, scope, compaction, memory_flush sections.
 
 ---
 
@@ -309,49 +228,19 @@
 
 ### 2.2 Memory Models
 
-- [ ] **2.2.1** Create `AgentSession` model ← depends on: [2.1.1]
-  - **What:** Represents a conversation session with an agent
-  - **Why:** Sessions isolate conversations, track token usage, and enable context reset. The "active session" is the current conversation context.
-  - **Context:** Status lifecycle: active → archived → deleted. Includes OpenClaw fields for memory flush tracking.
-  - Relationships: `belongsTo(AgentConfiguration)`, `hasMany(AgentSessionMessage)`
-  - Scopes: `active()`, `archived()`, `forAgent($agentId)`
+- [x] **2.2.1** Create `AgentSession` model ← depends on: [2.1.1] — ✅ Superseded: no formal session model. Conversations live in channels. Compaction tracked by `ConversationSummary` model (channel_id + agent_id + cumulative summary).
 
-- [ ] **2.2.2** Create `AgentSessionMessage` model ← depends on: [2.2.1]
-  - **What:** Individual messages within a session (user input, assistant response, tool results)
-  - **Why:** Full conversation history enables context loading. Token counts per message enable precise context window management.
-  - **Context:** The `compaction` type stores summary when context is compressed. `is_silent` flag marks internal housekeeping messages.
-  - Relationships: `belongsTo(AgentSession)`
-  - Casts: `metadata` → array, `type` → enum
+- [x] **2.2.2** Create `AgentSessionMessage` model ← depends on: [2.2.1] — ✅ Superseded: messages stored in `Message` model. Loaded by `ChannelConversationLoader` which handles summary prepending and message-after-summary filtering.
 
-- [ ] **2.2.3** Create `AgentMemory` model ← depends on: [2.1.1]
-  - **What:** Long-term persistent memories that survive session resets
-  - **Why:** Agents need to remember facts, preferences, and context across sessions. This is the agent's durable memory bank.
-  - **Context:** Categories: fact (user's timezone), preference (communication style), context (project details), note (learnings).
-  - Relationships: `belongsTo(AgentConfiguration)`
-  - Casts: `category` → enum
+- [x] **2.2.3** Create `AgentMemory` model ← depends on: [2.1.1] — ✅ Superseded: LTM uses Document model (agents/{slug}/memory/YYYY-MM-DD.md) + `DocumentChunk` model for vector search. Managed by SaveMemory tool.
 
-- [ ] **2.2.4** Create `AgentMemoryDailyLog` model ← depends on: [2.1.1]
-  - **What:** Append-only daily activity logs (equivalent to OpenClaw's memory/YYYY-MM-DD.md)
-  - **Why:** Daily logs provide temporal context. Agents can reference "what happened yesterday" without loading full history.
-  - **Context:** `appendEntry()` method handles concurrent appends safely. One record per agent per day.
-  - Relationships: `belongsTo(AgentConfiguration)`
-  - Helper method: `appendEntry($content)`
+- [x] **2.2.4** Create `AgentMemoryDailyLog` model ← depends on: [2.1.1] — ✅ Superseded: daily logs ARE documents. `AgentDocumentService::createMemoryLog()` creates/appends to daily log documents.
 
 ### 2.3 Subagent Models
 
-- [ ] **2.3.1** Create `SubagentSpawnPermission` model ← depends on: [2.1.1]
-  - **What:** Controls which agents a parent agent can spawn
-  - **Why:** Security boundary for agent hierarchies. Prevents unauthorized agent spawning and runaway processes.
-  - **Context:** `allowed_agents` can be ["*"] for unrestricted, or specific agent IDs for limited access.
-  - Relationships: `belongsTo(User, 'parent_agent_id')`
-  - Casts: `allowed_agents` → array
+- [x] **2.3.1** Create `SubagentSpawnPermission` model ← depends on: [2.1.1] — ✅ Superseded: agent permissions handled by AgentPermission model + AgentPermissionService. Inter-agent access controlled via `contact_agent` tool permissions.
 
-- [ ] **2.3.2** Create `SubagentRun` model ← depends on: [2.3.1]
-  - **What:** Tracks each subagent execution with parent-child relationship and results
-  - **Why:** Audit trail and monitoring for spawned agents. Enables timeout tracking and result retrieval.
-  - **Context:** Status enum handles full lifecycle. `result` JSON stores structured output from child agent.
-  - Relationships: `belongsTo(User, 'parent_agent_id')`, `belongsTo(User, 'child_agent_id')`, `belongsTo(AgentSession)`
-  - Casts: `runtime_config` → array, `result` → array, `status` → enum
+- [x] **2.3.2** Create `SubagentRun` model ← depends on: [2.3.1] — ✅ Superseded: agent task tracking uses Task + TaskStep models. Inter-agent communication via `contact_agent` tool creates traceable tasks.
 
 ### 2.4 Extend User Model
 
@@ -421,42 +310,15 @@
 
 ### 3.4 Agent Session Controller
 
-- [ ] **3.4.1** Create `AgentSessionController` ← depends on: [2.2.1]
-  - **What:** Manage conversation sessions and their messages
-  - **Why:** Frontend needs to display session history, view messages, and create new sessions (context reset). Central to the chat experience.
-  - **Context:** Creating a new session archives the current one and starts fresh. "Current session" is the active conversation context.
-  - `GET /api/agents/{id}/sessions` - list sessions (paginated)
-  - `GET /api/agents/{id}/sessions/current` - get current session
-  - `POST /api/agents/{id}/sessions` - create new session (reset current)
-  - `GET /api/sessions/{sessionId}` - get session details
-  - `GET /api/sessions/{sessionId}/messages` - get session messages (paginated)
-  - `DELETE /api/sessions/{sessionId}` - archive session
+- [x] **3.4.1** Create `AgentSessionController` ← depends on: [2.2.1] — ✅ Superseded: no formal session controller. Agent conversations happen in channels. Message history accessed via ChannelController. Compaction summaries managed automatically by ConversationCompactionService.
 
 ### 3.5 Agent Memory Controller
 
-- [ ] **3.5.1** Create `AgentMemoryController` ← depends on: [2.2.3, 2.2.4]
-  - **What:** Manage persistent memories and daily logs
-  - **Why:** Users need to view, add, and delete memories. Daily logs provide activity history. Memory reset is a destructive action for "starting fresh."
-  - **Context:** Memories persist across sessions - they're the agent's long-term knowledge. Daily logs are append-only and temporal.
-  - `GET /api/agents/{id}/memories` - list persistent memories
-  - `POST /api/agents/{id}/memories` - add memory entry
-  - `DELETE /api/agents/{id}/memories/{memoryId}` - delete memory
-  - `DELETE /api/agents/{id}/memories` - clear all memories (reset)
-  - `GET /api/agents/{id}/daily-logs` - list daily logs
-  - `GET /api/agents/{id}/daily-logs/{date}` - get specific day's log
+- [x] **3.5.1** Create `AgentMemoryController` ← depends on: [2.2.3, 2.2.4] — ✅ Superseded: agent memory managed via Document API (agents/{slug}/memory/ and agents/{slug}/identity/MEMORY.md). Accessible through existing DocumentController. SaveMemory/RecallMemory tools handle agent-side memory management.
 
 ### 3.6 Subagent Controller
 
-- [ ] **3.6.1** Create `SubagentController` ← depends on: [2.3.1, 2.3.2]
-  - **What:** Manage subagent spawning permissions and track spawned agent runs
-  - **Why:** Enables agent hierarchies. Users need to configure which agents can spawn which, monitor running subagents, and cancel if needed.
-  - **Context:** Spawn endpoint triggers the SubagentSpawnService. Cancel stops the running task.
-  - `GET /api/agents/{id}/spawn-permissions` - get spawn permissions
-  - `PUT /api/agents/{id}/spawn-permissions` - update permissions
-  - `POST /api/agents/{id}/spawn` - spawn subagent
-  - `GET /api/agents/{id}/subagent-runs` - list subagent runs
-  - `GET /api/subagent-runs/{id}` - get run details
-  - `POST /api/subagent-runs/{id}/cancel` - cancel running subagent
+- [x] **3.6.1** Create `SubagentController` ← depends on: [2.3.1, 2.3.2] — ✅ Superseded: inter-agent communication handled by `contact_agent` tool (ask/delegate/notify patterns). Agent management via AgentController. No separate subagent controller needed.
 
 ### 3.7 Register Routes
 
@@ -572,33 +434,13 @@
   - Execute the approved action
   - Update task status
 
-- [ ] **3.5.2.7** Create `SaveSessionMessageJob`
-  - **What:** Persist messages to the session_messages table
-  - **Why:** All messages (user, assistant, tool) must be saved for context loading and history. This job handles persistence and token count updates.
-  - **Context:** Handles the `is_silent` flag for NO_REPLY messages.
-  - Persist messages to agent_session_messages table
-  - Update token counts
+- [x] **3.5.2.7** Create `SaveSessionMessageJob` — ✅ Superseded: messages saved inline by AgentRespondJob (creates Message in channel). No separate job needed.
 
-- [ ] **3.5.2.8** Create `MemoryFlushJob` ← depends on: [3.6.2.1]
-  - **What:** Execute pre-compaction memory flush (OpenClaw)
-  - **Why:** Before context compaction, the agent should save important information to durable memory. This job triggers a silent agent turn to do that.
-  - **Context:** Uses NO_REPLY convention so output isn't shown to user. The agent is prompted to persist important context to MEMORY.md.
-  - Execute pre-compaction memory flush
-  - Return flush result for logging
+- [x] **3.5.2.8** Create `MemoryFlushJob` ← depends on: [3.6.2.1] — ✅ Implemented as `MemoryFlushService` (app/Services/Memory/MemoryFlushService.php). Hooked into AgentRespondJob before prompt() call. Uses [FLUSH_COMPLETE] sentinel.
 
-- [ ] **3.5.2.9** Create `PruneSessionJob` ← depends on: [3.6.3.1]
-  - **What:** Prune old tool results from session context (OpenClaw)
-  - **Why:** Old tool results bloat context. After TTL expires (5 minutes default), tool results are trimmed or replaced with placeholders.
-  - **Context:** Uses soft-trim (keep head+tail) or hard-clear depending on size. Protects last 3 assistant messages.
-  - Prune old tool results if TTL elapsed
-  - Return pruning stats
+- [ ] **3.5.2.9** Create `PruneSessionJob` — Not built (low priority: context management handled by ConversationCompactionService which summarizes old messages rather than pruning tool results)
 
-- [ ] **3.5.2.10** Create `CheckMemoryFlushJob`
-  - **What:** Check if memory flush is needed based on soft threshold (OpenClaw)
-  - **Why:** Memory flush should run before compaction, not after. This job checks if we're approaching the threshold and haven't flushed this cycle.
-  - **Context:** Uses `memoryFlushCompactionCount` to prevent duplicate flushes per compaction cycle.
-  - Check if memory flush is needed based on soft threshold
-  - Return boolean
+- [x] **3.5.2.10** Create `CheckMemoryFlushJob` — ✅ Integrated into MemoryFlushService::shouldFlush() — checks soft threshold (4k tokens before compaction) and flush_count per cycle. Called from AgentRespondJob.
 
 ### 3.5.3 Create Agent Orchestration Services
 
@@ -654,21 +496,9 @@
   }
   ```
 
-- [ ] **3.5.3.3** Create `AgentSessionResetService`
-  - **What:** Service for resetting agent sessions (daily reset, idle reset, manual reset)
-  - **Why:** Sessions need to be reset according to reset_policy. This service archives the old session, creates a new one, and optionally runs a "goodbye" summary.
-  - **Context:** Triggered by scheduler for daily resets, or by idle detection for idle resets.
-  - Handle scheduled session resets
-  - Archive old session
-  - Create new session
+- [x] **3.5.3.3** Create `AgentSessionResetService` — ✅ Superseded: no formal sessions to reset. Agent sleep/wake managed by `sleeping_until` field + `AgentResumeFromSleepJob`. Conversation context managed by CompactConversationJob.
 
-- [ ] **3.5.3.4** Create `SubagentSpawnService` ← depends on: [3.5.3.2]
-  - **What:** Service for spawning and managing a child agent
-  - **Why:** Subagent spawning needs to track the parent-child relationship, enforce timeouts, and handle cancellation. This service wraps AgentTaskService with spawn-specific logic.
-  - **Context:** Creates SubagentRun record, starts child task, waits for completion or timeout, stores result.
-  - Spawn child agent task
-  - Track parent-child relationship
-  - Handle timeout and cancellation
+- [x] **3.5.3.4** Create `SubagentSpawnService` ← depends on: [3.5.3.2] — ✅ Superseded: inter-agent communication via `contact_agent` tool creates tasks (ask/delegate/notify patterns). No separate spawn service needed.
 
 ### 3.5.4 Queue Infrastructure
 
@@ -705,79 +535,29 @@
 
 ### 3.6.1 Context Window Guard
 
-- [ ] **3.6.1.1** Create `ContextWindowGuard` service ← depends on: [2.1.4]
-  - **What:** Service that monitors and enforces context window limits
-  - **Why:** LLMs have fixed context windows (e.g., 200K tokens for Claude). This guard tracks usage, enforces reserves, and triggers compaction when needed.
-  - **Context:** OpenClaw reserves tokens for compaction operations. The floor (20K) ensures there's always room to write summaries.
-  - `resolveContextWindowInfo($agent)` - get window size and reserves
-  - `canAcceptTokens($session, $newTokens)` - check if within limits
-  - `shouldTriggerCompaction($session)` - check threshold
-  - Enforce `reserveTokensFloor` minimum (20,000)
+- [x] **3.6.1.1** Create `ContextWindowGuard` service ← depends on: [2.1.4] — ✅ Implemented as `ModelContextRegistry` (maps 40+ models to context window sizes) + `ConversationCompactionService::needsCompaction()` (threshold checking). TokenEstimator handles token counting.
 
 ### 3.6.2 Pre-Compaction Memory Flush
 
-- [ ] **3.6.2.1** Create `MemoryFlushService` ← depends on: [3.6.1.1]
-  - **What:** Service that runs a silent agent turn to persist important context before compaction
-  - **Why:** Compaction loses detail. Before it happens, the agent should save important facts, decisions, and learnings to durable memory. This prevents "amnesia."
-  - **Context:** OpenClaw triggers this at `contextWindow - reserveTokensFloor - softThresholdTokens`. The `memoryFlushCompactionCount` prevents running multiple flushes per compaction cycle.
-  - `shouldRunMemoryFlush($session)` - check soft threshold
-  - `runMemoryFlush($session)` - execute silent agent turn
-  - Track `memoryFlushCompactionCount` to prevent duplicate flushes
-  - Use NO_REPLY convention for silent output
+- [x] **3.6.2.1** Create `MemoryFlushService` ← depends on: [3.6.1.1] — ✅ Implemented: `app/Services/Memory/MemoryFlushService.php`. `shouldFlush()` checks soft threshold (4k tokens before compaction) and `flush_count` per cycle. `flush()` runs silent agent turn with save_memory tool access.
 
-- [ ] **3.6.2.2** Create memory flush system prompt
-  - **What:** Special system prompt that instructs the agent to save important context
-  - **Why:** The agent needs clear instructions about what to save. The prompt should list categories: facts learned, user preferences, important decisions, etc.
-  - **Context:** Response starts with NO_REPLY so it's hidden from users.
-  - System prompt: "Store durable memories before context compaction"
-  - Instruct agent to persist important context to MEMORY.md
+- [x] **3.6.2.2** Create memory flush system prompt — ✅ Built into MemoryFlushService::buildFlushPrompt(). Instructs agent to use save_memory (target: "log") for daily entries, "core" only for high-value permanent facts. Uses [FLUSH_COMPLETE] sentinel.
 
 ### 3.6.3 Session Pruning
 
-- [ ] **3.6.3.1** Create `SessionPruningService` ← depends on: [2.2.2]
-  - **What:** Service that trims old tool results from session context
-  - **Why:** Tool results (file contents, command output) bloat context quickly. After a TTL, old results are less relevant. Pruning keeps context focused on recent activity.
-  - **Context:** OpenClaw uses 5-minute TTL. Soft-trim keeps head+tail so there's still context about what the tool returned. Hard-clear is for very large results.
-  - `shouldPrune($session)` - check TTL elapsed since last API call
-  - `pruneSession($session)` - trim old tool results
-  - Soft-trim: head (1500 chars) + tail (1500 chars)
-  - Hard-clear: replace with `[Old tool result content cleared]`
-  - Protect last 3 assistant messages
+- [ ] **3.6.3.1** Create `SessionPruningService` — Not built (low priority: ConversationCompactionService handles context management by summarizing old messages. Tool result pruning not yet needed.)
 
 ### 3.6.4 Tool Kind Classification
 
-- [ ] **3.6.4.1** Create `ToolKindClassifier` service
-  - **What:** Service that classifies tools by their operation type (read/edit/delete/etc.)
-  - **Why:** Different operations have different risk levels. Reads are safe, deletes are dangerous. Classification enables nuanced approval policies (e.g., "auto-approve reads, require approval for deletes").
-  - **Context:** OpenClaw infers kind from tool name patterns. We store it in the database for faster lookup.
-  - `inferToolKind($toolName)` - classify tool by operation type
-  - Patterns: contains 'read' → read, 'write/edit/update' → edit, etc.
-  - Used by approval logic for nuanced decisions
+- [x] **3.6.4.1** Create `ToolKindClassifier` service — ✅ Superseded: ToolRegistry::TOOL_MAP has a `type` field per tool ('read', 'write', 'action', etc.). ApprovalWrappedTool uses this for approval decisions.
 
 ### 3.6.5 Execution Approval System
 
-- [ ] **3.6.5.1** Create `ExecutionApprovalService` ← depends on: [3.6.4.1]
-  - **What:** Service that decides whether a tool execution needs approval
-  - **Why:** Centralized approval logic based on security mode, ask mode, and allowlist patterns. This is the gatekeeper for all tool executions.
-  - **Context:** Security modes (deny/allowlist/full) control what CAN execute. Ask modes (off/on-miss/always) control what PROMPTS for approval.
-  - `evaluateExecution($agent, $tool, $args)` - check against settings
-  - Security mode logic: deny blocks all, allowlist checks patterns, full allows all
-  - Ask mode logic: always prompts, on-miss prompts for non-allowlisted
-  - Track allowlist usage: update `last_used_at`, `last_used_command`
+- [x] **3.6.5.1** Create `ExecutionApprovalService` ← depends on: [3.6.4.1] — ✅ Implemented as `ApprovalWrappedTool` + `ApprovalExecutionService`. Tools requiring approval are wrapped; approval requests stored in DB; `WaitForApproval` tool pauses agent execution. Behavior modes (autonomous/supervised/strict) control approval requirements.
 
-- [ ] **3.6.5.2** Define default safe skills
-  - **What:** List of tools that are pre-approved by default
-  - **Why:** Common read-only tools (jq, grep, wc) are safe and frequent. Auto-approving them reduces friction without increasing risk.
-  - **Context:** Configurable via `auto_allow_skills` setting. Users can disable if they want stricter control.
-  - Auto-allow: jq, grep, cut, sort, uniq, head, tail, tr, wc
-  - Configurable via `auto_allow_skills` setting
+- [x] **3.6.5.2** Define default safe skills — ✅ Implemented via AgentPermission model. Per-agent tool permissions with enable/disable per tool group. Read-only tools generally don't require approval.
 
-- [ ] **3.6.5.3** Create `AgentToolAllowlist` model ← depends on: [1.2.5]
-  - **What:** Eloquent model for agent-specific command allowlist patterns
-  - **Why:** Users can pre-approve command patterns (e.g., "npm test", "git status"). This model handles pattern matching and usage tracking.
-  - **Context:** Patterns can be exact matches or globs. Usage tracking helps identify stale patterns.
-  - Relationships: `belongsTo(AgentConfiguration)`
-  - Methods: `matchPattern($command)`, `trackUsage($command)`
+- [ ] **3.6.5.3** Create `AgentToolAllowlist` model — Not built (low priority: per-command allowlists not needed yet. Current system uses per-tool-group permissions + behavior mode for approval decisions.)
 
 ---
 
@@ -787,175 +567,59 @@
 
 ### 3.7.1 Embedding Service
 
-- [ ] **3.7.1.1** Create `EmbeddingService` ← depends on: [0.1.3]
-  - **What:** Service that generates vector embeddings for text
-  - **Why:** Embeddings convert text to numerical vectors that capture meaning. Similar texts have similar vectors. This enables semantic search (finding relevant content even with different wording).
-  - **Context:** OpenAI's text-embedding-3-small is cost-effective. GLM also provides embeddings. Batch mode reduces API calls for bulk indexing.
-  - `embed($text)` - generate embedding via configured provider
-  - Support OpenAI text-embedding-3-small, GLM embeddings
-  - Batch mode for multiple texts
+- [x] **3.7.1.1** Create `EmbeddingService` ← depends on: [0.1.3] — ✅ `app/Services/Memory/EmbeddingService.php`. Supports OpenAI + Ollama providers. embed() and embedBatch() methods. Configurable via config/memory.php.
 
-- [ ] **3.7.1.2** Create `EmbeddingCacheService` ← depends on: [1.5.1.3]
-  - **What:** Caching layer that prevents re-embedding unchanged text
-  - **Why:** Embedding API calls cost money. If text hasn't changed, reuse the cached embedding. Critical for cost control during re-indexing operations.
-  - **Context:** Uses content hash as cache key. Same text = same hash = cache hit. Different provider or model = different cache entry.
-  - `getOrCreate($text)` - check cache, generate if missing
-  - Hash text content for cache key
-  - Prevent re-embedding unchanged content
+- [x] **3.7.1.2** Create `EmbeddingCacheService` ← depends on: [1.5.1.3] — ✅ Built into EmbeddingService. Uses `EmbeddingCache` model with SHA256 cache key (provider+model+content). Checks cache first, only calls API for uncached texts.
 
 ### 3.7.2 Chunking Service
 
-- [ ] **3.7.2.1** Create `ChunkingService`
-  - **What:** Service that splits long texts into optimal chunks for embedding
-  - **Why:** Embeddings work best on moderate-sized text chunks (~400 tokens). Chunking with overlap ensures context isn't lost at chunk boundaries.
-  - **Context:** OpenClaw uses 400-token chunks with 80-token overlap. Line number tracking enables linking search results back to source location.
-  - `chunkText($text, $maxTokens, $overlap)` - split into chunks
-  - Default: ~400 tokens per chunk, 80 token overlap
-  - Track start/end line numbers
+- [x] **3.7.2.1** Create `ChunkingService` — ✅ `app/Services/Memory/ChunkingService.php`. Splits on paragraph breaks with configurable max_chunk_size (512 tokens) and overlap (64 tokens). Token estimation via word count * 1.3.
 
 ### 3.7.3 Memory Indexing
 
-- [ ] **3.7.3.1** Create `MemoryIndexService` ← depends on: [3.7.1.1, 3.7.2.1]
-  - **What:** Service that indexes memories and session messages for search
-  - **Why:** Before searching, content must be chunked and embedded. This service manages the indexing pipeline for all agent content.
-  - **Context:** Indexing should happen in background jobs to avoid blocking user requests. Full reindex is needed when chunking strategy changes.
-  - `indexMemory($agentId, $memoryId)` - index single memory entry
-  - `reindexAgent($agentId)` - full reindex for agent
-  - `indexSession($sessionId)` - index session messages
-  - Background job for indexing
+- [x] **3.7.3.1** Create `MemoryIndexService` ← depends on: [3.7.1.1, 3.7.2.1] — ✅ Implemented as `DocumentIndexingService` (app/Services/Memory/DocumentIndexingService.php). index(), deindex(), search() methods. Called by IndexDocumentJob (async) and DocumentObserver (on document save/delete).
 
 ### 3.7.4 Hybrid Search
 
-- [ ] **3.7.4.1** Create `HybridMemorySearch` service ← depends on: [3.7.3.1]
-  - **What:** Service that performs combined vector + FTS search
-  - **Why:** Neither search method alone is optimal. Vector search finds semantic matches but misses exact keywords. FTS catches exact matches but misses paraphrases. Combined scoring gives best of both.
-  - **Context:** OpenClaw weights 0.7 vector + 0.3 text. pgvector's `<=>` operator computes cosine distance. PostgreSQL's `ts_rank` provides FTS scoring.
-  - `search($agentId, $query, $limit)` - combined search
-  - Vector similarity via pgvector `<=>` operator
-  - FTS via `ts_rank` + `to_tsvector`
-  - Combined scoring: `0.7 * vectorScore + 0.3 * textScore`
-  - Return chunks with source file + line ranges
+- [x] **3.7.4.1** Create `HybridMemorySearch` service ← depends on: [3.7.3.1] — ✅ `app/Services/Memory/HybridSearchService.php`. Combines vector similarity (pgvector `<=>`) with FTS (`ts_rank`). Configurable weights (default 0.7/0.3). Score normalization, result clamping, and collection filtering built in. Also: `RerankingService` for cross-encoder reranking via Ollama.
 
-- [ ] **3.7.4.2** Create `MemorySearchController` ← depends on: [3.7.4.1]
-  - **What:** API endpoint for searching agent memory
-  - **Why:** Frontend needs to search agent memory for the MemorySearchInput component. Also used by agents themselves to recall information.
-  - **Context:** Limit parameter prevents returning too many results. Response includes source references for navigation.
-  - `POST /api/agents/{id}/memory/search` - search agent memory
-  - Request: `{ query: string, limit?: number }`
-  - Response: `{ results: [{ text, score, source, lines }] }`
+- [x] **3.7.4.2** Create `MemorySearchController` — ✅ Superseded: memory search exposed to agents via RecallMemory tool (uses HybridSearchService). Frontend document search via existing SearchController. No separate memory search API endpoint needed.
 
 ### 3.7.5 Collection Management (QMD)
 
-- [ ] **3.7.5.1** Create `MemoryCollection` model ← depends on: [1.5.3.1]
-  - **What:** Eloquent model for named search collections that scope memory queries
-  - **Why:** Collections are the fundamental organizing unit for QMD search. They determine which documents are included in search results for each query.
-  - **Context:** Maps to QMD's collection system where `memory-root`, `memory-dir`, etc. define what's searchable.
-  - Relationships: `belongsTo(AgentConfiguration)`, `belongsToMany(Document)` through `memory_collection_documents`
-  - Scopes: `forAgent($agentConfigId)`, `ofType($type)`
-  - Methods: `addDocument($doc)`, `removeDocument($doc)`, `getSearchableChunkIds()`
+- [x] **3.7.5.1** Create `MemoryCollection` model — ✅ Superseded: collection scoping uses `collection` string column on `document_chunks` ('general', 'memory', 'identity') + `agent_id` column. Resolved automatically by DocumentObserver based on document folder hierarchy. No separate collection model needed.
 
-- [ ] **3.7.5.2** Create default collections in `AgentDocumentService` ← depends on: [3.7.5.1]
-  - **What:** Automatically create default collections when agent document structure is set up
-  - **Why:** Every agent needs baseline collections matching QMD defaults. Automatic creation ensures agents are immediately searchable without manual setup.
-  - **Context:** Hook into existing `createAgentDocumentStructure()` method.
-  - Default collections: `identity` (8 identity files), `memory-root` (MEMORY.md), `memory-logs` (memory/*.md daily logs), `sessions` (indexed transcripts)
-  - Auto-populate identity collection with identity documents on creation
+- [x] **3.7.5.2** Create default collections in `AgentDocumentService` — ✅ Superseded: DocumentObserver auto-resolves collection type from folder path (agents/*/memory/ → 'memory', agents/*/identity/ → 'identity', everything else → 'general').
 
-- [ ] **3.7.5.3** Create `MemoryCollectionController` ← depends on: [3.7.5.1]
-  - **What:** API endpoints for managing custom memory collections
-  - **Why:** Users or agents may want to create custom collections for project-specific document groups beyond the defaults.
-  - `GET /api/agents/{id}/memory/collections` — list agent's collections
-  - `POST /api/agents/{id}/memory/collections` — create custom collection
-  - `POST /api/agents/{id}/memory/collections/{cid}/documents` — add document to collection
-  - `DELETE /api/agents/{id}/memory/collections/{cid}/documents/{did}` — remove document from collection
+- [x] **3.7.5.3** Create `MemoryCollectionController` — ✅ Superseded: no separate collections to manage. Collection assignment is automatic via document location.
 
 ### 3.7.6 Session Transcript Indexing (QMD)
 
-- [ ] **3.7.6.1** Create `ExportSessionTranscriptJob` ← depends on: [3.7.3.1]
-  - **What:** Queue job that converts session messages to markdown and stores as a Document in the agent's memory/ folder
-  - **Why:** QMD indexes session transcripts so agents can search past conversations. This enables agents to recall information from previous sessions by searching through exported transcripts semantically.
-  - **Context:** Exported document is automatically added to the 'sessions' collection and triggers chunk indexing.
-  - Convert session messages to markdown (preserve role attribution: user/assistant/tool)
-  - Store as Document in agent's memory/ folder with title `session-{date}-{id}.md`
-  - Attach to 'sessions' MemoryCollection
-  - Dispatch `IndexAgentMemoryJob` for the new document
+- [ ] **3.7.6.1** Create `ExportSessionTranscriptJob` — Not built (future enhancement: export channel conversation history as searchable documents for cross-conversation recall)
 
-- [ ] **3.7.6.2** Wire session transcript export to session lifecycle ← depends on: [3.7.6.1]
-  - **What:** Trigger transcript export on session archival events
-  - **Why:** Sessions are archived on daily reset, idle timeout, or manual reset. Each archival should produce a searchable transcript document.
-  - **Context:** Hook into AgentSession status change from 'active' to 'archived'.
-  - Dispatch `ExportSessionTranscriptJob` on session archival
-  - Include in pre-compaction memory flush pipeline
-  - Optional: configurable retention (default: 30 days)
+- [ ] **3.7.6.2** Wire session transcript export to session lifecycle — Not built (depends on 3.7.6.1)
 
 ### 3.7.7 Periodic Re-Indexing (QMD)
 
-- [ ] **3.7.7.1** Create `PeriodicReindexJob` ← depends on: [3.7.3.1]
-  - **What:** Scheduled job that re-indexes changed documents across all active agents
-  - **Why:** QMD re-indexes every 5 minutes to catch changes. OpenCompany needs the same periodic cycle to catch document changes not triggered by model observers (e.g., direct DB updates, bulk imports, admin edits).
-  - **Context:** Uses delta tracking (SHA256 hash comparison on `content_hash`) to only re-process changed documents.
-  - Schedule: `everyFiveMinutes()` in `app/Console/Kernel.php`
-  - Delta-based: compare stored content hash vs current content hash, skip unchanged
-  - Scope: all agents with at least one active session or recent activity
+- [x] **3.7.7.1** Create `PeriodicReindexJob` — ✅ Superseded: DocumentObserver triggers IndexDocumentJob on every document save/update. `memory:index-documents --fresh` command available for manual bulk reindex. No periodic scheduled job needed since observer catches all changes.
 
-- [ ] **3.7.7.2** Create `EmbeddingRefreshJob` ← depends on: [3.7.1.1]
-  - **What:** Scheduled job that regenerates stale or missing embeddings
-  - **Why:** QMD refreshes embeddings every 60 minutes (less frequent than text indexing since embeddings are expensive). Embeddings may need regeneration when provider changes, models are updated, or new chunks lack embeddings.
-  - Schedule: `hourly()` in `app/Console/Kernel.php`
-  - Process chunks where embedding is null or provider/model has changed
-  - Uses `EmbeddingCacheService` to avoid redundant API calls
+- [x] **3.7.7.2** Create `EmbeddingRefreshJob` — ✅ Superseded: embeddings generated at index time by DocumentIndexingService. EmbeddingCache avoids redundant API calls. `memory:index-documents --fresh` available for full re-embed. No periodic refresh needed.
 
-- [ ] **3.7.7.3** Add Document model observer for indexing triggers ← depends on: [3.7.3.1]
-  - **What:** Eloquent observer on Document model that dispatches indexing jobs when memory documents are created or updated
-  - **Why:** QMD uses file watchers with 15-second debounce to detect changes. OpenCompany uses model observers with debounced queue dispatch for the same purpose.
-  - **Context:** Only trigger for documents inside agent memory/ and identity/ folders, not all documents.
-  - Observer triggers on `created` and `updated` events
-  - Filter: only agent memory/identity documents (check parent folder hierarchy)
-  - Dispatch `IndexAgentMemoryJob::dispatch($doc->id)->delay(15)` (15-second debounce)
+- [x] **3.7.7.3** Add Document model observer for indexing triggers — ✅ `app/Observers/DocumentObserver.php`. Triggers IndexDocumentJob on `saved` event (non-folder docs only), deletes chunks on `deleted` event. Resolves collection and agent_id from folder hierarchy.
 
 ### 3.7.8 Scope Rules & Security (QMD)
 
-- [ ] **3.7.8.1** Create `MemorySearchScopeGuard` service ← depends on: [3.7.4.1]
-  - **What:** Service that enforces search scope restrictions based on chat/conversation type
-  - **Why:** QMD restricts memory search by chat type (DM-only by default). This prevents agents from leaking private conversation memories when operating in group channel contexts.
-  - **Context:** Configurable per agent via `AgentSettings.memory_search_scope`. Default: `dm_only`.
-  - Scope modes: `dm_only` (default), `all`, `none`
-  - DM conversations: full memory access (all collections)
-  - Group channels: only shared/public memories (no session transcripts)
-  - Applied as a filter wrapper around `HybridDocumentSearch`
+- [x] **3.7.8.1** Create `MemorySearchScopeGuard` service ← depends on: [3.7.4.1] — ✅ `app/Services/Memory/MemoryScopeGuard.php`. Configurable scope modes in `config/memory.php` under `scope` key. Enforces agent-level access control on document chunks. Applies collection-based filtering via `allowedCollections()` method.
 
-- [ ] **3.7.8.2** Add security checks to `RecallMemory` tool ← depends on: [3.7.8.1]
-  - **What:** Enforce QMD-equivalent security guards in the memory search tool
-  - **Why:** QMD blocks non-markdown reads, rejects symlinks, and prevents path traversal. RecallMemory tool needs identical guards to prevent agents from accessing unauthorized content.
-  - Validate document paths are within agent scope (own documents only)
-  - Reject attempts to read non-markdown content
-  - Block path traversal patterns (`../`)
-  - Enforce collection-based access (only search documents in agent's collections)
+- [x] **3.7.8.2** Add security checks to `RecallMemory` tool ← depends on: [3.7.8.1] — ✅ RecallMemory tool uses MemoryScopeGuard to enforce per-agent scope. Collection-based access ensures agents only search their own documents. HybridSearchService applies agent_id filtering on all queries.
 
 ### 3.7.9 Enhanced HybridMemorySearch with QMD Features
 
-- [ ] **3.7.9.1** Add result clamping to `HybridMemorySearch` ← depends on: [3.7.4.1, 1.5.4.2]
-  - **What:** Enforce QMD-equivalent result limits to prevent context bloat
-  - **Why:** Without clamping, search results can overwhelm the agent's context window. QMD's defaults are battle-tested to balance relevance with context budget.
-  - **Context:** Read limits from `config/memory.php`.
-  - `maxResults`: 6 (top-K results)
-  - `maxSnippetChars`: 700 (truncate at word boundaries)
-  - `maxInjectedChars`: 4000 (total across all results)
-  - `timeoutMs`: 4000 (enforced via `DB::timeout()` or query cancellation)
+- [x] **3.7.9.1** Add result clamping to `HybridMemorySearch` ← depends on: [3.7.4.1, 1.5.4.2] — ✅ Built into `HybridSearchService`. Config in `config/memory.php` under `search` key: `max_results` (default 10), `min_similarity` threshold, `semantic_weight`/`keyword_weight` for hybrid scoring. RerankingService handles final result ordering and clamping.
 
-- [ ] **3.7.9.2** Add citation generation to search results ← depends on: [3.7.4.1, 1.5.4.1]
-  - **What:** Generate `path#Lstart-Lend` citations for each search result
-  - **Why:** Citations enable agents to reference source material precisely and users to navigate to the exact source of retrieved information.
-  - Format: `document_path#L{start_line}[-L{end_line}]`
-  - Include citation in SearchResult response object
-  - Auto-mode: show citations in DM, suppress in groups (matching QMD's `"auto"` citation mode)
+- [ ] **3.7.9.2** Add citation generation to search results — Not built (low priority). Results include chunk metadata (document title, collection) but not line-level citations.
 
-- [ ] **3.7.9.3** Add collection filtering to `HybridMemorySearch` ← depends on: [3.7.5.1]
-  - **What:** Allow searches to be scoped to specific named collections
-  - **Why:** Agents may want to search only identity files, or only session transcripts, or only daily logs. Collection filtering enables this granularity without complex query building.
-  - Optional `collectionNames` parameter on search method
-  - Default: search all collections for the agent
-  - Filter `memory_chunks` by document membership in specified collections
+- [x] **3.7.9.3** Add collection filtering to `HybridMemorySearch` ← depends on: [3.7.5.1] — ✅ HybridSearchService accepts `collection` parameter. Document chunks have `collection` column for filtering. RecallMemory tool passes collection from agent context.
 
 ---
 
@@ -965,7 +629,7 @@
 
 ### 4.1 Extend useApi Composable
 
-- [ ] **4.1.1** Add agent configuration methods to `useApi.ts` ← depends on: [3.1.1]
+- [x] **4.1.1** Add agent configuration methods to `useApi.ts` ← depends on: [3.1.1] — ✅ Superseded: Agent config managed via Inertia props + AgentController. Identity files managed via DocumentController API.
   - **What:** TypeScript methods for fetching and updating agent configuration
   - **Why:** Agent configuration (personality, instructions, identity) is the most frequently edited data. These methods connect the configuration editor components to the backend.
   - **Context:** Separate update methods for each field enable autosave without sending entire config.
@@ -978,7 +642,7 @@
   updateAgentToolNotes(agentId: string, notes: string)
   ```
 
-- [ ] **4.1.2** Add agent capabilities methods ← depends on: [3.2.1]
+- [x] **4.1.2** Add agent capabilities methods ← depends on: [3.2.1] — ✅ Superseded: AgentPermissionController provides REST API. AgentCapabilities.vue uses direct axios calls.
   - **What:** Methods for managing agent tool/capability assignments
   - **Why:** Capabilities UI needs to fetch available capabilities and update agent's enabled tools. Bulk update enables "save all changes" pattern.
   - **Context:** `fetchAllCapabilities()` gets the system-wide list. Agent-specific capabilities have per-agent settings (enabled, requires_approval).
@@ -988,7 +652,7 @@
   fetchAllCapabilities()
   ```
 
-- [ ] **4.1.3** Add agent settings methods ← depends on: [3.3.1]
+- [x] **4.1.3** Add agent settings methods ← depends on: [3.3.1] — ✅ Superseded: AgentSettingsPanel.vue uses Inertia forms + direct API calls to AgentController.
   - **What:** Methods for managing agent runtime settings
   - **Why:** Settings panel needs to fetch and update behavior mode, cost limits, reset policies, and OpenClaw settings (security mode, ask mode, etc.).
   - **Context:** Individual update methods allow saving specific settings without full form submission.
@@ -1000,7 +664,7 @@
   updateAgentResetPolicy(agentId: string, policy)
   ```
 
-- [ ] **4.1.4** Add agent session methods ← depends on: [3.4.1]
+- [x] **4.1.4** Add agent session methods ← depends on: [3.4.1] — ✅ Superseded: Channel-based conversations replace sessions. Chat UI uses MessageController API with Inertia.
   - **What:** Methods for managing conversation sessions and messages
   - **Why:** Session UI needs to list past sessions, view messages, and create new sessions (context reset). This is central to the chat/memory experience.
   - **Context:** Pagination is important for sessions with many messages. `createNewSession` archives current and starts fresh.
@@ -1012,7 +676,7 @@
   archiveSession(sessionId: string)
   ```
 
-- [ ] **4.1.5** Add agent memory methods ← depends on: [3.5.1]
+- [x] **4.1.5** Add agent memory methods ← depends on: [3.5.1] — ✅ Superseded: Memory managed via identity file editor (MEMORY.md) + agent tools (SaveMemory/RecallMemory).
   - **What:** Methods for managing persistent memories and daily logs
   - **Why:** Memory view needs to display, add, and delete memories. Reset is a destructive action that clears all agent knowledge.
   - **Context:** Daily logs are read-only from frontend perspective. They're written by the agent during operation.
@@ -1024,7 +688,7 @@
   fetchAgentDailyLogs(agentId: string)
   ```
 
-- [ ] **4.1.6** Add subagent methods ← depends on: [3.6.1]
+- [ ] **4.1.6** Add subagent methods — Not built. Subagent UI not yet implemented (inter-agent communication works via contact_agent tool backend-only).
   - **What:** Methods for managing subagent spawning
   - **Why:** Subagent UI needs to configure spawn permissions, trigger spawns, monitor runs, and cancel if needed.
   - **Context:** Spawn is async - it starts a background task and returns immediately. Frontend polls or uses WebSocket to track progress.
@@ -1036,7 +700,7 @@
   cancelSubagentRun(runId: string)
   ```
 
-- [ ] **4.1.7** Add memory search methods (OpenClaw) ← depends on: [3.7.4.2]
+- [ ] **4.1.7** Add memory search methods (OpenClaw) — Not built. Memory search available to agents via RecallMemory tool but no frontend search UI exists yet.
   - **What:** Method for semantic memory search
   - **Why:** MemorySearchInput component needs to search agent memories. Returns ranked results with source references.
   - **Context:** Uses hybrid search (vector + FTS) on backend.
@@ -1044,7 +708,7 @@
   searchAgentMemory(agentId: string, query: string, limit?: number)
   ```
 
-- [ ] **4.1.8** Add execution approval methods (OpenClaw) ← depends on: [3.6.5.1]
+- [ ] **4.1.8** Add execution approval methods (OpenClaw) — Not built. Approval works via ApprovalWrappedTool + AgentPermission but no allowlist pattern management UI.
   - **What:** Methods for managing command allowlist
   - **Why:** AllowlistManager component needs to display, add, and remove allowlist patterns. Shows usage stats for each pattern.
   - **Context:** Patterns can be exact commands or globs. Adding a pattern auto-approves matching commands.
@@ -1193,12 +857,7 @@
   - Clear memories (or archive)
   - Remove from channels
 
-- [ ] **5.2.2** Add confirmation dialog in frontend
-  - **What:** Dangerous action confirmation with name typing
-  - **Why:** Deletion is destructive. Requiring users to type the agent name prevents accidental deletion.
-  - **Context:** Similar to GitHub's repository deletion pattern. Should show what will be deleted (sessions, memories, etc.).
-  - Show warning about data loss
-  - Require typing agent name to confirm
+- [x] **5.2.2** Add confirmation dialog in frontend — ✅ AgentSettingsPanel.vue has delete confirmation via shared ConfirmationDialog component. Shows warning before deletion.
 
 ---
 
@@ -1208,7 +867,7 @@
 
 ### 6.1 Create Seeders
 
-- [ ] **6.1.1** Create `CapabilitySeeder` ← depends on: [1.4.1]
+- [x] **6.1.1** Create `CapabilitySeeder` ← depends on: [1.4.1] — ✅ Superseded: Capabilities are defined in ToolRegistry::TOOL_MAP as a static registry. No database seeder needed — tools are code-defined, not DB-seeded.
   - **What:** Seed the capabilities table with default tools
   - **Why:** Capabilities are system-defined, not user-created. This seeder creates the tools that agents can be assigned.
   - **Context:** Each capability has default enabled/approval settings. Tool kind (from OpenClaw) should also be set.
@@ -1220,7 +879,7 @@
     - Database access (enabled, requires approval, kind: execute)
     - Production deployment (disabled, requires approval, kind: execute)
 
-- [ ] **6.1.2** Create `AgentConfigurationSeeder` ← depends on: [6.1.1]
+- [x] **6.1.2** Create `AgentConfigurationSeeder` ← depends on: [6.1.1] — ✅ Superseded: Agent config lives on User model fields (is_agent, agent_type, emoji, etc.) + identity documents. UserSeeder creates agents with config. No separate config seeder needed.
   - **What:** Create agent configurations for demo/test agents
   - **Why:** Developers need agents to test with. Creates pre-configured agents with meaningful personalities and instructions.
   - **Context:** Existing seeded agents (Atlas, Echo, Nova, etc.) need configurations. Each agent type should have appropriate capabilities.
@@ -1228,7 +887,7 @@
   - Set default personality and instructions for each type
   - Assign appropriate capabilities
 
-- [ ] **6.1.3** Create `AgentSettingsSeeder` ← depends on: [6.1.2]
+- [x] **6.1.3** Create `AgentSettingsSeeder` ← depends on: [6.1.2] — ✅ Superseded: Agent settings stored in AppSetting model with defaults in config. No separate settings seeder needed.
   - **What:** Create default settings for each agent
   - **Why:** Agents need settings to operate. This seeder creates sensible defaults for development.
   - **Context:** Supervised mode is safest for development. Include OpenClaw settings with reasonable defaults.
@@ -1241,12 +900,12 @@
 
 ### 6.2 Run Seeders
 
-- [ ] **6.2.1** Update `DatabaseSeeder.php` to include new seeders ← depends on: [6.1.1-6.1.3]
+- [x] **6.2.1** Update `DatabaseSeeder.php` to include new seeders — ✅ Superseded: DatabaseSeeder + UserSeeder handle agent creation. No separate capability/config/settings seeders needed.
   - **What:** Register new seeders in the main seeder
   - **Why:** Running `php artisan db:seed` should execute all seeders in correct order.
   - **Context:** Order matters: Capabilities → AgentConfiguration → AgentSettings (due to foreign keys).
 
-- [ ] **6.2.2** Run `php artisan db:seed` ← depends on: [6.2.1]
+- [x] **6.2.2** Run `php artisan db:seed` — ✅ Superseded: `php artisan db:seed` works with existing seeders.
   - **What:** Execute all seeders to populate database
   - **Why:** Creates development data needed to test the system.
   - **Context:** Can use `--class` to run specific seeders. Fresh install should run all.
@@ -1274,14 +933,14 @@
   - Test capability assignment
   - Test bulk updates
 
-- [ ] **7.1.3** Create `AgentSettingsTest` feature test ← depends on: [3.3.1]
+- [ ] **7.1.3** Create `AgentSettingsTest` feature test — Not built yet. Settings managed via AppSetting model + SettingController.
   - **What:** Test settings API endpoints
   - **Why:** Settings control agent behavior. Tests ensure all settings save correctly and enum validation rejects invalid values.
   - **Context:** Include tests for OpenClaw settings (security_mode, ask_mode). Verify JSON fields (reset_policy) serialize/deserialize correctly.
   - Test settings updates
   - Test enum validation
 
-- [ ] **7.1.4** Create `AgentSessionTest` feature test ← depends on: [3.4.1]
+- [x] **7.1.4** Create `AgentSessionTest` feature test — ✅ Superseded: ChannelConversationLoaderTest covers conversation loading, compaction triggers, and message retrieval.
   - **What:** Test session management API
   - **Why:** Sessions are the conversation context. Tests ensure creation, archival, and message retrieval work correctly.
   - **Context:** Test pagination for message retrieval. Verify new session creation archives the old one.
@@ -1289,7 +948,7 @@
   - Test session archival
   - Test message retrieval
 
-- [ ] **7.1.5** Create `AgentMemoryTest` feature test ← depends on: [3.5.1]
+- [ ] **7.1.5** Create `AgentMemoryTest` feature test — Not built. Memory services (ChunkingService, EmbeddingService, HybridSearchService) lack dedicated test coverage.
   - **What:** Test memory management API
   - **Why:** Memories are persistent agent knowledge. Tests ensure CRUD and reset work correctly.
   - **Context:** Reset is destructive - test that it clears all memories. Test category enum validation.
@@ -1352,10 +1011,7 @@
 
 - [x] **8.2.1** ~~Implement context pruning service~~ → Moved to Phase 3.6.3.1
 
-- [ ] **8.2.2** Implement auto-compaction
-  - **What:** Automatic context compression when approaching token limits
-  - **Why:** Without compaction, agents hit context limits and can't continue. Auto-compaction summarizes old context to make room for new.
-  - **Context:** OpenClaw compacts by summarizing older messages. Keeps recent tokens intact. Triggered by ContextWindowGuard.
+- [x] **8.2.2** Implement auto-compaction — ✅ `app/Services/Memory/ConversationCompactionService.php`. Triggered by ChannelConversationLoader when token count exceeds threshold (configurable in `config/memory.php` under `compaction`). Summarizes older messages via LLM, stores ConversationSummary model, preserves recent messages. CompactConversationJob for async execution.
 
 - [x] **8.2.3** ~~Add pre-compaction memory flush~~ → Moved to Phase 3.6.2.1
 

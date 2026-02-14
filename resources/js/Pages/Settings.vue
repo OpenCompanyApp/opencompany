@@ -154,6 +154,20 @@
                       </span>
                     </label>
                   </SettingsField>
+
+                  <SettingsField label="Budget Approval Threshold" description="Auto-approve budget actions below this amount. Set to 0 to always require approval.">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm text-neutral-500 dark:text-neutral-400">$</span>
+                      <input
+                        v-model.number="agentSettings.budget_approval_threshold"
+                        type="number"
+                        class="settings-input"
+                        placeholder="0"
+                        min="0"
+                        step="1"
+                      />
+                    </div>
+                  </SettingsField>
                 </div>
 
                 <template #actions>
@@ -1026,6 +1040,7 @@ const orgSettings = reactive({
 const agentSettings = reactive({
   default_behavior: 'supervised',
   auto_spawn: false,
+  budget_approval_threshold: 0,
 })
 
 const notificationSettings = reactive({

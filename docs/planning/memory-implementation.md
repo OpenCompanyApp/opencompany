@@ -2,9 +2,28 @@
 
 > Phased implementation plan for agent memory, document embeddings, conversation compaction, and hybrid search. Each phase is a standalone PR-able unit. Later phases depend on earlier ones.
 
-**Status**: Not started
-**Config**: `config/memory.php` (already exists with embedding, chunking, and search defaults)
+**Status**: Complete (all 6 phases implemented)
+**Config**: `config/memory.php` (comprehensive: embedding, chunking, search, reranking, compaction, memory_flush, context_windows, scope)
 **Reference**: OpenClaw memory system (`inspiration/openclaw/src/memory/`, `inspiration/openclaw/docs/concepts/memory.md`; updated for v2026.2.9)
+
+### Implementation Summary
+
+All phases are built and operational. Key files:
+
+| Phase | What | Key Files |
+|-------|------|-----------|
+| 1 | pgvector, chunking, embeddings | `app/Services/Memory/ChunkingService.php`, `EmbeddingService.php`, `app/Models/DocumentChunk.php`, `EmbeddingCache.php` |
+| 2 | Document indexing + observer | `app/Services/Memory/DocumentIndexingService.php`, `app/Observers/DocumentObserver.php`, `app/Jobs/IndexDocumentJob.php` |
+| 3 | SaveMemory + RecallMemory tools | `app/Agents/Tools/Memory/SaveMemory.php`, `RecallMemory.php` |
+| 4 | Conversation compaction | `app/Services/Memory/ConversationCompactionService.php`, `app/Jobs/CompactConversationJob.php`, `app/Models/ConversationSummary.php` |
+| 5 | Pre-compaction memory flush | `app/Services/Memory/MemoryFlushService.php` (hooked into `AgentRespondJob`) |
+| 6 | Hybrid search (BM25 + vector) | `app/Services/Memory/HybridSearchService.php`, tsvector column on `document_chunks` |
+
+Bonus services (not in original plan): `TokenEstimator`, `ModelContextRegistry`, `MemoryScopeGuard`, `RerankingService` (cross-encoder reranking via Ollama).
+
+Migrations: `create_document_chunks_table`, `create_embedding_cache_table`, `create_conversation_summaries_table`, `add_flush_count_to_conversation_summaries_table`, `add_search_vector_to_document_chunks`.
+
+Artisan commands: `memory:status`, `memory:index-documents [--fresh]`.
 
 ---
 

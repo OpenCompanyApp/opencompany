@@ -525,7 +525,7 @@ class ToolRegistry
             $tool = $this->instantiateTool($meta['class'], $agent, $slug);
 
             if ($result['requires_approval']) {
-                $tool = new ApprovalWrappedTool($tool, $agent, $slug);
+                $tool = new ApprovalWrappedTool($tool, $agent, $slug, $meta);
             }
 
             $tools[] = $tool;

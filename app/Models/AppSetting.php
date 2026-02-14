@@ -125,6 +125,7 @@ class AppSetting extends Model
             'agents' => [
                 'default_behavior' => 'supervised',
                 'auto_spawn' => false,
+                'budget_approval_threshold' => 0,
             ],
             'notifications' => [
                 'email_notifications' => true,
