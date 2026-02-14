@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class User extends Authenticatable
 {
+    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     protected $keyType = 'string';
@@ -72,8 +73,10 @@ class User extends Authenticatable
 
     /**
      * Override toArray to add camelCase versions for frontend compatibility
+     *
+     * @return array<string, mixed>
      */
-    public function toArray()
+    public function toArray(): array
     {
         $array = parent::toArray();
 
@@ -107,16 +110,19 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'manager_id');
     }
 
+    /** @return HasMany<User, $this> */
     public function directReports(): HasMany
     {
         return $this->hasMany(User::class, 'manager_id');
     }
 
+    /** @return HasMany<ActivityStep, $this> */
     public function activitySteps(): HasMany
     {
         return $this->hasMany(ActivityStep::class);
     }
 
+    /** @return HasMany<ChannelMember, $this> */
     public function channelMemberships(): HasMany
     {
         return $this->hasMany(ChannelMember::class);
@@ -129,16 +135,19 @@ class User extends Authenticatable
             ->withPivot('unread_count', 'joined_at');
     }
 
+    /** @return HasMany<Message, $this> */
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class, 'author_id');
     }
 
+    /** @return HasMany<Task, $this> */
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class, 'assignee_id');
     }
 
+    /** @return HasMany<Document, $this> */
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class, 'author_id');
@@ -150,54 +159,63 @@ class User extends Authenticatable
         return $this->belongsTo(Document::class, 'docs_folder_id');
     }
 
+    /** @return HasMany<Activity, $this> */
     public function activities(): HasMany
     {
         return $this->hasMany(Activity::class, 'actor_id');
     }
 
+    /** @return HasMany<Notification, $this> */
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
     }
 
+    /** @return HasMany<CalendarEvent, $this> */
     public function calendarEvents(): HasMany
     {
         return $this->hasMany(CalendarEvent::class, 'created_by');
     }
 
-    public function calendarAttendances()
+    /** @return BelongsToMany<CalendarEvent, $this> */
+    public function calendarAttendances(): BelongsToMany
     {
         return $this->belongsToMany(CalendarEvent::class, 'calendar_event_attendees', 'user_id', 'event_id')
             ->withPivot('status')
             ->withTimestamps();
     }
 
+    /** @return HasMany<DataTable, $this> */
     public function dataTables(): HasMany
     {
         return $this->hasMany(DataTable::class, 'created_by');
     }
 
-
+    /** @return HasMany<UserExternalIdentity, $this> */
     public function externalIdentities(): HasMany
     {
         return $this->hasMany(UserExternalIdentity::class);
     }
 
+    /** @return HasMany<AgentPermission, $this> */
     public function agentPermissions(): HasMany
     {
         return $this->hasMany(AgentPermission::class, 'agent_id');
     }
 
+    /** @return HasMany<AgentPermission, $this> */
     public function toolPermissions(): HasMany
     {
         return $this->agentPermissions()->where('scope_type', 'tool');
     }
 
+    /** @return HasMany<AgentPermission, $this> */
     public function channelPermissions(): HasMany
     {
         return $this->agentPermissions()->where('scope_type', 'channel');
     }
 
+    /** @return HasMany<AgentPermission, $this> */
     public function folderPermissions(): HasMany
     {
         return $this->agentPermissions()->where('scope_type', 'folder');

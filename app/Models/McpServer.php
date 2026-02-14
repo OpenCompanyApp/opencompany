@@ -60,6 +60,8 @@ class McpServer extends Model
 
     /**
      * Get prefixed tool slugs from cached discovered tools.
+     *
+     * @return array<int, string>
      */
     public function getToolSlugs(): array
     {
@@ -85,6 +87,8 @@ class McpServer extends Model
 
     /**
      * Build HTTP auth headers from auth_type + auth_config.
+     *
+     * @return array<string, string>
      */
     public function getAuthHeaders(): array
     {

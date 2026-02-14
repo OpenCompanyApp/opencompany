@@ -35,16 +35,19 @@ class ListTemplate extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function defaultAssignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'default_assignee_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
     }
 
+    /** @return HasMany<ListAutomationRule, $this> */
     public function automationRules(): HasMany
     {
         return $this->hasMany(ListAutomationRule::class, 'list_template_id');

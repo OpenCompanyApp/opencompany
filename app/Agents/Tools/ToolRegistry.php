@@ -117,7 +117,7 @@ class ToolRegistry
      * Apps that are external integrations (can be toggled per agent).
      * Built-in apps are always available.
      */
-    public const INTEGRATION_APPS = [];
+    public const INTEGRATION_APPS = ['telegram'];
 
     /**
      * Icons for each app group.

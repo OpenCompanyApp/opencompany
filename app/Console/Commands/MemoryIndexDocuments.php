@@ -77,7 +77,7 @@ class MemoryIndexDocuments extends Command
         $parent = $document->parent;
 
         while ($parent) {
-            if ($parent->parent?->title === 'agents' && $parent->parent?->parent_id === null) {
+            if ($parent->parent->title === 'agents' && $parent->parent->parent_id === null) {
                 $agent = User::where('type', 'agent')
                     ->whereRaw("LOWER(REPLACE(name, ' ', '-')) = ?", [strtolower($parent->title)])
                     ->first();

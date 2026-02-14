@@ -49,6 +49,7 @@ class ListStatus extends Model
         return $array;
     }
 
+    /** @return HasMany<ListItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(ListItem::class, 'status', 'slug');

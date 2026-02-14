@@ -159,6 +159,7 @@ class ManageMessage implements Tool
         return '';
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

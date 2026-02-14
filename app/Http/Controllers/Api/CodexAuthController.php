@@ -13,7 +13,7 @@ class CodexAuthController extends Controller
     /**
      * Get current Codex auth status.
      */
-    public function status(CodexOAuthService $oauthService)
+    public function status(CodexOAuthService $oauthService): \Illuminate\Http\JsonResponse
     {
         $stored = CodexTokenStore::current();
 
@@ -31,7 +31,7 @@ class CodexAuthController extends Controller
     /**
      * Initiate device authorization flow.
      */
-    public function device(CodexOAuthService $oauthService)
+    public function device(CodexOAuthService $oauthService): \Illuminate\Http\JsonResponse
     {
         try {
             $result = $oauthService->initiateDeviceAuth();
@@ -52,7 +52,7 @@ class CodexAuthController extends Controller
     /**
      * Poll device authorization status.
      */
-    public function devicePoll(CodexOAuthService $oauthService, Request $request)
+    public function devicePoll(CodexOAuthService $oauthService, Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
             'device_auth_id' => 'required|string',
@@ -89,7 +89,7 @@ class CodexAuthController extends Controller
     /**
      * Clear stored Codex tokens.
      */
-    public function logout()
+    public function logout(): \Illuminate\Http\JsonResponse
     {
         CodexTokenStore::clear();
 
@@ -99,7 +99,7 @@ class CodexAuthController extends Controller
     /**
      * Test the Codex connection by sending a minimal request.
      */
-    public function test(CodexOAuthService $oauthService)
+    public function test(CodexOAuthService $oauthService): \Illuminate\Http\JsonResponse
     {
         $token = $oauthService->getAccessToken();
 

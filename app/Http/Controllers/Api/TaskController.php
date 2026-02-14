@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ExecuteAgentTaskJob;
 use App\Models\Task;
 use App\Models\TaskStep;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -16,6 +17,9 @@ use Illuminate\Support\Str;
  */
 class TaskController extends Controller
 {
+    /**
+     * @return \Illuminate\Support\Collection<int, Task>
+     */
     public function index(Request $request)
     {
         $query = Task::with(['agent', 'requester', 'channel', 'steps']);
@@ -64,7 +68,7 @@ class TaskController extends Controller
         });
     }
 
-    public function show(string $id)
+    public function show(string $id): Task
     {
         return Task::with([
             'agent',
@@ -77,7 +81,7 @@ class TaskController extends Controller
         ])->findOrFail($id);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): Task
     {
         $task = Task::create([
             'id' => Str::uuid()->toString(),
@@ -99,7 +103,7 @@ class TaskController extends Controller
         return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): Task
     {
         $task = Task::findOrFail($id);
 
@@ -128,7 +132,7 @@ class TaskController extends Controller
         return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         Task::findOrFail($id)->delete();
 
@@ -137,7 +141,7 @@ class TaskController extends Controller
 
     // Lifecycle Actions
 
-    public function start(string $id)
+    public function start(string $id): Task
     {
         $task = Task::findOrFail($id);
 
@@ -154,7 +158,7 @@ class TaskController extends Controller
         return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
-    public function pause(string $id)
+    public function pause(string $id): Task
     {
         $task = Task::findOrFail($id);
         $task->pause();
@@ -162,7 +166,7 @@ class TaskController extends Controller
         return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
-    public function resume(string $id)
+    public function resume(string $id): Task
     {
         $task = Task::findOrFail($id);
         $task->resume();
@@ -170,7 +174,7 @@ class TaskController extends Controller
         return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
-    public function complete(Request $request, string $id)
+    public function complete(Request $request, string $id): Task
     {
         $task = Task::findOrFail($id);
         $task->complete($request->input('result'));
@@ -178,7 +182,7 @@ class TaskController extends Controller
         return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
-    public function fail(Request $request, string $id)
+    public function fail(Request $request, string $id): Task
     {
         $task = Task::findOrFail($id);
         $task->fail($request->input('reason'));
@@ -186,7 +190,7 @@ class TaskController extends Controller
         return $task->load(['agent', 'requester', 'channel', 'steps']);
     }
 
-    public function cancel(string $id)
+    public function cancel(string $id): Task
     {
         $task = Task::findOrFail($id);
         $task->cancel();
@@ -196,6 +200,9 @@ class TaskController extends Controller
 
     // Task Steps
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, TaskStep>
+     */
     public function steps(string $id)
     {
         $task = Task::findOrFail($id);
@@ -203,7 +210,7 @@ class TaskController extends Controller
         return $task->steps()->orderBy('created_at')->get();
     }
 
-    public function addStep(Request $request, string $id)
+    public function addStep(Request $request, string $id): TaskStep
     {
         $task = Task::findOrFail($id);
 
@@ -216,7 +223,7 @@ class TaskController extends Controller
         return $step;
     }
 
-    public function updateStep(Request $request, string $taskId, string $stepId)
+    public function updateStep(Request $request, string $taskId, string $stepId): TaskStep
     {
         $step = TaskStep::where('task_id', $taskId)
             ->where('id', $stepId)
@@ -233,7 +240,7 @@ class TaskController extends Controller
         return $step;
     }
 
-    public function completeStep(string $taskId, string $stepId)
+    public function completeStep(string $taskId, string $stepId): TaskStep
     {
         $step = TaskStep::where('task_id', $taskId)
             ->where('id', $stepId)

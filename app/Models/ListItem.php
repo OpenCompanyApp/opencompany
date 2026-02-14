@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class ListItem extends Model
 {
+    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
     use HasFactory;
 
     protected $table = 'list_items';
@@ -116,6 +117,7 @@ class ListItem extends Model
         return $this->hasMany(ListItemCollaborator::class);
     }
 
+    /** @return BelongsToMany<User, $this> */
     public function collaborators(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'list_item_collaborators', 'list_item_id', 'user_id');

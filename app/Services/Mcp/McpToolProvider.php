@@ -54,6 +54,7 @@ class McpToolProvider implements ToolProvider
         return true;
     }
 
+    /** @param  array<string, mixed>  $context */
     public function createTool(string $class, array $context = []): Tool
     {
         $toolSlug = $context['tool_slug'] ?? '';
@@ -92,6 +93,8 @@ class McpToolProvider implements ToolProvider
 
     /**
      * Find a tool definition by MCP tool name from cached discovered_tools.
+     *
+     * @return array<string, mixed>
      */
     private function findToolDef(string $mcpToolName): array
     {

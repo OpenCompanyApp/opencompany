@@ -283,6 +283,7 @@ class ManageAgent implements Tool
         return "Identity file updated: {$file->title} for agent {$target->name}";
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class ListItemComment extends Model
 {
+    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
     use HasFactory;
 
     protected $table = 'list_item_comments';

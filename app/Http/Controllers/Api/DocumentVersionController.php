@@ -10,7 +10,8 @@ use Illuminate\Support\Str;
 
 class DocumentVersionController extends Controller
 {
-    public function index(string $documentId)
+    /** @return \Illuminate\Database\Eloquent\Collection<int, DocumentVersion> */
+    public function index(string $documentId): \Illuminate\Database\Eloquent\Collection
     {
         return DocumentVersion::with('author')
             ->where('document_id', $documentId)
@@ -18,7 +19,7 @@ class DocumentVersionController extends Controller
             ->get();
     }
 
-    public function restore(Request $request, string $documentId, string $versionId)
+    public function restore(Request $request, string $documentId, string $versionId): Document
     {
         $version = DocumentVersion::where('id', $versionId)
             ->where('document_id', $documentId)

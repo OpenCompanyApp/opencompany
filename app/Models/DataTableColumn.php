@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class DataTableColumn extends Model
 {
+    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
     use HasFactory, HasUuids;
 
     protected $fillable = [
@@ -33,6 +34,7 @@ class DataTableColumn extends Model
         ];
     }
 
+    /** @return BelongsTo<DataTable, $this> */
     public function table(): BelongsTo
     {
         return $this->belongsTo(DataTable::class, 'table_id');

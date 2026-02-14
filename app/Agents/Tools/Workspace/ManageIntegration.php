@@ -378,6 +378,7 @@ class ManageIntegration implements Tool
         return "Linked {$provider} ID {$externalId} to user {$user->name}.";
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

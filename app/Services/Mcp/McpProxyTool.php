@@ -9,6 +9,7 @@ use Laravel\Ai\Tools\Request;
 
 class McpProxyTool implements Tool
 {
+    /** @param array<string, mixed> $mcpInputSchema */
     public function __construct(
         private McpServer $server,
         private string $mcpToolName,
@@ -26,6 +27,7 @@ class McpProxyTool implements Tool
         return $this->mcpToolDescription;
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return McpSchemaTranslator::translate($this->mcpInputSchema, $schema);
@@ -45,6 +47,8 @@ class McpProxyTool implements Tool
 
     /**
      * Format MCP tool result content into a string.
+     *
+     * @param  array<string, mixed>  $result
      */
     private function formatResult(array $result): string
     {
@@ -59,6 +63,8 @@ class McpProxyTool implements Tool
 
     /**
      * Extract text from MCP content array [{type: "text", text: "..."}].
+     *
+     * @param  array<int, array<string, string>>  $content
      */
     private function extractText(array $content): string
     {

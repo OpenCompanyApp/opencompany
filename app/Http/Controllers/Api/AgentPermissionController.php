@@ -18,7 +18,7 @@ class AgentPermissionController extends Controller
     /**
      * Get all permissions for an agent, organized by scope type.
      */
-    public function index(string $id)
+    public function index(string $id): \Illuminate\Http\JsonResponse
     {
         $agent = User::where('type', 'agent')->findOrFail($id);
 
@@ -33,7 +33,7 @@ class AgentPermissionController extends Controller
     /**
      * Bulk update tool permissions for an agent.
      */
-    public function updateTools(Request $request, string $id)
+    public function updateTools(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $agent = User::where('type', 'agent')->findOrFail($id);
 
@@ -68,7 +68,7 @@ class AgentPermissionController extends Controller
      * Set allowed channels for an agent.
      * Empty array = unrestricted (no channel permissions enforced).
      */
-    public function updateChannels(Request $request, string $id)
+    public function updateChannels(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         User::where('type', 'agent')->findOrFail($id);
 
@@ -101,7 +101,7 @@ class AgentPermissionController extends Controller
      * Set enabled integrations for an agent.
      * Accepts list of enabled integration app names.
      */
-    public function updateIntegrations(Request $request, string $id)
+    public function updateIntegrations(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         User::where('type', 'agent')->findOrFail($id);
 
@@ -136,7 +136,7 @@ class AgentPermissionController extends Controller
      * Set allowed document folders for an agent.
      * Empty array = unrestricted (no folder permissions enforced).
      */
-    public function updateFolders(Request $request, string $id)
+    public function updateFolders(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         User::where('type', 'agent')->findOrFail($id);
 

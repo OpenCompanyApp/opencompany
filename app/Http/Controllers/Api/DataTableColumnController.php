@@ -9,14 +9,17 @@ use Illuminate\Http\Request;
 
 class DataTableColumnController extends Controller
 {
-    public function index(string $tableId)
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, DataTableColumn>
+     */
+    public function index(string $tableId): \Illuminate\Database\Eloquent\Collection
     {
         return DataTableColumn::where('table_id', $tableId)
             ->orderBy('order')
             ->get();
     }
 
-    public function store(Request $request, string $tableId)
+    public function store(Request $request, string $tableId): DataTableColumn
     {
         $table = DataTable::findOrFail($tableId);
 
@@ -38,7 +41,7 @@ class DataTableColumnController extends Controller
         return $column;
     }
 
-    public function update(Request $request, string $tableId, string $columnId)
+    public function update(Request $request, string $tableId, string $columnId): DataTableColumn
     {
         $column = DataTableColumn::where('table_id', $tableId)
             ->findOrFail($columnId);
@@ -66,7 +69,7 @@ class DataTableColumnController extends Controller
         return $column;
     }
 
-    public function destroy(string $tableId, string $columnId)
+    public function destroy(string $tableId, string $columnId): \Illuminate\Http\JsonResponse
     {
         DataTableColumn::where('table_id', $tableId)
             ->findOrFail($columnId)
@@ -75,7 +78,7 @@ class DataTableColumnController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function reorder(Request $request, string $tableId)
+    public function reorder(Request $request, string $tableId): \Illuminate\Http\JsonResponse
     {
         $request->validate([
             'columnOrders' => 'required|array',

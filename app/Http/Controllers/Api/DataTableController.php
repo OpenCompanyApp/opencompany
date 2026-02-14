@@ -8,7 +8,10 @@ use Illuminate\Http\Request;
 
 class DataTableController extends Controller
 {
-    public function index()
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, DataTable>
+     */
+    public function index(): \Illuminate\Database\Eloquent\Collection
     {
         return DataTable::with(['creator', 'columns'])
             ->withCount('rows')
@@ -16,14 +19,14 @@ class DataTableController extends Controller
             ->get();
     }
 
-    public function show(string $id)
+    public function show(string $id): DataTable
     {
         return DataTable::with(['creator', 'columns', 'views'])
             ->withCount('rows')
             ->findOrFail($id);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): DataTable
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -52,7 +55,7 @@ class DataTableController extends Controller
         return $table->load(['creator', 'columns']);
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): DataTable
     {
         $table = DataTable::findOrFail($id);
 
@@ -73,7 +76,7 @@ class DataTableController extends Controller
         return $table->load(['creator', 'columns']);
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): \Illuminate\Http\JsonResponse
     {
         DataTable::findOrFail($id)->delete();
 

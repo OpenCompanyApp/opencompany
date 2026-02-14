@@ -270,7 +270,9 @@ class ManageAutomation implements Tool
             'is_active' => true,
         ]);
 
-        $nextRun = $schedule->next_run_at?->format('Y-m-d H:i T');
+        /** @var \Carbon\Carbon|null $nextRunAt */
+        $nextRunAt = $schedule->next_run_at;
+        $nextRun = $nextRunAt?->format('Y-m-d H:i T');
 
         return "Schedule created: {$schedule->name} (ID: {$schedule->id}, cron: {$cronExpression}, next run: {$nextRun})";
     }
@@ -352,10 +354,14 @@ class ManageAutomation implements Tool
             return 'No scheduled automations found.';
         }
 
-        return $schedules->map(function ($s) {
+        return $schedules->map(function (ScheduledAutomation $s) {
             $status = $s->is_active ? 'active' : 'disabled';
-            $nextRun = $s->next_run_at?->format('Y-m-d H:i T') ?? 'N/A';
-            $agentName = $s->agent?->name ?? 'Unknown';
+            /** @var \Carbon\Carbon|null $nextRunAt */
+            $nextRunAt = $s->next_run_at;
+            $nextRun = $nextRunAt?->format('Y-m-d H:i T') ?? 'N/A';
+            /** @var User|null $agent */
+            $agent = $s->agent;
+            $agentName = $agent->name ?? 'Unknown';
 
             return "- {$s->name} (ID: {$s->id}, agent: {$agentName}, {$status}, runs: {$s->run_count}, next: {$nextRun})";
         })->join("\n");
@@ -387,6 +393,7 @@ class ManageAutomation implements Tool
         return "Schedule {$state}: {$schedule->name}";
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

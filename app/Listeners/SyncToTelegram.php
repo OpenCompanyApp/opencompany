@@ -183,7 +183,7 @@ class SyncToTelegram implements ShouldQueue
         return $this->isTelegramChannel($channel) && app(TelegramService::class)->isConfigured();
     }
 
-    private function isTelegramChannel($channel): bool
+    private function isTelegramChannel(mixed $channel): bool
     {
         return $channel
             && $channel->type === 'external'
@@ -254,8 +254,10 @@ class SyncToTelegram implements ShouldQueue
 
     /**
      * Send image attachments as Telegram photos, skipping any already sent via inline markdown.
+     *
+     * @param  array<int, string>  $alreadySentPaths
      */
-    private function sendAttachmentImages(TelegramService $telegram, string $chatId, $message, array $alreadySentPaths): void
+    private function sendAttachmentImages(TelegramService $telegram, string $chatId, Message $message, array $alreadySentPaths): void
     {
         foreach ($message->attachments as $attachment) {
             $mime = $attachment->mime_type ?? '';

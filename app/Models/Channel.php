@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Channel extends Model
 {
+    /** @use HasFactory<\Database\Factories\ChannelFactory> */
     use HasFactory;
     protected $keyType = 'string';
     public $incrementing = false;
@@ -41,22 +42,26 @@ class Channel extends Model
         return $this->belongsTo(User::class, 'creator_id');
     }
 
+    /** @return HasMany<ChannelMember, $this> */
     public function members(): HasMany
     {
         return $this->hasMany(ChannelMember::class);
     }
 
+    /** @return BelongsToMany<User, $this> */
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'channel_members')
             ->withPivot('unread_count', 'joined_at');
     }
 
+    /** @return HasMany<Message, $this> */
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
     }
 
+    /** @return HasOne<Message, $this> */
     public function latestMessage(): HasOne
     {
         return $this->hasOne(Message::class)->latestOfMany('created_at');

@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class CalendarEvent extends Model
 {
+    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
     use HasFactory, HasUuids;
 
     protected $fillable = [
@@ -79,7 +80,8 @@ class CalendarEvent extends Model
         return $this->hasMany(CalendarEventAttendee::class, 'event_id');
     }
 
-    public function users()
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsToMany<User, $this> */
+    public function users(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(User::class, 'calendar_event_attendees', 'event_id', 'user_id')
             ->withPivot('status')

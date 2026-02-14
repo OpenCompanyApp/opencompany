@@ -23,18 +23,21 @@ class CodexPrismGateway extends PrismGateway
         parent::__construct($events);
     }
 
-    protected function configure($prism, Provider $provider, string $model): mixed
+    protected function configure(mixed $prism, Provider $provider, string $model): mixed
     {
         return $prism->using('codex', $model);
     }
 
+    /**
+     * @param  array<string, mixed>|null  $schema
+     */
     protected function createPrismTextRequest(
         Provider $provider,
         string $model,
         ?array $schema,
         ?TextGenerationOptions $options = null,
         ?int $timeout = null,
-    ) {
+    ): mixed {
         $resolvedTimeout = $timeout ?? (int) config('prism.request_timeout', 600);
 
         return parent::createPrismTextRequest(

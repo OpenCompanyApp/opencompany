@@ -21,6 +21,7 @@ use App\Services\AgentCommunicationService;
 use App\Services\AgentDocumentService;
 use App\Services\Memory\ModelContextRegistry;
 use App\Services\TelegramService;
+use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\Data\FinishReason;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -41,6 +42,8 @@ class AgentRespondJob implements ShouldQueue
 
     /**
      * The number of seconds to wait before retrying the job.
+     *
+     * @var array<int, int>
      */
     public array $backoff = [10];
 
@@ -121,7 +124,7 @@ class AgentRespondJob implements ShouldQueue
                 $task->update([
                     'context' => [
                         'system_prompt' => $agentInstance->instructions(),
-                        'messages' => collect($agentInstance->messages())
+                        'messages' => collect($agentInstance->messages()) /** @phpstan-ignore argument.templateType */
                             ->map(fn ($m) => [
                                 'role' => $m->role->value,
                                 'content' => Str::limit($m->content ?? '', 2000),
@@ -311,7 +314,7 @@ class AgentRespondJob implements ShouldQueue
                     ],
                     'actual_prompt_tokens' => $promptTokens,
                     'actual_completion_tokens' => $completionTokens,
-                    'finish_reason' => $lastStep?->finishReason?->value ?? 'unknown',
+                    'finish_reason' => $lastStep?->finishReason->value ?? 'unknown',
                 ];
                 unset($context['prompt_sections'], $context['context_window']);
                 $task->update(['context' => $context]);
@@ -382,7 +385,7 @@ class AgentRespondJob implements ShouldQueue
     /**
      * Save generated images from tool call results as message attachments.
      */
-    private function saveImageAttachments($response, Message $message): void
+    private function saveImageAttachments(AgentResponse $response, Message $message): void
     {
         try {
             foreach ($response->steps as $step) {
@@ -417,7 +420,7 @@ class AgentRespondJob implements ShouldQueue
     /**
      * Log tool calls from the agent response as task steps.
      */
-    private function logToolSteps(Task $task, $response): void
+    private function logToolSteps(Task $task, AgentResponse $response): void
     {
         foreach ($response->steps as $step) {
             // Build a lookup of tool results keyed by tool call ID

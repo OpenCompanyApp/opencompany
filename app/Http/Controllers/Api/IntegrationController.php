@@ -23,7 +23,7 @@ class IntegrationController extends Controller
     /**
      * Get all integrations with their status
      */
-    public function index()
+    public function index(): \Illuminate\Http\JsonResponse
     {
         $settings = IntegrationSetting::all()->keyBy('integration_id');
         $available = IntegrationSetting::getAvailableIntegrations();
@@ -114,7 +114,7 @@ class IntegrationController extends Controller
     /**
      * Get configuration for a specific integration (masked API key)
      */
-    public function showConfig(string $id)
+    public function showConfig(string $id): \Illuminate\Http\JsonResponse
     {
         // Check dynamic providers first
         $provider = $this->findConfigurableProvider($id);
@@ -182,7 +182,7 @@ class IntegrationController extends Controller
     /**
      * Save configuration for an integration
      */
-    public function updateConfig(Request $request, string $id)
+    public function updateConfig(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         // Check dynamic providers first
         $provider = $this->findConfigurableProvider($id);
@@ -308,7 +308,7 @@ class IntegrationController extends Controller
     /**
      * Test connection for an integration
      */
-    public function testConnection(Request $request, string $id)
+    public function testConnection(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         // Check dynamic providers first
         $provider = $this->findConfigurableProvider($id);
@@ -386,7 +386,7 @@ class IntegrationController extends Controller
     /**
      * Disconnect an OAuth-based integration (clear stored tokens).
      */
-    public function disconnect(string $id)
+    public function disconnect(string $id): \Illuminate\Http\JsonResponse
     {
         $provider = $this->findConfigurableProvider($id);
         if (!$provider) {
@@ -412,7 +412,7 @@ class IntegrationController extends Controller
     /**
      * Test GLM/Zhipu AI connection
      */
-    private function testGlmConnection(string $apiKey, string $url, string $model)
+    private function testGlmConnection(string $apiKey, string $url, string $model): \Illuminate\Http\JsonResponse
     {
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $apiKey,
@@ -443,7 +443,7 @@ class IntegrationController extends Controller
     /**
      * Test Telegram bot connection
      */
-    private function testTelegramConnection(string $apiKey)
+    private function testTelegramConnection(string $apiKey): \Illuminate\Http\JsonResponse
     {
         $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/getMe");
 
@@ -475,7 +475,7 @@ class IntegrationController extends Controller
     /**
      * Set up webhook for an integration (currently Telegram only)
      */
-    public function setupWebhook(Request $request, string $id)
+    public function setupWebhook(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         if ($id !== 'telegram') {
             return response()->json(['error' => 'Webhooks not supported for this integration'], 400);
@@ -551,7 +551,7 @@ class IntegrationController extends Controller
     /**
      * Link an external identity to a system user.
      */
-    public function linkExternalUser(Request $request)
+    public function linkExternalUser(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
             'userId' => 'required|string|exists:users,id',
@@ -622,7 +622,7 @@ class IntegrationController extends Controller
     /**
      * Unlink an external identity from a user.
      */
-    public function unlinkExternalUser(string $identityId)
+    public function unlinkExternalUser(string $identityId): \Illuminate\Http\JsonResponse
     {
         $identity = UserExternalIdentity::findOrFail($identityId);
         $identity->delete();
@@ -633,7 +633,7 @@ class IntegrationController extends Controller
     /**
      * Get all external identity links (optionally filtered by provider).
      */
-    public function externalIdentities(Request $request)
+    public function externalIdentities(Request $request): \Illuminate\Http\JsonResponse
     {
         $query = UserExternalIdentity::with('user');
 
@@ -647,7 +647,7 @@ class IntegrationController extends Controller
     /**
      * Get enabled AI models for agent brain selection
      */
-    public function enabledModels()
+    public function enabledModels(): \Illuminate\Http\JsonResponse
     {
         $settings = IntegrationSetting::where('enabled', true)->get();
         $available = IntegrationSetting::getAvailableIntegrations();
@@ -701,7 +701,7 @@ class IntegrationController extends Controller
      * Returns both integration-based providers (GLM, Codex) and prism-config
      * providers (Anthropic, OpenAI, etc.) with configuration status.
      */
-    public function allProviders()
+    public function allProviders(): \Illuminate\Http\JsonResponse
     {
         $providers = [];
 
@@ -796,13 +796,15 @@ class IntegrationController extends Controller
             if (empty($info['models'])) {
                 continue;
             }
+            /** @var array<string, string> $integrationModels */
+            $integrationModels = $info['models'];
             $providers[] = [
                 'id' => $setting->integration_id,
                 'name' => $info['name'],
                 'icon' => $info['icon'],
                 'configured' => $setting->hasValidConfig(),
                 'source' => 'integration',
-                'models' => collect($info['models'])->map(fn ($name, $id) => [
+                'models' => collect($integrationModels)->map(fn (string $name, string $id) => [
                     'id' => $id,
                     'name' => $name,
                 ])->values()->all(),
@@ -813,13 +815,15 @@ class IntegrationController extends Controller
         $codexToken = \OpenCompany\PrismCodex\CodexTokenStore::current();
         $codexInfo = $available['codex'] ?? null;
         if ($codexToken && !$codexToken->isExpired() && $codexInfo && !empty($codexInfo['models'])) {
+            /** @var array<string, string> $codexModels */
+            $codexModels = $codexInfo['models'];
             $providers[] = [
                 'id' => 'codex',
                 'name' => $codexInfo['name'],
                 'icon' => $codexInfo['icon'],
                 'configured' => true,
                 'source' => 'oauth',
-                'models' => collect($codexInfo['models'])->map(fn ($name, $id) => [
+                'models' => collect($codexModels)->map(fn (string $name, string $id) => [
                     'id' => $id,
                     'name' => $name,
                 ])->values()->all(),
@@ -832,7 +836,7 @@ class IntegrationController extends Controller
     /**
      * Get available embedding models with provider configuration status.
      */
-    public function embeddingModels()
+    public function embeddingModels(): \Illuminate\Http\JsonResponse
     {
         $embeddingProviders = [
             'openai' => [
@@ -950,7 +954,7 @@ class IntegrationController extends Controller
     /**
      * Get available reranking models with provider configuration status.
      */
-    public function rerankingModels()
+    public function rerankingModels(): \Illuminate\Http\JsonResponse
     {
         $result = [];
 
@@ -1043,7 +1047,7 @@ class IntegrationController extends Controller
     /**
      * Get Ollama connection status and locally available models.
      */
-    public function ollamaModelStatus()
+    public function ollamaModelStatus(): \Illuminate\Http\JsonResponse
     {
         return response()->json($this->getOllamaStatus());
     }
@@ -1051,7 +1055,7 @@ class IntegrationController extends Controller
     /**
      * Pull (download) an Ollama model.
      */
-    public function ollamaPullModel(Request $request)
+    public function ollamaPullModel(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $request->validate(['model' => 'required|string|max:200']);
 
@@ -1128,6 +1132,8 @@ class IntegrationController extends Controller
 
     /**
      * Check Ollama availability and list downloaded models.
+     *
+     * @return array{online: bool, models: array<int, mixed>, url: mixed}
      */
     private function getOllamaStatus(): array
     {
@@ -1140,9 +1146,11 @@ class IntegrationController extends Controller
                 return ['online' => false, 'models' => [], 'url' => $url];
             }
 
-            $models = collect($response->json('models', []))
+            /** @var array<int, array{name: string}> $rawModels */
+            $rawModels = $response->json('models', []);
+            $models = collect($rawModels)
                 ->pluck('name')
-                ->map(fn ($n) => explode(':', $n)[0])
+                ->map(fn (string $n) => explode(':', $n)[0])
                 ->unique()
                 ->values()
                 ->toArray();
@@ -1156,7 +1164,7 @@ class IntegrationController extends Controller
     /**
      * Fetch available models from the provider API and store in database.
      */
-    public function fetchModels(string $id)
+    public function fetchModels(string $id): \Illuminate\Http\JsonResponse
     {
         try {
             $models = $this->fetchModelsFromProvider($id);

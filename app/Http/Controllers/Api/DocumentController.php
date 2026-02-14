@@ -14,7 +14,10 @@ use Illuminate\Support\Str;
 
 class DocumentController extends Controller
 {
-    public function index()
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Document>
+     */
+    public function index(): \Illuminate\Database\Eloquent\Collection
     {
         $documents = Document::with(['author', 'parent', 'permissions.user'])
             ->orderBy('updated_at', 'desc')
@@ -77,7 +80,7 @@ class DocumentController extends Controller
         ));
     }
 
-    public function show(string $id)
+    public function show(string $id): DocumentResource
     {
         $document = Document::with(['author', 'parent', 'children', 'permissions.user', 'comments.author'])
             ->findOrFail($id);
@@ -85,7 +88,7 @@ class DocumentController extends Controller
         return new DocumentResource($document);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): DocumentResource
     {
         $document = Document::create([
             'id' => Str::uuid()->toString(),
@@ -126,7 +129,7 @@ class DocumentController extends Controller
         return new DocumentResource($document->load(['author', 'permissions.user']));
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): DocumentResource
     {
         $document = Document::findOrFail($id);
 
@@ -168,7 +171,7 @@ class DocumentController extends Controller
         return new DocumentResource($document->load(['author', 'parent', 'permissions.user']));
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): \Illuminate\Http\JsonResponse
     {
         $document = Document::findOrFail($id);
 

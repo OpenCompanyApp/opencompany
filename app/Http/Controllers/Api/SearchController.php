@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 
 class SearchController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Illuminate\Http\JsonResponse
     {
         $query = $request->input('q', '');
         $type = $request->input('type'); // optional: users, channels, messages, tasks, documents

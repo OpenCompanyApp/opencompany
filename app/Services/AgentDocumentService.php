@@ -11,6 +11,8 @@ class AgentDocumentService
 {
     /**
      * Create the complete document structure for a new agent
+     *
+     * @param  array<string, string>  $identityContent
      */
     public function createAgentDocumentStructure(User $agent, array $identityContent = []): Document
     {
@@ -110,6 +112,8 @@ class AgentDocumentService
 
     /**
      * Get all identity files for an agent
+     *
+     * @return Collection<int, Document>
      */
     public function getIdentityFiles(User $agent): Collection
     {

@@ -290,6 +290,7 @@ class ContactAgent implements Tool
         return $response->text;
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

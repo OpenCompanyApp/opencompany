@@ -9,7 +9,10 @@ use Illuminate\Support\Str;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Notification>
+     */
+    public function index(Request $request): \Illuminate\Database\Eloquent\Collection
     {
         $query = Notification::with(['user', 'actor']);
 
@@ -24,7 +27,7 @@ class NotificationController extends Controller
         return $query->orderBy('created_at', 'desc')->get();
     }
 
-    public function store(Request $request)
+    public function store(Request $request): Notification
     {
         $notification = Notification::create([
             'id' => Str::uuid()->toString(),
@@ -41,7 +44,7 @@ class NotificationController extends Controller
         return $notification->load(['user', 'actor']);
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): Notification
     {
         $notification = Notification::findOrFail($id);
 
@@ -50,7 +53,7 @@ class NotificationController extends Controller
         return $notification->load(['user', 'actor']);
     }
 
-    public function markAllRead(Request $request)
+    public function markAllRead(Request $request): \Illuminate\Http\JsonResponse
     {
         $query = Notification::where('is_read', false);
 
@@ -63,7 +66,7 @@ class NotificationController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function count(Request $request)
+    public function count(Request $request): \Illuminate\Http\JsonResponse
     {
         $query = Notification::where('is_read', false);
 

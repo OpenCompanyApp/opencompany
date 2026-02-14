@@ -23,7 +23,7 @@ class TokenEstimator
         }
 
         // Edge case: no words detected but has characters (pure CJK/symbols)
-        if ($wordCount === 0 && $charCount > 0) {
+        if ($wordCount === 0) {
             return (int) ceil($charCount * 1.5);
         }
 

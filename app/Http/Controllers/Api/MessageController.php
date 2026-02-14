@@ -15,11 +15,16 @@ use App\Models\User;
 use App\Services\AgentChatService;
 use App\Services\Memory\ConversationCompactionService;
 use App\Services\Memory\MemoryFlushService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
+    /**
+     * @return Collection<int, Message>
+     */
     public function index(Request $request)
     {
         $query = Message::with(['author', 'reactions.user', 'attachments', 'replyTo.author']);
@@ -37,7 +42,7 @@ class MessageController extends Controller
             ->values();
     }
 
-    public function store(Request $request)
+    public function store(Request $request): Message
     {
         $message = Message::create([
             'id' => Str::uuid()->toString(),
@@ -147,7 +152,7 @@ class MessageController extends Controller
     /**
      * Manually trigger conversation compaction for a channel.
      */
-    public function compact(string $channelId)
+    public function compact(string $channelId): JsonResponse
     {
         $channel = Channel::findOrFail($channelId);
         $agents = $this->resolveChannelAgents($channel);
@@ -196,8 +201,10 @@ class MessageController extends Controller
 
     /**
      * Resolve agent users that participate in a channel.
+     *
+     * @return Collection<int, User>
      */
-    private function resolveChannelAgents(Channel $channel): \Illuminate\Support\Collection
+    private function resolveChannelAgents(Channel $channel): Collection
     {
         if ($channel->type === 'dm') {
             $dm = DirectMessage::where('channel_id', $channel->id)->first();
@@ -219,14 +226,14 @@ class MessageController extends Controller
             ->get();
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         Message::findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
 
-    public function addReaction(Request $request, string $messageId)
+    public function addReaction(Request $request, string $messageId): MessageReaction
     {
         $reaction = MessageReaction::create([
             'id' => Str::uuid()->toString(),
@@ -238,7 +245,7 @@ class MessageController extends Controller
         return $reaction->load('user');
     }
 
-    public function removeReaction(string $messageId, string $reactionId)
+    public function removeReaction(string $messageId, string $reactionId): JsonResponse
     {
         MessageReaction::where('id', $reactionId)
             ->where('message_id', $messageId)
@@ -247,6 +254,9 @@ class MessageController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /**
+     * @return array{parentMessage: Message, replies: \Illuminate\Database\Eloquent\Collection<int, Message>}
+     */
     public function thread(string $messageId)
     {
         $parentMessage = Message::with(['author', 'reactions.user', 'attachments'])
@@ -263,7 +273,7 @@ class MessageController extends Controller
         ];
     }
 
-    public function pin(Request $request, string $messageId)
+    public function pin(Request $request, string $messageId): Message
     {
         $message = Message::findOrFail($messageId);
         $message->update([
@@ -275,7 +285,7 @@ class MessageController extends Controller
         return $message->load(['author', 'reactions.user', 'attachments']);
     }
 
-    public function uploadAttachment(Request $request)
+    public function uploadAttachment(Request $request): MessageAttachment
     {
         $file = $request->file('file');
         $path = $file->store('message-attachments', 'public');

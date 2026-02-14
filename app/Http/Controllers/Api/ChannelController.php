@@ -6,11 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Channel;
 use App\Models\ChannelMember;
 use App\Models\Message;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class ChannelController extends Controller
 {
+    /**
+     * @return \Illuminate\Support\Collection<int, mixed>
+     */
     public function index(Request $request)
     {
         $query = Channel::with(['users', 'creator', 'latestMessage.author']);
@@ -31,16 +35,18 @@ class ChannelController extends Controller
             unset($channelArray['users']);
 
             // Include latest message preview for sidebar
-            if ($channel->latestMessage) {
+            /** @var Message|null $latestMessage */
+            $latestMessage = $channel->latestMessage;
+            if ($latestMessage) {
                 $channelArray['latest_message'] = [
-                    'id' => $channel->latestMessage->id,
-                    'content' => $channel->latestMessage->content,
-                    'author' => $channel->latestMessage->author ? [
-                        'id' => $channel->latestMessage->author->id,
-                        'name' => $channel->latestMessage->author->name,
-                        'type' => $channel->latestMessage->author->type,
+                    'id' => $latestMessage->id,
+                    'content' => $latestMessage->content,
+                    'author' => $latestMessage->author ? [
+                        'id' => $latestMessage->author->id,
+                        'name' => $latestMessage->author->name,
+                        'type' => $latestMessage->author->type,
                     ] : null,
-                    'timestamp' => $channel->latestMessage->timestamp ?? $channel->latestMessage->created_at,
+                    'timestamp' => $latestMessage->timestamp ?? $latestMessage->created_at,
                 ];
             }
 
@@ -48,6 +54,9 @@ class ChannelController extends Controller
         });
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function show(string $id)
     {
         $channel = Channel::with(['users', 'creator'])->findOrFail($id);
@@ -58,6 +67,9 @@ class ChannelController extends Controller
         return $channelArray;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function store(Request $request)
     {
         $channel = Channel::create([
@@ -97,7 +109,7 @@ class ChannelController extends Controller
         return $channelArray;
     }
 
-    public function addMember(Request $request, string $channelId)
+    public function addMember(Request $request, string $channelId): ChannelMember
     {
         $member = ChannelMember::create([
             'channel_id' => $channelId,
@@ -108,7 +120,7 @@ class ChannelController extends Controller
         return $member->load('user');
     }
 
-    public function removeMember(string $channelId, string $userId)
+    public function removeMember(string $channelId, string $userId): JsonResponse
     {
         ChannelMember::where('channel_id', $channelId)
             ->where('user_id', $userId)
@@ -117,7 +129,7 @@ class ChannelController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function markRead(Request $request, string $channelId)
+    public function markRead(Request $request, string $channelId): JsonResponse
     {
         $userId = $request->input('userId');
 
@@ -128,7 +140,7 @@ class ChannelController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function typing(Request $request, string $channelId)
+    public function typing(Request $request, string $channelId): JsonResponse
     {
         // This will be handled by broadcasting events
         // For now, just return success
@@ -140,6 +152,9 @@ class ChannelController extends Controller
         ]);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Message>
+     */
     public function pinned(string $channelId)
     {
         return Message::where('channel_id', $channelId)

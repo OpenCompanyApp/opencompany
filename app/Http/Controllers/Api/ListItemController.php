@@ -6,25 +6,28 @@ use App\Http\Controllers\Controller;
 use App\Models\ListItem;
 use App\Models\ListItemCollaborator;
 use App\Models\ListStatus;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class ListItemController extends Controller
 {
-    public function index()
+    /** @return Collection<int, ListItem> */
+    public function index(): Collection
     {
         return ListItem::with(['assignee', 'creator', 'collaborators', 'channel'])
             ->orderBy('position')
             ->get();
     }
 
-    public function show(string $id)
+    public function show(string $id): ListItem
     {
         return ListItem::with(['assignee', 'creator', 'collaborators', 'channel', 'comments.author'])
             ->findOrFail($id);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): ListItem|JsonResponse
     {
         $isFolder = $request->input('isFolder', false);
         $parentId = $request->input('parentId');
@@ -77,7 +80,7 @@ class ListItemController extends Controller
         return $listItem->load(['assignee', 'creator', 'collaborators', 'channel']);
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): ListItem
     {
         $listItem = ListItem::findOrFail($id);
 
@@ -134,14 +137,14 @@ class ListItemController extends Controller
         return $listItem->load(['assignee', 'creator', 'collaborators', 'channel']);
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         ListItem::findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
 
-    public function reorder(Request $request)
+    public function reorder(Request $request): JsonResponse
     {
         $itemOrders = $request->input('itemOrders') ?? $request->input('taskOrders');
 

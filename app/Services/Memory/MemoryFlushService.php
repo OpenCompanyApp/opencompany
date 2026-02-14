@@ -22,6 +22,8 @@ class MemoryFlushService
      * Flush happens when we're within the "soft zone" — close to the compaction
      * threshold but not yet exceeding it — AND we haven't already flushed for
      * this compaction cycle.
+     *
+     * @param  iterable<mixed>  $messages
      */
     public function shouldFlush(string $channelId, User $agent, iterable $messages, ?string $systemPrompt = null): bool
     {

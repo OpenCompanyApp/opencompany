@@ -27,6 +27,7 @@ class EmbeddingService
         $cached = EmbeddingCache::find($cacheKey);
 
         if ($cached) {
+            /** @var array<int, float> */
             return $cached->embedding;
         }
 

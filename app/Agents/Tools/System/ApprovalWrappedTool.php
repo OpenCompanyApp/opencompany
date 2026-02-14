@@ -17,6 +17,9 @@ class ApprovalWrappedTool implements Tool
         'daily_budget', 'total_budget', 'monthly_budget',
     ];
 
+    /**
+     * @param  array<string, mixed>  $toolMeta
+     */
     public function __construct(
         private Tool $innerTool,
         private User $agent,
@@ -86,6 +89,7 @@ class ApprovalWrappedTool implements Tool
         }
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return $this->innerTool->schema($schema);

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class ApprovalRequest extends Model
 {
+    /** @use HasFactory<\Database\Factories\ApprovalRequestFactory> */
     use HasFactory;
     protected $keyType = 'string';
     public $incrementing = false;

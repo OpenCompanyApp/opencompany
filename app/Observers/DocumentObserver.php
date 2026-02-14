@@ -65,7 +65,7 @@ class DocumentObserver
         $parent = $document->parent;
 
         while ($parent) {
-            if ($parent->parent?->title === 'agents' && $parent->parent?->parent_id === null) {
+            if ($parent->parent?->title === 'agents' && $parent->parent?->parent_id === null) { // @phpstan-ignore nullsafe.neverNull
                 $agent = User::where('type', 'agent')
                     ->whereRaw("LOWER(REPLACE(name, ' ', '-')) = ?", [strtolower($parent->title)])
                     ->first();

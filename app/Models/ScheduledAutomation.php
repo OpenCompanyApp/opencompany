@@ -33,6 +33,7 @@ class ScheduledAutomation extends Model
         'last_result',
     ];
 
+    /** @return array<string, string> */
     protected function casts(): array
     {
         return [
@@ -65,7 +66,7 @@ class ScheduledAutomation extends Model
                 'creator_id' => $automation->created_by_id,
             ]);
 
-            $channel->members()->attach(array_filter(['system', $automation->agent_id]));
+            $channel->users()->attach(array_filter(['system', $automation->agent_id]));
 
             $automation->updateQuietly(['channel_id' => $channel->id]);
         });
@@ -73,16 +74,19 @@ class ScheduledAutomation extends Model
 
     // --- Relationships ---
 
+    /** @return BelongsTo<User, $this> */
     public function agent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'agent_id');
     }
 
+    /** @return BelongsTo<Channel, $this> */
     public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class, 'channel_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
@@ -99,6 +103,7 @@ class ScheduledAutomation extends Model
         return $nextRun->utc();
     }
 
+    /** @return array<int, Carbon> */
     public function getNextRuns(int $count = 5): array
     {
         $runs = [];
@@ -123,6 +128,7 @@ class ScheduledAutomation extends Model
 
     // --- Run Recording ---
 
+    /** @param array<string, mixed> $result */
     public function recordSuccess(array $result): void
     {
         $this->update([

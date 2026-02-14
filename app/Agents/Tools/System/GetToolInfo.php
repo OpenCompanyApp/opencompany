@@ -31,6 +31,7 @@ class GetToolInfo implements Tool
         return $this->toolRegistry->getToolDetail($name, $this->agent);
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

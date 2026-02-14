@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class CalendarEventAttendeeController extends Controller
 {
-    public function store(Request $request, string $eventId)
+    public function store(Request $request, string $eventId): mixed
     {
         $event = CalendarEvent::findOrFail($eventId);
 
@@ -25,7 +25,7 @@ class CalendarEventAttendeeController extends Controller
         return $attendee->load('user');
     }
 
-    public function update(Request $request, string $eventId, string $attendeeId)
+    public function update(Request $request, string $eventId, string $attendeeId): mixed
     {
         $attendee = CalendarEventAttendee::where('event_id', $eventId)
             ->findOrFail($attendeeId);
@@ -41,7 +41,7 @@ class CalendarEventAttendeeController extends Controller
         return $attendee->load('user');
     }
 
-    public function destroy(string $eventId, string $attendeeId)
+    public function destroy(string $eventId, string $attendeeId): \Illuminate\Http\JsonResponse
     {
         CalendarEventAttendee::where('event_id', $eventId)
             ->findOrFail($attendeeId)

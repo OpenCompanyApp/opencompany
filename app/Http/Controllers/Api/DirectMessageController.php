@@ -12,7 +12,10 @@ use Illuminate\Support\Str;
 
 class DirectMessageController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, DirectMessage>
+     */
+    public function index(Request $request): \Illuminate\Database\Eloquent\Collection
     {
         $userId = $request->input('userId');
 
@@ -23,12 +26,12 @@ class DirectMessageController extends Controller
             ->get();
     }
 
-    public function show(string $id)
+    public function show(string $id): DirectMessage
     {
         return DirectMessage::with(['user1', 'user2', 'channel'])->findOrFail($id);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): DirectMessage
     {
         $user1Id = $request->input('user1Id');
         $user2Id = $request->input('user2Id');
@@ -72,7 +75,7 @@ class DirectMessageController extends Controller
         return $dm->load(['user1', 'user2', 'channel']);
     }
 
-    public function markRead(Request $request, string $id)
+    public function markRead(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $dm = DirectMessage::findOrFail($id);
         $userId = $request->input('userId');
@@ -84,7 +87,7 @@ class DirectMessageController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function unreadCount(Request $request)
+    public function unreadCount(Request $request): \Illuminate\Http\JsonResponse
     {
         $userId = $request->input('userId');
 

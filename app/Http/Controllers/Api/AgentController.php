@@ -13,7 +13,9 @@ use OpenCompany\PrismCodex\CodexTokenStore;
 use App\Services\AgentAvatarService;
 use App\Services\AgentDocumentService;
 use App\Services\AgentPermissionService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class AgentController extends Controller
@@ -25,8 +27,10 @@ class AgentController extends Controller
 
     /**
      * List all agents
+     *
+     * @return Collection<int, User>
      */
-    public function index()
+    public function index(): Collection
     {
         return User::where('type', 'agent')
             ->orderBy('name')
@@ -36,7 +40,7 @@ class AgentController extends Controller
     /**
      * Create a new agent
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -139,7 +143,7 @@ class AgentController extends Controller
     /**
      * Get a specific agent with enriched detail data
      */
-    public function show(string $id)
+    public function show(string $id): JsonResponse
     {
         $agent = User::where('type', 'agent')->findOrFail($id);
 
@@ -238,6 +242,8 @@ class AgentController extends Controller
 
     /**
      * Parse IDENTITY.md content to extract structured identity data
+     *
+     * @return array<string, mixed>
      */
     private function parseIdentityContent(string $content, User $agent): array
     {
@@ -274,7 +280,7 @@ class AgentController extends Controller
     /**
      * Update an agent
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): JsonResponse
     {
         $agent = User::where('type', 'agent')->findOrFail($id);
 
@@ -337,7 +343,7 @@ class AgentController extends Controller
     /**
      * Delete an agent
      */
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         $agent = User::where('type', 'agent')->findOrFail($id);
         $this->agentDocumentService->deleteAgentDocumentStructure($agent);
@@ -349,7 +355,7 @@ class AgentController extends Controller
     /**
      * Get identity files for an agent
      */
-    public function identityFiles(string $id)
+    public function identityFiles(string $id): JsonResponse
     {
         $agent = User::where('type', 'agent')->findOrFail($id);
         $files = $this->agentDocumentService->getIdentityFiles($agent);
@@ -368,7 +374,7 @@ class AgentController extends Controller
     /**
      * Update an identity file for an agent
      */
-    public function updateIdentityFile(Request $request, string $id, string $fileType)
+    public function updateIdentityFile(Request $request, string $id, string $fileType): JsonResponse
     {
         $agent = User::where('type', 'agent')->findOrFail($id);
 

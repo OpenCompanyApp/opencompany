@@ -21,6 +21,9 @@ class TelegramService
 
     /**
      * Send a text message to a Telegram chat.
+     *
+     * @param array<string, mixed>|null $replyMarkup
+     * @return array<string, mixed>
      */
     public function sendMessage(string $chatId, string $text, ?array $replyMarkup = null, ?int $replyToMessageId = null): array
     {
@@ -60,6 +63,9 @@ class TelegramService
 
     /**
      * Edit an existing message's text.
+     *
+     * @param array<string, mixed>|null $replyMarkup
+     * @return array<string, mixed>
      */
     public function editMessageText(string $chatId, int $messageId, string $text, ?array $replyMarkup = null): array
     {
@@ -79,6 +85,8 @@ class TelegramService
 
     /**
      * Answer a callback query (acknowledge button press).
+     *
+     * @return array<string, mixed>
      */
     public function answerCallbackQuery(string $callbackQueryId, ?string $text = null): array
     {
@@ -95,6 +103,8 @@ class TelegramService
 
     /**
      * Register a webhook URL with Telegram.
+     *
+     * @return array<string, mixed>
      */
     public function setWebhook(string $url, string $secretToken): array
     {
@@ -107,6 +117,8 @@ class TelegramService
 
     /**
      * Remove the webhook.
+     *
+     * @return array<string, mixed>
      */
     public function deleteWebhook(): array
     {
@@ -115,6 +127,8 @@ class TelegramService
 
     /**
      * Test the bot token by calling getMe.
+     *
+     * @return array<string, mixed>
      */
     public function getMe(): array
     {
@@ -123,6 +137,8 @@ class TelegramService
 
     /**
      * Send a chat action (e.g. "typing") to show the bot is working.
+     *
+     * @return array<string, mixed>
      */
     public function sendChatAction(string $chatId, string $action = 'typing'): array
     {
@@ -134,6 +150,8 @@ class TelegramService
 
     /**
      * Send a photo to a Telegram chat by uploading a file from disk.
+     *
+     * @return array<string, mixed>
      */
     public function sendPhoto(string $chatId, string $filePath, ?string $caption = null): array
     {
@@ -175,6 +193,8 @@ class TelegramService
     /**
      * Send a document to a Telegram chat by uploading a file from disk.
      * Used as fallback when sendPhoto fails (e.g. oversized images).
+     *
+     * @return array<string, mixed>
      */
     public function sendDocument(string $chatId, string $filePath, ?string $caption = null): array
     {
@@ -215,6 +235,8 @@ class TelegramService
 
     /**
      * Delete a message from a Telegram chat.
+     *
+     * @return array<string, mixed>
      */
     public function deleteMessage(string $chatId, int $messageId): array
     {
@@ -226,6 +248,8 @@ class TelegramService
 
     /**
      * Pin a message in a Telegram chat.
+     *
+     * @return array<string, mixed>
      */
     public function pinChatMessage(string $chatId, int $messageId, bool $disableNotification = true): array
     {
@@ -238,6 +262,8 @@ class TelegramService
 
     /**
      * Set a reaction on a message in a Telegram chat.
+     *
+     * @return array<string, mixed>
      */
     public function setMessageReaction(string $chatId, int $messageId, string $emoji): array
     {
@@ -250,6 +276,8 @@ class TelegramService
 
     /**
      * Register the bot's command menu with Telegram.
+     *
+     * @return array<string, mixed>
      */
     public function setMyCommands(): array
     {
@@ -424,6 +452,8 @@ class TelegramService
 
     /**
      * Send a long message by splitting into chunks at line boundaries.
+     *
+     * @return array<string, mixed>
      */
     private function sendLongMessage(string $chatId, string $text, ?int $replyToMessageId = null): array
     {
@@ -441,6 +471,8 @@ class TelegramService
 
     /**
      * Send a single chunk, falling back to plain text if HTML parsing fails.
+     *
+     * @return array<string, mixed>
      */
     private function sendChunk(string $chatId, string $text, ?int $replyToMessageId = null): array
     {
@@ -475,6 +507,8 @@ class TelegramService
      * Strategy: split the text into "segments" (pre blocks and regular text),
      * then accumulate segments into chunks that fit within maxLength.
      * A <pre> block is never split — if it doesn't fit, it gets its own chunk.
+     *
+     * @return array<int, string>
      */
     private function splitAtLineBoundaries(string $text, int $maxLength): array
     {
@@ -534,6 +568,9 @@ class TelegramService
 
     /**
      * Make an HTTP request to the Telegram Bot API.
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
      */
     private function request(string $method, array $params = []): array
     {

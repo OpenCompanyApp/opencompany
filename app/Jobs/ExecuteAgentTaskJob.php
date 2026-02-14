@@ -21,6 +21,7 @@ class ExecuteAgentTaskJob implements ShouldQueue
 
     public int $tries = 2;
     public int $timeout = 1800;
+    /** @var array<int, int> */
     public array $backoff = [10];
 
     public function __construct(

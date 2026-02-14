@@ -10,7 +10,10 @@ use Illuminate\Support\Str;
 
 class ListTemplateController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, ListTemplate>
+     */
+    public function index(Request $request): \Illuminate\Database\Eloquent\Collection
     {
         $query = ListTemplate::with(['defaultAssignee', 'createdBy']);
 
@@ -21,7 +24,7 @@ class ListTemplateController extends Controller
         return $query->orderBy('name')->get();
     }
 
-    public function store(Request $request)
+    public function store(Request $request): ListTemplate
     {
         $template = ListTemplate::create([
             'id' => Str::uuid()->toString(),
@@ -40,7 +43,7 @@ class ListTemplateController extends Controller
         return $template->load(['defaultAssignee', 'createdBy']);
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): ListTemplate
     {
         $template = ListTemplate::findOrFail($id);
 
@@ -75,14 +78,14 @@ class ListTemplateController extends Controller
         return $template->load(['defaultAssignee', 'createdBy']);
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): \Illuminate\Http\JsonResponse
     {
         ListTemplate::findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
 
-    public function createListItem(Request $request, string $templateId)
+    public function createListItem(Request $request, string $templateId): ListItem|\Illuminate\Http\JsonResponse
     {
         $template = ListTemplate::findOrFail($templateId);
 

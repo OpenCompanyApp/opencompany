@@ -99,6 +99,8 @@ class AgentPermissionService
      *
      * Returns null if unrestricted (no channel permissions set).
      * Returns array of channel UUIDs if restricted.
+     *
+     * @return array<int, string>|null
      */
     public function getAllowedChannelIds(User $agent): ?array
     {
@@ -119,6 +121,8 @@ class AgentPermissionService
      *
      * Returns null if unrestricted (no folder permissions set).
      * Returns array of folder UUIDs if restricted.
+     *
+     * @return array<int, string>|null
      */
     public function getAllowedFolderIds(User $agent): ?array
     {

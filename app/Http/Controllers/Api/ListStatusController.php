@@ -10,12 +10,15 @@ use Illuminate\Support\Str;
 
 class ListStatusController extends Controller
 {
-    public function index()
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, ListStatus>
+     */
+    public function index(): \Illuminate\Database\Eloquent\Collection
     {
         return ListStatus::orderBy('position')->get();
     }
 
-    public function store(Request $request)
+    public function store(Request $request): ListStatus
     {
         $request->validate([
             'name' => 'required|string|max:50',
@@ -50,7 +53,7 @@ class ListStatusController extends Controller
         return $status;
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): ListStatus
     {
         $status = ListStatus::findOrFail($id);
 
@@ -81,7 +84,7 @@ class ListStatusController extends Controller
         return $status;
     }
 
-    public function reorder(Request $request)
+    public function reorder(Request $request): \Illuminate\Http\JsonResponse
     {
         $orders = $request->input('orders', []);
 
@@ -92,7 +95,7 @@ class ListStatusController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function destroy(Request $request, string $id)
+    public function destroy(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $status = ListStatus::findOrFail($id);
 

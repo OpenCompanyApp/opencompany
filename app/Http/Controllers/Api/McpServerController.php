@@ -8,6 +8,7 @@ use App\Models\McpServer;
 use App\Services\Mcp\McpClient;
 use App\Services\Mcp\McpServerRegistrar;
 use App\Services\Mcp\McpToolProvider;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
@@ -17,7 +18,7 @@ class McpServerController extends Controller
     /**
      * List all MCP servers.
      */
-    public function index()
+    public function index(): JsonResponse
     {
         $servers = McpServer::orderBy('name')->get();
 
@@ -45,7 +46,7 @@ class McpServerController extends Controller
     /**
      * Create a new MCP server and auto-discover tools.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -111,7 +112,7 @@ class McpServerController extends Controller
     /**
      * Get MCP server details.
      */
-    public function show(string $id)
+    public function show(string $id): JsonResponse
     {
         $server = McpServer::findOrFail($id);
 
@@ -121,7 +122,7 @@ class McpServerController extends Controller
     /**
      * Update MCP server configuration.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): JsonResponse
     {
         $server = McpServer::findOrFail($id);
 
@@ -158,7 +159,7 @@ class McpServerController extends Controller
     /**
      * Delete an MCP server and clean up permissions.
      */
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         $server = McpServer::findOrFail($id);
         $appName = 'mcp_' . $server->slug;
@@ -184,7 +185,7 @@ class McpServerController extends Controller
     /**
      * Test connection to MCP server.
      */
-    public function testConnection(Request $request, string $id)
+    public function testConnection(Request $request, string $id): JsonResponse
     {
         $server = McpServer::findOrFail($id);
 
@@ -221,7 +222,7 @@ class McpServerController extends Controller
     /**
      * Refresh tool discovery for an MCP server.
      */
-    public function discoverTools(string $id)
+    public function discoverTools(string $id): JsonResponse
     {
         $server = McpServer::findOrFail($id);
 
@@ -250,6 +251,9 @@ class McpServerController extends Controller
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function formatServer(McpServer $server): array
     {
         return [

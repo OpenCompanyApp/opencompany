@@ -18,7 +18,7 @@ class DmController extends Controller
     /**
      * Get or create a DM conversation with a user.
      */
-    public function show(string $userId)
+    public function show(string $userId): \Illuminate\Http\JsonResponse
     {
         $currentUserId = 'h1'; // In production, use auth()->id()
 
@@ -98,7 +98,7 @@ class DmController extends Controller
     /**
      * Send a message in a DM conversation.
      */
-    public function store(Request $request, string $userId)
+    public function store(Request $request, string $userId): \Illuminate\Http\JsonResponse
     {
         $currentUserId = 'h1'; // In production, use auth()->id()
         $currentUser = User::find($currentUserId);
@@ -175,7 +175,7 @@ class DmController extends Controller
     /**
      * Mark a DM conversation as read.
      */
-    public function markRead(string $userId)
+    public function markRead(string $userId): \Illuminate\Http\JsonResponse
     {
         $currentUserId = 'h1'; // In production, use auth()->id()
 

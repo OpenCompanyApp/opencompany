@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ChannelMember extends Model
 {
+    /** @use HasFactory<\Database\Factories\ChannelMemberFactory> */
     use HasFactory;
     protected $fillable = [
         'channel_id',
@@ -24,11 +25,13 @@ class ChannelMember extends Model
         ];
     }
 
+    /** @return BelongsTo<Channel, $this> */
     public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

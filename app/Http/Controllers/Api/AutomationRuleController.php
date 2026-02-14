@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ListAutomationRule;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class AutomationRuleController extends Controller
 {
-    public function index(Request $request)
+    /** @return Collection<int, ListAutomationRule> */
+    public function index(Request $request): Collection
     {
         $query = ListAutomationRule::with(['template', 'createdBy']);
 
@@ -20,7 +23,7 @@ class AutomationRuleController extends Controller
         return $query->orderBy('name')->get();
     }
 
-    public function store(Request $request)
+    public function store(Request $request): ListAutomationRule
     {
         $rule = ListAutomationRule::create([
             'id' => Str::uuid()->toString(),
@@ -38,7 +41,7 @@ class AutomationRuleController extends Controller
         return $rule->load(['template', 'createdBy']);
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): ListAutomationRule
     {
         $rule = ListAutomationRule::findOrFail($id);
 
@@ -71,7 +74,7 @@ class AutomationRuleController extends Controller
         return $rule->load(['template', 'createdBy']);
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         ListAutomationRule::findOrFail($id)->delete();
 

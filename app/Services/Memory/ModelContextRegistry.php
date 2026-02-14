@@ -64,6 +64,8 @@ class ModelContextRegistry
 
     /**
      * Find the longest prefix match in the model registry.
+     *
+     * @param  array<string, int>  $registry
      */
     private function longestPrefixMatch(string $model, array $registry): ?int
     {
@@ -83,6 +85,8 @@ class ModelContextRegistry
 
     /**
      * Find the closest model by Levenshtein distance within the threshold.
+     *
+     * @param  array<string, int>  $registry
      */
     private function levenshteinMatch(string $model, array $registry): ?int
     {

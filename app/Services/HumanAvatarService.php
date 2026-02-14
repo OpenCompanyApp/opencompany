@@ -163,6 +163,8 @@ SVG;
 
     /**
      * Generate a deterministic byte array from a seed string.
+     *
+     * @return array<int, int>
      */
     private function seedHash(string $input): array
     {
@@ -183,6 +185,9 @@ SVG;
 
     /**
      * Pick background and accent colors from hash bytes.
+     *
+     * @param  array<int, int>  $hash
+     * @return array<string, string>
      */
     private function pickColors(array $hash): array
     {
@@ -199,6 +204,9 @@ SVG;
 
     /**
      * Build an array of overlapping bokeh circles at seeded positions.
+     *
+     * @param  array<int, int>  $hash
+     * @return array<int, array<string, float>>
      */
     private function buildCircles(array $hash): array
     {

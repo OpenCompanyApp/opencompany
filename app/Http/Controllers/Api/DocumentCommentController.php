@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentComment;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class DocumentCommentController extends Controller
 {
-    public function index(string $documentId)
+    /** @return Collection<int, DocumentComment> */
+    public function index(string $documentId): Collection
     {
         return DocumentComment::with(['author', 'parent', 'resolvedBy'])
             ->where('document_id', $documentId)
@@ -17,7 +20,7 @@ class DocumentCommentController extends Controller
             ->get();
     }
 
-    public function store(Request $request, string $documentId)
+    public function store(Request $request, string $documentId): DocumentComment
     {
         $comment = DocumentComment::create([
             'id' => Str::uuid()->toString(),
@@ -30,7 +33,7 @@ class DocumentCommentController extends Controller
         return $comment->load('author');
     }
 
-    public function update(Request $request, string $documentId, string $commentId)
+    public function update(Request $request, string $documentId, string $commentId): DocumentComment
     {
         $comment = DocumentComment::where('id', $commentId)
             ->where('document_id', $documentId)
@@ -57,7 +60,7 @@ class DocumentCommentController extends Controller
         return $comment->load(['author', 'resolvedBy']);
     }
 
-    public function destroy(string $documentId, string $commentId)
+    public function destroy(string $documentId, string $commentId): JsonResponse
     {
         DocumentComment::where('id', $commentId)
             ->where('document_id', $documentId)

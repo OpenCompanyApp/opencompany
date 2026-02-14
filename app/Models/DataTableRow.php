@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class DataTableRow extends Model
 {
+    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
     use HasFactory, HasUuids;
 
     protected $fillable = [
@@ -27,11 +28,13 @@ class DataTableRow extends Model
         ];
     }
 
+    /** @return BelongsTo<DataTable, $this> */
     public function table(): BelongsTo
     {
         return $this->belongsTo(DataTable::class, 'table_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

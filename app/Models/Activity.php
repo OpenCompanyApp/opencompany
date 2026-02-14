@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Activity extends Model
 {
+    /** @use HasFactory<\Database\Factories\ActivityFactory> */
     use HasFactory;
     protected $keyType = 'string';
     public $incrementing = false;
@@ -29,6 +30,7 @@ class Activity extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');

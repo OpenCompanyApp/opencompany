@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class IntegrationSetting extends Model
 {
+    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
     use HasFactory;
 
     protected $keyType = 'string';
@@ -87,6 +88,7 @@ class IntegrationSetting extends Model
     /**
      * Available integration types (config metadata + DB-stored models).
      */
+    /** @return array<string, mixed> */
     public static function getAvailableIntegrations(): array
     {
         $base = config('integrations', []);

@@ -307,6 +307,7 @@ class QueryWorkspace implements Tool
         return implode("\n", $lines);
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

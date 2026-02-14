@@ -12,6 +12,9 @@ class McpClient
 
     private ?string $sessionId = null;
 
+    /**
+     * @param array<string, string> $authHeaders
+     */
     public function __construct(
         private string $url,
         private array $authHeaders = [],
@@ -32,6 +35,8 @@ class McpClient
 
     /**
      * MCP initialize handshake.
+     *
+     * @return array<string, mixed>
      */
     public function initialize(): array
     {
@@ -47,6 +52,8 @@ class McpClient
 
     /**
      * Discover available tools from the MCP server.
+     *
+     * @return array<int, mixed>
      */
     public function listTools(): array
     {
@@ -57,6 +64,9 @@ class McpClient
 
     /**
      * Execute a tool on the MCP server.
+     *
+     * @param array<string, mixed> $arguments
+     * @return array<string, mixed>
      */
     public function callTool(string $name, array $arguments = []): array
     {
@@ -68,6 +78,9 @@ class McpClient
 
     /**
      * Send a JSON-RPC 2.0 request to the MCP server.
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
      */
     private function sendRequest(string $method, array $params = []): array
     {
@@ -130,6 +143,8 @@ class McpClient
 
     /**
      * Parse a Server-Sent Events response to extract the JSON-RPC result.
+     *
+     * @return array<string, mixed>
      */
     private function parseSseResponse(string $body): array
     {

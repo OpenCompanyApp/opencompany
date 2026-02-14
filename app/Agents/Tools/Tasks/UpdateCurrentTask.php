@@ -144,6 +144,7 @@ class UpdateCurrentTask implements Tool
         return 'Task marked as failed.' . ($reason ? " Reason: {$reason}" : '');
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

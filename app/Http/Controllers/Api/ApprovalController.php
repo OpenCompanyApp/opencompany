@@ -14,7 +14,7 @@ class ApprovalController extends Controller
         private ApprovalExecutionService $approvalService,
     ) {}
 
-    public function index(Request $request)
+    public function index(Request $request): mixed
     {
         $query = ApprovalRequest::with(['requester', 'respondedBy']);
 
@@ -25,7 +25,7 @@ class ApprovalController extends Controller
         return $query->orderBy('created_at', 'desc')->get();
     }
 
-    public function store(Request $request)
+    public function store(Request $request): mixed
     {
         $approval = ApprovalRequest::create([
             'id' => Str::uuid()->toString(),
@@ -40,7 +40,7 @@ class ApprovalController extends Controller
         return $approval->load('requester');
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): mixed
     {
         $approval = ApprovalRequest::findOrFail($id);
 

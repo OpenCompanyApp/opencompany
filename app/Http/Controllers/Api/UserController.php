@@ -4,21 +4,29 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function index()
+    /**
+     * @return Collection<int, User>
+     */
+    public function index(): Collection
     {
         return User::orderBy('name')->get();
     }
 
-    public function agents()
+    /**
+     * @return Collection<int, User>
+     */
+    public function agents(): Collection
     {
         return User::where('type', 'agent')->orderBy('name')->get();
     }
 
-    public function show(string $id)
+    public function show(string $id): JsonResponse|User
     {
         // Check for mock user IDs first
         $mockUsers = $this->getMockUsers();
@@ -29,6 +37,9 @@ class UserController extends Controller
         return User::findOrFail($id);
     }
 
+    /**
+     * @return array<string, array<string, mixed>>
+     */
     private function getMockUsers(): array
     {
         return [
@@ -94,7 +105,7 @@ class UserController extends Controller
         ];
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): User
     {
         $user = User::findOrFail($id);
         $oldName = $user->name;
@@ -115,7 +126,7 @@ class UserController extends Controller
         return $user;
     }
 
-    public function updatePresence(Request $request, string $id)
+    public function updatePresence(Request $request, string $id): User
     {
         $user = User::findOrFail($id);
         $user->update([
@@ -126,7 +137,7 @@ class UserController extends Controller
         return $user;
     }
 
-    public function activity(string $id)
+    public function activity(string $id): JsonResponse
     {
         // Return mock activity data for demo purposes
         return response()->json([

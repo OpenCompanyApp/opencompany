@@ -21,6 +21,8 @@ class ConversationCompactionService
 
     /**
      * Check if compaction is needed for a channel/agent pair.
+     *
+     * @param iterable<mixed> $messages
      */
     public function needsCompaction(string $channelId, User $agent, iterable $messages, ?string $systemPrompt = null): bool
     {
@@ -101,7 +103,7 @@ class ConversationCompactionService
         }
 
         $toSummarize = $messages->slice(0, $splitIndex)->values();
-        $previousSummary = $existing?->summary ?? '';
+        $previousSummary = $existing->summary ?? '';
 
         // Build SDK messages for summarization
         $sdkMessages = [];
@@ -126,10 +128,10 @@ class ConversationCompactionService
                 'summary' => $summaryText,
                 'tokens_before' => $tokensBefore,
                 'tokens_after' => $this->estimateTokenCount($summaryText),
-                'compaction_count' => ($existing?->compaction_count ?? 0) + 1,
+                'compaction_count' => ($existing->compaction_count ?? 0) + 1,
                 'flush_count' => 0, // Reset for new compaction cycle
-                'messages_summarized' => ($existing?->messages_summarized ?? 0) + count($sdkMessages),
-                'last_message_id' => $toSummarize->last()?->id ?? $existing?->last_message_id,
+                'messages_summarized' => ($existing->messages_summarized ?? 0) + count($sdkMessages),
+                'last_message_id' => $toSummarize->last()->id ?? $existing->last_message_id,
             ]
         );
 
@@ -147,6 +149,8 @@ class ConversationCompactionService
 
     /**
      * Summarize messages using an LLM call.
+     *
+     * @param array<int, AssistantMessage|UserMessage> $messages
      */
     private function summarize(array $messages, string $previousSummary): string
     {
@@ -190,6 +194,8 @@ class ConversationCompactionService
 
     /**
      * Estimate token count for a collection of SDK messages.
+     *
+     * @param iterable<mixed> $messages
      */
     private function estimateMessagesTokens(iterable $messages): int
     {

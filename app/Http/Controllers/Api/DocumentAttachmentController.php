@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 class DocumentAttachmentController extends Controller
 {
-    public function index(string $documentId)
+    public function index(string $documentId): mixed
     {
         return DocumentAttachment::with('uploadedBy')
             ->where('document_id', $documentId)
@@ -18,7 +18,7 @@ class DocumentAttachmentController extends Controller
             ->get();
     }
 
-    public function store(Request $request, string $documentId)
+    public function store(Request $request, string $documentId): mixed
     {
         $file = $request->file('file');
         $path = $file->store('document-attachments', 'public');
@@ -37,7 +37,7 @@ class DocumentAttachmentController extends Controller
         return $attachment->load('uploadedBy');
     }
 
-    public function destroy(string $documentId, string $attachmentId)
+    public function destroy(string $documentId, string $attachmentId): \Illuminate\Http\JsonResponse
     {
         $attachment = DocumentAttachment::where('id', $attachmentId)
             ->where('document_id', $documentId)

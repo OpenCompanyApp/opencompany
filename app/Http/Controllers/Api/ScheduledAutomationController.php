@@ -8,13 +8,18 @@ use App\Jobs\RunScheduledAutomationJob;
 use App\Models\ScheduledAutomation;
 use App\Models\Task;
 use Cron\CronExpression;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class ScheduledAutomationController extends Controller
 {
-    public function index()
+    /**
+     * @return array<int, mixed>
+     */
+    public function index(): array
     {
         $automations = ScheduledAutomation::with(['agent', 'channel', 'createdBy'])
             ->orderBy('name')
@@ -23,7 +28,10 @@ class ScheduledAutomationController extends Controller
         return ScheduledAutomationResource::collection($automations)->resolve();
     }
 
-    public function store(Request $request)
+    /**
+     * @return array<string, mixed>|JsonResponse
+     */
+    public function store(Request $request): array|JsonResponse
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -56,7 +64,10 @@ class ScheduledAutomationController extends Controller
         ))->resolve();
     }
 
-    public function show(string $id)
+    /**
+     * @return array<string, mixed>
+     */
+    public function show(string $id): array
     {
         $automation = ScheduledAutomation::with(['agent', 'channel', 'createdBy'])
             ->findOrFail($id);
@@ -68,7 +79,10 @@ class ScheduledAutomationController extends Controller
         return $data;
     }
 
-    public function update(Request $request, string $id)
+    /**
+     * @return array<string, mixed>|JsonResponse
+     */
+    public function update(Request $request, string $id): array|JsonResponse
     {
         $automation = ScheduledAutomation::findOrFail($id);
 
@@ -120,14 +134,17 @@ class ScheduledAutomationController extends Controller
         ))->resolve();
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         ScheduledAutomation::findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
 
-    public function runs(string $id)
+    /**
+     * @return \Illuminate\Support\Collection<int, mixed>
+     */
+    public function runs(string $id): Collection
     {
         $tasks = Task::with(['agent'])
             ->where('source', Task::SOURCE_AUTOMATION)
@@ -149,7 +166,7 @@ class ScheduledAutomationController extends Controller
         ]);
     }
 
-    public function triggerRun(string $id)
+    public function triggerRun(string $id): JsonResponse
     {
         $automation = ScheduledAutomation::findOrFail($id);
         RunScheduledAutomationJob::dispatch($automation);
@@ -157,7 +174,7 @@ class ScheduledAutomationController extends Controller
         return response()->json(['message' => 'Run dispatched']);
     }
 
-    public function previewSchedule(Request $request)
+    public function previewSchedule(Request $request): JsonResponse
     {
         $cronExpr = $request->input('cronExpression');
 

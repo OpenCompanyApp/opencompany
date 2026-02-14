@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Message extends Model
 {
+    /** @use HasFactory<\Database\Factories\MessageFactory> */
     use HasFactory;
     protected $keyType = 'string';
     public $incrementing = false;
@@ -57,6 +58,7 @@ class Message extends Model
         return $this->belongsTo(Message::class, 'reply_to_id');
     }
 
+    /** @return HasMany<Message, $this> */
     public function replies(): HasMany
     {
         return $this->hasMany(Message::class, 'reply_to_id');
@@ -74,11 +76,13 @@ class Message extends Model
         return $this->belongsTo(User::class, 'pinned_by_id');
     }
 
+    /** @return HasMany<MessageReaction, $this> */
     public function reactions(): HasMany
     {
         return $this->hasMany(MessageReaction::class);
     }
 
+    /** @return HasMany<MessageAttachment, $this> */
     public function attachments(): HasMany
     {
         return $this->hasMany(MessageAttachment::class);

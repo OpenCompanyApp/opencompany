@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Document extends Model
 {
+    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<static>> */
     use HasFactory;
     protected $keyType = 'string';
     public $incrementing = false;
@@ -58,16 +59,19 @@ class Document extends Model
         return $array;
     }
 
+    /** @return BelongsTo<User, $this> */
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
     }
 
+    /** @return BelongsTo<Document, $this> */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(Document::class, 'parent_id');
     }
 
+    /** @return HasMany<Document, $this> */
     public function children(): HasMany
     {
         return $this->hasMany(Document::class, 'parent_id');
@@ -79,16 +83,19 @@ class Document extends Model
         return $this->hasMany(DocumentPermission::class);
     }
 
+    /** @return HasMany<DocumentComment, $this> */
     public function comments(): HasMany
     {
         return $this->hasMany(DocumentComment::class);
     }
 
+    /** @return HasMany<DocumentVersion, $this> */
     public function versions(): HasMany
     {
         return $this->hasMany(DocumentVersion::class);
     }
 
+    /** @return HasMany<DocumentAttachment, $this> */
     public function attachments(): HasMany
     {
         return $this->hasMany(DocumentAttachment::class);

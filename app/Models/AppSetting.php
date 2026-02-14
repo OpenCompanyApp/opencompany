@@ -78,6 +78,8 @@ class AppSetting extends Model
 
     /**
      * Get all settings in a category as key-value pairs.
+     *
+     * @return array<string, mixed>
      */
     public static function getByCategory(string $category): array
     {
@@ -88,6 +90,8 @@ class AppSetting extends Model
 
     /**
      * Batch upsert settings for a category.
+     *
+     * @param array<string, mixed> $settings
      */
     public static function setMany(array $settings, string $category): void
     {
@@ -98,6 +102,8 @@ class AppSetting extends Model
 
     /**
      * Get all settings grouped by category.
+     *
+     * @return array<string, array<string, mixed>>
      */
     public static function allGrouped(): array
     {
@@ -113,6 +119,8 @@ class AppSetting extends Model
 
     /**
      * Default settings with their categories and values.
+     *
+     * @return array<string, array<string, mixed>>
      */
     public static function defaults(): array
     {
@@ -148,6 +156,8 @@ class AppSetting extends Model
 
     /**
      * Get all settings grouped by category, merged with defaults.
+     *
+     * @return array<string, array<string, mixed>>
      */
     public static function allWithDefaults(): array
     {

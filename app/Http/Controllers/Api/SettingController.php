@@ -14,7 +14,7 @@ class SettingController extends Controller
     /**
      * Get all settings grouped by category, merged with defaults.
      */
-    public function index()
+    public function index(): \Illuminate\Http\JsonResponse
     {
         return response()->json(AppSetting::allWithDefaults());
     }
@@ -22,7 +22,7 @@ class SettingController extends Controller
     /**
      * Update settings for a specific category.
      */
-    public function update(Request $request)
+    public function update(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
             'category' => 'required|string|in:organization,agents,notifications,policies,memory',
@@ -68,7 +68,7 @@ class SettingController extends Controller
     /**
      * Handle danger zone actions.
      */
-    public function dangerAction(Request $request)
+    public function dangerAction(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
             'action' => 'required|string|in:pause_agents,reset_memory',

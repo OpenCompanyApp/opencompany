@@ -23,11 +23,13 @@ class ConversationSummary extends Model
         'last_message_id',
     ];
 
+    /** @return BelongsTo<Channel, $this> */
     public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function agent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'agent_id');

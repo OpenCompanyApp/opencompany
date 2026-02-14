@@ -5,11 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DataTable;
 use App\Models\DataTableRow;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class DataTableRowController extends Controller
 {
-    public function index(Request $request, string $tableId)
+    /**
+     * @return Collection<int, DataTableRow>|LengthAwarePaginator<int, DataTableRow>
+     */
+    public function index(Request $request, string $tableId): Collection|LengthAwarePaginator
     {
         $query = DataTableRow::where('table_id', $tableId)
             ->with('creator');
@@ -29,14 +35,14 @@ class DataTableRowController extends Controller
         return $query->orderBy('created_at', 'desc')->get();
     }
 
-    public function show(string $tableId, string $rowId)
+    public function show(string $tableId, string $rowId): DataTableRow
     {
         return DataTableRow::where('table_id', $tableId)
             ->with('creator')
             ->findOrFail($rowId);
     }
 
-    public function store(Request $request, string $tableId)
+    public function store(Request $request, string $tableId): DataTableRow
     {
         $table = DataTable::findOrFail($tableId);
 
@@ -52,7 +58,7 @@ class DataTableRowController extends Controller
         return $row->load('creator');
     }
 
-    public function update(Request $request, string $tableId, string $rowId)
+    public function update(Request $request, string $tableId, string $rowId): DataTableRow
     {
         $row = DataTableRow::where('table_id', $tableId)
             ->findOrFail($rowId);
@@ -69,7 +75,7 @@ class DataTableRowController extends Controller
         return $row->load('creator');
     }
 
-    public function destroy(string $tableId, string $rowId)
+    public function destroy(string $tableId, string $rowId): JsonResponse
     {
         DataTableRow::where('table_id', $tableId)
             ->findOrFail($rowId)
@@ -78,7 +84,10 @@ class DataTableRowController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function bulkCreate(Request $request, string $tableId)
+    /**
+     * @return Collection<int, DataTableRow>
+     */
+    public function bulkCreate(Request $request, string $tableId): Collection
     {
         $table = DataTable::findOrFail($tableId);
 
@@ -103,7 +112,7 @@ class DataTableRowController extends Controller
         return $collection->load('creator');
     }
 
-    public function bulkDelete(Request $request, string $tableId)
+    public function bulkDelete(Request $request, string $tableId): JsonResponse
     {
         $request->validate([
             'rowIds' => 'required|array',

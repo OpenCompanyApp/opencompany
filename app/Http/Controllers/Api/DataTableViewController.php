@@ -5,18 +5,21 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DataTable;
 use App\Models\DataTableView;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DataTableViewController extends Controller
 {
-    public function index(string $tableId)
+    /** @return Collection<int, DataTableView> */
+    public function index(string $tableId): Collection
     {
         return DataTableView::where('table_id', $tableId)
             ->orderBy('created_at')
             ->get();
     }
 
-    public function store(Request $request, string $tableId)
+    public function store(Request $request, string $tableId): DataTableView
     {
         $table = DataTable::findOrFail($tableId);
 
@@ -36,7 +39,7 @@ class DataTableViewController extends Controller
         return $view;
     }
 
-    public function update(Request $request, string $tableId, string $viewId)
+    public function update(Request $request, string $tableId, string $viewId): DataTableView
     {
         $view = DataTableView::where('table_id', $tableId)
             ->findOrFail($viewId);
@@ -64,7 +67,7 @@ class DataTableViewController extends Controller
         return $view;
     }
 
-    public function destroy(string $tableId, string $viewId)
+    public function destroy(string $tableId, string $viewId): JsonResponse
     {
         DataTableView::where('table_id', $tableId)
             ->findOrFail($viewId)

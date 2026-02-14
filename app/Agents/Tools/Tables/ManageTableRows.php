@@ -101,6 +101,9 @@ class ManageTableRows implements Tool
 
     /**
      * Resolve human-readable data keys to column UUIDs, auto-creating columns as needed.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
      */
     private function resolveDataKeys(DataTable $table, array $data): array
     {
@@ -176,6 +179,9 @@ class ManageTableRows implements Tool
         return 'text';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function schema(JsonSchema $schema): array
     {
         return [

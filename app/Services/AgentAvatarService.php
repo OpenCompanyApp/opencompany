@@ -153,6 +153,8 @@ SVG;
 
     /**
      * Generate a deterministic byte array from a seed string.
+     *
+     * @return array<int, int>
      */
     private function seedHash(string $input): array
     {
@@ -173,6 +175,9 @@ SVG;
 
     /**
      * Pick background and accent colors from hash bytes.
+     *
+     * @param  array<int, int>  $hash
+     * @return array<string, string>
      */
     private function pickColors(array $hash): array
     {
@@ -196,6 +201,9 @@ SVG;
     /**
      * Build the 5×5 grid with vertical symmetry.
      * Only columns 0,1,2 are generated; 3,4 mirror 1,0.
+     *
+     * @param  array<int, int>  $hash
+     * @return array<int, array<int, array<string, mixed>>>
      */
     private function buildGrid(array $hash): array
     {

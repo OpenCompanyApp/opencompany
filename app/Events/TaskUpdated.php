@@ -31,6 +31,7 @@ class TaskUpdated implements ShouldBroadcast
         ];
     }
 
+    /** @return array<string, mixed> */
     public function broadcastWith(): array
     {
         // Minimal payload — frontend uses this as a refresh trigger only.

@@ -127,6 +127,7 @@ class ManageTable implements Tool
         return 'Column deleted.';
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

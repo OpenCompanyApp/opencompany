@@ -31,6 +31,7 @@ class MessageSent implements ShouldBroadcast
         ];
     }
 
+    /** @return array<string, mixed> */
     public function broadcastWith(): array
     {
         $message = $this->message->load(['author', 'reactions.user', 'attachments', 'replyTo.author']);

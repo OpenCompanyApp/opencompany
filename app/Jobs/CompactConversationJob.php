@@ -17,6 +17,7 @@ class CompactConversationJob implements ShouldQueue
 
     public int $tries = 2;
     public int $timeout = 120;
+    /** @var array<int, int> */
     public array $backoff = [15];
 
     public function __construct(

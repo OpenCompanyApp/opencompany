@@ -58,6 +58,7 @@ class RerankingService
      * Qwen3-Reranker outputs "yes"/"no" relevance judgments via a specialized
      * system prompt. Scoring is binary: yes=1.0, no=0.0, error=0.5.
      *
+     * @param  array<int, string>  $documents
      * @return array<int, array{index: int, document: string, score: float}>
      */
     private function rerankWithOllama(string $query, array $documents, string $model, int $topK): array
@@ -117,6 +118,7 @@ class RerankingService
     /**
      * Pass-through: return documents in original order with synthetic scores.
      *
+     * @param  array<int, string>  $documents
      * @return array<int, array{index: int, document: string, score: float}>
      */
     private function passThrough(array $documents): array

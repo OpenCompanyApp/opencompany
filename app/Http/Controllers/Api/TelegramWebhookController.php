@@ -62,6 +62,8 @@ class TelegramWebhookController extends Controller
 
     /**
      * Handle an incoming text message from Telegram.
+     *
+     * @param  array<string, mixed>  $message
      */
     private function handleMessage(array $message, IntegrationSetting $setting): void
     {
@@ -252,6 +254,8 @@ class TelegramWebhookController extends Controller
 
     /**
      * Handle a callback query (approval button press).
+     *
+     * @param  array<string, mixed>  $callbackQuery
      */
     private function handleCallbackQuery(array $callbackQuery): void
     {
@@ -337,6 +341,8 @@ class TelegramWebhookController extends Controller
      * Resolve the system user for a Telegram sender.
      * Checks for a linked user via external identities first,
      * then falls back to an ephemeral shadow user.
+     *
+     * @param  array<string, mixed>  $from
      */
     private function resolveTelegramUser(array $from): User
     {

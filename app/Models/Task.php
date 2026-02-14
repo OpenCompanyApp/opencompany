@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Task extends Model
 {
+    /** @use HasFactory<\Database\Factories\TaskFactory> */
     use HasFactory;
 
     protected $table = 'tasks';
@@ -182,6 +183,7 @@ class Task extends Model
         return $this;
     }
 
+    /** @param array<string, mixed>|null $result */
     public function complete(?array $result = null): self
     {
         $this->update([
@@ -216,27 +218,47 @@ class Task extends Model
 
     // Query Scopes
 
-    public function scopePending($query)
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder<static> $query
+     * @return \Illuminate\Database\Eloquent\Builder<static>
+     */
+    public function scopePending(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('status', self::STATUS_PENDING);
     }
 
-    public function scopeActive($query)
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder<static> $query
+     * @return \Illuminate\Database\Eloquent\Builder<static>
+     */
+    public function scopeActive(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('status', self::STATUS_ACTIVE);
     }
 
-    public function scopeCompleted($query)
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder<static> $query
+     * @return \Illuminate\Database\Eloquent\Builder<static>
+     */
+    public function scopeCompleted(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('status', self::STATUS_COMPLETED);
     }
 
-    public function scopeForAgent($query, string $agentId)
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder<static> $query
+     * @return \Illuminate\Database\Eloquent\Builder<static>
+     */
+    public function scopeForAgent(\Illuminate\Database\Eloquent\Builder $query, string $agentId): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('agent_id', $agentId);
     }
 
-    public function scopeForRequester($query, string $requesterId)
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder<static> $query
+     * @return \Illuminate\Database\Eloquent\Builder<static>
+     */
+    public function scopeForRequester(\Illuminate\Database\Eloquent\Builder $query, string $requesterId): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('requester_id', $requesterId);
     }
@@ -267,6 +289,7 @@ class Task extends Model
         ]);
     }
 
+    /** @param array<string, mixed> $metadata */
     public function addStep(string $description, string $type = 'action', array $metadata = []): TaskStep
     {
         /** @var TaskStep */

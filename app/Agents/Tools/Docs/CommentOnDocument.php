@@ -101,6 +101,7 @@ class CommentOnDocument implements Tool
         return 'Comment deleted.';
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

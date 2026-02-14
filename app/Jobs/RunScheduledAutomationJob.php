@@ -27,6 +27,7 @@ class RunScheduledAutomationJob implements ShouldQueue
 
     public int $timeout = 1800;
 
+    /** @var array<int, int> */
     public array $backoff = [30];
 
     public function __construct(
@@ -54,7 +55,7 @@ class RunScheduledAutomationJob implements ShouldQueue
                 'description' => "Automation channel for: {$this->automation->name}",
                 'creator_id' => $this->automation->created_by_id,
             ]);
-            $channel->members()->attach(array_filter(['system', $this->automation->agent_id]));
+            $channel->users()->attach(array_filter(['system', $this->automation->agent_id]));
             $this->automation->updateQuietly(['channel_id' => $channel->id]);
             $channelId = $channel->id;
         }
@@ -174,7 +175,9 @@ class RunScheduledAutomationJob implements ShouldQueue
         $prompt .= "**Run #:** ".($this->automation->run_count + 1)."\n";
 
         if ($this->automation->last_run_at) {
-            $prompt .= "**Last run:** {$this->automation->last_run_at->diffForHumans()}\n";
+            /** @var \Carbon\Carbon $lastRunAt */
+            $lastRunAt = $this->automation->last_run_at;
+            $prompt .= "**Last run:** {$lastRunAt->diffForHumans()}\n";
         }
 
         $prompt .= "\n---\n\n";

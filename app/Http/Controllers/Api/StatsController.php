@@ -9,7 +9,7 @@ use App\Models\User;
 
 class StatsController extends Controller
 {
-    public function index()
+    public function index(): \Illuminate\Http\JsonResponse
     {
         // Calculate dynamic stats
         $agentsOnline = User::where('type', 'agent')

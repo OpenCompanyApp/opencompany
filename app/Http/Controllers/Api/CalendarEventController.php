@@ -6,11 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
 use Carbon\Carbon;
 use Cron\CronExpression;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
 class CalendarEventController extends Controller
 {
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, CalendarEvent>|Collection<int, CalendarEvent>
+     */
     public function index(Request $request)
     {
         $rangeStart = $request->has('start') ? Carbon::parse($request->input('start')) : null;
@@ -67,13 +72,13 @@ class CalendarEventController extends Controller
         return $events;
     }
 
-    public function show(string $id)
+    public function show(string $id): CalendarEvent
     {
         return CalendarEvent::with(['creator', 'attendees.user'])
             ->findOrFail($id);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): CalendarEvent
     {
         $request->validate([
             'title' => 'required|string|max:255',
@@ -110,7 +115,7 @@ class CalendarEventController extends Controller
         return $event->load(['creator', 'attendees.user']);
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): CalendarEvent|JsonResponse
     {
         $request->validate([
             'endAt' => 'nullable|date',
@@ -174,14 +179,14 @@ class CalendarEventController extends Controller
         return $event->load(['creator', 'attendees.user']);
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         CalendarEvent::findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
 
-    public function export(Request $request)
+    public function export(Request $request): \Illuminate\Http\Response
     {
         $rangeStart = $request->has('start') ? Carbon::parse($request->input('start')) : null;
         $rangeEnd = $request->has('end') ? Carbon::parse($request->input('end')) : null;
@@ -271,7 +276,7 @@ class CalendarEventController extends Controller
         ]);
     }
 
-    public function import(Request $request)
+    public function import(Request $request): JsonResponse
     {
         $request->validate([
             'file' => 'required|file|mimes:ics,txt|max:2048',
@@ -282,7 +287,7 @@ class CalendarEventController extends Controller
         return $this->importIcsContent($content);
     }
 
-    public function importFromUrl(Request $request)
+    public function importFromUrl(Request $request): JsonResponse
     {
         $request->validate([
             'url' => 'required|url|max:2048',
@@ -297,7 +302,7 @@ class CalendarEventController extends Controller
         return $this->importIcsContent($response->body());
     }
 
-    private function importIcsContent(string $content)
+    private function importIcsContent(string $content): JsonResponse
     {
         // Unfold lines (RFC 5545: lines starting with space/tab are continuations)
         $content = preg_replace('/\r?\n[ \t]/', '', $content);
@@ -390,8 +395,11 @@ class CalendarEventController extends Controller
 
     /**
      * Expand recurring events into virtual instances within the given range.
+     *
+     * @param \Illuminate\Database\Eloquent\Collection<int, CalendarEvent> $recurringEvents
+     * @return Collection<int, CalendarEvent>
      */
-    private function expandRecurringEvents($recurringEvents, Carbon $rangeStart, Carbon $rangeEnd): \Illuminate\Support\Collection
+    private function expandRecurringEvents(\Illuminate\Database\Eloquent\Collection $recurringEvents, Carbon $rangeStart, Carbon $rangeEnd): Collection
     {
         $expanded = collect();
 

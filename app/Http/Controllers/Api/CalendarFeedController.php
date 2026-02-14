@@ -7,11 +7,17 @@ use App\Models\CalendarEvent;
 use App\Models\CalendarFeed;
 use Carbon\Carbon;
 use Cron\CronExpression;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 
 class CalendarFeedController extends Controller
 {
-    public function index()
+    /**
+     * @return Collection<int, mixed>
+     */
+    public function index(): Collection
     {
         return CalendarFeed::where('user_id', auth()->id())
             ->orderBy('created_at', 'desc')
@@ -27,7 +33,7 @@ class CalendarFeedController extends Controller
             });
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $request->validate([
             'name' => 'nullable|string|max:255',
@@ -47,7 +53,7 @@ class CalendarFeedController extends Controller
         ], 201);
     }
 
-    public function destroy(string $id)
+    public function destroy(string $id): JsonResponse
     {
         $feed = CalendarFeed::where('user_id', auth()->id())->findOrFail($id);
         $feed->delete();
@@ -58,7 +64,7 @@ class CalendarFeedController extends Controller
     /**
      * Public ICS feed endpoint — no auth required, uses token.
      */
-    public function feed(string $token)
+    public function feed(string $token): Response
     {
         $feed = CalendarFeed::where('token', $token)->firstOrFail();
         $userId = $feed->user_id;
@@ -122,7 +128,11 @@ class CalendarFeedController extends Controller
         ]);
     }
 
-    private function expandRecurringEvents($recurringEvents, Carbon $rangeStart, Carbon $rangeEnd): \Illuminate\Support\Collection
+    /**
+     * @param \Illuminate\Database\Eloquent\Collection<int, CalendarEvent> $recurringEvents
+     * @return Collection<int, CalendarEvent>
+     */
+    private function expandRecurringEvents(\Illuminate\Database\Eloquent\Collection $recurringEvents, Carbon $rangeStart, Carbon $rangeEnd): Collection
     {
         $expanded = collect();
 
@@ -172,6 +182,9 @@ class CalendarFeedController extends Controller
         return $expanded;
     }
 
+    /**
+     * @return array<int, string>
+     */
     private function eventToVevent(CalendarEvent $event): array
     {
         $isInstance = $event->recurrence_rule !== null;

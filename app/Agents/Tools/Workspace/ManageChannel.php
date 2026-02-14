@@ -142,6 +142,7 @@ class ManageChannel implements Tool
         return "Removed {$user->name} from #{$channel->name}.";
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

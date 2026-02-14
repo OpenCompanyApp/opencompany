@@ -10,7 +10,7 @@ class McpSchemaTranslator
     /**
      * Translate an MCP inputSchema (JSON Schema) into a Laravel Tool schema array.
      *
-     * @param  array  $inputSchema  MCP tool's inputSchema (JSON Schema with type, properties, required)
+     * @param  array<string, mixed>  $inputSchema  MCP tool's inputSchema (JSON Schema with type, properties, required)
      * @param  JsonSchema  $factory  The Laravel JsonSchema factory
      * @return array<string, Type>
      */
@@ -37,6 +37,7 @@ class McpSchemaTranslator
         return $result;
     }
 
+    /** @param array<string, mixed> $propSchema */
     private static function translateProperty(array $propSchema, JsonSchema $factory): Type
     {
         $type = $propSchema['type'] ?? 'string';
@@ -52,6 +53,7 @@ class McpSchemaTranslator
         };
     }
 
+    /** @param array<string, mixed> $schema */
     private static function buildString(array $schema, JsonSchema $factory): Type
     {
         $s = $factory->string();
@@ -63,6 +65,7 @@ class McpSchemaTranslator
         return $s;
     }
 
+    /** @param array<string, mixed> $schema */
     private static function buildArray(array $schema, JsonSchema $factory): Type
     {
         $a = $factory->array();
@@ -77,6 +80,7 @@ class McpSchemaTranslator
         return $a;
     }
 
+    /** @param array<string, mixed> $schema */
     private static function buildObject(array $schema, JsonSchema $factory): Type
     {
         $properties = [];

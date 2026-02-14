@@ -33,6 +33,7 @@ class TypingIndicator implements ShouldBroadcast
         return 'typing';
     }
 
+    /** @return array<string, mixed> */
     public function broadcastWith(): array
     {
         return [

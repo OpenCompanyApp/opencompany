@@ -151,6 +151,7 @@ class ReadChannel implements Tool
         return "[msg:{$shortId}] [{$time}] {$authorName}{$source}: {$message->content}{$pin}";
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

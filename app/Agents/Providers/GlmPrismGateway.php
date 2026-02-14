@@ -31,7 +31,7 @@ class GlmPrismGateway extends PrismGateway
      * Prism's using() accepts string|ProviderEnum, so passing 'glm' resolves
      * to our custom provider registered via PrismManager::extend('glm', ...).
      */
-    protected function configure($prism, Provider $provider, string $model): mixed
+    protected function configure(mixed $prism, Provider $provider, string $model): mixed
     {
         return $prism->using(
             'glm',
@@ -46,13 +46,16 @@ class GlmPrismGateway extends PrismGateway
      * Override to use config-based timeout (instead of hardcoded 60s)
      * and add HTTP-level retries for transient failures.
      */
+    /**
+     * @param  array<string, mixed>|null  $schema
+     */
     protected function createPrismTextRequest(
         Provider $provider,
         string $model,
         ?array $schema,
         ?TextGenerationOptions $options = null,
         ?int $timeout = null,
-    ) {
+    ): mixed {
         $resolvedTimeout = $timeout ?? (int) config('prism.request_timeout', 600);
 
         return parent::createPrismTextRequest(

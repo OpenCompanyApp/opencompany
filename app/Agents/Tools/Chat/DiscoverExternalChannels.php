@@ -16,7 +16,7 @@ class DiscoverExternalChannels implements Tool
 {
     public function __construct(
         private User $agent,
-        private AgentPermissionService $permissionService,
+        private AgentPermissionService $permissionService, // @phpstan-ignore property.onlyWritten
     ) {}
 
     public function description(): string
@@ -138,6 +138,7 @@ class DiscoverExternalChannels implements Tool
         return "Left '{$channel->name}' ({$channel->external_provider}).";
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

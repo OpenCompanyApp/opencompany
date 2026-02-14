@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DocumentVersion extends Model
 {
+    /** @use HasFactory<\Database\Factories\DocumentVersionFactory> */
     use HasFactory;
     protected $keyType = 'string';
     public $incrementing = false;
@@ -22,11 +23,13 @@ class DocumentVersion extends Model
         'change_description',
     ];
 
+    /** @return BelongsTo<Document, $this> */
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');

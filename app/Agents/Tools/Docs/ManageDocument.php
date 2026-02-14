@@ -39,6 +39,7 @@ class ManageDocument implements Tool
         }
     }
 
+    /** @param array<int, string>|null $allowedFolderIds */
     private function create(Request $request, ?array $allowedFolderIds): string
     {
         $parentId = $request['parentId'] ?? null;
@@ -59,6 +60,7 @@ class ManageDocument implements Tool
         return "Document created: '{$document->title}' (ID: {$document->id})";
     }
 
+    /** @param array<int, string>|null $allowedFolderIds */
     private function update(Request $request, ?array $allowedFolderIds): string
     {
         $document = Document::findOrFail($request['documentId']);
@@ -87,6 +89,7 @@ class ManageDocument implements Tool
         return "Document updated: '{$document->title}'";
     }
 
+    /** @param array<int, string>|null $allowedFolderIds */
     private function delete(Request $request, ?array $allowedFolderIds): string
     {
         $document = Document::findOrFail($request['documentId']);
@@ -105,6 +108,7 @@ class ManageDocument implements Tool
         return "Document deleted: '{$title}'";
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

@@ -11,7 +11,8 @@ use Illuminate\Http\Request;
 
 class ActivityController extends Controller
 {
-    public function index(Request $request)
+    /** @return \Illuminate\Support\Collection<int, mixed> */
+    public function index(Request $request): \Illuminate\Support\Collection
     {
         $limit = (int) $request->input('limit', 50);
 

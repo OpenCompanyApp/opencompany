@@ -302,6 +302,7 @@ class ManageMcpServer implements Tool
         return "MCP server not found: '{$identifier}'. Use action 'list' to see available servers.";
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

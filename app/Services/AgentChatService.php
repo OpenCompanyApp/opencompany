@@ -64,6 +64,8 @@ class AgentChatService
 
     /**
      * Call GLM/Zhipu AI API directly
+     *
+     * @param  array<int, array<string, string>>  $messages
      */
     private function callGlmApi(string $apiKey, string $baseUrl, string $model, string $systemPrompt, array $messages): string
     {
