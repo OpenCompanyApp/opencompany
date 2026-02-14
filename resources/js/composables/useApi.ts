@@ -216,6 +216,7 @@ export const useApi = () => {
 
   // Documents
   const fetchDocuments = () => useFetch<Document[]>('/documents')
+  const searchDocuments = (query: string) => api.get<Document[]>(`/documents/search?q=${encodeURIComponent(query)}`)
   const fetchDocument = (id: string) => useFetch<Document>(`/documents/${id}`)
   const createDocument = (data: { title: string; content?: string; authorId: string; parentId?: string; isFolder?: boolean; viewerIds?: string[]; editorIds?: string[] }) =>
     api.post('/documents', data)
@@ -501,6 +502,7 @@ export const useApi = () => {
     completeTaskStep,
     // Documents
     fetchDocuments,
+    searchDocuments,
     fetchDocument,
     createDocument,
     updateDocument,

@@ -7,6 +7,8 @@ use App\Http\Resources\DocumentResource;
 use App\Models\Document;
 use App\Models\DocumentPermission;
 use App\Models\DocumentVersion;
+use App\Services\Memory\DocumentIndexingService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -19,6 +21,60 @@ class DocumentController extends Controller
             ->get();
 
         return $documents;
+    }
+
+    /**
+     * @return JsonResponse|mixed
+     */
+    public function search(Request $request)
+    {
+        $query = trim($request->input('q', ''));
+
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        try {
+            $indexer = app(DocumentIndexingService::class);
+
+            $chunks = $indexer->search(
+                query: $query,
+                collection: null,
+                agentId: null,
+                limit: 20,
+                minSimilarity: 0.3,
+                scopeByAgent: false,
+            );
+        } catch (\Throwable) {
+            $chunks = collect();
+        }
+
+        if ($chunks->isEmpty()) {
+            return Document::with('author')
+                ->where('is_folder', false)
+                ->where(function ($q) use ($query) {
+                    $q->where('title', 'ilike', '%' . $query . '%')
+                      ->orWhere('content', 'ilike', '%' . $query . '%');
+                })
+                ->orderBy('updated_at', 'desc')
+                ->limit(10)
+                ->get();
+        }
+
+        $docScores = $chunks->groupBy('document_id')
+            ->map(fn ($group) => $group->max('similarity'));
+
+        $documents = Document::with('author')
+            ->whereIn('id', $docScores->keys())
+            ->where('is_folder', false)
+            ->get()
+            ->sortByDesc(fn ($doc) => $docScores->get($doc->id, 0))
+            ->values();
+
+        return $documents->map(fn ($doc) => array_merge(
+            $doc->toArray(),
+            ['relevance' => round(($docScores->get($doc->id, 0)) * 100)]
+        ));
     }
 
     public function show(string $id)

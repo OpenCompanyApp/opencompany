@@ -29,18 +29,9 @@ adjustable embedding/summary/flush/reranking model
 memory/privacy considerations
 
 
----
-
-qmd with hybrid/reranking etc
-
 --
- ok but for recall memory tool, we should also have the option to check the logs of a      
-  specific date, without search. with custom truncation parameter options and a reject      
-  feedback if too much tokens would be returned so the agent has to truncate if needed and  
-  too much logs on that daty for example. so agent can choose between search or a           
-  specific day.  
 
-  ---
+go to /docs.
 
-  in task ui i also want to see how much % goes to what, like system prompt , convo         
-  history. And in system prompt also to which identity file, how much to memory etc  
+- Do a cleanup, some docs are out of date partially or already implemented, ivnestigate and update.
+- check what's next to implement in this project and suggest me some.

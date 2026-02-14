@@ -101,38 +101,234 @@ class DocumentIndexingService
             DB::statement('ALTER TABLE embedding_cache ALTER COLUMN embedding TYPE vector');
         }
 
+        self::$hasSearchVector = null;
+
         Log::info('Embedding data reset — tables truncated, HNSW index dropped');
     }
 
     /**
-     * Semantic search across document chunks.
+     * Hybrid search across document chunks (vector + full-text).
      *
-     * @return Collection<int, DocumentChunk>  Ordered by similarity (highest first)
+     * Combines pgvector cosine similarity with PostgreSQL full-text search
+     * using Reciprocal Rank Fusion (RRF). Gracefully falls back to a single
+     * source when the other is unavailable.
+     *
+     * @return Collection<int, DocumentChunk>  Ordered by relevance (highest first)
      */
     public function search(
         string $query,
-        string $collection = 'general',
+        ?string $collection = 'general',
         ?string $agentId = null,
         int $limit = 10,
         float $minSimilarity = 0.5,
+        bool $scopeByAgent = true,
     ): Collection {
-        $queryEmbedding = $this->embedder->embed($query);
+        $vectorResults = $this->vectorSearch($query, $collection, $agentId, $limit, $minSimilarity, $scopeByAgent);
+        $ftsResults = $this->ftsSearch($query, $collection, $agentId, $limit, $scopeByAgent);
+
+        if ($ftsResults->isEmpty()) {
+            return $vectorResults;
+        }
+
+        if ($vectorResults->isEmpty()) {
+            return $ftsResults;
+        }
+
+        return $this->mergeWithRRF($vectorResults, $ftsResults, $limit);
+    }
+
+    /**
+     * Vector similarity search using pgvector cosine distance.
+     *
+     * @return Collection<int, DocumentChunk>
+     */
+    private function vectorSearch(
+        string $query,
+        ?string $collection,
+        ?string $agentId,
+        int $limit,
+        float $minSimilarity,
+        bool $scopeByAgent = true,
+    ): Collection {
+        try {
+            $queryEmbedding = $this->embedder->embed($query);
+        } catch (\Throwable $e) {
+            Log::debug('Vector search skipped: embedding failed', ['error' => $e->getMessage()]);
+
+            return collect();
+        }
+
         $vectorString = '[' . implode(',', $queryEmbedding) . ']';
 
         $builder = DocumentChunk::query()
-            ->where('collection', $collection)
             ->selectRaw('*, 1 - (embedding <=> ?) as similarity', [$vectorString])
-            ->having('similarity', '>=', $minSimilarity)
+            ->whereRaw('1 - (embedding <=> ?) >= ?', [$vectorString, $minSimilarity])
             ->orderByDesc('similarity')
             ->limit($limit);
 
-        if ($agentId !== null) {
-            $builder->where('agent_id', $agentId);
-        } else {
-            $builder->whereNull('agent_id');
+        if ($collection !== null) {
+            $builder->where('collection', $collection);
+        }
+
+        if ($scopeByAgent) {
+            if ($agentId !== null) {
+                $builder->where('agent_id', $agentId);
+            } else {
+                $builder->whereNull('agent_id');
+            }
         }
 
         return $builder->get();
+    }
+
+    /**
+     * Full-text search using PostgreSQL tsvector/tsquery.
+     *
+     * @return Collection<int, DocumentChunk>
+     */
+    private function ftsSearch(
+        string $query,
+        ?string $collection,
+        ?string $agentId,
+        int $limit,
+        bool $scopeByAgent = true,
+    ): Collection {
+        if (DB::getDriverName() !== 'pgsql' || ! $this->hasSearchVectorColumn()) {
+            return collect();
+        }
+
+        $tsQuery = $this->buildTsQuery($query);
+        if ($tsQuery === '') {
+            return collect();
+        }
+
+        try {
+            $builder = DocumentChunk::query()
+                ->whereRaw("search_vector @@ to_tsquery('english', ?)", [$tsQuery])
+                ->selectRaw("*, ts_rank(search_vector, to_tsquery('english', ?)) as similarity", [$tsQuery])
+                ->orderByDesc('similarity')
+                ->limit($limit);
+
+            if ($collection !== null) {
+                $builder->where('collection', $collection);
+            }
+
+            if ($scopeByAgent) {
+                if ($agentId !== null) {
+                    $builder->where('agent_id', $agentId);
+                } else {
+                    $builder->whereNull('agent_id');
+                }
+            }
+
+            return $builder->get();
+        } catch (\Throwable $e) {
+            Log::debug('FTS search failed', ['error' => $e->getMessage()]);
+
+            return collect();
+        }
+    }
+
+    /**
+     * Merge vector and FTS results using weighted Reciprocal Rank Fusion.
+     *
+     * Scores are normalized to 0–1 so callers can display as percentages.
+     *
+     * @param  Collection<int, DocumentChunk>  $vectorResults
+     * @param  Collection<int, DocumentChunk>  $ftsResults
+     * @return Collection<int, DocumentChunk>
+     */
+    private function mergeWithRRF(Collection $vectorResults, Collection $ftsResults, int $limit): Collection
+    {
+        $k = 60;
+        $semanticWeight = (float) config('memory.search.hybrid_weights.semantic', 0.7);
+        $keywordWeight = (float) config('memory.search.hybrid_weights.keyword', 0.3);
+
+        $vectorRanks = $vectorResults->values()->mapWithKeys(
+            fn (DocumentChunk $chunk, int $i) => [$chunk->id => $i]
+        );
+        $ftsRanks = $ftsResults->values()->mapWithKeys(
+            fn (DocumentChunk $chunk, int $i) => [$chunk->id => $i]
+        );
+
+        /** @var Collection<string, DocumentChunk> $allChunks */
+        $allChunks = collect();
+        foreach ($vectorResults as $chunk) {
+            $allChunks[$chunk->id] = $chunk;
+        }
+        foreach ($ftsResults as $chunk) {
+            if (! $allChunks->has($chunk->id)) {
+                $allChunks[$chunk->id] = $chunk;
+            }
+        }
+
+        $penaltyRank = $limit + 1;
+
+        $scored = $allChunks->map(function (DocumentChunk $chunk) use (
+            $vectorRanks, $ftsRanks, $k, $semanticWeight, $keywordWeight, $penaltyRank,
+        ) {
+            $vRank = $vectorRanks->get($chunk->id, $penaltyRank);
+            $fRank = $ftsRanks->get($chunk->id, $penaltyRank);
+
+            $chunk->similarity = ($semanticWeight / ($k + $vRank + 1)) + ($keywordWeight / ($k + $fRank + 1));
+
+            return $chunk;
+        });
+
+        // Normalize to 0–1 so callers can display as percentages
+        $maxScore = $scored->max('similarity');
+        if ($maxScore > 0) {
+            $scored = $scored->map(function (DocumentChunk $chunk) use ($maxScore) {
+                $chunk->similarity = $chunk->similarity / $maxScore;
+
+                return $chunk;
+            });
+        }
+
+        return $scored->sortByDesc('similarity')->take($limit)->values();
+    }
+
+    /**
+     * Convert a natural language query to a PostgreSQL tsquery string.
+     */
+    private function buildTsQuery(string $query): string
+    {
+        $words = array_filter(
+            explode(' ', trim($query)),
+            fn (string $w) => mb_strlen($w) > 1
+        );
+
+        if (empty($words)) {
+            return '';
+        }
+
+        $sanitized = array_map(
+            fn (string $w) => preg_replace('/[^a-zA-Z0-9]/', '', $w),
+            $words
+        );
+
+        $filtered = array_filter($sanitized, fn (string $w) => $w !== '');
+
+        return implode(' & ', $filtered);
+    }
+
+    private static ?bool $hasSearchVector = null;
+
+    /**
+     * Check if the search_vector column exists (migration may not have run yet).
+     */
+    private function hasSearchVectorColumn(): bool
+    {
+        if (self::$hasSearchVector !== null) {
+            return self::$hasSearchVector;
+        }
+
+        self::$hasSearchVector = DB::selectOne(
+            "SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'document_chunks' AND column_name = 'search_vector'"
+        ) !== null;
+
+        return self::$hasSearchVector;
     }
 
     /**

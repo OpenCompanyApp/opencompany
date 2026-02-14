@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** @property array<string, mixed>|null $metadata */
+/**
+ * @property array<string, mixed>|null $metadata
+ * @property float|null $similarity  Virtual attribute from search queries
+ */
 class DocumentChunk extends Model
 {
     use HasUuids;

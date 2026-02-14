@@ -122,6 +122,7 @@ Route::delete('/automation-rules/{id}', [AutomationRuleController::class, 'destr
 
 // Documents
 Route::get('/documents', [DocumentController::class, 'index']);
+Route::get('/documents/search', [DocumentController::class, 'search']);
 Route::post('/documents', [DocumentController::class, 'store']);
 Route::get('/documents/{id}', [DocumentController::class, 'show']);
 Route::patch('/documents/{id}', [DocumentController::class, 'update']);

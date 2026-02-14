@@ -48,6 +48,10 @@
           <Icon name="ph:x" class="w-3 h-3 text-neutral-400" />
         </button>
       </div>
+      <p v-if="searching" class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-1.5 flex items-center gap-1">
+        <Icon name="ph:circle-notch" class="w-3 h-3 animate-spin" />
+        Searching content...
+      </p>
     </div>
 
     <!-- Tree Content -->
@@ -120,7 +124,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
+import { useApi } from '@/composables/useApi'
 import type { Document } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
@@ -149,8 +155,41 @@ const emit = defineEmits<{
   rename: [doc: Document]
 }>()
 
+const { searchDocuments } = useApi()
+
 // State
 const searchQuery = ref('')
+const searchResults = ref<Document[] | null>(null)
+const searching = ref(false)
+
+// Server-side search (debounced)
+const doSearch = useDebounceFn(async (query: string) => {
+  if (!query || query.length < 2) {
+    searchResults.value = null
+    searching.value = false
+    return
+  }
+  searching.value = true
+  try {
+    const response = await searchDocuments(query)
+    const results = response.data ?? []
+    // Only override client-side results when server found something
+    searchResults.value = results.length > 0 ? results : null
+  } catch {
+    searchResults.value = null
+  } finally {
+    searching.value = false
+  }
+}, 300)
+
+watch(searchQuery, (q) => {
+  if (!q) {
+    searchResults.value = null
+    searching.value = false
+    return
+  }
+  doSearch(q)
+})
 
 // Computed
 const documentCount = computed(() =>
@@ -162,13 +201,20 @@ const folderCount = computed(() =>
 )
 
 const filteredDocuments = computed(() => {
-  if (!searchQuery.value) return props.documents
+  // Server-side results ready — use them
+  if (searchResults.value !== null) return searchResults.value
 
-  const query = searchQuery.value.toLowerCase()
-  return props.documents.filter(doc =>
-    doc.title.toLowerCase().includes(query) ||
-    doc.author?.name?.toLowerCase().includes(query)
-  )
+  // Typing but API not back yet — instant title/author filter
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    return props.documents.filter(doc =>
+      doc.title.toLowerCase().includes(q) ||
+      doc.author?.name?.toLowerCase().includes(q)
+    )
+  }
+
+  // No search — full tree
+  return props.documents
 })
 
 // Icon map for identity files
@@ -230,9 +276,11 @@ const displayedDocuments = computed(() => {
   })
 })
 
-const rootDocuments = computed(() =>
-  displayedDocuments.value.filter(doc => !doc.parentId)
-)
+const rootDocuments = computed(() => {
+  // Search results are flat — show all as top-level items
+  if (searchResults.value !== null) return displayedDocuments.value
+  return displayedDocuments.value.filter(doc => !doc.parentId)
+})
 
 // Create dropdown items
 const createDropdownItems = computed(() => [
