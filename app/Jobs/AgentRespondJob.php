@@ -154,17 +154,29 @@ class AgentRespondJob implements ShouldQueue
 
             $response = $agentInstance->prompt($this->buildPromptWithThreadContext($this->userMessage));
 
-            $responseText = $response->text;
             $lastStep = $response->steps->last();
 
-            // Detect truncated response (model hit max output tokens)
-            if ($lastStep && $lastStep->finishReason === FinishReason::Length) {
-                Log::warning('Agent response truncated (max tokens)', [
+            // If any step was truncated (Length), concatenate text from all steps
+            // (the Prism handler auto-continues, but toResponse() only returns the last step's text)
+            $wasTruncated = $response->steps->contains(
+                fn ($step) => $step->finishReason === FinishReason::Length
+            );
+
+            if ($wasTruncated) {
+                $responseText = $response->steps
+                    ->filter(fn ($step) => !empty($step->text))
+                    ->pluck('text')
+                    ->join('');
+
+                Log::info('Agent response auto-continued after truncation', [
                     'agent' => $this->agent->name,
                     'channel' => $this->channelId,
-                    'completion_tokens' => $response->usage->completionTokens,
+                    'continuation_steps' => $response->steps->filter(
+                        fn ($step) => $step->finishReason === FinishReason::Length
+                    )->count(),
                 ]);
-                $responseText .= "\n\n---\n*My response was cut off because it exceeded the output limit. Please ask me to continue if needed.*";
+            } else {
+                $responseText = $response->text;
             }
 
             if (empty($responseText)) {
