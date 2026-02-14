@@ -41,6 +41,7 @@ class IntegrationController extends Controller
                     'name' => $info['name'],
                     'description' => $info['description'],
                     'icon' => $info['icon'],
+                    'category' => $info['category'] ?? null,
                     'models' => $info['models'] ?? null,
                     'enabled' => $codexToken !== null && !$codexToken->isExpired(),
                     'configured' => $codexToken !== null,
@@ -57,6 +58,7 @@ class IntegrationController extends Controller
                 'name' => $info['name'],
                 'description' => $info['description'],
                 'icon' => $info['icon'],
+                'category' => $info['category'] ?? null,
                 'models' => $info['models'] ?? null,
                 'defaultUrl' => $info['default_url'] ?? null,
                 'enabled' => $setting ? $setting->enabled : false,
@@ -172,8 +174,11 @@ class IntegrationController extends Controller
             'id' => $id,
             'name' => $available[$id]['name'],
             'description' => $available[$id]['description'],
+            'icon' => $available[$id]['icon'] ?? 'ph:gear',
             'models' => $available[$id]['models'] ?? null,
             'defaultUrl' => $available[$id]['default_url'] ?? null,
+            'apiFormat' => $available[$id]['api_format'] ?? null,
+            'apiKeyUrl' => $available[$id]['api_key_url'] ?? null,
             'enabled' => $setting ? $setting->enabled : false,
             'config' => $config,
         ]);
@@ -340,7 +345,7 @@ class IntegrationController extends Controller
             }
         }
 
-        // Static integrations (GLM, Telegram)
+        // Static integrations
         $available = IntegrationSetting::getAvailableIntegrations();
         if (!isset($available[$id])) {
             return response()->json(['error' => 'Integration not found'], 404);
@@ -352,7 +357,10 @@ class IntegrationController extends Controller
             $apiKey = $setting?->getConfigValue('api_key');
         }
 
-        if (!$apiKey) {
+        $format = $available[$id]['api_format'] ?? null;
+
+        // Ollama doesn't need an API key
+        if (!$apiKey && $format !== 'ollama') {
             return response()->json([
                 'success' => false,
                 'error' => 'No API key provided',
@@ -367,14 +375,16 @@ class IntegrationController extends Controller
             $url = $request->input('url') ?: ($available[$id]['default_url'] ?? '');
             $model = $request->input('defaultModel') ?: array_key_first($available[$id]['models'] ?? []);
 
-            if ($id === 'glm' || $id === 'glm-coding') {
-                return $this->testGlmConnection($apiKey, $url, $model);
-            }
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Test not implemented for this integration',
-            ], 501);
+            return match ($format) {
+                'anthropic' => $this->testAnthropicConnection($apiKey, $url, $model),
+                'gemini' => $this->testGeminiConnection($apiKey, $url, $model),
+                'ollama' => $this->testOpenAiCompatConnection(null, $url, $model),
+                'openai', 'openai_compat' => $this->testOpenAiCompatConnection($apiKey, $url, $model),
+                default => response()->json([
+                    'success' => false,
+                    'error' => 'Test not implemented for this integration',
+                ], 501),
+            };
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -412,17 +422,87 @@ class IntegrationController extends Controller
     /**
      * Test GLM/Zhipu AI connection
      */
-    private function testGlmConnection(string $apiKey, string $url, string $model): \Illuminate\Http\JsonResponse
+    /**
+     * Test connection for OpenAI-compatible providers (OpenAI, DeepSeek, Groq, Mistral, xAI, OpenRouter, GLM, Ollama).
+     */
+    private function testOpenAiCompatConnection(?string $apiKey, string $url, ?string $model): \Illuminate\Http\JsonResponse
+    {
+        $headers = ['Content-Type' => 'application/json'];
+        if ($apiKey) {
+            $headers['Authorization'] = 'Bearer ' . $apiKey;
+        }
+
+        $response = Http::withHeaders($headers)
+            ->timeout(30)
+            ->post($url . '/chat/completions', [
+                'model' => $model ?? 'default',
+                'messages' => [
+                    ['role' => 'user', 'content' => 'Respond with "ok".'],
+                ],
+                'max_tokens' => 10,
+            ]);
+
+        if ($response->successful()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Connection successful',
+                'model' => $model,
+            ]);
+        }
+
+        $error = $response->json('error.message') ?? $response->body();
+        return response()->json([
+            'success' => false,
+            'error' => 'API returned error: ' . $error,
+        ], 400);
+    }
+
+    /**
+     * Test connection for Anthropic (Claude).
+     */
+    private function testAnthropicConnection(string $apiKey, string $url, ?string $model): \Illuminate\Http\JsonResponse
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
+            'x-api-key' => $apiKey,
+            'anthropic-version' => '2023-06-01',
             'Content-Type' => 'application/json',
-        ])->timeout(30)->post($url . '/chat/completions', [
-            'model' => $model,
+        ])->timeout(30)->post($url . '/messages', [
+            'model' => $model ?? 'claude-sonnet-4-5-20250929',
+            'max_tokens' => 10,
             'messages' => [
-                ['role' => 'user', 'content' => 'Hello, please respond with "Connection successful" to confirm the API is working.'],
+                ['role' => 'user', 'content' => 'Respond with "ok".'],
             ],
-            'max_tokens' => 50,
+        ]);
+
+        if ($response->successful()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Connection successful',
+                'model' => $model,
+            ]);
+        }
+
+        $error = $response->json('error.message') ?? $response->body();
+        return response()->json([
+            'success' => false,
+            'error' => 'API returned error: ' . $error,
+        ], 400);
+    }
+
+    /**
+     * Test connection for Google Gemini.
+     */
+    private function testGeminiConnection(string $apiKey, string $url, ?string $model): \Illuminate\Http\JsonResponse
+    {
+        $model = $model ?? 'gemini-2.0-flash';
+
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+        ])->timeout(30)->post($url . '/models/' . $model . ':generateContent?key=' . $apiKey, [
+            'contents' => [
+                ['parts' => [['text' => 'Respond with "ok".']]],
+            ],
+            'generationConfig' => ['maxOutputTokens' => 10],
         ]);
 
         if ($response->successful()) {
@@ -704,115 +784,44 @@ class IntegrationController extends Controller
     public function allProviders(): \Illuminate\Http\JsonResponse
     {
         $providers = [];
-
-        // 1. Prism-config providers (API key in .env)
-        $prismProviders = [
-            'anthropic' => [
-                'name' => 'Anthropic',
-                'icon' => 'ph:chat-circle-dots',
-                'models' => [
-                    'claude-sonnet-4-5-20250929' => 'Claude Sonnet 4.5',
-                    'claude-haiku-3-5-20241022' => 'Claude Haiku 3.5',
-                ],
-            ],
-            'openai' => [
-                'name' => 'OpenAI',
-                'icon' => 'ph:open-ai-logo',
-                'models' => [
-                    'gpt-4o' => 'GPT-4o',
-                    'gpt-4o-mini' => 'GPT-4o Mini',
-                    'gpt-4-turbo' => 'GPT-4 Turbo',
-                ],
-            ],
-            'gemini' => [
-                'name' => 'Google Gemini',
-                'icon' => 'ph:google-logo',
-                'models' => [
-                    'gemini-2.0-flash' => 'Gemini 2.0 Flash',
-                    'gemini-2.0-flash-lite' => 'Gemini 2.0 Flash Lite',
-                    'gemini-1.5-pro' => 'Gemini 1.5 Pro',
-                    'gemini-1.5-flash' => 'Gemini 1.5 Flash',
-                ],
-            ],
-            'deepseek' => [
-                'name' => 'DeepSeek',
-                'icon' => 'ph:magnifying-glass',
-                'models' => [
-                    'deepseek-chat' => 'DeepSeek Chat (V3)',
-                    'deepseek-reasoner' => 'DeepSeek Reasoner (R1)',
-                ],
-            ],
-            'groq' => [
-                'name' => 'Groq',
-                'icon' => 'ph:lightning',
-                'models' => [
-                    'llama-3.3-70b-versatile' => 'Llama 3.3 70B',
-                    'llama-3.1-8b-instant' => 'Llama 3.1 8B',
-                    'mixtral-8x7b-32768' => 'Mixtral 8x7B',
-                ],
-            ],
-            'mistral' => [
-                'name' => 'Mistral',
-                'icon' => 'ph:wind',
-                'models' => [
-                    'mistral-large-latest' => 'Mistral Large',
-                    'mistral-small-latest' => 'Mistral Small',
-                    'codestral-latest' => 'Codestral',
-                ],
-            ],
-            'xai' => [
-                'name' => 'xAI',
-                'icon' => 'ph:x-logo',
-                'models' => [
-                    'grok-2' => 'Grok 2',
-                ],
-            ],
-        ];
-
-        foreach ($prismProviders as $providerId => $info) {
-            $apiKey = config("prism.providers.{$providerId}.api_key", '');
-            $providers[] = [
-                'id' => $providerId,
-                'name' => $info['name'],
-                'icon' => $info['icon'],
-                'configured' => !empty($apiKey),
-                'source' => 'prism',
-                'models' => collect($info['models'])->map(fn ($name, $id) => [
-                    'id' => $id,
-                    'name' => $name,
-                ])->values()->all(),
-            ];
-        }
-
-        // 2. Integration-based providers (API key in DB)
-        $integrations = IntegrationSetting::where('enabled', true)->get();
         $available = IntegrationSetting::getAvailableIntegrations();
+        $settings = IntegrationSetting::all()->keyBy('integration_id');
 
-        foreach ($integrations as $setting) {
-            if (!isset($available[$setting->integration_id])) {
+        // AI providers from config/integrations.php (those with api_format set)
+        foreach ($available as $id => $info) {
+            if (!isset($info['api_format'])) {
                 continue;
             }
-            $info = $available[$setting->integration_id];
-            if (empty($info['models'])) {
-                continue;
+
+            /** @var IntegrationSetting|null $setting */
+            $setting = $settings->get($id);
+            /** @var array<string, string> $models */
+            $models = $info['models'] ?? [];
+
+            // Determine if configured: DB-stored key OR .env key
+            $configured = $setting?->hasValidConfig()
+                || !empty(config("prism.providers.{$id}.api_key", ''));
+
+            // Ollama is configured if URL is reachable (no key needed)
+            if ($info['api_format'] === 'ollama') {
+                $configured = $setting?->enabled || !empty(config('prism.providers.ollama.url'));
             }
-            /** @var array<string, string> $integrationModels */
-            $integrationModels = $info['models'];
+
             $providers[] = [
-                'id' => $setting->integration_id,
+                'id' => $id,
                 'name' => $info['name'],
                 'icon' => $info['icon'],
-                'configured' => $setting->hasValidConfig(),
-                'source' => 'integration',
-                'models' => collect($integrationModels)->map(fn (string $name, string $id) => [
+                'configured' => (bool) $configured,
+                'source' => $setting?->hasValidConfig() ? 'integration' : 'prism',
+                'models' => collect($models)->map(fn (string $name, string $id) => [
                     'id' => $id,
                     'name' => $name,
                 ])->values()->all(),
             ];
         }
 
-        // 3. Codex (OAuth-based)
-        $codexToken = \OpenCompany\PrismCodex\CodexTokenStore::current();
+        // Codex (OAuth-based)
+        $codexToken = CodexTokenStore::current();
         $codexInfo = $available['codex'] ?? null;
         if ($codexToken && !$codexToken->isExpired() && $codexInfo && !empty($codexInfo['models'])) {
             /** @var array<string, string> $codexModels */
@@ -1207,29 +1216,31 @@ class IntegrationController extends Controller
             return $this->fetchCodexModels();
         }
 
-        if ($id === 'glm' || $id === 'glm-coding') {
-            return $this->fetchGlmModels($id);
-        }
+        $available = config('integrations', []);
+        $format = $available[$id]['api_format'] ?? null;
 
-        throw new \InvalidArgumentException("Model fetching not supported for: {$id}");
+        return match ($format) {
+            'anthropic' => $this->fetchAnthropicModels($id),
+            'gemini' => $this->fetchGeminiModels($id),
+            'ollama' => $this->fetchOllamaModels($id),
+            'openai', 'openai_compat' => $this->fetchOpenAiCompatModels($id),
+            default => throw new \InvalidArgumentException("Model fetching not supported for: {$id}"),
+        };
     }
 
     /**
-     * Fetch models from an OpenAI-compatible /models endpoint (GLM).
+     * Fetch models from an OpenAI-compatible /models endpoint.
+     * Works for: OpenAI, DeepSeek, Groq, Mistral, xAI, OpenRouter, GLM.
      *
      * @return array<string, string>
      */
-    private function fetchGlmModels(string $id): array
+    private function fetchOpenAiCompatModels(string $id): array
     {
-        $setting = IntegrationSetting::where('integration_id', $id)->first();
-        $apiKey = $setting?->getConfigValue('api_key');
+        [$apiKey, $baseUrl] = $this->getProviderCredentials($id);
 
         if (!$apiKey) {
             throw new \RuntimeException('API key not configured. Save your API key first.');
         }
-
-        $available = config('integrations', []);
-        $baseUrl = $setting->getConfigValue('url') ?: ($available[$id]['default_url'] ?? '');
 
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $apiKey,
@@ -1247,10 +1258,161 @@ class IntegrationController extends Controller
             if (!$modelId) {
                 continue;
             }
-            $models[$modelId] = $this->formatGlmModelName($modelId);
+            $models[$modelId] = $this->formatModelName($modelId);
         }
 
-        // Probe flash/plus variants — GLM's /models endpoint doesn't list all usable models
+        // GLM: probe flash/plus variants not listed by /models
+        if ($id === 'glm' || $id === 'glm-coding') {
+            $models = $this->probeGlmVariants($models, $apiKey, $baseUrl);
+        }
+
+        ksort($models);
+
+        return $models;
+    }
+
+    /**
+     * Fetch models from Anthropic API.
+     *
+     * @return array<string, string>
+     */
+    private function fetchAnthropicModels(string $id): array
+    {
+        [$apiKey, $baseUrl] = $this->getProviderCredentials($id);
+
+        if (!$apiKey) {
+            throw new \RuntimeException('API key not configured. Save your API key first.');
+        }
+
+        $response = Http::withHeaders([
+            'x-api-key' => $apiKey,
+            'anthropic-version' => '2023-06-01',
+        ])->timeout(15)->get($baseUrl . '/models');
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('API returned ' . $response->status() . ': ' . $response->body());
+        }
+
+        $data = $response->json('data', []);
+        $models = [];
+
+        foreach ($data as $model) {
+            $modelId = $model['id'] ?? null;
+            if (!$modelId) {
+                continue;
+            }
+            $models[$modelId] = $model['display_name'] ?? $this->formatModelName($modelId);
+        }
+
+        ksort($models);
+
+        return $models;
+    }
+
+    /**
+     * Fetch models from Google Gemini API.
+     *
+     * @return array<string, string>
+     */
+    private function fetchGeminiModels(string $id): array
+    {
+        [$apiKey, $baseUrl] = $this->getProviderCredentials($id);
+
+        if (!$apiKey) {
+            throw new \RuntimeException('API key not configured. Save your API key first.');
+        }
+
+        $response = Http::timeout(15)->get($baseUrl . '/models', [
+            'key' => $apiKey,
+        ]);
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('API returned ' . $response->status() . ': ' . $response->body());
+        }
+
+        $data = $response->json('models', []);
+        $models = [];
+
+        foreach ($data as $model) {
+            $name = $model['name'] ?? null;
+            if (!$name) {
+                continue;
+            }
+            // Gemini returns "models/gemini-2.0-flash" — strip "models/" prefix
+            $modelId = str_replace('models/', '', $name);
+            // Only include generateContent-capable models
+            $methods = $model['supportedGenerationMethods'] ?? [];
+            if (!in_array('generateContent', $methods)) {
+                continue;
+            }
+            $models[$modelId] = $model['displayName'] ?? $this->formatModelName($modelId);
+        }
+
+        ksort($models);
+
+        return $models;
+    }
+
+    /**
+     * Fetch models from Ollama (OpenAI compatibility layer, no auth).
+     *
+     * @return array<string, string>
+     */
+    private function fetchOllamaModels(string $id): array
+    {
+        $setting = IntegrationSetting::where('integration_id', $id)->first();
+        $available = config('integrations', []);
+        $baseUrl = $setting?->getConfigValue('url') ?: ($available[$id]['default_url'] ?? 'http://localhost:11434/v1');
+
+        $response = Http::timeout(10)->get($baseUrl . '/models');
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('Could not connect to Ollama at ' . $baseUrl);
+        }
+
+        $data = $response->json('data', $response->json('models', []));
+        $models = [];
+
+        foreach ($data as $model) {
+            $modelId = $model['id'] ?? $model['name'] ?? null;
+            if (!$modelId) {
+                continue;
+            }
+            $models[$modelId] = $this->formatModelName($modelId);
+        }
+
+        ksort($models);
+
+        return $models;
+    }
+
+    /**
+     * Get API key and base URL for a provider from IntegrationSetting or config.
+     *
+     * @return array{0: ?string, 1: string}
+     */
+    private function getProviderCredentials(string $id): array
+    {
+        $setting = IntegrationSetting::where('integration_id', $id)->first();
+        $available = config('integrations', []);
+
+        $apiKey = $setting?->getConfigValue('api_key')
+            ?: config("prism.providers.{$id}.api_key", '');
+        $baseUrl = $setting?->getConfigValue('url')
+            ?: config("prism.providers.{$id}.url")
+            ?: ($available[$id]['default_url'] ?? '');
+
+        return [$apiKey ?: null, $baseUrl];
+    }
+
+    /**
+     * GLM-specific: probe flash/plus variants not listed by /models.
+     *
+     * @param  array<string, string>  $models
+     * @return array<string, string>
+     */
+    private function probeGlmVariants(array $models, string $apiKey, string $baseUrl): array
+    {
         $variants = [];
         foreach (array_keys($models) as $modelId) {
             $variants[] = $modelId . '-flash';
@@ -1270,24 +1432,27 @@ class IntegrationController extends Controller
                     'messages' => [['role' => 'user', 'content' => 'hi']],
                     'max_tokens' => 1,
                 ]);
-                // 200 or 429 (rate limited) means the model exists
                 if ($probe->status() === 200 || $probe->status() === 429) {
-                    $models[$variant] = $this->formatGlmModelName($variant);
+                    $models[$variant] = $this->formatModelName($variant);
                 }
             } catch (\Throwable) {
                 // Skip on timeout/error
             }
         }
 
-        ksort($models);
-
         return $models;
     }
 
-    private function formatGlmModelName(string $modelId): string
+    /**
+     * Format a model ID into a readable display name.
+     */
+    private function formatModelName(string $modelId): string
     {
-        $displayName = strtoupper(str_replace(['-', '_'], [' ', ' '], $modelId));
-        return ucwords(strtolower($displayName));
+        // Strip date suffixes like -20250929
+        $name = preg_replace('/-\d{8}$/', '', $modelId);
+        // Replace separators with spaces
+        $name = str_replace(['-', '_', '/'], [' ', ' ', ' / '], $name);
+        return ucwords($name);
     }
 
     /**

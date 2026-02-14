@@ -497,11 +497,11 @@
       </div>
     </div>
 
-    <!-- GLM Config Modal -->
-    <GlmConfigModal
-      v-model:open="showGlmConfigModal"
-      :integration-id="activeGlmIntegrationId"
-      @saved="handleGlmSaved"
+    <!-- AI Provider Config Modal -->
+    <ProviderConfigModal
+      v-model:open="showProviderConfigModal"
+      :integration-id="activeProviderId"
+      @saved="handleProviderSaved"
     />
 
     <!-- Codex Config Modal -->
@@ -604,7 +604,7 @@ import axios from 'axios'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
-import GlmConfigModal from '@/Components/integrations/GlmConfigModal.vue'
+import ProviderConfigModal from '@/Components/integrations/ProviderConfigModal.vue'
 import CodexConfigModal from '@/Components/integrations/CodexConfigModal.vue'
 import TelegramConfigModal from '@/Components/integrations/TelegramConfigModal.vue'
 import DynamicConfigModal from '@/Components/integrations/DynamicConfigModal.vue'
@@ -658,9 +658,9 @@ const webhookForm = reactive({
   targetId: '',
 })
 
-// GLM Config modal
-const showGlmConfigModal = ref(false)
-const activeGlmIntegrationId = ref<'glm' | 'glm-coding'>('glm-coding')
+// AI Provider Config modal
+const showProviderConfigModal = ref(false)
+const activeProviderId = ref('glm-coding')
 
 // Codex Config modal
 const showCodexConfigModal = ref(false)
@@ -764,6 +764,23 @@ const loadIntegrationStatus = async () => {
           }
         }
 
+        // Add backend-driven AI provider integrations to AI Models category
+        if (!found && integration.category === 'ai-models') {
+          const aiCat = integrationCategories.value.find(c => c.id === 'ai-models')
+          if (aiCat && !aiCat.integrations.find(i => i.id === integration.id)) {
+            aiCat.integrations.push({
+              id: integration.id,
+              name: integration.name,
+              icon: integration.icon,
+              description: integration.description,
+              category: integration.category,
+              installed: integration.enabled,
+              badge: integration.badge || undefined,
+            })
+          }
+          found = true
+        }
+
         // Add dynamic integrations not in static categories
         if (!found && (integration.configurable || integration.type === 'mcp')) {
           const categoryId = integration.type === 'mcp' ? 'mcp-servers' : (integration.category || 'other')
@@ -831,11 +848,7 @@ const integrationCategories = ref<IntegrationCategory[]>([
     id: 'ai-models',
     name: 'AI Models',
     icon: 'ph:brain',
-    integrations: [
-      { id: 'glm', name: 'GLM (Zhipu AI)', icon: 'ph:brain', description: 'General-purpose Chinese LLM', installed: false, badge: 'verified' },
-      { id: 'glm-coding', name: 'GLM Coding Plan', icon: 'ph:code', description: 'Specialized coding LLM', installed: false, badge: 'verified' },
-      { id: 'codex', name: 'OpenAI Codex', icon: 'ph:open-ai-logo', description: 'ChatGPT Pro/Plus subscription — $0 token costs', installed: false, badge: 'verified' },
-    ],
+    integrations: [],  // populated from backend
   },
   {
     id: 'analytics',
@@ -1150,9 +1163,10 @@ const handleInstall = (integration: Integration) => {
     return
   }
 
-  if (integration.id === 'glm' || integration.id === 'glm-coding') {
-    activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
-    showGlmConfigModal.value = true
+  // AI providers with API key config (category driven from backend)
+  if (integration.category === 'ai-models' && integration.id !== 'codex') {
+    activeProviderId.value = integration.id
+    showProviderConfigModal.value = true
     return
   }
 
@@ -1181,9 +1195,9 @@ const handleInstall = (integration: Integration) => {
   }
 }
 
-const handleGlmSaved = (result: { enabled: boolean; configured: boolean }) => {
+const handleProviderSaved = (result: { enabled: boolean; configured: boolean }) => {
   for (const category of integrationCategories.value) {
-    const found = category.integrations.find(i => i.id === activeGlmIntegrationId.value)
+    const found = category.integrations.find(i => i.id === activeProviderId.value)
     if (found) {
       found.installed = result.enabled
       break
@@ -1205,9 +1219,9 @@ const handleConfigure = (integration: Integration) => {
   if (integration.type === 'mcp' && integration.mcpServerId) {
     activeMcpServerId.value = integration.mcpServerId
     showMcpConfigModal.value = true
-  } else if (integration.id === 'glm' || integration.id === 'glm-coding') {
-    activeGlmIntegrationId.value = integration.id as 'glm' | 'glm-coding'
-    showGlmConfigModal.value = true
+  } else if (integration.category === 'ai-models' && integration.id !== 'codex') {
+    activeProviderId.value = integration.id
+    showProviderConfigModal.value = true
   } else if (integration.id === 'codex') {
     showCodexConfigModal.value = true
   } else if (integration.id === 'telegram') {

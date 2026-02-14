@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8cc30a383a7f890e6f45a1d5a7157593",
+    "content-hash": "0ade2a3c02d0e0fe3cb8d4858bc732a5",
     "packages": [
         {
             "name": "brick/math",
@@ -3105,6 +3105,55 @@
             }
         },
         {
+            "name": "opencompanyapp/ai-tool-clickup",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-clickup",
+                "reference": "dc289c7019fa80cf3216a28869ac6b788ce21f78"
+            },
+            "require": {
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolClickUp\\AiToolClickUpServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolClickUp\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "ClickUp project management AI tool for Laravel AI SDK — manage tasks, docs, time tracking, and more. Part of the OpenCompany AI tool ecosystem.",
+            "keywords": [
+                "ai",
+                "clickup",
+                "laravel",
+                "opencompany",
+                "project-management",
+                "tasks",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
             "name": "opencompanyapp/ai-tool-mermaid",
             "version": "dev-main",
             "dist": {
@@ -3257,7 +3306,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-ticktick",
-                "reference": "26c2e07edf3bceb057d6aa27febb1b16633cbadd"
+                "reference": "d29e3b941257953b1b4aa2bba06a42fc9f46f868"
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3453,7 +3502,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/integration-core",
-                "reference": "dbfe65caf88070527cca0190a108aeffbef479f6"
+                "reference": "f23b483c0847ebe9182cc6571b84a7863b57e079"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -10683,6 +10732,7 @@
     "stability-flags": {
         "opencompany/prism-codex": 20,
         "opencompanyapp/ai-tool-celestial": 20,
+        "opencompanyapp/ai-tool-clickup": 20,
         "opencompanyapp/ai-tool-mermaid": 20,
         "opencompanyapp/ai-tool-plantuml": 20,
         "opencompanyapp/ai-tool-plausible": 20,

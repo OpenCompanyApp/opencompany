@@ -44,9 +44,10 @@ class DynamicProviderResolver
             return ['provider' => $providerKey, 'model' => $model];
         }
 
-        // Standard providers use config/ai.php (API keys from .env)
+        // Standard providers — check DB for API key, fall back to .env
         $sdkProvider = $this->mapToSdkProvider($providerKey);
         if ($sdkProvider) {
+            $this->applyIntegrationConfig($providerKey);
             return ['provider' => $sdkProvider, 'model' => $model];
         }
 
@@ -141,6 +142,35 @@ class DynamicProviderResolver
     }
 
     /**
+     * If a provider has an IntegrationSetting with API key, override prism/ai config.
+     * Falls back to .env config silently if no IntegrationSetting exists.
+     */
+    private function applyIntegrationConfig(string $providerKey): void
+    {
+        $integration = IntegrationSetting::where('integration_id', $providerKey)
+            ->where('enabled', true)
+            ->first();
+
+        if (!$integration || !$integration->hasValidConfig()) {
+            return; // Fall back to .env config
+        }
+
+        $apiKey = $integration->getConfigValue('api_key');
+        $url = $integration->getConfigValue('url');
+
+        $config = ['api_key' => $apiKey];
+        if ($url) {
+            $config['url'] = $url;
+        }
+
+        // Merge into existing prism config (preserves .env values for unset fields)
+        config(["prism.providers.{$providerKey}" => array_merge(
+            config("prism.providers.{$providerKey}", []),
+            $config,
+        )]);
+    }
+
+    /**
      * Get default URL for a GLM provider.
      */
     private function getDefaultGlmUrl(string $providerKey): string
@@ -174,6 +204,10 @@ class DynamicProviderResolver
             'gemini' => 'gemini-2.0-flash',
             'groq' => 'llama-3.3-70b-versatile',
             'xai' => 'grok-2',
+            'deepseek' => 'deepseek-chat',
+            'mistral' => 'mistral-large-latest',
+            'ollama' => 'llama3.2',
+            'openrouter' => 'anthropic/claude-sonnet-4-5-20250929',
             default => 'default',
         };
     }
