@@ -10,12 +10,12 @@ use Laravel\Ai\Gateway\TextGenerationOptions;
 use Laravel\Ai\Providers\Provider;
 
 /**
- * Custom PrismGateway that routes GLM requests to the registered 'glm' Prism provider
- * instead of the default OpenAI provider.
+ * Custom PrismGateway that routes requests to custom Prism providers
+ * registered via PrismManager::extend() (GLM, Kimi, MiniMax, etc.).
  *
- * The base PrismGateway hardcodes driver:'openai' → PrismProvider::OpenAI which uses
- * OpenAI's /responses endpoint. GLM needs the chat/completions endpoint via our custom
- * 'glm' Prism provider (registered as DeepSeek-compatible in AppServiceProvider).
+ * The base PrismGateway maps driver names to PrismProvider enums, which only
+ * works for native Prism providers. Custom providers need their string key
+ * passed directly to Prism's using() method.
  */
 class GlmPrismGateway extends PrismGateway
 {
@@ -25,16 +25,16 @@ class GlmPrismGateway extends PrismGateway
     }
 
     /**
-     * Override configure to use the string 'glm' as the Prism provider key
-     * instead of PrismProvider::OpenAI enum.
+     * Override configure to use the provider's driver name as the Prism provider key
+     * instead of a PrismProvider enum.
      *
-     * Prism's using() accepts string|ProviderEnum, so passing 'glm' resolves
-     * to our custom provider registered via PrismManager::extend('glm', ...).
+     * Prism's using() accepts string|ProviderEnum, so passing the driver name
+     * resolves to our custom provider registered via PrismManager::extend().
      */
     protected function configure(mixed $prism, Provider $provider, string $model): mixed
     {
         return $prism->using(
-            'glm',
+            $provider->driver(),
             $model,
             array_filter([
                 'api_key' => $provider->providerCredentials()['key'],

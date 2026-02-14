@@ -80,6 +80,10 @@
         },
         {
             "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/ai-tool-clickup"
+        },
+        {
+            "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php"
         }
     ],

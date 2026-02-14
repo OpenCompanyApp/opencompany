@@ -73,8 +73,8 @@ class MemoryFlushService
         $softThresholdTokens = config('memory.memory_flush.soft_threshold_tokens', 4000);
         $softZoneStart = $compactionThreshold - $softThresholdTokens;
 
-        // Flush when in the soft zone: above soft threshold but at or below compaction threshold
-        return $adjustedTokens > $softZoneStart && $adjustedTokens <= $compactionThreshold;
+        // Flush when context exceeds the soft zone (including when compaction is already needed)
+        return $adjustedTokens > $softZoneStart;
     }
 
     /**

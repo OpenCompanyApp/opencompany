@@ -59,7 +59,7 @@ class DynamicProviderResolver
      */
     private function isGlmProvider(string $providerKey): bool
     {
-        return in_array($providerKey, ['glm', 'glm-coding']);
+        return in_array($providerKey, ['glm', 'glm-coding', 'kimi', 'kimi-coding', 'minimax', 'minimax-cn']);
     }
 
     /**
@@ -178,7 +178,11 @@ class DynamicProviderResolver
         return match ($providerKey) {
             'glm' => 'https://open.bigmodel.cn/api/paas/v4',
             'glm-coding' => 'https://api.z.ai/api/coding/paas/v4',
-            default => throw new InvalidArgumentException("Unknown GLM provider: {$providerKey}"),
+            'kimi' => 'https://api.moonshot.ai/v1',
+            'kimi-coding' => 'https://api.moonshot.ai/v1',
+            'minimax' => 'https://api.minimax.io/anthropic/v1',
+            'minimax-cn' => 'https://api.minimaxi.com/anthropic/v1',
+            default => throw new InvalidArgumentException("Unknown custom provider: {$providerKey}"),
         };
     }
 
@@ -198,6 +202,10 @@ class DynamicProviderResolver
         return match ($providerKey) {
             'glm' => 'glm-4-plus',
             'glm-coding' => 'glm-4.7',
+            'kimi' => 'kimi-k2.5',
+            'kimi-coding' => 'kimi-k2.5',
+            'minimax' => 'MiniMax-M1',
+            'minimax-cn' => 'MiniMax-M1',
             'codex' => 'gpt-5.3-codex',
             'anthropic' => 'claude-sonnet-4-5-20250929',
             'openai' => 'gpt-4o',

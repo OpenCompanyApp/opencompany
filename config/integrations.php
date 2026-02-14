@@ -109,6 +109,46 @@ return [
         'api_key_url' => 'https://openrouter.ai/keys',
     ],
 
+    'minimax' => [
+        'category' => 'ai-models',
+        'name' => 'MiniMax Coding Plan',
+        'description' => 'MiniMax coding models via Anthropic-compatible API',
+        'icon' => 'ph:cube',
+        'default_url' => 'https://api.minimax.io/anthropic/v1',
+        'api_format' => 'anthropic',
+        'api_key_url' => 'https://platform.minimax.io/docs/coding-plan/intro',
+    ],
+
+    'minimax-cn' => [
+        'category' => 'ai-models',
+        'name' => 'MiniMax Coding Plan (CN)',
+        'description' => 'MiniMax coding models — China region endpoint',
+        'icon' => 'ph:cube',
+        'default_url' => 'https://api.minimaxi.com/anthropic/v1',
+        'api_format' => 'anthropic',
+        'api_key_url' => 'https://platform.minimaxi.com/docs/coding-plan/intro',
+    ],
+
+    'kimi' => [
+        'category' => 'ai-models',
+        'name' => 'Kimi (Moonshot AI)',
+        'description' => 'Kimi K2 models — large context coding and reasoning',
+        'icon' => 'ph:moon-stars',
+        'default_url' => 'https://api.moonshot.ai/v1',
+        'api_format' => 'openai_compat',
+        'api_key_url' => 'https://platform.moonshot.ai/console',
+    ],
+
+    'kimi-coding' => [
+        'category' => 'ai-models',
+        'name' => 'Kimi Coding Plan',
+        'description' => 'Coding-focused Kimi models via Moonshot Coding Plan',
+        'icon' => 'ph:code',
+        'default_url' => 'https://api.moonshot.ai/v1',
+        'api_format' => 'openai_compat',
+        'api_key_url' => 'https://platform.moonshot.ai/console',
+    ],
+
     'glm' => [
         'category' => 'ai-models',
         'name' => 'GLM (Zhipu AI)',

@@ -17,6 +17,7 @@ use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\Providers\OpenAiProvider;
 use Prism\Prism\PrismManager;
+use Prism\Prism\Providers\Anthropic\Anthropic;
 use Prism\Prism\Providers\DeepSeek\DeepSeek;
 
 class AppServiceProvider extends ServiceProvider
@@ -73,6 +74,33 @@ class AppServiceProvider extends ServiceProvider
         $prismManager->extend('glm', $glmPrismFactory);
         $prismManager->extend('glm-coding', $glmPrismFactory);
 
+        // Register Kimi (Moonshot AI) as custom Prism providers (same pattern as GLM)
+        $kimiPrismFactory = function ($app, array $config) {
+            return new DeepSeek(
+                apiKey: $config['api_key'] ?? '',
+                url: $config['url'] ?? 'https://api.moonshot.ai/v1',
+            );
+        };
+        $prismManager->extend('kimi', $kimiPrismFactory);
+        $prismManager->extend('kimi-coding', $kimiPrismFactory);
+
+        // Register MiniMax Coding Plan as custom Prism providers (Anthropic-compatible API)
+        $minimaxPrismFactory = function ($app, array $config) {
+            return new Anthropic(
+                apiKey: $config['api_key'] ?? '',
+                apiVersion: '2023-06-01',
+                url: $config['url'] ?? 'https://api.minimax.io/anthropic/v1',
+            );
+        };
+        $prismManager->extend('minimax', $minimaxPrismFactory);
+        $prismManager->extend('minimax-cn', function ($app, array $config) {
+            return new Anthropic(
+                apiKey: $config['api_key'] ?? '',
+                apiVersion: '2023-06-01',
+                url: $config['url'] ?? 'https://api.minimaxi.com/anthropic/v1',
+            );
+        });
+
         // Register 'glm' and 'glm-coding' as custom AI SDK drivers.
         // These use GlmPrismGateway which routes to our custom 'glm' Prism provider
         // (chat/completions) instead of the default OpenAI provider (/responses).
@@ -88,6 +116,10 @@ class AppServiceProvider extends ServiceProvider
 
             $aiManager->extend('glm', $createGlmDriver);
             $aiManager->extend('glm-coding', $createGlmDriver);
+            $aiManager->extend('kimi', $createGlmDriver);
+            $aiManager->extend('kimi-coding', $createGlmDriver);
+            $aiManager->extend('minimax', $createGlmDriver);
+            $aiManager->extend('minimax-cn', $createGlmDriver);
 
             // Register Codex driver (ChatGPT subscription via OAuth)
             $aiManager->extend('codex', function ($app, array $config) {
