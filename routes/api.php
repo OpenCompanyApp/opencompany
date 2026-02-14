@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\AgentPermissionController;
 use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\CodexAuthController;
 use App\Http\Controllers\Api\IntegrationController;
+use App\Http\Controllers\Api\ScheduledAutomationController;
 use App\Http\Controllers\Api\McpServerController;
 use App\Http\Controllers\Api\PrismServerController;
 use App\Http\Controllers\Api\SettingController;
@@ -119,6 +120,15 @@ Route::get('/automation-rules', [AutomationRuleController::class, 'index']);
 Route::post('/automation-rules', [AutomationRuleController::class, 'store']);
 Route::patch('/automation-rules/{id}', [AutomationRuleController::class, 'update']);
 Route::delete('/automation-rules/{id}', [AutomationRuleController::class, 'destroy']);
+
+// Scheduled Automations
+Route::get('/scheduled-automations', [ScheduledAutomationController::class, 'index']);
+Route::get('/scheduled-automations/preview-schedule', [ScheduledAutomationController::class, 'previewSchedule']);
+Route::post('/scheduled-automations', [ScheduledAutomationController::class, 'store']);
+Route::get('/scheduled-automations/{id}', [ScheduledAutomationController::class, 'show']);
+Route::patch('/scheduled-automations/{id}', [ScheduledAutomationController::class, 'update']);
+Route::delete('/scheduled-automations/{id}', [ScheduledAutomationController::class, 'destroy']);
+Route::post('/scheduled-automations/{id}/run', [ScheduledAutomationController::class, 'triggerRun']);
 
 // Documents
 Route::get('/documents', [DocumentController::class, 'index']);

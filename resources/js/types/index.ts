@@ -397,6 +397,36 @@ export interface CalendarFeed {
   createdAt: string
 }
 
+// Scheduled Automations
+export interface ScheduledAutomation {
+  id: string
+  name: string
+  description: string | null
+  agentId: string
+  prompt: string
+  cronExpression: string
+  timezone: string
+  isActive: boolean
+  lastRunAt: string | null
+  nextRunAt: string | null
+  runCount: number
+  consecutiveFailures: number
+  channelId: string | null
+  keepHistory: boolean
+  createdById: string
+  lastResult: {
+    response_preview?: string
+    error?: string
+    tokens?: number
+    completed_at?: string
+    task_id?: string
+  } | null
+  agent?: User
+  channel?: Channel
+  createdBy?: User
+  nextRuns?: string[]
+}
+
 // Data Tables Types
 export type DataTableColumnType = 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'checkbox' | 'url' | 'email' | 'user' | 'attachment'
 export type DataTableViewType = 'grid' | 'kanban' | 'gallery' | 'calendar'

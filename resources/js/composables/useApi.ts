@@ -330,6 +330,33 @@ export const useApi = () => {
   const deleteAutomationRule = (id: string) =>
     api.delete(`/automation-rules/${id}`)
 
+  // Scheduled Automations
+  const fetchScheduledAutomations = () =>
+    useFetch<import('@/types').ScheduledAutomation[]>('/scheduled-automations')
+  const fetchScheduledAutomation = (id: string) =>
+    useFetch<import('@/types').ScheduledAutomation>(`/scheduled-automations/${id}`)
+  const createScheduledAutomation = (data: {
+    name: string
+    agentId: string
+    prompt: string
+    cronExpression: string
+    timezone?: string
+    description?: string
+    channelId?: string
+    keepHistory?: boolean
+    createdById?: string
+  }) => api.post('/scheduled-automations', data)
+  const updateScheduledAutomation = (id: string, data: Record<string, unknown>) =>
+    api.patch(`/scheduled-automations/${id}`, data)
+  const deleteScheduledAutomation = (id: string) =>
+    api.delete(`/scheduled-automations/${id}`)
+  const triggerScheduledAutomation = (id: string) =>
+    api.post(`/scheduled-automations/${id}/run`)
+  const previewSchedule = (cronExpression: string, timezone = 'UTC') =>
+    api.get('/scheduled-automations/preview-schedule', {
+      params: { cronExpression, timezone },
+    })
+
   // Agents
   const fetchAgentDetail = (id: string) => useFetch<Record<string, unknown>>(`/agents/${id}`)
   const fetchAgentIdentityFiles = (id: string) => useFetch<Record<string, unknown>[]>(`/agents/${id}/identity`)
@@ -545,6 +572,14 @@ export const useApi = () => {
     createAutomationRule,
     updateAutomationRule,
     deleteAutomationRule,
+    // Scheduled Automations
+    fetchScheduledAutomations,
+    fetchScheduledAutomation,
+    createScheduledAutomation,
+    updateScheduledAutomation,
+    deleteScheduledAutomation,
+    triggerScheduledAutomation,
+    previewSchedule,
     // Agents
     fetchAgentDetail,
     fetchAgentIdentityFiles,

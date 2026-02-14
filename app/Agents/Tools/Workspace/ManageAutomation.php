@@ -4,7 +4,9 @@ namespace App\Agents\Tools\Workspace;
 
 use App\Models\ListAutomationRule;
 use App\Models\ListTemplate;
+use App\Models\ScheduledAutomation;
 use App\Models\User;
+use Cron\CronExpression;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -18,7 +20,7 @@ class ManageAutomation implements Tool
 
     public function description(): string
     {
-        return 'Create and manage automation rules and list templates.';
+        return 'Create and manage automation rules, list templates, and scheduled automations (cron jobs for agents).';
     }
 
     public function handle(Request $request): string
@@ -31,7 +33,13 @@ class ManageAutomation implements Tool
                 'create_template' => $this->createTemplate($request),
                 'update_template' => $this->updateTemplate($request),
                 'delete_template' => $this->deleteTemplate($request),
-                default => "Unknown action: {$request['action']}. Use: create_rule, update_rule, delete_rule, create_template, update_template, delete_template",
+                'create_schedule' => $this->createSchedule($request),
+                'update_schedule' => $this->updateSchedule($request),
+                'delete_schedule' => $this->deleteSchedule($request),
+                'list_schedules' => $this->listSchedules(),
+                'enable_schedule' => $this->toggleSchedule($request, true),
+                'disable_schedule' => $this->toggleSchedule($request, false),
+                default => "Unknown action: {$request['action']}. Use: create_rule, update_rule, delete_rule, create_template, update_template, delete_template, create_schedule, update_schedule, delete_schedule, list_schedules, enable_schedule, disable_schedule",
             };
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
@@ -231,12 +239,160 @@ class ManageAutomation implements Tool
         return "Template deleted: {$name}";
     }
 
+    // --- Scheduled Automations ---
+
+    private function createSchedule(Request $request): string
+    {
+        $name = $request['name'] ?? null;
+        $prompt = $request['prompt'] ?? null;
+        $cronExpression = $request['cronExpression'] ?? null;
+
+        if (!$name || !$prompt || !$cronExpression) {
+            return 'Required: name, prompt, cronExpression.';
+        }
+
+        if (!CronExpression::isValidExpression($cronExpression)) {
+            return "Invalid cron expression: {$cronExpression}. Use standard 5-field format, e.g. '0 9 * * 1-5' for weekdays at 9am.";
+        }
+
+        $agentId = $request['agentId'] ?? $this->agent->id;
+
+        $schedule = ScheduledAutomation::create([
+            'id' => Str::uuid()->toString(),
+            'name' => $name,
+            'description' => $request['description'] ?? null,
+            'agent_id' => $agentId,
+            'prompt' => $prompt,
+            'cron_expression' => $cronExpression,
+            'timezone' => $request['timezone'] ?? 'UTC',
+            'channel_id' => $request['channelId'] ?? null,
+            'created_by_id' => $this->agent->id,
+            'is_active' => true,
+        ]);
+
+        $nextRun = $schedule->next_run_at?->format('Y-m-d H:i T');
+
+        return "Schedule created: {$schedule->name} (ID: {$schedule->id}, cron: {$cronExpression}, next run: {$nextRun})";
+    }
+
+    private function updateSchedule(Request $request): string
+    {
+        $scheduleId = $request['scheduleId'] ?? null;
+        if (!$scheduleId) {
+            return 'scheduleId is required.';
+        }
+
+        $schedule = ScheduledAutomation::find($scheduleId);
+        if (!$schedule) {
+            return "Schedule not found: {$scheduleId}";
+        }
+
+        $updates = [];
+
+        if (isset($request['name'])) {
+            $updates['name'] = $request['name'];
+        }
+        if (isset($request['prompt'])) {
+            $updates['prompt'] = $request['prompt'];
+        }
+        if (isset($request['cronExpression'])) {
+            if (!CronExpression::isValidExpression($request['cronExpression'])) {
+                return "Invalid cron expression: {$request['cronExpression']}";
+            }
+            $updates['cron_expression'] = $request['cronExpression'];
+        }
+        if (isset($request['timezone'])) {
+            $updates['timezone'] = $request['timezone'];
+        }
+        if (isset($request['agentId'])) {
+            $updates['agent_id'] = $request['agentId'];
+        }
+        if (isset($request['channelId'])) {
+            $updates['channel_id'] = $request['channelId'];
+        }
+
+        if (empty($updates)) {
+            return 'No fields to update.';
+        }
+
+        $schedule->update($updates);
+
+        if (isset($updates['cron_expression']) || isset($updates['timezone'])) {
+            $schedule->refreshNextRunAt();
+        }
+
+        return "Schedule updated: {$schedule->name} (ID: {$schedule->id})";
+    }
+
+    private function deleteSchedule(Request $request): string
+    {
+        $scheduleId = $request['scheduleId'] ?? null;
+        if (!$scheduleId) {
+            return 'scheduleId is required.';
+        }
+
+        $schedule = ScheduledAutomation::find($scheduleId);
+        if (!$schedule) {
+            return "Schedule not found: {$scheduleId}";
+        }
+
+        $name = $schedule->name;
+        $schedule->delete();
+
+        return "Schedule deleted: {$name}";
+    }
+
+    private function listSchedules(): string
+    {
+        $schedules = ScheduledAutomation::with('agent')
+            ->orderBy('name')
+            ->get();
+
+        if ($schedules->isEmpty()) {
+            return 'No scheduled automations found.';
+        }
+
+        return $schedules->map(function ($s) {
+            $status = $s->is_active ? 'active' : 'disabled';
+            $nextRun = $s->next_run_at?->format('Y-m-d H:i T') ?? 'N/A';
+            $agentName = $s->agent?->name ?? 'Unknown';
+
+            return "- {$s->name} (ID: {$s->id}, agent: {$agentName}, {$status}, runs: {$s->run_count}, next: {$nextRun})";
+        })->join("\n");
+    }
+
+    private function toggleSchedule(Request $request, bool $active): string
+    {
+        $scheduleId = $request['scheduleId'] ?? null;
+        if (!$scheduleId) {
+            return 'scheduleId is required.';
+        }
+
+        $schedule = ScheduledAutomation::find($scheduleId);
+        if (!$schedule) {
+            return "Schedule not found: {$scheduleId}";
+        }
+
+        $schedule->update([
+            'is_active' => $active,
+            'consecutive_failures' => $active ? 0 : $schedule->consecutive_failures,
+        ]);
+
+        if ($active) {
+            $schedule->refreshNextRunAt();
+        }
+
+        $state = $active ? 'enabled' : 'disabled';
+
+        return "Schedule {$state}: {$schedule->name}";
+    }
+
     public function schema(JsonSchema $schema): array
     {
         return [
             'action' => $schema
                 ->string()
-                ->description("Action: 'create_rule', 'update_rule', 'delete_rule', 'create_template', 'update_template', 'delete_template'")
+                ->description("Action: 'create_rule', 'update_rule', 'delete_rule', 'create_template', 'update_template', 'delete_template', 'create_schedule', 'update_schedule', 'delete_schedule', 'list_schedules', 'enable_schedule', 'disable_schedule'")
                 ->required(),
             'name' => $schema
                 ->string()
@@ -280,6 +436,24 @@ class ManageAutomation implements Tool
             'tags' => $schema
                 ->string()
                 ->description('JSON array of tags for template, e.g. ["support","bug"].'),
+            'scheduleId' => $schema
+                ->string()
+                ->description('Schedule UUID. Required for update_schedule, delete_schedule, enable_schedule, disable_schedule.'),
+            'prompt' => $schema
+                ->string()
+                ->description('The prompt to send to the agent on each scheduled run. Required for create_schedule.'),
+            'cronExpression' => $schema
+                ->string()
+                ->description("Standard 5-field cron expression. E.g. '0 9 * * 1-5' for weekdays at 9am, '*/30 * * * *' for every 30 minutes. Required for create_schedule."),
+            'agentId' => $schema
+                ->string()
+                ->description('Agent UUID to assign the schedule to. Defaults to self for create_schedule.'),
+            'channelId' => $schema
+                ->string()
+                ->description('Channel UUID where the agent posts its response. Optional.'),
+            'timezone' => $schema
+                ->string()
+                ->description("Timezone for the schedule, e.g. 'America/New_York'. Defaults to 'UTC'."),
         ];
     }
 }

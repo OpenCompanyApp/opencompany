@@ -69,6 +69,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('approvals');
 
     // Automation
+    Route::get('/automation/create', function () {
+        return Inertia::render('Automation/Create');
+    })->name('automation.create');
+
+    Route::get('/automation/{id}/edit', function (string $id) {
+        return Inertia::render('Automation/Edit', ['automationId' => $id]);
+    })->name('automation.edit');
+
     Route::get('/automation', function () {
         return Inertia::render('Automation');
     })->name('automation');
