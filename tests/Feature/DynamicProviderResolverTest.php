@@ -69,9 +69,9 @@ class DynamicProviderResolverTest extends TestCase
         $this->assertEquals('glm-coding', $result['provider']);
         $this->assertEquals('glm-4.7', $result['model']);
 
-        // Verify Prism config was registered on 'glm' provider key
-        $this->assertNotNull(config('prism.providers.glm'));
-        $this->assertEquals('test-api-key', config('prism.providers.glm.api_key'));
+        // Verify Prism config was registered on the provider variant key
+        $this->assertNotNull(config('prism.providers.glm-coding'));
+        $this->assertEquals('test-api-key', config('prism.providers.glm-coding.api_key'));
 
         // Verify AI SDK config was registered with custom driver
         $this->assertNotNull(config('ai.providers.glm-coding'));

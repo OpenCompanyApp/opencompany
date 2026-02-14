@@ -14,6 +14,10 @@ use App\Agents\Tools\Chat\SendChannelMessage;
 use App\Agents\Tools\Docs\CommentOnDocument;
 use App\Agents\Tools\Docs\ManageDocument;
 use App\Agents\Tools\Docs\SearchDocuments;
+use App\Agents\Tools\Memory\RecallMemory;
+use App\Agents\Tools\Memory\SaveMemory;
+use App\Services\Memory\DocumentIndexingService;
+use App\Services\Memory\MemoryScopeGuard;
 use App\Agents\Tools\Lists\ManageListItem;
 use App\Agents\Tools\Lists\ManageListStatus;
 use App\Agents\Tools\Lists\QueryListItems;
@@ -65,6 +69,11 @@ class ToolRegistry
             'label' => 'ask, delegate, notify',
             'description' => 'Inter-agent communication',
         ],
+        'memory' => [
+            'tools' => ['save_memory', 'recall_memory'],
+            'label' => 'save, recall',
+            'description' => 'Long-term agent memory',
+        ],
         'chat' => [
             'tools' => ['send_channel_message', 'read_channel', 'list_channels', 'manage_message', 'search_messages', 'discover_external_channels'],
             'label' => 'send, read, list, manage, search, discover',
@@ -115,6 +124,7 @@ class ToolRegistry
      */
     private const APP_ICONS = [
         'agents' => 'ph:users-three',
+        'memory' => 'ph:brain',
         'chat' => 'ph:chat-circle',
         'docs' => 'ph:file-text',
         'tables' => 'ph:table',
@@ -142,6 +152,21 @@ class ToolRegistry
             'name' => 'Contact Agent',
             'description' => 'Send a message, ask a question, or delegate work to another agent.',
             'icon' => 'ph:users-three',
+        ],
+        // Memory
+        'save_memory' => [
+            'class' => SaveMemory::class,
+            'type' => 'write',
+            'name' => 'Save Memory',
+            'description' => 'Save a durable memory that persists across conversations.',
+            'icon' => 'ph:brain',
+        ],
+        'recall_memory' => [
+            'class' => RecallMemory::class,
+            'type' => 'read',
+            'name' => 'Recall Memory',
+            'description' => 'Search long-term memory for past information and learnings.',
+            'icon' => 'ph:brain',
         ],
         // Chat
         'send_channel_message' => [
@@ -191,7 +216,7 @@ class ToolRegistry
             'class' => SearchDocuments::class,
             'type' => 'read',
             'name' => 'Search Documents',
-            'description' => 'Search workspace documents by keyword.',
+            'description' => 'Search workspace documents by keyword or semantic similarity.',
             'icon' => 'ph:magnifying-glass',
         ],
         'manage_document' => [
@@ -380,10 +405,20 @@ class ToolRegistry
     /** @var array<string, string>|null Cached merged integration logos */
     private ?array $effectiveIntegrationLogos = null;
 
+    private ?string $currentChannelId = null;
+
     public function __construct(
         private AgentPermissionService $permissionService,
         private ToolProviderRegistry $providerRegistry,
     ) {}
+
+    /**
+     * Set the channel context for memory tool scope checks.
+     */
+    public function setChannelContext(?string $channelId): void
+    {
+        $this->currentChannelId = $channelId;
+    }
 
     // ─── Effective (merged static + dynamic) accessors ──────────────────
 
@@ -619,7 +654,7 @@ class ToolRegistry
             // System & task management
             ['tasks', 'system', null],
             // Internal apps
-            ['agents', 'chat', 'docs', 'tables', 'calendar', 'lists', 'workspace', null],
+            ['agents', 'memory', 'chat', 'docs', 'tables', 'calendar', 'lists', 'workspace', null],
             // Integrations & utilities (dynamic + static)
             $integrations,
         );
@@ -802,13 +837,16 @@ class ToolRegistry
         return match ($class) {
             // Inter-agent communication
             ContactAgent::class => new ContactAgent($agent, $this->permissionService, app(\App\Services\AgentCommunicationService::class)),
+            // Memory tools
+            SaveMemory::class => new SaveMemory($agent, app(AgentDocumentService::class), app(DocumentIndexingService::class), app(MemoryScopeGuard::class), $this->currentChannelId),
+            RecallMemory::class => new RecallMemory($agent, app(DocumentIndexingService::class), app(AgentDocumentService::class), app(MemoryScopeGuard::class), $this->currentChannelId),
             // Tools needing permission service (channel/folder scoping)
             SendChannelMessage::class => new SendChannelMessage($agent, $this->permissionService),
             ReadChannel::class => new ReadChannel($agent, $this->permissionService),
             ManageMessage::class => new ManageMessage($agent, $this->permissionService),
             SearchMessages::class => new SearchMessages($agent, $this->permissionService),
             DiscoverExternalChannels::class => new DiscoverExternalChannels($agent, $this->permissionService),
-            SearchDocuments::class => new SearchDocuments($agent, $this->permissionService),
+            SearchDocuments::class => new SearchDocuments($agent, $this->permissionService, app(DocumentIndexingService::class)),
             ManageDocument::class => new ManageDocument($agent, $this->permissionService),
             CommentOnDocument::class => new CommentOnDocument($agent, $this->permissionService),
             ListChannels::class => new ListChannels($agent, $this->permissionService),

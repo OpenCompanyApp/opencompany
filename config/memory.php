@@ -139,6 +139,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Memory Scope
+    |--------------------------------------------------------------------------
+    |
+    | Controls where memory tools (save_memory, recall_memory) can be used.
+    | Options: 'dm_only' (private channels only), 'all', 'none'
+    |
+    */
+
+    'scope' => [
+        'default' => env('MEMORY_SCOPE_DEFAULT', 'dm_only'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Conversation Compaction
     |--------------------------------------------------------------------------
     |
@@ -150,13 +164,44 @@ return [
     'compaction' => [
         'enabled' => env('MEMORY_COMPACTION_ENABLED', true),
         'threshold_ratio' => 0.75,
-        'keep_ratio' => 0.4,
+        'keep_recent_tokens' => (int) env('MEMORY_KEEP_RECENT_TOKENS', 20_000),
         'min_keep_messages' => 3,
         'safety_margin' => 1.2,
         'output_reserve' => 4_096,
         'system_prompt_fallback_reserve' => 10_000,
         'summary_model' => env('MEMORY_SUMMARY_MODEL', 'anthropic:claude-sonnet-4-5-20250929'),
         'summary_max_tokens' => 2_000,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Conversation Loading
+    |--------------------------------------------------------------------------
+    |
+    | Message loading is compaction-driven: all messages after the last
+    | compaction point are loaded. Compaction manages the token budget
+    | automatically — no artificial message count limits.
+    |
+    */
+
+    'conversation' => [],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Memory Flush (STM → LTM Promotion)
+    |--------------------------------------------------------------------------
+    |
+    | Before compaction summarizes older messages, a silent agent turn can
+    | promote important information to long-term memory via save_memory.
+    | The "soft zone" is the token range just below the compaction threshold
+    | where a flush is triggered.
+    |
+    */
+
+    'memory_flush' => [
+        'enabled' => env('MEMORY_FLUSH_ENABLED', true),
+        'soft_threshold_tokens' => 4_000,
+        'max_flushes_per_cycle' => 1,
     ],
 
 ];

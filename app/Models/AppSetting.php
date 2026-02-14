@@ -36,6 +36,32 @@ class AppSetting extends Model
     }
 
     /**
+     * Resolve a provider:model pair from AppSetting with config fallback.
+     *
+     * For combined config keys (provider:model in one key):
+     *   resolveProviderModel('memory_summary_model', 'memory.compaction.summary_model')
+     *
+     * For split config keys (separate provider + model keys):
+     *   resolveProviderModel('memory_embedding_model', 'memory.embedding.provider', 'memory.embedding.model')
+     *
+     * @return array{0: string, 1: string}  [provider, model]
+     */
+    public static function resolveProviderModel(string $settingKey, string $configKey, ?string $configModelKey = null): array
+    {
+        $value = static::getValue($settingKey);
+
+        if ($value === null) {
+            $value = $configModelKey
+                ? config($configKey).':'.config($configModelKey)
+                : config($configKey);
+        }
+
+        $parts = explode(':', (string) $value, 2);
+
+        return [$parts[0], $parts[1] ?? $parts[0]];
+    }
+
+    /**
      * Set a setting value (upsert).
      */
     public static function setValue(string $key, mixed $value, string $category = 'general'): void
@@ -109,11 +135,11 @@ class AppSetting extends Model
                 'action_policies' => [],
             ],
             'memory' => [
-                'memory_embedding_model' => 'openai:text-embedding-3-small',
-                'memory_summary_model' => 'anthropic:claude-sonnet-4-5-20250929',
-                'memory_compaction_enabled' => true,
-                'memory_reranking_enabled' => true,
-                'memory_reranking_model' => 'ollama:dengcao/Qwen3-Reranker-0.6B:Q8_0',
+                'memory_embedding_model' => config('memory.embedding.provider').':'.config('memory.embedding.model'),
+                'memory_summary_model' => config('memory.compaction.summary_model'),
+                'memory_compaction_enabled' => config('memory.compaction.enabled', true),
+                'memory_reranking_enabled' => config('memory.reranking.enabled', true),
+                'memory_reranking_model' => config('memory.reranking.provider').':'.config('memory.reranking.model'),
                 'model_context_windows' => [],
             ],
         ];

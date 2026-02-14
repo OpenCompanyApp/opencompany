@@ -5,9 +5,11 @@ namespace App\Providers;
 use App\Agents\Providers\CodexPrismGateway;
 use App\Agents\Providers\GlmPrismGateway;
 use App\Models\ApprovalRequest;
+use App\Models\Document;
 use App\Services\Mcp\McpServerRegistrar;
 use App\Services\PrismServerService;
 use App\Observers\ApprovalRequestObserver;
+use App\Observers\DocumentObserver;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Vite;
@@ -38,8 +40,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
-        // Approval request observer
+        // Observers
         ApprovalRequest::observe(ApprovalRequestObserver::class);
+        Document::observe(DocumentObserver::class);
 
         // Disable JSON wrapping for API resources
         JsonResource::withoutWrapping();
@@ -58,14 +61,17 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
-        // Register GLM (Zhipu AI) as a custom Prism provider
+        // Register GLM (Zhipu AI) as custom Prism providers
         // GLM uses OpenAI-compatible chat/completions API (same as DeepSeek)
-        $this->app->make(PrismManager::class)->extend('glm', function ($app, array $config) {
+        $prismManager = $this->app->make(PrismManager::class);
+        $glmPrismFactory = function ($app, array $config) {
             return new DeepSeek(
                 apiKey: $config['api_key'] ?? '',
                 url: $config['url'] ?? 'https://api.z.ai/api/coding/paas/v4',
             );
-        });
+        };
+        $prismManager->extend('glm', $glmPrismFactory);
+        $prismManager->extend('glm-coding', $glmPrismFactory);
 
         // Register 'glm' and 'glm-coding' as custom AI SDK drivers.
         // These use GlmPrismGateway which routes to our custom 'glm' Prism provider

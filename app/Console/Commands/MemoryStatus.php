@@ -60,26 +60,31 @@ class MemoryStatus extends Command
         $this->line('');
         $this->info('Configuration');
 
-        $embeddingModel = AppSetting::getValue('memory_embedding_model')
-            ?? config('memory.embedding.provider') . ':' . config('memory.embedding.model');
-        $this->components->twoColumnDetail('Embedding model', $embeddingModel);
-        $this->components->twoColumnDetail('Embedding dimensions', (string) config('memory.embedding.dimensions', 1536));
+        [$embProvider, $embModel] = AppSetting::resolveProviderModel(
+            'memory_embedding_model', 'memory.embedding.provider', 'memory.embedding.model'
+        );
+        $this->components->twoColumnDetail('Embedding model', "{$embProvider}:{$embModel}");
         $this->components->twoColumnDetail('Chunk size (tokens)', (string) config('memory.chunking.max_chunk_size', 512));
         $this->components->twoColumnDetail('Chunk overlap (tokens)', (string) config('memory.chunking.chunk_overlap', 64));
-        $this->components->twoColumnDetail('Compaction enabled', config('memory.compaction.enabled', true) ? 'Yes' : 'No');
 
-        $summaryModel = AppSetting::getValue('memory_summary_model')
-            ?? config('memory.compaction.summary_model', 'anthropic:claude-sonnet-4-5-20250929');
-        $this->components->twoColumnDetail('Summary model', $summaryModel);
+        $compactionEnabled = AppSetting::getValue('memory_compaction_enabled')
+            ?? config('memory.compaction.enabled', true);
+        $this->components->twoColumnDetail('Compaction enabled', $compactionEnabled ? 'Yes' : 'No');
+
+        [$sumProvider, $sumModel] = AppSetting::resolveProviderModel(
+            'memory_summary_model', 'memory.compaction.summary_model'
+        );
+        $this->components->twoColumnDetail('Summary model', "{$sumProvider}:{$sumModel}");
 
         $rerankingEnabled = AppSetting::getValue('memory_reranking_enabled')
             ?? config('memory.reranking.enabled', true);
         $this->components->twoColumnDetail('Reranking enabled', $rerankingEnabled ? 'Yes' : 'No');
 
         if ($rerankingEnabled) {
-            $rerankingModel = AppSetting::getValue('memory_reranking_model')
-                ?? config('memory.reranking.provider') . ':' . config('memory.reranking.model');
-            $this->components->twoColumnDetail('Reranking model', $rerankingModel);
+            [$rerProvider, $rerModel] = AppSetting::resolveProviderModel(
+                'memory_reranking_model', 'memory.reranking.provider', 'memory.reranking.model'
+            );
+            $this->components->twoColumnDetail('Reranking model', "{$rerProvider}:{$rerModel}");
         }
 
         return self::SUCCESS;

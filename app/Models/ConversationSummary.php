@@ -18,6 +18,7 @@ class ConversationSummary extends Model
         'tokens_before',
         'tokens_after',
         'compaction_count',
+        'flush_count',
         'messages_summarized',
         'last_message_id',
     ];

@@ -6,12 +6,15 @@ use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Jobs\AgentRespondJob;
 use App\Models\Channel;
+use App\Models\ChannelMember;
 use App\Models\DirectMessage;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageReaction;
 use App\Models\User;
 use App\Services\AgentChatService;
+use App\Services\Memory\ConversationCompactionService;
+use App\Services\Memory\MemoryFlushService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -139,6 +142,81 @@ class MessageController extends Controller
                 AgentRespondJob::dispatch($message, $agent, $message->channel_id);
             }
         }
+    }
+
+    /**
+     * Manually trigger conversation compaction for a channel.
+     */
+    public function compact(string $channelId)
+    {
+        $channel = Channel::findOrFail($channelId);
+        $agents = $this->resolveChannelAgents($channel);
+
+        if ($agents->isEmpty()) {
+            return response()->json(['message' => 'No agents in this channel.'], 422);
+        }
+
+        $compactor = app(ConversationCompactionService::class);
+        $flusher = app(MemoryFlushService::class);
+        $results = [];
+
+        foreach ($agents as $agent) {
+            // Flush important memories to daily logs before compacting
+            try {
+                $flusher->flush($channelId, $agent);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Memory flush before compact failed', [
+                    'error' => $e->getMessage(),
+                    'agent' => $agent->name,
+                ]);
+            }
+
+            $summary = $compactor->compact($channelId, $agent);
+            if ($summary) {
+                $results[] = [
+                    'agent' => $agent->name,
+                    'messages_summarized' => $summary->messages_summarized,
+                    'tokens_before' => $summary->tokens_before,
+                    'tokens_after' => $summary->tokens_after,
+                    'compaction_count' => $summary->compaction_count,
+                    'summary_preview' => Str::limit($summary->summary, 200),
+                ];
+            }
+        }
+
+        if (empty($results)) {
+            return response()->json(['message' => 'Nothing to compact (fewer than 5 messages).']);
+        }
+
+        return response()->json([
+            'message' => 'Compaction complete.',
+            'results' => $results,
+        ]);
+    }
+
+    /**
+     * Resolve agent users that participate in a channel.
+     */
+    private function resolveChannelAgents(Channel $channel): \Illuminate\Support\Collection
+    {
+        if ($channel->type === 'dm') {
+            $dm = DirectMessage::where('channel_id', $channel->id)->first();
+            if (!$dm) {
+                return collect();
+            }
+
+            return User::where('type', 'agent')
+                ->whereIn('id', [$dm->user1_id, $dm->user2_id])
+                ->get();
+        }
+
+        // For external, public, agent channels: find all agent members
+        $agentIds = ChannelMember::where('channel_id', $channel->id)
+            ->pluck('user_id');
+
+        return User::where('type', 'agent')
+            ->whereIn('id', $agentIds)
+            ->get();
     }
 
     public function destroy(string $id)

@@ -492,6 +492,7 @@ const formatOptions = computed(() => [
 
 // Slash commands
 const slashCommands = computed<SlashCommand[]>(() => [
+  { name: '/compact', description: 'Compact conversation memory', icon: 'ph:arrows-in-simple', action: () => {} },
   { name: '/giphy', description: 'Search for a GIF', icon: 'ph:gif', action: () => {} },
   { name: '/poll', description: 'Create a poll', icon: 'ph:chart-bar', action: () => {} },
   { name: '/remind', description: 'Set a reminder', icon: 'ph:alarm', action: () => {} },

@@ -88,9 +88,9 @@ class DynamicProviderResolver
         $apiKey = $integration->getConfigValue('api_key');
         $url = $integration->getConfigValue('url') ?? $this->getDefaultGlmUrl($providerKey);
 
-        // Set Prism config for our custom 'glm' provider (registered via PrismManager::extend)
+        // Set Prism config for the GLM provider variant (registered via PrismManager::extend)
         config([
-            'prism.providers.glm' => [
+            "prism.providers.{$providerKey}" => [
                 'api_key' => $apiKey,
                 'url' => $url,
             ],

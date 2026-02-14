@@ -50,6 +50,15 @@ class TelegramSetWebhook extends Command
                 ['URL', $webhookUrl],
                 ['Secret', substr($webhookSecret, 0, 8) . '...'],
             ]);
+
+            // Register bot commands menu
+            try {
+                $telegram->setMyCommands();
+                $this->info('Bot commands registered (/start, /compact).');
+            } catch (\Throwable $e) {
+                $this->warn("Webhook set, but failed to register commands: {$e->getMessage()}");
+            }
+
             return self::SUCCESS;
         } catch (\Throwable $e) {
             $this->error("Failed to set webhook: {$e->getMessage()}");

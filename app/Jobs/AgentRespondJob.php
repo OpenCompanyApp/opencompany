@@ -19,6 +19,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Services\AgentCommunicationService;
 use App\Services\AgentDocumentService;
+use App\Services\Memory\ModelContextRegistry;
 use App\Services\TelegramService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -127,10 +128,27 @@ class AgentRespondJob implements ShouldQueue
                         'tools' => $toolRegistry->getToolSlugsForAgent($this->agent),
                         'model' => $agentInstance->model(),
                         'provider' => $agentInstance->provider(),
+                        'prompt_sections' => $agentInstance->instructionsBreakdown(),
+                        'context_window' => app(ModelContextRegistry::class)
+                            ->getContextWindow($agentInstance->model()),
                     ],
                 ]);
             } catch (\Throwable $e) {
                 Log::warning('Failed to capture LLM context', ['error' => $e->getMessage()]);
+            }
+
+            // Memory flush: save important context to LTM before compaction
+            try {
+                $flushService = app(\App\Services\Memory\MemoryFlushService::class);
+                $currentMessages = $agentInstance->messages();
+                if ($flushService->shouldFlush($this->channelId, $this->agent, $currentMessages, $agentInstance->instructions())) {
+                    $flushStep = $task->addStep('Flushing memories before compaction', 'action');
+                    $flushStep->start();
+                    $flushService->flush($this->channelId, $this->agent);
+                    $flushStep->complete();
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Memory flush failed', ['error' => $e->getMessage()]);
             }
 
             $response = $agentInstance->prompt($this->buildPromptWithThreadContext($this->userMessage));
@@ -218,6 +236,63 @@ class AgentRespondJob implements ShouldQueue
                 'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
                 'tool_calls_count' => $response->toolCalls->count(),
             ]);
+
+            // Compute token breakdown from actual usage
+            try {
+                $promptTokens = $response->usage->promptTokens;
+                $completionTokens = $response->usage->completionTokens;
+                $contextWindow = $task->context['context_window'] ?? 128_000;
+                $outputReserve = (int) config('memory.compaction.output_reserve', 4_096);
+
+                // Estimate system vs message split from char lengths
+                $systemChars = mb_strlen($task->context['system_prompt'] ?? '');
+                $messageChars = array_sum(array_map(
+                    fn ($m) => mb_strlen($m['content'] ?? ''),
+                    $task->context['messages'] ?? [],
+                ));
+                $totalChars = $systemChars + $messageChars;
+                $systemRatio = $totalChars > 0 ? $systemChars / $totalChars : 0.5;
+
+                $systemTokens = (int) round($promptTokens * $systemRatio);
+                $messageTokens = $promptTokens - $systemTokens;
+
+                // Compaction math using actual tokens
+                $available = max(0, $contextWindow - $systemTokens - $outputReserve);
+                $thresholdRatio = (float) config('memory.compaction.threshold_ratio', 0.75);
+                $safetyMargin = (float) config('memory.compaction.safety_margin', 1.2);
+                $compactionThreshold = (int) ($available * $thresholdRatio);
+                $adjustedTokens = (int) ($messageTokens * $safetyMargin);
+                $remaining = max(0, $compactionThreshold - $adjustedTokens);
+                $pctUsed = $compactionThreshold > 0
+                    ? round(($adjustedTokens / $compactionThreshold) * 100, 1)
+                    : 0;
+
+                $context = $task->context;
+                $context['token_breakdown'] = [
+                    'context_window' => $contextWindow,
+                    'output_reserve' => $outputReserve,
+                    'system_prompt' => [
+                        'total' => $systemTokens,
+                        'sections' => $context['prompt_sections'] ?? [],
+                    ],
+                    'messages' => [
+                        'total' => $messageTokens,
+                        'count' => count($context['messages'] ?? []),
+                    ],
+                    'compaction' => [
+                        'threshold' => $compactionThreshold,
+                        'adjusted_tokens' => $adjustedTokens,
+                        'remaining' => $remaining,
+                        'pct_used' => $pctUsed,
+                    ],
+                    'actual_prompt_tokens' => $promptTokens,
+                    'actual_completion_tokens' => $completionTokens,
+                ];
+                unset($context['prompt_sections'], $context['context_window']);
+                $task->update(['context' => $context]);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to compute token breakdown', ['error' => $e->getMessage()]);
+            }
 
             // If this was a delegated task, send result back to the delegating agent
             if ($task->parent_task_id && $task->source === Task::SOURCE_AGENT_DELEGATION) {

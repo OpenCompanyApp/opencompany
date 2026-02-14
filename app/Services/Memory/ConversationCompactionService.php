@@ -59,28 +59,48 @@ class ConversationCompactionService
      */
     public function compact(string $channelId, User $agent): ?ConversationSummary
     {
-        $messages = Message::where('channel_id', $channelId)
-            ->orderBy('created_at', 'asc')
-            ->get();
+        $existing = ConversationSummary::where('channel_id', $channelId)
+            ->where('agent_id', $agent->id)
+            ->first();
+
+        // Only load messages after the previous compaction point
+        $query = Message::where('channel_id', $channelId)
+            ->orderBy('created_at', 'asc');
+
+        if ($existing?->last_message_id) {
+            $lastMsg = Message::find($existing->last_message_id);
+            if ($lastMsg) {
+                $query->where('created_at', '>', $lastMsg->created_at);
+            }
+        }
+
+        $messages = $query->get();
 
         if ($messages->count() < 5) {
             return null;
         }
 
-        $keepRatio = config('memory.compaction.keep_ratio', 0.4);
+        $keepRecentTokens = config('memory.compaction.keep_recent_tokens', 20_000);
         $minKeep = config('memory.compaction.min_keep_messages', 3);
-        $keepCount = max($minKeep, (int) ceil($messages->count() * $keepRatio));
-        $splitIndex = $messages->count() - $keepCount;
+
+        // Walk from newest to oldest, accumulating tokens until budget is exceeded
+        $keptTokens = 0;
+        $splitIndex = 0;
+        for ($i = $messages->count() - 1; $i >= 0; $i--) {
+            $msgTokens = $this->estimateTokenCount($messages[$i]->content ?? '');
+            if ($keptTokens + $msgTokens > $keepRecentTokens
+                && ($messages->count() - $i - 1) >= $minKeep) {
+                $splitIndex = $i + 1;
+                break;
+            }
+            $keptTokens += $msgTokens;
+        }
 
         if ($splitIndex <= 0) {
             return null;
         }
 
         $toSummarize = $messages->slice(0, $splitIndex)->values();
-        $existing = ConversationSummary::where('channel_id', $channelId)
-            ->where('agent_id', $agent->id)
-            ->first();
-
         $previousSummary = $existing?->summary ?? '';
 
         // Build SDK messages for summarization
@@ -107,6 +127,7 @@ class ConversationCompactionService
                 'tokens_before' => $tokensBefore,
                 'tokens_after' => $this->estimateTokenCount($summaryText),
                 'compaction_count' => ($existing?->compaction_count ?? 0) + 1,
+                'flush_count' => 0, // Reset for new compaction cycle
                 'messages_summarized' => ($existing?->messages_summarized ?? 0) + count($sdkMessages),
                 'last_message_id' => $toSummarize->last()?->id ?? $existing?->last_message_id,
             ]
@@ -147,11 +168,9 @@ class ConversationCompactionService
         $prompt .= "- User preferences expressed\n\n";
         $prompt .= "Be factual and specific. Preserve names, dates, and technical details.";
 
-        $summaryModel = AppSetting::getValue('memory_summary_model')
-            ?? config('memory.compaction.summary_model', 'anthropic:claude-sonnet-4-5-20250929');
-        $parts = explode(':', $summaryModel, 2);
-        $provider = $parts[0];
-        $model = $parts[1] ?? $parts[0];
+        [$provider, $model] = AppSetting::resolveProviderModel(
+            'memory_summary_model', 'memory.compaction.summary_model'
+        );
 
         try {
             $resolved = $this->providerResolver->resolveFromParts($provider, $model);
@@ -184,27 +203,9 @@ class ConversationCompactionService
 
     /**
      * Estimate token count for a string.
-     * Uses word count with CJK-awareness.
      */
     public function estimateTokenCount(string $text): int
     {
-        if (empty($text)) {
-            return 0;
-        }
-
-        $wordCount = str_word_count($text);
-        $charCount = mb_strlen($text);
-
-        // CJK-heavy text: str_word_count undercounts dramatically
-        if ($wordCount > 0 && $charCount / $wordCount > 10) {
-            return (int) ceil($charCount * 1.5);
-        }
-
-        // Edge case: no words detected but has characters (pure CJK/symbols)
-        if ($wordCount === 0 && $charCount > 0) {
-            return (int) ceil($charCount * 1.5);
-        }
-
-        return (int) ceil($wordCount * 1.3);
+        return TokenEstimator::estimate($text);
     }
 }

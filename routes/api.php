@@ -54,6 +54,7 @@ Route::post('/channels/{id}/members', [ChannelController::class, 'addMember']);
 Route::delete('/channels/{channelId}/members/{userId}', [ChannelController::class, 'removeMember']);
 Route::post('/channels/{id}/read', [ChannelController::class, 'markRead']);
 Route::post('/channels/{id}/typing', [ChannelController::class, 'typing']);
+Route::post('/channels/{id}/compact', [MessageController::class, 'compact']);
 
 // Messages
 Route::get('/messages', [MessageController::class, 'index']);

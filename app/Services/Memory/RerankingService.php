@@ -135,11 +135,8 @@ class RerankingService
      */
     private function resolveProviderModel(): array
     {
-        $setting = AppSetting::getValue('memory_reranking_model')
-            ?? config('memory.reranking.provider').':'.config('memory.reranking.model');
-
-        $parts = explode(':', $setting, 2);
-
-        return [$parts[0], $parts[1] ?? $parts[0]];
+        return AppSetting::resolveProviderModel(
+            'memory_reranking_model', 'memory.reranking.provider', 'memory.reranking.model'
+        );
     }
 }

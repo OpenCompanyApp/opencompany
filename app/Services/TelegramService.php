@@ -249,6 +249,19 @@ class TelegramService
     }
 
     /**
+     * Register the bot's command menu with Telegram.
+     */
+    public function setMyCommands(): array
+    {
+        return $this->request('setMyCommands', [
+            'commands' => json_encode([
+                ['command' => 'start', 'description' => 'Get started and show your user ID'],
+                ['command' => 'compact', 'description' => 'Compact conversation memory'],
+            ]),
+        ]);
+    }
+
+    /**
      * Check if the service has a valid bot token configured.
      */
     public function isConfigured(): bool

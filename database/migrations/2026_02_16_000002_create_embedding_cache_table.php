@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('model', 100);
 
             if ($isPgsql) {
-                $table->vector('embedding', 1536);
+                $table->vector('embedding');
             } else {
                 $table->text('embedding')->nullable();
             }

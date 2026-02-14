@@ -279,6 +279,54 @@
             <Icon name="ph:brain" class="w-4 h-4" />
             LLM Context
           </h3>
+          <!-- Token Breakdown Bar -->
+          <div v-if="tb" class="mb-3 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                {{ ctx.model }} <span class="text-neutral-300 dark:text-neutral-600 mx-1">&middot;</span> {{ formatTokens(tb.context_window) }} context
+              </span>
+              <span class="text-xs text-neutral-400 tabular-nums font-mono">
+                {{ formatTokens(tb.system_prompt.total + tb.messages.total) }} / {{ formatTokens(tb.context_window) }} used
+              </span>
+            </div>
+
+            <!-- Stacked bar -->
+            <div class="flex h-2.5 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 mb-2">
+              <div
+                v-for="seg in contextBarSegments"
+                :key="seg.label"
+                :class="[seg.color, 'transition-all duration-300']"
+                :style="{ width: Math.max(seg.pct, seg.pct > 0 ? 0.5 : 0) + '%' }"
+                :title="`${seg.label}: ${formatTokens(seg.tokens)} (${seg.pct.toFixed(1)}%)`"
+              />
+            </div>
+
+            <!-- Legend -->
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <span v-for="seg in contextBarSegments.filter(s => s.pct > 0.1)" :key="seg.label" class="flex items-center gap-1.5">
+                <span :class="[seg.color, 'w-2 h-2 rounded-full inline-block']" />
+                {{ seg.label }}
+                <span class="tabular-nums font-mono text-neutral-400">{{ formatTokens(seg.tokens) }} ({{ seg.pct.toFixed(1) }}%)</span>
+              </span>
+            </div>
+
+            <!-- Compaction proximity -->
+            <div class="mt-3 pt-2.5 border-t border-neutral-100 dark:border-neutral-800">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs text-neutral-500 dark:text-neutral-400">Compaction proximity</span>
+                <span class="text-xs tabular-nums font-mono" :class="tb.compaction.pct_used >= 90 ? 'text-red-500' : tb.compaction.pct_used >= 70 ? 'text-amber-500' : 'text-green-600 dark:text-green-400'">
+                  {{ tb.compaction.pct_used }}% &middot; {{ formatTokens(tb.compaction.remaining) }} remaining
+                </span>
+              </div>
+              <div class="h-1.5 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                <div
+                  :class="[compactionColor, 'h-full rounded-full transition-all duration-300']"
+                  :style="{ width: Math.min(tb.compaction.pct_used, 100) + '%' }"
+                />
+              </div>
+            </div>
+          </div>
+
           <div class="border border-neutral-200 dark:border-neutral-700 rounded-lg divide-y divide-neutral-200 dark:divide-neutral-700 overflow-hidden">
             <!-- System Prompt -->
             <div v-if="ctx.system_prompt">
@@ -288,10 +336,31 @@
               >
                 <Icon name="ph:scroll" class="w-4 h-4 text-neutral-400 shrink-0" />
                 <span class="flex-1 text-sm text-neutral-900 dark:text-white">System Prompt</span>
-                <span class="text-xs text-neutral-400 tabular-nums font-mono shrink-0">{{ ctx.system_prompt.length.toLocaleString() }} chars</span>
+                <span class="text-xs text-neutral-400 tabular-nums font-mono shrink-0">{{ tb ? formatTokens(tb.system_prompt.total) + ' tokens' : ctx.system_prompt.length.toLocaleString() + ' chars' }}</span>
                 <Icon :name="expandedContext.has('system_prompt') ? 'ph:caret-up' : 'ph:caret-down'" class="w-4 h-4 text-neutral-400 shrink-0" />
               </button>
               <div v-if="expandedContext.has('system_prompt')" class="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-700/50">
+                <!-- Section breakdown -->
+                <div v-if="sectionTokens.length" class="mb-3 space-y-1.5">
+                  <div
+                    v-for="section in sectionTokens"
+                    :key="section.label"
+                    class="flex items-center gap-2"
+                  >
+                    <span class="text-xs text-neutral-500 dark:text-neutral-400 w-28 shrink-0 truncate" :title="section.label">{{ section.label }}</span>
+                    <div class="flex-1 h-1.5 rounded-full overflow-hidden bg-neutral-200 dark:bg-neutral-700">
+                      <div
+                        class="h-full rounded-full bg-indigo-400 dark:bg-indigo-500 transition-all duration-300"
+                        :style="{ width: (section.tokens / maxSectionTokens * 100) + '%' }"
+                      />
+                    </div>
+                    <span class="text-xs tabular-nums font-mono text-neutral-400 w-20 text-right shrink-0">
+                      {{ section.tokens.toLocaleString() }}
+                      <span class="text-neutral-300 dark:text-neutral-600">({{ tb ? Math.round(section.tokens / tb.system_prompt.total * 100) : 0 }}%)</span>
+                    </span>
+                  </div>
+                </div>
+
                 <div class="flex justify-end mb-2">
                   <div class="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-md p-0.5">
                     <button
@@ -323,7 +392,7 @@
               >
                 <Icon name="ph:chat-dots" class="w-4 h-4 text-neutral-400 shrink-0" />
                 <span class="flex-1 text-sm text-neutral-900 dark:text-white">Conversation History</span>
-                <span class="text-xs text-neutral-400 tabular-nums font-mono shrink-0">{{ ctx.messages.length }} messages</span>
+                <span class="text-xs text-neutral-400 tabular-nums font-mono shrink-0">{{ ctx.messages.length }} messages{{ tb ? ' · ' + formatTokens(tb.messages.total) + ' tokens' : '' }}</span>
                 <Icon :name="expandedContext.has('messages') ? 'ph:caret-up' : 'ph:caret-down'" class="w-4 h-4 text-neutral-400 shrink-0" />
               </button>
               <div v-if="expandedContext.has('messages')" class="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-700/50 space-y-2 max-h-96 overflow-y-auto">
@@ -452,12 +521,28 @@ import { useApi } from '@/composables/useApi'
 import { useMarkdown } from '@/composables/useMarkdown'
 import { useHighlight } from '@/composables/useHighlight'
 
+interface PromptSection {
+  label: string
+  chars: number
+}
+
+interface TokenBreakdown {
+  context_window: number
+  output_reserve: number
+  system_prompt: { total: number; sections: PromptSection[] }
+  messages: { total: number; count: number }
+  compaction: { threshold: number; adjusted_tokens: number; remaining: number; pct_used: number }
+  actual_prompt_tokens?: number
+  actual_completion_tokens?: number
+}
+
 interface TaskContext {
   system_prompt?: string
   messages?: { role: string; content: string }[]
   tools?: string[]
   model?: string
   provider?: string
+  token_breakdown?: TokenBreakdown
 }
 
 const props = defineProps<{
@@ -576,6 +661,58 @@ const sourceIcons: Record<string, string> = {
 
 // Computed
 const ctx = computed<TaskContext>(() => (task.value?.context as TaskContext) ?? {})
+
+const tb = computed(() => ctx.value.token_breakdown)
+
+const formatTokens = (n: number) => {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+  return n.toString()
+}
+
+const contextBarSegments = computed(() => {
+  if (!tb.value) return []
+  const total = tb.value.context_window
+  if (total <= 0) return []
+  const sysPct = (tb.value.system_prompt.total / total) * 100
+  const msgPct = (tb.value.messages.total / total) * 100
+  const reservePct = (tb.value.output_reserve / total) * 100
+  const availPct = Math.max(0, 100 - sysPct - msgPct - reservePct)
+  return [
+    { label: 'System', tokens: tb.value.system_prompt.total, pct: sysPct, color: 'bg-indigo-500' },
+    { label: 'Conversation', tokens: tb.value.messages.total, pct: msgPct, color: 'bg-blue-500' },
+    { label: 'Output Reserve', tokens: tb.value.output_reserve, pct: reservePct, color: 'bg-amber-400' },
+    { label: 'Available', tokens: Math.max(0, total - tb.value.system_prompt.total - tb.value.messages.total - tb.value.output_reserve), pct: availPct, color: 'bg-neutral-200 dark:bg-neutral-700' },
+  ]
+})
+
+const compactionColor = computed(() => {
+  if (!tb.value) return 'bg-green-500'
+  const pct = tb.value.compaction.pct_used
+  if (pct >= 90) return 'bg-red-500'
+  if (pct >= 70) return 'bg-amber-500'
+  return 'bg-green-500'
+})
+
+// Compute per-section token allocation from char ratios
+const sectionTokens = computed(() => {
+  if (!tb.value?.system_prompt.sections) return []
+  const totalChars = tb.value.system_prompt.sections.reduce((sum, s) => sum + s.chars, 0)
+  if (totalChars <= 0) return []
+  const totalTokens = tb.value.system_prompt.total
+  return tb.value.system_prompt.sections
+    .map(s => ({
+      label: s.label,
+      tokens: Math.round((s.chars / totalChars) * totalTokens),
+    }))
+    .filter(s => s.tokens > 0)
+    .sort((a, b) => b.tokens - a.tokens)
+})
+
+const maxSectionTokens = computed(() => {
+  if (!sectionTokens.value.length) return 1
+  return sectionTokens.value[0].tokens
+})
 
 const toolSteps = computed(() =>
   task.value?.steps?.filter(s => s.metadata?.tool) ?? []

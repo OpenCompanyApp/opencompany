@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\User;
+use App\Services\Memory\DocumentIndexingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class SettingController extends Controller
 {
@@ -35,10 +37,30 @@ class SettingController extends Controller
         $allowedKeys = array_keys($defaults[$category] ?? []);
         $filtered = array_intersect_key($settings, array_flip($allowedKeys));
 
+        // Detect if the embedding model is being changed
+        $embeddingModelChanged = false;
+        if ($category === 'memory' && isset($filtered['memory_embedding_model'])) {
+            $currentModel = AppSetting::getValue('memory_embedding_model');
+            if ($currentModel !== null && $currentModel !== $filtered['memory_embedding_model']) {
+                $embeddingModelChanged = true;
+            }
+        }
+
         AppSetting::setMany($filtered, $category);
 
+        // Reset embedding data when the model changes — old vectors are
+        // incompatible with the new model's vector space.
+        if ($embeddingModelChanged) {
+            DocumentIndexingService::resetEmbeddings();
+            Log::info('Embedding model changed, embedding data reset', [
+                'new_model' => $filtered['memory_embedding_model'],
+            ]);
+        }
+
         return response()->json([
-            'message' => 'Settings updated.',
+            'message' => $embeddingModelChanged
+                ? 'Settings updated. Embedding data has been reset for the new model.'
+                : 'Settings updated.',
             'settings' => AppSetting::getByCategory($category),
         ]);
     }

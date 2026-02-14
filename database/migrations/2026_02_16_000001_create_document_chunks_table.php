@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('content_hash', 64);
 
             if ($isPgsql) {
-                $table->vector('embedding', 1536);
+                $table->vector('embedding');
                 $table->jsonb('metadata')->nullable();
             } else {
                 $table->text('embedding')->nullable();
@@ -38,9 +38,9 @@ return new class extends Migration
             $table->index('document_id');
         });
 
-        if ($isPgsql) {
-            DB::statement('CREATE INDEX document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops)');
-        }
+        // Note: HNSW index is created lazily by DocumentIndexingService after
+        // the first embeddings are stored, because it requires a known dimension
+        // and we support any embedding model / dimension.
     }
 
     public function down(): void

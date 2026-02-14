@@ -93,6 +93,8 @@ export const useApi = () => {
     })
     return response.data
   }
+  const compactChannel = (channelId: string) =>
+    api.post(`/channels/${channelId}/compact`)
   const deleteMessage = (id: string) =>
     api.delete(`/messages/${id}`)
   const addMessageReaction = (messageId: string, data: { emoji: string; userId?: string }) =>
@@ -452,6 +454,7 @@ export const useApi = () => {
     pinMessage,
     fetchPinnedMessages,
     uploadMessageAttachment,
+    compactChannel,
     // List Statuses
     fetchListStatuses,
     createListStatus,

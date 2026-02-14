@@ -180,7 +180,7 @@ import { useTypingIndicator } from '@/composables/useTypingIndicator'
 import { useIsMobile } from '@/composables/useMediaQuery'
 
 const page = usePage()
-const { fetchChannels, fetchMessages, sendMessage, markChannelRead, addMessageReaction, fetchMessageThread, removeChannelMember, pinMessage, fetchPinnedMessages, sendTypingIndicator, uploadMessageAttachment, fetchDm } = useApi()
+const { fetchChannels, fetchMessages, sendMessage, markChannelRead, addMessageReaction, fetchMessageThread, removeChannelMember, pinMessage, fetchPinnedMessages, sendTypingIndicator, uploadMessageAttachment, compactChannel, fetchDm } = useApi()
 const isMobile = useIsMobile()
 
 interface Thread {
@@ -373,6 +373,43 @@ interface MessageAttachment {
 
 const handleSendMessage = async (content: string, attachments?: MessageAttachment[]) => {
   if (!selectedChannel.value) return
+
+  // Intercept /compact command
+  if (content.trim() === '/compact') {
+    try {
+      const { data } = await compactChannel(selectedChannel.value.id)
+      const resultText = data.results
+        ? data.results.map((r: any) =>
+            `**${r.agent}**: ${r.messages_summarized} messages compacted (${r.tokens_before} → ${r.tokens_after} tokens)`
+          ).join('\n')
+        : data.message
+      messages.value = [...messages.value, {
+        id: `system-${Date.now()}`,
+        content: `🗜️ ${resultText}`,
+        channelId: selectedChannel.value.id,
+        channel_id: selectedChannel.value.id,
+        authorId: 'system',
+        author: { id: 'system', name: 'System', type: 'system' },
+        timestamp: new Date().toISOString(),
+        reactions: [],
+        attachments: [],
+      } as any]
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Compaction failed'
+      messages.value = [...messages.value, {
+        id: `system-${Date.now()}`,
+        content: `⚠️ ${msg}`,
+        channelId: selectedChannel.value.id,
+        channel_id: selectedChannel.value.id,
+        authorId: 'system',
+        author: { id: 'system', name: 'System', type: 'system' },
+        timestamp: new Date().toISOString(),
+        reactions: [],
+        attachments: [],
+      } as any]
+    }
+    return
+  }
 
   let attachmentIds: string[] = []
 

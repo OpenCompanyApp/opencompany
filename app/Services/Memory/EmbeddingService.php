@@ -122,11 +122,8 @@ class EmbeddingService
      */
     private function resolveProviderModel(): array
     {
-        $setting = AppSetting::getValue('memory_embedding_model')
-            ?? config('memory.embedding.provider') . ':' . config('memory.embedding.model');
-
-        $parts = explode(':', $setting, 2);
-
-        return [$parts[0], $parts[1] ?? $parts[0]];
+        return AppSetting::resolveProviderModel(
+            'memory_embedding_model', 'memory.embedding.provider', 'memory.embedding.model'
+        );
     }
 }

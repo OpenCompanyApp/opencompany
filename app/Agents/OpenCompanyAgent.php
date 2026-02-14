@@ -52,64 +52,101 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
      */
     public function instructions(): string
     {
+        return implode('', array_column($this->buildSections(), 'content'));
+    }
+
+    /**
+     * Get a character-length breakdown of each system prompt section.
+     * Used with actual prompt_tokens from the LLM response to compute proportional token allocation.
+     *
+     * @return array<int, array{label: string, chars: int}>
+     */
+    public function instructionsBreakdown(): array
+    {
+        return array_values(array_map(
+            fn (array $s) => ['label' => $s['label'], 'chars' => mb_strlen($s['content'])],
+            $this->buildSections(),
+        ));
+    }
+
+    /**
+     * Build the system prompt as labeled sections.
+     *
+     * @return array<int, array{label: string, content: string}>
+     */
+    private function buildSections(): array
+    {
         $identityFiles = $this->docService->getIdentityFiles($this->agent);
 
+        $sections = [];
+
         if ($identityFiles->isEmpty()) {
-            $fallback = "You are {$this->agent->name}, a helpful AI assistant working within a company workspace.\n\n";
-            $fallback .= "## You\n\n";
-            $fallback .= "- **ID**: {$this->agent->id}\n";
-            $fallback .= "- **Name**: {$this->agent->name}\n";
-            $fallback .= "- **Type**: {$this->agent->agent_type}\n";
-            $fallback .= "- **Brain**: {$this->agent->brain}\n";
-            $fallback .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
-            $fallback .= $this->buildTimeContext();
-            $fallback .= $this->buildChannelContext();
-            $fallback .= $this->buildTaskContext();
-            $fallback .= "## Apps\n\n";
-            $fallback .= "**IMPORTANT: Before calling ANY tool you have not used in this conversation, call `get_tool_info(name)` first to get its parameters. Do NOT guess parameters.**\n\n";
-            $fallback .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
-            $fallback .= "To generate images: use render_mermaid, render_plantuml, render_svg, or render_vegalite. To generate PDFs: use render_typst. NEVER fabricate image/document URLs.\n";
-            return $fallback;
-        }
+            $header = "You are {$this->agent->name}, a helpful AI assistant working within a company workspace.\n\n";
+            $header .= "## You\n\n";
+            $header .= "- **ID**: {$this->agent->id}\n";
+            $header .= "- **Name**: {$this->agent->name}\n";
+            $header .= "- **Type**: {$this->agent->agent_type}\n";
+            $header .= "- **Brain**: {$this->agent->brain}\n";
+            $header .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
+            $sections[] = ['label' => 'Header', 'content' => $header];
+        } else {
+            $header = "# Project Context\n\n";
+            $header .= "You are an AI agent operating within a company workspace.\n\n";
+            $header .= "## You\n\n";
+            $header .= "- **ID**: {$this->agent->id}\n";
+            $header .= "- **Name**: {$this->agent->name}\n";
+            $header .= "- **Type**: {$this->agent->agent_type}\n";
+            $header .= "- **Brain**: {$this->agent->brain}\n";
+            $header .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
+            $sections[] = ['label' => 'Header', 'content' => $header];
 
-        $prompt = "# Project Context\n\n";
-        $prompt .= "You are an AI agent operating within a company workspace.\n\n";
-        $prompt .= "## You\n\n";
-        $prompt .= "- **ID**: {$this->agent->id}\n";
-        $prompt .= "- **Name**: {$this->agent->name}\n";
-        $prompt .= "- **Type**: {$this->agent->agent_type}\n";
-        $prompt .= "- **Brain**: {$this->agent->brain}\n";
-        $prompt .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
+            $order = ['IDENTITY', 'SOUL', 'USER', 'AGENTS', 'TOOLS', 'MEMORY', 'HEARTBEAT', 'BOOTSTRAP'];
 
-        $order = ['IDENTITY', 'SOUL', 'USER', 'AGENTS', 'TOOLS', 'MEMORY', 'HEARTBEAT', 'BOOTSTRAP'];
+            $channel = Channel::find($this->channelId);
+            $privateChannel = $channel && in_array($channel->type, ['dm', 'agent']);
 
-        // MEMORY.md only loads in private contexts (dm, agent) — never in public/external channels
-        $channel = Channel::find($this->channelId);
-        $privateChannel = $channel && in_array($channel->type, ['dm', 'agent']);
+            foreach ($order as $type) {
+                if ($type === 'MEMORY' && !$privateChannel) {
+                    continue;
+                }
 
-        foreach ($order as $type) {
-            if ($type === 'MEMORY' && !$privateChannel) {
-                continue;
+                $file = $identityFiles->firstWhere('title', "{$type}.md");
+                if ($file && !empty(trim($file->content))) {
+                    $sections[] = ['label' => "{$type}.md", 'content' => "## {$type}.md\n\n{$file->content}\n\n"];
+                }
             }
 
-            $file = $identityFiles->firstWhere('title', "{$type}.md");
-            if ($file && !empty(trim($file->content))) {
-                $prompt .= "## {$type}.md\n\n{$file->content}\n\n";
+            if ($privateChannel) {
+                $sections[] = ['label' => 'Memory System', 'content' => $this->buildMemoryPrompt()];
             }
         }
 
-        // Add current time, channel, and task context
-        $prompt .= $this->buildTimeContext();
-        $prompt .= $this->buildChannelContext();
-        $prompt .= $this->buildTaskContext();
+        // Common sections
+        $timeContext = $this->buildTimeContext();
+        if ($timeContext) {
+            $sections[] = ['label' => 'Current Time', 'content' => $timeContext];
+        }
 
-        $prompt .= "## Apps\n\n";
-        $prompt .= "**IMPORTANT: Before calling ANY tool you have not used in this conversation, call `get_tool_info(name)` first to get its parameters. Do NOT guess parameters.**\n\n";
-        $prompt .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
-        $prompt .= "To generate images: use render_mermaid, render_plantuml, render_svg, or render_vegalite. To generate PDFs: use render_typst. NEVER fabricate image/document URLs.\n";
-        $prompt .= "Tools marked with * require approval.\n";
+        $channelContext = $this->buildChannelContext();
+        if ($channelContext) {
+            $sections[] = ['label' => 'Current Context', 'content' => $channelContext];
+        }
 
-        return $prompt;
+        $taskContext = $this->buildTaskContext();
+        if ($taskContext) {
+            $sections[] = ['label' => 'Current Task', 'content' => $taskContext];
+        }
+
+        $apps = "## Apps\n\n";
+        $apps .= "**IMPORTANT: Before calling ANY tool you have not used in this conversation, call `get_tool_info(name)` first to get its parameters. Do NOT guess parameters.**\n\n";
+        $apps .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
+        $apps .= "To generate images: use render_mermaid, render_plantuml, render_svg, or render_vegalite. To generate PDFs: use render_typst. NEVER fabricate image/document URLs.\n";
+        if (!$identityFiles->isEmpty()) {
+            $apps .= "Tools marked with * require approval.\n";
+        }
+        $sections[] = ['label' => 'Apps', 'content' => $apps];
+
+        return $sections;
     }
 
     /**
@@ -126,6 +163,8 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
      */
     public function tools(): iterable
     {
+        $this->toolRegistry->setChannelContext($this->channelId);
+
         return $this->toolRegistry->getToolsForAgent($this->agent);
     }
 
@@ -218,6 +257,80 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         $prompt .= "- description: brief context of what was requested and what you plan to do\n\n";
 
         return $prompt;
+    }
+
+    /**
+     * Build memory system guidance for the system prompt.
+     */
+    private function buildMemoryPrompt(): string
+    {
+        return <<<'PROMPT'
+## Memory System
+
+You have two types of memory:
+
+### Short-Term Memory (STM)
+Your current conversation context. You can see recent messages directly. Older messages
+are automatically summarized when the context window fills up. **You don't manage STM** —
+the system handles it for you.
+
+### Long-Term Memory (LTM)
+Durable memories that persist across all conversations. You manage LTM explicitly:
+
+- **MEMORY.md** (core memory) — Already loaded in your system prompt above. Contains
+  curated, high-value facts. You can add to it via `save_memory` with `target: "core"`.
+- **Daily logs** — Timestamped entries searchable via `recall_memory`. Written via
+  `save_memory` with `target: "log"` (default).
+
+### save_memory
+
+Persist information to your long-term memory. Two targets:
+
+| Target | Storage | Loaded | Best for |
+|--------|---------|--------|----------|
+| `"core"` | MEMORY.md | Always (system prompt) | User preferences, key decisions, organizational knowledge, durable facts |
+| `"log"` (default) | Daily log | On demand via `recall_memory` | Running context, timestamped observations, session learnings |
+
+Guidelines:
+- Be specific: include who, what, why, and when
+- Prefer `"core"` only for truly durable facts that should always be in context
+- Prefer `"log"` for most saves — keeps MEMORY.md focused and manageable
+- If someone says "remember this" — save it immediately (do not rely on conversation context)
+- Use categories: preference, decision, learning, fact, general
+
+### recall_memory
+
+Search or browse your daily logs. Two modes:
+
+**Semantic search** (default): `recall_memory(query: "deployment process")`
+- Searches across all daily logs for relevant entries
+- Use before answering questions about prior work, decisions, or preferences
+- Use at the start of complex tasks to gather relevant history
+- Use when a user references something from a previous conversation
+
+**Date browse**: `recall_memory(date: "2026-02-14")`
+- Returns the raw log for a specific day
+- If the log is too large, you'll get a size warning — re-call with `max_chars` to truncate
+- Example: `recall_memory(date: "2026-02-14", max_chars: 3000)`
+
+If recall_memory returns nothing relevant, tell the user you checked but found no prior context.
+
+### When to save vs when not to
+
+**Save:**
+- User expresses a preference or working style
+- An important decision is made (with reasoning)
+- Key facts about a project, person, or the organization
+- Learnings or insights from the current conversation
+- Anything the user explicitly asks you to remember
+
+**Don't save:**
+- Transient, obvious, or trivial information
+- Information already in MEMORY.md
+- Raw conversation snippets without context
+- Temporary task state that won't matter later
+
+PROMPT;
     }
 
     /**

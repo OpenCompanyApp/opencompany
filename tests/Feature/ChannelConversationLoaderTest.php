@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Agents\Conversations\ChannelConversationLoader;
+use App\Models\AgentPermission;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\UserMessage;
 use Tests\TestCase;
@@ -120,6 +122,55 @@ class ChannelConversationLoaderTest extends TestCase
         $messages = $this->loader->load($channel->id, $agent);
 
         $this->assertCount(0, $messages);
+    }
+
+    public function test_returns_empty_when_agent_cannot_access_channel(): void
+    {
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
+        $allowedChannel = Channel::factory()->create();
+        $restrictedChannel = Channel::factory()->create();
+
+        // Give agent explicit channel whitelist that does NOT include restrictedChannel
+        AgentPermission::create([
+            'id' => Str::uuid()->toString(),
+            'agent_id' => $agent->id,
+            'scope_type' => 'channel',
+            'scope_key' => $allowedChannel->id,
+            'permission' => 'allow',
+        ]);
+
+        $human = User::factory()->create(['type' => 'human']);
+        Message::create([
+            'id' => 'msg-restricted',
+            'content' => 'Secret message',
+            'channel_id' => $restrictedChannel->id,
+            'author_id' => $human->id,
+            'timestamp' => now(),
+        ]);
+
+        $messages = $this->loader->load($restrictedChannel->id, $agent);
+
+        $this->assertCount(0, $messages);
+    }
+
+    public function test_loads_messages_when_agent_has_no_channel_restrictions(): void
+    {
+        // Agent with no channel permissions → unrestricted (backward compatible)
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
+        $channel = Channel::factory()->create();
+        $human = User::factory()->create(['type' => 'human']);
+
+        Message::create([
+            'id' => 'msg-unrestricted',
+            'content' => 'Open message',
+            'channel_id' => $channel->id,
+            'author_id' => $human->id,
+            'timestamp' => now(),
+        ]);
+
+        $messages = $this->loader->load($channel->id, $agent);
+
+        $this->assertCount(1, $messages);
     }
 
     /**

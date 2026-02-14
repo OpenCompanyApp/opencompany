@@ -13,6 +13,8 @@ use App\Models\Message;
 use App\Models\User;
 use App\Models\UserExternalIdentity;
 use App\Services\ApprovalExecutionService;
+use App\Services\Memory\ConversationCompactionService;
+use App\Services\Memory\MemoryFlushService;
 use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -92,6 +94,12 @@ class TelegramWebhookController extends Controller
                 . "Your Telegram User ID is: <code>{$userId}</code>\n\n"
                 . "Share this with your administrator to get access."
             );
+            return;
+        }
+
+        // Handle /compact command — compact conversation memory
+        if (str_starts_with($text, '/compact')) {
+            $this->handleCompactCommand($chatId, $setting);
             return;
         }
 
@@ -179,6 +187,66 @@ class TelegramWebhookController extends Controller
             }
 
             AgentRespondJob::dispatch($internalMessage, $agent, $channel->id)->afterResponse();
+        }
+    }
+
+    /**
+     * Handle the /compact command — compact conversation memory for this chat.
+     */
+    private function handleCompactCommand(string $chatId, IntegrationSetting $setting): void
+    {
+        $telegram = app(TelegramService::class);
+
+        $channel = Channel::where('external_provider', 'telegram')
+            ->where('external_id', $chatId)
+            ->first();
+
+        if (!$channel) {
+            $telegram->sendMessage($chatId, 'No conversation history in this channel yet.');
+            return;
+        }
+
+        // Resolve the agent for this channel
+        $defaultAgentId = $setting->getConfigValue('default_agent_id');
+        $agent = $defaultAgentId ? User::find($defaultAgentId) : null;
+
+        if (!$agent || $agent->type !== 'agent') {
+            // Fallback: find agent members of this channel
+            $agentIds = ChannelMember::where('channel_id', $channel->id)->pluck('user_id');
+            $agent = User::where('type', 'agent')->whereIn('id', $agentIds)->first();
+        }
+
+        if (!$agent) {
+            $telegram->sendMessage($chatId, 'No agent found in this channel.');
+            return;
+        }
+
+        try {
+            // Flush important memories to daily logs before compacting
+            try {
+                app(MemoryFlushService::class)->flush($channel->id, $agent);
+            } catch (\Throwable $e) {
+                Log::warning('Memory flush before compact failed', ['error' => $e->getMessage()]);
+            }
+
+            $summary = app(ConversationCompactionService::class)->compact($channel->id, $agent);
+
+            if (!$summary) {
+                $telegram->sendMessage($chatId, "Nothing to compact (fewer than 5 messages).");
+                return;
+            }
+
+            $telegram->sendMessage($chatId,
+                "<b>Compaction complete</b>\n\n"
+                . "Messages summarized: <b>{$summary->messages_summarized}</b>\n"
+                . "Tokens before: {$summary->tokens_before}\n"
+                . "Tokens after: {$summary->tokens_after}\n"
+                . "Compaction #: {$summary->compaction_count}\n\n"
+                . "<i>" . Str::limit($summary->summary, 200) . "</i>"
+            );
+        } catch (\Throwable $e) {
+            Log::error('Telegram /compact failed', ['error' => $e->getMessage(), 'channel' => $channel->id]);
+            $telegram->sendMessage($chatId, "Compaction failed: " . Str::limit($e->getMessage(), 100));
         }
     }
 

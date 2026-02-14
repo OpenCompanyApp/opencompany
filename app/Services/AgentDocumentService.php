@@ -275,6 +275,33 @@ class AgentDocumentService
     }
 
     /**
+     * Get a specific daily memory log by date.
+     */
+    public function getMemoryLog(User $agent, string $date): ?Document
+    {
+        $agentFolder = $agent->docs_folder_id
+            ? Document::find($agent->docs_folder_id)
+            : null;
+
+        if (!$agentFolder) {
+            return null;
+        }
+
+        $memoryFolder = Document::where('parent_id', $agentFolder->id)
+            ->where('title', 'memory')
+            ->where('is_folder', true)
+            ->first();
+
+        if (!$memoryFolder) {
+            return null;
+        }
+
+        return Document::where('parent_id', $memoryFolder->id)
+            ->where('title', "{$date}.md")
+            ->first();
+    }
+
+    /**
      * Get default template content for an identity file type
      */
     public function getDefaultTemplate(string $type, User $agent): string
