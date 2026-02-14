@@ -120,6 +120,52 @@
             </div>
           </div>
         </div>
+
+        <!-- Run History -->
+        <div v-if="runs.length" class="mt-10">
+          <h2 class="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">Run History</h2>
+          <div class="border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+            <div
+              v-for="run in runs"
+              :key="run.id"
+              class="flex items-center gap-4 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors border-b border-neutral-100 dark:border-neutral-800 last:border-b-0"
+              @click="router.visit(`/tasks/${run.id}`)"
+            >
+              <!-- Run number -->
+              <span class="text-xs font-mono text-neutral-400 w-8 shrink-0">
+                #{{ run.runNumber ?? '—' }}
+              </span>
+
+              <!-- Status badge -->
+              <Badge
+                :variant="run.status === 'completed' ? 'success' : run.status === 'failed' ? 'error' : 'warning'"
+                :label="run.status"
+                size="xs"
+                shape="pill"
+              />
+
+              <!-- Result preview -->
+              <span class="flex-1 text-sm text-neutral-600 dark:text-neutral-300 truncate">
+                <template v-if="run.result?.error">
+                  <span class="text-red-500 dark:text-red-400">{{ run.result.error }}</span>
+                </template>
+                <template v-else-if="run.result?.response">
+                  {{ run.result.response }}
+                </template>
+                <template v-else>
+                  {{ run.title }}
+                </template>
+              </span>
+
+              <!-- Timestamp -->
+              <span class="text-xs text-neutral-400 shrink-0">
+                {{ formatRelativeTime(run.createdAt) }}
+              </span>
+
+              <Icon name="ph:arrow-right" class="w-4 h-4 text-neutral-300 dark:text-neutral-600 shrink-0" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -131,6 +177,7 @@ import { router } from '@inertiajs/vue3'
 import type { User } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
+import Badge from '@/Components/shared/Badge.vue'
 import CronBuilder from '@/Components/automation/CronBuilder.vue'
 import PromptEditor from '@/Components/automation/PromptEditor.vue'
 import { useApi } from '@/composables/useApi'
@@ -139,12 +186,14 @@ const props = defineProps<{
   automationId: string
 }>()
 
-const { fetchScheduledAutomation, updateScheduledAutomation, fetchAgents } = useApi()
+const { fetchScheduledAutomation, updateScheduledAutomation, fetchAgents, fetchAutomationRuns } = useApi()
 
 const { data: automationData, loading } = fetchScheduledAutomation(props.automationId)
 const { data: agentsData } = fetchAgents()
+const { data: runsData } = fetchAutomationRuns(props.automationId)
 
 const agents = computed<User[]>(() => agentsData.value ?? [])
+const runs = computed(() => runsData.value ?? [])
 
 const saving = ref(false)
 
@@ -201,6 +250,20 @@ const isValid = computed(() =>
 
 function goBack() {
   router.visit('/automation')
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString()
 }
 
 async function handleSave() {

@@ -8,7 +8,7 @@
   >
     <form class="space-y-5" @submit.prevent="handleSave">
       <!-- Dynamic Fields -->
-      <div v-for="field in schema" :key="field.key" class="space-y-2">
+      <div v-for="field in schema" :key="field.key" v-show="isFieldVisible(field)" class="space-y-2">
         <label class="block text-sm font-medium text-neutral-900 dark:text-white">
           {{ field.label }}
         </label>
@@ -95,6 +95,49 @@
             >
               Add
             </Button>
+          </div>
+        </div>
+
+        <!-- OAuth connect field -->
+        <div v-else-if="field.type === 'oauth_connect'">
+          <!-- Connected state -->
+          <div v-if="formValues[field.key]" class="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <div class="flex items-center gap-2">
+              <Icon name="ph:check-circle-fill" class="w-4 h-4 text-green-500" />
+              <span class="text-sm font-medium text-green-700 dark:text-green-400">Connected</span>
+            </div>
+            <Button type="button" variant="ghost" size="sm" @click="disconnectOAuth(field)">
+              Disconnect
+            </Button>
+          </div>
+          <!-- Not connected state -->
+          <div v-else class="space-y-2">
+            <Button
+              type="button"
+              variant="secondary"
+              icon-left="ph:plugs-connected"
+              :disabled="!hasRequiredFields"
+              @click="connectOAuth(field)"
+            >
+              Connect with {{ meta?.name || 'service' }}
+            </Button>
+            <div v-if="field.redirect_uri" class="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg space-y-1.5">
+              <p class="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                In your
+                <a v-if="meta?.docs_url" :href="meta.docs_url" target="_blank" rel="noopener" class="underline">{{ meta?.name }} developer settings</a>
+                <span v-else>{{ meta?.name }} developer settings</span>, set:
+              </p>
+              <div class="space-y-1">
+                <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                  <strong>OAuth redirect URL:</strong>
+                  <code class="ml-1 px-1 py-0.5 bg-neutral-100 dark:bg-neutral-700 rounded text-[11px]">{{ fullRedirectUri(field) }}</code>
+                </p>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                  <strong>App Service URL:</strong>
+                  <code class="ml-1 px-1 py-0.5 bg-neutral-100 dark:bg-neutral-700 rounded text-[11px]">{{ origin }}</code>
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -196,7 +239,7 @@ import Icon from '@/Components/shared/Icon.vue'
 
 interface ConfigField {
   key: string
-  type: 'secret' | 'url' | 'text' | 'select' | 'string_list'
+  type: 'secret' | 'url' | 'text' | 'select' | 'string_list' | 'oauth_connect'
   label: string
   placeholder?: string
   hint?: string
@@ -205,6 +248,12 @@ interface ConfigField {
   options?: Record<string, string>
   item_icon?: string
   item_placeholder?: string
+  authorize_url?: string
+  redirect_uri?: string
+  visible_when?: {
+    field: string
+    value: string | string[]
+  }
 }
 
 interface IntegrationMeta {
@@ -240,10 +289,65 @@ const isTesting = ref(false)
 const isSaving = ref(false)
 const resultMessage = ref<{ success: boolean; message: string } | null>(null)
 
-// Check if required fields are filled
+// OAuth helpers
+const origin = window.location.origin
+
+const fullRedirectUri = (field: ConfigField): string => {
+  return origin + (field.redirect_uri || '')
+}
+
+const connectOAuth = async (field: ConfigField) => {
+  isSaving.value = true
+  try {
+    const payload: Record<string, any> = { enabled: enabled.value }
+    for (const f of props.schema) {
+      if (f.type === 'oauth_connect') continue
+      payload[f.key] = formValues[f.key]
+    }
+    const response = await fetch(`/api/integrations/${props.integrationId}/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (response.ok) {
+      window.location.href = field.authorize_url || ''
+    } else {
+      const error = await response.json()
+      resultMessage.value = { success: false, message: error.error || 'Failed to save before connecting' }
+    }
+  } catch (error) {
+    resultMessage.value = { success: false, message: 'Failed to save configuration.' }
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const disconnectOAuth = async (field: ConfigField) => {
+  try {
+    const response = await fetch(`/api/integrations/${props.integrationId}/disconnect`, { method: 'POST' })
+    if (response.ok) {
+      formValues[field.key] = ''
+      enabled.value = false
+    }
+  } catch (error) {
+    console.error('Failed to disconnect:', error)
+  }
+}
+
+// Check if a field should be visible based on its visible_when condition
+const isFieldVisible = (field: ConfigField): boolean => {
+  if (!field.visible_when) return true
+  const depValue = formValues[field.visible_when.field]
+  if (Array.isArray(field.visible_when.value)) {
+    return field.visible_when.value.includes(depValue)
+  }
+  return depValue === field.visible_when.value
+}
+
+// Check if required fields are filled (only visible ones)
 const hasRequiredFields = computed(() => {
   for (const field of props.schema) {
-    if (field.required && !formValues[field.key]) {
+    if (field.required && isFieldVisible(field) && !formValues[field.key]) {
       return false
     }
   }
@@ -314,6 +418,7 @@ const testConnection = async () => {
   try {
     const payload: Record<string, any> = {}
     for (const field of props.schema) {
+      if (field.type === 'oauth_connect') continue
       payload[field.key] = formValues[field.key]
     }
 
@@ -344,6 +449,7 @@ const handleSave = async () => {
   try {
     const payload: Record<string, any> = { enabled: enabled.value }
     for (const field of props.schema) {
+      if (field.type === 'oauth_connect') continue
       payload[field.key] = formValues[field.key]
     }
 

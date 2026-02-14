@@ -60,15 +60,12 @@ class ScheduledAutomation extends Model
             $channel = Channel::create([
                 'id' => Str::uuid()->toString(),
                 'name' => $automation->name,
-                'type' => 'agent',
+                'type' => 'dm',
                 'description' => "Automation channel for: {$automation->name}",
                 'creator_id' => $automation->created_by_id,
             ]);
 
-            $members = array_filter([$automation->agent_id, $automation->created_by_id]);
-            if ($members) {
-                $channel->members()->attach($members);
-            }
+            $channel->members()->attach(array_filter(['system', $automation->agent_id]));
 
             $automation->updateQuietly(['channel_id' => $channel->id]);
         });

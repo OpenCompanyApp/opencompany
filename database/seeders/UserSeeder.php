@@ -27,6 +27,16 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
 
+        // System user for automations
+        User::create([
+            'id' => 'system',
+            'name' => 'Automation',
+            'type' => 'agent',
+            'agent_type' => 'system',
+            'status' => 'idle',
+            'presence' => 'online',
+        ]);
+
         // AI Agents with various statuses and tasks
         $agents = [
             [

@@ -127,7 +127,7 @@ class IntegrationController extends Controller
             /** @var array{key: string, type: string, label: string, default?: mixed} $field */
             foreach ($schema as $field) {
                 $key = $field['key'];
-                if ($field['type'] === 'secret') {
+                if ($field['type'] === 'secret' || $field['type'] === 'oauth_connect') {
                     $config[$key] = $setting?->getMaskedValue($key);
                 } else {
                     $config[$key] = $setting?->getConfigValue($key, $field['default'] ?? null)
@@ -202,6 +202,11 @@ class IntegrationController extends Controller
             foreach ($provider->configSchema() as $field) {
                 $key = $field['key'];
                 if (!$request->has($key)) {
+                    continue;
+                }
+
+                // Skip OAuth-managed fields (set by OAuth callback, not user input)
+                if ($field['type'] === 'oauth_connect') {
                     continue;
                 }
 
@@ -313,7 +318,7 @@ class IntegrationController extends Controller
             // Substitute masked secret fields with stored values
             $setting = IntegrationSetting::where('integration_id', $id)->first();
             foreach ($provider->configSchema() as $field) {
-                if ($field['type'] === 'secret') {
+                if ($field['type'] === 'secret' || $field['type'] === 'oauth_connect') {
                     $key = $field['key'];
                     $value = $config[$key] ?? '';
                     if (!$value || str_contains($value, '*')) {
@@ -376,6 +381,32 @@ class IntegrationController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Disconnect an OAuth-based integration (clear stored tokens).
+     */
+    public function disconnect(string $id)
+    {
+        $provider = $this->findConfigurableProvider($id);
+        if (!$provider) {
+            return response()->json(['error' => 'Integration not found'], 404);
+        }
+
+        $setting = IntegrationSetting::where('integration_id', $id)->first();
+        if ($setting) {
+            $config = $setting->config ?? [];
+            foreach ($provider->configSchema() as $field) {
+                if ($field['type'] === 'oauth_connect') {
+                    unset($config[$field['key']]);
+                }
+            }
+            $setting->config = $config;
+            $setting->enabled = false;
+            $setting->save();
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**

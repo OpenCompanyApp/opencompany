@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ScheduledAutomationResource;
 use App\Jobs\RunScheduledAutomationJob;
 use App\Models\ScheduledAutomation;
+use App\Models\Task;
 use Cron\CronExpression;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -14,9 +16,11 @@ class ScheduledAutomationController extends Controller
 {
     public function index()
     {
-        return ScheduledAutomation::with(['agent', 'channel', 'createdBy'])
+        $automations = ScheduledAutomation::with(['agent', 'channel', 'createdBy'])
             ->orderBy('name')
             ->get();
+
+        return ScheduledAutomationResource::collection($automations)->resolve();
     }
 
     public function store(Request $request)
@@ -47,7 +51,9 @@ class ScheduledAutomationController extends Controller
             'is_active' => true,
         ]);
 
-        return $automation->load(['agent', 'channel', 'createdBy']);
+        return (new ScheduledAutomationResource(
+            $automation->load(['agent', 'channel', 'createdBy'])
+        ))->resolve();
     }
 
     public function show(string $id)
@@ -55,9 +61,9 @@ class ScheduledAutomationController extends Controller
         $automation = ScheduledAutomation::with(['agent', 'channel', 'createdBy'])
             ->findOrFail($id);
 
-        $data = $automation->toArray();
+        $data = (new ScheduledAutomationResource($automation))->resolve();
         $data['nextRuns'] = collect($automation->getNextRuns(5))
-            ->map(fn (Carbon $run) => $run->toIso8601String());
+            ->map(fn ($run) => $run->toIso8601String());
 
         return $data;
     }
@@ -109,7 +115,9 @@ class ScheduledAutomationController extends Controller
             $automation->refreshNextRunAt();
         }
 
-        return $automation->load(['agent', 'channel', 'createdBy']);
+        return (new ScheduledAutomationResource(
+            $automation->load(['agent', 'channel', 'createdBy'])
+        ))->resolve();
     }
 
     public function destroy(string $id)
@@ -117,6 +125,28 @@ class ScheduledAutomationController extends Controller
         ScheduledAutomation::findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    public function runs(string $id)
+    {
+        $tasks = Task::with(['agent'])
+            ->where('source', Task::SOURCE_AUTOMATION)
+            ->whereJsonContains('context->scheduled_automation_id', $id)
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        return $tasks->map(fn (Task $task) => [
+            'id' => $task->id,
+            'title' => $task->title,
+            'status' => $task->status,
+            'runNumber' => $task->context['run_number'] ?? null,
+            'result' => $task->result,
+            'agentName' => $task->agent?->name,
+            'startedAt' => $task->started_at,
+            'completedAt' => $task->completed_at,
+            'createdAt' => $task->created_at,
+        ]);
     }
 
     public function triggerRun(string $id)

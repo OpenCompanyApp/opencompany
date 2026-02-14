@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fc86b1e86e13c344f4daf592e7b0c370",
+    "content-hash": "8cc30a383a7f890e6f45a1d5a7157593",
     "packages": [
         {
             "name": "brick/math",
@@ -3245,6 +3245,55 @@
                 "laravel",
                 "opencompany",
                 "plausible",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/ai-tool-ticktick",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-ticktick",
+                "reference": "26c2e07edf3bceb057d6aa27febb1b16633cbadd"
+            },
+            "require": {
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolTickTick\\AiToolTickTickServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolTickTick\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "TickTick task management AI tool for Laravel AI SDK — manage projects and tasks. Part of the OpenCompany AI tool ecosystem.",
+            "keywords": [
+                "ai",
+                "laravel",
+                "opencompany",
+                "productivity",
+                "tasks",
+                "ticktick",
                 "tools"
             ],
             "transport-options": {
@@ -10637,6 +10686,7 @@
         "opencompanyapp/ai-tool-mermaid": 20,
         "opencompanyapp/ai-tool-plantuml": 20,
         "opencompanyapp/ai-tool-plausible": 20,
+        "opencompanyapp/ai-tool-ticktick": 20,
         "opencompanyapp/ai-tool-typst": 20,
         "opencompanyapp/ai-tool-vegalite": 20,
         "opencompanyapp/integration-core": 20

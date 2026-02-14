@@ -128,6 +128,7 @@ Route::post('/scheduled-automations', [ScheduledAutomationController::class, 'st
 Route::get('/scheduled-automations/{id}', [ScheduledAutomationController::class, 'show']);
 Route::patch('/scheduled-automations/{id}', [ScheduledAutomationController::class, 'update']);
 Route::delete('/scheduled-automations/{id}', [ScheduledAutomationController::class, 'destroy']);
+Route::get('/scheduled-automations/{id}/runs', [ScheduledAutomationController::class, 'runs']);
 Route::post('/scheduled-automations/{id}/run', [ScheduledAutomationController::class, 'triggerRun']);
 
 // Documents
@@ -277,6 +278,7 @@ Route::post('/integrations/codex/test', [CodexAuthController::class, 'test']);
 Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConfig']);
 Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
 Route::post('/integrations/{id}/test', [IntegrationController::class, 'testConnection']);
+Route::post('/integrations/{id}/disconnect', [IntegrationController::class, 'disconnect']);
 Route::post('/integrations/{id}/fetch-models', [IntegrationController::class, 'fetchModels']);
 Route::post('/integrations/{id}/setup-webhook', [IntegrationController::class, 'setupWebhook']);
 Route::get('/integrations/external-identities', [IntegrationController::class, 'externalIdentities']);

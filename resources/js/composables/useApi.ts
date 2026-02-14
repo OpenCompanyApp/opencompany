@@ -352,6 +352,18 @@ export const useApi = () => {
     api.delete(`/scheduled-automations/${id}`)
   const triggerScheduledAutomation = (id: string) =>
     api.post(`/scheduled-automations/${id}/run`)
+  const fetchAutomationRuns = (id: string) =>
+    useFetch<Array<{
+      id: string
+      title: string
+      status: string
+      runNumber: number | null
+      result: Record<string, unknown> | null
+      agentName: string | null
+      startedAt: string | null
+      completedAt: string | null
+      createdAt: string
+    }>>(`/scheduled-automations/${id}/runs`)
   const previewSchedule = (cronExpression: string, timezone = 'UTC') =>
     api.get('/scheduled-automations/preview-schedule', {
       params: { cronExpression, timezone },
@@ -579,6 +591,7 @@ export const useApi = () => {
     updateScheduledAutomation,
     deleteScheduledAutomation,
     triggerScheduledAutomation,
+    fetchAutomationRuns,
     previewSchedule,
     // Agents
     fetchAgentDetail,

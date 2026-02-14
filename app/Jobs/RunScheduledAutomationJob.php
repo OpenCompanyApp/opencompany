@@ -45,6 +45,20 @@ class RunScheduledAutomationJob implements ShouldQueue
 
         $channelId = $this->automation->channel_id;
 
+        // Backfill: create channel if automation doesn't have one yet
+        if (! $channelId) {
+            $channel = Channel::create([
+                'id' => Str::uuid()->toString(),
+                'name' => $this->automation->name,
+                'type' => 'dm',
+                'description' => "Automation channel for: {$this->automation->name}",
+                'creator_id' => $this->automation->created_by_id,
+            ]);
+            $channel->members()->attach(array_filter(['system', $this->automation->agent_id]));
+            $this->automation->updateQuietly(['channel_id' => $channel->id]);
+            $channelId = $channel->id;
+        }
+
         // Clear channel history if keep_history is disabled
         if ($channelId && ! $this->automation->keep_history) {
             Message::where('channel_id', $channelId)->delete();
@@ -70,6 +84,19 @@ class RunScheduledAutomationJob implements ShouldQueue
         ]);
 
         try {
+            // Post the prompt into the channel from the system user
+            if ($channelId) {
+                $promptMessage = Message::create([
+                    'id' => Str::uuid()->toString(),
+                    'content' => $this->automation->prompt,
+                    'channel_id' => $channelId,
+                    'author_id' => 'system',
+                    'timestamp' => now(),
+                    'source' => 'automation_prompt',
+                ]);
+                broadcast(new MessageSent($promptMessage));
+            }
+
             $agent->update(['status' => 'working']);
             broadcast(new AgentStatusUpdated($agent));
 
