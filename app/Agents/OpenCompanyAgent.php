@@ -13,8 +13,10 @@ use App\Services\AgentDocumentService;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Promptable;
 
+#[MaxTokens(16_384)]
 class OpenCompanyAgent implements Agent, HasTools, Conversational
 {
     use Promptable;

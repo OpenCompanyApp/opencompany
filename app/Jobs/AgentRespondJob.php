@@ -21,6 +21,7 @@ use App\Services\AgentCommunicationService;
 use App\Services\AgentDocumentService;
 use App\Services\Memory\ModelContextRegistry;
 use App\Services\TelegramService;
+use Laravel\Ai\Responses\Data\FinishReason;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -154,6 +155,17 @@ class AgentRespondJob implements ShouldQueue
             $response = $agentInstance->prompt($this->buildPromptWithThreadContext($this->userMessage));
 
             $responseText = $response->text;
+            $lastStep = $response->steps->last();
+
+            // Detect truncated response (model hit max output tokens)
+            if ($lastStep && $lastStep->finishReason === FinishReason::Length) {
+                Log::warning('Agent response truncated (max tokens)', [
+                    'agent' => $this->agent->name,
+                    'channel' => $this->channelId,
+                    'completion_tokens' => $response->usage->completionTokens,
+                ]);
+                $responseText .= "\n\n---\n*My response was cut off because it exceeded the output limit. Please ask me to continue if needed.*";
+            }
 
             if (empty($responseText)) {
                 $responseText = "I processed your request but didn't generate a text response.";
@@ -287,6 +299,7 @@ class AgentRespondJob implements ShouldQueue
                     ],
                     'actual_prompt_tokens' => $promptTokens,
                     'actual_completion_tokens' => $completionTokens,
+                    'finish_reason' => $lastStep?->finishReason?->value ?? 'unknown',
                 ];
                 unset($context['prompt_sections'], $context['context_window']);
                 $task->update(['context' => $context]);
