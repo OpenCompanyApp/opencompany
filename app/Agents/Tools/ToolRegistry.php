@@ -390,10 +390,10 @@ class ToolRegistry
         ],
     ];
 
-    /** @var array<string, array>|null Cached merged tool map */
+    /** @var array<string, array<string, mixed>>|null Cached merged tool map */
     private ?array $effectiveToolMap = null;
 
-    /** @var array<string, array>|null Cached merged app groups */
+    /** @var array<string, array<string, mixed>>|null Cached merged app groups */
     private ?array $effectiveAppGroups = null;
 
     /** @var string[]|null Cached merged integration apps */
@@ -422,6 +422,7 @@ class ToolRegistry
 
     // ─── Effective (merged static + dynamic) accessors ──────────────────
 
+    /** @return array<string, array<string, mixed>> */
     private function getEffectiveToolMap(): array
     {
         if ($this->effectiveToolMap === null) {
@@ -435,6 +436,7 @@ class ToolRegistry
         return $this->effectiveToolMap;
     }
 
+    /** @return array<string, array<string, mixed>> */
     private function getEffectiveAppGroups(): array
     {
         if ($this->effectiveAppGroups === null) {
@@ -451,6 +453,7 @@ class ToolRegistry
         return $this->effectiveAppGroups;
     }
 
+    /** @return string[] */
     public function getEffectiveIntegrationApps(): array
     {
         if ($this->effectiveIntegrationApps === null) {
@@ -464,6 +467,7 @@ class ToolRegistry
         return $this->effectiveIntegrationApps;
     }
 
+    /** @return array<string, string> */
     private function getEffectiveAppIcons(): array
     {
         if ($this->effectiveAppIcons === null) {
@@ -476,6 +480,7 @@ class ToolRegistry
         return $this->effectiveAppIcons;
     }
 
+    /** @return array<string, string> */
     private function getEffectiveIntegrationLogos(): array
     {
         if ($this->effectiveIntegrationLogos === null) {
@@ -531,6 +536,8 @@ class ToolRegistry
 
     /**
      * Get the slugs of tools available to a given agent.
+     *
+     * @return string[]
      */
     public function getToolSlugsForAgent(User $agent): array
     {
@@ -556,6 +563,8 @@ class ToolRegistry
     /**
      * Get metadata for ALL tools with permission status for a specific agent.
      * Used by the API to populate the capabilities tab.
+     *
+     * @return array<int, array<string, mixed>>
      */
     public function getAllToolsMeta(User $agent): array
     {
@@ -591,6 +600,8 @@ class ToolRegistry
 
     /**
      * Get app group metadata for the frontend capabilities UI.
+     *
+     * @return array<int, array<string, mixed>>
      */
     public function getAppGroupsMeta(): array
     {
@@ -615,6 +626,8 @@ class ToolRegistry
 
     /**
      * Get metadata for integration apps only (for the UI integrations section).
+     *
+     * @return array<int, array<string, mixed>>
      */
     public function getIntegrationAppsMeta(): array
     {
@@ -879,6 +892,8 @@ class ToolRegistry
 
     /**
      * Build reverse lookup: tool slug → app name.
+     *
+     * @return array<string, string>
      */
     private function buildAppLookup(): array
     {

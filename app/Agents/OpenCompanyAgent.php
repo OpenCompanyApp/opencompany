@@ -19,6 +19,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
 {
     use Promptable;
 
+    /** @var array<string, mixed> */
     private array $resolvedProvider;
 
     public function __construct(
@@ -152,6 +153,8 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
     /**
      * Get the conversation history for context.
      * Passes the system prompt for accurate token measurement during compaction checks.
+     *
+     * @return iterable<mixed>
      */
     public function messages(): iterable
     {

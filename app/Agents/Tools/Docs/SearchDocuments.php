@@ -143,6 +143,7 @@ class SearchDocuments implements Tool
         return "Found {$documents->count()} document(s) matching '{$query}':\n\n" . $results->implode("\n\n---\n\n");
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

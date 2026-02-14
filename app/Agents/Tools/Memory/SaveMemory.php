@@ -74,6 +74,7 @@ class SaveMemory implements Tool
         return "Memory saved to {$doc->title} (recallable via recall_memory).";
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

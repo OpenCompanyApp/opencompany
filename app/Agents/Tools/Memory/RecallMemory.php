@@ -132,6 +132,7 @@ class RecallMemory implements Tool
         return checkdate((int) $parts[1], (int) $parts[2], (int) $parts[0]);
     }
 
+    /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [

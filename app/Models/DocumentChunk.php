@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** @property array|null $metadata */
+/** @property array<string, mixed>|null $metadata */
 class DocumentChunk extends Model
 {
     use HasUuids;
@@ -31,11 +31,13 @@ class DocumentChunk extends Model
         ];
     }
 
+    /** @return BelongsTo<Document, $this> */
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function agent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'agent_id');
