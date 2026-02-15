@@ -1,6 +1,6 @@
 # OpenCompany Sustainable Use License
 
-Version 1.0, January 2025
+Version 1.1, February 2025
 
 ## Acceptance
 
@@ -37,13 +37,23 @@ The following uses are explicitly permitted under this license:
 
    In such cases, the client becomes the licensee and must comply with this license for their use of the software.
 
+6. **Marketplace & Agent Distribution**: Creating, selling, or distributing agents, workflows, templates, integrations, and configurations ("add-ons") built for the software is permitted, provided that:
+   - The add-on does not include or bundle the software itself, in whole or in part.
+   - The buyer or recipient independently holds a valid license for the software.
+   - All marketplace listings and add-on packaging include clear and prominent attribution that the add-on is "Built for OpenCompany" or a substantially similar designation.
+   - The add-on does not circumvent or replicate enterprise features covered by the OpenCompany Enterprise License.
+
+   For clarity, operating a marketplace or storefront that facilitates the sale or distribution of add-ons is permitted under the same conditions. This does not grant the right to host or operate the software on behalf of add-on buyers.
+
+   The licensor reserves the right to operate its own marketplace for add-ons. The existence of an official marketplace does not restrict or limit your right to distribute add-ons through independent channels under this section.
+
 ## Prohibited Uses
 
 The following uses are prohibited without a separate commercial license:
 
 1. **Hosted Services**: Hosting the software and providing access to third parties as a service, whether paid or free.
 
-2. **Commercial Distribution**: Selling, licensing, or commercially distributing the software or derivative works.
+2. **Commercial Distribution**: Selling, licensing, or commercially distributing the software or derivative works. This does not apply to add-ons distributed in accordance with Permitted Use 6 above.
 
 3. **Multi-Tenant Hosting**: Operating a single installation of the software to serve multiple customers or clients.
 
@@ -86,6 +96,8 @@ The **software** is the software the licensor makes available under these terms,
 **Your company** is any legal entity, sole proprietorship, or other kind of organization that you work for, plus all organizations that have control over, are under the control of, or are under common control with that organization. Control means ownership of substantially all the assets of an entity, or the power to direct its management and policies by vote, contract, or otherwise. Control can be direct or indirect.
 
 **Your license** is the license granted to you for the software under these terms.
+
+**Add-ons** are agents, workflows, templates, integrations, configurations, and other works that are designed to operate with the software but do not include the software itself, in whole or in part. Add-ons may be distributed under their own license terms, provided that such terms do not conflict with this license.
 
 ## Governing Law
 
