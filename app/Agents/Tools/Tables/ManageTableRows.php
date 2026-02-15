@@ -40,7 +40,7 @@ class ManageTableRows implements Tool
 
     private function addRow(Request $request): string
     {
-        $table = DataTable::findOrFail($request['tableId']);
+        $table = DataTable::forWorkspace()->findOrFail($request['tableId']);
         $data = isset($request['data']) ? json_decode($request['data'], true) : [];
 
         $data = $this->resolveDataKeys($table, $data);
@@ -59,7 +59,7 @@ class ManageTableRows implements Tool
         $row = DataTableRow::findOrFail($request['rowId']);
         $data = isset($request['data']) ? json_decode($request['data'], true) : [];
 
-        $table = DataTable::findOrFail($row->table_id);
+        $table = DataTable::forWorkspace()->findOrFail($row->table_id);
         $data = $this->resolveDataKeys($table, $data);
 
         $row->data = array_merge($row->data ?? [], $data);
@@ -71,6 +71,7 @@ class ManageTableRows implements Tool
     private function deleteRow(Request $request): string
     {
         $row = DataTableRow::findOrFail($request['rowId']);
+        DataTable::forWorkspace()->findOrFail($row->table_id); // verify workspace
         $row->delete();
 
         return 'Row deleted.';
@@ -78,7 +79,7 @@ class ManageTableRows implements Tool
 
     private function bulkAdd(Request $request): string
     {
-        $table = DataTable::findOrFail($request['tableId']);
+        $table = DataTable::forWorkspace()->findOrFail($request['tableId']);
         $rows = json_decode($request['rows'], true);
 
         // Pre-resolve columns from the first row so we don't re-create per row

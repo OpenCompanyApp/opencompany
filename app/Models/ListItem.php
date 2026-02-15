@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Concerns\BelongsToWorkspace;
 
 /**
  * ListItem - Items in a kanban board/list (renamed from Task)
@@ -31,7 +32,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class ListItem extends Model
 {
     /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
-    use HasFactory;
+    use HasFactory, BelongsToWorkspace;
 
     protected $table = 'list_items';
     protected $keyType = 'string';
@@ -39,6 +40,7 @@ class ListItem extends Model
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'parent_id',
         'is_folder',
         'title',
@@ -157,6 +159,7 @@ class ListItem extends Model
             'requester_id' => $requester->id,
             'channel_id' => $this->channel_id,
             'list_item_id' => $this->id,
+            'workspace_id' => $this->workspace_id,
         ]);
     }
 }

@@ -58,6 +58,7 @@ class DocumentIndexingServiceTest extends TestCase
             'parent_id' => $parentId,
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
     }
 

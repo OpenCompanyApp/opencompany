@@ -18,7 +18,7 @@ class AgentDocumentService
     {
         // 1. Find or create root "agents" folder
         $agentsFolder = Document::firstOrCreate(
-            ['title' => 'agents', 'parent_id' => null, 'is_folder' => true],
+            ['title' => 'agents', 'parent_id' => null, 'is_folder' => true, 'workspace_id' => $agent->workspace_id],
             [
                 'id' => Str::uuid()->toString(),
                 'author_id' => $agent->id,
@@ -36,6 +36,7 @@ class AgentDocumentService
             'is_system' => true,
             'author_id' => $agent->id,
             'content' => '',
+            'workspace_id' => $agent->workspace_id,
         ]);
 
         // 3. Create identity/ subfolder
@@ -47,6 +48,7 @@ class AgentDocumentService
             'is_system' => true,
             'author_id' => $agent->id,
             'content' => '',
+            'workspace_id' => $agent->workspace_id,
         ]);
 
         // 4. Create memory/ subfolder
@@ -58,6 +60,7 @@ class AgentDocumentService
             'is_system' => true,
             'author_id' => $agent->id,
             'content' => '',
+            'workspace_id' => $agent->workspace_id,
         ]);
 
         // 5. Create identity files
@@ -71,6 +74,7 @@ class AgentDocumentService
                 'author_id' => $agent->id,
                 'is_folder' => false,
                 'is_system' => true,
+                'workspace_id' => $agent->workspace_id,
             ]);
         }
 
@@ -135,7 +139,8 @@ class AgentDocumentService
         }
 
         // Fallback: Find by agent name
-        $agentsFolder = Document::where('title', 'agents')
+        $agentsFolder = Document::where('workspace_id', $agent->workspace_id)
+            ->where('title', 'agents')
             ->whereNull('parent_id')
             ->where('is_folder', true)
             ->first();
@@ -201,6 +206,7 @@ class AgentDocumentService
             'author_id' => $agent->id,
             'is_folder' => false,
             'is_system' => true,
+            'workspace_id' => $agent->workspace_id,
         ]);
     }
 
@@ -214,7 +220,7 @@ class AgentDocumentService
             $agentFolder = Document::find($agent->docs_folder_id);
             if ($agentFolder) {
                 return Document::firstOrCreate(
-                    ['parent_id' => $agentFolder->id, 'title' => 'identity', 'is_folder' => true],
+                    ['parent_id' => $agentFolder->id, 'title' => 'identity', 'is_folder' => true, 'workspace_id' => $agent->workspace_id],
                     ['id' => Str::uuid()->toString(), 'author_id' => $agent->id, 'content' => '']
                 );
             }
@@ -275,6 +281,7 @@ class AgentDocumentService
             'content' => "# Memory Log - {$today}\n\n" . $content,
             'author_id' => $agent->id,
             'is_folder' => false,
+            'workspace_id' => $agent->workspace_id,
         ]);
     }
 

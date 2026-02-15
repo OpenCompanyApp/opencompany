@@ -52,7 +52,7 @@ class CommentOnDocument implements Tool
 
     private function add(Request $request): string
     {
-        $document = Document::findOrFail($request['documentId']);
+        $document = Document::forWorkspace()->findOrFail($request['documentId']);
 
         if (! $this->checkDocumentAccess($document)) {
             return 'Permission denied: you do not have access to this document.';
@@ -71,8 +71,8 @@ class CommentOnDocument implements Tool
 
     private function resolve(Request $request): string
     {
-        $comment = DocumentComment::findOrFail($request['commentId']);
-        $document = Document::findOrFail($request['documentId']);
+        $document = Document::forWorkspace()->findOrFail($request['documentId']);
+        $comment = $document->comments()->findOrFail($request['commentId']);
 
         if (! $this->checkDocumentAccess($document)) {
             return 'Permission denied: you do not have access to this document.';
@@ -89,8 +89,8 @@ class CommentOnDocument implements Tool
 
     private function deleteComment(Request $request): string
     {
-        $comment = DocumentComment::findOrFail($request['commentId']);
-        $document = Document::findOrFail($request['documentId']);
+        $document = Document::forWorkspace()->findOrFail($request['documentId']);
+        $comment = $document->comments()->findOrFail($request['commentId']);
 
         if (! $this->checkDocumentAccess($document)) {
             return 'Permission denied: you do not have access to this document.';

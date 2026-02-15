@@ -4,26 +4,25 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    /**
-     * @return Collection<int, User>
-     */
-    public function index(): Collection
+    public function index(): JsonResponse
     {
-        return User::orderBy('name')->get();
+        $ws = workspace();
+        $agents = User::where('workspace_id', $ws->id)->get();
+        $humans = $ws->members()->get();
+
+        return response()->json($agents->merge($humans)->sortBy('name')->values());
     }
 
-    /**
-     * @return Collection<int, User>
-     */
-    public function agents(): Collection
+    public function agents(): JsonResponse
     {
-        return User::where('type', 'agent')->orderBy('name')->get();
+        $agents = User::where('type', 'agent')->where('workspace_id', workspace()->id)->orderBy('name')->get();
+
+        return response()->json($agents);
     }
 
     public function show(string $id): JsonResponse|User
@@ -34,7 +33,27 @@ class UserController extends Controller
             return response()->json($mockUsers[$id]);
         }
 
-        return User::findOrFail($id);
+        return $this->findWorkspaceUser($id);
+    }
+
+    /**
+     * Find a user that belongs to the current workspace (agent via workspace_id, human via pivot).
+     */
+    private function findWorkspaceUser(string $id): User
+    {
+        $ws = workspace();
+
+        $user = User::where('workspace_id', $ws->id)->find($id);
+        if ($user) {
+            return $user;
+        }
+
+        $user = $ws->members()->where('users.id', $id)->first();
+        if ($user) {
+            return $user;
+        }
+
+        abort(404);
     }
 
     /**
@@ -107,7 +126,7 @@ class UserController extends Controller
 
     public function update(Request $request, string $id): User
     {
-        $user = User::findOrFail($id);
+        $user = $this->findWorkspaceUser($id);
         $oldName = $user->name;
 
         $user->update($request->only([
@@ -128,7 +147,7 @@ class UserController extends Controller
 
     public function updatePresence(Request $request, string $id): User
     {
-        $user = User::findOrFail($id);
+        $user = $this->findWorkspaceUser($id);
         $user->update([
             'presence' => $request->input('presence'),
             'last_active_at' => now(),

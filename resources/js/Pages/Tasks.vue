@@ -7,13 +7,13 @@
           <div class="flex items-center gap-1">
             <span class="text-xl font-bold text-neutral-900 dark:text-white">Tasks</span>
             <Link
-              href="/workload"
+              :href="workspacePath('/workload')"
               class="ml-2 px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               Workload
             </Link>
             <Link
-              href="/activity"
+              :href="workspacePath('/activity')"
               class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               Activity
@@ -393,6 +393,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { AgentTask, TaskStatus, TaskType, Priority, User } from '@/types'
 import type { PaginatedResponse } from '@/composables/useApi'
 import Button from '@/Components/shared/Button.vue'
@@ -403,6 +404,7 @@ import SearchInput from '@/Components/shared/SearchInput.vue'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
 
+const { workspacePath } = useWorkspace()
 const {
   fetchAgentTasks,
   fetchAgents,
@@ -668,7 +670,7 @@ const timeAgo = (date: Date | string) => {
 }
 
 const openTaskDetail = (task: AgentTask) => {
-  router.visit(`/tasks/${task.id}`)
+  router.visit(workspacePath(`/tasks/${task.id}`))
 }
 
 const handleCreateTask = async () => {

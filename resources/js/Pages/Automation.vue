@@ -9,7 +9,7 @@
             Schedule agents to run automatically on a recurring basis
           </p>
         </div>
-        <Button variant="primary" @click="router.visit('/automation/create')">
+        <Button variant="primary" @click="router.visit(workspacePath('/automation/create'))">
           <Icon name="ph:plus" class="w-4 h-4 mr-1.5" />
           New Automation
         </Button>
@@ -38,7 +38,7 @@
           Schedule your agents to run automatically — daily standups, weekly reports,
           hourly monitoring, or anything else you can imagine.
         </p>
-        <Button variant="primary" @click="router.visit('/automation/create')">
+        <Button variant="primary" @click="router.visit(workspacePath('/automation/create'))">
           <Icon name="ph:plus" class="w-4 h-4 mr-1.5" />
           Create your first automation
         </Button>
@@ -82,6 +82,9 @@ import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import ScheduleCard from '@/Components/automation/ScheduleCard.vue'
 import { useApi } from '@/composables/useApi'
+import { useWorkspace } from '@/composables/useWorkspace'
+
+const { workspacePath } = useWorkspace()
 
 const {
   fetchScheduledAutomations,
@@ -98,7 +101,7 @@ const activeCount = computed(() => automations.value.filter(a => a.isActive).len
 const totalRuns = computed(() => automations.value.reduce((sum, a) => sum + (a.runCount || 0), 0))
 
 function handleEdit(automation: ScheduledAutomation) {
-  router.visit(`/automation/${automation.id}/edit`)
+  router.visit(workspacePath(`/automation/${automation.id}/edit`))
 }
 
 async function handleToggle(automation: ScheduledAutomation) {

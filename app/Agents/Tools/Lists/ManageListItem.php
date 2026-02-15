@@ -53,16 +53,16 @@ class ManageListItem implements Tool
         }
 
         if (!$status) {
-            $status = ListStatus::where('is_default', true)->value('slug') ?? 'backlog';
+            $status = ListStatus::forWorkspace()->where('is_default', true)->value('slug') ?? 'backlog';
         }
 
         // Calculate position (matching ListItemController logic)
         if ($isFolder) {
-            $maxPosition = ListItem::where('parent_id', $parentId)
+            $maxPosition = ListItem::forWorkspace()->where('parent_id', $parentId)
                 ->where('is_folder', true)
                 ->max('position') ?? 0;
         } else {
-            $maxPosition = ListItem::where('parent_id', $parentId)
+            $maxPosition = ListItem::forWorkspace()->where('parent_id', $parentId)
                 ->where('is_folder', false)
                 ->where('status', $status)
                 ->max('position') ?? 0;
@@ -81,6 +81,7 @@ class ManageListItem implements Tool
             'channel_id' => $request['channelId'] ?? null,
             'due_date' => $request['dueDate'] ?? null,
             'position' => $maxPosition + 1,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         if ($isFolder) {
@@ -92,7 +93,7 @@ class ManageListItem implements Tool
 
     private function update(Request $request): string
     {
-        $item = ListItem::findOrFail($request['listItemId']);
+        $item = ListItem::forWorkspace()->findOrFail($request['listItemId']);
 
         if (isset($request['title'])) {
             $item->title = $request['title'];
@@ -125,7 +126,7 @@ class ManageListItem implements Tool
         if (isset($request['status'])) {
             $item->status = $request['status'];
 
-            $newStatus = ListStatus::where('slug', $request['status'])->first();
+            $newStatus = ListStatus::forWorkspace()->where('slug', $request['status'])->first();
             if ($newStatus) {
                 if ($newStatus->is_done && !$item->completed_at) {
                     $item->completed_at = now();
@@ -143,7 +144,7 @@ class ManageListItem implements Tool
 
     private function delete(Request $request): string
     {
-        $item = ListItem::findOrFail($request['listItemId']);
+        $item = ListItem::forWorkspace()->findOrFail($request['listItemId']);
         $title = $item->title;
         $item->delete();
 
@@ -152,7 +153,7 @@ class ManageListItem implements Tool
 
     private function addComment(Request $request): string
     {
-        $item = ListItem::findOrFail($request['listItemId']);
+        $item = ListItem::forWorkspace()->findOrFail($request['listItemId']);
 
         ListItemComment::create([
             'id' => Str::uuid()->toString(),
@@ -167,6 +168,7 @@ class ManageListItem implements Tool
     private function deleteComment(Request $request): string
     {
         $comment = ListItemComment::findOrFail($request['commentId']);
+        ListItem::forWorkspace()->findOrFail($comment->list_item_id); // verify workspace
         $comment->delete();
 
         return 'Comment deleted.';

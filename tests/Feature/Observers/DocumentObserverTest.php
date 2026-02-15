@@ -33,6 +33,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Some content to index.',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertDispatched(IndexDocumentJob::class);
@@ -48,6 +49,7 @@ class DocumentObserverTest extends TestCase
             'content' => '',
             'is_folder' => true,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertNotDispatched(IndexDocumentJob::class);
@@ -65,6 +67,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Content here.',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Manually create a chunk (simulating a completed index job)
@@ -75,6 +78,7 @@ class DocumentObserverTest extends TestCase
             'embedding' => array_fill(0, 1536, 0.1),
             'collection' => 'general',
             'chunk_index' => 0,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $this->assertEquals(1, DocumentChunk::where('document_id', $docId)->count());
@@ -94,6 +98,7 @@ class DocumentObserverTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $memoryFolder = Document::create([
@@ -103,6 +108,7 @@ class DocumentObserverTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Document::create([
@@ -112,6 +118,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Memory log entry',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertDispatched(IndexDocumentJob::class, function ($job) {
@@ -132,6 +139,7 @@ class DocumentObserverTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $identityFolder = Document::create([
@@ -141,6 +149,7 @@ class DocumentObserverTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Document::create([
@@ -150,6 +159,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Agent identity content',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertDispatched(IndexDocumentJob::class, function ($job) {
@@ -170,6 +180,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Root level document',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertDispatched(IndexDocumentJob::class, function ($job) {
@@ -193,6 +204,7 @@ class DocumentObserverTest extends TestCase
             'content' => '',
             'parent_id' => null,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $agentFolder = Document::create([
@@ -202,6 +214,7 @@ class DocumentObserverTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $memoryFolder = Document::create([
@@ -211,6 +224,7 @@ class DocumentObserverTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Document::create([
@@ -220,6 +234,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Memory entry',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertDispatched(IndexDocumentJob::class, function ($job) use ($agent) {
@@ -240,6 +255,7 @@ class DocumentObserverTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Document::create([
@@ -249,6 +265,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Not under agents/',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertDispatched(IndexDocumentJob::class, function ($job) {
@@ -272,6 +289,7 @@ class DocumentObserverTest extends TestCase
             'content' => '',
             'parent_id' => null,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $agentFolder = Document::create([
@@ -281,6 +299,7 @@ class DocumentObserverTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Document::create([
@@ -290,6 +309,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Agent doc',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertDispatched(IndexDocumentJob::class, function ($job) use ($agent) {
@@ -314,6 +334,7 @@ class DocumentObserverTest extends TestCase
             'content' => '',
             'parent_id' => null,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $userFolder = Document::create([
@@ -323,6 +344,7 @@ class DocumentObserverTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Document::create([
@@ -332,6 +354,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Should not match human user',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertDispatched(IndexDocumentJob::class, function ($job) {
@@ -352,6 +375,7 @@ class DocumentObserverTest extends TestCase
             'content' => 'Original content.',
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Bus::assertDispatched(IndexDocumentJob::class);

@@ -28,6 +28,7 @@ class ManageTableRowsTest extends TestCase
         $table = DataTable::create([
             'name' => 'Contacts',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = new ManageTableRows($agent);
@@ -56,6 +57,7 @@ class ManageTableRowsTest extends TestCase
         $table = DataTable::create([
             'name' => 'Contacts',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Create row through the tool so data keys are column UUIDs
@@ -94,6 +96,7 @@ class ManageTableRowsTest extends TestCase
         $table = DataTable::create([
             'name' => 'Contacts',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $row = DataTableRow::create([
@@ -124,6 +127,7 @@ class ManageTableRowsTest extends TestCase
         $table = DataTable::create([
             'name' => 'Employees',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = new ManageTableRows($agent);

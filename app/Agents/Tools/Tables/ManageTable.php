@@ -45,6 +45,7 @@ class ManageTable implements Tool
             'name' => $request['name'],
             'description' => $request['description'] ?? null,
             'created_by' => $this->agent->id,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         return "Table created: '{$table->name}' (ID: {$table->id})";
@@ -52,7 +53,7 @@ class ManageTable implements Tool
 
     private function updateTable(Request $request): string
     {
-        $table = DataTable::findOrFail($request['tableId']);
+        $table = DataTable::forWorkspace()->findOrFail($request['tableId']);
 
         if (isset($request['name'])) {
             $table->name = $request['name'];
@@ -69,7 +70,7 @@ class ManageTable implements Tool
 
     private function deleteTable(Request $request): string
     {
-        $table = DataTable::findOrFail($request['tableId']);
+        $table = DataTable::forWorkspace()->findOrFail($request['tableId']);
         $name = $table->name;
         $table->delete();
 
@@ -78,7 +79,7 @@ class ManageTable implements Tool
 
     private function addColumn(Request $request): string
     {
-        $table = DataTable::findOrFail($request['tableId']);
+        $table = DataTable::forWorkspace()->findOrFail($request['tableId']);
 
         $maxOrder = $table->columns()->max('order') ?? -1;
 
@@ -97,6 +98,7 @@ class ManageTable implements Tool
     private function updateColumn(Request $request): string
     {
         $column = DataTableColumn::findOrFail($request['columnId']);
+        DataTable::forWorkspace()->findOrFail($column->table_id); // verify workspace
 
         if (isset($request['name'])) {
             $column->name = $request['name'];
@@ -122,6 +124,7 @@ class ManageTable implements Tool
     private function deleteColumn(Request $request): string
     {
         $column = DataTableColumn::findOrFail($request['columnId']);
+        DataTable::forWorkspace()->findOrFail($column->table_id); // verify workspace
         $column->delete();
 
         return 'Column deleted.';

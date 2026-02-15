@@ -479,7 +479,7 @@
                       <!-- Cloud provider warning -->
                       <p v-if="selectedCloudProviderInfo && !selectedCloudProviderInfo.configured" class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
                         <Icon name="ph:warning" class="w-3.5 h-3.5" />
-                        This provider needs an API key. Configure it in <a href="/integrations" class="underline hover:no-underline">Integrations</a> or via environment variables.
+                        This provider needs an API key. Configure it in <a :href="workspacePath('/integrations')" class="underline hover:no-underline">Integrations</a> or via environment variables.
                       </p>
                     </template>
                   </SettingsField>
@@ -522,11 +522,11 @@
                       </div>
                       <p v-if="selectedSummaryProvider && !selectedProviderConfigured" class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
                         <Icon name="ph:warning" class="w-3.5 h-3.5" />
-                        This provider needs an API key. Configure it in <a href="/integrations" class="underline hover:no-underline">Integrations</a> or via environment variables.
+                        This provider needs an API key. Configure it in <a :href="workspacePath('/integrations')" class="underline hover:no-underline">Integrations</a> or via environment variables.
                       </p>
                     </template>
                     <div v-else class="text-sm text-neutral-500 dark:text-neutral-400 py-2">
-                      <p>No AI providers available. <a href="/integrations" class="text-neutral-900 dark:text-white underline hover:no-underline">Configure integrations</a> first.</p>
+                      <p>No AI providers available. <a :href="workspacePath('/integrations')" class="text-neutral-900 dark:text-white underline hover:no-underline">Configure integrations</a> first.</p>
                     </div>
                   </SettingsField>
 
@@ -748,7 +748,7 @@
                           <!-- Cloud provider warning -->
                           <p v-if="selectedRerankCloudProviderInfo && !selectedRerankCloudProviderInfo.configured" class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                             <Icon name="ph:warning" class="w-3.5 h-3.5" />
-                            This provider needs an API key. Configure it in <a href="/integrations" class="underline hover:no-underline">Integrations</a> or via environment variables.
+                            This provider needs an API key. Configure it in <a :href="workspacePath('/integrations')" class="underline hover:no-underline">Integrations</a> or via environment variables.
                           </p>
                         </template>
                       </div>
@@ -1010,7 +1010,10 @@ import SettingsField from '@/Components/settings/SettingsField.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import { useApi } from '@/composables/useApi'
+import { useWorkspace } from '@/composables/useWorkspace'
 import axios from 'axios'
+
+const { workspacePath } = useWorkspace()
 
 // --- Sidebar sections ---
 const sections = [

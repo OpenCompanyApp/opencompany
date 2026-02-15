@@ -45,6 +45,7 @@ class ManageTableTest extends TestCase
         $table = DataTable::create([
             'name' => 'Old Name',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = new ManageTable($agent);
@@ -70,6 +71,7 @@ class ManageTableTest extends TestCase
         $table = DataTable::create([
             'name' => 'To Delete',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = new ManageTable($agent);
@@ -93,6 +95,7 @@ class ManageTableTest extends TestCase
         $table = DataTable::create([
             'name' => 'Tasks',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = new ManageTable($agent);
@@ -120,6 +123,7 @@ class ManageTableTest extends TestCase
         $table = DataTable::create([
             'name' => 'Tasks',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $column = DataTableColumn::create([

@@ -13,7 +13,7 @@
       <Link
         v-for="agent in agents.slice(0, 5)"
         :key="agent.id"
-        :href="`/agent/${agent.id}`"
+        :href="workspacePath(`/agent/${agent.id}`)"
         class="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150"
       >
         <AgentAvatar :user="agent" size="sm" />
@@ -34,9 +34,12 @@
 
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { User } from '@/types'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Icon from '@/Components/shared/Icon.vue'
+
+const { workspacePath } = useWorkspace()
 
 defineProps<{
   agents: User[]

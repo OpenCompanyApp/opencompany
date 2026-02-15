@@ -47,7 +47,21 @@ class UserFactory extends Factory
             'agent_type' => $agentType,
             'email' => null,
             'password' => null,
+            'workspace_id' => app()->bound('currentWorkspace') ? app('currentWorkspace')->id : null,
         ]);
+    }
+
+    /**
+     * Configure the model factory.
+     * Automatically sets workspace_id for agent users when workspace is available.
+     */
+    public function configure(): static
+    {
+        return $this->afterMaking(function (\App\Models\User $user) {
+            if ($user->type === 'agent' && ! $user->workspace_id && app()->bound('currentWorkspace')) {
+                $user->workspace_id = app('currentWorkspace')->id;
+            }
+        });
     }
 
     /**

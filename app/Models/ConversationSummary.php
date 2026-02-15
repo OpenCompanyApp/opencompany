@@ -5,13 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\BelongsToWorkspace;
 
 class ConversationSummary extends Model
 {
-    use HasUuids;
+    use HasUuids, BelongsToWorkspace;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'channel_id',
         'agent_id',
         'summary',

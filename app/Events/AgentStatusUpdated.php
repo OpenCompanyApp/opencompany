@@ -25,7 +25,7 @@ class AgentStatusUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel('agents'),
+            new Channel('workspace.' . $this->agent->workspace_id . '.agents'),
         ];
     }
 

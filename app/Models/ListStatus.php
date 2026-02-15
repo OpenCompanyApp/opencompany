@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Concerns\BelongsToWorkspace;
 
 /**
  * @property string $name
@@ -16,12 +17,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class ListStatus extends Model
 {
+    use BelongsToWorkspace;
+
     protected $table = 'list_statuses';
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'name',
         'slug',
         'color',

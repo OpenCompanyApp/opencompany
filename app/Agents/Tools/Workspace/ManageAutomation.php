@@ -95,7 +95,7 @@ class ManageAutomation implements Tool
             return 'ruleId is required.';
         }
 
-        $rule = ListAutomationRule::find($ruleId);
+        $rule = ListAutomationRule::whereHas('template', fn($q) => $q->forWorkspace())->find($ruleId);
         if (!$rule) {
             return "Automation rule not found: {$ruleId}";
         }
@@ -143,7 +143,7 @@ class ManageAutomation implements Tool
             return 'ruleId is required.';
         }
 
-        $rule = ListAutomationRule::find($ruleId);
+        $rule = ListAutomationRule::whereHas('template', fn($q) => $q->forWorkspace())->find($ruleId);
         if (!$rule) {
             return "Automation rule not found: {$ruleId}";
         }
@@ -180,6 +180,7 @@ class ManageAutomation implements Tool
             'tags' => $tags,
             'created_by_id' => $this->agent->id,
             'is_active' => true,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         return "Template created: {$template->name} (ID: {$template->id})";
@@ -192,7 +193,7 @@ class ManageAutomation implements Tool
             return 'templateId is required.';
         }
 
-        $template = ListTemplate::find($templateId);
+        $template = ListTemplate::forWorkspace()->find($templateId);
         if (!$template) {
             return "Template not found: {$templateId}";
         }
@@ -228,7 +229,7 @@ class ManageAutomation implements Tool
             return 'templateId is required.';
         }
 
-        $template = ListTemplate::find($templateId);
+        $template = ListTemplate::forWorkspace()->find($templateId);
         if (!$template) {
             return "Template not found: {$templateId}";
         }
@@ -268,6 +269,7 @@ class ManageAutomation implements Tool
             'channel_id' => $request['channelId'] ?? null,
             'created_by_id' => $this->agent->id,
             'is_active' => true,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         /** @var \Carbon\Carbon|null $nextRunAt */
@@ -284,7 +286,7 @@ class ManageAutomation implements Tool
             return 'scheduleId is required.';
         }
 
-        $schedule = ScheduledAutomation::find($scheduleId);
+        $schedule = ScheduledAutomation::forWorkspace()->find($scheduleId);
         if (!$schedule) {
             return "Schedule not found: {$scheduleId}";
         }
@@ -333,7 +335,7 @@ class ManageAutomation implements Tool
             return 'scheduleId is required.';
         }
 
-        $schedule = ScheduledAutomation::find($scheduleId);
+        $schedule = ScheduledAutomation::forWorkspace()->find($scheduleId);
         if (!$schedule) {
             return "Schedule not found: {$scheduleId}";
         }
@@ -346,7 +348,8 @@ class ManageAutomation implements Tool
 
     private function listSchedules(): string
     {
-        $schedules = ScheduledAutomation::with('agent')
+        $schedules = ScheduledAutomation::forWorkspace()
+            ->with('agent')
             ->orderBy('name')
             ->get();
 
@@ -374,7 +377,7 @@ class ManageAutomation implements Tool
             return 'scheduleId is required.';
         }
 
-        $schedule = ScheduledAutomation::find($scheduleId);
+        $schedule = ScheduledAutomation::forWorkspace()->find($scheduleId);
         if (!$schedule) {
             return "Schedule not found: {$scheduleId}";
         }

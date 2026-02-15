@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\BelongsToWorkspace;
 
 /**
  * @property array<string, mixed>|null $metadata
@@ -12,10 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class DocumentChunk extends Model
 {
-    use HasUuids;
+    use HasUuids, BelongsToWorkspace;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'document_id',
         'content',
         'content_hash',

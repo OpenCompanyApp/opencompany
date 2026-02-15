@@ -26,20 +26,26 @@ class TelegramWebhookController extends Controller
 {
     public function handle(Request $request): Response
     {
-        // Verify webhook secret
+        // Find the telegram integration across all workspaces by matching the webhook secret
+        $secretToken = $request->header('X-Telegram-Bot-Api-Secret-Token');
+
         $setting = IntegrationSetting::where('integration_id', 'telegram')
             ->where('enabled', true)
-            ->first();
+            ->get()
+            ->first(function ($s) use ($secretToken) {
+                return $s->getConfigValue('webhook_secret') === $secretToken;
+            });
 
-        if (!$setting) {
-            abort(404);
+        if (!$setting || !$secretToken) {
+            abort(403);
         }
 
-        $secretToken = $request->header('X-Telegram-Bot-Api-Secret-Token');
-        $expectedSecret = $setting->getConfigValue('webhook_secret');
-
-        if (!$expectedSecret || $secretToken !== $expectedSecret) {
-            abort(403);
+        // Set workspace context from the integration's workspace
+        if ($setting->workspace_id) {
+            $workspace = \App\Models\Workspace::find($setting->workspace_id);
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+            }
         }
 
         $update = $request->all();
@@ -48,7 +54,7 @@ class TelegramWebhookController extends Controller
             if (isset($update['message'])) {
                 $this->handleMessage($update['message'], $setting);
             } elseif (isset($update['callback_query'])) {
-                $this->handleCallbackQuery($update['callback_query']);
+                $this->handleCallbackQuery($update['callback_query'], $setting);
             }
         } catch (\Throwable $e) {
             Log::error('Telegram webhook error', [
@@ -116,13 +122,14 @@ class TelegramWebhookController extends Controller
             }
         }
 
-        // Find or create the external channel for this chat
+        // Find or create the external channel for this chat (workspace-scoped)
         $channel = Channel::firstOrCreate(
-            ['external_provider' => 'telegram', 'external_id' => $chatId],
+            ['external_provider' => 'telegram', 'external_id' => $chatId, 'workspace_id' => $setting->workspace_id],
             [
                 'id' => Str::uuid()->toString(),
                 'name' => 'Telegram: ' . ($from['first_name'] ?? 'Unknown'),
                 'type' => 'external',
+                'workspace_id' => $setting->workspace_id,
                 'external_config' => [
                     'telegram_user_id' => $from['id'] ?? null,
                     'username' => $from['username'] ?? null,
@@ -257,7 +264,7 @@ class TelegramWebhookController extends Controller
      *
      * @param  array<string, mixed>  $callbackQuery
      */
-    private function handleCallbackQuery(array $callbackQuery): void
+    private function handleCallbackQuery(array $callbackQuery, ?IntegrationSetting $setting = null): void
     {
         $data = $callbackQuery['data'] ?? '';
         $chatId = (string) ($callbackQuery['message']['chat']['id'] ?? null);

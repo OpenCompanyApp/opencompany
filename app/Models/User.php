@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 /**
  * @property string|null $status
  * @property string|null $type
+ * @property string|null $workspace_id
  * @property array<string>|null $awaiting_delegation_ids
  * @property \Carbon\Carbon|null $sleeping_until
  * @property \Carbon\Carbon|null $bootstrapped_at
@@ -50,6 +51,7 @@ class User extends Authenticatable
         'sleeping_reason',
         'bootstrapped_at',
         'manager_id',
+        'workspace_id',
     ];
 
     protected $hidden = [
@@ -92,6 +94,7 @@ class User extends Authenticatable
         $array['awaitingDelegationIds'] = $this->awaiting_delegation_ids;
         $array['mustWaitForApproval'] = $this->must_wait_for_approval;
         $array['managerId'] = $this->manager_id;
+        $array['workspaceId'] = $this->workspace_id;
 
         return $array;
     }
@@ -108,6 +111,20 @@ class User extends Authenticatable
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    /** Workspace this agent belongs to (null for human users). */
+    public function workspace(): BelongsTo
+    {
+        return $this->belongsTo(Workspace::class);
+    }
+
+    /** Workspaces this human user is a member of. */
+    public function workspaces(): BelongsToMany
+    {
+        return $this->belongsToMany(Workspace::class, 'workspace_members')
+            ->withPivot('role')
+            ->withTimestamps();
     }
 
     /** @return HasMany<User, $this> */
@@ -264,5 +281,26 @@ class User extends Authenticatable
     public function isHuman(): bool
     {
         return $this->type === 'human';
+    }
+
+    /** Check if user is an admin of the given (or current) workspace. */
+    public function isWorkspaceAdmin(?Workspace $workspace = null): bool
+    {
+        $ws = $workspace ?? app('currentWorkspace');
+
+        return $this->workspaces()
+            ->where('workspaces.id', $ws->id)
+            ->wherePivot('role', 'admin')
+            ->exists();
+    }
+
+    /** Get user's role in the given workspace, or null if not a member. */
+    public function currentWorkspaceRole(Workspace $workspace): ?string
+    {
+        $membership = $this->workspaces()
+            ->where('workspaces.id', $workspace->id)
+            ->first();
+
+        return $membership?->pivot?->role;
     }
 }

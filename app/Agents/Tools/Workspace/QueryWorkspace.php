@@ -46,7 +46,7 @@ class QueryWorkspace implements Tool
 
     private function listAgents(): string
     {
-        $agents = User::where('type', 'agent')->orderBy('name')->get();
+        $agents = User::where('type', 'agent')->where('workspace_id', workspace()->id)->orderBy('name')->get();
 
         if ($agents->isEmpty()) {
             return 'No agents found in workspace.';
@@ -69,12 +69,12 @@ class QueryWorkspace implements Tool
             return 'agentId is required.';
         }
 
-        $agent = User::where('type', 'agent')->find($agentId);
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->find($agentId);
         if (!$agent) {
             return "Agent not found: {$agentId}";
         }
 
-        $taskStats = Task::where('agent_id', $agent->id)
+        $taskStats = Task::forWorkspace()->where('agent_id', $agent->id)
             ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
             ->first();
 
@@ -100,7 +100,7 @@ class QueryWorkspace implements Tool
             return 'agentId is required.';
         }
 
-        $agent = User::where('type', 'agent')->find($agentId);
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->find($agentId);
         if (!$agent) {
             return "Agent not found: {$agentId}";
         }
@@ -133,7 +133,7 @@ class QueryWorkspace implements Tool
 
     private function listIntegrations(): string
     {
-        $settings = IntegrationSetting::all()->keyBy('integration_id');
+        $settings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
         $available = IntegrationSetting::getAvailableIntegrations();
 
         $lines = ['Available Integrations:'];
@@ -195,7 +195,7 @@ class QueryWorkspace implements Tool
         }
 
         /** @var \App\Models\IntegrationSetting|null $setting */
-        $setting = IntegrationSetting::where('integration_id', $integrationId)->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
         $info = $available[$integrationId];
 
         $lines = [
@@ -227,7 +227,7 @@ class QueryWorkspace implements Tool
         $meta = $provider->integrationMeta();
         $schema = $provider->configSchema();
         /** @var \App\Models\IntegrationSetting|null $setting */
-        $setting = IntegrationSetting::where('integration_id', $integrationId)->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
         $config = $setting ? $setting->config : [];
 
         $lines = [
@@ -257,7 +257,7 @@ class QueryWorkspace implements Tool
 
     private function listAvailableModels(): string
     {
-        $settings = IntegrationSetting::where('enabled', true)->get();
+        $settings = IntegrationSetting::forWorkspace()->where('enabled', true)->get();
         $available = IntegrationSetting::getAvailableIntegrations();
 
         $lines = ['Available AI Models:'];

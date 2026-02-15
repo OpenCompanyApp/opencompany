@@ -6,12 +6,14 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Models\Concerns\BelongsToWorkspace;
 
 class CalendarFeed extends Model
 {
-    use HasUuids;
+    use HasUuids, BelongsToWorkspace;
 
     protected $fillable = [
+        'workspace_id',
         'user_id',
         'token',
         'name',

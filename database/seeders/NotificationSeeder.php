@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Notification;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Str;
@@ -13,6 +14,9 @@ class NotificationSeeder extends Seeder
 
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+        $workspaceId = $workspace->id;
+
         $notifications = [
             // For human user (h1)
             [
@@ -239,6 +243,7 @@ class NotificationSeeder extends Seeder
                 'actor_id' => $notifData['actor_id'],
                 'metadata' => $notifData['metadata'],
                 'created_at' => now()->subHours($notifData['hours_ago']),
+                'workspace_id' => $workspaceId,
             ]);
         }
     }

@@ -10,15 +10,18 @@ import Slideover from '@/Components/shared/Slideover.vue'
 import SidebarNav from '@/Components/layout/SidebarNav.vue'
 import UserMenu from '@/Components/layout/UserMenu.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import WorkspaceIcon from '@/Components/shared/WorkspaceIcon.vue'
 import SpawnAgentModal from '@/Components/agents/SpawnAgentModal.vue'
 import { useKeyboardShortcuts, useCommandPalette } from '@/composables/useKeyboardShortcuts'
 import { usePresence } from '@/composables/usePresence'
 import { useChannelListener } from '@/composables/useRealtime'
 import { useApi } from '@/composables/useApi'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { AgentStatus } from '@/types'
 
 useKeyboardShortcuts()
 const { isOpen: commandPaletteOpen } = useCommandPalette()
+const { workspacePath, workspace, isAdmin } = useWorkspace()
 
 const sidebarCollapsed = ref(false)
 const mobileMenuOpen = ref(false)
@@ -43,9 +46,9 @@ const onlineAgentCount = computed(() =>
 
 const totalAgentCount = computed(() => (agentsData.value ?? []).length)
 
-// Real-time agent status updates
+// Real-time agent status updates (workspace-scoped)
 useChannelListener<{ id: string; status: string }>(
-  'agents',
+  `workspace.${workspace.value?.id}.agents`,
   '.AgentStatusUpdated',
   (data) => {
     if (!agentsData.value) return
@@ -86,24 +89,24 @@ const handlePaletteAction = (type: string) => {
       showSpawnModal.value = true
       break
     case 'new-task':
-      router.visit('/tasks?action=new')
+      router.visit(workspacePath('/tasks?action=new'))
       break
     case 'new-channel':
-      router.visit('/chat?action=new-channel')
+      router.visit(workspacePath('/chat?action=new-channel'))
       break
     case 'new-document':
-      router.visit('/docs?action=new')
+      router.visit(workspacePath('/docs?action=new'))
       break
   }
 }
 
 const handleAgentSpawned = async (agent: { id: string }) => {
   await refreshAgents()
-  router.visit(`/agent/${agent.id}`)
+  router.visit(workspacePath(`/agent/${agent.id}`))
 }
 
 // Initialize presence tracking
-const { initPresence, cleanup } = usePresence(userId)
+const { initPresence, cleanup } = usePresence(userId, workspace.value?.id)
 
 onMounted(() => {
   initPresence()
@@ -115,7 +118,7 @@ onUnmounted(() => {
 
 // Check if a path is active
 const isActive = (path: string): boolean => {
-  if (path === '/') return page.url === '/'
+  if (path === workspacePath('/')) return page.url === workspacePath('/')
   return page.url.startsWith(path)
 }
 </script>
@@ -133,11 +136,13 @@ const isActive = (path: string): boolean => {
             <Icon name="ph:list" class="w-6 h-6 text-neutral-700 dark:text-neutral-200" />
           </button>
 
-          <Link href="/" class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center">
-              <span class="text-white dark:text-neutral-900 font-bold text-xs">O</span>
-            </div>
-            <span class="font-semibold text-neutral-900 dark:text-white">OpenCompany</span>
+          <Link :href="workspacePath('/')" class="flex items-center gap-2">
+            <WorkspaceIcon
+              :icon="workspace?.icon"
+              :color="workspace?.color"
+              size="sm"
+            />
+            <span class="font-semibold text-neutral-900 dark:text-white">{{ workspace?.name ?? 'OpenCompany' }}</span>
           </Link>
 
           <div class="w-10" /> <!-- Spacer for centering -->
@@ -157,11 +162,13 @@ const isActive = (path: string): boolean => {
         <Slideover v-model:open="mobileMenuOpen" side="left" size="sm" :show-close="false">
           <template #header>
             <div class="flex items-center justify-between w-full">
-              <Link href="/" class="flex items-center gap-2.5" @click="mobileMenuOpen = false">
-                <div class="w-8 h-8 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center">
-                  <span class="text-white dark:text-neutral-900 font-bold text-sm">O</span>
-                </div>
-                <span class="font-semibold text-lg text-neutral-900 dark:text-white tracking-tight">OpenCompany</span>
+              <Link :href="workspacePath('/')" class="flex items-center gap-2.5" @click="mobileMenuOpen = false">
+                <WorkspaceIcon
+                  :icon="workspace?.icon"
+                  :color="workspace?.color"
+                  size="md"
+                />
+                <span class="font-semibold text-lg text-neutral-900 dark:text-white tracking-tight">{{ workspace?.name ?? 'OpenCompany' }}</span>
               </Link>
               <button
                 class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
@@ -179,29 +186,31 @@ const isActive = (path: string): boolean => {
               <!-- Bottom links -->
               <div class="mt-auto border-t border-neutral-200 dark:border-neutral-700 px-2 py-2 space-y-0.5">
                 <Link
-                  href="/integrations"
+                  v-if="isAdmin"
+                  :href="workspacePath('/integrations')"
                   :class="[
                     'flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors',
-                    isActive('/integrations')
+                    isActive(workspacePath('/integrations'))
                       ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
                       : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
                   ]"
                   @click="mobileMenuOpen = false"
                 >
-                  <Icon :name="isActive('/integrations') ? 'ph:plugs-connected-fill' : 'ph:plugs-connected'" class="w-[18px] h-[18px]" />
+                  <Icon :name="isActive(workspacePath('/integrations')) ? 'ph:plugs-connected-fill' : 'ph:plugs-connected'" class="w-[18px] h-[18px]" />
                   <span class="text-sm">Integrations</span>
                 </Link>
                 <Link
-                  href="/settings"
+                  v-if="isAdmin"
+                  :href="workspacePath('/settings')"
                   :class="[
                     'flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors',
-                    isActive('/settings')
+                    isActive(workspacePath('/settings'))
                       ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
                       : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
                   ]"
                   @click="mobileMenuOpen = false"
                 >
-                  <Icon :name="isActive('/settings') ? 'ph:gear-fill' : 'ph:gear'" class="w-[18px] h-[18px]" />
+                  <Icon :name="isActive(workspacePath('/settings')) ? 'ph:gear-fill' : 'ph:gear'" class="w-[18px] h-[18px]" />
                   <span class="text-sm">Settings</span>
                 </Link>
               </div>
@@ -215,7 +224,7 @@ const isActive = (path: string): boolean => {
         </Slideover>
 
         <!-- Main Content -->
-        <main class="flex-1 flex flex-col overflow-hidden pt-14 md:pt-0">
+        <main class="flex-1 overflow-hidden pt-14 md:pt-0">
           <slot />
         </main>
 

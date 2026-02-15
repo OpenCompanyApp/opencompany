@@ -5,12 +5,16 @@ namespace App\Agents\Tools\Tables;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
+use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
 class QueryTable implements Tool
 {
+    public function __construct(
+        private User $agent,
+    ) {}
 
     public function description(): string
     {
@@ -36,7 +40,7 @@ class QueryTable implements Tool
 
     private function listTables(): string
     {
-        $tables = DataTable::with('creator')
+        $tables = DataTable::forWorkspace()->with('creator')
             ->withCount(['rows as rowsCount', 'columns as columnsCount'])
             ->get();
 
@@ -62,7 +66,7 @@ class QueryTable implements Tool
             return "Error: 'tableId' is required for the 'get_table' action.";
         }
 
-        $table = DataTable::with(['columns', 'creator'])->find($tableId);
+        $table = DataTable::forWorkspace()->with(['columns', 'creator'])->find($tableId);
         if (!$table) {
             return "Error: Table '{$tableId}' not found.";
         }
@@ -92,7 +96,7 @@ class QueryTable implements Tool
 
         $limit = $request['limit'] ?? 25;
 
-        $table = DataTable::find($tableId);
+        $table = DataTable::forWorkspace()->find($tableId);
         if (!$table) {
             return "Error: Table '{$tableId}' not found.";
         }
@@ -133,7 +137,7 @@ class QueryTable implements Tool
 
         $limit = $request['limit'] ?? 25;
 
-        $table = DataTable::find($tableId);
+        $table = DataTable::forWorkspace()->find($tableId);
         if (!$table) {
             return "Error: Table '{$tableId}' not found.";
         }

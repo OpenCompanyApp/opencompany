@@ -227,7 +227,7 @@
       <!-- Assignees -->
       <div class="flex items-center">
         <div :class="['flex', sizeConfig[size].avatarStack]">
-          <Link v-if="task.assignee" :href="task.assignee.type === 'agent' ? `/agent/${task.assignee.id}` : `/profile/${task.assignee.id}`" @click.stop>
+          <Link v-if="task.assignee" :href="workspacePath(task.assignee.type === 'agent' ? `/agent/${task.assignee.id}` : `/profile/${task.assignee.id}`)" @click.stop>
             <AgentAvatar
               :user="task.assignee"
               :size="avatarSize"
@@ -237,7 +237,7 @@
           <Link
             v-for="collab in (task.collaborators || []).slice(0, maxCollaborators)"
             :key="collab.id"
-            :href="collab.type === 'agent' ? `/agent/${collab.id}` : `/profile/${collab.id}`"
+            :href="workspacePath(collab.type === 'agent' ? `/agent/${collab.id}` : `/profile/${collab.id}`)"
             @click.stop
           >
             <AgentAvatar
@@ -361,11 +361,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { Task, Priority } from '@/types'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
+
+const { workspacePath } = useWorkspace()
 
 // Types
 type CardSize = 'sm' | 'md' | 'lg'

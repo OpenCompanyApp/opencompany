@@ -7,6 +7,7 @@ use App\Models\ListItemCollaborator;
 use App\Models\ListItemComment;
 use App\Models\ListTemplate;
 use App\Models\ListAutomationRule;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Str;
@@ -15,8 +16,13 @@ class ListItemSeeder extends Seeder
 {
     use WithoutModelEvents;
 
+    private string $workspaceId;
+
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+        $this->workspaceId = $workspace->id;
+
         $this->createListItems();
         $this->createListTemplates();
         $this->createAutomationRules();
@@ -168,6 +174,7 @@ class ListItemSeeder extends Seeder
                 'channel_id' => $itemData['channel_id'],
                 'position' => $position++,
                 'completed_at' => $itemData['completed_at'] ?? null,
+                'workspace_id' => $this->workspaceId,
             ]);
 
             $createdItems[] = $item;
@@ -276,6 +283,7 @@ class ListItemSeeder extends Seeder
                 'tags' => $templateData['tags'],
                 'created_by_id' => 'h1',
                 'is_active' => true,
+                'workspace_id' => $this->workspaceId,
             ]);
         }
     }

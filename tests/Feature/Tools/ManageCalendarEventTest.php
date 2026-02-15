@@ -80,6 +80,7 @@ class ManageCalendarEventTest extends TestCase
             'end_at' => '2026-02-10 10:00:00',
             'all_day' => false,
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $request = new Request([
@@ -106,6 +107,7 @@ class ManageCalendarEventTest extends TestCase
             'end_at' => '2026-02-10 10:00:00',
             'all_day' => false,
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $eventId = $event->id;

@@ -1,9 +1,10 @@
 <template>
   <div
     :class="[
-      'border-t border-neutral-200 dark:border-neutral-800 transition-colors duration-150',
-      sizeConfig[size].padding,
-      collapsed && 'px-2'
+      !compact && 'border-t border-neutral-200 dark:border-neutral-800',
+      'transition-colors duration-150',
+      compact ? '' : sizeConfig[size].padding,
+      collapsed && !compact && 'px-2'
     ]"
   >
     <Popover v-if="collapsed" mode="hover" :open-delay="300">
@@ -68,8 +69,8 @@
     <DropdownMenu v-else :items="dropdownItems">
       <button
         :class="[
-          'w-full flex items-center rounded-xl transition-all duration-150 cursor-pointer outline-none group relative overflow-hidden',
-          sizeConfig[size].trigger,
+          'flex items-center rounded-xl transition-all duration-150 cursor-pointer outline-none group relative overflow-hidden',
+          compact ? 'gap-1.5 p-1.5' : ['w-full', sizeConfig[size].trigger],
           'hover:bg-neutral-200 dark:hover:bg-neutral-800',
           'focus-visible:ring-1 focus-visible:ring-neutral-400'
         ]"
@@ -78,14 +79,14 @@
         <div
           :class="[
             'relative shrink-0',
-            sizeConfig[size].avatar
+            compact ? 'w-6 h-6' : sizeConfig[size].avatar
           ]"
         >
           <div
             v-if="!currentUser.avatar"
             :class="[
               'w-full h-full rounded-full flex items-center justify-center text-white font-medium bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm',
-              sizeConfig[size].avatarText
+              compact ? 'text-[10px]' : sizeConfig[size].avatarText
             ]"
           >
             {{ getInitials(currentUser.name) }}
@@ -94,42 +95,49 @@
             v-else
             :src="currentUser.avatar"
             :alt="currentUser.name"
-            :class="[
-              'w-full h-full rounded-full object-cover ring-2 ring-white/80 dark:ring-neutral-700'
-            ]"
+            class="w-full h-full rounded-full object-cover ring-2 ring-white/80 dark:ring-neutral-700"
           />
           <span
             :class="[
               'absolute rounded-full ring-2 ring-white dark:ring-neutral-950',
               statusColors[userStatusValue],
-              sizeConfig[size].statusIndicator
+              compact ? 'w-1.5 h-1.5 -bottom-px -right-px' : sizeConfig[size].statusIndicator
             ]"
           />
         </div>
 
-        <!-- User info -->
-        <div class="flex-1 text-left min-w-0 ml-2.5">
-          <div class="flex items-center gap-1.5">
-            <p :class="['font-semibold truncate text-neutral-900 dark:text-white leading-tight', sizeConfig[size].name]">
-              {{ currentUser.name }}
-            </p>
-            <span
-              v-if="userRoleValue === 'admin'"
-              class="shrink-0 px-1 py-px text-[9px] font-semibold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 rounded"
-            >
-              Admin
-            </span>
-          </div>
-          <p :class="['text-neutral-500 dark:text-neutral-400 truncate leading-tight mt-0.5', sizeConfig[size].status]">
-            {{ currentUser.email || statusLabels[userStatusValue] }}
-          </p>
-        </div>
+        <!-- Compact: first name only -->
+        <template v-if="compact">
+          <span class="text-xs font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[4rem]">
+            {{ currentUser.name.split(' ')[0] }}
+          </span>
+        </template>
 
-        <!-- Dropdown chevron -->
-        <Icon
-          name="ph:caret-up-down"
-          class="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 shrink-0 transition-colors duration-150 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
-        />
+        <!-- Full: name + email + badge -->
+        <template v-else>
+          <div class="flex-1 text-left min-w-0 ml-2.5">
+            <div class="flex items-center gap-1.5">
+              <p :class="['font-semibold truncate text-neutral-900 dark:text-white leading-tight', sizeConfig[size].name]">
+                {{ currentUser.name }}
+              </p>
+              <span
+                v-if="userRoleValue === 'admin'"
+                class="shrink-0 px-1 py-px text-[9px] font-semibold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 rounded"
+              >
+                Admin
+              </span>
+            </div>
+            <p :class="['text-neutral-500 dark:text-neutral-400 truncate leading-tight mt-0.5', sizeConfig[size].status]">
+              {{ currentUser.email || statusLabels[userStatusValue] }}
+            </p>
+          </div>
+
+          <!-- Dropdown chevron -->
+          <Icon
+            name="ph:caret-up-down"
+            class="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 shrink-0 transition-colors duration-150 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+          />
+        </template>
       </button>
     </DropdownMenu>
 
@@ -231,6 +239,7 @@ import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 import Button from '@/Components/shared/Button.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import { useColorMode } from '@/composables/useColorMode'
+import { useWorkspace } from '@/composables/useWorkspace'
 
 // Types
 type UserMenuSize = 'sm' | 'md' | 'lg'
@@ -272,12 +281,14 @@ interface User {
 const props = withDefaults(defineProps<{
   size?: UserMenuSize
   collapsed?: boolean
+  compact?: boolean
   userStatus?: UserStatus
   userRole?: UserRole
   user?: User
 }>(), {
   size: 'md',
   collapsed: false,
+  compact: false,
   userStatus: 'online',
   userRole: 'admin',
   user: () => ({ name: 'User', email: 'user@example.com' }),
@@ -357,6 +368,9 @@ const quickStatuses: QuickStatus[] = [
 
 // Color mode
 const { isDark, toggleDark } = useColorMode()
+
+// Workspace
+const { workspacePath } = useWorkspace()
 
 // State
 const currentUser = computed<User>(() => props.user)
@@ -440,9 +454,9 @@ const handleMenuAction = (actionId: string) => {
   if (actionId === 'custom-status') {
     customStatusDialogOpen.value = true
   } else if (actionId === 'profile') {
-    router.visit('/profile')
+    router.visit(workspacePath('/profile'))
   } else if (actionId === 'settings') {
-    router.visit('/settings')
+    router.visit(workspacePath('/settings'))
   }
 }
 

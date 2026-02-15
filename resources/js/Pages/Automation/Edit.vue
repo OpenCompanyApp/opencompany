@@ -129,7 +129,7 @@
               v-for="run in runs"
               :key="run.id"
               class="flex items-center gap-4 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors border-b border-neutral-100 dark:border-neutral-800 last:border-b-0"
-              @click="router.visit(`/tasks/${run.id}`)"
+              @click="router.visit(workspacePath(`/tasks/${run.id}`))"
             >
               <!-- Run number -->
               <span class="text-xs font-mono text-neutral-400 w-8 shrink-0">
@@ -174,6 +174,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { User } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
@@ -186,6 +187,7 @@ const props = defineProps<{
   automationId: string
 }>()
 
+const { workspacePath } = useWorkspace()
 const { fetchScheduledAutomation, updateScheduledAutomation, fetchAgents, fetchAutomationRuns } = useApi()
 
 const { data: automationData, loading } = fetchScheduledAutomation(props.automationId)
@@ -249,7 +251,7 @@ const isValid = computed(() =>
 )
 
 function goBack() {
-  router.visit('/automation')
+  router.visit(workspacePath('/automation'))
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -278,7 +280,7 @@ async function handleSave() {
       timezone: form.value.timezone,
       keepHistory: form.value.keepHistory,
     })
-    router.visit('/automation')
+    router.visit(workspacePath('/automation'))
   } finally {
     saving.value = false
   }

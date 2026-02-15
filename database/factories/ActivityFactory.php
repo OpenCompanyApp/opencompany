@@ -27,6 +27,7 @@ class ActivityFactory extends Factory
             'actor_id' => User::factory(),
             'metadata' => [],
             'timestamp' => now(),
+            'workspace_id' => fn () => app()->bound('currentWorkspace') ? app('currentWorkspace')->id : null,
         ];
     }
 

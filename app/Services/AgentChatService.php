@@ -23,7 +23,8 @@ class AgentChatService
         $model = $parts[1] ?? 'glm-4.7';
 
         // Verify integration is enabled and get config
-        $integration = IntegrationSetting::where('integration_id', $provider)
+        $integration = IntegrationSetting::where('workspace_id', $agent->workspace_id)
+            ->where('integration_id', $provider)
             ->where('enabled', true)
             ->first();
 

@@ -310,6 +310,7 @@ import {
   DialogDescription,
 } from 'reka-ui'
 import { useColorMode } from '@/composables/useColorMode'
+import { useWorkspace } from '@/composables/useWorkspace'
 
 // Types
 type PaletteSize = 'sm' | 'md' | 'lg'
@@ -392,6 +393,7 @@ const emit = defineEmits<{
 }>()
 
 const { toggleDark, isDark } = useColorMode()
+const { workspacePath, isAdmin } = useWorkspace()
 
 // Size configuration
 const sizeConfig: Record<PaletteSize, SizeConfig> = {
@@ -456,104 +458,114 @@ const emptySuggestions = computed(() => [
 ])
 
 // Command groups
-const commandGroups = computed<CommandGroup[]>(() => [
-  {
-    label: 'Navigation',
-    icon: 'ph:compass',
-    items: [
-      {
-        id: 'nav-home',
-        label: 'Dashboard',
-        description: 'Go to dashboard overview',
-        icon: 'ph:house-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        shortcut: 'G H',
-        action: () => router.visit('/'),
-      },
-      {
-        id: 'nav-chat',
-        label: 'Chat',
-        description: 'Open chat workspace',
-        icon: 'ph:chat-circle-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        shortcut: 'G C',
-        action: () => router.visit('/chat'),
-      },
-      {
-        id: 'nav-tasks',
-        label: 'Tasks',
-        description: 'View and manage tasks',
-        icon: 'ph:check-square-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        shortcut: 'G T',
-        action: () => router.visit('/tasks'),
-      },
-      {
-        id: 'nav-docs',
-        label: 'Documents',
-        description: 'Browse documents',
-        icon: 'ph:file-text-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        shortcut: 'G D',
-        action: () => router.visit('/docs'),
-      },
-      {
-        id: 'nav-approvals',
-        label: 'Approvals',
-        description: 'Review pending approvals',
-        icon: 'ph:seal-check-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        shortcut: 'G A',
-        action: () => router.visit('/approvals'),
-      },
-      {
-        id: 'nav-org',
-        label: 'Organization',
-        description: 'View organization structure',
-        icon: 'ph:tree-structure-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        shortcut: 'G O',
-        action: () => router.visit('/org'),
-      },
-      {
-        id: 'nav-tables',
-        label: 'Tables',
-        description: 'View and manage tables',
-        icon: 'ph:table-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => router.visit('/tables'),
-      },
-      {
-        id: 'nav-calendar',
-        label: 'Calendar',
-        description: 'View calendar',
-        icon: 'ph:calendar-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => router.visit('/calendar'),
-      },
-      {
-        id: 'nav-lists',
-        label: 'Lists',
-        description: 'View kanban boards',
-        icon: 'ph:kanban-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => router.visit('/lists'),
-      },
-      {
-        id: 'nav-automation',
-        label: 'Automation',
-        description: 'Manage automations',
-        icon: 'ph:lightning-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => router.visit('/automation'),
-      },
+const commandGroups = computed<CommandGroup[]>(() => {
+  const navItems: CommandItem[] = [
+    {
+      id: 'nav-home',
+      label: 'Dashboard',
+      description: 'Go to dashboard overview',
+      icon: 'ph:house-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      shortcut: 'G H',
+      action: () => router.visit(workspacePath('/')),
+    },
+    {
+      id: 'nav-chat',
+      label: 'Chat',
+      description: 'Open chat workspace',
+      icon: 'ph:chat-circle-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      shortcut: 'G C',
+      action: () => router.visit(workspacePath('/chat')),
+    },
+    {
+      id: 'nav-tasks',
+      label: 'Tasks',
+      description: 'View and manage tasks',
+      icon: 'ph:check-square-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      shortcut: 'G T',
+      action: () => router.visit(workspacePath('/tasks')),
+    },
+    {
+      id: 'nav-docs',
+      label: 'Documents',
+      description: 'Browse documents',
+      icon: 'ph:file-text-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      shortcut: 'G D',
+      action: () => router.visit(workspacePath('/docs')),
+    },
+    {
+      id: 'nav-approvals',
+      label: 'Approvals',
+      description: 'Review pending approvals',
+      icon: 'ph:seal-check-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      shortcut: 'G A',
+      action: () => router.visit(workspacePath('/approvals')),
+    },
+    {
+      id: 'nav-org',
+      label: 'Organization',
+      description: 'View organization structure',
+      icon: 'ph:tree-structure-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      shortcut: 'G O',
+      action: () => router.visit(workspacePath('/org')),
+    },
+    {
+      id: 'nav-tables',
+      label: 'Tables',
+      description: 'View and manage tables',
+      icon: 'ph:table-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      action: () => router.visit(workspacePath('/tables')),
+    },
+    {
+      id: 'nav-calendar',
+      label: 'Calendar',
+      description: 'View calendar',
+      icon: 'ph:calendar-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      action: () => router.visit(workspacePath('/calendar')),
+    },
+    {
+      id: 'nav-lists',
+      label: 'Lists',
+      description: 'View kanban boards',
+      icon: 'ph:kanban-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      action: () => router.visit(workspacePath('/lists')),
+    },
+    {
+      id: 'nav-automation',
+      label: 'Automation',
+      description: 'Manage automations',
+      icon: 'ph:lightning-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      action: () => router.visit(workspacePath('/automation')),
+    },
+    {
+      id: 'nav-activity',
+      label: 'Activity',
+      description: 'View activity feed',
+      icon: 'ph:pulse-fill',
+      iconColor: 'text-neutral-500 dark:text-neutral-300',
+      action: () => router.visit(workspacePath('/activity')),
+    },
+  ]
+
+  // Admin-only nav items
+  if (isAdmin.value) {
+    navItems.push(
       {
         id: 'nav-integrations',
         label: 'Integrations',
         description: 'Manage integrations',
         icon: 'ph:plugs-connected-fill',
         iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => router.visit('/integrations'),
+        action: () => router.visit(workspacePath('/integrations')),
       },
       {
         id: 'nav-settings',
@@ -562,117 +574,117 @@ const commandGroups = computed<CommandGroup[]>(() => [
         icon: 'ph:gear-fill',
         iconColor: 'text-neutral-500 dark:text-neutral-300',
         shortcut: 'G S',
-        action: () => router.visit('/settings'),
+        action: () => router.visit(workspacePath('/settings')),
       },
-      {
-        id: 'nav-activity',
-        label: 'Activity',
-        description: 'View activity feed',
-        icon: 'ph:pulse-fill',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => router.visit('/activity'),
-      },
-    ],
-  },
-  {
-    label: 'Channels',
-    icon: 'ph:hash',
-    collapsible: true,
-    items: props.channels.map((channel) => ({
-      id: `channel-${channel.id}`,
-      label: `#${channel.name}`,
-      description: channel.description,
+    )
+  }
+
+  return [
+    {
+      label: 'Navigation',
+      icon: 'ph:compass',
+      items: navItems,
+    },
+    {
+      label: 'Channels',
       icon: 'ph:hash',
-      iconColor: 'text-neutral-500 dark:text-neutral-300',
-      meta: channel.unreadCount ? `${channel.unreadCount} unread` : undefined,
-      action: () => router.visit(`/chat?channel=${channel.id}`),
-    })),
-  },
-  {
-    label: 'Agents',
-    icon: 'ph:robot',
-    collapsible: true,
-    items: props.agents.map((agent) => ({
-      id: `agent-${agent.id}`,
-      label: agent.name,
-      description: agent.role || 'AI Agent',
+      collapsible: true,
+      items: props.channels.map((channel) => ({
+        id: `channel-${channel.id}`,
+        label: `#${channel.name}`,
+        description: channel.description,
+        icon: 'ph:hash',
+        iconColor: 'text-neutral-500 dark:text-neutral-300',
+        meta: channel.unreadCount ? `${channel.unreadCount} unread` : undefined,
+        action: () => router.visit(workspacePath(`/chat?channel=${channel.id}`)),
+      })),
+    },
+    {
+      label: 'Agents',
       icon: 'ph:robot',
-      avatar: { name: agent.name, isAI: true },
-      badge: agent.status,
-      badgeVariant: agent.status === 'online' ? 'success' : agent.status === 'busy' ? 'warning' : 'default',
-      action: () => router.visit(`/chat?agent=${agent.id}`),
-    })),
-  },
-  {
-    label: 'Actions',
-    icon: 'ph:lightning',
-    items: [
-      {
-        id: 'action-task',
-        label: 'New Task',
-        description: 'Create a new task',
-        icon: 'ph:plus-circle',
-        iconColor: 'text-neutral-600 dark:text-neutral-200',
-        shortcut: 'N T',
-        action: () => emit('action', 'new-task'),
-      },
-      {
-        id: 'action-agent',
-        label: 'Spawn Agent',
-        description: 'Deploy a new AI agent',
+      collapsible: true,
+      items: props.agents.map((agent) => ({
+        id: `agent-${agent.id}`,
+        label: agent.name,
+        description: agent.role || 'AI Agent',
         icon: 'ph:robot',
-        iconColor: 'text-neutral-600 dark:text-neutral-200',
-        shortcut: 'N A',
-        action: () => emit('action', 'spawn-agent'),
-      },
-      {
-        id: 'action-channel',
-        label: 'New Channel',
-        description: 'Create a new channel',
-        icon: 'ph:chats-circle',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => emit('action', 'new-channel'),
-      },
-      {
-        id: 'action-doc',
-        label: 'New Document',
-        description: 'Create a new document',
-        icon: 'ph:file-plus',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => emit('action', 'new-document'),
-      },
-    ],
-  },
-  {
-    label: 'Settings',
-    icon: 'ph:gear-six',
-    items: [
-      {
-        id: 'settings-theme',
-        label: isDark.value ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-        description: 'Toggle between light and dark theme',
-        icon: isDark.value ? 'ph:sun' : 'ph:moon',
-        iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => toggleDark(),
-      },
-      {
-        id: 'settings-shortcuts',
-        label: 'Keyboard Shortcuts',
-        description: 'View all keyboard shortcuts',
-        icon: 'ph:keyboard',
-        shortcut: '?',
-        action: () => emit('action', 'show-shortcuts'),
-      },
-      {
-        id: 'settings-preferences',
-        label: 'Preferences',
-        description: 'Open settings panel',
-        icon: 'ph:gear-six',
-        action: () => router.visit('/settings'),
-      },
-    ],
-  },
-])
+        avatar: { name: agent.name, isAI: true },
+        badge: agent.status,
+        badgeVariant: agent.status === 'online' ? 'success' : agent.status === 'busy' ? 'warning' : 'default',
+        action: () => router.visit(workspacePath(`/chat?agent=${agent.id}`)),
+      })),
+    },
+    {
+      label: 'Actions',
+      icon: 'ph:lightning',
+      items: [
+        {
+          id: 'action-task',
+          label: 'New Task',
+          description: 'Create a new task',
+          icon: 'ph:plus-circle',
+          iconColor: 'text-neutral-600 dark:text-neutral-200',
+          shortcut: 'N T',
+          action: () => emit('action', 'new-task'),
+        },
+        {
+          id: 'action-agent',
+          label: 'Spawn Agent',
+          description: 'Deploy a new AI agent',
+          icon: 'ph:robot',
+          iconColor: 'text-neutral-600 dark:text-neutral-200',
+          shortcut: 'N A',
+          action: () => emit('action', 'spawn-agent'),
+        },
+        {
+          id: 'action-channel',
+          label: 'New Channel',
+          description: 'Create a new channel',
+          icon: 'ph:chats-circle',
+          iconColor: 'text-neutral-500 dark:text-neutral-300',
+          action: () => emit('action', 'new-channel'),
+        },
+        {
+          id: 'action-doc',
+          label: 'New Document',
+          description: 'Create a new document',
+          icon: 'ph:file-plus',
+          iconColor: 'text-neutral-500 dark:text-neutral-300',
+          action: () => emit('action', 'new-document'),
+        },
+      ],
+    },
+    {
+      label: 'Settings',
+      icon: 'ph:gear-six',
+      items: [
+        {
+          id: 'settings-theme',
+          label: isDark.value ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+          description: 'Toggle between light and dark theme',
+          icon: isDark.value ? 'ph:sun' : 'ph:moon',
+          iconColor: 'text-neutral-500 dark:text-neutral-300',
+          action: () => toggleDark(),
+        },
+        {
+          id: 'settings-shortcuts',
+          label: 'Keyboard Shortcuts',
+          description: 'View all keyboard shortcuts',
+          icon: 'ph:keyboard',
+          shortcut: '?',
+          action: () => emit('action', 'show-shortcuts'),
+        },
+        ...(isAdmin.value ? [{
+          id: 'settings-preferences',
+          label: 'Preferences',
+          description: 'Open settings panel',
+          icon: 'ph:gear-six',
+          action: () => router.visit(workspacePath('/settings')),
+        }] : []),
+      ],
+    },
+  ]
+})
 
 // Filtered groups based on search
 const filteredGroups = computed(() => {

@@ -31,6 +31,7 @@ class McpProxyToolTest extends TestCase
             'enabled' => true,
             'timeout' => 30,
             'icon' => 'ph:plug',
+            'workspace_id' => $this->workspace->id,
             'discovered_tools' => [
                 [
                     'name' => 'web_search',

@@ -44,7 +44,9 @@ class ProfileController extends Controller
             app(\App\Services\HumanAvatarService::class)->generate($user);
         }
 
-        return Redirect::route('profile.edit');
+        $workspace = app('currentWorkspace');
+
+        return Redirect::route('profile.edit', ['workspace_slug' => $workspace->slug]);
     }
 
     /**

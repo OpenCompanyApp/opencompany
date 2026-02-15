@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Task;
 use App\Models\TaskStep;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Str;
@@ -14,6 +15,9 @@ class AgentTaskSeeder extends Seeder
 
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+        $workspaceId = $workspace->id;
+
         $tasks = [
             // Completed tasks
             [
@@ -236,6 +240,7 @@ class AgentTaskSeeder extends Seeder
                 'started_at' => $taskData['started_at'] ?? null,
                 'completed_at' => $taskData['completed_at'] ?? null,
                 'result' => $taskData['result'] ?? null,
+                'workspace_id' => $workspaceId,
             ]);
 
             // Create steps

@@ -32,6 +32,7 @@ class IndexDocumentJobTest extends TestCase
             'content' => $content,
             'is_folder' => false,
             'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
         ]));
     }
 

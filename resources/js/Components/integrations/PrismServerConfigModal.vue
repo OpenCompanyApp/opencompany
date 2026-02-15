@@ -68,7 +68,7 @@
 
           <div v-else-if="groupedModels.length === 0" class="text-sm text-neutral-500 dark:text-neutral-400">
             <p>No AI models configured.</p>
-            <a href="/integrations" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
+            <a :href="workspacePath('/integrations')" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
               Configure integrations
             </a>
           </div>
@@ -279,6 +279,9 @@ import axios from 'axios'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import { useWorkspace } from '@/composables/useWorkspace'
+
+const { workspacePath } = useWorkspace()
 
 const isOpen = defineModel<boolean>('open', { default: false })
 

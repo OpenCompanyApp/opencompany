@@ -74,7 +74,7 @@
           </div>
 
           <Link
-            :href="`/tables/${table.id}`"
+            :href="workspacePath(`/tables/${table.id}`)"
             class="block"
           >
             <div class="flex items-start gap-3">
@@ -135,6 +135,9 @@ import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
 import TableCreateModal from '@/Components/tables/TableCreateModal.vue'
 import type { DataTable } from '@/types'
+import { useWorkspace } from '@/composables/useWorkspace'
+
+const { workspacePath } = useWorkspace()
 
 const tables = ref<DataTable[]>([])
 const loading = ref(true)

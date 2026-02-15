@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\CalendarEvent;
 use App\Models\CalendarEventAttendee;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Str;
@@ -12,8 +13,13 @@ class CalendarEventSeeder extends Seeder
 {
     use WithoutModelEvents;
 
+    private string $workspaceId;
+
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+        $this->workspaceId = $workspace->id;
+
         $events = $this->createEvents();
         $this->createAttendees($events);
     }
@@ -161,6 +167,7 @@ class CalendarEventSeeder extends Seeder
                 'location' => $eventData['location'],
                 'color' => $eventData['color'],
                 'created_by' => $eventData['created_by'],
+                'workspace_id' => $this->workspaceId,
             ]);
 
             $createdEvents[] = $event;

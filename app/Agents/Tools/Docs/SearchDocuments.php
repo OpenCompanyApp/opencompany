@@ -82,7 +82,7 @@ class SearchDocuments implements Tool
             $allowedFolderIds = $this->permissionService->getAllowedFolderIds($this->agent);
             if ($allowedFolderIds !== null) {
                 $docIds = $chunks->pluck('document_id')->unique()->filter();
-                $allowedDocIds = Document::whereIn('id', $docIds)
+                $allowedDocIds = Document::forWorkspace()->whereIn('id', $docIds)
                     ->whereIn('parent_id', $allowedFolderIds)
                     ->pluck('id');
                 $chunks = $chunks->filter(fn ($c) => $allowedDocIds->contains($c->document_id));
@@ -114,7 +114,7 @@ class SearchDocuments implements Tool
     {
         $lowerQuery = '%' . strtolower($query) . '%';
 
-        $docQuery = Document::where('is_folder', false)
+        $docQuery = Document::forWorkspace()->where('is_folder', false)
             ->where(function ($q) use ($lowerQuery) {
                 $q->whereRaw('LOWER(title) LIKE ?', [$lowerQuery])
                   ->orWhereRaw('LOWER(content) LIKE ?', [$lowerQuery]);

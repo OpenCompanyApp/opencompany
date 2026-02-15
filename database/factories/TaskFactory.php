@@ -33,6 +33,7 @@ class TaskFactory extends Factory
             'channel_id' => null,
             'position' => fake()->numberBetween(0, 100),
             'completed_at' => null,
+            'workspace_id' => fn () => app()->bound('currentWorkspace') ? app('currentWorkspace')->id : null,
         ];
     }
 

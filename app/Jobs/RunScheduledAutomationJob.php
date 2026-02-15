@@ -11,6 +11,7 @@ use App\Models\Message;
 use App\Models\ScheduledAutomation;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -36,6 +37,14 @@ class RunScheduledAutomationJob implements ShouldQueue
 
     public function handle(): void
     {
+        // Set workspace context from automation
+        if ($this->automation->workspace_id) {
+            $workspace = Workspace::find($this->automation->workspace_id);
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+            }
+        }
+
         $agent = User::find($this->automation->agent_id);
 
         if (! $agent) {
@@ -50,6 +59,7 @@ class RunScheduledAutomationJob implements ShouldQueue
         if (! $channelId) {
             $channel = Channel::create([
                 'id' => Str::uuid()->toString(),
+                'workspace_id' => $this->automation->workspace_id,
                 'name' => $this->automation->name,
                 'type' => 'dm',
                 'description' => "Automation channel for: {$this->automation->name}",
@@ -67,6 +77,7 @@ class RunScheduledAutomationJob implements ShouldQueue
 
         $task = Task::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => $this->automation->workspace_id,
             'title' => "Scheduled: {$this->automation->name}",
             'description' => $this->automation->prompt,
             'type' => Task::TYPE_CUSTOM,

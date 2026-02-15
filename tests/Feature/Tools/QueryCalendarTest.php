@@ -32,6 +32,7 @@ class QueryCalendarTest extends TestCase
             'end_at' => '2026-02-10 09:30:00',
             'all_day' => false,
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $request = new Request(['action' => 'list_events']);
@@ -53,6 +54,7 @@ class QueryCalendarTest extends TestCase
             'all_day' => false,
             'location' => 'Conference Room A',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $attendee = User::factory()->create(['name' => 'Alice Tester']);
@@ -82,6 +84,7 @@ class QueryCalendarTest extends TestCase
             'end_at' => '2026-02-01 10:00:00',
             'all_day' => false,
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         CalendarEvent::create([
@@ -90,6 +93,7 @@ class QueryCalendarTest extends TestCase
             'end_at' => '2026-03-15 10:00:00',
             'all_day' => false,
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $request = new Request([

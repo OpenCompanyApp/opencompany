@@ -35,6 +35,7 @@ class DmController extends Controller
                 'id' => Str::uuid()->toString(),
                 'name' => 'DM',
                 'type' => 'direct',
+                'workspace_id' => workspace()->id,
             ]);
 
             foreach ([$currentUserId, $userId] as $memberId) {

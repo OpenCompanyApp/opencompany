@@ -27,6 +27,7 @@ class ChannelFactory extends Factory
             'description' => fake()->sentence(),
             'creator_id' => User::factory(),
             'is_ephemeral' => false,
+            'workspace_id' => fn () => app()->bound('currentWorkspace') ? app('currentWorkspace')->id : null,
         ];
     }
 

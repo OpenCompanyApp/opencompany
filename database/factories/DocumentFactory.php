@@ -27,6 +27,7 @@ class DocumentFactory extends Factory
             'author_id' => User::factory(),
             'parent_id' => null,
             'is_folder' => false,
+            'workspace_id' => fn () => app()->bound('currentWorkspace') ? app('currentWorkspace')->id : null,
         ];
     }
 

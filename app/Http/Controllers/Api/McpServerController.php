@@ -20,7 +20,7 @@ class McpServerController extends Controller
      */
     public function index(): JsonResponse
     {
-        $servers = McpServer::orderBy('name')->get();
+        $servers = McpServer::forWorkspace()->orderBy('name')->get();
 
         return response()->json($servers->map(fn (McpServer $server) => [
             'id' => $server->id,
@@ -63,12 +63,13 @@ class McpServerController extends Controller
         // Ensure unique slug
         $baseSlug = $slug;
         $counter = 1;
-        while (McpServer::where('slug', $slug)->exists()) {
+        while (McpServer::forWorkspace()->where('slug', $slug)->exists()) {
             $slug = $baseSlug . '_' . $counter++;
         }
 
         $server = McpServer::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'name' => $request->input('name'),
             'slug' => $slug,
             'url' => $request->input('url'),
@@ -114,7 +115,7 @@ class McpServerController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $server = McpServer::findOrFail($id);
+        $server = McpServer::forWorkspace()->findOrFail($id);
 
         return response()->json($this->formatServer($server));
     }
@@ -124,7 +125,7 @@ class McpServerController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        $server = McpServer::findOrFail($id);
+        $server = McpServer::forWorkspace()->findOrFail($id);
 
         $request->validate([
             'name' => 'nullable|string|max:255',
@@ -161,7 +162,7 @@ class McpServerController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $server = McpServer::findOrFail($id);
+        $server = McpServer::forWorkspace()->findOrFail($id);
         $appName = 'mcp_' . $server->slug;
 
         // Clean up agent permissions for this MCP server
@@ -187,7 +188,7 @@ class McpServerController extends Controller
      */
     public function testConnection(Request $request, string $id): JsonResponse
     {
-        $server = McpServer::findOrFail($id);
+        $server = McpServer::forWorkspace()->findOrFail($id);
 
         // Allow overriding URL/auth for testing before saving
         $url = $request->input('url', $server->url);
@@ -224,7 +225,7 @@ class McpServerController extends Controller
      */
     public function discoverTools(string $id): JsonResponse
     {
-        $server = McpServer::findOrFail($id);
+        $server = McpServer::forWorkspace()->findOrFail($id);
 
         try {
             $client = McpClient::fromServer($server);

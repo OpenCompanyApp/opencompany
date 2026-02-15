@@ -124,7 +124,7 @@ class ConversationCompactionService
 
         $summary = ConversationSummary::updateOrCreate(
             ['channel_id' => $channelId, 'agent_id' => $agent->id],
-            [
+            ['workspace_id' => $agent->workspace_id ?? workspace()->id,
                 'summary' => $summaryText,
                 'tokens_before' => $tokensBefore,
                 'tokens_after' => $this->estimateTokenCount($summaryText),

@@ -109,6 +109,7 @@ class ManageAgent implements Tool
             'behavior_mode' => $request['behavior'] ?? 'autonomous',
             'current_task' => null,
             'manager_id' => $this->agent->id,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         // Parse identity content from JSON string
@@ -132,6 +133,7 @@ class ManageAgent implements Tool
             'name' => 'DM: ' . $this->agent->name . ' ↔ ' . $agent->name,
             'type' => 'dm',
             'is_ephemeral' => false,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         ChannelMember::create([
@@ -144,7 +146,7 @@ class ManageAgent implements Tool
         ]);
 
         // Add to #general
-        $generalChannel = Channel::where('name', 'general')->first();
+        $generalChannel = Channel::forWorkspace()->where('name', 'general')->first();
         if ($generalChannel) {
             ChannelMember::create([
                 'channel_id' => $generalChannel->id,
@@ -162,7 +164,7 @@ class ManageAgent implements Tool
             return 'agentId is required.';
         }
 
-        $target = User::where('type', 'agent')->find($agentId);
+        $target = User::where('type', 'agent')->where('workspace_id', $this->agent->workspace_id)->find($agentId);
         if (!$target) {
             return "Agent not found: {$agentId}";
         }
@@ -226,7 +228,7 @@ class ManageAgent implements Tool
             return 'Self-deletion denied: you cannot delete yourself.';
         }
 
-        $target = User::where('type', 'agent')->find($agentId);
+        $target = User::where('type', 'agent')->where('workspace_id', $this->agent->workspace_id)->find($agentId);
         if (!$target) {
             return "Agent not found: {$agentId}";
         }
@@ -247,7 +249,7 @@ class ManageAgent implements Tool
             return 'Required: agentId, fileType (e.g., IDENTITY, SOUL, USER, AGENTS, TOOLS, HEARTBEAT, BOOTSTRAP, MEMORY).';
         }
 
-        $target = User::where('type', 'agent')->find($agentId);
+        $target = User::where('type', 'agent')->where('workspace_id', $this->agent->workspace_id)->find($agentId);
         if (!$target) {
             return "Agent not found: {$agentId}";
         }
@@ -270,7 +272,7 @@ class ManageAgent implements Tool
             return 'Required: agentId, fileType, content.';
         }
 
-        $target = User::where('type', 'agent')->find($agentId);
+        $target = User::where('type', 'agent')->where('workspace_id', $this->agent->workspace_id)->find($agentId);
         if (!$target) {
             return "Agent not found: {$agentId}";
         }

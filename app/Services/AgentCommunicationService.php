@@ -39,6 +39,7 @@ class AgentCommunicationService
             'id' => Str::uuid()->toString(),
             'name' => 'DM',
             'type' => 'dm',
+            'workspace_id' => $agentA->workspace_id ?? workspace()->id,
         ]);
 
         foreach ([$agentA->id, $agentB->id] as $userId) {

@@ -262,9 +262,12 @@
 
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { AgentTask, TaskStatus, TaskType, Priority } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
+
+const { workspacePath } = useWorkspace()
 
 const props = defineProps<{
   open: boolean
@@ -362,7 +365,7 @@ const formatDateTime = (date: Date | string | undefined) => {
 
 const goToChannel = () => {
   if (props.task.channelId) {
-    router.visit(`/chat?channel=${props.task.channelId}`)
+    router.visit(workspacePath(`/chat?channel=${props.task.channelId}`))
   }
 }
 </script>

@@ -124,7 +124,7 @@
                 <AgentAvatar :user="task.assignee" size="md" />
                 <div>
                   <Link
-                    :href="task.assignee.type === 'agent' ? `/agent/${task.assignee.id}` : `/profile/${task.assignee.id}`"
+                    :href="workspacePath(task.assignee.type === 'agent' ? `/agent/${task.assignee.id}` : `/profile/${task.assignee.id}`)"
                     class="font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
                   >
                     {{ task.assignee.name }}
@@ -207,7 +207,7 @@
                 >
                   <AgentAvatar :user="collab" size="xs" />
                   <Link
-                    :href="collab.type === 'agent' ? `/agent/${collab.id}` : `/profile/${collab.id}`"
+                    :href="workspacePath(collab.type === 'agent' ? `/agent/${collab.id}` : `/profile/${collab.id}`)"
                     class="text-sm text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
                   >
                     {{ collab.name }}
@@ -263,7 +263,7 @@
                         <div class="flex items-center gap-2 mb-1">
                           <Link
                             v-if="comment.author"
-                            :href="comment.author.type === 'agent' ? `/agent/${comment.author.id}` : `/profile/${comment.author.id}`"
+                            :href="workspacePath(comment.author.type === 'agent' ? `/agent/${comment.author.id}` : `/profile/${comment.author.id}`)"
                             class="text-sm font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
                           >
                             {{ comment.author.name }}
@@ -319,7 +319,7 @@
                               <div class="flex items-center gap-2 mb-0.5">
                                 <Link
                                   v-if="reply.author"
-                                  :href="reply.author.type === 'agent' ? `/agent/${reply.author.id}` : `/profile/${reply.author.id}`"
+                                  :href="workspacePath(reply.author.type === 'agent' ? `/agent/${reply.author.id}` : `/profile/${reply.author.id}`)"
                                   class="text-xs font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
                                 >
                                   {{ reply.author.name }}
@@ -412,6 +412,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { Task, TaskStatus, ListStatus, Priority } from '@/types'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Icon from '@/Components/shared/Icon.vue'
@@ -420,6 +421,7 @@ import Slideover from '@/Components/shared/Slideover.vue'
 import { useMarkdown } from '@/composables/useMarkdown'
 
 const { renderMarkdown } = useMarkdown()
+const { workspacePath } = useWorkspace()
 
 const props = defineProps<{
   open: boolean

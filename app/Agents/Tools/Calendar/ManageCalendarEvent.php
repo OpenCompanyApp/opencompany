@@ -49,6 +49,7 @@ class ManageCalendarEvent implements Tool
             'recurrence_rule' => $request['recurrenceRule'] ?? null,
             'recurrence_end' => $request['recurrenceEnd'] ?? null,
             'created_by' => $this->agent->id,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         if (isset($request['attendeeIds']) && $request['attendeeIds'] !== '') {
@@ -70,7 +71,7 @@ class ManageCalendarEvent implements Tool
 
     private function update(Request $request): string
     {
-        $event = CalendarEvent::findOrFail($request['eventId']);
+        $event = CalendarEvent::forWorkspace()->findOrFail($request['eventId']);
 
         if (isset($request['title'])) {
             $event->title = $request['title'];
@@ -131,7 +132,7 @@ class ManageCalendarEvent implements Tool
 
     private function delete(Request $request): string
     {
-        $event = CalendarEvent::findOrFail($request['eventId']);
+        $event = CalendarEvent::forWorkspace()->findOrFail($request['eventId']);
         $title = $event->title;
         $event->delete();
 

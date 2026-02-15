@@ -8,6 +8,19 @@ use InvalidArgumentException;
 
 class DynamicProviderResolver
 {
+    private ?string $workspaceId = null;
+
+    /**
+     * Set the workspace ID for scoping IntegrationSetting queries.
+     * Use this when calling resolveFromParts() directly without resolve(User).
+     */
+    public function setWorkspaceId(?string $workspaceId): self
+    {
+        $this->workspaceId = $workspaceId;
+
+        return $this;
+    }
+
     /**
      * Parse a User's brain field and resolve to SDK provider + model.
      *
@@ -17,6 +30,8 @@ class DynamicProviderResolver
      */
     public function resolve(User $agent): array
     {
+        $this->workspaceId = $agent->workspace_id;
+
         $brain = $agent->brain ?? 'glm-coding:glm-4.7';
         $parts = explode(':', $brain, 2);
         $providerKey = $parts[0];
@@ -70,7 +85,8 @@ class DynamicProviderResolver
      */
     private function registerGlmProvider(string $providerKey): void
     {
-        $integration = IntegrationSetting::where('integration_id', $providerKey)
+        $integration = IntegrationSetting::where('workspace_id', $this->workspaceId)
+            ->where('integration_id', $providerKey)
             ->where('enabled', true)
             ->first();
 
@@ -147,7 +163,8 @@ class DynamicProviderResolver
      */
     private function applyIntegrationConfig(string $providerKey): void
     {
-        $integration = IntegrationSetting::where('integration_id', $providerKey)
+        $integration = IntegrationSetting::where('workspace_id', $this->workspaceId)
+            ->where('integration_id', $providerKey)
             ->where('enabled', true)
             ->first();
 
@@ -192,7 +209,8 @@ class DynamicProviderResolver
     private function getDefaultModel(string $providerKey): string
     {
         // Try DB-stored models first
-        $setting = IntegrationSetting::where('integration_id', $providerKey)->first();
+        $setting = IntegrationSetting::where('workspace_id', $this->workspaceId)
+            ->where('integration_id', $providerKey)->first();
         $models = $setting?->getConfigValue('models', []);
         if (is_array($models) && !empty($models)) {
             return array_key_first($models);

@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Models\Concerns\BelongsToWorkspace;
 
 class AppSetting extends Model
 {
+    use BelongsToWorkspace;
+
     protected $keyType = 'string';
 
     public $incrementing = false;
@@ -16,6 +19,7 @@ class AppSetting extends Model
         'key',
         'category',
         'value',
+        'workspace_id',
     ];
 
     protected function casts(): array
@@ -30,7 +34,7 @@ class AppSetting extends Model
      */
     public static function getValue(string $key, mixed $default = null): mixed
     {
-        $setting = static::where('key', $key)->first();
+        $setting = static::forWorkspace()->where('key', $key)->first();
 
         return $setting ? $setting->value : $default;
     }
@@ -66,10 +70,13 @@ class AppSetting extends Model
      */
     public static function setValue(string $key, mixed $value, string $category = 'general'): void
     {
+        $workspaceId = workspace()->id;
+
         static::updateOrCreate(
-            ['key' => $key],
+            ['workspace_id' => $workspaceId, 'key' => $key],
             [
-                'id' => static::where('key', $key)->value('id') ?? Str::uuid()->toString(),
+                'id' => static::forWorkspace()->where('key', $key)->value('id') ?? Str::uuid()->toString(),
+                'workspace_id' => $workspaceId,
                 'category' => $category,
                 'value' => $value,
             ]
@@ -83,7 +90,7 @@ class AppSetting extends Model
      */
     public static function getByCategory(string $category): array
     {
-        return static::where('category', $category)
+        return static::forWorkspace()->where('category', $category)
             ->pluck('value', 'key')
             ->toArray();
     }
@@ -107,7 +114,7 @@ class AppSetting extends Model
      */
     public static function allGrouped(): array
     {
-        $settings = static::all();
+        $settings = static::forWorkspace()->get();
         $grouped = [];
 
         foreach ($settings as $setting) {

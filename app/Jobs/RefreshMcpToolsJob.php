@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\McpServer;
+use App\Models\Workspace;
 use App\Services\Mcp\McpClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,6 +27,14 @@ class RefreshMcpToolsJob implements ShouldQueue
 
         foreach ($servers as $server) {
             try {
+                // Set workspace context per server
+                if ($server->workspace_id) {
+                    $workspace = Workspace::find($server->workspace_id);
+                    if ($workspace) {
+                        app()->instance('currentWorkspace', $workspace);
+                    }
+                }
+
                 $client = McpClient::fromServer($server);
                 $tools = $client->listTools();
 

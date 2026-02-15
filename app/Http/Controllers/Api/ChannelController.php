@@ -17,7 +17,7 @@ class ChannelController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Channel::with(['users', 'creator', 'latestMessage.author']);
+        $query = Channel::forWorkspace()->with(['users', 'creator', 'latestMessage.author']);
 
         if ($type = $request->query('type')) {
             $query->where('type', $type);
@@ -59,7 +59,7 @@ class ChannelController extends Controller
      */
     public function show(string $id)
     {
-        $channel = Channel::with(['users', 'creator'])->findOrFail($id);
+        $channel = Channel::forWorkspace()->with(['users', 'creator'])->findOrFail($id);
 
         $channelArray = $channel->toArray();
         $channelArray['members'] = $channel->users->toArray();
@@ -74,6 +74,7 @@ class ChannelController extends Controller
     {
         $channel = Channel::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'name' => $request->input('name'),
             'type' => $request->input('type', 'channel'),
             'description' => $request->input('description'),

@@ -15,6 +15,9 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class ManageIntegration implements Tool
 {
+    public function __construct(
+        private User $agent,
+    ) {}
 
     public function description(): string
     {
@@ -104,7 +107,7 @@ class ManageIntegration implements Tool
             return "Integration not found: {$integrationId}. Available: " . implode(', ', $allIds);
         }
 
-        $setting = IntegrationSetting::firstOrNew(['integration_id' => $integrationId]);
+        $setting = IntegrationSetting::forWorkspace()->firstOrNew(['integration_id' => $integrationId, 'workspace_id' => workspace()->id]);
         if (!$setting->id) {
             $setting->id = Str::uuid()->toString();
         }
@@ -229,7 +232,7 @@ class ManageIntegration implements Tool
         $provider = $this->findConfigurableProvider($integrationId);
 
         if ($provider) {
-            $setting = IntegrationSetting::where('integration_id', $integrationId)->first();
+            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
             $config = $setting->config ?? [];
 
             $result = $provider->testConnection($config);
@@ -245,7 +248,7 @@ class ManageIntegration implements Tool
             return "Integration not found: {$integrationId}";
         }
 
-        $setting = IntegrationSetting::where('integration_id', $integrationId)->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
         $apiKey = $setting?->getConfigValue('api_key');
 
         if (!$apiKey) {
@@ -308,7 +311,7 @@ class ManageIntegration implements Tool
             return 'Webhooks are only supported for Telegram.';
         }
 
-        $setting = IntegrationSetting::where('integration_id', 'telegram')->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
         $apiKey = $setting?->getConfigValue('api_key');
 
         if (!$apiKey) {
@@ -351,7 +354,9 @@ class ManageIntegration implements Tool
             return 'userId, provider, and externalId are all required.';
         }
 
-        $user = User::find($userId);
+        $user = User::where('workspace_id', $this->agent->workspace_id)
+            ->orWhereHas('workspaces', fn ($q) => $q->where('workspaces.id', $this->agent->workspace_id))
+            ->find($userId);
         if (!$user) {
             return "User not found: {$userId}";
         }

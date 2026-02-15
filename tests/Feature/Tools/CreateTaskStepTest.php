@@ -27,6 +27,7 @@ class CreateTaskStepTest extends TestCase
             'priority' => 'normal',
             'agent_id' => $agent->id,
             'requester_id' => $requester->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = new CreateTaskStep($agent);
@@ -62,6 +63,7 @@ class CreateTaskStepTest extends TestCase
             'priority' => 'normal',
             'agent_id' => $otherAgent->id,
             'requester_id' => $requester->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = new CreateTaskStep($agent);
@@ -104,6 +106,7 @@ class CreateTaskStepTest extends TestCase
             'priority' => 'normal',
             'agent_id' => $agent->id,
             'requester_id' => $requester->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = new CreateTaskStep($agent);

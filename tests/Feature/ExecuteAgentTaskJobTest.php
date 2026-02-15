@@ -45,6 +45,7 @@ class ExecuteAgentTaskJobTest extends TestCase
             'priority' => 'normal',
             'agent_id' => $this->agent->id,
             'requester_id' => $this->requester->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $job = new ExecuteAgentTaskJob($task);
@@ -87,6 +88,7 @@ class ExecuteAgentTaskJobTest extends TestCase
             'priority' => 'normal',
             'agent_id' => null,
             'requester_id' => $this->requester->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $job = new ExecuteAgentTaskJob($task);
@@ -115,6 +117,7 @@ class ExecuteAgentTaskJobTest extends TestCase
             'priority' => 'normal',
             'agent_id' => $this->agent->id,
             'requester_id' => $this->requester->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $job = new ExecuteAgentTaskJob($task);
@@ -148,10 +151,11 @@ class ExecuteAgentTaskJobTest extends TestCase
             'priority' => 'normal',
             'agent_id' => $this->agent->id,
             'requester_id' => $this->requester->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Since queue is sync in test, this will execute immediately
-        $response = $this->postJson("/api/tasks/{$taskId}/start");
+        $response = $this->actingAs($this->requester)->postJson("/api/tasks/{$taskId}/start");
 
         $response->assertOk();
 

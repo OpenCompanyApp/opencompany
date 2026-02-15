@@ -7,15 +7,19 @@ use Cron\CronExpression;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Models\Concerns\BelongsToWorkspace;
 
 class ScheduledAutomation extends Model
 {
+    use BelongsToWorkspace;
+
     protected $keyType = 'string';
 
     public $incrementing = false;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'name',
         'description',
         'agent_id',
@@ -64,6 +68,7 @@ class ScheduledAutomation extends Model
                 'type' => 'dm',
                 'description' => "Automation channel for: {$automation->name}",
                 'creator_id' => $automation->created_by_id,
+                'workspace_id' => $automation->workspace_id,
             ]);
 
             $channel->users()->attach(array_filter(['system', $automation->agent_id]));

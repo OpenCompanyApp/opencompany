@@ -7,6 +7,7 @@ use App\Models\DocumentPermission;
 use App\Models\DocumentComment;
 use App\Models\DocumentVersion;
 use App\Models\DocumentAttachment;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Str;
@@ -15,8 +16,12 @@ class DocumentSeeder extends Seeder
 {
     use WithoutModelEvents;
 
+    private Workspace $workspace;
+
     public function run(): void
     {
+        $this->workspace = Workspace::where('slug', 'default')->first();
+
         // Create folder structure
         $folders = $this->createFolders();
 
@@ -71,6 +76,7 @@ class DocumentSeeder extends Seeder
                 'author_id' => $folderData['author_id'],
                 'is_folder' => true,
                 'parent_id' => null,
+                'workspace_id' => $this->workspace->id,
             ]);
             $createdFolders[$folderData['id']] = $folder;
         }
@@ -160,6 +166,7 @@ class DocumentSeeder extends Seeder
                 'author_id' => $docData['author_id'],
                 'is_folder' => false,
                 'parent_id' => $docData['parent_id'],
+                'workspace_id' => $this->workspace->id,
             ]);
             $createdDocs[] = $doc;
         }

@@ -19,7 +19,7 @@ class DocumentController extends Controller
      */
     public function index(): \Illuminate\Database\Eloquent\Collection
     {
-        $documents = Document::with(['author', 'parent', 'permissions.user'])
+        $documents = Document::forWorkspace()->with(['author', 'parent', 'permissions.user'])
             ->orderBy('updated_at', 'desc')
             ->get();
 
@@ -53,7 +53,7 @@ class DocumentController extends Controller
         }
 
         if ($chunks->isEmpty()) {
-            return Document::with('author')
+            return Document::forWorkspace()->with('author')
                 ->where('is_folder', false)
                 ->where(function ($q) use ($query) {
                     $q->where('title', 'ilike', '%' . $query . '%')
@@ -67,7 +67,7 @@ class DocumentController extends Controller
         $docScores = $chunks->groupBy('document_id')
             ->map(fn ($group) => $group->max('similarity'));
 
-        $documents = Document::with('author')
+        $documents = Document::forWorkspace()->with('author')
             ->whereIn('id', $docScores->keys())
             ->where('is_folder', false)
             ->get()
@@ -82,7 +82,7 @@ class DocumentController extends Controller
 
     public function show(string $id): DocumentResource
     {
-        $document = Document::with(['author', 'parent', 'children', 'permissions.user', 'comments.author'])
+        $document = Document::forWorkspace()->with(['author', 'parent', 'children', 'permissions.user', 'comments.author'])
             ->findOrFail($id);
 
         return new DocumentResource($document);
@@ -92,6 +92,7 @@ class DocumentController extends Controller
     {
         $document = Document::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'title' => $request->input('title'),
             'content' => $request->input('content'),
             'author_id' => $request->input('authorId'),
@@ -131,7 +132,7 @@ class DocumentController extends Controller
 
     public function update(Request $request, string $id): DocumentResource
     {
-        $document = Document::findOrFail($id);
+        $document = Document::forWorkspace()->findOrFail($id);
 
         // Save version if requested
         if ($request->input('saveVersion', false) && $document->content) {
@@ -173,7 +174,7 @@ class DocumentController extends Controller
 
     public function destroy(string $id): \Illuminate\Http\JsonResponse
     {
-        $document = Document::findOrFail($id);
+        $document = Document::forWorkspace()->findOrFail($id);
 
         if ($document->is_system) {
             return response()->json(['error' => 'System documents cannot be deleted.'], 403);

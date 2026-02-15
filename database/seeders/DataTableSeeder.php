@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Str;
@@ -13,8 +14,13 @@ class DataTableSeeder extends Seeder
 {
     use WithoutModelEvents;
 
+    private string $workspaceId;
+
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+        $this->workspaceId = $workspace->id;
+
         $this->createProductCatalog();
         $this->createSprintTracker();
         $this->createContactList();
@@ -28,6 +34,7 @@ class DataTableSeeder extends Seeder
             'description' => 'Company product inventory and pricing',
             'icon' => 'ph:package',
             'created_by' => 'h1',
+            'workspace_id' => $this->workspaceId,
         ]);
 
         $colName = $this->createColumn($table->id, 'Name', 'text', 0, true);
@@ -101,6 +108,7 @@ class DataTableSeeder extends Seeder
             'description' => 'Current sprint tasks and progress',
             'icon' => 'ph:kanban',
             'created_by' => 'h1',
+            'workspace_id' => $this->workspaceId,
         ]);
 
         $colTask = $this->createColumn($table->id, 'Task', 'text', 0, true);
@@ -188,6 +196,7 @@ class DataTableSeeder extends Seeder
             'description' => 'Key business contacts and partners',
             'icon' => 'ph:address-book',
             'created_by' => 'h1',
+            'workspace_id' => $this->workspaceId,
         ]);
 
         $colName = $this->createColumn($table->id, 'Name', 'text', 0, true);

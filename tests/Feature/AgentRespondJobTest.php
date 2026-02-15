@@ -160,6 +160,7 @@ class AgentRespondJobTest extends TestCase
             'agent_id' => $agentB->id,
             'requester_id' => $agentA->id,
             'channel_id' => $dmChannel->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $triggerMessage = Message::create([
@@ -217,6 +218,7 @@ class AgentRespondJobTest extends TestCase
             'requester_id' => $agentA->id,
             'channel_id' => $parentChannel->id,
             'started_at' => now(),
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $subtask = Task::create([
@@ -229,6 +231,7 @@ class AgentRespondJobTest extends TestCase
             'requester_id' => $agentA->id,
             'channel_id' => $dmChannel->id,
             'parent_task_id' => $parentTask->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $agentA->addAwaitingDelegation($subtask->id);
@@ -304,6 +307,7 @@ class AgentRespondJobTest extends TestCase
             'requester_id' => $agentA->id,
             'channel_id' => $parentChannel->id,
             'started_at' => now(),
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $subtask = Task::create([
@@ -316,6 +320,7 @@ class AgentRespondJobTest extends TestCase
             'requester_id' => $agentA->id,
             'channel_id' => $dmChannel->id,
             'parent_task_id' => $parentTask->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $agentA->addAwaitingDelegation($subtask->id);
@@ -414,6 +419,7 @@ class AgentRespondJobTest extends TestCase
             'requester_id' => $human->id,
             'channel_id' => $channel->id,
             'started_at' => now(),
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $resultMessage = Message::create([

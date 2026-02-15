@@ -8,6 +8,7 @@ use App\Events\TaskUpdated;
 use App\Models\Channel;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,6 +31,14 @@ class ExecuteAgentTaskJob implements ShouldQueue
 
     public function handle(): void
     {
+        // Set workspace context from task
+        if ($this->task->workspace_id) {
+            $workspace = Workspace::find($this->task->workspace_id);
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+            }
+        }
+
         $agent = User::find($this->task->agent_id);
 
         if (!$agent) {
@@ -138,7 +147,7 @@ class ExecuteAgentTaskJob implements ShouldQueue
         }
 
         /** @var Channel|null $publicChannel */
-        $publicChannel = Channel::where('type', 'public')->first();
+        $publicChannel = Channel::forWorkspace()->where('type', 'public')->first();
         return $publicChannel->id ?? '';
     }
 }

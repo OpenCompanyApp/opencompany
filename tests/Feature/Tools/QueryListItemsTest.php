@@ -25,6 +25,7 @@ class QueryListItemsTest extends TestCase
             'title' => 'Test Project',
             'description' => '',
             'is_folder' => true,
+            'workspace_id' => $this->workspace->id,
         ]);
     }
 
@@ -45,6 +46,7 @@ class QueryListItemsTest extends TestCase
             'status' => 'backlog',
             'priority' => 'medium',
             'parent_id' => $this->folder->id,
+            'workspace_id' => $this->workspace->id,
         ], $attributes));
     }
 

@@ -6,9 +6,11 @@ import { useRealtime } from '@/composables/useRealtime'
 const AWAY_TIMEOUT = 5 * 60 * 1000 // 5 minutes
 const HEARTBEAT_INTERVAL = 30 * 1000 // 30 seconds
 
-export const usePresence = (userId: string = 'h1') => {
+export const usePresence = (userId: string = 'h1', workspaceId?: string) => {
   const { updateUserPresence } = useApi()
   const { presenceChannel, leaveChannel, on } = useRealtime()
+
+  const presenceChannelName = workspaceId ? `workspace.${workspaceId}.online` : 'online'
 
   const currentPresence = ref<PresenceStatus>('offline')
   const lastActivityTime = ref(Date.now())
@@ -86,7 +88,7 @@ export const usePresence = (userId: string = 'h1') => {
     }, HEARTBEAT_INTERVAL)
 
     // Join presence channel for real-time updates
-    const channel = presenceChannel('online')
+    const channel = presenceChannel(presenceChannelName)
     if (channel) {
       channel
         .here((users: { id: string; name?: string }[]) => {
@@ -129,7 +131,7 @@ export const usePresence = (userId: string = 'h1') => {
       heartbeatInterval = null
     }
     unsubscribePresence?.()
-    leaveChannel('online')
+    leaveChannel(presenceChannelName)
     setPresence('offline')
   }
 

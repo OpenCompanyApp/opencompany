@@ -5,6 +5,7 @@ namespace Tests\Feature\Tools;
 use App\Agents\Tools\Lists\ManageListItem;
 use App\Models\ListItem;
 use App\Models\ListItemComment;
+use App\Models\ListStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -26,6 +27,19 @@ class ManageListItemTest extends TestCase
             'title' => 'Test Project',
             'description' => '',
             'is_folder' => true,
+            'workspace_id' => $this->workspace->id,
+        ]);
+
+        ListStatus::create([
+            'id' => Str::uuid()->toString(),
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Done',
+            'slug' => 'done',
+            'color' => '#22c55e',
+            'icon' => 'ph:check-circle',
+            'is_done' => true,
+            'is_default' => false,
+            'position' => 99,
         ]);
     }
 
@@ -46,6 +60,7 @@ class ManageListItemTest extends TestCase
             'status' => 'backlog',
             'priority' => 'medium',
             'parent_id' => $this->folder->id,
+            'workspace_id' => $this->workspace->id,
         ], $attributes));
     }
 

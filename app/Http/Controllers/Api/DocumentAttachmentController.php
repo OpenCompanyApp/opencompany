@@ -21,7 +21,8 @@ class DocumentAttachmentController extends Controller
     public function store(Request $request, string $documentId): mixed
     {
         $file = $request->file('file');
-        $path = $file->store('document-attachments', 'public');
+        $workspaceId = workspace()->id;
+        $path = $file->store("{$workspaceId}/document-attachments", 'public');
 
         $attachment = DocumentAttachment::create([
             'id' => Str::uuid()->toString(),

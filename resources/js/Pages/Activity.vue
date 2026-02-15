@@ -6,13 +6,13 @@
         <div class="flex items-center gap-3 md:gap-4">
           <div class="flex items-center gap-1">
             <Link
-              href="/tasks"
+              :href="workspacePath('/tasks')"
               class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               Tasks
             </Link>
             <Link
-              href="/workload"
+              :href="workspacePath('/workload')"
               class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               Workload
@@ -116,7 +116,7 @@
                       <div class="flex items-center gap-2 mb-1">
                         <Link
                           v-if="activity.actor"
-                          :href="activity.actor.type === 'agent' ? `/agent/${activity.actor.id}` : `/profile/${activity.actor.id}`"
+                          :href="workspacePath(activity.actor.type === 'agent' ? `/agent/${activity.actor.id}` : `/profile/${activity.actor.id}`)"
                           class="font-medium text-neutral-700 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-colors"
                         >
                           {{ activity.actor.name }}
@@ -188,6 +188,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { User, Activity } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import { useApi } from '@/composables/useApi'
@@ -203,6 +204,7 @@ interface ExtendedActivity extends Activity {
   }
 }
 
+const { workspacePath } = useWorkspace()
 const { fetchActivities, fetchUsers } = useApi()
 const { on } = useRealtime()
 

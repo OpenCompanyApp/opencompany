@@ -288,7 +288,8 @@ class MessageController extends Controller
     public function uploadAttachment(Request $request): MessageAttachment
     {
         $file = $request->file('file');
-        $path = $file->store('message-attachments', 'public');
+        $workspaceId = workspace()->id;
+        $path = $file->store("{$workspaceId}/message-attachments", 'public');
 
         $attachment = MessageAttachment::create([
             'id' => Str::uuid()->toString(),

@@ -129,6 +129,9 @@ import Button from '@/Components/shared/Button.vue'
 import CronBuilder from '@/Components/automation/CronBuilder.vue'
 import PromptEditor from '@/Components/automation/PromptEditor.vue'
 import { useApi } from '@/composables/useApi'
+import { useWorkspace } from '@/composables/useWorkspace'
+
+const { workspacePath } = useWorkspace()
 
 const { createScheduledAutomation, fetchAgents } = useApi()
 
@@ -176,7 +179,7 @@ const isValid = computed(() =>
 )
 
 function goBack() {
-  router.visit('/automation')
+  router.visit(workspacePath('/automation'))
 }
 
 async function handleSave() {
@@ -192,7 +195,7 @@ async function handleSave() {
       keepHistory: form.value.keepHistory,
       createdById: 'h1',
     })
-    router.visit('/automation')
+    router.visit(workspacePath('/automation'))
   } finally {
     saving.value = false
   }

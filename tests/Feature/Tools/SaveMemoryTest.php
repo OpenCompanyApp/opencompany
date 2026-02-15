@@ -67,6 +67,7 @@ class SaveMemoryTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $agentFolder = Document::create([
@@ -76,6 +77,7 @@ class SaveMemoryTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Set agent's docs_folder_id
@@ -89,6 +91,7 @@ class SaveMemoryTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Document::create([
@@ -99,6 +102,7 @@ class SaveMemoryTest extends TestCase
             'is_folder' => false,
             'is_system' => true,
             'author_id' => $this->agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Create memory folder for daily logs
@@ -109,6 +113,7 @@ class SaveMemoryTest extends TestCase
             'is_folder' => true,
             'content' => '',
             'author_id' => $this->agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         return $agentFolder;

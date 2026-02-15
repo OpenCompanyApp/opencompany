@@ -44,6 +44,7 @@ class SearchDocumentsTest extends TestCase
             'content' => 'REST API endpoints for user management.',
             'author_id' => $author->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Document::create([
@@ -52,6 +53,7 @@ class SearchDocumentsTest extends TestCase
             'content' => 'Discussed project timeline.',
             'author_id' => $author->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = $this->makeTool();
@@ -74,6 +76,7 @@ class SearchDocumentsTest extends TestCase
             'content' => 'The deployment pipeline uses Docker containers.',
             'author_id' => $author->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = $this->makeTool();
@@ -106,6 +109,7 @@ class SearchDocumentsTest extends TestCase
                 'content' => 'Matching content for search test.',
                 'author_id' => $author->id,
                 'is_folder' => false,
+                'workspace_id' => $this->workspace->id,
             ]);
         }
 
@@ -127,6 +131,7 @@ class SearchDocumentsTest extends TestCase
             'content' => 'folder with matching content',
             'author_id' => $author->id,
             'is_folder' => true,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = $this->makeTool();
@@ -147,6 +152,7 @@ class SearchDocumentsTest extends TestCase
             'content' => 'This is keyword-searchable content.',
             'author_id' => $author->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $indexer = Mockery::mock(DocumentIndexingService::class);
@@ -198,6 +204,7 @@ class SearchDocumentsTest extends TestCase
             'content' => 'Keyword fallback content here.',
             'author_id' => $author->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // No indexer — semantic mode should fall back to keyword
@@ -240,6 +247,7 @@ class SearchDocumentsTest extends TestCase
             'content' => 'Infrastructure deployment documentation.',
             'author_id' => $author->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $indexer = Mockery::mock(DocumentIndexingService::class);
@@ -267,6 +275,7 @@ class SearchDocumentsTest extends TestCase
             'content' => 'Auto mode keyword fallback test content.',
             'author_id' => $author->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // No indexer → auto mode can't do semantic, falls to keyword
@@ -304,6 +313,7 @@ class SearchDocumentsTest extends TestCase
             'content' => 'Content that matches empty query.',
             'author_id' => $author->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = $this->makeTool();
@@ -343,6 +353,7 @@ class SearchDocumentsTest extends TestCase
             'content' => '',
             'author_id' => $author->id,
             'is_folder' => true,
+            'workspace_id' => $this->workspace->id,
         ]);
         $restrictedFolder = Document::create([
             'id' => 'folder-restricted',
@@ -350,6 +361,7 @@ class SearchDocumentsTest extends TestCase
             'content' => '',
             'author_id' => $author->id,
             'is_folder' => true,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Create docs in each folder
@@ -360,6 +372,7 @@ class SearchDocumentsTest extends TestCase
             'author_id' => $author->id,
             'parent_id' => $allowedFolder->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
         $restrictedDoc = Document::create([
             'id' => 'doc-restricted',
@@ -368,6 +381,7 @@ class SearchDocumentsTest extends TestCase
             'author_id' => $author->id,
             'parent_id' => $restrictedFolder->id,
             'is_folder' => false,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Create chunks referencing these documents

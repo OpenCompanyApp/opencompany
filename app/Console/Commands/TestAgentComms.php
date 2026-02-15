@@ -183,6 +183,7 @@ class TestAgentComms extends Command
             'requester_id' => $agentA->id,
             'channel_id' => $channelId,
             'started_at' => now(),
+            'workspace_id' => $agentA->workspace_id ?? workspace()->id,
         ]);
         $this->line("  Parent task created: {$parentTask->id}");
 
@@ -199,6 +200,7 @@ class TestAgentComms extends Command
             'requester_id' => $agentA->id,
             'channel_id' => $channelId,
             'parent_task_id' => $parentTask->id,
+            'workspace_id' => $agentB->workspace_id ?? workspace()->id,
         ]);
         $this->line("  Subtask created: {$subtask->id}");
 

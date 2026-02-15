@@ -48,7 +48,7 @@
             />
 
             <Link
-              :href="node.type === 'agent' ? `/agent/${node.id}` : `/profile/${node.id}`"
+              :href="workspacePath(node.type === 'agent' ? `/agent/${node.id}` : `/profile/${node.id}`)"
               :class="[
                 'font-medium truncate hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors duration-150',
                 depth === 0
@@ -140,10 +140,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 
 defineOptions({ name: 'TreeNode' })
+
+const { workspacePath } = useWorkspace()
 
 interface OrgNode {
   id: string

@@ -31,9 +31,36 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            'auth' => [
+            'auth' => fn () => [
                 'user' => $request->user(),
             ],
+            'workspace' => function () {
+                $workspace = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
+
+                return $workspace ? [
+                    'id' => $workspace->id,
+                    'name' => $workspace->name,
+                    'slug' => $workspace->slug,
+                    'icon' => $workspace->icon,
+                    'color' => $workspace->color,
+                    'owner_id' => $workspace->owner_id,
+                ] : null;
+            },
+            'workspaceRole' => function () use ($request) {
+                $workspace = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
+                $user = $request->user();
+
+                return $workspace && $user
+                    ? $user->currentWorkspaceRole($workspace)
+                    : null;
+            },
+            'workspaces' => function () use ($request) {
+                $user = $request->user();
+
+                return $user
+                    ? $user->workspaces()->select('workspaces.id', 'name', 'slug', 'icon', 'color')->get()
+                    : [];
+            },
         ];
     }
 }

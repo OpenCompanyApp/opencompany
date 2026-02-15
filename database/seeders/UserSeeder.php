@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Workspace;
+use App\Models\WorkspaceMember;
 use App\Services\AgentAvatarService;
 use App\Services\HumanAvatarService;
 use Illuminate\Database\Seeder;
@@ -15,6 +17,8 @@ class UserSeeder extends Seeder
 
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+
         // Main human user
         User::create([
             'id' => 'h1',
@@ -27,6 +31,14 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
 
+        // Set workspace owner and create membership
+        $workspace->update(['owner_id' => 'h1']);
+        WorkspaceMember::create([
+            'workspace_id' => $workspace->id,
+            'user_id' => 'h1',
+            'role' => 'admin',
+        ]);
+
         // System user for automations
         User::create([
             'id' => 'system',
@@ -35,6 +47,7 @@ class UserSeeder extends Seeder
             'agent_type' => 'system',
             'status' => 'idle',
             'presence' => 'online',
+            'workspace_id' => $workspace->id,
         ]);
 
         // AI Agents with various statuses and tasks
@@ -124,6 +137,7 @@ class UserSeeder extends Seeder
                 'behavior_mode' => $agent['behavior_mode'] ?? null,
                 'must_wait_for_approval' => $agent['must_wait_for_approval'] ?? false,
                 'manager_id' => $agent['id'] !== 'a1' ? 'a1' : 'h1', // Atlas reports to Rutger, other agents report to Atlas
+                'workspace_id' => $workspace->id,
             ]);
         }
 

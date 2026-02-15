@@ -47,6 +47,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { ApprovalRequest, Stats, Activity, User } from '@/types'
 import DashboardPendingApprovals from '@/Components/dashboard/PendingApprovals.vue'
 import DashboardStatsOverview from '@/Components/dashboard/StatsOverview.vue'
@@ -56,6 +57,7 @@ import DashboardWorkingAgents from '@/Components/dashboard/WorkingAgents.vue'
 import AgentsSpawnAgentModal from '@/Components/agents/SpawnAgentModal.vue'
 import { useApi } from '@/composables/useApi'
 
+const { workspacePath } = useWorkspace()
 const { fetchStats, fetchActivities, fetchAgents, fetchApprovals, respondToApproval } = useApi()
 
 const { data: stats, refresh: refreshStats } = fetchStats()
@@ -71,13 +73,13 @@ const handleQuickAction = (actionId: string) => {
       showSpawnModal.value = true
       break
     case 'new-channel':
-      router.visit('/chat')
+      router.visit(workspacePath('/chat'))
       break
     case 'create-task':
-      router.visit('/tasks')
+      router.visit(workspacePath('/tasks'))
       break
     case 'new-document':
-      router.visit('/docs')
+      router.visit(workspacePath('/docs'))
       break
   }
 }

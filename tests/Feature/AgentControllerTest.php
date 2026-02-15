@@ -12,10 +12,13 @@ class AgentControllerTest extends TestCase
     use RefreshDatabase;
 
     private User $agent;
+    private User $user;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->user = User::factory()->create(['type' => 'human']);
 
         $this->agent = User::factory()->create([
             'name' => 'TestAgent',
@@ -38,7 +41,7 @@ class AgentControllerTest extends TestCase
 
     public function test_show_returns_enriched_agent_data(): void
     {
-        $response = $this->getJson("/api/agents/{$this->agent->id}");
+        $response = $this->actingAs($this->user)->getJson("/api/agents/{$this->agent->id}");
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -78,6 +81,7 @@ class AgentControllerTest extends TestCase
             'priority' => 'normal',
             'agent_id' => $this->agent->id,
             'requester_id' => $requester->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         \App\Models\Task::create([
@@ -88,9 +92,10 @@ class AgentControllerTest extends TestCase
             'priority' => 'normal',
             'agent_id' => $this->agent->id,
             'requester_id' => $requester->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
-        $response = $this->getJson("/api/agents/{$this->agent->id}");
+        $response = $this->actingAs($this->user)->getJson("/api/agents/{$this->agent->id}");
 
         $response->assertOk();
         $data = $response->json();
@@ -103,7 +108,7 @@ class AgentControllerTest extends TestCase
 
     public function test_identity_files_endpoint(): void
     {
-        $response = $this->getJson("/api/agents/{$this->agent->id}/identity");
+        $response = $this->actingAs($this->user)->getJson("/api/agents/{$this->agent->id}/identity");
 
         $response->assertOk();
         $files = $response->json();
@@ -121,7 +126,7 @@ class AgentControllerTest extends TestCase
     {
         $newContent = "# Updated Soul\n\nBe creative and bold.";
 
-        $response = $this->putJson("/api/agents/{$this->agent->id}/identity/SOUL", [
+        $response = $this->actingAs($this->user)->putJson("/api/agents/{$this->agent->id}/identity/SOUL", [
             'content' => $newContent,
         ]);
 
@@ -129,14 +134,14 @@ class AgentControllerTest extends TestCase
         $this->assertEquals($newContent, $response->json('content'));
 
         // Verify persistence via identity endpoint
-        $verifyResponse = $this->getJson("/api/agents/{$this->agent->id}/identity");
+        $verifyResponse = $this->actingAs($this->user)->getJson("/api/agents/{$this->agent->id}/identity");
         $soulFile = collect($verifyResponse->json())->firstWhere('type', 'SOUL');
         $this->assertStringContainsString('creative and bold', $soulFile['content']);
     }
 
     public function test_update_agent_status(): void
     {
-        $response = $this->patchJson("/api/agents/{$this->agent->id}", [
+        $response = $this->actingAs($this->user)->patchJson("/api/agents/{$this->agent->id}", [
             'status' => 'working',
         ]);
 
@@ -148,14 +153,14 @@ class AgentControllerTest extends TestCase
     {
         $human = User::factory()->create(['type' => 'human']);
 
-        $response = $this->getJson("/api/agents/{$human->id}");
+        $response = $this->actingAs($this->user)->getJson("/api/agents/{$human->id}");
 
         $response->assertNotFound();
     }
 
     public function test_show_returns_404_for_missing_agent(): void
     {
-        $response = $this->getJson('/api/agents/nonexistent-id');
+        $response = $this->actingAs($this->user)->getJson('/api/agents/nonexistent-id');
 
         $response->assertNotFound();
     }

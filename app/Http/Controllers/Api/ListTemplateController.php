@@ -15,7 +15,7 @@ class ListTemplateController extends Controller
      */
     public function index(Request $request): \Illuminate\Database\Eloquent\Collection
     {
-        $query = ListTemplate::with(['defaultAssignee', 'createdBy']);
+        $query = ListTemplate::forWorkspace()->with(['defaultAssignee', 'createdBy']);
 
         if ($request->input('activeOnly', true)) {
             $query->where('is_active', true);
@@ -28,6 +28,7 @@ class ListTemplateController extends Controller
     {
         $template = ListTemplate::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'name' => $request->input('name'),
             'description' => $request->input('description'),
             'default_title' => $request->input('defaultTitle'),
@@ -45,7 +46,7 @@ class ListTemplateController extends Controller
 
     public function update(Request $request, string $id): ListTemplate
     {
-        $template = ListTemplate::findOrFail($id);
+        $template = ListTemplate::forWorkspace()->findOrFail($id);
 
         $data = $request->only([
             'name',
@@ -80,24 +81,25 @@ class ListTemplateController extends Controller
 
     public function destroy(string $id): \Illuminate\Http\JsonResponse
     {
-        ListTemplate::findOrFail($id)->delete();
+        ListTemplate::forWorkspace()->findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
 
     public function createListItem(Request $request, string $templateId): ListItem|\Illuminate\Http\JsonResponse
     {
-        $template = ListTemplate::findOrFail($templateId);
+        $template = ListTemplate::forWorkspace()->findOrFail($templateId);
 
         $parentId = $request->input('parentId');
         if (!$parentId) {
             return response()->json(['error' => 'Items must belong to a project (parentId is required).'], 422);
         }
 
-        $maxPosition = ListItem::where('status', 'todo')->max('position') ?? 0;
+        $maxPosition = ListItem::forWorkspace()->where('status', 'todo')->max('position') ?? 0;
 
         $listItem = ListItem::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'parent_id' => $parentId,
             'title' => $request->input('title', $template->default_title),
             'description' => $request->input('description', $template->default_description),

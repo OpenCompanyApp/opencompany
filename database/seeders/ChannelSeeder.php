@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Channel;
 use App\Models\ChannelMember;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
@@ -13,6 +14,9 @@ class ChannelSeeder extends Seeder
 
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+        $workspaceId = $workspace->id;
+
         $channels = [
             // Public channels
             [
@@ -108,6 +112,7 @@ class ChannelSeeder extends Seeder
                     'description' => $channelData['description'] ?? null,
                     'creator_id' => 'h1',
                     'external_provider' => $channelData['external_provider'] ?? null,
+                    'workspace_id' => $workspaceId,
                 ]
             );
 

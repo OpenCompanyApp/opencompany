@@ -17,6 +17,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Models\Workspace;
 use App\Services\AgentCommunicationService;
 use App\Services\AgentDocumentService;
 use App\Services\Memory\ModelContextRegistry;
@@ -58,6 +59,14 @@ class AgentRespondJob implements ShouldQueue
 
     public function handle(): void
     {
+        // Set workspace context from agent
+        if ($this->agent->workspace_id) {
+            $workspace = Workspace::find($this->agent->workspace_id);
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+            }
+        }
+
         $task = null;
 
         // Resume an existing task (delegation callback re-invoking parent)
@@ -83,6 +92,7 @@ class AgentRespondJob implements ShouldQueue
                 // Create a task to track this chat interaction
                 $task = Task::create([
                     'id' => Str::uuid()->toString(),
+                    'workspace_id' => $this->agent->workspace_id,
                     'title' => Str::limit($this->userMessage->content, 80),
                     'description' => $this->userMessage->content,
                     'type' => Task::TYPE_CUSTOM,

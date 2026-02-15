@@ -6,14 +6,14 @@
         <div>
           <div class="flex items-center gap-1">
             <Link
-              href="/tasks"
+              :href="workspacePath('/tasks')"
               class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               Tasks
             </Link>
             <span class="text-xl font-semibold text-neutral-900 dark:text-white">Workload</span>
             <Link
-              href="/activity"
+              :href="workspacePath('/activity')"
               class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               Activity
@@ -94,7 +94,7 @@
             <SharedAgentAvatar :user="item.agent" size="md" show-status />
             <div class="flex-1 min-w-0">
               <Link
-                :href="`/agent/${item.agent.id}`"
+                :href="workspacePath(`/agent/${item.agent.id}`)"
                 class="font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
               >
                 {{ item.agent.name }}
@@ -182,6 +182,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import Icon from '@/Components/shared/Icon.vue'
 import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import SharedStatusBadge from '@/Components/shared/StatusBadge.vue'
@@ -219,6 +220,7 @@ interface WorkloadData {
   }
 }
 
+const { workspacePath } = useWorkspace()
 const workloadData = ref<WorkloadData | null>(null)
 
 const fetchWorkload = async () => {

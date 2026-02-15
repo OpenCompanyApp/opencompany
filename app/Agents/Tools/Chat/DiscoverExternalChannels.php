@@ -43,7 +43,7 @@ class DiscoverExternalChannels implements Tool
 
     private function listChannels(?string $provider): string
     {
-        $query = Channel::where('type', 'external');
+        $query = Channel::forWorkspace()->where('type', 'external');
 
         if ($provider) {
             $query->where('external_provider', $provider);
@@ -90,7 +90,7 @@ class DiscoverExternalChannels implements Tool
             return "Error: 'channelId' is required for the 'join' action.";
         }
 
-        $channel = Channel::find($channelId);
+        $channel = Channel::forWorkspace()->find($channelId);
         if (!$channel || $channel->type !== 'external') {
             return "Error: External channel '{$channelId}' not found.";
         }
@@ -120,7 +120,7 @@ class DiscoverExternalChannels implements Tool
             return "Error: 'channelId' is required for the 'leave' action.";
         }
 
-        $channel = Channel::find($channelId);
+        $channel = Channel::forWorkspace()->find($channelId);
         if (!$channel || $channel->type !== 'external') {
             return "Error: External channel '{$channelId}' not found.";
         }

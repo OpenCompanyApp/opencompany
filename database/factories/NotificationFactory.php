@@ -30,6 +30,7 @@ class NotificationFactory extends Factory
             'action_url' => '/' . fake()->randomElement(['chat', 'tasks', 'docs', 'approvals']),
             'actor_id' => User::factory(),
             'metadata' => [],
+            'workspace_id' => fn () => app()->bound('currentWorkspace') ? app('currentWorkspace')->id : null,
         ];
     }
 

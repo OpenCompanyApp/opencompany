@@ -5,15 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Concerns\BelongsToWorkspace;
 
 class ListTemplate extends Model
 {
+    use BelongsToWorkspace;
+
     protected $table = 'list_templates';
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'name',
         'description',
         'default_title',

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\IntegrationSetting;
+use App\Models\Workspace;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -13,6 +14,9 @@ class IntegrationSettingSeeder extends Seeder
 
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+        $workspaceId = $workspace->id;
+
         $apiKey = env('GLM_API_KEY', '');
         $codingUrl = env('GLM_URL', 'https://api.z.ai/api/coding/paas/v4');
 
@@ -26,6 +30,7 @@ class IntegrationSettingSeeder extends Seeder
                 'default_model' => 'glm-4-plus',
             ],
             'enabled' => !empty($apiKey),
+            'workspace_id' => $workspaceId,
         ]);
 
         // GLM Coding Plan (z.ai coding endpoint)
@@ -38,6 +43,7 @@ class IntegrationSettingSeeder extends Seeder
                 'default_model' => 'glm-4.7',
             ],
             'enabled' => !empty($apiKey),
+            'workspace_id' => $workspaceId,
         ]);
     }
 }

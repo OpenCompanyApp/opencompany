@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Activity;
 use App\Models\ActivityStep;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Str;
@@ -12,8 +13,13 @@ class ActivitySeeder extends Seeder
 {
     use WithoutModelEvents;
 
+    private string $workspaceId;
+
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+        $this->workspaceId = $workspace->id;
+
         $this->createActivities();
         $this->createActivitySteps();
     }
@@ -214,6 +220,7 @@ class ActivitySeeder extends Seeder
                 'metadata' => $activityData['metadata'],
                 'timestamp' => now()->subDays($activityData['days_ago'])->subHours(rand(0, 12)),
                 'created_at' => now()->subDays($activityData['days_ago'])->subHours(rand(0, 12)),
+                'workspace_id' => $this->workspaceId,
             ]);
         }
     }

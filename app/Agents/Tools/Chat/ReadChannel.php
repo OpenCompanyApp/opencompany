@@ -32,7 +32,7 @@ class ReadChannel implements Tool
             $channelAccess = $this->permissionService->canAccessChannel($this->agent, $channelId);
             if (!$channelAccess['allowed']) {
                 if ($channelAccess['can_request']) {
-                    $channelName = Channel::find($channelId)->name ?? $channelId;
+                    $channelName = Channel::forWorkspace()->find($channelId)->name ?? $channelId;
                     $approval = $this->permissionService->createAccessRequest(
                         $this->agent, 'channel', $channelId,
                         "{$this->agent->name} is requesting access to channel #{$channelName}."
@@ -45,7 +45,7 @@ class ReadChannel implements Tool
                 return "Error: You do not have permission to access this channel.";
             }
 
-            $channel = Channel::find($channelId);
+            $channel = Channel::forWorkspace()->find($channelId);
             if (!$channel) {
                 return "Error: Channel '{$channelId}' not found.";
             }

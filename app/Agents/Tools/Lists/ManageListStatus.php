@@ -4,6 +4,7 @@ namespace App\Agents\Tools\Lists;
 
 use App\Models\ListItem;
 use App\Models\ListStatus;
+use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -11,6 +12,9 @@ use Laravel\Ai\Tools\Request;
 
 class ManageListStatus implements Tool
 {
+    public function __construct(
+        private User $agent,
+    ) {}
 
     public function description(): string
     {
@@ -45,12 +49,12 @@ class ManageListStatus implements Tool
         // Ensure unique slug
         $baseSlug = $slug;
         $counter = 1;
-        while (ListStatus::where('slug', $slug)->exists()) {
+        while (ListStatus::forWorkspace()->where('slug', $slug)->exists()) {
             $slug = $baseSlug . '_' . $counter;
             $counter++;
         }
 
-        $maxPosition = ListStatus::max('position') ?? -1;
+        $maxPosition = ListStatus::forWorkspace()->max('position') ?? -1;
 
         $status = ListStatus::create([
             'id' => Str::uuid()->toString(),
@@ -61,6 +65,7 @@ class ManageListStatus implements Tool
             'is_done' => $request['isDone'] ?? false,
             'is_default' => false,
             'position' => $maxPosition + 1,
+            'workspace_id' => workspace()->id,
         ]);
 
         return "Status created: '{$status->name}' (slug: {$status->slug}, ID: {$status->id})";
@@ -73,7 +78,7 @@ class ManageListStatus implements Tool
             return "Error: 'statusId' is required for the 'update' action.";
         }
 
-        $status = ListStatus::findOrFail($statusId);
+        $status = ListStatus::forWorkspace()->findOrFail($statusId);
 
         if (isset($request['name'])) {
             $status->name = $request['name'];
@@ -89,7 +94,7 @@ class ManageListStatus implements Tool
         }
         if (isset($request['isDefault'])) {
             if ($request['isDefault']) {
-                ListStatus::where('is_default', true)->update(['is_default' => false]);
+                ListStatus::forWorkspace()->where('is_default', true)->update(['is_default' => false]);
             }
             $status->is_default = $request['isDefault'];
         }
@@ -106,13 +111,13 @@ class ManageListStatus implements Tool
             return "Error: 'statusId' is required for the 'delete' action.";
         }
 
-        $status = ListStatus::findOrFail($statusId);
+        $status = ListStatus::forWorkspace()->findOrFail($statusId);
 
         if ($status->is_default) {
             return "Error: Cannot delete the default status.";
         }
 
-        $remainingNonDone = ListStatus::where('id', '!=', $statusId)
+        $remainingNonDone = ListStatus::forWorkspace()->where('id', '!=', $statusId)
             ->where('is_done', false)
             ->count();
         if (!$status->is_done && $remainingNonDone === 0) {
@@ -121,11 +126,11 @@ class ManageListStatus implements Tool
 
         $replacementSlug = $request['replacementSlug'] ?? null;
         if (!$replacementSlug) {
-            $replacementSlug = ListStatus::where('is_default', true)->value('slug') ?? 'backlog';
+            $replacementSlug = ListStatus::forWorkspace()->where('is_default', true)->value('slug') ?? 'backlog';
         }
 
-        $reassignedCount = ListItem::where('status', $status->slug)->count();
-        ListItem::where('status', $status->slug)->update(['status' => $replacementSlug]);
+        $reassignedCount = ListItem::forWorkspace()->where('status', $status->slug)->count();
+        ListItem::forWorkspace()->where('status', $status->slug)->update(['status' => $replacementSlug]);
 
         $name = $status->name;
         $status->delete();

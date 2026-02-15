@@ -35,6 +35,7 @@ class SearchMessages implements Tool
             $limit = min($request['limit'] ?? 20, 50);
 
             $search = Message::with(['author', 'channel'])
+                ->whereHas('channel', fn ($q) => $q->forWorkspace())
                 ->where('content', 'LIKE', "%{$query}%")
                 ->orderBy('created_at', 'desc')
                 ->limit($limit);

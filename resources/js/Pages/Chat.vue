@@ -178,6 +178,9 @@ import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
 import { useTypingIndicator } from '@/composables/useTypingIndicator'
 import { useIsMobile } from '@/composables/useMediaQuery'
+import { useWorkspace } from '@/composables/useWorkspace'
+
+const { workspacePath } = useWorkspace()
 
 const page = usePage()
 const { fetchChannels, fetchMessages, sendMessage, markChannelRead, addMessageReaction, fetchMessageThread, removeChannelMember, pinMessage, fetchPinnedMessages, sendTypingIndicator, uploadMessageAttachment, compactChannel, fetchDm } = useApi()
@@ -534,7 +537,7 @@ const handleMemberRemove = async (member: User) => {
 
 const handleMemberClick = (member: User) => {
   // Navigate to user profile
-  router.visit(`/users/${member.id}`)
+  router.visit(workspacePath(`/users/${member.id}`))
 }
 
 const handleMemberMessage = async (member: User) => {

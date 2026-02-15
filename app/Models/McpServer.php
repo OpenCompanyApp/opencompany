@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Models\Concerns\BelongsToWorkspace;
 
 /**
  * @property array<int, array<string, mixed>>|null $discovered_tools
@@ -24,12 +25,15 @@ use Illuminate\Support\Str;
  */
 class McpServer extends Model
 {
+    use BelongsToWorkspace;
+
     protected $keyType = 'string';
 
     public $incrementing = false;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'name',
         'slug',
         'url',

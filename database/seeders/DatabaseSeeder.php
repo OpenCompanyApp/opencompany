@@ -12,8 +12,9 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            IntegrationSettingSeeder::class,
+            WorkspaceSeeder::class,
             UserSeeder::class,
+            IntegrationSettingSeeder::class,
             ChannelSeeder::class,
             MessageSeeder::class,
             ListItemSeeder::class,

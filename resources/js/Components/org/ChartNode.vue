@@ -30,7 +30,7 @@
               class="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-300 shrink-0"
             />
             <Link
-              :href="node.type === 'agent' ? `/agent/${node.id}` : `/profile/${node.id}`"
+              :href="workspacePath(node.type === 'agent' ? `/agent/${node.id}` : `/profile/${node.id}`)"
               class="font-medium text-neutral-900 dark:text-white truncate text-sm hover:text-neutral-900 dark:hover:text-white transition-colors duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
               @click.stop
             >
@@ -92,10 +92,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 
 defineOptions({ name: 'ChartNode' })
+
+const { workspacePath } = useWorkspace()
 
 interface OrgNode {
   id: string

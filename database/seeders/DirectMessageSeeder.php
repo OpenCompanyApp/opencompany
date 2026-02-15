@@ -6,6 +6,7 @@ use App\Models\DirectMessage;
 use App\Models\Channel;
 use App\Models\ChannelMember;
 use App\Models\Message;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Support\Str;
@@ -16,6 +17,9 @@ class DirectMessageSeeder extends Seeder
 
     public function run(): void
     {
+        $workspace = Workspace::where('slug', 'default')->first();
+        $workspaceId = $workspace->id;
+
         $dmConversations = [
             [
                 'user1_id' => 'h1',
@@ -81,6 +85,7 @@ class DirectMessageSeeder extends Seeder
                 'description' => null,
                 'creator_id' => $convo['user1_id'],
                 'is_ephemeral' => false,
+                'workspace_id' => $workspaceId,
             ]);
 
             // Add both users as members

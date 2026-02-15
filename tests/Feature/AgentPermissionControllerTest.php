@@ -13,10 +13,13 @@ class AgentPermissionControllerTest extends TestCase
     use RefreshDatabase;
 
     private User $agent;
+    private User $user;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->user = User::factory()->create(['type' => 'human']);
 
         $this->agent = User::factory()->create([
             'type' => 'agent',
@@ -28,7 +31,7 @@ class AgentPermissionControllerTest extends TestCase
 
     public function test_index_returns_tools_channels_folders_behavior_mode(): void
     {
-        $response = $this->getJson("/api/agents/{$this->agent->id}/permissions");
+        $response = $this->actingAs($this->user)->getJson("/api/agents/{$this->agent->id}/permissions");
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -71,7 +74,7 @@ class AgentPermissionControllerTest extends TestCase
             'requires_approval' => false,
         ]);
 
-        $response = $this->getJson("/api/agents/{$this->agent->id}/permissions");
+        $response = $this->actingAs($this->user)->getJson("/api/agents/{$this->agent->id}/permissions");
 
         $response->assertOk();
         $data = $response->json();
@@ -88,7 +91,7 @@ class AgentPermissionControllerTest extends TestCase
     {
         $human = User::factory()->create(['type' => 'human']);
 
-        $response = $this->getJson("/api/agents/{$human->id}/permissions");
+        $response = $this->actingAs($this->user)->getJson("/api/agents/{$human->id}/permissions");
 
         $response->assertNotFound();
     }
@@ -105,7 +108,7 @@ class AgentPermissionControllerTest extends TestCase
             'requires_approval' => false,
         ]);
 
-        $response = $this->putJson("/api/agents/{$this->agent->id}/permissions/tools", [
+        $response = $this->actingAs($this->user)->putJson("/api/agents/{$this->agent->id}/permissions/tools", [
             'tools' => [
                 [
                     'scopeKey' => 'search_documents',
@@ -138,7 +141,7 @@ class AgentPermissionControllerTest extends TestCase
 
     public function test_update_tools_validates_input(): void
     {
-        $response = $this->putJson("/api/agents/{$this->agent->id}/permissions/tools", [
+        $response = $this->actingAs($this->user)->putJson("/api/agents/{$this->agent->id}/permissions/tools", [
             'tools' => [
                 [
                     'scopeKey' => 'search_documents',
@@ -155,7 +158,7 @@ class AgentPermissionControllerTest extends TestCase
         $channelId1 = Str::uuid()->toString();
         $channelId2 = Str::uuid()->toString();
 
-        $response = $this->putJson("/api/agents/{$this->agent->id}/permissions/channels", [
+        $response = $this->actingAs($this->user)->putJson("/api/agents/{$this->agent->id}/permissions/channels", [
             'channels' => [$channelId1, $channelId2],
         ]);
 
@@ -193,7 +196,7 @@ class AgentPermissionControllerTest extends TestCase
 
         $this->assertCount(2, AgentPermission::forAgent($this->agent->id)->channels()->get());
 
-        $response = $this->putJson("/api/agents/{$this->agent->id}/permissions/channels", [
+        $response = $this->actingAs($this->user)->putJson("/api/agents/{$this->agent->id}/permissions/channels", [
             'channels' => [],
         ]);
 
@@ -207,7 +210,7 @@ class AgentPermissionControllerTest extends TestCase
     {
         $folderId = Str::uuid()->toString();
 
-        $response = $this->putJson("/api/agents/{$this->agent->id}/permissions/folders", [
+        $response = $this->actingAs($this->user)->putJson("/api/agents/{$this->agent->id}/permissions/folders", [
             'folders' => [$folderId],
         ]);
 
@@ -235,7 +238,7 @@ class AgentPermissionControllerTest extends TestCase
             'requires_approval' => false,
         ]);
 
-        $response = $this->putJson("/api/agents/{$this->agent->id}/permissions/folders", [
+        $response = $this->actingAs($this->user)->putJson("/api/agents/{$this->agent->id}/permissions/folders", [
             'folders' => [$newFolderId],
         ]);
 

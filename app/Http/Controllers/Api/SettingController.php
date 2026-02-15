@@ -78,6 +78,7 @@ class SettingController extends Controller
 
         if ($action === 'pause_agents') {
             User::where('type', 'agent')
+                ->where('workspace_id', workspace()->id)
                 ->whereNotIn('status', ['offline', 'paused'])
                 ->update(['status' => 'paused']);
 
@@ -86,7 +87,7 @@ class SettingController extends Controller
 
         if ($action === 'reset_memory') {
             // Clear agent identity files (memory/context)
-            User::where('type', 'agent')->each(function (User $agent) {
+            User::where('type', 'agent')->where('workspace_id', workspace()->id)->each(function (User $agent) {
                 $identityDir = storage_path("app/agents/{$agent->id}");
                 $memoryFile = $identityDir . '/memory.md';
                 if (file_exists($memoryFile)) {

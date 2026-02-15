@@ -38,7 +38,7 @@ class MessageControllerAgentTest extends TestCase
         ]);
 
         // Send message via API (queue is sync in test, so job executes immediately)
-        $response = $this->postJson('/api/messages', [
+        $response = $this->actingAs($human)->postJson('/api/messages', [
             'content' => 'Can you help me?',
             'channelId' => $channel->id,
             'authorId' => $human->id,
@@ -58,7 +58,7 @@ class MessageControllerAgentTest extends TestCase
         $human = User::factory()->create(['type' => 'human']);
         $channel = Channel::factory()->create(['type' => 'public']);
 
-        $response = $this->postJson('/api/messages', [
+        $response = $this->actingAs($human)->postJson('/api/messages', [
             'content' => 'Hello everyone',
             'channelId' => $channel->id,
             'authorId' => $human->id,
@@ -85,7 +85,7 @@ class MessageControllerAgentTest extends TestCase
             'user2_id' => $human2->id,
         ]);
 
-        $response = $this->postJson('/api/messages', [
+        $response = $this->actingAs($human1)->postJson('/api/messages', [
             'content' => 'Hey, how are you?',
             'channelId' => $channel->id,
             'authorId' => $human1->id,

@@ -15,7 +15,7 @@ class ListStatusController extends Controller
      */
     public function index(): \Illuminate\Database\Eloquent\Collection
     {
-        return ListStatus::orderBy('position')->get();
+        return ListStatus::forWorkspace()->orderBy('position')->get();
     }
 
     public function store(Request $request): ListStatus
@@ -32,15 +32,16 @@ class ListStatusController extends Controller
         // Ensure unique slug
         $baseSlug = $slug;
         $counter = 1;
-        while (ListStatus::where('slug', $slug)->exists()) {
+        while (ListStatus::forWorkspace()->where('slug', $slug)->exists()) {
             $slug = $baseSlug . '_' . $counter;
             $counter++;
         }
 
-        $maxPosition = ListStatus::max('position') ?? -1;
+        $maxPosition = ListStatus::forWorkspace()->max('position') ?? -1;
 
         $status = ListStatus::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'name' => $request->input('name'),
             'slug' => $slug,
             'color' => $request->input('color'),
@@ -55,7 +56,7 @@ class ListStatusController extends Controller
 
     public function update(Request $request, string $id): ListStatus
     {
-        $status = ListStatus::findOrFail($id);
+        $status = ListStatus::forWorkspace()->findOrFail($id);
 
         $data = [];
 
@@ -74,7 +75,7 @@ class ListStatusController extends Controller
         if ($request->has('isDefault')) {
             // If setting as default, unset the current default
             if ($request->input('isDefault')) {
-                ListStatus::where('is_default', true)->update(['is_default' => false]);
+                ListStatus::forWorkspace()->where('is_default', true)->update(['is_default' => false]);
             }
             $data['is_default'] = $request->input('isDefault');
         }
@@ -97,7 +98,7 @@ class ListStatusController extends Controller
 
     public function destroy(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        $status = ListStatus::findOrFail($id);
+        $status = ListStatus::forWorkspace()->findOrFail($id);
 
         // Cannot delete the default status
         if ($status->is_default) {
@@ -105,7 +106,7 @@ class ListStatusController extends Controller
         }
 
         // Must have at least one non-done status remaining
-        $remainingNonDone = ListStatus::where('id', '!=', $id)->where('is_done', false)->count();
+        $remainingNonDone = ListStatus::forWorkspace()->where('id', '!=', $id)->where('is_done', false)->count();
         if (!$status->is_done && $remainingNonDone === 0) {
             return response()->json(['error' => 'Must have at least one non-done status'], 422);
         }
@@ -114,10 +115,10 @@ class ListStatusController extends Controller
         $replacementSlug = $request->input('replacementSlug');
         if (!$replacementSlug) {
             // Default to the default status
-            $replacementSlug = ListStatus::where('is_default', true)->value('slug') ?? 'backlog';
+            $replacementSlug = ListStatus::forWorkspace()->where('is_default', true)->value('slug') ?? 'backlog';
         }
 
-        ListItem::where('status', $status->slug)->update(['status' => $replacementSlug]);
+        ListItem::forWorkspace()->where('status', $status->slug)->update(['status' => $replacementSlug]);
 
         $status->delete();
 

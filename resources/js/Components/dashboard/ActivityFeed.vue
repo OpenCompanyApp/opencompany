@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
       <h3 class="text-sm font-medium text-neutral-900 dark:text-white">Recent Activity</h3>
-      <Link href="/activity" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
+      <Link :href="workspacePath('/activity')" class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
         View all
       </Link>
     </div>
@@ -42,6 +42,9 @@ import { Link } from '@inertiajs/vue3'
 import type { Activity, ActivityType } from '@/types'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import { useWorkspace } from '@/composables/useWorkspace'
+
+const { workspacePath } = useWorkspace()
 
 defineProps<{
   activities: Activity[]

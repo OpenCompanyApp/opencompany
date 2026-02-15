@@ -36,7 +36,7 @@ class ManageAgentPermissions implements Tool
                 return 'Self-modification denied: you cannot change your own permissions. Ask a human or another agent.';
             }
 
-            $target = User::where('type', 'agent')->find($agentId);
+            $target = User::where('type', 'agent')->where('workspace_id', $this->agent->workspace_id)->find($agentId);
             if (!$target) {
                 return "Agent not found: {$agentId}";
             }

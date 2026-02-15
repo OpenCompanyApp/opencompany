@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\AgentStatusUpdated;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -24,6 +25,14 @@ class AgentResumeFromSleepJob implements ShouldQueue
 
     public function handle(): void
     {
+        // Set workspace context from agent
+        if ($this->agent->workspace_id) {
+            $workspace = Workspace::find($this->agent->workspace_id);
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+            }
+        }
+
         $this->agent->refresh();
 
         if ($this->agent->status !== 'sleeping') {

@@ -48,6 +48,7 @@ class DocumentIndexingService
                 'collection' => $collection,
                 'agent_id' => $agentId,
                 'chunk_index' => $i,
+                'workspace_id' => $document->workspace_id,
                 'metadata' => [
                     'title' => $document->title,
                     'updated_at' => $document->updated_at?->toIso8601String(),
@@ -75,15 +76,28 @@ class DocumentIndexingService
     }
 
     /**
-     * Reset all embedding data. Called when the embedding model changes,
+     * Reset embedding data. Called when the embedding model changes,
      * since vectors from different models are incompatible.
+     *
+     * @param  string|null  $workspaceId  If provided, only reset data for this workspace. If null, truncate all data.
      */
-    public static function resetEmbeddings(): void
+    public static function resetEmbeddings(?string $workspaceId = null): void
     {
         if (DB::getDriverName() !== 'pgsql') {
             return;
         }
 
+        if ($workspaceId) {
+            // Per-workspace reset: delete only this workspace's data
+            DB::table('document_chunks')->where('workspace_id', $workspaceId)->delete();
+            DB::table('embedding_cache')->where('workspace_id', $workspaceId)->delete();
+
+            Log::info('Embedding data reset for workspace', ['workspace_id' => $workspaceId]);
+
+            return;
+        }
+
+        // Full reset: truncate all data and drop index
         DB::statement('DROP INDEX IF EXISTS document_chunks_embedding_idx');
         DB::table('document_chunks')->truncate();
         DB::table('embedding_cache')->truncate();
@@ -170,6 +184,12 @@ class DocumentIndexingService
             ->orderByDesc('similarity')
             ->limit($limit);
 
+        // Add workspace scope if workspace context is available
+        $workspace = app('currentWorkspace');
+        if ($workspace) {
+            $builder->where('workspace_id', $workspace->id);
+        }
+
         if ($collection !== null) {
             $builder->where('collection', $collection);
         }
@@ -212,6 +232,12 @@ class DocumentIndexingService
                 ->selectRaw("*, ts_rank(search_vector, to_tsquery('english', ?)) as similarity", [$tsQuery])
                 ->orderByDesc('similarity')
                 ->limit($limit);
+
+            // Add workspace scope if workspace context is available
+            $workspace = app('currentWorkspace');
+            if ($workspace) {
+                $builder->where('workspace_id', $workspace->id);
+            }
 
             if ($collection !== null) {
                 $builder->where('collection', $collection);

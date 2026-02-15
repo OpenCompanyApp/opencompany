@@ -25,7 +25,7 @@ class IntegrationController extends Controller
      */
     public function index(): \Illuminate\Http\JsonResponse
     {
-        $settings = IntegrationSetting::all()->keyBy('integration_id');
+        $settings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
         $available = IntegrationSetting::getAvailableIntegrations();
         $registry = app(ToolProviderRegistry::class);
 
@@ -92,7 +92,7 @@ class IntegrationController extends Controller
         }
 
         // MCP servers (remote tool providers)
-        $mcpServers = McpServer::where('enabled', true)->get();
+        $mcpServers = McpServer::forWorkspace()->where('enabled', true)->get();
         foreach ($mcpServers as $server) {
             $integrations[] = [
                 'id' => 'mcp_' . $server->slug,
@@ -121,7 +121,7 @@ class IntegrationController extends Controller
         // Check dynamic providers first
         $provider = $this->findConfigurableProvider($id);
         if ($provider) {
-            $setting = IntegrationSetting::where('integration_id', $id)->first();
+            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
             $schema = $provider->configSchema();
             $meta = $provider->integrationMeta();
 
@@ -149,7 +149,7 @@ class IntegrationController extends Controller
                             if ($sibling === $id) {
                                 continue;
                             }
-                            $siblingSetting = IntegrationSetting::where('integration_id', $sibling)->first();
+                            $siblingSetting = IntegrationSetting::forWorkspace()->where('integration_id', $sibling)->first();
                             $siblingVal = $siblingSetting?->getConfigValue($sharedKey);
                             if (! empty($siblingVal) && is_string($siblingVal)) {
                                 $config[$sharedKey] = $sharedKey === 'client_secret'
@@ -178,7 +178,7 @@ class IntegrationController extends Controller
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
-        $setting = IntegrationSetting::where('integration_id', $id)->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
 
         $config = [
             'apiKey' => $setting?->getMaskedApiKey(),
@@ -222,9 +222,10 @@ class IntegrationController extends Controller
                 ['enabled' => 'nullable|boolean'],
             ));
 
-            $setting = IntegrationSetting::firstOrNew(['integration_id' => $id]);
-            if (!$setting->id) {
+            $setting = IntegrationSetting::forWorkspace()->firstOrNew(['integration_id' => $id]);
+            if (!$setting->exists) {
                 $setting->id = Str::uuid()->toString();
+                $setting->workspace_id = workspace()->id;
             }
 
             $config = $setting->config ?? [];
@@ -263,7 +264,7 @@ class IntegrationController extends Controller
                             if ($sibling === $id) {
                                 continue;
                             }
-                            $siblingVal = IntegrationSetting::where('integration_id', $sibling)
+                            $siblingVal = IntegrationSetting::forWorkspace()->where('integration_id', $sibling)
                                 ->first()?->getConfigValue($sharedKey);
                             if (! empty($siblingVal) && is_string($siblingVal)) {
                                 $config[$sharedKey] = $siblingVal;
@@ -298,10 +299,11 @@ class IntegrationController extends Controller
             'enabled' => 'nullable|boolean',
         ]);
 
-        $setting = IntegrationSetting::firstOrNew(['integration_id' => $id]);
+        $setting = IntegrationSetting::forWorkspace()->firstOrNew(['integration_id' => $id]);
 
-        if (!$setting->id) {
+        if (!$setting->exists) {
             $setting->id = Str::uuid()->toString();
+            $setting->workspace_id = workspace()->id;
         }
 
         $config = $setting->config ?? [];
@@ -367,7 +369,7 @@ class IntegrationController extends Controller
             $config = $request->all();
 
             // Substitute masked secret fields with stored values
-            $setting = IntegrationSetting::where('integration_id', $id)->first();
+            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
             foreach ($provider->configSchema() as $field) {
                 if ($field['type'] === 'secret' || $field['type'] === 'oauth_connect') {
                     $key = $field['key'];
@@ -399,7 +401,7 @@ class IntegrationController extends Controller
 
         $apiKey = $request->input('apiKey');
         if (!$apiKey || str_contains($apiKey, '*')) {
-            $setting = IntegrationSetting::where('integration_id', $id)->first();
+            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
             $apiKey = $setting?->getConfigValue('api_key');
         }
 
@@ -449,7 +451,7 @@ class IntegrationController extends Controller
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
-        $setting = IntegrationSetting::where('integration_id', $id)->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
         if ($setting) {
             $config = $setting->config ?? [];
             foreach ($provider->configSchema() as $field) {
@@ -579,7 +581,7 @@ class IntegrationController extends Controller
             $result = $data['result'];
 
             // Persist bot username in config
-            $setting = IntegrationSetting::where('integration_id', 'telegram')->first();
+            $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
             if ($setting) {
                 $setting->setConfigValue('bot_username', $result['username'] ?? '');
                 $setting->save();
@@ -607,7 +609,7 @@ class IntegrationController extends Controller
             return response()->json(['error' => 'Webhooks not supported for this integration'], 400);
         }
 
-        $setting = IntegrationSetting::where('integration_id', 'telegram')->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
         $apiKey = $request->input('apiKey');
 
         if (!$apiKey || str_contains($apiKey, '*')) {
@@ -622,6 +624,7 @@ class IntegrationController extends Controller
         if (!$setting) {
             $setting = IntegrationSetting::create([
                 'id' => Str::uuid()->toString(),
+                'workspace_id' => workspace()->id,
                 'integration_id' => 'telegram',
                 'config' => ['api_key' => $apiKey],
                 'enabled' => true,
@@ -775,7 +778,7 @@ class IntegrationController extends Controller
      */
     public function enabledModels(): \Illuminate\Http\JsonResponse
     {
-        $settings = IntegrationSetting::where('enabled', true)->get();
+        $settings = IntegrationSetting::forWorkspace()->where('enabled', true)->get();
         $available = IntegrationSetting::getAvailableIntegrations();
 
         $models = [];
@@ -831,7 +834,7 @@ class IntegrationController extends Controller
     {
         $providers = [];
         $available = IntegrationSetting::getAvailableIntegrations();
-        $settings = IntegrationSetting::all()->keyBy('integration_id');
+        $settings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
 
         // AI providers from config/integrations.php (those with api_format set)
         foreach ($available as $id => $info) {
@@ -1232,7 +1235,7 @@ class IntegrationController extends Controller
             }
 
             // Store in integration settings
-            $setting = IntegrationSetting::where('integration_id', $id)->first();
+            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
             if ($setting) {
                 $setting->setConfigValue('models', $models);
                 $setting->save();
@@ -1406,7 +1409,7 @@ class IntegrationController extends Controller
      */
     private function fetchOllamaModels(string $id): array
     {
-        $setting = IntegrationSetting::where('integration_id', $id)->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
         $available = config('integrations', []);
         $baseUrl = $setting?->getConfigValue('url') ?: ($available[$id]['default_url'] ?? 'http://localhost:11434/v1');
 
@@ -1439,7 +1442,7 @@ class IntegrationController extends Controller
      */
     private function getProviderCredentials(string $id): array
     {
-        $setting = IntegrationSetting::where('integration_id', $id)->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
         $available = config('integrations', []);
 
         $apiKey = $setting?->getConfigValue('api_key')

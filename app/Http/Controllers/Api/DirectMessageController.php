@@ -52,6 +52,7 @@ class DirectMessageController extends Controller
             'id' => Str::uuid()->toString(),
             'name' => 'DM',
             'type' => 'dm',
+            'workspace_id' => workspace()->id,
         ]);
 
         // Add both users as members

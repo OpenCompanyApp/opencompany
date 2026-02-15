@@ -100,6 +100,7 @@ class MemoryFlushServiceTest extends TestCase
             'agent_id' => $this->agent->id,
             'summary' => 'Previous summary.',
             'flush_count' => 1,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $messages = $this->makeMessagesWithTokens(80_000);
@@ -196,6 +197,7 @@ class MemoryFlushServiceTest extends TestCase
             'agent_id' => $this->agent->id,
             'summary' => 'Previous summary.',
             'flush_count' => 1,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $messages = $this->makeMessagesWithTokens(76_000);
@@ -217,6 +219,7 @@ class MemoryFlushServiceTest extends TestCase
             'agent_id' => $this->agent->id,
             'summary' => 'Existing summary.',
             'flush_count' => 0,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Fake the LLM call that flush() makes
@@ -274,6 +277,7 @@ class MemoryFlushServiceTest extends TestCase
             'agent_id' => $this->agent->id,
             'summary' => 'Old summary.',
             'flush_count' => 1,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Prism::fake([

@@ -42,7 +42,7 @@ class EmbeddingService
 
         EmbeddingCache::updateOrCreate(
             ['id' => $cacheKey],
-            ['provider' => $providerKey, 'model' => $modelName, 'embedding' => $embedding]
+            ['provider' => $providerKey, 'model' => $modelName, 'embedding' => $embedding, 'workspace_id' => workspace()->id]
         );
 
         return $embedding;
@@ -97,7 +97,7 @@ class EmbeddingService
                     $cacheKey = EmbeddingCache::cacheKey($providerKey, $modelName, $uncachedTexts[$j]);
                     EmbeddingCache::updateOrCreate(
                         ['id' => $cacheKey],
-                        ['provider' => $providerKey, 'model' => $modelName, 'embedding' => $embedding]
+                        ['provider' => $providerKey, 'model' => $modelName, 'embedding' => $embedding, 'workspace_id' => workspace()->id]
                     );
                 }
             } catch (\Throwable $e) {

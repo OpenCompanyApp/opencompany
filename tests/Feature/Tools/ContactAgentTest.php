@@ -275,6 +275,7 @@ class ContactAgentTest extends TestCase
             'requester_id' => $caller->id,
             'channel_id' => $channel->id,
             'started_at' => now(),
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = $this->makeTool($caller);
@@ -353,6 +354,7 @@ class ContactAgentTest extends TestCase
             'requester_id' => $caller->id,
             'channel_id' => $channel->id,
             'started_at' => now(),
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = $this->makeTool($caller);

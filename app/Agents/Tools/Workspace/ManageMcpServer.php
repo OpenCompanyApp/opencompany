@@ -4,6 +4,7 @@ namespace App\Agents\Tools\Workspace;
 
 use App\Models\AgentPermission;
 use App\Models\McpServer;
+use App\Models\User;
 use App\Services\Mcp\McpClient;
 use App\Services\Mcp\McpToolProvider;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -14,6 +15,9 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class ManageMcpServer implements Tool
 {
+    public function __construct(
+        private User $agent,
+    ) {}
 
     public function description(): string
     {
@@ -39,7 +43,7 @@ class ManageMcpServer implements Tool
 
     private function list(): string
     {
-        $servers = McpServer::orderBy('name')->get();
+        $servers = McpServer::forWorkspace()->orderBy('name')->get();
 
         if ($servers->isEmpty()) {
             return "No MCP servers configured. Use action 'add' to add one.";
@@ -77,7 +81,7 @@ class ManageMcpServer implements Tool
         $slug = Str::slug($name, '_');
         $baseSlug = $slug;
         $counter = 1;
-        while (McpServer::where('slug', $slug)->exists()) {
+        while (McpServer::forWorkspace()->where('slug', $slug)->exists()) {
             $slug = $baseSlug . '_' . $counter++;
         }
 
@@ -103,6 +107,7 @@ class ManageMcpServer implements Tool
             'icon' => $request['icon'] ?? 'ph:plug',
             'description' => $request['description'] ?? null,
             'enabled' => false,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         // Auto-discover tools
@@ -282,19 +287,19 @@ class ManageMcpServer implements Tool
         }
 
         // Try by ID first
-        $server = McpServer::find($identifier);
+        $server = McpServer::forWorkspace()->find($identifier);
         if ($server) {
             return $server;
         }
 
         // Try by slug
-        $server = McpServer::where('slug', $identifier)->first();
+        $server = McpServer::forWorkspace()->where('slug', $identifier)->first();
         if ($server) {
             return $server;
         }
 
         // Try by name (case-insensitive)
-        $server = McpServer::whereRaw('LOWER(name) = ?', [strtolower($identifier)])->first();
+        $server = McpServer::forWorkspace()->whereRaw('LOWER(name) = ?', [strtolower($identifier)])->first();
         if ($server) {
             return $server;
         }

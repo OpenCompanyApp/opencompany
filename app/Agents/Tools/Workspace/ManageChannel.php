@@ -53,6 +53,7 @@ class ManageChannel implements Tool
             'type' => $type,
             'description' => $request['description'] ?? null,
             'is_ephemeral' => false,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         // Add the creating agent as a member
@@ -91,7 +92,7 @@ class ManageChannel implements Tool
             return 'Required: channelId, userId.';
         }
 
-        $channel = Channel::find($channelId);
+        $channel = Channel::forWorkspace()->find($channelId);
         if (!$channel) {
             return "Channel not found: {$channelId}";
         }
@@ -123,7 +124,7 @@ class ManageChannel implements Tool
             return 'Required: channelId, userId.';
         }
 
-        $channel = Channel::find($channelId);
+        $channel = Channel::forWorkspace()->find($channelId);
         if (!$channel) {
             return "Channel not found: {$channelId}";
         }

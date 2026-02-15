@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,6 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->statefulApi();
+
+        $middleware->alias([
+            'resolve.workspace' => \App\Http\Middleware\ResolveWorkspace::class,
+            'workspace.admin' => \App\Http\Middleware\EnsureWorkspaceAdmin::class,
+        ]);
+
+        RedirectIfAuthenticated::redirectUsing(fn () => route('home'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

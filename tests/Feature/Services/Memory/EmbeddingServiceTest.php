@@ -68,6 +68,7 @@ class EmbeddingServiceTest extends TestCase
             'provider' => 'openai',
             'model' => 'text-embedding-3-small',
             'embedding' => $fakeEmbedding,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Prism::fake with no responses — if called, it would throw
@@ -93,6 +94,7 @@ class EmbeddingServiceTest extends TestCase
             'provider' => 'openai',
             'model' => 'text-embedding-3-small',
             'embedding' => $cachedEmbedding,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         // Only the uncached text should trigger an API call

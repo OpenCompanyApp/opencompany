@@ -124,7 +124,7 @@
               <button
                 v-if="task.parentTask"
                 :class="['mt-1 text-xs hover:underline flex items-center gap-1', task.source === 'agent_notify' ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400']"
-                @click="router.visit(`/tasks/${task.parentTask.id}`)"
+                @click="router.visit(workspacePath(`/tasks/${task.parentTask.id}`))"
               >
                 <Icon name="ph:arrow-bend-up-left" class="w-3 h-3" />
                 View parent task: {{ task.parentTask.title }}
@@ -137,7 +137,7 @@
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
           <div>
             <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Agent</label>
-            <Link v-if="task.agent" :href="`/agent/${task.agent.id}`" class="flex items-center gap-2 hover:underline">
+            <Link v-if="task.agent" :href="workspacePath(`/agent/${task.agent.id}`)" class="flex items-center gap-2 hover:underline">
               <AgentAvatar :user="task.agent" size="sm" />
               <span class="text-sm text-neutral-700 dark:text-neutral-300">{{ task.agent.name }}</span>
             </Link>
@@ -183,7 +183,7 @@
             <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Parent Task</label>
             <button
               class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-              @click="router.visit(`/tasks/${task.parentTask.id}`)"
+              @click="router.visit(workspacePath(`/tasks/${task.parentTask.id}`))"
             >
               <Icon name="ph:arrow-bend-up-left" class="w-3.5 h-3.5" />
               {{ task.parentTask.title }}
@@ -219,7 +219,7 @@
               v-for="subtask in task.subtasks"
               :key="subtask.id"
               class="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
-              @click="router.visit(`/tasks/${subtask.id}`)"
+              @click="router.visit(workspacePath(`/tasks/${subtask.id}`))"
             >
               <span :class="['w-2 h-2 rounded-full shrink-0', statusDots[subtask.status]]" />
               <div class="flex-1 min-w-0">
@@ -512,6 +512,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import type { AgentTask, TaskStatus, TaskType, Priority } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import SharedSkeleton from '@/Components/shared/Skeleton.vue'
@@ -558,6 +559,7 @@ const {
   cancelAgentTask,
 } = useApi()
 
+const { workspacePath } = useWorkspace()
 const { renderMarkdown } = useMarkdown()
 const { highlight } = useHighlight()
 
@@ -786,7 +788,7 @@ const goBack = () => window.history.back()
 
 const goToChannel = () => {
   if (task.value?.channelId) {
-    router.visit(`/chat?channel=${task.value.channelId}`)
+    router.visit(workspacePath(`/chat?channel=${task.value.channelId}`))
   }
 }
 

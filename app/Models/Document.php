@@ -6,16 +6,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Concerns\BelongsToWorkspace;
 
 class Document extends Model
 {
     /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<static>> */
-    use HasFactory;
+    use HasFactory, BelongsToWorkspace;
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'title',
         'content',
         'author_id',

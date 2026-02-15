@@ -4,12 +4,16 @@ namespace App\Agents\Tools\Calendar;
 
 use App\Models\CalendarEvent;
 use App\Models\CalendarEventAttendee;
+use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
 class QueryCalendar implements Tool
 {
+    public function __construct(
+        private User $agent,
+    ) {}
 
     public function description(): string
     {
@@ -37,7 +41,7 @@ class QueryCalendar implements Tool
         $endDate = $request['endDate'] ?? null;
         $userId = $request['userId'] ?? null;
 
-        $query = CalendarEvent::with(['creator', 'attendees.user']);
+        $query = CalendarEvent::forWorkspace()->with(['creator', 'attendees.user']);
 
         if ($startDate) {
             $query->where('start_at', '>=', $startDate);
@@ -84,7 +88,7 @@ class QueryCalendar implements Tool
             return "Error: 'eventId' is required for the 'get_event' action.";
         }
 
-        $event = CalendarEvent::with(['creator', 'attendees.user'])->find($eventId);
+        $event = CalendarEvent::forWorkspace()->with(['creator', 'attendees.user'])->find($eventId);
         if (!$event) {
             return "Error: Event '{$eventId}' not found.";
         }

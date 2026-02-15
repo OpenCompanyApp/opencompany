@@ -21,9 +21,17 @@ class UserPresenceUpdated implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        return [
-            new PresenceChannel('online'),
-        ];
+        // Agents belong to one workspace; humans may belong to multiple
+        if ($this->user->workspace_id) {
+            return [
+                new PresenceChannel('workspace.' . $this->user->workspace_id . '.online'),
+            ];
+        }
+
+        // Human user: broadcast to all their workspaces
+        return $this->user->workspaces->map(
+            fn ($ws) => new PresenceChannel('workspace.' . $ws->id . '.online')
+        )->all();
     }
 
     /** @return array<string, mixed> */

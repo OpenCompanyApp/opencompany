@@ -21,7 +21,7 @@ class ScheduledAutomationController extends Controller
      */
     public function index(): array
     {
-        $automations = ScheduledAutomation::with(['agent', 'channel', 'createdBy'])
+        $automations = ScheduledAutomation::forWorkspace()->with(['agent', 'channel', 'createdBy'])
             ->orderBy('name')
             ->get();
 
@@ -47,6 +47,7 @@ class ScheduledAutomationController extends Controller
 
         $automation = ScheduledAutomation::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'name' => $request->input('name'),
             'description' => $request->input('description'),
             'agent_id' => $request->input('agentId'),
@@ -69,7 +70,7 @@ class ScheduledAutomationController extends Controller
      */
     public function show(string $id): array
     {
-        $automation = ScheduledAutomation::with(['agent', 'channel', 'createdBy'])
+        $automation = ScheduledAutomation::forWorkspace()->with(['agent', 'channel', 'createdBy'])
             ->findOrFail($id);
 
         $data = (new ScheduledAutomationResource($automation))->resolve();
@@ -84,7 +85,7 @@ class ScheduledAutomationController extends Controller
      */
     public function update(Request $request, string $id): array|JsonResponse
     {
-        $automation = ScheduledAutomation::findOrFail($id);
+        $automation = ScheduledAutomation::forWorkspace()->findOrFail($id);
 
         $data = [];
 
@@ -136,7 +137,7 @@ class ScheduledAutomationController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        ScheduledAutomation::findOrFail($id)->delete();
+        ScheduledAutomation::forWorkspace()->findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
@@ -146,7 +147,7 @@ class ScheduledAutomationController extends Controller
      */
     public function runs(string $id): Collection
     {
-        $tasks = Task::with(['agent'])
+        $tasks = Task::forWorkspace()->with(['agent'])
             ->where('source', Task::SOURCE_AUTOMATION)
             ->whereJsonContains('context->scheduled_automation_id', $id)
             ->orderByDesc('created_at')
@@ -168,7 +169,7 @@ class ScheduledAutomationController extends Controller
 
     public function triggerRun(string $id): JsonResponse
     {
-        $automation = ScheduledAutomation::findOrFail($id);
+        $automation = ScheduledAutomation::forWorkspace()->findOrFail($id);
         RunScheduledAutomationJob::dispatch($automation);
 
         return response()->json(['message' => 'Run dispatched']);

@@ -5,16 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\BelongsToWorkspace;
 
 class Activity extends Model
 {
     /** @use HasFactory<\Database\Factories\ActivityFactory> */
-    use HasFactory;
+    use HasFactory, BelongsToWorkspace;
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'type',
         'description',
         'actor_id',

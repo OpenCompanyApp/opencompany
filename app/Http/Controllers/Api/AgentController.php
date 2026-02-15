@@ -33,6 +33,7 @@ class AgentController extends Controller
     public function index(): Collection
     {
         return User::where('type', 'agent')
+            ->where('workspace_id', workspace()->id)
             ->orderBy('name')
             ->get();
     }
@@ -74,7 +75,8 @@ class AgentController extends Controller
         $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama'];
 
         if (!in_array($provider, $standardProviders)) {
-            $integration = IntegrationSetting::where('integration_id', $provider)
+            $integration = IntegrationSetting::forWorkspace()
+                ->where('integration_id', $provider)
                 ->where('enabled', true)
                 ->first();
 
@@ -88,6 +90,7 @@ class AgentController extends Controller
         // Create the agent user
         $agent = User::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'name' => $validated['name'],
             'type' => 'agent',
             'agent_type' => $validated['agentType'],
@@ -114,6 +117,7 @@ class AgentController extends Controller
         $creator = User::find($creatorId);
         $dmChannel = Channel::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'name' => 'DM: ' . ($creator->name ?? 'User') . ' ↔ ' . $agent->name,
             'type' => 'dm',
             'is_ephemeral' => false,
@@ -129,7 +133,7 @@ class AgentController extends Controller
         ]);
 
         // Add agent to #general channel by default
-        $generalChannel = Channel::where('name', 'general')->first();
+        $generalChannel = Channel::forWorkspace()->where('name', 'general')->first();
         if ($generalChannel) {
             ChannelMember::create([
                 'channel_id' => $generalChannel->id,
@@ -145,7 +149,7 @@ class AgentController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $agent = User::where('type', 'agent')->findOrFail($id);
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
         // Load identity files and map by type
         $identityFiles = $this->agentDocumentService->getIdentityFiles($agent);
@@ -189,7 +193,8 @@ class AgentController extends Controller
         $agentChannels = $agent->channels()->get(['channels.id', 'channels.name', 'channels.type']);
 
         // Document folders (for the UI checklist)
-        $documentFolders = \App\Models\Document::where('is_folder', true)
+        $documentFolders = \App\Models\Document::forWorkspace()
+            ->where('is_folder', true)
             ->whereNull('parent_id')
             ->orderBy('title')
             ->get(['id', 'title']);
@@ -282,7 +287,7 @@ class AgentController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        $agent = User::where('type', 'agent')->findOrFail($id);
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
@@ -308,7 +313,8 @@ class AgentController extends Controller
             $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama'];
 
             if (!in_array($provider, $standardProviders)) {
-                $integration = IntegrationSetting::where('integration_id', $provider)
+                $integration = IntegrationSetting::forWorkspace()
+                    ->where('integration_id', $provider)
                     ->where('enabled', true)
                     ->first();
 
@@ -345,7 +351,7 @@ class AgentController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $agent = User::where('type', 'agent')->findOrFail($id);
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
         $this->agentDocumentService->deleteAgentDocumentStructure($agent);
         $agent->delete();
 
@@ -357,7 +363,7 @@ class AgentController extends Controller
      */
     public function identityFiles(string $id): JsonResponse
     {
-        $agent = User::where('type', 'agent')->findOrFail($id);
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
         $files = $this->agentDocumentService->getIdentityFiles($agent);
 
         return response()->json($files->map(function ($file) {
@@ -376,7 +382,7 @@ class AgentController extends Controller
      */
     public function updateIdentityFile(Request $request, string $id, string $fileType): JsonResponse
     {
-        $agent = User::where('type', 'agent')->findOrFail($id);
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
         $validated = $request->validate([
             'content' => 'required|string',

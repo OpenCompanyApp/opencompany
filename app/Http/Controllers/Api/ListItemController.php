@@ -16,14 +16,14 @@ class ListItemController extends Controller
     /** @return Collection<int, ListItem> */
     public function index(): Collection
     {
-        return ListItem::with(['assignee', 'creator', 'collaborators', 'channel'])
+        return ListItem::forWorkspace()->with(['assignee', 'creator', 'collaborators', 'channel'])
             ->orderBy('position')
             ->get();
     }
 
     public function show(string $id): ListItem
     {
-        return ListItem::with(['assignee', 'creator', 'collaborators', 'channel', 'comments.author'])
+        return ListItem::forWorkspace()->with(['assignee', 'creator', 'collaborators', 'channel', 'comments.author'])
             ->findOrFail($id);
     }
 
@@ -39,11 +39,11 @@ class ListItemController extends Controller
         // For folders, calculate max position among siblings
         // For items, calculate max position within parent and status
         if ($isFolder) {
-            $maxPosition = ListItem::where('parent_id', $parentId)
+            $maxPosition = ListItem::forWorkspace()->where('parent_id', $parentId)
                 ->where('is_folder', true)
                 ->max('position') ?? 0;
         } else {
-            $maxPosition = ListItem::where('parent_id', $parentId)
+            $maxPosition = ListItem::forWorkspace()->where('parent_id', $parentId)
                 ->where('is_folder', false)
                 ->where('status', $request->input('status', 'backlog'))
                 ->max('position') ?? 0;
@@ -51,13 +51,14 @@ class ListItemController extends Controller
 
         $listItem = ListItem::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'parent_id' => $parentId,
             'is_folder' => $isFolder,
             'title' => $request->input('title'),
             'description' => $request->input('description', ''),
             'status' => $isFolder
-                ? (ListStatus::where('is_default', true)->value('slug') ?? 'backlog')
-                : $request->input('status', ListStatus::where('is_default', true)->value('slug') ?? 'backlog'),
+                ? (ListStatus::forWorkspace()->where('is_default', true)->value('slug') ?? 'backlog')
+                : $request->input('status', ListStatus::forWorkspace()->where('is_default', true)->value('slug') ?? 'backlog'),
             'priority' => $isFolder ? 'medium' : $request->input('priority', 'medium'),
             'assignee_id' => $request->input('assigneeId'),
             'creator_id' => $request->input('creatorId'),
@@ -82,7 +83,7 @@ class ListItemController extends Controller
 
     public function update(Request $request, string $id): ListItem
     {
-        $listItem = ListItem::findOrFail($id);
+        $listItem = ListItem::forWorkspace()->findOrFail($id);
 
         $data = $request->only([
             'title',
@@ -109,7 +110,7 @@ class ListItemController extends Controller
 
         // Handle status changes
         if (isset($data['status'])) {
-            $newStatus = ListStatus::where('slug', $data['status'])->first();
+            $newStatus = ListStatus::forWorkspace()->where('slug', $data['status'])->first();
             if ($newStatus) {
                 if ($newStatus->is_done && !$listItem->completed_at) {
                     $data['completed_at'] = now();
@@ -139,7 +140,7 @@ class ListItemController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        ListItem::findOrFail($id)->delete();
+        ListItem::forWorkspace()->findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }

@@ -34,7 +34,7 @@
         <!-- Author name (first in group, others only) -->
         <div v-if="showHeader && !isOwn" class="flex items-center gap-1.5 mb-1 ml-1">
           <Link
-            :href="message.author.type === 'agent' ? `/agent/${message.author.id}` : `/profile/${message.author.id}`"
+            :href="workspacePath(message.author.type === 'agent' ? `/agent/${message.author.id}` : `/profile/${message.author.id}`)"
             class="text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:underline"
           >
             {{ message.author.name }}
@@ -388,6 +388,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useWorkspace } from '@/composables/useWorkspace'
 import { useHighlight } from '@/composables/useHighlight'
 import Icon from '@/Components/shared/Icon.vue'
 import Badge from '@/Components/shared/Badge.vue'
@@ -472,6 +473,7 @@ const emit = defineEmits<{
   replyClick: [message: Message]
 }>()
 
+const { workspacePath } = useWorkspace()
 const { highlight } = useHighlight()
 
 const isHovered = ref(false)

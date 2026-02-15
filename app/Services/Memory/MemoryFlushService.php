@@ -73,8 +73,8 @@ class MemoryFlushService
         $softThresholdTokens = config('memory.memory_flush.soft_threshold_tokens', 4000);
         $softZoneStart = $compactionThreshold - $softThresholdTokens;
 
-        // Flush when context exceeds the soft zone (including when compaction is already needed)
-        return $adjustedTokens > $softZoneStart;
+        // Flush when context is within the soft zone (approaching compaction but not yet exceeding it)
+        return $adjustedTokens > $softZoneStart && $adjustedTokens <= $compactionThreshold;
     }
 
     /**
@@ -92,7 +92,7 @@ class MemoryFlushService
         // Increment flush count (create summary record if needed)
         $summary = ConversationSummary::firstOrCreate(
             ['channel_id' => $channelId, 'agent_id' => $agent->id],
-            ['summary' => '']
+            ['summary' => '', 'workspace_id' => $agent->workspace_id ?? workspace()->id]
         );
         $summary->increment('flush_count');
 

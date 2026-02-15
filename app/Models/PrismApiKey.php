@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToWorkspace;
 
 /**
  * @property string $id
@@ -17,9 +18,10 @@ use Illuminate\Database\Eloquent\Model;
  */
 class PrismApiKey extends Model
 {
-    use HasUuids;
+    use HasUuids, BelongsToWorkspace;
 
     protected $fillable = [
+        'workspace_id',
         'name',
         'key_hash',
         'key_prefix',
@@ -40,11 +42,12 @@ class PrismApiKey extends Model
      *
      * @return array{key: self, plainTextKey: string}
      */
-    public static function generateKey(string $name): array
+    public static function generateKey(string $name, ?string $workspaceId = null): array
     {
         $plainText = 'ps_live_' . bin2hex(random_bytes(24));
 
         $key = static::create([
+            'workspace_id' => $workspaceId ?? workspace()->id,
             'name' => $name,
             'key_hash' => hash('sha256', $plainText),
             'key_prefix' => substr($plainText, 0, 16),

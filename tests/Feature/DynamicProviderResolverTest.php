@@ -53,6 +53,7 @@ class DynamicProviderResolverTest extends TestCase
             'id' => 'int-1',
             'integration_id' => 'glm-coding',
             'enabled' => true,
+            'workspace_id' => $this->workspace->id,
             'config' => [
                 'api_key' => 'test-api-key',
                 'url' => 'https://api.z.ai/api/coding/paas/v4',
@@ -110,6 +111,7 @@ class DynamicProviderResolverTest extends TestCase
             'id' => 'int-1',
             'integration_id' => 'glm-coding',
             'enabled' => true,
+            'workspace_id' => $this->workspace->id,
             'config' => [
                 'api_key' => 'test-key',
                 'url' => 'https://api.z.ai/api/coding/paas/v4',

@@ -71,7 +71,7 @@ class ApprovalResumeTest extends TestCase
 
         ['human' => $human, 'agent' => $agent, 'channel' => $channel, 'approval' => $approval] = $this->createApprovalScenario();
 
-        $response = $this->patchJson("/api/approvals/{$approval->id}", [
+        $response = $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
             'status' => 'approved',
             'respondedById' => $human->id,
         ]);
@@ -103,7 +103,7 @@ class ApprovalResumeTest extends TestCase
 
         ['human' => $human, 'agent' => $agent, 'approval' => $approval] = $this->createApprovalScenario();
 
-        $this->patchJson("/api/approvals/{$approval->id}", [
+        $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
             'status' => 'approved',
             'respondedById' => $human->id,
         ]);
@@ -120,7 +120,7 @@ class ApprovalResumeTest extends TestCase
 
         ['human' => $human, 'approval' => $approval] = $this->createApprovalScenario();
 
-        $this->patchJson("/api/approvals/{$approval->id}", [
+        $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
             'status' => 'approved',
             'respondedById' => $human->id,
         ]);
@@ -137,7 +137,7 @@ class ApprovalResumeTest extends TestCase
 
         ['human' => $human, 'agent' => $agent, 'channel' => $channel, 'approval' => $approval] = $this->createApprovalScenario();
 
-        $response = $this->patchJson("/api/approvals/{$approval->id}", [
+        $response = $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
             'status' => 'rejected',
             'respondedById' => $human->id,
         ]);
@@ -163,7 +163,7 @@ class ApprovalResumeTest extends TestCase
 
         ['human' => $human, 'approval' => $approval] = $this->createApprovalScenario();
 
-        $this->patchJson("/api/approvals/{$approval->id}", [
+        $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
             'status' => 'rejected',
             'respondedById' => $human->id,
         ]);
@@ -179,7 +179,7 @@ class ApprovalResumeTest extends TestCase
         // Agent is NOT waiting for this approval
         ['human' => $human, 'agent' => $agent, 'channel' => $channel, 'approval' => $approval] = $this->createApprovalScenario(agentWaiting: false);
 
-        $response = $this->patchJson("/api/approvals/{$approval->id}", [
+        $response = $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
             'status' => 'approved',
             'respondedById' => $human->id,
         ]);
@@ -219,7 +219,7 @@ class ApprovalResumeTest extends TestCase
             ],
         );
 
-        $response = $this->patchJson("/api/approvals/{$approval->id}", [
+        $response = $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
             'status' => 'approved',
             'respondedById' => $human->id,
         ]);
@@ -251,7 +251,7 @@ class ApprovalResumeTest extends TestCase
             approvalType: 'budget',
         );
 
-        $response = $this->patchJson("/api/approvals/{$approval->id}", [
+        $response = $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
             'status' => 'approved',
             'respondedById' => $human->id,
         ]);

@@ -43,6 +43,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         McpServer::create([
@@ -53,6 +54,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $response = $this->actingAs($this->user)->getJson('/api/mcp-servers');
@@ -168,6 +170,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Http::fake([
@@ -201,6 +204,7 @@ class McpServerControllerTest extends TestCase
             'enabled' => true,
             'timeout' => 30,
             'icon' => 'ph:globe',
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $response = $this->actingAs($this->user)->getJson("/api/mcp-servers/{$server->id}");
@@ -237,6 +241,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $response = $this->actingAs($this->user)->patchJson("/api/mcp-servers/{$server->id}", [
@@ -263,6 +268,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $response = $this->actingAs($this->user)->patchJson("/api/mcp-servers/{$server->id}", [
@@ -286,6 +292,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $response = $this->actingAs($this->user)->deleteJson("/api/mcp-servers/{$server->id}");
@@ -306,6 +313,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
             'discovered_tools' => [
                 ['name' => 'tool_one', 'description' => 'First tool'],
             ],
@@ -353,6 +361,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Http::fake([
@@ -382,6 +391,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         Http::fake([
@@ -406,6 +416,7 @@ class McpServerControllerTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
             'discovered_tools' => [],
         ]);
 

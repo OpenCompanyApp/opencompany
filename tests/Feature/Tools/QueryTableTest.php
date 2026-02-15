@@ -29,6 +29,7 @@ class QueryTableTest extends TestCase
         DataTable::create([
             'name' => 'Customers',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         $tool = new QueryTable($agent);
@@ -47,6 +48,7 @@ class QueryTableTest extends TestCase
         $table = DataTable::create([
             'name' => 'Employees',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         DataTableColumn::create([
@@ -84,6 +86,7 @@ class QueryTableTest extends TestCase
         $table = DataTable::create([
             'name' => 'Contacts',
             'created_by' => $agent->id,
+            'workspace_id' => $this->workspace->id,
         ]);
 
         DataTableRow::create([

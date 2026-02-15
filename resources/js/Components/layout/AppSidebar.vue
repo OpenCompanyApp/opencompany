@@ -9,42 +9,102 @@
     ]"
   >
     <!-- Header -->
-    <div class="flex items-center justify-between p-3">
-      <!-- Logo or collapse toggle -->
-      <Link v-if="!collapsed" href="/" class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center shrink-0">
-          <span class="text-white dark:text-neutral-900 font-bold text-sm">O</span>
-        </div>
-        <span class="font-semibold text-neutral-900 dark:text-white tracking-tight">OpenCompany</span>
-      </Link>
+    <div class="p-3 space-y-1">
+      <!-- Workspace switcher + Collapse toggle -->
+      <div class="flex items-center justify-between">
+        <!-- Workspace switcher popover -->
+        <PopoverRoot v-model:open="switcherOpen">
+          <PopoverTrigger as-child>
+            <button
+              v-if="!collapsed"
+              class="flex items-center gap-2 rounded-lg px-1 py-1 -mx-1 -my-1 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 min-w-0"
+            >
+              <WorkspaceIcon
+                :icon="workspace?.icon"
+                :color="workspace?.color"
+                size="md"
+              />
+              <span class="font-semibold text-neutral-900 dark:text-white tracking-tight truncate text-sm">{{ workspace?.name ?? 'OpenCompany' }}</span>
+              <Icon name="ph:caret-up-down" class="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            </button>
+            <button
+              v-else
+              class="p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-neutral-400"
+            >
+              <WorkspaceIcon
+                :icon="workspace?.icon"
+                :color="workspace?.color"
+                size="md"
+              />
+            </button>
+          </PopoverTrigger>
 
-      <!-- Collapsed: show icon only -->
-      <Link v-else href="/" class="p-2">
-        <div class="w-8 h-8 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center">
-          <span class="text-white dark:text-neutral-900 font-bold text-sm">O</span>
-        </div>
-      </Link>
+          <PopoverPortal>
+            <PopoverContent
+              class="z-50 w-64 bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-lg p-1.5 animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+              side="bottom"
+              align="start"
+              :side-offset="6"
+            >
+              <div class="px-2 pt-1 pb-1.5">
+                <span class="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Workspaces</span>
+              </div>
 
-      <!-- Collapse toggle button -->
-      <Tooltip
-        v-if="!collapsed"
-        text="Hide sidebar"
-        :delay-open="300"
-      >
-        <button
-          :class="[
-            'p-2 rounded-lg transition-colors duration-150 outline-none',
-            'hover:bg-neutral-200 dark:hover:bg-neutral-800',
-            'focus-visible:ring-1 focus-visible:ring-neutral-400',
-          ]"
-          @click="handleCollapse"
+              <Link
+                v-for="ws in workspaces"
+                :key="ws.id"
+                :href="`/w/${ws.slug}`"
+                :class="[
+                  'flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors',
+                  ws.slug === workspace?.slug
+                    ? 'bg-neutral-100 dark:bg-neutral-700/50 text-neutral-900 dark:text-white'
+                    : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 hover:text-neutral-900 dark:hover:text-white',
+                ]"
+                @click="switcherOpen = false"
+              >
+                <WorkspaceIcon :icon="ws.icon" :color="ws.color" size="sm" />
+                <span class="text-sm truncate flex-1">{{ ws.name }}</span>
+                <Icon v-if="ws.slug === workspace?.slug" name="ph:check" class="w-4 h-4 text-neutral-500 shrink-0" />
+              </Link>
+
+              <template v-if="isAdmin">
+                <div class="my-1.5 mx-2 border-t border-neutral-200 dark:border-neutral-700" />
+                <Link
+                  href="/create-workspace"
+                  class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 hover:text-neutral-900 dark:hover:text-white transition-colors"
+                  @click="switcherOpen = false"
+                >
+                  <div class="w-6 h-6 flex items-center justify-center">
+                    <Icon name="ph:plus" class="w-4 h-4" />
+                  </div>
+                  <span class="text-sm">New workspace</span>
+                </Link>
+              </template>
+            </PopoverContent>
+          </PopoverPortal>
+        </PopoverRoot>
+
+        <!-- Collapse toggle -->
+        <Tooltip
+          v-if="!collapsed"
+          text="Hide sidebar"
+          :delay-open="300"
         >
-          <Icon
-            name="ph:sidebar-simple"
-            class="w-5 h-5 text-neutral-600 dark:text-neutral-300"
-          />
-        </button>
-      </Tooltip>
+          <button
+            :class="[
+              'p-1.5 rounded-lg transition-colors duration-150 outline-none shrink-0',
+              'hover:bg-neutral-200 dark:hover:bg-neutral-800',
+              'focus-visible:ring-1 focus-visible:ring-neutral-400',
+            ]"
+            @click="handleCollapse"
+          >
+            <Icon
+              name="ph:sidebar-simple"
+              class="w-4.5 h-4.5 text-neutral-600 dark:text-neutral-300"
+            />
+          </button>
+        </Tooltip>
+      </div>
     </div>
 
     <!-- Expand button when collapsed -->
@@ -81,78 +141,87 @@
       <!-- Config: Automation, Integrations, Settings -->
       <div :class="['space-y-0.5', collapsed ? 'px-2' : 'px-2']">
         <Link
-          href="/automation"
+          :href="workspacePath('/automation')"
           :class="[
             'group flex items-center rounded-lg transition-colors duration-150 outline-none',
             collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-            isActive('/automation')
+            isActive(workspacePath('/automation'))
               ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
               : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
             'focus-visible:ring-1 focus-visible:ring-neutral-400',
           ]"
         >
           <Icon
-            :name="isActive('/automation') ? 'ph:lightning-fill' : 'ph:lightning'"
+            :name="isActive(workspacePath('/automation')) ? 'ph:lightning-fill' : 'ph:lightning'"
             class="w-[18px] h-[18px] shrink-0"
           />
           <span v-if="!collapsed" class="text-sm truncate">Automation</span>
         </Link>
         <Link
-          href="/integrations"
+          v-if="isAdmin"
+          :href="workspacePath('/integrations')"
           :class="[
             'group flex items-center rounded-lg transition-colors duration-150 outline-none',
             collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-            isActive('/integrations')
+            isActive(workspacePath('/integrations'))
               ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
               : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
             'focus-visible:ring-1 focus-visible:ring-neutral-400',
           ]"
         >
           <Icon
-            :name="isActive('/integrations') ? 'ph:plugs-connected-fill' : 'ph:plugs-connected'"
+            :name="isActive(workspacePath('/integrations')) ? 'ph:plugs-connected-fill' : 'ph:plugs-connected'"
             class="w-[18px] h-[18px] shrink-0"
           />
           <span v-if="!collapsed" class="text-sm truncate">Integrations</span>
         </Link>
         <Link
-          href="/settings"
+          v-if="isAdmin"
+          :href="workspacePath('/settings')"
           :class="[
             'group flex items-center rounded-lg transition-colors duration-150 outline-none',
             collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-            isActive('/settings')
+            isActive(workspacePath('/settings'))
               ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
               : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
             'focus-visible:ring-1 focus-visible:ring-neutral-400',
           ]"
         >
           <Icon
-            :name="isActive('/settings') ? 'ph:gear-fill' : 'ph:gear'"
+            :name="isActive(workspacePath('/settings')) ? 'ph:gear-fill' : 'ph:gear'"
             class="w-[18px] h-[18px] shrink-0"
           />
           <span v-if="!collapsed" class="text-sm truncate">Settings</span>
         </Link>
       </div>
 
-      <!-- User Menu -->
-      <slot name="user-menu">
-        <UserMenu
-          :collapsed="collapsed"
-          size="sm"
-          :user="authUser"
-          :user-role="(page.props.auth?.user as any)?.type === 'human' ? 'admin' : 'member'"
-        />
-      </slot>
+      <!-- User + Branding -->
+      <div :class="['border-t border-neutral-200 dark:border-neutral-800', collapsed ? 'px-2 py-2.5' : 'px-3 py-2.5']">
+        <div v-if="!collapsed" class="flex items-center gap-1">
+          <UserMenu compact :collapsed="true" size="sm" :user="authUser" :user-role="userRole" class="-ml-2" />
+          <span class="text-sm font-semibold text-neutral-900 dark:text-white tracking-tight" style="font-family: 'Lexend', sans-serif;">OpenCompany</span>
+        </div>
+        <div v-else class="flex flex-col items-center gap-1.5">
+          <UserMenu compact :collapsed="true" size="sm" :user="authUser" :user-role="userRole" />
+          <Tooltip text="OpenCompany" side="right" :delay-open="300">
+            <span class="text-[10px] font-bold text-neutral-900 dark:text-white" style="font-family: 'Lexend', sans-serif;">OC</span>
+          </Tooltip>
+        </div>
+      </div>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
+import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 import SidebarNav from '@/Components/layout/SidebarNav.vue'
 import UserMenu from '@/Components/layout/UserMenu.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
+import WorkspaceIcon from '@/Components/shared/WorkspaceIcon.vue'
+import { useWorkspace } from '@/composables/useWorkspace'
 
 // Types
 type SidebarVariant = 'default' | 'floating' | 'minimal'
@@ -183,11 +252,18 @@ const collapsed = defineModel<boolean>('collapsed', { default: false })
 
 const className = computed(() => props.class)
 const page = usePage()
+const { workspacePath, isAdmin, workspace, workspaces } = useWorkspace()
+
+const switcherOpen = ref(false)
 
 const authUser = computed(() => {
   const u = (page.props.auth as any)?.user
   return u ? { name: u.name, email: u.email, avatar: u.avatar } : undefined
 })
+
+const userRole = computed(() =>
+  (page.props.auth as any)?.user?.type === 'human' ? 'admin' : 'member'
+)
 
 const isActive = (path: string): boolean => {
   return page.url.startsWith(path)

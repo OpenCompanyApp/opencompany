@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\ApprovalRequest;
+use App\Models\User;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -21,8 +22,10 @@ class ApprovalCreated implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
+        $workspaceId = User::where('id', $this->approval->requester_id)->value('workspace_id');
+
         return [
-            new Channel('approvals'),
+            new Channel('workspace.' . $workspaceId . '.approvals'),
         ];
     }
 

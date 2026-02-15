@@ -32,6 +32,7 @@ class McpToolProviderTest extends TestCase
             'timeout' => 30,
             'icon' => 'ph:magnifying-glass',
             'description' => 'Brave web search API',
+            'workspace_id' => $this->workspace->id,
             'discovered_tools' => [
                 [
                     'name' => 'brave_web_search',
@@ -136,6 +137,7 @@ class McpToolProviderTest extends TestCase
             'auth_type' => 'none',
             'enabled' => true,
             'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
             'discovered_tools' => null,
         ]);
 

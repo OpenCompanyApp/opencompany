@@ -31,23 +31,32 @@ class SearchController extends Controller
 
         // Search users
         if (!$type || $type === 'users') {
-            $results['users'] = User::where('name', 'ilike', "%{$query}%")
-                ->orWhere('email', 'ilike', "%{$query}%")
+            $results['users'] = User::where('workspace_id', workspace()->id)
+                ->where(function ($q) use ($query) {
+                    $q->where('name', 'ilike', "%{$query}%")
+                        ->orWhere('email', 'ilike', "%{$query}%");
+                })
                 ->limit(10)
                 ->get();
         }
 
         // Search channels
         if (!$type || $type === 'channels') {
-            $results['channels'] = Channel::where('name', 'ilike', "%{$query}%")
-                ->orWhere('description', 'ilike', "%{$query}%")
+            $results['channels'] = Channel::forWorkspace()
+                ->where(function ($q) use ($query) {
+                    $q->where('name', 'ilike', "%{$query}%")
+                        ->orWhere('description', 'ilike', "%{$query}%");
+                })
                 ->limit(10)
                 ->get();
         }
 
-        // Search messages
+        // Search messages (scoped through workspace channels)
         if (!$type || $type === 'messages') {
             $results['messages'] = Message::with(['author', 'channel'])
+                ->whereHas('channel', function ($q) {
+                    $q->where('workspace_id', workspace()->id);
+                })
                 ->where('content', 'ilike', "%{$query}%")
                 ->orderBy('created_at', 'desc')
                 ->limit(20)
@@ -56,18 +65,22 @@ class SearchController extends Controller
 
         // Search tasks
         if (!$type || $type === 'tasks') {
-            $results['tasks'] = Task::with(['agent'])
-                ->where('title', 'ilike', "%{$query}%")
-                ->orWhere('description', 'ilike', "%{$query}%")
+            $results['tasks'] = Task::forWorkspace()->with(['agent'])
+                ->where(function ($q) use ($query) {
+                    $q->where('title', 'ilike', "%{$query}%")
+                        ->orWhere('description', 'ilike', "%{$query}%");
+                })
                 ->limit(10)
                 ->get();
         }
 
         // Search documents
         if (!$type || $type === 'documents') {
-            $results['documents'] = Document::with(['author'])
-                ->where('title', 'ilike', "%{$query}%")
-                ->orWhere('content', 'ilike', "%{$query}%")
+            $results['documents'] = Document::forWorkspace()->with(['author'])
+                ->where(function ($q) use ($query) {
+                    $q->where('title', 'ilike', "%{$query}%")
+                        ->orWhere('content', 'ilike', "%{$query}%");
+                })
                 ->limit(10)
                 ->get();
         }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToWorkspace;
 
 /**
  * @property array<string, mixed> $config
@@ -13,13 +14,14 @@ use Illuminate\Database\Eloquent\Model;
 class IntegrationSetting extends Model
 {
     /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
-    use HasFactory;
+    use HasFactory, BelongsToWorkspace;
 
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'integration_id',
         'config',
         'enabled',
@@ -94,7 +96,7 @@ class IntegrationSetting extends Model
         $base = config('integrations', []);
 
         try {
-            $settings = static::all()->keyBy('integration_id');
+            $settings = (app()->bound('currentWorkspace') ? static::forWorkspace()->get() : static::all())->keyBy('integration_id');
         } catch (\Throwable) {
             return $base;
         }

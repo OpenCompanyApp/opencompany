@@ -55,6 +55,7 @@ class ManageDocument implements Tool
             'author_id' => $this->agent->id,
             'parent_id' => $parentId,
             'is_folder' => $request['isFolder'] ?? false,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         return "Document created: '{$document->title}' (ID: {$document->id})";
@@ -63,7 +64,7 @@ class ManageDocument implements Tool
     /** @param array<int, string>|null $allowedFolderIds */
     private function update(Request $request, ?array $allowedFolderIds): string
     {
-        $document = Document::findOrFail($request['documentId']);
+        $document = Document::forWorkspace()->findOrFail($request['documentId']);
 
         if ($allowedFolderIds !== null && ! in_array($document->parent_id, $allowedFolderIds)) {
             return 'Permission denied: you do not have access to this document.';
@@ -92,7 +93,7 @@ class ManageDocument implements Tool
     /** @param array<int, string>|null $allowedFolderIds */
     private function delete(Request $request, ?array $allowedFolderIds): string
     {
-        $document = Document::findOrFail($request['documentId']);
+        $document = Document::forWorkspace()->findOrFail($request['documentId']);
 
         if ($document->is_system) {
             return 'This is a system document and cannot be deleted.';

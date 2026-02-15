@@ -17,7 +17,7 @@ class ActivityController extends Controller
         $limit = (int) $request->input('limit', 50);
 
         // 1. Task activities (completed, started, failed)
-        $tasks = Task::with('agent')
+        $tasks = Task::forWorkspace()->with('agent')
             ->whereIn('status', ['completed', 'active', 'failed'])
             ->whereNotNull('started_at')
             ->latest('updated_at')
@@ -55,6 +55,7 @@ class ActivityController extends Controller
 
         // 2. Message activities
         $messages = Message::with(['author', 'channel'])
+            ->whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
             ->latest('timestamp')
             ->limit($limit)
             ->get();
@@ -78,6 +79,7 @@ class ActivityController extends Controller
 
         // 3. Approval activities
         $approvals = ApprovalRequest::with(['requester', 'respondedBy'])
+            ->whereHas('requester', fn ($q) => $q->where('workspace_id', workspace()->id))
             ->latest('created_at')
             ->limit($limit)
             ->get();
@@ -116,6 +118,7 @@ class ActivityController extends Controller
 
         // 4. Agent spawned (agent user creation)
         $agents = User::where('type', 'agent')
+            ->where('workspace_id', workspace()->id)
             ->latest('created_at')
             ->limit($limit)
             ->get();

@@ -19,7 +19,7 @@ class TaskController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Task::with(['agent', 'requester', 'channel', 'steps']);
+        $query = Task::forWorkspace()->with(['agent', 'requester', 'channel', 'steps']);
 
         // Filter by status
         if ($request->has('status')) {
@@ -79,16 +79,16 @@ class TaskController extends Controller
 
         return array_merge($paginated->toArray(), [
             'counts' => [
-                'total' => Task::count(),
-                'active' => Task::where('status', 'active')->count(),
-                'completed' => Task::where('status', 'completed')->count(),
+                'total' => Task::forWorkspace()->count(),
+                'active' => Task::forWorkspace()->where('status', 'active')->count(),
+                'completed' => Task::forWorkspace()->where('status', 'completed')->count(),
             ],
         ]);
     }
 
     public function show(string $id): Task
     {
-        return Task::with([
+        return Task::forWorkspace()->with([
             'agent',
             'requester',
             'channel',
@@ -103,6 +103,7 @@ class TaskController extends Controller
     {
         $task = Task::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'title' => $request->input('title'),
             'description' => $request->input('description'),
             'type' => $request->input('type', Task::TYPE_CUSTOM),
@@ -123,7 +124,7 @@ class TaskController extends Controller
 
     public function update(Request $request, string $id): Task
     {
-        $task = Task::findOrFail($id);
+        $task = Task::forWorkspace()->findOrFail($id);
 
         $data = $request->only([
             'title',
@@ -152,7 +153,7 @@ class TaskController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        Task::findOrFail($id)->delete();
+        Task::forWorkspace()->findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
@@ -161,7 +162,7 @@ class TaskController extends Controller
 
     public function start(string $id): Task
     {
-        $task = Task::findOrFail($id);
+        $task = Task::forWorkspace()->findOrFail($id);
 
         // If task has an assigned agent, dispatch the execution job
         if ($task->agent_id) {
@@ -178,7 +179,7 @@ class TaskController extends Controller
 
     public function pause(string $id): Task
     {
-        $task = Task::findOrFail($id);
+        $task = Task::forWorkspace()->findOrFail($id);
         $task->pause();
 
         return $task->load(['agent', 'requester', 'channel', 'steps']);
@@ -186,7 +187,7 @@ class TaskController extends Controller
 
     public function resume(string $id): Task
     {
-        $task = Task::findOrFail($id);
+        $task = Task::forWorkspace()->findOrFail($id);
         $task->resume();
 
         return $task->load(['agent', 'requester', 'channel', 'steps']);
@@ -194,7 +195,7 @@ class TaskController extends Controller
 
     public function complete(Request $request, string $id): Task
     {
-        $task = Task::findOrFail($id);
+        $task = Task::forWorkspace()->findOrFail($id);
         $task->complete($request->input('result'));
 
         return $task->load(['agent', 'requester', 'channel', 'steps']);
@@ -202,7 +203,7 @@ class TaskController extends Controller
 
     public function fail(Request $request, string $id): Task
     {
-        $task = Task::findOrFail($id);
+        $task = Task::forWorkspace()->findOrFail($id);
         $task->fail($request->input('reason'));
 
         return $task->load(['agent', 'requester', 'channel', 'steps']);
@@ -210,7 +211,7 @@ class TaskController extends Controller
 
     public function cancel(string $id): Task
     {
-        $task = Task::findOrFail($id);
+        $task = Task::forWorkspace()->findOrFail($id);
         $task->cancel();
 
         return $task->load(['agent', 'requester', 'channel', 'steps']);
@@ -223,14 +224,14 @@ class TaskController extends Controller
      */
     public function steps(string $id)
     {
-        $task = Task::findOrFail($id);
+        $task = Task::forWorkspace()->findOrFail($id);
 
         return $task->steps()->orderBy('created_at')->get();
     }
 
     public function addStep(Request $request, string $id): TaskStep
     {
-        $task = Task::findOrFail($id);
+        $task = Task::forWorkspace()->findOrFail($id);
 
         $step = $task->addStep(
             $request->input('description'),

@@ -19,7 +19,7 @@ class CalendarFeedController extends Controller
      */
     public function index(): Collection
     {
-        return CalendarFeed::where('user_id', auth()->id())
+        return CalendarFeed::forWorkspace()->where('user_id', auth()->id())
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function (CalendarFeed $feed) {
@@ -40,6 +40,7 @@ class CalendarFeedController extends Controller
         ]);
 
         $feed = CalendarFeed::create([
+            'workspace_id' => workspace()->id,
             'user_id' => auth()->id(),
             'name' => $request->input('name', 'My Calendar'),
         ]);
@@ -55,7 +56,7 @@ class CalendarFeedController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $feed = CalendarFeed::where('user_id', auth()->id())->findOrFail($id);
+        $feed = CalendarFeed::forWorkspace()->where('user_id', auth()->id())->findOrFail($id);
         $feed->delete();
 
         return response()->json(['success' => true]);
@@ -73,7 +74,7 @@ class CalendarFeedController extends Controller
         $rangeEnd = now()->addYear();
 
         // Get non-recurring events for this user
-        $query = CalendarEvent::with(['attendees.user'])
+        $query = CalendarEvent::forWorkspace($feed->workspace)->with(['attendees.user'])
             ->where(function ($q) use ($userId) {
                 $q->where('created_by', $userId)
                     ->orWhereHas('attendees', function ($q) use ($userId) {
@@ -87,7 +88,7 @@ class CalendarFeedController extends Controller
         $events = $query->orderBy('start_at')->get();
 
         // Get recurring events and expand them
-        $recurringEvents = CalendarEvent::with(['attendees.user'])
+        $recurringEvents = CalendarEvent::forWorkspace($feed->workspace)->with(['attendees.user'])
             ->where(function ($q) use ($userId) {
                 $q->where('created_by', $userId)
                     ->orWhereHas('attendees', function ($q) use ($userId) {

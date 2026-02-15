@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToWorkspace;
 
 class EmbeddingCache extends Model
 {
+    use BelongsToWorkspace;
+
     protected $table = 'embedding_cache';
 
     protected $keyType = 'string';
@@ -14,6 +17,7 @@ class EmbeddingCache extends Model
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'provider',
         'model',
         'embedding',

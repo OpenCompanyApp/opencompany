@@ -38,7 +38,7 @@ class MemoryScopeGuard
             return false;
         }
 
-        return in_array($channel->type, ['dm', 'agent', 'external']);
+        return in_array($channel->type, ['dm', 'agent']);
     }
 
     /**

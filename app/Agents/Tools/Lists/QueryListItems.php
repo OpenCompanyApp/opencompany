@@ -12,6 +12,9 @@ use Laravel\Ai\Tools\Request;
 
 class QueryListItems implements Tool
 {
+    public function __construct(
+        private User $agent,
+    ) {}
 
     public function description(): string
     {
@@ -42,7 +45,7 @@ class QueryListItems implements Tool
         $limit = $request['limit'] ?? 25;
         $parentId = $request['parentId'] ?? null;
 
-        $query = ListItem::with(['assignee'])
+        $query = ListItem::forWorkspace()->with(['assignee'])
             ->orderBy('created_at', 'desc')
             ->take(min($limit, 100));
 
@@ -78,7 +81,7 @@ class QueryListItems implements Tool
             return "Error: 'listItemId' is required for the 'get_item' action.";
         }
 
-        $item = ListItem::with(['assignee', 'collaborators', 'comments.author', 'creator'])->find($listItemId);
+        $item = ListItem::forWorkspace()->with(['assignee', 'collaborators', 'comments.author', 'creator'])->find($listItemId);
         if (!$item) {
             return "Error: List item '{$listItemId}' not found.";
         }
@@ -130,7 +133,7 @@ class QueryListItems implements Tool
 
         $limit = $request['limit'] ?? 25;
 
-        $items = ListItem::with(['assignee'])
+        $items = ListItem::forWorkspace()->with(['assignee'])
             ->where('status', $status)
             ->orderBy('created_at', 'desc')
             ->take(min($limit, 100))
@@ -160,7 +163,7 @@ class QueryListItems implements Tool
 
         $limit = $request['limit'] ?? 25;
 
-        $items = ListItem::with(['assignee'])
+        $items = ListItem::forWorkspace()->with(['assignee'])
             ->where('assignee_id', $assigneeId)
             ->orderBy('created_at', 'desc')
             ->take(min($limit, 100))
@@ -187,7 +190,7 @@ class QueryListItems implements Tool
     {
         $parentId = $request['parentId'] ?? null;
 
-        $query = ListItem::where('is_folder', true)
+        $query = ListItem::forWorkspace()->where('is_folder', true)
             ->withCount(['children as item_count' => function ($q) {
                 $q->where('is_folder', false);
             }])
@@ -219,7 +222,7 @@ class QueryListItems implements Tool
 
     private function listStatuses(): string
     {
-        $statuses = ListStatus::orderBy('position')->get();
+        $statuses = ListStatus::forWorkspace()->orderBy('position')->get();
 
         if ($statuses->isEmpty()) {
             return 'No statuses configured.';

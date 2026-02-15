@@ -14,8 +14,13 @@ Broadcast::channel('chat.{channelId}', function ($user, $channelId) {
         ->exists();
 });
 
-// Online presence channel - all authenticated users
-Broadcast::channel('online', function ($user) {
+// Workspace-scoped online presence channel
+Broadcast::channel('workspace.{workspaceId}.online', function ($user, $workspaceId) {
+    if (! $user->workspaces()->where('workspaces.id', $workspaceId)->exists()
+        && $user->workspace_id !== $workspaceId) {
+        return false;
+    }
+
     return [
         'id' => $user->id,
         'name' => $user->name,
@@ -23,9 +28,22 @@ Broadcast::channel('online', function ($user) {
     ];
 });
 
-// Task updates - all authenticated users
-Broadcast::channel('tasks', function ($user) {
-    return true;
+// Workspace-scoped task updates
+Broadcast::channel('workspace.{workspaceId}.tasks', function ($user, $workspaceId) {
+    return $user->workspaces()->where('workspaces.id', $workspaceId)->exists()
+        || $user->workspace_id === $workspaceId;
+});
+
+// Workspace-scoped agent status updates
+Broadcast::channel('workspace.{workspaceId}.agents', function ($user, $workspaceId) {
+    return $user->workspaces()->where('workspaces.id', $workspaceId)->exists()
+        || $user->workspace_id === $workspaceId;
+});
+
+// Workspace-scoped approval notifications
+Broadcast::channel('workspace.{workspaceId}.approvals', function ($user, $workspaceId) {
+    return $user->workspaces()->where('workspaces.id', $workspaceId)->exists()
+        || $user->workspace_id === $workspaceId;
 });
 
 // User notifications - only the owner

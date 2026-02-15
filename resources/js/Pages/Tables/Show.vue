@@ -95,7 +95,7 @@
         <div class="text-center">
           <Icon name="ph:warning" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
           <p class="text-neutral-500 dark:text-neutral-400">Table not found</p>
-          <Link href="/tables" class="text-sm text-neutral-900 dark:text-white hover:underline mt-2 inline-block">
+          <Link :href="workspacePath('/tables')" class="text-sm text-neutral-900 dark:text-white hover:underline mt-2 inline-block">
             Back to Tables
           </Link>
         </div>
@@ -167,6 +167,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
+import { useWorkspace } from '@/composables/useWorkspace'
 import Button from '@/Components/shared/Button.vue'
 import SearchInput from '@/Components/shared/SearchInput.vue'
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
@@ -175,6 +176,8 @@ import TableHeader from '@/Components/tables/TableHeader.vue'
 import TableGrid from '@/Components/tables/TableGrid.vue'
 import ColumnTypeModal from '@/Components/tables/ColumnTypeModal.vue'
 import type { DataTable, DataTableRow, DataTableColumn, DataTableView, DataTableViewType } from '@/types'
+
+const { workspacePath } = useWorkspace()
 
 const props = defineProps<{
   tableId: string
@@ -407,7 +410,7 @@ const handleDeleteView = (viewId: string) => {
 const handleDeleteTable = async () => {
   try {
     await fetch(`/api/tables/${props.tableId}`, { method: 'DELETE' })
-    router.visit('/tables')
+    router.visit(workspacePath('/tables'))
   } catch (error) {
     console.error('Failed to delete table:', error)
   }
@@ -420,7 +423,7 @@ const handleDuplicateTable = async () => {
       method: 'POST',
     })
     const newTable = await response.json()
-    router.visit(`/tables/${newTable.id}`)
+    router.visit(workspacePath(`/tables/${newTable.id}`))
   } catch (error) {
     console.error('Failed to duplicate table:', error)
   }

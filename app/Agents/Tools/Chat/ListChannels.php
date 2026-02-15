@@ -26,7 +26,7 @@ class ListChannels implements Tool
         try {
             $type = $request['type'] ?? null;
 
-            $query = Channel::withCount('members');
+            $query = Channel::forWorkspace()->withCount('members');
 
             if ($type) {
                 $query->where('type', $type);

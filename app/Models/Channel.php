@@ -8,16 +8,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Concerns\BelongsToWorkspace;
 
 class Channel extends Model
 {
     /** @use HasFactory<\Database\Factories\ChannelFactory> */
-    use HasFactory;
+    use HasFactory, BelongsToWorkspace;
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'name',
         'type',
         'description',

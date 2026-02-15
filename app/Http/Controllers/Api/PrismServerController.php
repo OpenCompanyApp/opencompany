@@ -16,7 +16,7 @@ class PrismServerController extends Controller
      */
     public function config(): JsonResponse
     {
-        $setting = IntegrationSetting::where('integration_id', 'prism-server')->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'prism-server')->first();
 
         return response()->json([
             'enabled' => $setting->enabled ?? false,
@@ -35,11 +35,12 @@ class PrismServerController extends Controller
             'enabled_models.*' => 'string',
         ]);
 
-        $setting = IntegrationSetting::where('integration_id', 'prism-server')->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'prism-server')->first();
 
         if (! $setting) {
             $setting = IntegrationSetting::create([
                 'id' => Str::uuid()->toString(),
+                'workspace_id' => workspace()->id,
                 'integration_id' => 'prism-server',
                 'enabled' => $validated['enabled'],
                 'config' => ['enabled_models' => $validated['enabled_models']],
@@ -64,7 +65,7 @@ class PrismServerController extends Controller
      */
     public function apiKeys(): JsonResponse
     {
-        $keys = PrismApiKey::orderByDesc('created_at')->get();
+        $keys = PrismApiKey::forWorkspace()->orderByDesc('created_at')->get();
 
         return response()->json($keys->map(fn (PrismApiKey $key) => [
             'id' => $key->id,
@@ -101,7 +102,7 @@ class PrismServerController extends Controller
      */
     public function deleteApiKey(string $id): JsonResponse
     {
-        $key = PrismApiKey::findOrFail($id);
+        $key = PrismApiKey::forWorkspace()->findOrFail($id);
         $key->delete();
 
         return response()->json(['message' => 'API key revoked.']);

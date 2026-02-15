@@ -50,7 +50,7 @@ class ContactAgent implements Tool
             }
 
             // Find target agent
-            $target = User::where('id', $agentId)->where('type', 'agent')->first();
+            $target = User::where('id', $agentId)->where('type', 'agent')->where('workspace_id', $this->agent->workspace_id)->first();
             if (!$target) {
                 return "Error: Agent not found. Use query_workspace(action: \"list_agents\") to find available agents.";
             }
@@ -146,7 +146,7 @@ class ContactAgent implements Tool
         }
 
         // Find caller's current task for parent_task_id
-        $currentTask = Task::where('agent_id', $this->agent->id)
+        $currentTask = Task::forWorkspace()->where('agent_id', $this->agent->id)
             ->where('status', Task::STATUS_ACTIVE)
             ->latest('started_at')
             ->first();
@@ -164,6 +164,7 @@ class ContactAgent implements Tool
             'requester_id' => $this->agent->id,
             'channel_id' => $channelId,
             'parent_task_id' => $currentTask?->id,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
         $askTask->start();
 
@@ -202,7 +203,7 @@ class ContactAgent implements Tool
         string $priority,
     ): string {
         // Find caller's current task for parent_task_id
-        $currentTask = Task::where('agent_id', $this->agent->id)
+        $currentTask = Task::forWorkspace()->where('agent_id', $this->agent->id)
             ->where('status', Task::STATUS_ACTIVE)
             ->latest('started_at')
             ->first();
@@ -221,6 +222,7 @@ class ContactAgent implements Tool
             'channel_id' => $channelId,
             'parent_task_id' => $currentTask?->id,
             'context' => $context ? ['delegation_context' => $context] : null,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
         // Track delegation on caller

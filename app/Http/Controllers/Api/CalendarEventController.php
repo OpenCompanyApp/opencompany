@@ -22,7 +22,7 @@ class CalendarEventController extends Controller
         $rangeEnd = $request->has('end') ? Carbon::parse($request->input('end')) : null;
 
         // Non-recurring events
-        $query = CalendarEvent::with(['creator', 'attendees.user'])
+        $query = CalendarEvent::forWorkspace()->with(['creator', 'attendees.user'])
             ->whereNull('recurrence_rule');
 
         if ($rangeStart) {
@@ -46,7 +46,7 @@ class CalendarEventController extends Controller
 
         // Recurring events — expand within the requested range
         if ($rangeStart && $rangeEnd) {
-            $recurringQuery = CalendarEvent::with(['creator', 'attendees.user'])
+            $recurringQuery = CalendarEvent::forWorkspace()->with(['creator', 'attendees.user'])
                 ->whereNotNull('recurrence_rule')
                 ->where('start_at', '<=', $rangeEnd)
                 ->where(function ($q) use ($rangeStart) {
@@ -74,7 +74,7 @@ class CalendarEventController extends Controller
 
     public function show(string $id): CalendarEvent
     {
-        return CalendarEvent::with(['creator', 'attendees.user'])
+        return CalendarEvent::forWorkspace()->with(['creator', 'attendees.user'])
             ->findOrFail($id);
     }
 
@@ -90,6 +90,7 @@ class CalendarEventController extends Controller
         ]);
 
         $event = CalendarEvent::create([
+            'workspace_id' => workspace()->id,
             'title' => $request->input('title'),
             'description' => $request->input('description'),
             'start_at' => $request->input('startAt'),
@@ -131,7 +132,7 @@ class CalendarEventController extends Controller
             return response()->json(['message' => 'End date must be after or equal to start date.'], 422);
         }
 
-        $event = CalendarEvent::findOrFail($id);
+        $event = CalendarEvent::forWorkspace()->findOrFail($id);
 
         $data = [];
 
@@ -181,7 +182,7 @@ class CalendarEventController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        CalendarEvent::findOrFail($id)->delete();
+        CalendarEvent::forWorkspace()->findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
@@ -192,7 +193,7 @@ class CalendarEventController extends Controller
         $rangeEnd = $request->has('end') ? Carbon::parse($request->input('end')) : null;
 
         // Non-recurring events
-        $query = CalendarEvent::with(['attendees.user'])->whereNull('recurrence_rule');
+        $query = CalendarEvent::forWorkspace()->with(['attendees.user'])->whereNull('recurrence_rule');
 
         if ($rangeStart) {
             $query->where('start_at', '>=', $rangeStart);
@@ -205,7 +206,7 @@ class CalendarEventController extends Controller
 
         // Expand recurring events if range is provided
         if ($rangeStart && $rangeEnd) {
-            $recurringQuery = CalendarEvent::with(['attendees.user'])
+            $recurringQuery = CalendarEvent::forWorkspace()->with(['attendees.user'])
                 ->whereNotNull('recurrence_rule')
                 ->where('start_at', '<=', $rangeEnd)
                 ->where(function ($q) use ($rangeStart) {
@@ -375,6 +376,7 @@ class CalendarEventController extends Controller
             }
 
             $event = CalendarEvent::create([
+                'workspace_id' => workspace()->id,
                 'title' => $title,
                 'description' => $this->unescapeIcsText($eventData['DESCRIPTION']['value'] ?? ''),
                 'start_at' => $startAt,

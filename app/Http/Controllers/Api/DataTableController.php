@@ -13,7 +13,7 @@ class DataTableController extends Controller
      */
     public function index(): \Illuminate\Database\Eloquent\Collection
     {
-        return DataTable::with(['creator', 'columns'])
+        return DataTable::forWorkspace()->with(['creator', 'columns'])
             ->withCount('rows')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -21,7 +21,7 @@ class DataTableController extends Controller
 
     public function show(string $id): DataTable
     {
-        return DataTable::with(['creator', 'columns', 'views'])
+        return DataTable::forWorkspace()->with(['creator', 'columns', 'views'])
             ->withCount('rows')
             ->findOrFail($id);
     }
@@ -33,6 +33,7 @@ class DataTableController extends Controller
         ]);
 
         $table = DataTable::create([
+            'workspace_id' => workspace()->id,
             'name' => $request->input('name'),
             'description' => $request->input('description'),
             'icon' => $request->input('icon'),
@@ -57,7 +58,7 @@ class DataTableController extends Controller
 
     public function update(Request $request, string $id): DataTable
     {
-        $table = DataTable::findOrFail($id);
+        $table = DataTable::forWorkspace()->findOrFail($id);
 
         $data = [];
 
@@ -78,7 +79,7 @@ class DataTableController extends Controller
 
     public function destroy(string $id): \Illuminate\Http\JsonResponse
     {
-        DataTable::findOrFail($id)->delete();
+        DataTable::forWorkspace()->findOrFail($id)->delete();
 
         return response()->json(['success' => true]);
     }
