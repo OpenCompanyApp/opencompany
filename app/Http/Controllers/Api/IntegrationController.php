@@ -137,6 +137,31 @@ class IntegrationController extends Controller
                 }
             }
 
+            // Pre-populate shared Google Cloud credentials from sibling integrations
+            $googleIntegrations = [
+                'google_calendar', 'gmail', 'google_drive',
+                'google_contacts', 'google_sheets', 'google_search_console', 'google_tasks', 'google_analytics', 'google_docs', 'google_forms',
+            ];
+            if (in_array($id, $googleIntegrations, true)) {
+                foreach (['client_id', 'client_secret'] as $sharedKey) {
+                    if (empty($config[$sharedKey])) {
+                        foreach ($googleIntegrations as $sibling) {
+                            if ($sibling === $id) {
+                                continue;
+                            }
+                            $siblingSetting = IntegrationSetting::where('integration_id', $sibling)->first();
+                            $siblingVal = $siblingSetting?->getConfigValue($sharedKey);
+                            if (! empty($siblingVal) && is_string($siblingVal)) {
+                                $config[$sharedKey] = $sharedKey === 'client_secret'
+                                    ? $siblingSetting->getMaskedValue($sharedKey)
+                                    : $siblingVal;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             return response()->json([
                 'id' => $id,
                 'name' => $meta['name'],
@@ -224,6 +249,29 @@ class IntegrationController extends Controller
                 }
 
                 $config[$key] = $request->input($key, $field['default'] ?? null);
+            }
+
+            // Copy shared Google credentials from sibling integrations
+            $googleIntegrations = [
+                'google_calendar', 'gmail', 'google_drive',
+                'google_contacts', 'google_sheets', 'google_search_console', 'google_tasks', 'google_analytics', 'google_docs', 'google_forms',
+            ];
+            if (in_array($id, $googleIntegrations, true)) {
+                foreach (['client_id', 'client_secret'] as $sharedKey) {
+                    if (empty($config[$sharedKey])) {
+                        foreach ($googleIntegrations as $sibling) {
+                            if ($sibling === $id) {
+                                continue;
+                            }
+                            $siblingVal = IntegrationSetting::where('integration_id', $sibling)
+                                ->first()?->getConfigValue($sharedKey);
+                            if (! empty($siblingVal) && is_string($siblingVal)) {
+                                $config[$sharedKey] = $siblingVal;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
             $setting->config = $config;

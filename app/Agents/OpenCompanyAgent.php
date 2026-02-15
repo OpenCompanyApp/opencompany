@@ -106,7 +106,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             $order = ['IDENTITY', 'SOUL', 'USER', 'AGENTS', 'TOOLS', 'MEMORY', 'HEARTBEAT', 'BOOTSTRAP'];
 
             $channel = Channel::find($this->channelId);
-            $privateChannel = $channel && in_array($channel->type, ['dm', 'agent']);
+            $privateChannel = $channel && in_array($channel->type, ['dm', 'agent', 'external']);
 
             foreach ($order as $type) {
                 if ($type === 'MEMORY' && !$privateChannel) {

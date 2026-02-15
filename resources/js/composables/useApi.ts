@@ -17,6 +17,17 @@ import type {
   ListStatus
 } from '@/types'
 
+export interface PaginatedResponse<T> {
+  data: T[]
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+  from: number | null
+  to: number | null
+  counts?: { total: number; active: number; completed: number }
+}
+
 const api = axios.create({
   baseURL: '/api',
   headers: {
@@ -154,7 +165,7 @@ export const useApi = () => {
   const deleteTaskComment = deleteListItemComment
 
   // Agent Tasks (cases - discrete work items)
-  const fetchAgentTasks = (filters?: { status?: string | string[]; agentId?: string; requesterId?: string; type?: string; priority?: string; projectId?: string }) => {
+  const fetchAgentTasks = (filters?: { status?: string | string[]; agentId?: string; requesterId?: string; type?: string; priority?: string; source?: string; search?: string; page?: number; perPage?: number }) => {
     const params = new URLSearchParams()
     if (filters?.status) {
       if (Array.isArray(filters.status)) {
@@ -167,8 +178,11 @@ export const useApi = () => {
     if (filters?.requesterId) params.append('requesterId', filters.requesterId)
     if (filters?.type) params.append('type', filters.type)
     if (filters?.priority) params.append('priority', filters.priority)
-    if (filters?.projectId) params.append('projectId', filters.projectId)
-    return useFetch<AgentTask[]>(`/tasks?${params.toString()}`)
+    if (filters?.source) params.append('source', filters.source)
+    if (filters?.search) params.append('search', filters.search)
+    if (filters?.page) params.append('page', String(filters.page))
+    if (filters?.perPage) params.append('perPage', String(filters.perPage))
+    return useFetch<PaginatedResponse<AgentTask>>(`/tasks?${params.toString()}`)
   }
   const fetchAgentTask = (id: string) => useFetch<AgentTask>(`/tasks/${id}`)
   const createAgentTask = (data: {

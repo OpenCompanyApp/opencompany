@@ -20,20 +20,24 @@ class DocumentIndexingService
      */
     public function index(Document $document, string $collection = 'general', ?string $agentId = null): void
     {
-        // Delete existing chunks for this document
-        DocumentChunk::where('document_id', $document->id)->delete();
-
         if (empty(trim($document->content ?? ''))) {
+            DocumentChunk::where('document_id', $document->id)->delete();
+
             return;
         }
 
         $chunks = $this->chunker->chunk($document->content);
 
         if (empty($chunks)) {
+            DocumentChunk::where('document_id', $document->id)->delete();
+
             return;
         }
 
+        // Embed first — only delete old chunks after this succeeds
         $embeddings = $this->embedder->embedBatch($chunks);
+
+        DocumentChunk::where('document_id', $document->id)->delete();
 
         foreach ($chunks as $i => $chunkText) {
             DocumentChunk::create([

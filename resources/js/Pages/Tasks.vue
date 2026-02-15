@@ -38,6 +38,16 @@
         </Button>
       </div>
       <div class="flex items-center gap-3 overflow-x-auto md:overflow-visible md:ml-auto pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+        <!-- Search -->
+        <SearchInput
+          v-model="searchQuery"
+          placeholder="Search tasks..."
+          variant="ghost"
+          size="sm"
+          :clearable="true"
+          :debounce="300"
+          class="w-44 lg:w-56 shrink-0"
+        />
         <!-- Status Filters -->
         <div class="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1">
           <button
@@ -217,11 +227,11 @@
       </div>
 
       <!-- Empty State -->
-      <div v-if="treeifiedTasks.length === 0" class="text-center py-12">
+      <div v-if="!loading && treeifiedTasks.length === 0" class="text-center py-12">
         <Icon name="ph:briefcase" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
         <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">No tasks found</h3>
         <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-          {{ currentFilter === 'all' && !agentFilter && !sourceFilter ? 'Create your first task to get started' : 'No tasks match the current filters' }}
+          {{ currentFilter === 'all' && !agentFilter && !sourceFilter && !searchQuery ? 'Create your first task to get started' : 'No tasks match the current filters' }}
         </p>
         <button
           class="inline-flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
@@ -231,6 +241,60 @@
           <span>Create Task</span>
         </button>
       </div>
+    </div>
+
+    <!-- Pagination Bar -->
+    <div
+      v-if="paginationTotal > 0"
+      class="shrink-0 border-t border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 md:px-6 py-2 flex items-center justify-between gap-4"
+    >
+      <!-- Left: showing range -->
+      <span class="text-xs text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+        {{ paginationFrom }}–{{ paginationTo }} of {{ paginationTotal }}
+      </span>
+
+      <!-- Center: page navigation -->
+      <div v-if="totalPages > 1" class="flex items-center gap-1">
+        <button
+          :disabled="currentPage <= 1"
+          class="px-2 py-1 text-xs font-medium rounded-md transition-colors text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed"
+          @click="goToPage(currentPage - 1)"
+        >
+          <Icon name="ph:caret-left" class="w-3.5 h-3.5" />
+        </button>
+        <template v-for="page in visiblePages" :key="page">
+          <span v-if="page === '...'" class="px-1 text-xs text-neutral-400">...</span>
+          <button
+            v-else
+            :class="[
+              'px-2 py-1 text-xs font-medium rounded-md transition-colors',
+              page === currentPage
+                ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            ]"
+            @click="goToPage(page as number)"
+          >
+            {{ page }}
+          </button>
+        </template>
+        <button
+          :disabled="currentPage >= totalPages"
+          class="px-2 py-1 text-xs font-medium rounded-md transition-colors text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed"
+          @click="goToPage(currentPage + 1)"
+        >
+          <Icon name="ph:caret-right" class="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <!-- Right: per-page selector -->
+      <select
+        v-model.number="perPage"
+        class="h-7 px-2 text-xs bg-neutral-100 dark:bg-neutral-800 border-0 rounded-md text-neutral-600 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white cursor-pointer"
+      >
+        <option :value="25">25 / page</option>
+        <option :value="50">50 / page</option>
+        <option :value="100">100 / page</option>
+      </select>
     </div>
 
     <!-- Task Create Modal -->
@@ -327,13 +391,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import type { AgentTask, TaskStatus, TaskType, Priority, User } from '@/types'
+import type { PaginatedResponse } from '@/composables/useApi'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Modal from '@/Components/shared/Modal.vue'
+import SearchInput from '@/Components/shared/SearchInput.vue'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
 
@@ -345,17 +411,64 @@ const {
 
 const currentUserId = ref('h1')
 
-const { data: tasksData, refresh: refreshTasks } = fetchAgentTasks()
-
-// Real-time task updates
-const { on } = useRealtime()
-const unsubTask = on('task:updated', () => refreshTasks())
-const { data: agentsData } = fetchAgents()
-
+// ── Filters & pagination state ──────────────────────────────────
 const currentFilter = ref<'all' | 'pending' | 'active' | 'completed'>('all')
 const agentFilter = ref('')
 const sourceFilter = ref('')
+const searchQuery = ref('')
+const currentPage = ref(1)
+const perPage = ref(50)
 const createModalOpen = ref(false)
+
+// Map UI status filter to server-side status values
+const statusMap: Record<string, string | string[] | undefined> = {
+  all: undefined,
+  pending: 'pending',
+  active: ['active', 'paused'],
+  completed: ['completed', 'failed', 'cancelled'],
+}
+
+// Fetch tasks with current filters + page
+const tasksResponse = ref<PaginatedResponse<AgentTask> | null>(null)
+const loading = ref(true)
+
+const loadTasks = async () => {
+  loading.value = true
+  const status = statusMap[currentFilter.value]
+  const { data, promise } = fetchAgentTasks({
+    status: status as string | string[] | undefined,
+    agentId: agentFilter.value || undefined,
+    source: sourceFilter.value || undefined,
+    search: searchQuery.value || undefined,
+    page: currentPage.value,
+    perPage: perPage.value,
+  })
+  await promise
+  tasksResponse.value = data.value
+  loading.value = false
+}
+
+// Initial load
+loadTasks()
+
+// Reload when filters change (reset to page 1)
+watch([currentFilter, agentFilter, sourceFilter, searchQuery, perPage], () => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1 // triggers the page watcher which loads
+  } else {
+    loadTasks()
+  }
+})
+
+// Reload when page changes
+watch(currentPage, () => {
+  loadTasks()
+})
+
+// Real-time task updates — refresh current page
+const { on } = useRealtime()
+const unsubTask = on('task:updated', () => loadTasks())
+const { data: agentsData } = fetchAgents()
 
 const newTask = ref({
   title: '',
@@ -365,40 +478,52 @@ const newTask = ref({
   agentId: '',
 })
 
-const statusFilters = [
+type StatusFilterValue = 'all' | 'pending' | 'active' | 'completed'
+const statusFilters: { label: string; value: StatusFilterValue }[] = [
   { label: 'All', value: 'all' },
   { label: 'Pending', value: 'pending' },
   { label: 'Active', value: 'active' },
   { label: 'Completed', value: 'completed' },
 ]
 
-const tasks = computed<AgentTask[]>(() => tasksData.value ?? [])
+const tasks = computed<AgentTask[]>(() => tasksResponse.value?.data ?? [])
 const agents = computed<User[]>(() => agentsData.value ?? [])
 
-const filteredTasks = computed(() => {
-  let result = tasks.value
+// Pagination metadata
+const totalPages = computed(() => tasksResponse.value?.last_page ?? 1)
+const paginationTotal = computed(() => tasksResponse.value?.total ?? 0)
+const paginationFrom = computed(() => tasksResponse.value?.from ?? 0)
+const paginationTo = computed(() => tasksResponse.value?.to ?? 0)
 
-  // Status filter
-  if (currentFilter.value === 'pending') {
-    result = result.filter(t => t.status === 'pending')
-  } else if (currentFilter.value === 'active') {
-    result = result.filter(t => t.status === 'active' || t.status === 'paused')
-  } else if (currentFilter.value === 'completed') {
-    result = result.filter(t => ['completed', 'failed', 'cancelled'].includes(t.status))
+const taskCounts = computed(() => {
+  const counts = tasksResponse.value?.counts
+  return {
+    total: counts?.total ?? 0,
+    active: counts?.active ?? 0,
+    completed: counts?.completed ?? 0,
   }
-
-  // Agent filter
-  if (agentFilter.value) {
-    result = result.filter(t => t.agentId === agentFilter.value)
-  }
-
-  // Source filter
-  if (sourceFilter.value) {
-    result = result.filter(t => t.source === sourceFilter.value)
-  }
-
-  return result
 })
+
+// Visible page numbers with ellipsis
+const visiblePages = computed<(number | '...')[]>(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+
+  const pages: (number | '...')[] = [1]
+  if (current > 3) pages.push('...')
+  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+    pages.push(i)
+  }
+  if (current < total - 2) pages.push('...')
+  pages.push(total)
+  return pages
+})
+
+const goToPage = (page: number) => {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+}
 
 // ── Tree structure for hierarchical nesting ──────────────────────
 const collapsedIds = ref(new Set<string>())
@@ -421,7 +546,7 @@ interface TaskWithDepth {
 }
 
 const treeifiedTasks = computed<TaskWithDepth[]>(() => {
-  const items = filteredTasks.value
+  const items = tasks.value
   if (!items.length) return []
 
   // Build lookup maps
@@ -517,12 +642,6 @@ const treeifiedTasks = computed<TaskWithDepth[]>(() => {
   return result
 })
 
-const taskCounts = computed(() => ({
-  total: tasks.value.length,
-  active: tasks.value.filter(t => t.status === 'active').length,
-  completed: tasks.value.filter(t => t.status === 'completed').length,
-}))
-
 // Status styling
 const statusDots: Record<TaskStatus, string> = {
   pending: 'bg-neutral-400',
@@ -572,11 +691,7 @@ const handleCreateTask = async () => {
     priority: 'normal',
     agentId: '',
   }
-  await refreshTasks()
-}
-
-const goToChannel = (channelId: string) => {
-  router.visit(`/chat?channel=${channelId}`)
+  await loadTasks()
 }
 
 onUnmounted(() => unsubTask())

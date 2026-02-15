@@ -17,9 +17,6 @@ use Illuminate\Support\Str;
  */
 class TaskController extends Controller
 {
-    /**
-     * @return \Illuminate\Support\Collection<int, Task>
-     */
     public function index(Request $request)
     {
         $query = Task::with(['agent', 'requester', 'channel', 'steps']);
@@ -57,15 +54,36 @@ class TaskController extends Controller
             $query->where('source', $request->input('source'));
         }
 
+        // Search by title or description
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'ilike', "%{$search}%")
+                    ->orWhere('description', 'ilike', "%{$search}%");
+            });
+        }
+
         // Order by
         $orderBy = $request->input('orderBy', 'created_at');
         $orderDir = $request->input('orderDir', 'desc');
         $query->orderBy($orderBy, $orderDir);
 
-        return $query->get()->map(function ($task) {
+        $perPage = (int) $request->input('perPage', 50);
+        $paginated = $query->paginate($perPage);
+
+        $paginated->getCollection()->transform(function ($task) {
             $task->makeHidden(['context']);
+
             return $task;
         });
+
+        return array_merge($paginated->toArray(), [
+            'counts' => [
+                'total' => Task::count(),
+                'active' => Task::where('status', 'active')->count(),
+                'completed' => Task::where('status', 'completed')->count(),
+            ],
+        ]);
     }
 
     public function show(string $id): Task

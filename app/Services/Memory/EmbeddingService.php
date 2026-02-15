@@ -40,12 +40,10 @@ class EmbeddingService
 
         $embedding = $response->embeddings[0]->embedding;
 
-        EmbeddingCache::create([
-            'id' => $cacheKey,
-            'provider' => $providerKey,
-            'model' => $modelName,
-            'embedding' => $embedding,
-        ]);
+        EmbeddingCache::updateOrCreate(
+            ['id' => $cacheKey],
+            ['provider' => $providerKey, 'model' => $modelName, 'embedding' => $embedding]
+        );
 
         return $embedding;
     }
@@ -97,12 +95,10 @@ class EmbeddingService
 
                     // Cache the result
                     $cacheKey = EmbeddingCache::cacheKey($providerKey, $modelName, $uncachedTexts[$j]);
-                    EmbeddingCache::create([
-                        'id' => $cacheKey,
-                        'provider' => $providerKey,
-                        'model' => $modelName,
-                        'embedding' => $embedding,
-                    ]);
+                    EmbeddingCache::updateOrCreate(
+                        ['id' => $cacheKey],
+                        ['provider' => $providerKey, 'model' => $modelName, 'embedding' => $embedding]
+                    );
                 }
             } catch (\Throwable $e) {
                 Log::error('Batch embedding failed', ['error' => $e->getMessage()]);
