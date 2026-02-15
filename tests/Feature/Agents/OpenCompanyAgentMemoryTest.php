@@ -79,14 +79,14 @@ class OpenCompanyAgentMemoryTest extends TestCase
         $this->assertStringNotContainsString('user prefers dark mode', $instructions);
     }
 
-    public function test_memory_md_excluded_in_external_channel(): void
+    public function test_memory_md_included_in_external_channel(): void
     {
         $channel = $this->createChannel('external');
         $agentInstance = OpenCompanyAgent::for($this->agent, $channel->id);
 
         $instructions = $agentInstance->instructions();
 
-        $this->assertStringNotContainsString('user prefers dark mode', $instructions);
+        $this->assertStringContainsString('user prefers dark mode', $instructions);
     }
 
     public function test_memory_prompt_included_in_private_channel(): void

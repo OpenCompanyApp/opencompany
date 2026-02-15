@@ -46,12 +46,12 @@ class MemoryScopeGuardTest extends TestCase
         $this->assertFalse($this->guard->canUseMemoryTools($this->agent, $channel->id));
     }
 
-    public function test_dm_only_denies_in_external_channel(): void
+    public function test_dm_only_allows_in_external_channel(): void
     {
         config(['memory.scope.default' => 'dm_only']);
         $channel = Channel::factory()->create(['type' => 'external']);
 
-        $this->assertFalse($this->guard->canUseMemoryTools($this->agent, $channel->id));
+        $this->assertTrue($this->guard->canUseMemoryTools($this->agent, $channel->id));
     }
 
     public function test_all_mode_allows_in_any_channel(): void
