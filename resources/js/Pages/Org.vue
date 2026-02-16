@@ -1,72 +1,50 @@
 <template>
-  <div :class="['min-h-screen bg-white dark:bg-neutral-900', viewMode === 'constellation' ? 'p-6 pb-0' : 'p-6']">
-    <div :class="viewMode === 'constellation' ? 'max-w-full h-full' : 'max-w-5xl mx-auto'">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Organization</h1>
-          <p class="text-sm text-neutral-500 dark:text-neutral-300 mt-1">
-            Team structure and hierarchy
-          </p>
-        </div>
+  <div class="h-full flex flex-col bg-white dark:bg-neutral-900">
+    <!-- Header -->
+    <header class="h-14 px-4 md:px-6 border-b border-neutral-200 dark:border-neutral-700 flex items-center gap-4 bg-white dark:bg-neutral-900 shrink-0">
+      <span class="text-lg font-semibold text-neutral-900 dark:text-white">Organization</span>
 
-        <div class="flex items-center gap-4">
-          <!-- Inline stats -->
-          <div v-if="!loading" class="flex items-center gap-4 text-sm text-neutral-500 dark:text-neutral-400">
-            <div class="flex items-center gap-1.5">
-              <Icon name="ph:users" class="w-4 h-4" />
-              <span class="font-medium text-neutral-900 dark:text-white">{{ stats.totalMembers }}</span>
-              <span>members</span>
-            </div>
-            <span class="text-neutral-300 dark:text-neutral-600">·</span>
-            <div class="flex items-center gap-1.5">
-              <Icon name="ph:user" class="w-4 h-4" />
-              <span class="font-medium text-neutral-900 dark:text-white">{{ stats.humans }}</span>
-              <span>human{{ stats.humans !== 1 ? 's' : '' }}</span>
-            </div>
-            <span class="text-neutral-300 dark:text-neutral-600">·</span>
-            <div class="flex items-center gap-1.5">
-              <Icon name="ph:robot" class="w-4 h-4" />
-              <span class="font-medium text-neutral-900 dark:text-white">{{ stats.agents }}</span>
-              <span>agent{{ stats.agents !== 1 ? 's' : '' }}</span>
-            </div>
-            <span class="text-neutral-300 dark:text-neutral-600">·</span>
-            <div class="flex items-center gap-1.5">
-              <div class="w-2 h-2 rounded-full bg-green-500" />
-              <span class="font-medium text-neutral-900 dark:text-white">{{ stats.activeAgents }}</span>
-              <span>active</span>
-            </div>
-          </div>
+      <span v-if="!loading" class="hidden md:inline-flex items-center gap-2.5 text-xs shrink-0">
+        <span class="inline-flex items-center gap-1 text-neutral-500 dark:text-neutral-400" title="Humans">
+          <Icon name="ph:user" class="w-3.5 h-3.5" />{{ stats.humans }}
+        </span>
+        <span class="inline-flex items-center gap-1 text-blue-500 dark:text-blue-400" title="Agents">
+          <Icon name="ph:robot" class="w-3.5 h-3.5" />{{ stats.agents }}
+        </span>
+        <span class="inline-flex items-center gap-1 text-green-500 dark:text-green-400" title="Active">
+          <span class="w-1.5 h-1.5 rounded-full bg-green-500" />{{ stats.activeAgents }}
+        </span>
+      </span>
 
-          <!-- View toggle -->
-          <div class="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5">
-            <button
-              :class="[
-                'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
-                viewMode === 'constellation'
-                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300',
-              ]"
-              @click="viewMode = 'constellation'"
-            >
-              <Icon name="ph:graph" class="w-3.5 h-3.5 inline mr-1" />
-              Constellation
-            </button>
-            <button
-              :class="[
-                'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
-                viewMode === 'tree'
-                  ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300',
-              ]"
-              @click="viewMode = 'tree'"
-            >
-              <Icon name="ph:tree-structure" class="w-3.5 h-3.5 inline mr-1" />
-              Tree
-            </button>
-          </div>
-        </div>
+      <div class="ml-auto flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5">
+        <button
+          :class="[
+            'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
+            viewMode === 'constellation'
+              ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+              : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300',
+          ]"
+          @click="viewMode = 'constellation'"
+        >
+          <Icon name="ph:graph" class="w-3.5 h-3.5 inline mr-1" />
+          Constellation
+        </button>
+        <button
+          :class="[
+            'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
+            viewMode === 'tree'
+              ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+              : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300',
+          ]"
+          @click="viewMode = 'tree'"
+        >
+          <Icon name="ph:tree-structure" class="w-3.5 h-3.5 inline mr-1" />
+          Tree
+        </button>
       </div>
+    </header>
+
+    <div :class="viewMode === 'constellation' ? 'flex-1 overflow-hidden' : 'max-w-5xl mx-auto w-full p-6'">
 
       <!-- Loading State -->
       <div v-if="loading" class="py-8">
@@ -78,8 +56,7 @@
       <!-- Constellation View -->
       <div
         v-else-if="viewMode === 'constellation'"
-        class="relative -mx-6 -mt-2 overflow-hidden"
-        :style="{ height: 'calc(100vh - 88px)' }"
+        class="relative w-full h-full overflow-hidden"
       >
         <ConstellationView :nodes="hierarchy" />
       </div>
