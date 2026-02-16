@@ -1,44 +1,30 @@
 <template>
   <div class="h-full flex flex-col">
     <!-- Header -->
-    <header class="px-4 md:px-6 py-3 md:py-0 md:h-14 border-b border-neutral-200 dark:border-neutral-700 flex flex-col md:flex-row md:items-center gap-3 bg-white dark:bg-neutral-900 shrink-0">
-      <div class="flex items-center justify-between md:gap-4">
-        <div class="flex items-center gap-3 md:gap-4">
-          <div class="flex items-center gap-1">
-            <span class="text-xl font-bold text-neutral-900 dark:text-white">Tasks</span>
-            <Link
-              :href="workspacePath('/workload')"
-              class="ml-2 px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
-            >
-              Workload
-            </Link>
-            <Link
-              :href="workspacePath('/activity')"
-              class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
-            >
-              Activity
-            </Link>
-          </div>
-          <div class="hidden md:flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-300">
-            <span>{{ taskCounts.total }} tasks</span>
-            <span class="text-neutral-200 dark:text-neutral-600">/</span>
-            <span class="text-blue-500">{{ taskCounts.active }} active</span>
-            <span class="text-neutral-200 dark:text-neutral-600">/</span>
-            <span class="text-green-500">{{ taskCounts.completed }} done</span>
-          </div>
-        </div>
-        <Button
-          variant="primary"
-          size="xs"
-          icon-left="ph:plus-bold"
-          class="md:hidden"
-          @click="createModalOpen = true"
+    <header class="px-4 md:px-6 h-14 border-b border-neutral-200 dark:border-neutral-700 flex items-center gap-4 bg-white dark:bg-neutral-900 shrink-0">
+      <div class="flex items-center gap-1">
+        <span class="text-lg font-semibold text-neutral-900 dark:text-white">Tasks</span>
+        <Link
+          :href="workspacePath('/workload')"
+          class="ml-1 px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
         >
-          New
-        </Button>
+          Workload
+        </Link>
+        <Link
+          :href="workspacePath('/activity')"
+          class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+        >
+          Activity
+        </Link>
       </div>
-      <div class="flex items-center gap-3 overflow-x-auto md:overflow-visible md:ml-auto pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
-        <!-- Search -->
+      <span class="hidden md:inline-flex items-center gap-1 text-xs tabular-nums shrink-0" title="Total / Active / Done">
+        <span class="text-neutral-500 dark:text-neutral-400">{{ taskCounts.total }}</span>
+        <span class="text-neutral-300 dark:text-neutral-600">/</span>
+        <span class="text-blue-500 dark:text-blue-400">{{ taskCounts.active }}</span>
+        <span class="text-neutral-300 dark:text-neutral-600">/</span>
+        <span class="text-green-500 dark:text-green-400">{{ taskCounts.completed }}</span>
+      </span>
+      <div class="ml-auto flex items-center gap-2">
         <SearchInput
           v-model="searchQuery"
           placeholder="Search tasks..."
@@ -46,38 +32,40 @@
           size="sm"
           :clearable="true"
           :debounce="300"
-          class="w-44 lg:w-56 shrink-0"
+          class="w-36 lg:w-48 shrink-0"
         />
-        <!-- Status Filters -->
-        <div class="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1">
-          <button
-            v-for="filter in statusFilters"
-            :key="filter.value"
-            :class="[
-              'px-3 py-1 h-7 text-sm font-medium rounded-md transition-colors whitespace-nowrap',
-              currentFilter === filter.value
-                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-            ]"
-            @click="currentFilter = filter.value"
-          >
-            {{ filter.label }}
+        <DropdownMenu side="bottom" align="end">
+          <button class="inline-flex items-center gap-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 text-sm text-neutral-700 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors shrink-0">
+            <span v-if="currentFilter !== 'all'" :class="['w-2 h-2 rounded-full shrink-0', statusFilterDots[currentFilter]]" />
+            <span>{{ activeStatusLabel }}</span>
+            <Icon name="ph:caret-down" class="w-3 h-3 text-neutral-400" />
           </button>
-        </div>
-        <!-- Agent Filter -->
+          <template #content>
+            <button
+              v-for="filter in statusFilters"
+              :key="filter.value"
+              class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded cursor-pointer outline-none select-none hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+              :class="currentFilter === filter.value ? 'text-neutral-900 dark:text-white font-medium' : 'text-neutral-600 dark:text-neutral-300'"
+              @click="currentFilter = filter.value"
+            >
+              <span v-if="filter.dot" :class="['w-2 h-2 rounded-full shrink-0', filter.dot]" />
+              <span v-else class="w-2" />
+              <span>{{ filter.label }}</span>
+            </button>
+          </template>
+        </DropdownMenu>
         <select
           v-model="agentFilter"
-          class="h-[30px] px-2 py-1 text-sm bg-neutral-100 dark:bg-neutral-800 border-0 rounded-lg text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
+          class="hidden md:block bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 text-sm text-neutral-700 dark:text-neutral-300 outline-none focus:border-neutral-300 shrink-0"
         >
           <option value="">All agents</option>
           <option v-for="agent in agents" :key="agent.id" :value="agent.id">
             {{ agent.name }}
           </option>
         </select>
-        <!-- Source Filter -->
         <select
           v-model="sourceFilter"
-          class="h-[30px] px-2 py-1 text-sm bg-neutral-100 dark:bg-neutral-800 border-0 rounded-lg text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
+          class="hidden lg:block bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 text-sm text-neutral-700 dark:text-neutral-300 outline-none focus:border-neutral-300 shrink-0"
         >
           <option value="">All sources</option>
           <option value="chat">Chat</option>
@@ -87,15 +75,6 @@
           <option value="agent_ask">Agent Ask</option>
           <option value="agent_notify">Notification</option>
         </select>
-        <Button
-          variant="primary"
-          size="xs"
-          icon-left="ph:plus-bold"
-          class="hidden md:inline-flex shrink-0"
-          @click="createModalOpen = true"
-        >
-          New Task
-        </Button>
       </div>
     </header>
 
@@ -229,17 +208,12 @@
       <!-- Empty State -->
       <div v-if="!loading && treeifiedTasks.length === 0" class="text-center py-12">
         <Icon name="ph:briefcase" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
-        <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">No tasks found</h3>
-        <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-          {{ currentFilter === 'all' && !agentFilter && !sourceFilter && !searchQuery ? 'Create your first task to get started' : 'No tasks match the current filters' }}
+        <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">
+          {{ currentFilter === 'all' && !agentFilter && !sourceFilter && !searchQuery ? 'No tasks yet' : 'No tasks match the current filters' }}
+        </h3>
+        <p class="text-sm text-neutral-500 dark:text-neutral-400">
+          {{ currentFilter === 'all' && !agentFilter && !sourceFilter && !searchQuery ? 'Tasks will appear here when created via chat or automation.' : 'Try adjusting your filters.' }}
         </p>
-        <button
-          class="inline-flex items-center gap-2 px-3 py-1.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
-          @click="createModalOpen = true"
-        >
-          <Icon name="ph:plus-bold" class="w-4 h-4" />
-          <span>Create Task</span>
-        </button>
       </div>
     </div>
 
@@ -297,96 +271,6 @@
       </select>
     </div>
 
-    <!-- Task Create Modal -->
-    <Modal v-model:open="createModalOpen" title="New Task">
-      <form @submit.prevent="handleCreateTask" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-            Title
-          </label>
-          <input
-            v-model="newTask.title"
-            type="text"
-            placeholder="What needs to be done?"
-            class="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
-            autofocus
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-            Description
-          </label>
-          <textarea
-            v-model="newTask.description"
-            placeholder="Provide details and context..."
-            rows="3"
-            class="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white resize-none"
-          />
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-              Type
-            </label>
-            <select
-              v-model="newTask.type"
-              class="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
-            >
-              <option value="custom">Custom</option>
-              <option value="ticket">Ticket</option>
-              <option value="request">Request</option>
-              <option value="analysis">Analysis</option>
-              <option value="content">Content</option>
-              <option value="research">Research</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-              Priority
-            </label>
-            <select
-              v-model="newTask.priority"
-              class="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
-            >
-              <option value="low">Low</option>
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-            Assign to Agent
-          </label>
-          <select
-            v-model="newTask.agentId"
-            class="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
-          >
-            <option value="">Unassigned</option>
-            <option v-for="agent in agents" :key="agent.id" :value="agent.id">
-              {{ agent.name }}
-            </option>
-          </select>
-        </div>
-        <div class="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            class="px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-            @click="createModalOpen = false"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            :disabled="!newTask.title.trim()"
-            class="px-4 py-2 text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Create Task
-          </button>
-        </div>
-      </form>
-    </Modal>
   </div>
 </template>
 
@@ -394,12 +278,11 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import { useWorkspace } from '@/composables/useWorkspace'
-import type { AgentTask, TaskStatus, TaskType, Priority, User } from '@/types'
+import type { AgentTask, TaskStatus, User } from '@/types'
 import type { PaginatedResponse } from '@/composables/useApi'
-import Button from '@/Components/shared/Button.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
-import Modal from '@/Components/shared/Modal.vue'
 import SearchInput from '@/Components/shared/SearchInput.vue'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
@@ -408,10 +291,7 @@ const { workspacePath } = useWorkspace()
 const {
   fetchAgentTasks,
   fetchAgents,
-  createAgentTask,
 } = useApi()
-
-const currentUserId = ref('h1')
 
 // ── Filters & pagination state ──────────────────────────────────
 const currentFilter = ref<'all' | 'pending' | 'active' | 'completed'>('all')
@@ -420,7 +300,6 @@ const sourceFilter = ref('')
 const searchQuery = ref('')
 const currentPage = ref(1)
 const perPage = ref(50)
-const createModalOpen = ref(false)
 
 // Map UI status filter to server-side status values
 const statusMap: Record<string, string | string[] | undefined> = {
@@ -472,21 +351,23 @@ const { on } = useRealtime()
 const unsubTask = on('task:updated', () => loadTasks())
 const { data: agentsData } = fetchAgents()
 
-const newTask = ref({
-  title: '',
-  description: '',
-  type: 'custom' as TaskType,
-  priority: 'normal' as Priority,
-  agentId: '',
-})
-
 type StatusFilterValue = 'all' | 'pending' | 'active' | 'completed'
-const statusFilters: { label: string; value: StatusFilterValue }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Active', value: 'active' },
-  { label: 'Completed', value: 'completed' },
+const statusFilters: { label: string; value: StatusFilterValue; dot?: string }[] = [
+  { label: 'All statuses', value: 'all' },
+  { label: 'Pending', value: 'pending', dot: 'bg-neutral-400' },
+  { label: 'Active', value: 'active', dot: 'bg-blue-500' },
+  { label: 'Completed', value: 'completed', dot: 'bg-green-500' },
 ]
+
+const statusFilterDots: Record<string, string> = {
+  pending: 'bg-neutral-400',
+  active: 'bg-blue-500',
+  completed: 'bg-green-500',
+}
+
+const activeStatusLabel = computed(() =>
+  statusFilters.find(f => f.value === currentFilter.value)?.label ?? 'All statuses'
+)
 
 const tasks = computed<AgentTask[]>(() => tasksResponse.value?.data ?? [])
 const agents = computed<User[]>(() => agentsData.value ?? [])
@@ -671,29 +552,6 @@ const timeAgo = (date: Date | string) => {
 
 const openTaskDetail = (task: AgentTask) => {
   router.visit(workspacePath(`/tasks/${task.id}`))
-}
-
-const handleCreateTask = async () => {
-  if (!newTask.value.title.trim()) return
-
-  await createAgentTask({
-    title: newTask.value.title.trim(),
-    description: newTask.value.description.trim() || undefined,
-    type: newTask.value.type,
-    priority: newTask.value.priority,
-    agentId: newTask.value.agentId || undefined,
-    requesterId: currentUserId.value,
-  })
-
-  createModalOpen.value = false
-  newTask.value = {
-    title: '',
-    description: '',
-    type: 'custom',
-    priority: 'normal',
-    agentId: '',
-  }
-  await loadTasks()
 }
 
 onUnmounted(() => unsubTask())
