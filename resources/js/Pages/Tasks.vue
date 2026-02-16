@@ -81,7 +81,7 @@
     <!-- Compact Task List -->
     <div class="flex-1 overflow-auto">
       <!-- Table Header -->
-      <div class="sticky top-0 bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-700 px-4 md:px-6">
+      <div class="sticky top-0 bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-4 md:px-6 z-10">
         <div class="flex items-center gap-3 h-8 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
           <span class="w-4" />
           <span class="flex-1 min-w-0">Task</span>

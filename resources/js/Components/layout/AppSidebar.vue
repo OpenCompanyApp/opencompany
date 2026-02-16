@@ -9,15 +9,15 @@
     ]"
   >
     <!-- Header -->
-    <div class="p-3 space-y-1">
+    <div :class="collapsed ? 'px-2 pt-3 pb-1' : 'px-2 pt-3 pb-2'">
       <!-- Workspace switcher + Collapse toggle -->
-      <div class="flex items-center justify-between">
+      <div :class="['flex items-center', collapsed ? 'justify-center' : 'justify-between']">
         <!-- Workspace switcher popover -->
         <PopoverRoot v-model:open="switcherOpen">
           <PopoverTrigger as-child>
             <button
               v-if="!collapsed"
-              class="flex items-center gap-2 rounded-lg px-1 py-1 -mx-1 -my-1 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 min-w-0"
+              class="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 min-w-0"
             >
               <WorkspaceIcon
                 :icon="workspace?.icon"
@@ -34,7 +34,7 @@
               <WorkspaceIcon
                 :icon="workspace?.icon"
                 :color="workspace?.color"
-                size="md"
+                size="sm"
               />
             </button>
           </PopoverTrigger>
@@ -42,9 +42,10 @@
           <PopoverPortal>
             <PopoverContent
               class="z-50 w-64 bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-lg p-1.5 animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
-              side="bottom"
+              :side="collapsed ? 'right' : 'bottom'"
               align="start"
-              :side-offset="6"
+              :side-offset="8"
+              :avoid-collisions="true"
             >
               <div class="px-2 pt-1 pb-1.5">
                 <span class="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Workspaces</span>
