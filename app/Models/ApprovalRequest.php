@@ -41,6 +41,12 @@ class ApprovalRequest extends Model
         ];
     }
 
+    /** @return BelongsTo<Channel, $this> */
+    public function channel(): BelongsTo
+    {
+        return $this->belongsTo(Channel::class);
+    }
+
     /** @return BelongsTo<User, $this> */
     public function requester(): BelongsTo
     {

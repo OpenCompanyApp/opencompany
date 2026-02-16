@@ -85,8 +85,10 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             return Inertia::render('Tasks');
         })->name('tasks');
 
-        Route::get('/tasks/{id}', function (string $id) {
-            return Inertia::render('Tasks/Show', ['taskId' => $id]);
+        Route::get('/tasks/{id}', function () {
+            return Inertia::render('Tasks/Show', [
+                'taskId' => request()->route('id'),
+            ]);
         })->whereUuid('id')->name('tasks.show');
 
         // Lists (kanban boards)
@@ -108,14 +110,21 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
         Route::get('/approvals', function () {
             return Inertia::render('Approvals');
         })->name('approvals');
+        Route::get('/approvals/{id}', function () {
+            return Inertia::render('Approvals/Show', [
+                'approvalId' => request()->route('id'),
+            ]);
+        })->whereUuid('id')->name('approvals.show');
 
         // Automation
         Route::get('/automation/create', function () {
             return Inertia::render('Automation/Create');
         })->name('automation.create');
 
-        Route::get('/automation/{id}/edit', function (string $id) {
-            return Inertia::render('Automation/Edit', ['automationId' => $id]);
+        Route::get('/automation/{id}/edit', function () {
+            return Inertia::render('Automation/Edit', [
+                'automationId' => request()->route('id'),
+            ]);
         })->name('automation.edit');
 
         Route::get('/automation', function () {
@@ -152,13 +161,17 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             return Inertia::render('Tables');
         })->name('tables');
 
-        Route::get('/tables/{id}', function (string $id) {
-            return Inertia::render('Tables/Show', ['tableId' => $id]);
+        Route::get('/tables/{id}', function () {
+            return Inertia::render('Tables/Show', [
+                'tableId' => request()->route('id'),
+            ]);
         })->name('tables.show');
 
         // Agent detail
-        Route::get('/agent/{id}', function (string $id) {
-            return Inertia::render('Agent/Show', ['id' => $id]);
+        Route::get('/agent/{id}', function () {
+            return Inertia::render('Agent/Show', [
+                'id' => request()->route('id'),
+            ]);
         })->name('agent.show');
 
         // Messages (DM) - Redirect to unified chat
@@ -168,14 +181,16 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             return redirect("/w/{$slug}/chat");
         })->name('messages.index');
 
-        Route::get('/messages/{id}', function (string $id) {
+        Route::get('/messages/{id}', function () {
             $slug = request()->route('workspace_slug');
+            $id = request()->route('id');
 
             return redirect("/w/{$slug}/chat?dm=".$id);
         })->name('messages.show');
 
         // Profile pages
-        Route::get('/profile/{id}', function (string $id) {
+        Route::get('/profile/{id}', function () {
+            $id = request()->route('id');
             $user = \App\Models\User::findOrFail($id);
             $slug = request()->route('workspace_slug');
             if ($user->type === 'agent') {

@@ -36,7 +36,7 @@ const { fetchAgents, fetchChannels } = useApi()
 const { data: agentsData, refresh: refreshAgents } = fetchAgents()
 const { data: channelsData } = fetchChannels()
 
-const sidebarAgents = computed(() => agentsData.value ?? [])
+const sidebarAgents = computed(() => (agentsData.value ?? []).filter(a => a.agentType !== 'system'))
 
 const onlineAgentCount = computed(() =>
   (agentsData.value ?? []).filter(a =>

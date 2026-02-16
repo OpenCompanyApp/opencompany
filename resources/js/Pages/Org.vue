@@ -134,8 +134,8 @@ const loadHierarchy = async () => {
       return
     }
 
-    // Filter out ephemeral users (e.g. Telegram integrations)
-    const orgUsers = data.value.filter((u: any) => !u.isEphemeral)
+    // Filter out ephemeral users (e.g. Telegram integrations) and system agents
+    const orgUsers = data.value.filter((u: any) => !u.isEphemeral && u.agentType !== 'system')
 
     // Build hierarchy from flat user list
     const nodeMap = new Map<string, OrgNode>()

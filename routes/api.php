@@ -170,6 +170,7 @@ Route::middleware('resolve.workspace')->group(function () {
 
     // Approvals
     Route::get('/approvals', [ApprovalController::class, 'index']);
+    Route::get('/approvals/{id}', [ApprovalController::class, 'show']);
     Route::post('/approvals', [ApprovalController::class, 'store']);
     Route::patch('/approvals/{id}', [ApprovalController::class, 'update']);
 

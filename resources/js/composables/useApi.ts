@@ -275,6 +275,7 @@ export const useApi = () => {
     const params = status ? `?status=${status}` : ''
     return useFetch<ApprovalRequest[]>(`/approvals${params}`)
   }
+  const fetchApproval = (id: string) => useFetch<ApprovalRequest>(`/approvals/${id}`)
   const createApproval = (data: { type: string; title: string; description?: string; requesterId: string; amount?: number; channelId?: string }) =>
     api.post('/approvals', data)
   const respondToApproval = (id: string, status: 'approved' | 'rejected', respondedById: string) =>
@@ -574,6 +575,7 @@ export const useApi = () => {
     deleteDocumentAttachment,
     // Approvals
     fetchApprovals,
+    fetchApproval,
     createApproval,
     respondToApproval,
     // Activities

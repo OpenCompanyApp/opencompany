@@ -25,6 +25,12 @@ class ApprovalController extends Controller
         return $query->orderBy('created_at', 'desc')->get();
     }
 
+    public function show(string $id): ApprovalRequest
+    {
+        return ApprovalRequest::with(['requester', 'respondedBy'])
+            ->findOrFail($id);
+    }
+
     public function store(Request $request): mixed
     {
         $approval = ApprovalRequest::create([
