@@ -54,19 +54,19 @@
      COLORS - Clean whites/grays with single blue accent
      ═══════════════════════════════════════════════════════════════════════════ */
 
-  /* Backgrounds - Pure whites and light grays */
-  --color-olympus-bg: oklch(0.985 0 0);
-  --color-olympus-sidebar: oklch(0.97 0 0);
-  --color-olympus-surface: oklch(1 0 0);
-  --color-olympus-elevated: oklch(1 0 0);
+  /* Backgrounds - Warm cream/sand */
+  --color-olympus-bg: oklch(0.975 0.008 75);
+  --color-olympus-sidebar: oklch(0.96 0.01 75);
+  --color-olympus-surface: oklch(0.99 0.006 75);
+  --color-olympus-elevated: oklch(0.99 0.006 75);
 
-  /* Glass surfaces - Solid, no blur */
-  --color-olympus-glass: oklch(1 0 0 / 0.98);
-  --color-olympus-glass-hover: oklch(0.98 0 0);
+  /* Glass surfaces - Warm tint */
+  --color-olympus-glass: oklch(0.99 0.006 75 / 0.98);
+  --color-olympus-glass-hover: oklch(0.97 0.008 75);
 
-  /* Borders - Neutral grays */
-  --color-olympus-border: oklch(0.90 0 0);
-  --color-olympus-border-subtle: oklch(0.94 0 0);
+  /* Borders - Warm neutral */
+  --color-olympus-border: oklch(0.895 0.008 75);
+  --color-olympus-border-subtle: oklch(0.93 0.006 75);
 
   /* Primary - Slack-inspired blue */
   --color-olympus-primary: oklch(0.55 0.15 250);
