@@ -69,7 +69,10 @@
             <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
               {{ task.result?.prompt_tokens?.toLocaleString() ?? '---' }}
             </div>
-            <div v-if="task.result?.cache_read_tokens" class="text-xs text-neutral-400 mt-0.5">
+            <div v-if="task.result?.total_prompt_tokens && task.result.total_prompt_tokens !== task.result.prompt_tokens" class="text-xs text-neutral-400 mt-0.5">
+              {{ task.result.total_prompt_tokens.toLocaleString() }} total
+            </div>
+            <div v-else-if="task.result?.cache_read_tokens" class="text-xs text-neutral-400 mt-0.5">
               {{ task.result.cache_read_tokens.toLocaleString() }} cached
             </div>
           </div>
@@ -77,6 +80,9 @@
             <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Output Tokens</div>
             <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
               {{ task.result?.completion_tokens?.toLocaleString() ?? '---' }}
+            </div>
+            <div v-if="task.result?.total_completion_tokens && task.result.total_completion_tokens !== task.result.completion_tokens" class="text-xs text-neutral-400 mt-0.5">
+              {{ task.result.total_completion_tokens.toLocaleString() }} total
             </div>
           </div>
           <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">

@@ -267,8 +267,10 @@ class AgentRespondJob implements ShouldQueue
             // Complete the task
             $task->complete([
                 'response' => $responseText,
-                'prompt_tokens' => $response->usage->promptTokens,
-                'completion_tokens' => $response->usage->completionTokens,
+                'prompt_tokens' => $lastStep?->usage->promptTokens ?? $response->usage->promptTokens,
+                'completion_tokens' => $lastStep?->usage->completionTokens ?? $response->usage->completionTokens,
+                'total_prompt_tokens' => $response->usage->promptTokens,
+                'total_completion_tokens' => $response->usage->completionTokens,
                 'cache_read_tokens' => $response->usage->cacheReadInputTokens,
                 'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
                 'tool_calls_count' => collect($response->steps)->sum(fn ($step) => count($step->toolCalls)),
@@ -276,8 +278,13 @@ class AgentRespondJob implements ShouldQueue
 
             // Compute token breakdown from actual usage
             try {
+                // Cumulative totals across all steps (for cost tracking)
                 $promptTokens = $response->usage->promptTokens;
                 $completionTokens = $response->usage->completionTokens;
+
+                // Last step's prompt tokens represent actual context window utilization
+                $lastStepPromptTokens = $lastStep?->usage->promptTokens ?? $promptTokens;
+
                 $contextWindow = $task->context['context_window'] ?? 128_000;
                 $outputReserve = (int) config('memory.compaction.output_reserve', 4_096);
 
@@ -290,10 +297,11 @@ class AgentRespondJob implements ShouldQueue
                 $totalChars = $systemChars + $messageChars;
                 $systemRatio = $totalChars > 0 ? $systemChars / $totalChars : 0.5;
 
-                $systemTokens = (int) round($promptTokens * $systemRatio);
-                $messageTokens = $promptTokens - $systemTokens;
+                // Use last-step tokens for context window breakdown
+                $systemTokens = (int) round($lastStepPromptTokens * $systemRatio);
+                $messageTokens = $lastStepPromptTokens - $systemTokens;
 
-                // Compaction math using actual tokens
+                // Compaction math using last-step tokens (actual window state)
                 $available = max(0, $contextWindow - $systemTokens - $outputReserve);
                 $thresholdRatio = (float) config('memory.compaction.threshold_ratio', 0.75);
                 $safetyMargin = (float) config('memory.compaction.safety_margin', 1.2);
@@ -324,6 +332,7 @@ class AgentRespondJob implements ShouldQueue
                     ],
                     'actual_prompt_tokens' => $promptTokens,
                     'actual_completion_tokens' => $completionTokens,
+                    'last_step_prompt_tokens' => $lastStepPromptTokens,
                     'finish_reason' => $lastStep?->finishReason->value ?? 'unknown',
                 ];
                 unset($context['prompt_sections'], $context['context_window']);
