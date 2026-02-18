@@ -43,3 +43,7 @@ components.d.ts
 
 # Confidential business docs
 /docs/confidential
+
+**/caddy
+frankenphp
+frankenphp-worker.php
