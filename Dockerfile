@@ -2,10 +2,10 @@
 FROM composer:2 AS composer
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN apk add --no-cache jq \
-    && jq '.repositories = [.repositories[] | select(.type != "path")]' composer.json > composer.tmp.json \
-    && mv composer.tmp.json composer.json \
-    && composer install --no-dev --no-interaction --no-scripts --prefer-dist
+RUN apk add --no-cache jq
+RUN jq '.repositories = [.repositories[] | select(.type != "path")]' composer.json > composer.tmp.json \
+    && mv composer.tmp.json composer.json
+RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist
 
 # --- Stage 2: Node asset build ---
 FROM node:20-alpine AS assets
