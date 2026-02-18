@@ -2,8 +2,10 @@
 FROM composer:2 AS composer
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN jq '.repositories = [.repositories[] | select(.type != "path")]' composer.json > composer.tmp.json \
-    && mv composer.tmp.json composer.json \
+RUN php -r ' \
+    $c = json_decode(file_get_contents("composer.json"), true); \
+    $c["repositories"] = array_values(array_filter($c["repositories"], fn($r) => ($r["type"] ?? "") !== "path")); \
+    file_put_contents("composer.json", json_encode($c, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));' \
     && composer install --no-dev --no-interaction --no-scripts --prefer-dist
 
 # --- Stage 2: Node asset build ---
