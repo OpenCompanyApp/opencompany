@@ -41,7 +41,7 @@ composer setup
 composer dev
 ```
 
-> Requires PHP 8.2+, Node.js 20+, and a database (SQLite works out of the box).
+> Requires PHP 8.2+, Node.js 20+, and PostgreSQL with [pgvector](https://github.com/pgvector/pgvector).
 
 ## Tech Stack
 
