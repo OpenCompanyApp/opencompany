@@ -32,6 +32,9 @@ components.d.ts
 /screenshots
 /.playwright-mcp
 
+# Claude Code video assets
+/.claude/video-assets
+
 # Inspiration repos
 /inspiration
 

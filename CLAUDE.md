@@ -3,7 +3,7 @@
 ## Local Development
 
 - **Local URL**: `http://opencompany.test` (Laravel Valet domain, no SSL)
-- **Ngrok URL**: `https://maximus-unanatomizable-atmospherically.ngrok-free.dev` (used for Telegram webhooks and external integrations)
+- **Ngrok URL**: `https://your-subdomain.ngrok-free.dev` (used for Telegram webhooks and external integrations; set up your own via `ngrok http 80`)
 - When testing or navigating to the app locally, always use `http://opencompany.test`
 
 ## Tech Stack

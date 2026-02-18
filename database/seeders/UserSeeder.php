@@ -22,9 +22,9 @@ class UserSeeder extends Seeder
         // Main human user
         User::create([
             'id' => 'h1',
-            'name' => 'Rutger',
-            'email' => 'rutger@gingermedia.biz',
-            'password' => Hash::make('cdcdcd10'),
+            'name' => 'Admin',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
             'type' => 'human',
             'status' => 'offline',
             'presence' => 'online',
@@ -136,7 +136,7 @@ class UserSeeder extends Seeder
                 'brain' => $agent['brain'],
                 'behavior_mode' => $agent['behavior_mode'] ?? null,
                 'must_wait_for_approval' => $agent['must_wait_for_approval'] ?? false,
-                'manager_id' => $agent['id'] !== 'a1' ? 'a1' : 'h1', // Atlas reports to Rutger, other agents report to Atlas
+                'manager_id' => $agent['id'] !== 'a1' ? 'a1' : 'h1', // Atlas reports to owner, other agents report to Atlas
                 'workspace_id' => $workspace->id,
             ]);
         }
