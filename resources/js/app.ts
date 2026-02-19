@@ -12,7 +12,7 @@ import { createApp, DefineComponent, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import AppLayout from './Layouts/AppLayout.vue';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Olympus';
+const appName = import.meta.env.VITE_APP_NAME || 'OpenCompany';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
