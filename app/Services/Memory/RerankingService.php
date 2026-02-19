@@ -2,13 +2,20 @@
 
 namespace App\Services\Memory;
 
+use App\Agents\Providers\DynamicProviderResolver;
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Reranking;
 use Laravel\Ai\Responses\Data\RankedDocument;
+use Prism\Prism\Facades\Prism;
 
 class RerankingService
 {
+    public function __construct(
+        private DynamicProviderResolver $providerResolver,
+    ) {}
+
     /**
      * Rerank documents by relevance to a query.
      *
@@ -41,15 +48,21 @@ class RerankingService
             return $this->rerankWithOllama($query, $documents, $model, $topK);
         }
 
-        $response = Reranking::of($documents)
-            ->limit($topK)
-            ->rerank($query, $provider, $model);
+        // Native reranking providers (Cohere, Jina)
+        if (in_array($provider, ['cohere', 'jina'])) {
+            $response = Reranking::of($documents)
+                ->limit($topK)
+                ->rerank($query, $provider, $model);
 
-        return collect($response->results)->map(fn (RankedDocument $doc) => [
-            'index' => $doc->index,
-            'document' => $doc->document,
-            'score' => $doc->score,
-        ])->all();
+            return collect($response->results)->map(fn (RankedDocument $doc) => [
+                'index' => $doc->index,
+                'document' => $doc->document,
+                'score' => $doc->score,
+            ])->all();
+        }
+
+        // All other providers: LLM-based reranking via Prism chat
+        return $this->rerankWithLlm($query, $documents, $provider, $model, $topK);
     }
 
     /**
@@ -110,6 +123,62 @@ class RerankingService
         }
 
         // Sort by score descending, preserving original order for ties
+        usort($scored, fn ($a, $b) => $b['score'] <=> $a['score'] ?: $a['index'] <=> $b['index']);
+
+        return array_slice($scored, 0, $topK);
+    }
+
+    /**
+     * Rerank using any LLM provider via Prism's chat API.
+     *
+     * Uses the same pointwise relevance prompt as rerankWithOllama(),
+     * but routes through Prism + DynamicProviderResolver so any configured
+     * AI provider (OpenAI, Anthropic, OpenRouter, etc.) can be used.
+     *
+     * @param  array<int, string>  $documents
+     * @return array<int, array{index: int, document: string, score: float}>
+     */
+    private function rerankWithLlm(string $query, array $documents, string $provider, string $model, int $topK): array
+    {
+        $systemPrompt = 'Judge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".';
+
+        try {
+            $resolved = $this->providerResolver->resolveFromParts($provider, $model);
+        } catch (\Throwable $e) {
+            Log::warning('LLM reranking provider resolution failed, falling back to passthrough', [
+                'provider' => $provider, 'model' => $model, 'error' => $e->getMessage(),
+            ]);
+            return $this->passThrough($documents);
+        }
+
+        $scored = [];
+
+        foreach ($documents as $i => $doc) {
+            $userMessage = "<Instruct>: Given a web search query, retrieve relevant passages that answer the query\n<Query>: {$query}\n<Document>: {$doc}";
+
+            try {
+                $response = Prism::text()
+                    ->using($resolved['provider'], $resolved['model'])
+                    ->withSystemPrompt($systemPrompt)
+                    ->withPrompt($userMessage)
+                    ->withMaxTokens(2)
+                    ->usingTemperature(0)
+                    ->asText();
+
+                $answer = strtolower(trim($response->text));
+                $score = str_starts_with($answer, 'yes') ? 1.0 : (str_starts_with($answer, 'no') ? 0.0 : 0.5);
+            } catch (\Throwable $e) {
+                Log::debug('LLM reranking call failed for document', ['index' => $i, 'error' => $e->getMessage()]);
+                $score = 0.5;
+            }
+
+            $scored[] = [
+                'index' => $i,
+                'document' => $doc,
+                'score' => $score,
+            ];
+        }
+
         usort($scored, fn ($a, $b) => $b['score'] <=> $a['score'] ?: $a['index'] <=> $b['index']);
 
         return array_slice($scored, 0, $topK);

@@ -750,6 +750,49 @@
                             <Icon name="ph:warning" class="w-3.5 h-3.5" />
                             This provider needs an API key. Configure it in <a :href="workspacePath('/integrations')" class="underline hover:no-underline">Integrations</a> or via environment variables.
                           </p>
+
+                          <!-- Divider -->
+                          <div v-if="rerankLlmProviders.length > 0" class="flex items-center gap-3">
+                            <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+                            <span class="text-xs text-neutral-400 dark:text-neutral-500">or use any AI model</span>
+                            <div class="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+                          </div>
+
+                          <!-- LLM provider section -->
+                          <template v-if="rerankLlmProviders.length > 0">
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                              Use any configured AI model for reranking. The model judges each document's relevance to the query.
+                            </p>
+                            <div class="flex gap-2">
+                              <select v-model="selectedRerankLlmProvider" class="settings-input flex-1" @change="onRerankLlmProviderChange">
+                                <option value="" disabled>Select provider</option>
+                                <option
+                                  v-for="group in rerankLlmProviders"
+                                  :key="group.provider"
+                                  :value="group.provider"
+                                  :disabled="!group.configured"
+                                >
+                                  {{ group.providerName }}{{ !group.configured ? ' (not configured)' : '' }}
+                                </option>
+                              </select>
+                              <select v-model="selectedRerankLlmModel" class="settings-input flex-1" @change="onRerankLlmModelChange" :disabled="!selectedRerankLlmProvider || availableRerankLlmModels.length === 0">
+                                <option value="" disabled>Select model</option>
+                                <option
+                                  v-for="model in availableRerankLlmModels"
+                                  :key="model.id"
+                                  :value="model.model"
+                                >
+                                  {{ model.name }}
+                                </option>
+                              </select>
+                            </div>
+
+                            <!-- LLM provider warning -->
+                            <p v-if="selectedRerankLlmProviderInfo && !selectedRerankLlmProviderInfo.configured" class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                              <Icon name="ph:warning" class="w-3.5 h-3.5" />
+                              This provider needs an API key. Configure it in <a :href="workspacePath('/integrations')" class="underline hover:no-underline">Integrations</a> or via environment variables.
+                            </p>
+                          </template>
                         </template>
                       </div>
                     </Transition>
@@ -1137,7 +1180,7 @@ interface RerankingModelOption {
   model: string
   name: string
   configured?: boolean
-  type: 'cloud' | 'local'
+  type: 'cloud' | 'local' | 'llm'
   downloaded?: boolean
   size?: string
   parameters?: string
@@ -1148,11 +1191,13 @@ interface RerankingModelOption {
 const rerankingModelOptions = ref<RerankingModelOption[]>([])
 const loadingRerankingModels = ref(false)
 
-// Source-based selection: self-hosted (Ollama) vs cloud
-const rerankingSource = ref<'self-hosted' | 'cloud'>('self-hosted')
+// Source-based selection: self-hosted (Ollama) vs cloud vs llm
+const rerankingSource = ref<'self-hosted' | 'cloud' | 'llm'>('self-hosted')
 const selectedOllamaRerankModel = ref('')
 const selectedRerankCloudProvider = ref('')
 const selectedRerankCloudModel = ref('')
+const selectedRerankLlmProvider = ref('')
+const selectedRerankLlmModel = ref('')
 
 // Accordion + pull state (separate from embedding)
 const expandedOllamaRerankModel = ref<string | null>(null)
@@ -1168,10 +1213,14 @@ function parseRerankingModel(value: string) {
   if (provider === 'ollama') {
     rerankingSource.value = 'self-hosted'
     selectedOllamaRerankModel.value = model || ''
-  } else {
+  } else if (provider === 'cohere' || provider === 'jina') {
     rerankingSource.value = 'cloud'
     selectedRerankCloudProvider.value = provider || ''
     selectedRerankCloudModel.value = model || ''
+  } else {
+    rerankingSource.value = 'llm'
+    selectedRerankLlmProvider.value = provider || ''
+    selectedRerankLlmModel.value = model || ''
   }
 }
 
@@ -1180,6 +1229,8 @@ function syncRerankingModel() {
     memorySettings.memory_reranking_model = `ollama:${selectedOllamaRerankModel.value}`
   } else if (rerankingSource.value === 'cloud' && selectedRerankCloudProvider.value && selectedRerankCloudModel.value) {
     memorySettings.memory_reranking_model = `${selectedRerankCloudProvider.value}:${selectedRerankCloudModel.value}`
+  } else if (rerankingSource.value === 'llm' && selectedRerankLlmProvider.value && selectedRerankLlmModel.value) {
+    memorySettings.memory_reranking_model = `${selectedRerankLlmProvider.value}:${selectedRerankLlmModel.value}`
   }
 }
 
@@ -1205,7 +1256,7 @@ interface RerankCloudProviderGroup {
 const rerankCloudProviders = computed<RerankCloudProviderGroup[]>(() => {
   const groups = new Map<string, RerankCloudProviderGroup>()
   for (const model of rerankingModelOptions.value) {
-    if (model.provider === 'ollama') continue
+    if (model.type !== 'cloud') continue
     if (!groups.has(model.provider)) {
       groups.set(model.provider, {
         provider: model.provider,
@@ -1220,7 +1271,7 @@ const rerankCloudProviders = computed<RerankCloudProviderGroup[]>(() => {
 })
 
 const availableRerankCloudModels = computed(() =>
-  rerankingModelOptions.value.filter(m => m.provider === selectedRerankCloudProvider.value)
+  rerankingModelOptions.value.filter(m => m.provider === selectedRerankCloudProvider.value && m.type === 'cloud')
 )
 
 const selectedRerankCloudProviderInfo = computed(() =>
@@ -1238,6 +1289,50 @@ function onRerankCloudProviderChange() {
 function onRerankCloudModelChange() {
   rerankingSource.value = 'cloud'
   selectedOllamaRerankModel.value = ''
+  syncRerankingModel()
+}
+
+// LLM reranking providers (grouped)
+const rerankLlmProviders = computed<RerankCloudProviderGroup[]>(() => {
+  const groups = new Map<string, RerankCloudProviderGroup>()
+  for (const model of rerankingModelOptions.value) {
+    if (model.type !== 'llm') continue
+    if (!groups.has(model.provider)) {
+      groups.set(model.provider, {
+        provider: model.provider,
+        providerName: model.providerName,
+        configured: model.configured ?? false,
+        models: [],
+      })
+    }
+    groups.get(model.provider)!.models.push(model)
+  }
+  return Array.from(groups.values())
+})
+
+const availableRerankLlmModels = computed(() =>
+  rerankingModelOptions.value.filter(m => m.provider === selectedRerankLlmProvider.value && m.type === 'llm')
+)
+
+const selectedRerankLlmProviderInfo = computed(() =>
+  rerankLlmProviders.value.find(g => g.provider === selectedRerankLlmProvider.value)
+)
+
+function onRerankLlmProviderChange() {
+  rerankingSource.value = 'llm'
+  selectedOllamaRerankModel.value = ''
+  selectedRerankCloudProvider.value = ''
+  selectedRerankCloudModel.value = ''
+  const models = availableRerankLlmModels.value
+  selectedRerankLlmModel.value = models[0]?.model ?? ''
+  syncRerankingModel()
+}
+
+function onRerankLlmModelChange() {
+  rerankingSource.value = 'llm'
+  selectedOllamaRerankModel.value = ''
+  selectedRerankCloudProvider.value = ''
+  selectedRerankCloudModel.value = ''
   syncRerankingModel()
 }
 

@@ -919,14 +919,23 @@ class IntegrationController extends Controller
                     'text-embedding-004' => 'text-embedding-004 (768d)',
                 ],
             ],
+            'openrouter' => [
+                'name' => 'OpenRouter',
+                'models' => [
+                    'openai/text-embedding-3-small' => 'text-embedding-3-small (1536d)',
+                    'openai/text-embedding-3-large' => 'text-embedding-3-large (3072d)',
+                ],
+            ],
         ];
 
         $result = [];
+        $integrationSettings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
 
         // Cloud providers
         foreach ($embeddingProviders as $providerId => $provider) {
-            $apiKey = config("prism.providers.{$providerId}.api_key", '');
-            $configured = !empty($apiKey);
+            $integration = $integrationSettings->get($providerId);
+            $configured = $integration?->hasValidConfig()
+                || !empty(config("prism.providers.{$providerId}.api_key", ''));
 
             foreach ($provider['models'] as $modelId => $modelName) {
                 $result[] = [
@@ -1095,6 +1104,39 @@ class IntegrationController extends Controller
                     'name' => $modelName,
                     'configured' => $configured,
                     'type' => 'cloud',
+                ];
+            }
+        }
+
+        // LLM providers (any configured AI chat model can do pointwise reranking)
+        $skipProviders = ['ollama', 'cohere', 'jina']; // Already listed above
+        $available = IntegrationSetting::getAvailableIntegrations();
+        $integrationSettings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
+
+        foreach ($available as $id => $info) {
+            if (! isset($info['api_format']) || in_array($id, $skipProviders)) {
+                continue;
+            }
+
+            $integration = $integrationSettings->get($id);
+            $configured = $integration?->hasValidConfig()
+                || ! empty(config("prism.providers.{$id}.api_key", ''));
+
+            /** @var array<string, string> $models */
+            $models = $info['models'] ?? [];
+            if (empty($models)) {
+                continue;
+            }
+
+            foreach ($models as $modelId => $modelName) {
+                $result[] = [
+                    'id' => "{$id}:{$modelId}",
+                    'provider' => $id,
+                    'providerName' => ($info['name'] ?? $id).' (LLM)',
+                    'model' => $modelId,
+                    'name' => $modelName,
+                    'configured' => (bool) $configured,
+                    'type' => 'llm',
                 ];
             }
         }
