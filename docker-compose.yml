@@ -4,7 +4,7 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_KEY: "base64:${SERVICE_BASE64_APPKEY}"
+      APP_KEY: "${APP_KEY:-}"
       APP_URL: "${SERVICE_FQDN_APP_8000:-http://localhost:8000}"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
@@ -17,6 +17,10 @@ services:
       CACHE_STORE: redis
       SESSION_DRIVER: redis
       QUEUE_CONNECTION: redis
+      BROADCAST_CONNECTION: reverb
+      REVERB_HOST: localhost
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
       REVERB_SERVER_HOST: 0.0.0.0
       REVERB_SERVER_PORT: 8080
       REVERB_APP_ID: ${REVERB_APP_ID:-1000001}
