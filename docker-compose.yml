@@ -7,7 +7,7 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_KEY: "${APP_KEY}"
+      APP_KEY: "base64:${SERVICE_BASE64_APPKEY}"
       APP_URL: "${SERVICE_FQDN_APP:-http://localhost:8000}"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
@@ -53,7 +53,7 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-opencompany}
       POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES:-opencompany}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     deploy:
       resources:
         limits:
