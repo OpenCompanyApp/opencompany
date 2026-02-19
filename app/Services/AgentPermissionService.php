@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AgentPermission;
 use App\Models\ApprovalRequest;
+use App\Models\IntegrationSetting;
 use App\Models\User;
 use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
@@ -158,7 +159,20 @@ class AgentPermissionService
             }
         }
 
-        // No records = all integrations enabled (backward-compatible)
+        // Filter by workspace-level enablement.
+        // MCP servers (mcp_ prefix) are passthrough — they self-register only when enabled.
+        if (app()->bound('currentWorkspace')) {
+            $workspaceEnabledIds = IntegrationSetting::forWorkspace()
+                ->where('enabled', true)
+                ->pluck('integration_id')
+                ->toArray();
+
+            $allApps = array_values(array_filter($allApps, function (string $app) use ($workspaceEnabledIds) {
+                return str_starts_with($app, 'mcp_') || in_array($app, $workspaceEnabledIds);
+            }));
+        }
+
+        // No agent-level records = all workspace-enabled integrations allowed
         if ($integrationPerms->isEmpty()) {
             return $allApps;
         }

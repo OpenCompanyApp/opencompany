@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AgentPermission;
+use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,6 +35,17 @@ class AgentPermissionServiceTest extends TestCase
             'agent_id' => $this->agent->id,
             'requires_approval' => false,
         ], $attributes));
+    }
+
+    private function enableWorkspaceIntegration(string $integrationId, bool $enabled = true): IntegrationSetting
+    {
+        return IntegrationSetting::create([
+            'id' => Str::uuid()->toString(),
+            'workspace_id' => $this->workspace->id,
+            'integration_id' => $integrationId,
+            'config' => [],
+            'enabled' => $enabled,
+        ]);
     }
 
     // ── Tool Permission Tests ──────────────────────────────────────────
@@ -194,16 +206,37 @@ class AgentPermissionServiceTest extends TestCase
 
     // ── Integration Access Tests ─────────────────────────────────────────
 
-    public function test_all_integrations_enabled_when_no_records(): void
+    public function test_no_integrations_when_none_workspace_enabled(): void
     {
         $result = $this->service->getEnabledIntegrations($this->agent);
 
-        // Should include all known integration apps
+        // No IntegrationSetting rows — only MCP-prefixed apps (if any) should be present
+        $nonMcp = array_filter($result, fn ($app) => !str_starts_with($app, 'mcp_'));
+        $this->assertEmpty($nonMcp, 'Non-MCP integrations should not be returned without workspace enablement');
+    }
+
+    public function test_only_workspace_enabled_integrations_returned(): void
+    {
+        $this->enableWorkspaceIntegration('telegram');
+
+        $result = $this->service->getEnabledIntegrations($this->agent);
+
         $this->assertContains('telegram', $result);
+    }
+
+    public function test_workspace_disabled_integration_excluded(): void
+    {
+        $this->enableWorkspaceIntegration('telegram', enabled: false);
+
+        $result = $this->service->getEnabledIntegrations($this->agent);
+
+        $this->assertNotContains('telegram', $result);
     }
 
     public function test_denied_integration_excluded(): void
     {
+        $this->enableWorkspaceIntegration('telegram');
+
         $this->createPermission([
             'scope_type' => 'integration',
             'scope_key' => 'telegram',
@@ -217,8 +250,12 @@ class AgentPermissionServiceTest extends TestCase
 
     public function test_new_integration_enabled_by_default_when_records_exist(): void
     {
+        // Enable both integrations at workspace level
+        $this->enableWorkspaceIntegration('telegram');
+        $this->enableWorkspaceIntegration('plausible');
+
         // When an agent has integration records for known apps,
-        // new integrations without records should still be enabled.
+        // new workspace-enabled integrations without records should still be enabled.
         $this->createPermission([
             'scope_type' => 'integration',
             'scope_key' => 'telegram',
@@ -227,14 +264,15 @@ class AgentPermissionServiceTest extends TestCase
 
         $result = $this->service->getEnabledIntegrations($this->agent);
 
-        // telegram is explicitly allowed
         $this->assertContains('telegram', $result);
-        // mermaid (if registered) should be enabled by default since no deny record exists
-        // At minimum, other integrations without records should not be excluded
+        // plausible has no agent-level record but is workspace-enabled, so it should be included
+        $this->assertContains('plausible', $result);
     }
 
     public function test_explicitly_allowed_integration_enabled(): void
     {
+        $this->enableWorkspaceIntegration('telegram');
+
         $this->createPermission([
             'scope_type' => 'integration',
             'scope_key' => 'telegram',
@@ -244,6 +282,21 @@ class AgentPermissionServiceTest extends TestCase
         $result = $this->service->getEnabledIntegrations($this->agent);
 
         $this->assertContains('telegram', $result);
+    }
+
+    public function test_agent_deny_overrides_workspace_enabled(): void
+    {
+        $this->enableWorkspaceIntegration('telegram');
+
+        $this->createPermission([
+            'scope_type' => 'integration',
+            'scope_key' => 'telegram',
+            'permission' => 'deny',
+        ]);
+
+        $result = $this->service->getEnabledIntegrations($this->agent);
+
+        $this->assertNotContains('telegram', $result);
     }
 
     // ── Channel Access Tests ───────────────────────────────────────────

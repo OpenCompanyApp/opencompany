@@ -578,6 +578,11 @@ class ToolRegistry
             $isIntegration = in_array($app, $this->getEffectiveIntegrationApps());
             $integrationEnabled = !$isIntegration || in_array($app, $enabledIntegrations);
 
+            // Skip tools from non-workspace-enabled integrations entirely
+            if ($isIntegration && !$integrationEnabled) {
+                continue;
+            }
+
             $permission = $this->permissionService->resolveToolPermission(
                 $agent, $slug, $meta['type']
             );
@@ -590,7 +595,7 @@ class ToolRegistry
                 'icon' => $meta['icon'],
                 'app' => $app,
                 'isIntegration' => $isIntegration,
-                'enabled' => $permission['allowed'] && $integrationEnabled,
+                'enabled' => $permission['allowed'],
                 'requiresApproval' => $permission['requires_approval'],
             ];
         }
