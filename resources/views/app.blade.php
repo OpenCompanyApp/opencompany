@@ -24,6 +24,10 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+        <meta property="og:image" content="{{ url('/og-image.svg') }}">
+        <meta property="og:type" content="website">
+        <meta name="twitter:card" content="summary_large_image">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
