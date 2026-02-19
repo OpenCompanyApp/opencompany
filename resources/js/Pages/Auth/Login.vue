@@ -79,11 +79,5 @@ const submit = () => {
       </Button>
     </form>
 
-    <template #footer>
-      Don't have an account?
-      <Link :href="route('register')" class="text-neutral-900 dark:text-white hover:underline ml-1">
-        Sign up
-      </Link>
-    </template>
   </GuestLayout>
 </template>
