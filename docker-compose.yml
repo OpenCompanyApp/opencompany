@@ -28,7 +28,6 @@ services:
       REVERB_APP_ID: ${REVERB_APP_ID:-1000001}
       REVERB_APP_KEY: ${SERVICE_PASSWORD_REVERBKEY}
       REVERB_APP_SECRET: ${SERVICE_PASSWORD_REVERBSECRET}
-      CADDY_SERVER_EXTRA_DIRECTIVES: "reverse_proxy /app/* localhost:8080"
     volumes:
       - storage:/app/storage
     depends_on:

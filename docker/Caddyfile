@@ -1,19 +1,46 @@
-# NOTE: This Caddyfile is NOT used by FrankenPHP Octane.
-# Octane auto-generates its Caddy config at runtime.
-# Use the CADDY_SERVER_EXTRA_DIRECTIVES env var instead (set in docker-compose.yml).
 {
-	auto_https off
-	frankenphp
+	{$CADDY_GLOBAL_OPTIONS}
+
+	admin {$CADDY_SERVER_ADMIN_HOST}:{$CADDY_SERVER_ADMIN_PORT}
+
+	frankenphp {
+		worker {
+			file "{$APP_PUBLIC_PATH}/frankenphp-worker.php"
+			{$CADDY_SERVER_WORKER_DIRECTIVE}
+			{$CADDY_SERVER_WATCH_DIRECTIVES}
+		}
+	}
 }
 
-:8000 {
-	handle /app/* {
-		reverse_proxy localhost:8080
+{$CADDY_EXTRA_CONFIG}
+
+{$CADDY_SERVER_SERVER_NAME} {
+	log {
+		level {$CADDY_SERVER_LOG_LEVEL}
+
+		format filter {
+			wrap {$CADDY_SERVER_LOGGER}
+			fields {
+				uri query {
+					replace authorization REDACTED
+				}
+			}
+		}
 	}
 
-	handle {
-		root * /app/public
-		encode zstd gzip
-		php_server
+	route {
+		root * "{$APP_PUBLIC_PATH}"
+		encode zstd br gzip
+
+		# Proxy WebSocket connections to Laravel Reverb
+		reverse_proxy /app/* localhost:8080
+
+		{$CADDY_SERVER_EXTRA_DIRECTIVES}
+
+		php_server {
+			index frankenphp-worker.php
+			try_files {path} frankenphp-worker.php
+			resolve_root_symlink
+		}
 	}
 }
