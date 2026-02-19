@@ -10,6 +10,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+COPY --from=composer /app/vendor ./vendor
 RUN npm run build
 
 # --- Stage 3: Production image ---
@@ -40,7 +41,7 @@ RUN curl -fsSL https://github.com/typst/typst/releases/latest/download/typst-x86
 
 # Mermaid renderer (native Rust binary — no Chromium needed)
 RUN curl -fsSL https://github.com/1jehuang/mermaid-rs-renderer/releases/latest/download/mmdr-x86_64-unknown-linux-gnu.tar.gz \
-    | tar -xz -C /usr/local/bin mmdr
+    | tar -xz -C /usr/local/bin
 
 # PHP config for production
 RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini \
@@ -59,7 +60,8 @@ COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Laravel setup
-RUN php artisan package:discover --ansi \
+RUN rm -f bootstrap/cache/*.php \
+    && php artisan package:discover --ansi \
     && php artisan config:cache \
     && php artisan route:cache \
     && php artisan view:cache \
