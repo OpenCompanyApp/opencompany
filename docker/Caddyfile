@@ -1,3 +1,6 @@
+# NOTE: This Caddyfile is NOT used by FrankenPHP Octane.
+# Octane auto-generates its Caddy config at runtime.
+# Use the CADDY_SERVER_EXTRA_DIRECTIVES env var instead (set in docker-compose.yml).
 {
 	auto_https off
 	frankenphp

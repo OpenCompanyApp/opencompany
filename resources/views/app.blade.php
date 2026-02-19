@@ -35,9 +35,9 @@
         <script>
             window.__reverb = {
                 key: @json(config('broadcasting.connections.reverb.key')),
-                host: @json(config('broadcasting.connections.reverb.options.host')),
-                port: @json((int) config('broadcasting.connections.reverb.options.port')),
-                scheme: @json(config('broadcasting.connections.reverb.options.scheme')),
+                host: @json(config('reverb.apps.apps.0.options.host')),
+                port: @json((int) config('reverb.apps.apps.0.options.port')),
+                scheme: @json(config('reverb.apps.apps.0.options.scheme')),
             };
         </script>
 
