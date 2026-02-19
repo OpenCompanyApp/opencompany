@@ -32,6 +32,8 @@ Route::get('/setup', function () {
     return Inertia::render('Workspace/Setup');
 })->name('setup');
 
+Route::post('/setup', [\App\Http\Controllers\SetupController::class, 'store']);
+
 // Invitation acceptance (outside workspace prefix)
 Route::get('/invite/{token}', function (string $token) {
     $invitation = \App\Models\WorkspaceInvitation::where('token', $token)

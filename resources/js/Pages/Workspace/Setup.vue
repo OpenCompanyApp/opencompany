@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Head, router, usePage } from '@inertiajs/vue3'
+import { Head, useForm, usePage } from '@inertiajs/vue3'
 import GuestLayout from '@/Layouts/GuestLayout.vue'
 import Input from '@/Components/shared/Input.vue'
 import Button from '@/Components/shared/Button.vue'
@@ -8,10 +7,7 @@ import Button from '@/Components/shared/Button.vue'
 const page = usePage()
 const isLoggedIn = !!(page.props.auth as any)?.user
 
-const submitting = ref(false)
-const error = ref('')
-
-const form = ref({
+const form = useForm({
   name: '',
   email: '',
   password: '',
@@ -19,93 +15,8 @@ const form = ref({
   workspace_name: '',
 })
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
-function getCsrfToken(): string {
-  const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/)
-  return match ? decodeURIComponent(match[1]) : ''
-}
-
-async function createWorkspace(name: string) {
-  const slug = slugify(name)
-  const response = await fetch('/api/workspaces', {
-    method: 'POST',
-    credentials: 'same-origin',
-    body: JSON.stringify({
-      name: name.trim(),
-      slug,
-      icon: 'ph:buildings',
-      color: 'blue',
-    }),
-    headers: {
-      'Content-Type': 'application/json',
-      'X-XSRF-TOKEN': getCsrfToken(),
-      Accept: 'application/json',
-    },
-  })
-
-  if (!response.ok) {
-    const data = await response.json()
-    throw new Error(data.message || Object.values(data.errors || {}).flat().join(', ') || 'Failed to create workspace')
-  }
-
-  const data = await response.json()
-  router.visit(`/w/${data.slug}`)
-}
-
-async function handleSetup() {
-  submitting.value = true
-  error.value = ''
-
-  try {
-    if (!isLoggedIn) {
-      const response = await fetch('/register', {
-        method: 'POST',
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          name: form.value.name.trim(),
-          email: form.value.email.trim(),
-          password: form.value.password,
-          password_confirmation: form.value.password_confirmation,
-          _setup: true,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-XSRF-TOKEN': getCsrfToken(),
-          Accept: 'application/json',
-        },
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message || Object.values(data.errors || {}).flat().join(', ') || 'Failed to create account')
-      }
-    }
-
-    await createWorkspace(form.value.workspace_name)
-  } catch (e: any) {
-    error.value = e?.message || 'Something went wrong'
-  } finally {
-    submitting.value = false
-  }
-}
-
-async function handleWorkspaceOnly() {
-  submitting.value = true
-  error.value = ''
-
-  try {
-    await createWorkspace(form.value.workspace_name)
-  } catch (e: any) {
-    error.value = e?.message || 'Failed to create workspace'
-  } finally {
-    submitting.value = false
-  }
+function submit() {
+  form.post('/setup')
 }
 </script>
 
@@ -122,11 +33,11 @@ async function handleWorkspaceOnly() {
         Create your admin account and workspace.
       </p>
 
-      <form @submit.prevent="handleSetup" class="space-y-4">
+      <form @submit.prevent="submit" class="space-y-4">
         <Input
           v-model="form.name"
           label="Your name"
-          :error="''"
+          :error="form.errors.name"
           autofocus
           autocomplete="name"
         />
@@ -135,7 +46,7 @@ async function handleWorkspaceOnly() {
           v-model="form.email"
           type="email"
           label="Email"
-          :error="''"
+          :error="form.errors.email"
           autocomplete="email"
         />
 
@@ -143,7 +54,7 @@ async function handleWorkspaceOnly() {
           v-model="form.password"
           type="password"
           label="Password"
-          :error="''"
+          :error="form.errors.password"
           autocomplete="new-password"
         />
 
@@ -151,7 +62,7 @@ async function handleWorkspaceOnly() {
           v-model="form.password_confirmation"
           type="password"
           label="Confirm password"
-          :error="''"
+          :error="form.errors.password_confirmation"
           autocomplete="new-password"
         />
 
@@ -160,18 +71,14 @@ async function handleWorkspaceOnly() {
         <Input
           v-model="form.workspace_name"
           label="Workspace name"
-          :error="''"
+          :error="form.errors.workspace_name"
           placeholder="e.g., Acme Corp"
         />
-
-        <div v-if="error" class="text-sm text-red-600 dark:text-red-400">
-          {{ error }}
-        </div>
 
         <Button
           type="submit"
           full-width
-          :loading="submitting"
+          :loading="form.processing"
           :disabled="!form.name.trim() || !form.email.trim() || !form.password || !form.workspace_name.trim()"
         >
           Get started
@@ -188,23 +95,19 @@ async function handleWorkspaceOnly() {
         Name your workspace to get started.
       </p>
 
-      <form @submit.prevent="handleWorkspaceOnly" class="space-y-4">
+      <form @submit.prevent="submit" class="space-y-4">
         <Input
           v-model="form.workspace_name"
           label="Workspace name"
-          :error="''"
+          :error="form.errors.workspace_name"
           placeholder="e.g., Acme Corp"
           autofocus
         />
 
-        <div v-if="error" class="text-sm text-red-600 dark:text-red-400">
-          {{ error }}
-        </div>
-
         <Button
           type="submit"
           full-width
-          :loading="submitting"
+          :loading="form.processing"
           :disabled="!form.workspace_name.trim()"
         >
           Create workspace
