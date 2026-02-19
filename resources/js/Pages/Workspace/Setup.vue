@@ -35,6 +35,7 @@ async function createWorkspace(name: string) {
   const slug = slugify(name)
   const response = await fetch('/api/workspaces', {
     method: 'POST',
+    credentials: 'same-origin',
     body: JSON.stringify({
       name: name.trim(),
       slug,
@@ -65,6 +66,7 @@ async function handleSetup() {
     if (!isLoggedIn) {
       const response = await fetch('/register', {
         method: 'POST',
+        credentials: 'same-origin',
         body: JSON.stringify({
           name: form.value.name.trim(),
           email: form.value.email.trim(),
