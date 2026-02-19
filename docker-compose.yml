@@ -5,7 +5,7 @@ services:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_KEY: "base64:${SERVICE_BASE64_APPKEY}"
-      APP_URL: "${SERVICE_FQDN_APP:-http://localhost:8000}"
+      APP_URL: "${SERVICE_FQDN_APP_8000:-http://localhost:8000}"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
