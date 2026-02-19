@@ -6,7 +6,7 @@ services:
       APP_DEBUG: "false"
       APP_KEY: "${APP_KEY:-}"
       APP_NAME: OpenCompany
-      APP_URL: "${SERVICE_FQDN_APP:-http://localhost:8000}"
+      APP_URL: "${SERVICE_URL_APP:-http://localhost:8000}"
       SANCTUM_STATEFUL_DOMAINS: "${SANCTUM_STATEFUL_DOMAINS:-}"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
