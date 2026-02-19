@@ -7,14 +7,14 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_KEY: "base64:${SERVICE_BASE64_APPKEY}"
-      APP_URL: ${SERVICE_FQDN_APP}
+      APP_KEY: "${APP_KEY}"
+      APP_URL: "${SERVICE_FQDN_APP:-http://localhost:8000}"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
       DB_DATABASE: ${DB_DATABASE:-opencompany}
       DB_USERNAME: ${DB_USERNAME:-opencompany}
-      DB_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+      DB_PASSWORD: ${SERVICE_PASSWORD_POSTGRES:-opencompany}
       REDIS_HOST: valkey
       REDIS_PORT: 6379
       CACHE_STORE: redis
@@ -51,7 +51,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_DATABASE:-opencompany}
       POSTGRES_USER: ${DB_USERNAME:-opencompany}
-      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES:-opencompany}
     volumes:
       - pgdata:/var/lib/postgresql/data
     deploy:
