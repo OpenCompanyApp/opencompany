@@ -50,22 +50,13 @@
         <!-- Simplified Header -->
         <div class="flex items-center justify-between mb-6">
           <div class="flex items-center gap-4">
-            <div class="relative">
-              <div
-                :class="[
-                  'w-14 h-14 rounded-xl flex items-center justify-center text-2xl',
-                  agentBgColor
-                ]"
-              >
-                {{ agent.identity?.emoji || '🤖' }}
-              </div>
-              <div
-                :class="[
-                  'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-neutral-900',
-                  statusColor
-                ]"
-              />
-            </div>
+            <AgentAvatar
+              :user="agent"
+              size="xl"
+              shape="rounded"
+              :show-status="true"
+              :show-tooltip="false"
+            />
             <div>
               <div class="flex items-center gap-2">
                 <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">
@@ -135,9 +126,13 @@
               <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-200 dark:divide-neutral-700">
                 <!-- Manager -->
                 <div v-if="agentManager" class="px-4 py-3 flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-lg bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-sm shrink-0">
-                    {{ agentManager.type === 'agent' ? '🤖' : '👤' }}
-                  </div>
+                  <AgentAvatar
+                    :user="agentManager"
+                    size="sm"
+                    shape="rounded"
+                    :show-status="false"
+                    :show-tooltip="false"
+                  />
                   <div class="flex-1 min-w-0">
                     <p class="text-xs text-neutral-500 dark:text-neutral-400">Reports to</p>
                     <Link
@@ -161,9 +156,13 @@
                     :href="workspacePath(`/agent/${report.id}`)"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
                   >
-                    <div class="w-7 h-7 rounded-lg bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-xs shrink-0">
-                      🤖
-                    </div>
+                    <AgentAvatar
+                      :user="report"
+                      size="xs"
+                      shape="rounded"
+                      :show-status="true"
+                      :show-tooltip="false"
+                    />
                     <div class="flex-1 min-w-0">
                       <p class="text-sm font-medium text-neutral-900 dark:text-white truncate">{{ report.name }}</p>
                       <p class="text-xs text-neutral-500 dark:text-neutral-400 capitalize">{{ report.agent_type || 'agent' }}</p>
@@ -411,6 +410,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import SharedSkeleton from '@/Components/shared/Skeleton.vue'
+import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import AgentIdentityCard from '@/Components/agents/AgentIdentityCard.vue'
 import AgentIdentityFiles from '@/Components/agents/AgentIdentityFiles.vue'
 import AgentCapabilities from '@/Components/agents/AgentCapabilities.vue'
@@ -547,6 +547,7 @@ const fetchData = async () => {
     agent.value = {
       id: raw.id as string,
       name: raw.name as string,
+      avatar: raw.avatar as string | undefined,
       type: raw.type as 'agent',
       agentType: (raw.agentType as AgentType) || 'coder',
       status: (raw.status as string) || 'idle',
