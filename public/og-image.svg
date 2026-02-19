@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#2563EB"/>
+  <rect width="1200" height="630" fill="#171717"/>
   <text x="600" y="285" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="600" font-size="72" fill="white">OpenCompany</text>
-  <text x="600" y="360" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="400" font-size="28" fill="rgba(255,255,255,0.7)">A company in a box</text>
+  <text x="600" y="360" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="400" font-size="28" fill="rgba(255,255,255,0.45)">A company in a box</text>
 </svg>
