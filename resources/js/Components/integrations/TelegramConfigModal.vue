@@ -287,6 +287,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { apiFetch } from '@/utils/apiFetch'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
@@ -358,7 +359,7 @@ const addUser = () => {
 
 const loadConfig = async () => {
   try {
-    const response = await fetch('/api/integrations/telegram/config')
+    const response = await apiFetch('/api/integrations/telegram/config')
     if (response.ok) {
       const data = await response.json()
       botToken.value = data.config?.apiKey || ''
@@ -376,7 +377,7 @@ const loadConfig = async () => {
 
 const loadAgents = async () => {
   try {
-    const response = await fetch('/api/users/agents')
+    const response = await apiFetch('/api/users/agents')
     if (response.ok) {
       agents.value = await response.json()
     }
@@ -387,7 +388,7 @@ const loadAgents = async () => {
 
 const loadHumanUsers = async () => {
   try {
-    const response = await fetch('/api/users')
+    const response = await apiFetch('/api/users')
     if (response.ok) {
       const allUsers = await response.json()
       humanUsers.value = allUsers.filter((u: any) => u.type === 'human' && !u.isEphemeral)
@@ -399,7 +400,7 @@ const loadHumanUsers = async () => {
 
 const loadExternalIdentities = async () => {
   try {
-    const response = await fetch('/api/integrations/external-identities?provider=telegram')
+    const response = await apiFetch('/api/integrations/external-identities?provider=telegram')
     if (response.ok) {
       const identities = await response.json()
       const mappings: Record<string, string> = {}
@@ -415,7 +416,7 @@ const loadExternalIdentities = async () => {
 
 const loadTelegramChannels = async () => {
   try {
-    const response = await fetch('/api/channels?type=external&provider=telegram')
+    const response = await apiFetch('/api/channels?type=external&provider=telegram')
     if (response.ok) {
       telegramChannels.value = await response.json()
     }
@@ -453,12 +454,12 @@ const linkUser = async (telegramId: string, userId: string) => {
   if (!userId) {
     // Unlink: find the identity and delete it
     try {
-      const response = await fetch('/api/integrations/external-identities?provider=telegram')
+      const response = await apiFetch('/api/integrations/external-identities?provider=telegram')
       if (response.ok) {
         const identities = await response.json()
         const identity = identities.find((i: any) => i.external_id === telegramId)
         if (identity) {
-          await fetch(`/api/integrations/link-user/${identity.id}`, { method: 'DELETE' })
+          await apiFetch(`/api/integrations/link-user/${identity.id}`, { method: 'DELETE' })
         }
       }
       const newMappings = { ...userMappings.value }
@@ -471,7 +472,7 @@ const linkUser = async (telegramId: string, userId: string) => {
   }
 
   try {
-    const response = await fetch('/api/integrations/link-user', {
+    const response = await apiFetch('/api/integrations/link-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -497,7 +498,7 @@ const testConnection = async () => {
   resultMessage.value = null
 
   try {
-    const response = await fetch('/api/integrations/telegram/test', {
+    const response = await apiFetch('/api/integrations/telegram/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ apiKey: botToken.value }),
@@ -528,7 +529,7 @@ const setupWebhook = async () => {
   resultMessage.value = null
 
   try {
-    const response = await fetch('/api/integrations/telegram/setup-webhook', {
+    const response = await apiFetch('/api/integrations/telegram/setup-webhook', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ apiKey: botToken.value }),
@@ -558,7 +559,7 @@ const handleSave = async () => {
   isSaving.value = true
 
   try {
-    const response = await fetch('/api/integrations/telegram/config', {
+    const response = await apiFetch('/api/integrations/telegram/config', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

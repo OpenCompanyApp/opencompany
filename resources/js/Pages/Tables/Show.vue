@@ -166,6 +166,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { apiFetch } from '@/utils/apiFetch'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import Button from '@/Components/shared/Button.vue'
@@ -240,8 +241,8 @@ const fetchTable = async () => {
   loading.value = true
   try {
     const [tableResponse, rowsResponse] = await Promise.all([
-      fetch(`/api/tables/${props.tableId}`),
-      fetch(`/api/tables/${props.tableId}/rows`),
+      apiFetch(`/api/tables/${props.tableId}`),
+      apiFetch(`/api/tables/${props.tableId}/rows`),
     ])
     table.value = await tableResponse.json()
     rows.value = await rowsResponse.json()
@@ -272,7 +273,7 @@ const fetchTable = async () => {
 const handleUpdateName = async (name: string) => {
   if (!table.value) return
   try {
-    await fetch(`/api/tables/${props.tableId}`, {
+    await apiFetch(`/api/tables/${props.tableId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
@@ -286,7 +287,7 @@ const handleUpdateName = async (name: string) => {
 const handleUpdateDescription = async (description: string) => {
   if (!table.value) return
   try {
-    await fetch(`/api/tables/${props.tableId}`, {
+    await apiFetch(`/api/tables/${props.tableId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description }),
@@ -300,7 +301,7 @@ const handleUpdateDescription = async (description: string) => {
 const handleUpdateIcon = async (icon: string) => {
   if (!table.value) return
   try {
-    await fetch(`/api/tables/${props.tableId}`, {
+    await apiFetch(`/api/tables/${props.tableId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ icon }),
@@ -316,7 +317,7 @@ const handleExport = async (format: 'csv' | 'json') => {
   if (!table.value) return
 
   try {
-    const response = await fetch(`/api/tables/${props.tableId}/export?format=${format}`)
+    const response = await apiFetch(`/api/tables/${props.tableId}/export?format=${format}`)
     const blob = await response.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -337,7 +338,7 @@ const handleImport = async (file: File, format: 'csv' | 'json') => {
   formData.append('format', format)
 
   try {
-    const response = await fetch(`/api/tables/${props.tableId}/import`, {
+    const response = await apiFetch(`/api/tables/${props.tableId}/import`, {
       method: 'POST',
       body: formData,
     })
@@ -375,7 +376,7 @@ const handleRenameView = async (viewId: string) => {
   const newName = window.prompt('Rename view', view.name)
   if (!newName || newName === view.name) return
   try {
-    await fetch(`/api/tables/${props.tableId}/views/${viewId}`, {
+    await apiFetch(`/api/tables/${props.tableId}/views/${viewId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newName }),
@@ -409,7 +410,7 @@ const handleDeleteView = (viewId: string) => {
 // Table deletion
 const handleDeleteTable = async () => {
   try {
-    await fetch(`/api/tables/${props.tableId}`, { method: 'DELETE' })
+    await apiFetch(`/api/tables/${props.tableId}`, { method: 'DELETE' })
     router.visit(workspacePath('/tables'))
   } catch (error) {
     console.error('Failed to delete table:', error)
@@ -419,7 +420,7 @@ const handleDeleteTable = async () => {
 const handleDuplicateTable = async () => {
   if (!table.value) return
   try {
-    const response = await fetch(`/api/tables/${props.tableId}/duplicate`, {
+    const response = await apiFetch(`/api/tables/${props.tableId}/duplicate`, {
       method: 'POST',
     })
     const newTable = await response.json()
@@ -447,7 +448,7 @@ const handleAddRow = async () => {
   }
 
   try {
-    const response = await fetch(`/api/tables/${props.tableId}/rows`, {
+    const response = await apiFetch(`/api/tables/${props.tableId}/rows`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data }),
@@ -465,7 +466,7 @@ const handleUpdateCell = async (rowId: string, columnId: string, value: unknown)
     if (!row) return
 
     const newData = { ...row.data, [columnId]: value }
-    await fetch(`/api/tables/${props.tableId}/rows/${rowId}`, {
+    await apiFetch(`/api/tables/${props.tableId}/rows/${rowId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: newData }),
@@ -478,7 +479,7 @@ const handleUpdateCell = async (rowId: string, columnId: string, value: unknown)
 
 const handleDeleteRow = async (rowId: string) => {
   try {
-    await fetch(`/api/tables/${props.tableId}/rows/${rowId}`, {
+    await apiFetch(`/api/tables/${props.tableId}/rows/${rowId}`, {
       method: 'DELETE',
     })
     rows.value = rows.value.filter((r) => r.id !== rowId)
@@ -490,7 +491,7 @@ const handleDeleteRow = async (rowId: string) => {
 // Column handlers
 const handleAddColumn = async (columnData: { name: string; type: string; options?: Record<string, unknown>; required?: boolean }) => {
   try {
-    const response = await fetch(`/api/tables/${props.tableId}/columns`, {
+    const response = await apiFetch(`/api/tables/${props.tableId}/columns`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(columnData),
@@ -514,7 +515,7 @@ const handleSaveColumnEdit = async (columnData: { name: string; type: string; op
   if (!columnToEdit.value) return
 
   try {
-    await fetch(`/api/tables/${props.tableId}/columns/${columnToEdit.value.id}`, {
+    await apiFetch(`/api/tables/${props.tableId}/columns/${columnToEdit.value.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(columnData),
@@ -536,7 +537,7 @@ const handleSaveColumnEdit = async (columnData: { name: string; type: string; op
 
 const handleUpdateColumn = async (columnId: string, updates: Partial<DataTableColumn>) => {
   try {
-    await fetch(`/api/tables/${props.tableId}/columns/${columnId}`, {
+    await apiFetch(`/api/tables/${props.tableId}/columns/${columnId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -554,7 +555,7 @@ const handleUpdateColumn = async (columnId: string, updates: Partial<DataTableCo
 
 const handleDeleteColumn = async (columnId: string) => {
   try {
-    await fetch(`/api/tables/${props.tableId}/columns/${columnId}`, {
+    await apiFetch(`/api/tables/${props.tableId}/columns/${columnId}`, {
       method: 'DELETE',
     })
     if (table.value) {
@@ -576,7 +577,7 @@ const confirmBulkDelete = () => {
 
 const handleBulkDelete = async () => {
   try {
-    await fetch(`/api/tables/${props.tableId}/rows/bulk-delete`, {
+    await apiFetch(`/api/tables/${props.tableId}/rows/bulk-delete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rowIds: selectedRowIds.value }),

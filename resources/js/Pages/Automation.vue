@@ -9,8 +9,7 @@
             Schedule agents to run automatically on a recurring basis
           </p>
         </div>
-        <Button variant="primary" @click="router.visit(workspacePath('/automation/create'))">
-          <Icon name="ph:plus" class="w-4 h-4 mr-1.5" />
+        <Button variant="primary" icon-left="ph:plus" @click="router.visit(workspacePath('/automation/create'))">
           New Automation
         </Button>
       </div>
@@ -38,8 +37,7 @@
           Schedule your agents to run automatically — daily standups, weekly reports,
           hourly monitoring, or anything else you can imagine.
         </p>
-        <Button variant="primary" @click="router.visit(workspacePath('/automation/create'))">
-          <Icon name="ph:plus" class="w-4 h-4 mr-1.5" />
+        <Button variant="primary" icon-left="ph:plus" @click="router.visit(workspacePath('/automation/create'))">
           Create your first automation
         </Button>
       </div>

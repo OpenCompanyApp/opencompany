@@ -229,6 +229,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
+import { apiFetch } from '@/utils/apiFetch'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
@@ -324,7 +325,7 @@ const connectOAuth = async (field: ConfigField) => {
       if (f.type === 'oauth_connect') continue
       payload[f.key] = formValues[f.key]
     }
-    const response = await fetch(`/api/integrations/${props.integrationId}/config`, {
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -344,7 +345,7 @@ const connectOAuth = async (field: ConfigField) => {
 
 const disconnectOAuth = async (field: ConfigField) => {
   try {
-    const response = await fetch(`/api/integrations/${props.integrationId}/disconnect`, { method: 'POST' })
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/disconnect`, { method: 'POST' })
     if (response.ok) {
       formValues[field.key] = ''
     }
@@ -399,7 +400,7 @@ watch(isOpen, async (open) => {
 
 const loadConfig = async () => {
   try {
-    const response = await fetch(`/api/integrations/${props.integrationId}/config`)
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`)
     if (response.ok) {
       const data = await response.json()
       for (const field of props.schema) {
@@ -440,7 +441,7 @@ const testConnection = async () => {
       payload[field.key] = formValues[field.key]
     }
 
-    const response = await fetch(`/api/integrations/${props.integrationId}/test`, {
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -471,7 +472,7 @@ const handleSave = async () => {
       payload[field.key] = formValues[field.key]
     }
 
-    const response = await fetch(`/api/integrations/${props.integrationId}/config`, {
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

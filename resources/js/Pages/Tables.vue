@@ -129,6 +129,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { apiFetch } from '@/utils/apiFetch'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
@@ -153,7 +154,7 @@ const getRowCount = (table: DataTable): number => {
 const fetchTables = async () => {
   loading.value = true
   try {
-    const response = await fetch('/api/tables')
+    const response = await apiFetch('/api/tables')
     tables.value = await response.json()
   } catch (error) {
     console.error('Failed to fetch tables:', error)
@@ -165,7 +166,7 @@ const fetchTables = async () => {
 
 const handleCreateTable = async (data: { name: string; description?: string; icon?: string }) => {
   try {
-    const response = await fetch('/api/tables', {
+    const response = await apiFetch('/api/tables', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -186,7 +187,7 @@ const handleDeleteTable = async () => {
   if (!tableToDelete.value) return
 
   try {
-    await fetch(`/api/tables/${tableToDelete.value.id}`, {
+    await apiFetch(`/api/tables/${tableToDelete.value.id}`, {
       method: 'DELETE',
     })
     tables.value = tables.value.filter(t => t.id !== tableToDelete.value!.id)

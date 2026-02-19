@@ -159,6 +159,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { apiFetch } from '@/utils/apiFetch'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
@@ -234,7 +235,7 @@ const loadConfig = async () => {
   fetchResult.value = null
 
   try {
-    const response = await fetch(`/api/integrations/${props.integrationId}/config`)
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`)
     if (response.ok) {
       const data = await response.json()
       apiKey.value = data.config?.apiKey || ''
@@ -255,7 +256,7 @@ const refreshModels = async () => {
   fetchResult.value = null
 
   try {
-    const response = await fetch(`/api/integrations/${props.integrationId}/fetch-models`, {
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/fetch-models`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     })
@@ -282,7 +283,7 @@ const testConnection = async () => {
   testResult.value = null
 
   try {
-    const response = await fetch(`/api/integrations/${props.integrationId}/test`, {
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -319,7 +320,7 @@ const handleSave = async () => {
   isSaving.value = true
 
   try {
-    const response = await fetch(`/api/integrations/${props.integrationId}/config`, {
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

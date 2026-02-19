@@ -321,6 +321,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { apiFetch } from '@/utils/apiFetch'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import type { AgentSettings, AgentBehaviorMode } from '@/types'
@@ -427,7 +428,7 @@ onMounted(async () => {
 const loadAvailableBrains = async () => {
   loadingBrains.value = true
   try {
-    const response = await fetch('/api/integrations/models')
+    const response = await apiFetch('/api/integrations/models')
     if (response.ok) {
       availableBrains.value = await response.json()
     }
@@ -504,7 +505,7 @@ const updateBehaviorMode = (mode: AgentBehaviorMode) => {
 
 const loadAvailableManagers = async () => {
   try {
-    const response = await fetch('/api/users')
+    const response = await apiFetch('/api/users')
     if (response.ok) {
       const users = await response.json()
       // Exclude the current agent from the manager list

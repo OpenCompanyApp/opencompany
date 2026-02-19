@@ -117,6 +117,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { apiFetch } from '@/utils/apiFetch'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
@@ -185,7 +186,7 @@ const formatTimeAgo = (date: string): string => {
 const fetchConversations = async () => {
   loading.value = true
   try {
-    const response = await fetch('/api/direct-messages')
+    const response = await apiFetch('/api/direct-messages')
     const data = await response.json()
     conversations.value = data
   } catch (error) {
@@ -197,7 +198,7 @@ const fetchConversations = async () => {
 
 const fetchRecipients = async () => {
   try {
-    const response = await fetch('/api/users')
+    const response = await apiFetch('/api/users')
     const data = await response.json()
     availableRecipients.value = data
   } catch (error) {

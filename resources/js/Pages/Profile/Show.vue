@@ -222,6 +222,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { apiFetch } from '@/utils/apiFetch'
 import Icon from '@/Components/shared/Icon.vue'
 import SharedSkeleton from '@/Components/shared/Skeleton.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
@@ -317,8 +318,8 @@ const fetchData = async () => {
   loading.value = true
   try {
     const [userResponse, activityResponse] = await Promise.all([
-      fetch(`/api/users/${props.id}`),
-      fetch(`/api/users/${props.id}/activity`),
+      apiFetch(`/api/users/${props.id}`),
+      apiFetch(`/api/users/${props.id}/activity`),
     ])
     const userData = await userResponse.json()
     const activity = await activityResponse.json()

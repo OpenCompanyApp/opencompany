@@ -87,6 +87,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { apiFetch } from '@/utils/apiFetch'
 import Icon from '@/Components/shared/Icon.vue'
 import Popover from '@/Components/shared/Popover.vue'
 import Skeleton from '@/Components/shared/Skeleton.vue'
@@ -115,7 +116,7 @@ const unreadCount = ref(0)
 const fetchNotifications = async () => {
   loading.value = true
   try {
-    const response = await fetch('/api/notifications?userId=h1&limit=10')
+    const response = await apiFetch('/api/notifications?userId=h1&limit=10')
     const data = await response.json()
     notifications.value = data
   } catch (error) {
@@ -127,7 +128,7 @@ const fetchNotifications = async () => {
 
 const fetchUnreadCount = async () => {
   try {
-    const response = await fetch('/api/notifications/count?userId=h1')
+    const response = await apiFetch('/api/notifications/count?userId=h1')
     const data = await response.json()
     unreadCount.value = data.unreadCount
   } catch (error) {
@@ -137,7 +138,7 @@ const fetchUnreadCount = async () => {
 
 const markAsRead = async (notificationId: string) => {
   try {
-    await fetch(`/api/notifications/${notificationId}`, {
+    await apiFetch(`/api/notifications/${notificationId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isRead: true }),
@@ -154,7 +155,7 @@ const markAsRead = async (notificationId: string) => {
 
 const markAllAsRead = async () => {
   try {
-    await fetch('/api/notifications/read-all', {
+    await apiFetch('/api/notifications/read-all', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: 'h1' }),

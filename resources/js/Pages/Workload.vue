@@ -182,6 +182,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { apiFetch } from '@/utils/apiFetch'
 import { useWorkspace } from '@/composables/useWorkspace'
 import Icon from '@/Components/shared/Icon.vue'
 import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
@@ -226,11 +227,11 @@ const workloadData = ref<WorkloadData | null>(null)
 const fetchWorkload = async () => {
   try {
     // Fetch agents from existing API
-    const agentsResponse = await fetch('/api/users/agents')
+    const agentsResponse = await apiFetch('/api/users/agents')
     const agents = await agentsResponse.json()
 
     // Fetch tasks to compute metrics
-    const tasksResponse = await fetch('/api/tasks')
+    const tasksResponse = await apiFetch('/api/tasks')
     const tasks = await tasksResponse.json()
 
     // Build workload data from agents and tasks

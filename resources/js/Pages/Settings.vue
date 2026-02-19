@@ -1005,6 +1005,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch, h } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
+import { apiFetch } from '@/utils/apiFetch'
 import SettingsSection from '@/Components/settings/SettingsSection.vue'
 import SettingsField from '@/Components/settings/SettingsField.vue'
 import Icon from '@/Components/shared/Icon.vue'
@@ -1244,7 +1245,7 @@ async function pullOllamaRerankModel(modelId: string) {
   pullingRerankModel.value = modelId
   pullRerankProgress.value = { percent: 0, status: 'starting' }
   try {
-    const response = await fetch('/api/integrations/ollama/pull', {
+    const response = await apiFetch('/api/integrations/ollama/pull', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1442,7 +1443,7 @@ async function pullOllamaModel(modelId: string) {
   pullingModel.value = modelId
   pullProgress.value = { percent: 0, status: 'starting' }
   try {
-    const response = await fetch('/api/integrations/ollama/pull', {
+    const response = await apiFetch('/api/integrations/ollama/pull', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

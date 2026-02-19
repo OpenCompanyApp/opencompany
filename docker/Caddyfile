@@ -4,6 +4,9 @@
 }
 
 :8000 {
+	@websocket path /app/*
+	reverse_proxy @websocket localhost:8080
+
 	root * /app/public
 
 	encode zstd gzip

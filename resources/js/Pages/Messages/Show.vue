@@ -163,6 +163,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { apiFetch } from '@/utils/apiFetch'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
@@ -271,13 +272,13 @@ const isSameAuthor = (index: number) => {
 const fetchConversation = async () => {
   loading.value = true
   try {
-    const response = await fetch(`/api/dm/${props.userId}`)
+    const response = await apiFetch(`/api/dm/${props.userId}`)
     const data = await response.json()
     conversation.value = data
     messages.value = data.messages
 
     // Mark as read
-    await fetch(`/api/dm/${props.userId}/read`, { method: 'POST' })
+    await apiFetch(`/api/dm/${props.userId}/read`, { method: 'POST' })
 
     // Scroll to bottom
     nextTick(() => {
@@ -298,7 +299,7 @@ const sendMessage = async () => {
   newMessage.value = ''
 
   try {
-    const response = await fetch(`/api/dm/${props.userId}`, {
+    const response = await apiFetch(`/api/dm/${props.userId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
@@ -373,7 +374,7 @@ onMounted(() => {
       })
 
       // Mark as read since we're viewing the conversation
-      fetch(`/api/dm/${props.userId}/read`, { method: 'POST' })
+      apiFetch(`/api/dm/${props.userId}/read`, { method: 'POST' })
     }
   })
 
