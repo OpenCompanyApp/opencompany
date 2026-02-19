@@ -78,12 +78,14 @@ import Icon from '@/Components/shared/Icon.vue'
 import { useConstellation, type ConstellationNode } from '@/composables/useConstellation'
 import { shortenBrain } from '@/Components/org/constellation.config'
 import { useColorMode } from '@/composables/useColorMode'
+import { useWorkspace } from '@/composables/useWorkspace'
 
 const props = defineProps<{
   nodes: ConstellationNode[]
 }>()
 
 const { isDark } = useColorMode()
+const { workspacePath } = useWorkspace()
 const canvasEl = ref<HTMLElement | null>(null)
 const hoveredNode = ref<ConstellationNode | null>(null)
 const tooltipPos = ref({ x: 0, y: 0 })
@@ -100,7 +102,7 @@ const { init, isReady, updateNodeData } = useConstellation(
   isDark,
   (id: string) => {
     const node = nodesRef.value.find(n => n.id === id)
-    router.visit(node?.type === 'agent' ? `/agent/${id}` : `/profile/${id}`)
+    router.visit(workspacePath(node?.type === 'agent' ? `/agent/${id}` : `/profile/${id}`))
   },
   (node: ConstellationNode | null, x: number, y: number) => {
     hoveredNode.value = node

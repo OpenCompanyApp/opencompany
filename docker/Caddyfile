@@ -4,12 +4,13 @@
 }
 
 :8000 {
-	@websocket path /app/*
-	reverse_proxy @websocket localhost:8080
+	handle /app/* {
+		reverse_proxy localhost:8080
+	}
 
-	root * /app/public
-
-	encode zstd gzip
-
-	php_server
+	handle {
+		root * /app/public
+		encode zstd gzip
+		php_server
+	}
 }
