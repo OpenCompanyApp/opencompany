@@ -27,6 +27,16 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        <!-- Reverb config (runtime values, not build-time Vite env) -->
+        <script>
+            window.__reverb = {
+                key: @json(config('broadcasting.connections.reverb.key')),
+                host: @json(config('broadcasting.connections.reverb.options.host')),
+                port: @json((int) config('broadcasting.connections.reverb.options.port')),
+                scheme: @json(config('broadcasting.connections.reverb.options.scheme')),
+            };
+        </script>
+
         <!-- Scripts -->
         @routes
         @vite(['resources/js/app.ts', "resources/js/Pages/{$page['component']}.vue"])
