@@ -27,7 +27,7 @@ class DocumentAttachmentController extends Controller
         $attachment = DocumentAttachment::create([
             'id' => Str::uuid()->toString(),
             'document_id' => $documentId,
-            'uploaded_by_id' => $request->input('uploaderId'),
+            'uploaded_by_id' => auth()->id(),
             'filename' => $file->hashName(),
             'original_name' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(),

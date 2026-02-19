@@ -253,6 +253,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import type { Document, User } from '@/types'
 import DocsDocList from '@/Components/docs/DocList.vue'
 import DocsDocViewer from '@/Components/docs/DocViewer.vue'
@@ -306,6 +307,9 @@ const {
   fetchDocumentAttachments,
 } = useApi()
 const { on } = useRealtime()
+
+const page = usePage()
+const currentUserId = computed(() => (page.props.auth as any)?.user?.id ?? '')
 
 // Fetch documents from API
 const { data: documentsData, refresh: refreshDocuments } = fetchDocuments()
@@ -414,7 +418,7 @@ const handleCreateDocument = async () => {
   const newDoc = await createDocument({
     title: 'Untitled Document',
     content: '',
-    authorId: 'h1',
+    authorId: currentUserId.value,
     parentId: currentFolderId.value,
   })
   await refreshDocuments()
@@ -427,7 +431,7 @@ const handleCreateFolder = async () => {
   await createDocument({
     title: 'New Folder',
     content: '',
-    authorId: 'h1',
+    authorId: currentUserId.value,
     isFolder: true,
     parentId: currentFolderId.value,
   })
@@ -539,7 +543,7 @@ const handleRestoreVersion = async (version: DocumentVersion) => {
   }
 
   try {
-    await restoreDocumentVersion(selectedDoc.value.id, version.id, 'h1')
+    await restoreDocumentVersion(selectedDoc.value.id, version.id, currentUserId.value)
     await refreshDocuments()
     await loadVersions(selectedDoc.value.id)
 
@@ -568,7 +572,7 @@ const handleRestoreFromDiff = async (versionId: string) => {
   }
 
   try {
-    await restoreDocumentVersion(selectedDoc.value.id, versionId, 'h1')
+    await restoreDocumentVersion(selectedDoc.value.id, versionId, currentUserId.value)
     await refreshDocuments()
     await loadVersions(selectedDoc.value.id)
 
@@ -591,7 +595,7 @@ const handleAddComment = async () => {
   try {
     await addDocumentComment(selectedDoc.value.id, {
       content: newCommentContent.value.trim(),
-      authorId: 'h1',
+      authorId: currentUserId.value,
     })
     newCommentContent.value = ''
     await loadComments(selectedDoc.value.id)
@@ -607,7 +611,7 @@ const handleReplyToComment = async (parentId: string, content: string) => {
     await addDocumentComment(selectedDoc.value.id, {
       content,
       parentId,
-      authorId: 'h1',
+      authorId: currentUserId.value,
     })
     await loadComments(selectedDoc.value.id)
   } catch (error) {
@@ -621,7 +625,7 @@ const handleResolveComment = async (commentId: string, resolved: boolean) => {
   try {
     await updateDocumentComment(selectedDoc.value.id, commentId, {
       resolved,
-      resolvedById: resolved ? 'h1' : undefined,
+      resolvedById: resolved ? currentUserId.value : undefined,
     })
     await loadComments(selectedDoc.value.id)
   } catch (error) {

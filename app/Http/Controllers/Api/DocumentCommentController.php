@@ -25,7 +25,7 @@ class DocumentCommentController extends Controller
         $comment = DocumentComment::create([
             'id' => Str::uuid()->toString(),
             'document_id' => $documentId,
-            'author_id' => $request->input('authorId'),
+            'author_id' => auth()->id(),
             'content' => $request->input('content'),
             'parent_id' => $request->input('parentId'),
         ]);
@@ -48,7 +48,7 @@ class DocumentCommentController extends Controller
             $data['resolved'] = $request->input('resolved');
             if ($request->input('resolved')) {
                 $data['resolved_at'] = now();
-                $data['resolved_by_id'] = $request->input('resolvedById');
+                $data['resolved_by_id'] = auth()->id();
             } else {
                 $data['resolved_at'] = null;
                 $data['resolved_by_id'] = null;

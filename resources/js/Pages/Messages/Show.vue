@@ -161,8 +161,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { Link, usePage } from '@inertiajs/vue3'
 import { apiFetch } from '@/utils/apiFetch'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
@@ -203,7 +203,8 @@ const props = defineProps<{
   userId: string
 }>()
 
-const currentUserId = 'h1' // In a real app, this would come from auth
+const page = usePage()
+const currentUserId = computed(() => (page.props.auth as any)?.user?.id ?? '')
 
 const { highlight } = useHighlight()
 

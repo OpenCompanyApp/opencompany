@@ -95,7 +95,7 @@ class DocumentController extends Controller
             'workspace_id' => workspace()->id,
             'title' => $request->input('title'),
             'content' => $request->input('content'),
-            'author_id' => $request->input('authorId'),
+            'author_id' => auth()->id(),
             'parent_id' => $request->input('parentId'),
             'is_folder' => $request->input('isFolder', false),
             'color' => $request->input('color'),
@@ -145,7 +145,7 @@ class DocumentController extends Controller
                 'content' => $document->content,
                 'version_number' => $lastVersion + 1,
                 'change_description' => $request->input('changeDescription'),
-                'author_id' => $request->input('authorId', $document->author_id),
+                'author_id' => auth()->id(),
             ]);
         }
 

@@ -99,10 +99,13 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import ContextMenu from '@/Components/shared/ContextMenu.vue'
 import type { Channel, User, ChannelMessagePreview } from '@/types'
+
+const currentUserId = computed(() => (usePage().props.auth as any)?.user?.id ?? '')
 
 interface ContextMenuItem {
   label: string
@@ -150,7 +153,7 @@ const contextMenuRef = ref<HTMLElement | null>(null)
 // DM: extract the other member
 const otherMember = computed(() => {
   if (props.channel.type !== 'dm') return null
-  return props.channel.members?.find(m => m.id !== 'h1') ?? props.channel.members?.[0] ?? null
+  return props.channel.members?.find(m => m.id !== currentUserId.value) ?? props.channel.members?.[0] ?? null
 })
 
 // Channel icon

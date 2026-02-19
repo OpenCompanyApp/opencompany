@@ -6,7 +6,7 @@ import { useRealtime } from '@/composables/useRealtime'
 const AWAY_TIMEOUT = 5 * 60 * 1000 // 5 minutes
 const HEARTBEAT_INTERVAL = 30 * 1000 // 30 seconds
 
-export const usePresence = (userId: string = 'h1', workspaceId?: string) => {
+export const usePresence = (userId: string, workspaceId?: string) => {
   const { updateUserPresence } = useApi()
   const { presenceChannel, leaveChannel, on } = useRealtime()
 

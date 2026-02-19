@@ -106,12 +106,12 @@ const workingAgents = computed<User[]>(() =>
 const pendingApprovals = computed<ApprovalRequest[]>(() => approvals.value ?? [])
 
 const handleApprove = async (approval: ApprovalRequest) => {
-  await respondToApproval(approval.id, 'approved', 'h1')
+  await respondToApproval(approval.id, 'approved')
   await Promise.all([refreshApprovals(), refreshStats(), refreshActivities()])
 }
 
 const handleReject = async (approval: ApprovalRequest) => {
-  await respondToApproval(approval.id, 'rejected', 'h1')
+  await respondToApproval(approval.id, 'rejected')
   await Promise.all([refreshApprovals(), refreshActivities()])
 }
 </script>

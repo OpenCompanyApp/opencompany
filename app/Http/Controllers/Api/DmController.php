@@ -20,7 +20,7 @@ class DmController extends Controller
      */
     public function show(string $userId): \Illuminate\Http\JsonResponse
     {
-        $currentUserId = 'h1'; // In production, use auth()->id()
+        $currentUserId = auth()->id();
 
         // Find or create the DM conversation
         $dm = DirectMessage::where(function ($query) use ($currentUserId, $userId) {
@@ -101,8 +101,8 @@ class DmController extends Controller
      */
     public function store(Request $request, string $userId): \Illuminate\Http\JsonResponse
     {
-        $currentUserId = 'h1'; // In production, use auth()->id()
-        $currentUser = User::find($currentUserId);
+        $currentUserId = auth()->id();
+        $currentUser = auth()->user();
 
         // Find the DM conversation
         $dm = DirectMessage::where(function ($query) use ($currentUserId, $userId) {
@@ -178,7 +178,7 @@ class DmController extends Controller
      */
     public function markRead(string $userId): \Illuminate\Http\JsonResponse
     {
-        $currentUserId = 'h1'; // In production, use auth()->id()
+        $currentUserId = auth()->id();
 
         $dm = DirectMessage::where(function ($query) use ($currentUserId, $userId) {
             $query->where('user1_id', $currentUserId)->where('user2_id', $userId);

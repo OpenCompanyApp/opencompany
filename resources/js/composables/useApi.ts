@@ -278,8 +278,8 @@ export const useApi = () => {
   const fetchApproval = (id: string) => useFetch<ApprovalRequest>(`/approvals/${id}`)
   const createApproval = (data: { type: string; title: string; description?: string; requesterId: string; amount?: number; channelId?: string }) =>
     api.post('/approvals', data)
-  const respondToApproval = (id: string, status: 'approved' | 'rejected', respondedById: string) =>
-    api.patch(`/approvals/${id}`, { status, respondedById })
+  const respondToApproval = (id: string, status: 'approved' | 'rejected') =>
+    api.patch(`/approvals/${id}`, { status })
 
   // Activities
   const fetchActivities = (limit?: number) => {

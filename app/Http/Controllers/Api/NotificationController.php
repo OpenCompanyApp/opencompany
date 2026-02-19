@@ -14,11 +14,8 @@ class NotificationController extends Controller
      */
     public function index(Request $request): \Illuminate\Database\Eloquent\Collection
     {
-        $query = Notification::forWorkspace()->with(['user', 'actor']);
-
-        if ($request->has('userId')) {
-            $query->where('user_id', $request->input('userId'));
-        }
+        $query = Notification::forWorkspace()->with(['user', 'actor'])
+            ->where('user_id', auth()->id());
 
         if ($request->has('unreadOnly') && $request->input('unreadOnly')) {
             $query->where('is_read', false);
@@ -56,25 +53,19 @@ class NotificationController extends Controller
 
     public function markAllRead(Request $request): \Illuminate\Http\JsonResponse
     {
-        $query = Notification::forWorkspace()->where('is_read', false);
-
-        if ($request->has('userId')) {
-            $query->where('user_id', $request->input('userId'));
-        }
-
-        $query->update(['is_read' => true]);
+        Notification::forWorkspace()->where('is_read', false)
+            ->where('user_id', auth()->id())
+            ->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
     }
 
     public function count(Request $request): \Illuminate\Http\JsonResponse
     {
-        $query = Notification::forWorkspace()->where('is_read', false);
+        $count = Notification::forWorkspace()->where('is_read', false)
+            ->where('user_id', auth()->id())
+            ->count();
 
-        if ($request->has('userId')) {
-            $query->where('user_id', $request->input('userId'));
-        }
-
-        return response()->json(['count' => $query->count()]);
+        return response()->json(['count' => $count]);
     }
 }

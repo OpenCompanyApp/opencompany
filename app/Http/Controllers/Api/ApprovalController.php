@@ -52,7 +52,7 @@ class ApprovalController extends Controller
 
         $approval->update([
             'status' => $request->input('status'),
-            'responded_by_id' => $request->input('respondedById'),
+            'responded_by_id' => auth()->id(),
             'responded_at' => now(),
         ]);
 

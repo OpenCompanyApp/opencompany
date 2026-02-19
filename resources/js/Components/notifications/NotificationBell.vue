@@ -116,7 +116,7 @@ const unreadCount = ref(0)
 const fetchNotifications = async () => {
   loading.value = true
   try {
-    const response = await apiFetch('/api/notifications?userId=h1&limit=10')
+    const response = await apiFetch('/api/notifications?limit=10')
     const data = await response.json()
     notifications.value = data
   } catch (error) {
@@ -128,7 +128,7 @@ const fetchNotifications = async () => {
 
 const fetchUnreadCount = async () => {
   try {
-    const response = await apiFetch('/api/notifications/count?userId=h1')
+    const response = await apiFetch('/api/notifications/count')
     const data = await response.json()
     unreadCount.value = data.unreadCount
   } catch (error) {
@@ -158,7 +158,7 @@ const markAllAsRead = async () => {
     await apiFetch('/api/notifications/read-all', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: 'h1' }),
+      body: JSON.stringify({}),
     })
     notifications.value.forEach(n => n.isRead = true)
     unreadCount.value = 0

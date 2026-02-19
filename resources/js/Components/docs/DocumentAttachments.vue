@@ -166,7 +166,7 @@ const fetchDocumentAttachments = async (documentId: string) => {
   // Placeholder - implement actual API call
   return { data: { value: [] as Attachment[] } }
 }
-const uploadDocumentAttachment = async (documentId: string, file: File, headingId: string) => {
+const uploadDocumentAttachment = async (documentId: string, file: File) => {
   // Placeholder - implement actual API call
 }
 const deleteDocumentAttachment = async (documentId: string, attachmentId: string) => {
@@ -219,7 +219,7 @@ const uploadFiles = async (files: File[]) => {
 
     uploading.value = true
     try {
-      await uploadDocumentAttachment(props.documentId, file, 'h1')
+      await uploadDocumentAttachment(props.documentId, file)
     } catch (e) {
       console.error('Failed to upload file:', e)
       alert(`Failed to upload "${file.name}"`)

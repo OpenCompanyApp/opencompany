@@ -48,7 +48,7 @@ class MessageController extends Controller
             'id' => Str::uuid()->toString(),
             'content' => $request->input('content'),
             'channel_id' => $request->input('channelId'),
-            'author_id' => $request->input('authorId'),
+            'author_id' => auth()->id(),
             'reply_to_id' => $request->input('replyToId'),
             'timestamp' => now(),
         ]);
@@ -238,7 +238,7 @@ class MessageController extends Controller
         $reaction = MessageReaction::create([
             'id' => Str::uuid()->toString(),
             'message_id' => $messageId,
-            'user_id' => $request->input('userId'),
+            'user_id' => auth()->id(),
             'emoji' => $request->input('emoji'),
         ]);
 
@@ -279,7 +279,7 @@ class MessageController extends Controller
         $message->update([
             'is_pinned' => true,
             'pinned_at' => now(),
-            'pinned_by_id' => $request->input('userId'),
+            'pinned_by_id' => auth()->id(),
         ]);
 
         return $message->load(['author', 'reactions.user', 'attachments']);
@@ -294,7 +294,7 @@ class MessageController extends Controller
         $attachment = MessageAttachment::create([
             'id' => Str::uuid()->toString(),
             'channel_id' => $request->input('channelId'),
-            'uploader_id' => $request->input('uploaderId'),
+            'uploader_id' => auth()->id(),
             'name' => $file->getClientOriginalName(),
             'type' => $file->getMimeType(),
             'size' => $file->getSize(),

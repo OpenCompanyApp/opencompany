@@ -193,7 +193,7 @@ async function handleSave() {
       cronExpression: form.value.cronExpression,
       timezone: form.value.timezone,
       keepHistory: form.value.keepHistory,
-      createdById: 'h1',
+      createdById: undefined,
     })
     router.visit(workspacePath('/automation'))
   } finally {

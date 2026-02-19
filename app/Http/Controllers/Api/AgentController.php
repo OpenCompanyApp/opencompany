@@ -113,7 +113,7 @@ class AgentController extends Controller
         $this->agentAvatarService->generate($agent);
 
         // Create DM channel between creator and agent
-        $creatorId = $request->user()->id ?? 'h1';
+        $creatorId = $request->user()->id;
         $creator = User::find($creatorId);
         $dmChannel = Channel::create([
             'id' => Str::uuid()->toString(),

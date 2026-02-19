@@ -37,7 +37,7 @@ class DocumentVersionController extends Controller
             'content' => $document->content,
             'version_number' => $lastVersion + 1,
             'change_description' => 'Auto-saved before restoring version ' . $version->version_number,
-            'author_id' => $request->input('authorId', $document->author_id),
+            'author_id' => auth()->id(),
         ]);
 
         // Restore the content

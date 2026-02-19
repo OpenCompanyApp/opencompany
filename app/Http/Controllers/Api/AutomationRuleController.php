@@ -34,7 +34,7 @@ class AutomationRuleController extends Controller
             'action_type' => $request->input('actionType'),
             'action_config' => $request->input('actionConfig'),
             'list_template_id' => $request->input('templateId'),
-            'created_by_id' => $request->input('createdById'),
+            'created_by_id' => auth()->id(),
             'is_active' => true,
         ]);
 

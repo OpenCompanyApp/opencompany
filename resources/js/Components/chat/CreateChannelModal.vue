@@ -180,10 +180,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import { useApi } from '@/composables/useApi'
 import type { User, ChannelType } from '@/types'
+
+const page = usePage()
+const currentUserId = computed(() => (page.props.auth as any)?.user?.id ?? '')
 
 const props = defineProps<{
   open: boolean
@@ -288,8 +292,8 @@ async function handleSubmit() {
       name: channelName.value,
       type: channelType.value,
       description: description.value || undefined,
-      creatorId: 'h1', // Current user
-      memberIds: ['h1', ...selectedMembers.value.map(m => m.id)],
+      creatorId: currentUserId.value,
+      memberIds: [currentUserId.value, ...selectedMembers.value.map(m => m.id)],
     })
 
     emit('channel-created', (result as { id: string }).id)

@@ -70,6 +70,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import { useApi } from '@/composables/useApi'
@@ -84,6 +85,8 @@ const emit = defineEmits<{
   'dm-created': [channelId: string]
 }>()
 
+const page = usePage()
+const currentUserId = computed(() => (page.props.auth as any)?.user?.id ?? '')
 const { fetchUsers, createDirectMessage } = useApi()
 
 const search = ref('')
@@ -93,8 +96,8 @@ const creating = ref(false)
 const searchInputRef = ref<HTMLInputElement>()
 
 const filteredUsers = computed(() => {
-  // Exclude current user (h1)
-  let users = allUsers.value.filter(u => u.id !== 'h1')
+  // Exclude current user
+  let users = allUsers.value.filter(u => u.id !== currentUserId.value)
   if (search.value) {
     const query = search.value.toLowerCase()
     users = users.filter(u => u.name.toLowerCase().includes(query))
@@ -118,7 +121,7 @@ async function startDm(user: User) {
   if (creating.value) return
   creating.value = true
   try {
-    const response = await createDirectMessage('h1', user.id)
+    const response = await createDirectMessage(currentUserId.value, user.id)
     const dm = response.data ?? response
     const channelId = dm.channel_id ?? dm.channel?.id ?? dm.id
     emit('dm-created', channelId)

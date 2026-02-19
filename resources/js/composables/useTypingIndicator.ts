@@ -10,7 +10,7 @@ interface TypingUser {
 
 const TYPING_TIMEOUT = 3000 // Stop showing after 3 seconds of no typing
 
-export const useTypingIndicator = (channelId: Ref<string | null>, currentUserId: string = 'h1', currentUserName: string = 'User') => {
+export const useTypingIndicator = (channelId: Ref<string | null>, currentUserId: string, currentUserName: string = 'User') => {
   const { sendTypingIndicator } = useApi()
   const { on, privateChannel, leaveChannel } = useRealtime()
 

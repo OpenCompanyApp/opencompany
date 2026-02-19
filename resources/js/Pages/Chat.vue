@@ -44,7 +44,7 @@
         :messages="channelMessages"
         :pinned-messages="pinnedMessagesData"
         :typing-users="typingUsersData"
-        :current-user-id="'h1'"
+        :current-user-id="currentUserId"
         :active-thread="activeThread"
         class="flex-1"
         @send="handleSendMessage"
@@ -183,6 +183,8 @@ import { useWorkspace } from '@/composables/useWorkspace'
 const { workspacePath } = useWorkspace()
 
 const page = usePage()
+const currentUser = computed(() => (page.props.auth as any)?.user)
+const currentUserId = computed(() => currentUser.value?.id ?? '')
 const { fetchChannels, fetchMessages, sendMessage, markChannelRead, addMessageReaction, fetchMessageThread, removeChannelMember, pinMessage, fetchPinnedMessages, sendTypingIndicator, uploadMessageAttachment, compactChannel, fetchDm } = useApi()
 const isMobile = useIsMobile()
 
@@ -221,7 +223,7 @@ const channelsData = computed<Channel[]>(() =>
 
     // Normalize DM names
     if (mapped.type === 'dm' && mapped.members?.length) {
-      const other = mapped.members.find((m: any) => m.id !== 'h1') ?? mapped.members[0]
+      const other = mapped.members.find((m: any) => m.id !== currentUserId.value) ?? mapped.members[0]
       mapped.name = other?.name ?? mapped.name
     }
 
@@ -313,7 +315,7 @@ const {
   stopTyping,
   init: initTyping,
   cleanup: cleanupTyping,
-} = useTypingIndicator(channelIdRef, 'h1')
+} = useTypingIndicator(channelIdRef, currentUserId.value)
 
 // Convert typing users to User objects
 const typingUsersData = computed(() => {
@@ -423,7 +425,7 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
         const result = await uploadMessageAttachment(
           attachment.file,
           selectedChannel.value!.id,
-          'h1'
+          currentUserId.value
         )
         return result.id
       })
@@ -441,8 +443,8 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
     content,
     channelId: selectedChannel.value.id,
     channel_id: selectedChannel.value.id,
-    authorId: 'h1',
-    author: { id: 'h1', name: 'Rutger', type: 'human' },
+    authorId: currentUserId.value,
+    author: { id: currentUserId.value, name: currentUser.value?.name ?? 'You', type: 'human' },
     timestamp: new Date().toISOString(),
     reactions: [],
     attachments: [],
@@ -454,7 +456,7 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
     await sendMessage({
       content,
       channelId: selectedChannel.value.id,
-      authorId: 'h1',
+      authorId: currentUserId.value,
       attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
     })
     await refreshMessages()
@@ -466,7 +468,7 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
 
 const handleReaction = async (message: Message, emoji: string) => {
   try {
-    await addMessageReaction(message.id, { emoji, userId: 'h1' })
+    await addMessageReaction(message.id, { emoji, userId: currentUserId.value })
     await refreshMessages()
   } catch (error) {
     console.error('Failed to add reaction:', error)
@@ -495,7 +497,7 @@ const handleThreadReply = async (parentMessageId: string, content: string) => {
     await sendMessage({
       content,
       channelId: selectedChannel.value.id,
-      authorId: 'h1',
+      authorId: currentUserId.value,
       replyToId: parentMessageId,
     })
 
@@ -586,7 +588,7 @@ const handleDmCreated = async (channelId: string) => {
 // Message pinning
 const handlePinMessage = async (message: Message) => {
   try {
-    await pinMessage(message.id, 'h1')
+    await pinMessage(message.id, currentUserId.value)
     await refreshMessages()
     await refreshPinnedMessages()
   } catch (error) {

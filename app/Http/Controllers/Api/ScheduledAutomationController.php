@@ -56,7 +56,7 @@ class ScheduledAutomationController extends Controller
             'timezone' => $request->input('timezone', 'UTC'),
             'channel_id' => $request->input('channelId'),
             'keep_history' => $request->boolean('keepHistory', true),
-            'created_by_id' => $request->input('createdById', auth()->id()),
+            'created_by_id' => auth()->id(),
             'is_active' => true,
         ]);
 
