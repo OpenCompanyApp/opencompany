@@ -1,9 +1,6 @@
 services:
   app:
     build: .
-    ports:
-      - "${APP_PORT:-8000}:8000"
-      - "${REVERB_SERVER_PORT:-8080}:8080"
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
