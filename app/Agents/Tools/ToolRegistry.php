@@ -643,6 +643,104 @@ class ToolRegistry
     }
 
     /**
+     * Get a full tool catalog with schemas, grouped by app.
+     * Used by the Developer Tools page — not permission-filtered.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getToolCatalog(User $agent): array
+    {
+        $appLookup = $this->buildAppLookup();
+        $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory;
+        $builtIn = [];
+        $integrations = [];
+
+        foreach ($this->getEffectiveAppGroups() as $appName => $group) {
+            $isIntegration = in_array($appName, $this->getEffectiveIntegrationApps());
+            $tools = [];
+
+            foreach ($group['tools'] as $slug) {
+                $meta = $this->getEffectiveToolMap()[$slug] ?? null;
+                if (!$meta) {
+                    continue;
+                }
+
+                $toolData = [
+                    'slug' => $slug,
+                    'name' => $meta['name'],
+                    'description' => $meta['description'],
+                    'type' => $meta['type'],
+                    'icon' => $meta['icon'],
+                    'parameters' => [],
+                ];
+
+                // Extract schema by instantiating the tool
+                try {
+                    $tool = $this->instantiateTool($meta['class'], $agent, $slug);
+                    $toolData['fullDescription'] = $tool->description();
+
+                    $schema = $tool->schema($factory);
+                    if (!empty($schema)) {
+                        // Wrap in ObjectType to get proper required array
+                        $objectType = $factory->object($schema);
+                        $serialized = $objectType->toArray();
+                        $requiredParams = $serialized['required'] ?? [];
+
+                        foreach ($serialized['properties'] ?? [] as $paramName => $paramSchema) {
+                            $param = [
+                                'name' => $paramName,
+                                'type' => $paramSchema['type'] ?? 'string',
+                                'required' => in_array($paramName, $requiredParams),
+                            ];
+                            if (!empty($paramSchema['description'])) {
+                                $param['description'] = $paramSchema['description'];
+                            }
+                            if (!empty($paramSchema['enum'])) {
+                                $param['enum'] = $paramSchema['enum'];
+                            }
+                            if (isset($paramSchema['items'])) {
+                                $param['items'] = $paramSchema['items'];
+                            }
+                            if (isset($paramSchema['properties'])) {
+                                $param['properties'] = $paramSchema['properties'];
+                            }
+                            $toolData['parameters'][] = $param;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Tool failed to instantiate — include metadata without schema
+                }
+
+                $tools[] = $toolData;
+            }
+
+            if (empty($tools)) {
+                continue;
+            }
+
+            $entry = [
+                'name' => $appName,
+                'description' => $group['description'],
+                'icon' => $this->getEffectiveAppIcons()[$appName] ?? 'ph:puzzle-piece',
+                'isIntegration' => $isIntegration,
+                'tools' => $tools,
+            ];
+
+            if (isset($this->getEffectiveIntegrationLogos()[$appName])) {
+                $entry['logo'] = $this->getEffectiveIntegrationLogos()[$appName];
+            }
+
+            if ($isIntegration) {
+                $integrations[] = $entry;
+            } else {
+                $builtIn[] = $entry;
+            }
+        }
+
+        return array_merge($integrations, $builtIn);
+    }
+
+    /**
      * Instantiate a specific tool by slug (for post-approval execution).
      */
     public function instantiateToolBySlug(string $slug, User $agent): ?\Laravel\Ai\Contracts\Tool

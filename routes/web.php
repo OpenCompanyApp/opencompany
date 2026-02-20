@@ -153,6 +153,11 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             return Inertia::render('Integrations');
         })->name('integrations');
 
+        // Developer tools catalog
+        Route::get('/developer/tools', function () {
+            return Inertia::render('Developer/Tools');
+        })->name('developer.tools');
+
         // Calendar
         Route::get('/calendar', function () {
             return Inertia::render('Calendar');

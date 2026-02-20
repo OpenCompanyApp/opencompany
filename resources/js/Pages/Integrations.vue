@@ -3,7 +3,16 @@
     <div class="max-w-6xl mx-auto w-full p-4 md:p-6 flex flex-col flex-1 min-h-0">
       <!-- Header -->
       <header class="mb-4 md:mb-6 shrink-0">
-        <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Integrations</h1>
+        <div class="flex items-center justify-between">
+          <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Integrations</h1>
+          <Link
+            :href="workspacePath('/developer/tools')"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+          >
+            <Icon name="ph:code" class="w-3.5 h-3.5" />
+            Tool Catalog
+          </Link>
+        </div>
         <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
           Connect external services and manage API access
         </p>
@@ -600,8 +609,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { Link } from '@inertiajs/vue3'
 import axios from 'axios'
 import Icon from '@/Components/shared/Icon.vue'
+import { useWorkspace } from '@/composables/useWorkspace'
 import Modal from '@/Components/shared/Modal.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
 import ProviderConfigModal from '@/Components/integrations/ProviderConfigModal.vue'
@@ -611,6 +622,8 @@ import DynamicConfigModal from '@/Components/integrations/DynamicConfigModal.vue
 import McpConfigModal from '@/Components/integrations/McpConfigModal.vue'
 import PrismServerConfigModal from '@/Components/integrations/PrismServerConfigModal.vue'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
+
+const { workspacePath } = useWorkspace()
 
 // Sidebar state
 const activeCategory = ref<string>('all')

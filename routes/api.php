@@ -268,6 +268,9 @@ Route::middleware('resolve.workspace')->group(function () {
     Route::put('/agents/{id}/permissions/folders', [AgentPermissionController::class, 'updateFolders']);
     Route::put('/agents/{id}/permissions/integrations', [AgentPermissionController::class, 'updateIntegrations']);
 
+    // Tool catalog (developer reference)
+    Route::get('/tools/catalog', [\App\Http\Controllers\Api\ToolCatalogController::class, 'index']);
+
     // Integrations (read-only for all members)
     Route::get('/integrations', [IntegrationController::class, 'index']);
     Route::get('/integrations/models', [IntegrationController::class, 'enabledModels']);
