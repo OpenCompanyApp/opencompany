@@ -451,6 +451,12 @@ export interface DataTableRow {
   updatedAt?: string
 }
 
+export interface DataTableViewConfig {
+  groupByColumnId?: string
+  dateColumnId?: string
+  titleColumnId?: string
+}
+
 export interface DataTableView {
   id: string
   tableId: string
@@ -459,6 +465,7 @@ export interface DataTableView {
   filters?: Record<string, unknown>[]
   sorts?: { columnId: string; direction: 'asc' | 'desc' }[]
   hiddenColumns?: string[]
+  config?: DataTableViewConfig
 }
 
 export interface DataTable {

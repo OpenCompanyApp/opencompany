@@ -19,6 +19,7 @@ class DataTableView extends Model
         'filters',
         'sorts',
         'hidden_columns',
+        'config',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class DataTableView extends Model
             'filters' => 'array',
             'sorts' => 'array',
             'hidden_columns' => 'array',
+            'config' => 'array',
         ];
     }
 

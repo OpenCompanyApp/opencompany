@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a809e005a148b04be1046749a350a21f",
+    "content-hash": "e3e2c6c2024eb5fe21c215892e050caf",
     "packages": [
         {
             "name": "brick/math",
@@ -3346,6 +3346,55 @@
                 "issues": "https://github.com/OpenCompanyApp/ai-tool-clickup/issues"
             },
             "time": "2026-02-14T19:18:16+00:00"
+        },
+        {
+            "name": "opencompanyapp/ai-tool-coingecko",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-coingecko",
+                "reference": "756afe074c2f33424dd8d7c5f7fab889b82aa468"
+            },
+            "require": {
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolCoinGecko\\AiToolCoinGeckoServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolCoinGecko\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "CoinGecko cryptocurrency AI tool for Laravel AI SDK — search coins, prices, market data, trending, historical charts. Part of the OpenCompany AI tool ecosystem.",
+            "keywords": [
+                "ai",
+                "bitcoin",
+                "coingecko",
+                "crypto",
+                "laravel",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "opencompanyapp/ai-tool-google",
@@ -11125,6 +11174,7 @@
         "opencompany/prism-codex": 20,
         "opencompanyapp/ai-tool-celestial": 20,
         "opencompanyapp/ai-tool-clickup": 20,
+        "opencompanyapp/ai-tool-coingecko": 20,
         "opencompanyapp/ai-tool-google": 20,
         "opencompanyapp/ai-tool-mermaid": 20,
         "opencompanyapp/ai-tool-plantuml": 20,

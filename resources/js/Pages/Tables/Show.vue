@@ -74,7 +74,7 @@
       </div>
 
       <!-- Selection Actions -->
-      <template v-if="selectedRowIds.length > 0">
+      <template v-if="selectedRowIds.length > 0 && (!activeView || activeView.type === 'grid')">
         <div class="w-px h-5 bg-neutral-300 dark:bg-neutral-600" />
         <div class="flex items-center gap-2">
           <span class="text-sm text-neutral-600 dark:text-neutral-300">
@@ -102,7 +102,7 @@
       </div>
 
       <TableGrid
-        v-else
+        v-else-if="!activeView || activeView.type === 'grid'"
         ref="tableGridRef"
         :columns="visibleColumns"
         :rows="filteredRows"
@@ -114,6 +114,39 @@
         @selection-change="handleSelectionChange"
         @add-row="handleAddRow"
         @add-column="showAddColumnModal = true"
+      />
+
+      <TableKanban
+        v-else-if="activeView.type === 'kanban'"
+        :columns="visibleColumns"
+        :rows="filteredRows"
+        :config="activeView.config"
+        @update-cell="handleUpdateCell"
+        @delete-row="handleDeleteRow"
+        @add-row="handleAddRow"
+        @config-change="(config: DataTableViewConfig) => handleViewConfigChange(activeView!.id, config)"
+      />
+
+      <TableGallery
+        v-else-if="activeView.type === 'gallery'"
+        :columns="visibleColumns"
+        :rows="filteredRows"
+        :config="activeView.config"
+        @update-cell="handleUpdateCell"
+        @delete-row="handleDeleteRow"
+        @add-row="handleAddRow"
+        @config-change="(config: DataTableViewConfig) => handleViewConfigChange(activeView!.id, config)"
+      />
+
+      <TableCalendar
+        v-else-if="activeView.type === 'calendar'"
+        :columns="visibleColumns"
+        :rows="filteredRows"
+        :config="activeView.config"
+        @update-cell="handleUpdateCell"
+        @delete-row="handleDeleteRow"
+        @add-row="handleAddRow"
+        @config-change="(config: DataTableViewConfig) => handleViewConfigChange(activeView!.id, config)"
       />
     </div>
 
@@ -175,8 +208,11 @@ import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 import TableHeader from '@/Components/tables/TableHeader.vue'
 import TableGrid from '@/Components/tables/TableGrid.vue'
+import TableKanban from '@/Components/tables/TableKanban.vue'
+import TableGallery from '@/Components/tables/TableGallery.vue'
+import TableCalendar from '@/Components/tables/TableCalendar.vue'
 import ColumnTypeModal from '@/Components/tables/ColumnTypeModal.vue'
-import type { DataTable, DataTableRow, DataTableColumn, DataTableView, DataTableViewType } from '@/types'
+import type { DataTable, DataTableRow, DataTableColumn, DataTableView, DataTableViewType, DataTableViewConfig } from '@/types'
 
 const { workspacePath } = useWorkspace()
 
@@ -228,6 +264,10 @@ const viewTypeIcons: Record<DataTableViewType, string> = {
 
 const getViewIcon = (type: DataTableViewType) => viewTypeIcons[type] || 'ph:table'
 
+const activeView = computed(() =>
+  views.value.find(v => v.id === activeViewId.value)
+)
+
 const addViewOptions = computed(() => [
   [
     { label: 'Grid View', icon: 'ph:table', click: () => handleAddView('grid') },
@@ -240,23 +280,24 @@ const addViewOptions = computed(() => [
 const fetchTable = async () => {
   loading.value = true
   try {
-    const [tableResponse, rowsResponse] = await Promise.all([
+    const [tableResponse, rowsResponse, viewsResponse] = await Promise.all([
       apiFetch(`/api/tables/${props.tableId}`),
       apiFetch(`/api/tables/${props.tableId}/rows`),
+      apiFetch(`/api/tables/${props.tableId}/views`),
     ])
     table.value = await tableResponse.json()
     rows.value = await rowsResponse.json()
+    const fetchedViews: DataTableView[] = await viewsResponse.json()
 
-    // Create default view if none exist
-    if (views.value.length === 0) {
+    if (fetchedViews.length > 0) {
+      views.value = fetchedViews
+      activeViewId.value = fetchedViews[0].id
+    } else {
       views.value = [{
         id: 'default-grid',
         tableId: props.tableId,
         name: 'Grid',
         type: 'grid',
-        filters: [],
-        sorts: [],
-        hiddenColumns: [],
       }]
       activeViewId.value = 'default-grid'
     }
@@ -357,17 +398,43 @@ const handleSelectView = (viewId: string) => {
 }
 
 const handleAddView = async (type: DataTableViewType) => {
-  const newView: DataTableView = {
-    id: `view-${Date.now()}`,
-    tableId: props.tableId,
-    name: `${type.charAt(0).toUpperCase() + type.slice(1)} View`,
-    type,
-    filters: [],
-    sorts: [],
-    hiddenColumns: [],
+  // Auto-detect sensible default config
+  let config: DataTableViewConfig = {}
+  if (type === 'kanban') {
+    const selectCol = table.value?.columns?.find(c => c.type === 'select' || c.type === 'multiselect')
+    if (selectCol) config.groupByColumnId = selectCol.id
+  } else if (type === 'calendar') {
+    const dateCol = table.value?.columns?.find(c => c.type === 'date')
+    if (dateCol) config.dateColumnId = dateCol.id
+  } else if (type === 'gallery') {
+    const textCol = table.value?.columns?.find(c => c.type === 'text')
+    if (textCol) config.titleColumnId = textCol.id
   }
-  views.value.push(newView)
-  activeViewId.value = newView.id
+
+  const name = `${type.charAt(0).toUpperCase() + type.slice(1)} View`
+
+  try {
+    const response = await apiFetch(`/api/tables/${props.tableId}/views`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type, config }),
+    })
+    const newView: DataTableView = await response.json()
+    views.value.push(newView)
+    activeViewId.value = newView.id
+  } catch (error) {
+    console.error('Failed to create view:', error)
+    // Fallback to client-side view
+    const newView: DataTableView = {
+      id: `view-${Date.now()}`,
+      tableId: props.tableId,
+      name,
+      type,
+      config,
+    }
+    views.value.push(newView)
+    activeViewId.value = newView.id
+  }
 }
 
 const handleRenameView = async (viewId: string) => {
@@ -396,6 +463,26 @@ const handleDuplicateView = (viewId: string) => {
       name: `${view.name} (Copy)`,
     }
     views.value.push(newView)
+  }
+}
+
+const handleViewConfigChange = async (viewId: string, config: DataTableViewConfig) => {
+  const view = views.value.find(v => v.id === viewId)
+  if (!view) return
+
+  view.config = { ...view.config, ...config }
+
+  // Persist to backend for server-side views
+  if (!viewId.startsWith('view-') && !viewId.startsWith('default-')) {
+    try {
+      await apiFetch(`/api/tables/${props.tableId}/views/${viewId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: view.config }),
+      })
+    } catch (error) {
+      console.error('Failed to update view config:', error)
+    }
   }
 }
 

@@ -72,6 +72,7 @@ class Task extends Model
         'agent_id',
         'requester_id',
         'channel_id',
+        'trigger_message_id',
         'list_item_id',
         'parent_task_id',
         'source',
@@ -135,6 +136,12 @@ class Task extends Model
     public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
+    }
+
+    /** @return BelongsTo<Message, $this> */
+    public function triggerMessage(): BelongsTo
+    {
+        return $this->belongsTo(Message::class, 'trigger_message_id');
     }
 
     /** @return BelongsTo<ListItem, $this> */

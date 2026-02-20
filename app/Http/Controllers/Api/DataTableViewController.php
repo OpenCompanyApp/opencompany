@@ -34,6 +34,7 @@ class DataTableViewController extends Controller
             'filters' => $request->input('filters'),
             'sorts' => $request->input('sorts'),
             'hidden_columns' => $request->input('hiddenColumns'),
+            'config' => $request->input('config'),
         ]);
 
         return $view;
@@ -60,6 +61,9 @@ class DataTableViewController extends Controller
         }
         if ($request->has('hiddenColumns')) {
             $data['hidden_columns'] = $request->input('hiddenColumns');
+        }
+        if ($request->has('config')) {
+            $data['config'] = $request->input('config');
         }
 
         $view->update($data);

@@ -91,13 +91,8 @@ class AgentRespondJob implements ShouldQueue
             } else {
                 // Check for an existing task from the same message (crash recovery / retry)
                 $task = Task::where('agent_id', $this->agent->id)
-                    ->where('channel_id', $this->channelId)
-                    ->where('source', Task::SOURCE_CHAT)
-                    ->where('description', $this->userMessage->content)
-                    ->where('requester_id', $this->userMessage->author_id)
+                    ->where('trigger_message_id', $this->userMessage->id)
                     ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_FAILED])
-                    ->where('created_at', '>=', now()->subMinutes(5))
-                    ->latest('created_at')
                     ->first();
 
                 if ($task) {
@@ -122,6 +117,7 @@ class AgentRespondJob implements ShouldQueue
                         'agent_id' => $this->agent->id,
                         'requester_id' => $this->userMessage->author_id,
                         'channel_id' => $this->channelId,
+                        'trigger_message_id' => $this->userMessage->id,
                         'started_at' => now(),
                     ]);
                 }

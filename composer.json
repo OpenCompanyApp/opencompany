@@ -47,6 +47,10 @@
             "url": "tmp/ai-tool-google"
         },
         {
+            "type": "path",
+            "url": "tmp/ai-tool-coingecko"
+        },
+        {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/prism-codex"
         },
@@ -92,6 +96,10 @@
         },
         {
             "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/ai-tool-coingecko"
+        },
+        {
+            "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php"
         }
     ],
@@ -107,6 +115,7 @@
         "opencompany/prism-codex": "@dev",
         "opencompanyapp/ai-tool-celestial": "@dev",
         "opencompanyapp/ai-tool-clickup": "@dev",
+        "opencompanyapp/ai-tool-coingecko": "@dev",
         "opencompanyapp/ai-tool-google": "@dev",
         "opencompanyapp/ai-tool-mermaid": "@dev",
         "opencompanyapp/ai-tool-plantuml": "@dev",
