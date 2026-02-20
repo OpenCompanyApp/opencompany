@@ -91,7 +91,11 @@ class AgentAvatarService
     {
         $svgPath = Storage::disk('public')->path("avatars/{$agent->id}.svg");
         if (!file_exists($svgPath)) {
-            return null;
+            // Auto-generate the avatar if it doesn't exist
+            $this->generate($agent);
+            if (!file_exists($svgPath)) {
+                return null;
+            }
         }
 
         $tmpPng = tempnam(sys_get_temp_dir(), 'avatar_') . '.png';
