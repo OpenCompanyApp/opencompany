@@ -195,7 +195,7 @@ class TelegramWebhookController extends Controller
                 // Non-critical, continue
             }
 
-            AgentRespondJob::dispatch($internalMessage, $agent, $channel->id)->afterResponse();
+            AgentRespondJob::dispatch($internalMessage, $agent, $channel->id);
         }
     }
 
