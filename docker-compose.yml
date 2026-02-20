@@ -28,6 +28,7 @@ services:
       REVERB_APP_ID: ${REVERB_APP_ID:-1000001}
       REVERB_APP_KEY: ${SERVICE_PASSWORD_REVERBKEY}
       REVERB_APP_SECRET: ${SERVICE_PASSWORD_REVERBSECRET}
+      PRISM_REQUEST_TIMEOUT: "1800"
     volumes:
       - storage:/app/storage
     depends_on:
