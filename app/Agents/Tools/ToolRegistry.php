@@ -13,6 +13,7 @@ use App\Agents\Tools\Chat\SearchMessages;
 use App\Agents\Tools\Chat\SendChannelMessage;
 use App\Agents\Tools\Docs\CommentOnDocument;
 use App\Agents\Tools\Docs\ManageDocument;
+use App\Agents\Tools\Docs\QueryDocuments;
 use App\Agents\Tools\Docs\SearchDocuments;
 use App\Agents\Tools\Memory\RecallMemory;
 use App\Agents\Tools\Memory\SaveMemory;
@@ -80,8 +81,8 @@ class ToolRegistry
             'description' => 'Channel messaging (incl. external: Telegram, Slack)',
         ],
         'docs' => [
-            'tools' => ['search_documents', 'manage_document', 'comment_on_document'],
-            'label' => 'search, manage, comment',
+            'tools' => ['query_documents', 'search_documents', 'manage_document', 'comment_on_document'],
+            'label' => 'query, search, manage, comment',
             'description' => 'Document workspace',
         ],
         'tables' => [
@@ -212,6 +213,13 @@ class ToolRegistry
             'icon' => 'ph:globe',
         ],
         // Docs
+        'query_documents' => [
+            'class' => QueryDocuments::class,
+            'type' => 'read',
+            'name' => 'Query Documents',
+            'description' => 'List documents and folders, browse folder contents, get document details.',
+            'icon' => 'ph:folder-open',
+        ],
         'search_documents' => [
             'class' => SearchDocuments::class,
             'type' => 'read',
@@ -965,6 +973,7 @@ class ToolRegistry
             SearchDocuments::class => new SearchDocuments($agent, $this->permissionService, app(DocumentIndexingService::class)),
             ManageDocument::class => new ManageDocument($agent, $this->permissionService),
             CommentOnDocument::class => new CommentOnDocument($agent, $this->permissionService),
+            QueryDocuments::class => new QueryDocuments($agent, $this->permissionService),
             ListChannels::class => new ListChannels($agent, $this->permissionService),
             GetToolInfo::class => new GetToolInfo($agent, $this),
             // Tools needing only agent

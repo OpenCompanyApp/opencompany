@@ -71,7 +71,7 @@ class ScheduledAutomation extends Model
                 'workspace_id' => $automation->workspace_id,
             ]);
 
-            $channel->users()->attach(array_filter(['system', $automation->agent_id]));
+            $channel->users()->attach(array_filter([$automation->created_by_id, $automation->agent_id]));
 
             $automation->updateQuietly(['channel_id' => $channel->id]);
         });
