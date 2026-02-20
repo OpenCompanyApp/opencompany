@@ -6,6 +6,7 @@ use App\Agents\Tools\ToolRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\Channel;
 use App\Models\ChannelMember;
+use App\Models\DirectMessage;
 use App\Models\IntegrationSetting;
 use App\Models\Task;
 use App\Models\User;
@@ -130,6 +131,14 @@ class AgentController extends Controller
         ChannelMember::create([
             'channel_id' => $dmChannel->id,
             'user_id' => $agent->id,
+        ]);
+
+        // Create the DirectMessage record (required for agent response pipeline)
+        DirectMessage::create([
+            'id' => Str::uuid()->toString(),
+            'user1_id' => $creatorId,
+            'user2_id' => $agent->id,
+            'channel_id' => $dmChannel->id,
         ]);
 
         // Add agent to #general channel by default
