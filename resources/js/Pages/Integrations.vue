@@ -782,7 +782,7 @@ const loadIntegrationStatus = async () => {
         }
 
         // Add dynamic integrations not in static categories
-        if (!found && (integration.configurable || integration.type === 'mcp')) {
+        if (!found) {
           const categoryId = integration.type === 'mcp' ? 'mcp-servers' : (integration.category || 'other')
           let category = integrationCategories.value.find(c => c.id === categoryId)
           if (!category) {
@@ -913,6 +913,12 @@ const integrationCategories = ref<IntegrationCategory[]>([
       { id: 'email', name: 'Email (SMTP)', icon: 'ph:envelope', description: 'Send and receive emails', installed: false, badge: 'built-in' },
       { id: 'rest-api', name: 'REST API', icon: 'ph:plug', description: 'Generic API connector', installed: false, badge: 'built-in' },
     ],
+  },
+  {
+    id: 'built-in-tools',
+    name: 'Built-in Tools',
+    icon: 'ph:wrench',
+    integrations: [],  // populated from backend
   },
   {
     id: 'mcp-servers',
@@ -1149,7 +1155,7 @@ const handleQuickInstallMcp = async (integration: Integration) => {
 }
 
 // Integration handlers
-const handleInstall = (integration: Integration) => {
+const handleInstall = async (integration: Integration) => {
   // Suggested MCP server — one-click install
   if (integration.suggestedMcpConfig && !integration.mcpServerId) {
     handleQuickInstallMcp(integration)
@@ -1186,12 +1192,18 @@ const handleInstall = (integration: Integration) => {
     return
   }
 
-  for (const category of integrationCategories.value) {
-    const found = category.integrations.find(i => i.id === integration.id)
-    if (found) {
-      found.installed = true
-      break
+  // Non-configurable integration — toggle via API
+  try {
+    await axios.post(`/api/integrations/${integration.id}/toggle`, { enabled: true })
+    for (const category of integrationCategories.value) {
+      const found = category.integrations.find(i => i.id === integration.id)
+      if (found) {
+        found.installed = true
+        break
+      }
     }
+  } catch (error) {
+    console.error(`Failed to install ${integration.id}:`, error)
   }
 }
 
@@ -1252,7 +1264,7 @@ const handleTelegramSaved = (result: { enabled: boolean; configured: boolean }) 
   }
 }
 
-const handleUninstall = (integration: Integration) => {
+const handleUninstall = async (integration: Integration) => {
   if (integration.type === 'mcp' && integration.mcpServerId) {
     // For MCP, delete via API
     axios.delete(`/api/mcp-servers/${integration.mcpServerId}`)
@@ -1269,6 +1281,13 @@ const handleUninstall = (integration: Integration) => {
       })
       .catch(console.error)
     return
+  }
+
+  // Disable via toggle API, then update local state
+  try {
+    await axios.post(`/api/integrations/${integration.id}/toggle`, { enabled: false })
+  } catch (error) {
+    console.error(`Failed to uninstall ${integration.id}:`, error)
   }
 
   for (const category of integrationCategories.value) {

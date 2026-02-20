@@ -299,6 +299,7 @@ Route::middleware('resolve.workspace')->group(function () {
         // Integration config (admin-only)
         Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConfig']);
         Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
+        Route::post('/integrations/{id}/toggle', [IntegrationController::class, 'toggle']);
         Route::post('/integrations/{id}/test', [IntegrationController::class, 'testConnection']);
         Route::post('/integrations/{id}/disconnect', [IntegrationController::class, 'disconnect']);
         Route::post('/integrations/{id}/fetch-models', [IntegrationController::class, 'fetchModels']);

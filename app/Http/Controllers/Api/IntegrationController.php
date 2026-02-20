@@ -91,6 +91,31 @@ class IntegrationController extends Controller
             ];
         }
 
+        // Non-configurable integration ToolProviders (built-in rendering tools, etc.)
+        foreach ($registry->all() as $provider) {
+            if ($provider instanceof ConfigurableIntegration) {
+                continue; // Already handled above
+            }
+            if (!$provider->isIntegration()) {
+                continue;
+            }
+            $meta = $provider->appMeta();
+            /** @var IntegrationSetting|null $setting */
+            $setting = $settings->get($provider->appName());
+            $integrations[] = [
+                'id' => $provider->appName(),
+                'name' => $meta['description'] ?? $provider->appName(),
+                'description' => $meta['label'] ?? '',
+                'icon' => $meta['icon'] ?? 'ph:puzzle-piece',
+                'logo' => $meta['logo'] ?? null,
+                'category' => 'built-in-tools',
+                'badge' => 'built-in',
+                'enabled' => $setting?->enabled ?? false,
+                'configured' => true,
+                'configurable' => false,
+            ];
+        }
+
         // MCP servers (remote tool providers)
         $mcpServers = McpServer::forWorkspace()->where('enabled', true)->get();
         foreach ($mcpServers as $server) {
@@ -355,6 +380,34 @@ class IntegrationController extends Controller
             'success' => true,
             'enabled' => $setting->enabled,
             'configured' => $setting->hasValidConfig(),
+        ]);
+    }
+
+    /**
+     * Toggle an integration on or off (for integrations that don't need config).
+     */
+    public function toggle(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $request->validate(['enabled' => 'required|boolean']);
+
+        $setting = IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->first();
+
+        if ($setting) {
+            $setting->update(['enabled' => $request->boolean('enabled')]);
+        } else {
+            $setting = IntegrationSetting::create([
+                'id' => Str::uuid()->toString(),
+                'workspace_id' => workspace()->id,
+                'integration_id' => $id,
+                'config' => [],
+                'enabled' => $request->boolean('enabled'),
+            ]);
+        }
+
+        return response()->json([
+            'enabled' => $setting->enabled,
         ]);
     }
 
