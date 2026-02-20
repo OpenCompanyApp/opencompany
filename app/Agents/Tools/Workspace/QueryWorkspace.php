@@ -23,7 +23,7 @@ class QueryWorkspace implements Tool
 
     public function description(): string
     {
-        return 'Read-only workspace introspection: list agents, get agent details, view permissions, integrations, and models.';
+        return 'Read-only workspace introspection: list agents, list members, get agent details, view permissions, integrations, and models.';
     }
 
     public function handle(Request $request): string
@@ -31,13 +31,14 @@ class QueryWorkspace implements Tool
         try {
             return match ($request['action']) {
                 'list_agents' => $this->listAgents(),
+                'list_members' => $this->listMembers(),
                 'get_agent' => $this->getAgent($request),
                 'get_agent_permissions' => $this->getAgentPermissions($request),
                 'list_integrations' => $this->listIntegrations(),
                 'get_integration_config' => $this->getIntegrationConfig($request),
                 'list_available_models' => $this->listAvailableModels(),
                 'list_automation_rules' => $this->listAutomationRules(),
-                default => "Unknown action: {$request['action']}. Use: list_agents, get_agent, get_agent_permissions, list_integrations, get_integration_config, list_available_models, list_automation_rules",
+                default => "Unknown action: {$request['action']}. Use: list_agents, list_members, get_agent, get_agent_permissions, list_integrations, get_integration_config, list_available_models, list_automation_rules",
             };
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
@@ -57,6 +58,40 @@ class QueryWorkspace implements Tool
             $status = $agent->status ?? 'unknown';
             $behavior = $agent->behavior_mode ?? 'autonomous';
             $lines[] = "- {$agent->name} (ID: {$agent->id}) — type: {$agent->agent_type}, brain: {$agent->brain}, status: {$status}, behavior: {$behavior}";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function listMembers(): string
+    {
+        $workspace = workspace();
+
+        $members = $workspace->members()->withPivot('role')->orderBy('name')->get();
+        $invitations = $workspace->invitations()->whereNull('accepted_at')->with('inviter:id,name')->get();
+
+        if ($members->isEmpty() && $invitations->isEmpty()) {
+            return 'No members or pending invitations found.';
+        }
+
+        $lines = [];
+
+        if ($members->isNotEmpty()) {
+            $lines[] = "Members ({$members->count()}):";
+            foreach ($members as $member) {
+                $role = $member->pivot->role ?? 'member';
+                $isOwner = $member->id === $workspace->owner_id ? ' (owner)' : '';
+                $lines[] = "- {$member->name} <{$member->email}> — role: {$role}{$isOwner}";
+            }
+        }
+
+        if ($invitations->isNotEmpty()) {
+            $lines[] = '';
+            $lines[] = "Pending Invitations ({$invitations->count()}):";
+            foreach ($invitations as $invitation) {
+                $inviter = $invitation->inviter?->name ?? 'unknown';
+                $lines[] = "- {$invitation->email} — role: {$invitation->role}, invited by: {$inviter}";
+            }
         }
 
         return implode("\n", $lines);
@@ -313,7 +348,7 @@ class QueryWorkspace implements Tool
         return [
             'action' => $schema
                 ->string()
-                ->description("Action: 'list_agents', 'get_agent', 'get_agent_permissions', 'list_integrations', 'get_integration_config', 'list_available_models', 'list_automation_rules'")
+                ->description("Action: 'list_agents', 'list_members', 'get_agent', 'get_agent_permissions', 'list_integrations', 'get_integration_config', 'list_available_models', 'list_automation_rules'")
                 ->required(),
             'agentId' => $schema
                 ->string()

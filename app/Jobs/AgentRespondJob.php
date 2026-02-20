@@ -89,21 +89,42 @@ class AgentRespondJob implements ShouldQueue
             if ($task) {
                 $task->start();
             } else {
-                // Create a task to track this chat interaction
-                $task = Task::create([
-                    'id' => Str::uuid()->toString(),
-                    'workspace_id' => $this->agent->workspace_id,
-                    'title' => Str::limit($this->userMessage->content, 80),
-                    'description' => $this->userMessage->content,
-                    'type' => Task::TYPE_CUSTOM,
-                    'status' => Task::STATUS_ACTIVE,
-                    'priority' => Task::PRIORITY_NORMAL,
-                    'source' => Task::SOURCE_CHAT,
-                    'agent_id' => $this->agent->id,
-                    'requester_id' => $this->userMessage->author_id,
-                    'channel_id' => $this->channelId,
-                    'started_at' => now(),
-                ]);
+                // Check for an existing task from the same message (crash recovery / retry)
+                $task = Task::where('agent_id', $this->agent->id)
+                    ->where('channel_id', $this->channelId)
+                    ->where('source', Task::SOURCE_CHAT)
+                    ->where('description', $this->userMessage->content)
+                    ->where('requester_id', $this->userMessage->author_id)
+                    ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_FAILED])
+                    ->where('created_at', '>=', now()->subMinutes(5))
+                    ->latest('created_at')
+                    ->first();
+
+                if ($task) {
+                    // Reuse existing task from a previous attempt
+                    $task->update(['status' => Task::STATUS_ACTIVE, 'started_at' => now()]);
+                    Log::info('Reusing existing task from previous attempt', [
+                        'task' => $task->id,
+                        'agent' => $this->agent->name,
+                        'attempt' => $this->attempts(),
+                    ]);
+                } else {
+                    // Create a task to track this chat interaction
+                    $task = Task::create([
+                        'id' => Str::uuid()->toString(),
+                        'workspace_id' => $this->agent->workspace_id,
+                        'title' => Str::limit($this->userMessage->content, 80),
+                        'description' => $this->userMessage->content,
+                        'type' => Task::TYPE_CUSTOM,
+                        'status' => Task::STATUS_ACTIVE,
+                        'priority' => Task::PRIORITY_NORMAL,
+                        'source' => Task::SOURCE_CHAT,
+                        'agent_id' => $this->agent->id,
+                        'requester_id' => $this->userMessage->author_id,
+                        'channel_id' => $this->channelId,
+                        'started_at' => now(),
+                    ]);
+                }
             }
         }
 
