@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "00ba3d149248943ff2a9f54273576a31",
+    "content-hash": "4d8ded9bfabb884a36e1e92fb3b9dece",
     "packages": [
         {
             "name": "brick/math",
@@ -3350,16 +3350,23 @@
         {
             "name": "opencompanyapp/ai-tool-coingecko",
             "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-coingecko",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-coingecko.git",
                 "reference": "a0d7a213665c667042de43cf7c523ffe79f2d97e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-coingecko/zipball/a0d7a213665c667042de43cf7c523ffe79f2d97e",
+                "reference": "a0d7a213665c667042de43cf7c523ffe79f2d97e",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
                 "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "laravel": {
@@ -3392,9 +3399,11 @@
                 "opencompany",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-coingecko/tree/main",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-coingecko/issues"
+            },
+            "time": "2026-02-20T22:06:59+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-google",
@@ -3785,16 +3794,23 @@
         {
             "name": "opencompanyapp/ai-tool-worldbank",
             "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-worldbank.git",
+                "reference": "eb1c76c4ea5a5891c652f00c281dce14116a5749"
+            },
             "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-worldbank",
-                "reference": "f69533713d2b1b25d968bddbdfff09b519ba6d53"
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-worldbank/zipball/eb1c76c4ea5a5891c652f00c281dce14116a5749",
+                "reference": "eb1c76c4ea5a5891c652f00c281dce14116a5749",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
                 "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "laravel": {
@@ -3827,9 +3843,11 @@
                 "tools",
                 "worldbank"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-worldbank/tree/main",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-worldbank/issues"
+            },
+            "time": "2026-02-20T22:44:00+00:00"
         },
         {
             "name": "opencompanyapp/astronomy-bundle",
