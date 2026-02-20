@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e3e2c6c2024eb5fe21c215892e050caf",
+    "content-hash": "00ba3d149248943ff2a9f54273576a31",
     "packages": [
         {
             "name": "brick/math",
@@ -3353,7 +3353,7 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/ai-tool-coingecko",
-                "reference": "756afe074c2f33424dd8d7c5f7fab889b82aa468"
+                "reference": "a0d7a213665c667042de43cf7c523ffe79f2d97e"
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3781,6 +3781,55 @@
                 "issues": "https://github.com/OpenCompanyApp/ai-tool-vegalite/issues"
             },
             "time": "2026-02-09T21:47:40+00:00"
+        },
+        {
+            "name": "opencompanyapp/ai-tool-worldbank",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-worldbank",
+                "reference": "f69533713d2b1b25d968bddbdfff09b519ba6d53"
+            },
+            "require": {
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolWorldBank\\AiToolWorldBankServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolWorldBank\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "World Bank economic indicators AI tool for Laravel AI SDK — GDP, inflation, population, development data for 200+ countries. Part of the OpenCompany AI tool ecosystem.",
+            "keywords": [
+                "ai",
+                "economics",
+                "gdp",
+                "laravel",
+                "opencompany",
+                "tools",
+                "worldbank"
+            ],
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "opencompanyapp/astronomy-bundle",
@@ -11182,6 +11231,7 @@
         "opencompanyapp/ai-tool-ticktick": 20,
         "opencompanyapp/ai-tool-typst": 20,
         "opencompanyapp/ai-tool-vegalite": 20,
+        "opencompanyapp/ai-tool-worldbank": 20,
         "opencompanyapp/integration-core": 20
     },
     "prefer-stable": true,

@@ -33,4 +33,7 @@ php /app/artisan config:cache
 # Run migrations
 php /app/artisan migrate --force --isolated
 
+# Sync Telegram bot commands + profile photo (if configured)
+php /app/artisan telegram:sync --quiet 2>/dev/null || true
+
 exec "$@"

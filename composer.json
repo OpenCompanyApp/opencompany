@@ -51,6 +51,10 @@
             "url": "tmp/ai-tool-coingecko"
         },
         {
+            "type": "path",
+            "url": "tmp/ai-tool-worldbank"
+        },
+        {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/prism-codex"
         },
@@ -100,6 +104,10 @@
         },
         {
             "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/ai-tool-worldbank"
+        },
+        {
+            "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php"
         }
     ],
@@ -123,6 +131,7 @@
         "opencompanyapp/ai-tool-ticktick": "@dev",
         "opencompanyapp/ai-tool-typst": "@dev",
         "opencompanyapp/ai-tool-vegalite": "@dev",
+        "opencompanyapp/ai-tool-worldbank": "@dev",
         "opencompanyapp/astronomy-bundle": "^3.0",
         "opencompanyapp/integration-core": "@dev",
         "pgvector/pgvector": "^0.2.2",

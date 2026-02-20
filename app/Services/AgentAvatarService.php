@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Process\Process;
 
 class AgentAvatarService
 {
@@ -79,6 +80,56 @@ class AgentAvatarService
         });
 
         return $count;
+    }
+
+    /**
+     * Convert an agent's SVG avatar to a JPEG file.
+     * Returns the path to a temp JPEG file, or null on failure.
+     * Caller is responsible for deleting the temp file.
+     */
+    public function toJpeg(User $agent, int $size = 640): ?string
+    {
+        $svgPath = Storage::disk('public')->path("avatars/{$agent->id}.svg");
+        if (!file_exists($svgPath)) {
+            return null;
+        }
+
+        $tmpPng = tempnam(sys_get_temp_dir(), 'avatar_') . '.png';
+        $tmpJpeg = tempnam(sys_get_temp_dir(), 'avatar_') . '.jpg';
+
+        try {
+            // SVG -> PNG via rsvg-convert (same pattern as RenderSvg tool)
+            $rsvg = collect(['/opt/homebrew/bin/rsvg-convert', '/usr/local/bin/rsvg-convert', '/usr/bin/rsvg-convert'])
+                ->first(fn ($p) => file_exists($p), 'rsvg-convert');
+
+            $process = new Process([$rsvg, '-w', (string) $size, '-h', (string) $size, '-o', $tmpPng, $svgPath]);
+            $process->setTimeout(15);
+            $process->run();
+
+            if (!$process->isSuccessful() || !file_exists($tmpPng)) {
+                return null;
+            }
+
+            // PNG -> JPEG via GD
+            $png = imagecreatefrompng($tmpPng);
+            if (!$png) {
+                return null;
+            }
+
+            // Fill white background (PNG may have transparency)
+            $jpeg = imagecreatetruecolor($size, $size);
+            $white = imagecolorallocate($jpeg, 255, 255, 255);
+            imagefill($jpeg, 0, 0, $white);
+            imagecopy($jpeg, $png, 0, 0, 0, 0, imagesx($png), imagesy($png));
+
+            imagejpeg($jpeg, $tmpJpeg, 90);
+
+            return $tmpJpeg;
+        } catch (\Throwable) {
+            return null;
+        } finally {
+            @unlink($tmpPng);
+        }
     }
 
     /**

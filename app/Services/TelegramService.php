@@ -290,6 +290,50 @@ class TelegramService
     }
 
     /**
+     * Set the bot's profile photo. Requires a JPEG file.
+     * Uses Bot API 9.4 InputProfilePhotoStatic format.
+     *
+     * @return array<string, mixed>
+     */
+    public function setMyProfilePhoto(string $filePath): array
+    {
+        if (!$this->botToken) {
+            throw new \RuntimeException('Telegram bot token is not configured.');
+        }
+
+        if (!file_exists($filePath)) {
+            throw new \RuntimeException("Photo file not found: {$filePath}");
+        }
+
+        $url = self::BASE_URL . $this->botToken . '/setMyProfilePhoto';
+
+        try {
+            $response = Http::timeout(30)
+                ->attach('file', file_get_contents($filePath), 'avatar.jpg')
+                ->post($url, [
+                    'photo' => json_encode([
+                        'type' => 'static',
+                        'photo' => 'attach://file',
+                    ]),
+                ]);
+
+            $data = $response->json();
+
+            if (!$response->successful() || !($data['ok'] ?? false)) {
+                $errorDescription = $data['description'] ?? 'Unknown Telegram API error';
+                Log::error('Telegram setMyProfilePhoto error', ['error' => $errorDescription]);
+                throw new \RuntimeException("Telegram API error: {$errorDescription}");
+            }
+
+            $result = $data['result'] ?? true;
+            return is_array($result) ? $result : ['ok' => $result];
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('Telegram setMyProfilePhoto connection error', ['error' => $e->getMessage()]);
+            throw new \RuntimeException("Failed to connect to Telegram API: {$e->getMessage()}");
+        }
+    }
+
+    /**
      * Check if the service has a valid bot token configured.
      */
     public function isConfigured(): bool
