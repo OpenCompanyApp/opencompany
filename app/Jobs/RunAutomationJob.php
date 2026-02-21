@@ -101,7 +101,7 @@ class RunAutomationJob implements ShouldQueue
                     'id' => Str::uuid()->toString(),
                     'content' => $this->automation->prompt,
                     'channel_id' => $channelId,
-                    'author_id' => 'system',
+                    'author_id' => $this->automation->created_by_id,
                     'timestamp' => now(),
                     'source' => 'automation_prompt',
                 ]);

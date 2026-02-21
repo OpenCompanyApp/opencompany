@@ -29,6 +29,21 @@
     </div>
 
     <template v-else-if="debugData">
+      <!-- Action Result Banner -->
+      <div
+        v-if="actionResult"
+        class="mb-4 p-2.5 rounded-lg text-xs flex items-center gap-2 border"
+        :class="actionResult.error
+          ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30 text-red-700 dark:text-red-400'
+          : 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800/30 text-green-700 dark:text-green-400'"
+      >
+        <Icon :name="actionResult.error ? 'ph:warning' : 'ph:check-circle'" class="w-3.5 h-3.5 shrink-0" />
+        <span class="flex-1">{{ actionResult.message }}</span>
+        <button type="button" class="shrink-0 opacity-60 hover:opacity-100" @click="actionResult = null">
+          <Icon name="ph:x" class="w-3 h-3" />
+        </button>
+      </div>
+
       <!-- Health Overview -->
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-6">
         <div
@@ -74,6 +89,9 @@
         <summary class="flex items-center gap-2 cursor-pointer text-sm font-medium text-neutral-900 dark:text-white py-2 select-none">
           <Icon name="ph:caret-right" class="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
           Embedding
+          <span class="flex-1" />
+          <ActionButton label="Reindex" :loading="actionLoading === 'reindex_documents'" @click.stop="runAction('reindex_documents')" />
+          <ActionButton label="Reindex Fresh" :loading="actionLoading === 'reindex_documents_fresh'" variant="warning" @click.stop="confirmAction('reindex_documents_fresh', 'Reindex Fresh', 'This will delete all existing chunks and re-index all documents. Semantic search will be temporarily unavailable.')" />
         </summary>
         <div class="pl-5.5 pb-3">
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -102,6 +120,9 @@
         <summary class="flex items-center gap-2 cursor-pointer text-sm font-medium text-neutral-900 dark:text-white py-2 select-none">
           <Icon name="ph:caret-right" class="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
           Queue
+          <span class="flex-1" />
+          <ActionButton v-if="debugData.queue.failed_jobs > 0" label="Retry Failed" :loading="actionLoading === 'retry_failed_jobs'" @click.stop="runAction('retry_failed_jobs')" />
+          <ActionButton v-if="debugData.queue.failed_jobs > 0" label="Flush Failed" :loading="actionLoading === 'flush_failed_jobs'" variant="warning" @click.stop="confirmAction('flush_failed_jobs', 'Flush Failed Jobs', 'This will permanently delete all failed jobs. They cannot be retried after flushing.')" />
         </summary>
         <div class="pl-5.5 pb-3">
           <div class="grid grid-cols-2 gap-3 text-xs mb-3">
@@ -164,6 +185,8 @@
           <Icon name="ph:caret-right" class="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
           MCP Servers
           <span class="text-[11px] text-neutral-400 dark:text-neutral-500 font-normal">{{ debugData.mcp_servers.enabled }}/{{ debugData.mcp_servers.total }} enabled</span>
+          <span class="flex-1" />
+          <ActionButton v-if="debugData.mcp_servers.enabled > 0" label="Refresh Tools" :loading="actionLoading === 'refresh_mcp_tools'" @click.stop="runAction('refresh_mcp_tools')" />
         </summary>
         <div class="pl-5.5 pb-3">
           <div v-if="debugData.mcp_servers.items?.length" class="space-y-1.5">
@@ -187,6 +210,9 @@
         <summary class="flex items-center gap-2 cursor-pointer text-sm font-medium text-neutral-900 dark:text-white py-2 select-none">
           <Icon name="ph:caret-right" class="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
           Agents
+          <span class="flex-1" />
+          <ActionButton label="Resume All" :loading="actionLoading === 'resume_agents'" @click.stop="runAction('resume_agents')" />
+          <ActionButton label="Test Telegram" :loading="actionLoading === 'test_telegram'" @click.stop="runAction('test_telegram')" />
         </summary>
         <div class="pl-5.5 pb-3">
           <div v-if="debugData.agents.items?.length" class="space-y-1.5">
@@ -251,18 +277,75 @@
       </button>
     </div>
   </SettingsSection>
+
+  <!-- Confirmation Modal -->
+  <Modal v-model:open="showConfirmModal" :title="confirmTitle">
+    <template #body>
+      <p class="text-sm text-neutral-600 dark:text-neutral-400">{{ confirmMessage }}</p>
+    </template>
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <button
+          type="button"
+          class="px-3 py-1.5 text-sm rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          @click="showConfirmModal = false"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700"
+          @click="executeConfirmedAction"
+        >
+          Confirm
+        </button>
+      </div>
+    </template>
+  </Modal>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
 import SettingsSection from '@/Components/settings/SettingsSection.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import Modal from '@/Components/shared/Modal.vue'
 import { useApi } from '@/composables/useApi'
 
-const { fetchDebugInfo } = useApi()
+// --- Inline ActionButton component ---
+const ActionButton = (props: { label: string, loading?: boolean, variant?: string }, { emit }: any) => {
+  const isWarning = props.variant === 'warning'
+  return h('button', {
+    type: 'button',
+    disabled: props.loading,
+    class: [
+      'flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md transition-colors duration-150',
+      isWarning
+        ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+        : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+    ],
+  }, [
+    props.loading
+      ? h(Icon, { name: 'ph:spinner', class: 'w-3 h-3 animate-spin' })
+      : null,
+    props.label,
+  ])
+}
+ActionButton.props = ['label', 'loading', 'variant']
+
+const { fetchDebugInfo, dangerAction } = useApi()
 const debugData = ref<any>(null)
 const debugLoading = ref(false)
 const debugCopied = ref(false)
+
+// Action state
+const actionLoading = ref<string | null>(null)
+const actionResult = ref<{ message: string, error?: boolean } | null>(null)
+
+// Confirmation modal state
+const showConfirmModal = ref(false)
+const confirmTitle = ref('')
+const confirmMessage = ref('')
+const pendingAction = ref('')
 
 async function loadDebugData() {
   debugLoading.value = true
@@ -280,6 +363,35 @@ async function loadDebugData() {
 onMounted(() => {
   loadDebugData()
 })
+
+async function runAction(action: string) {
+  if (actionLoading.value) return
+  actionLoading.value = action
+  actionResult.value = null
+
+  try {
+    const response = await dangerAction(action)
+    actionResult.value = { message: response.data?.message || 'Action completed.' }
+    loadDebugData()
+  } catch (e: any) {
+    const msg = e?.response?.data?.message || e?.message || 'Action failed.'
+    actionResult.value = { message: msg, error: true }
+  } finally {
+    actionLoading.value = null
+  }
+}
+
+function confirmAction(action: string, title: string, message: string) {
+  pendingAction.value = action
+  confirmTitle.value = title
+  confirmMessage.value = message
+  showConfirmModal.value = true
+}
+
+function executeConfirmedAction() {
+  showConfirmModal.value = false
+  runAction(pendingAction.value)
+}
 
 function formatRelative(dateStr: string | null): string {
   if (!dateStr) return 'Never'

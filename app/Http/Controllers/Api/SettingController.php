@@ -3,16 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\IndexDocumentJob;
 use App\Models\AppSetting;
 use App\Models\ConversationSummary;
+use App\Models\Document;
 use App\Models\DocumentChunk;
 use App\Models\EmbeddingCache;
 use App\Models\McpServer;
 use App\Models\Automation;
 use App\Models\User;
+use App\Services\Mcp\McpClient;
 use App\Services\Memory\DocumentIndexingService;
+use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -79,34 +84,182 @@ class SettingController extends Controller
     public function dangerAction(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
-            'action' => 'required|string|in:pause_agents,reset_memory',
+            'action' => 'required|string|in:pause_agents,reset_memory,resume_agents,retry_failed_jobs,refresh_mcp_tools,test_telegram,reindex_documents,reindex_documents_fresh,flush_failed_jobs,reset_embeddings,clear_embedding_cache,clear_conversation_summaries',
         ]);
 
         $action = $request->input('action');
 
-        if ($action === 'pause_agents') {
-            User::where('type', 'agent')
-                ->where('workspace_id', workspace()->id)
-                ->whereNotIn('status', ['offline', 'paused'])
-                ->update(['status' => 'paused']);
+        return match ($action) {
+            'pause_agents' => $this->actionPauseAgents(),
+            'resume_agents' => $this->actionResumeAgents(),
+            'reset_memory' => $this->actionResetMemory(),
+            'retry_failed_jobs' => $this->actionRetryFailedJobs(),
+            'flush_failed_jobs' => $this->actionFlushFailedJobs(),
+            'refresh_mcp_tools' => $this->actionRefreshMcpTools(),
+            'test_telegram' => $this->actionTestTelegram(),
+            'reindex_documents' => $this->actionReindexDocuments(fresh: false),
+            'reindex_documents_fresh' => $this->actionReindexDocuments(fresh: true),
+            'reset_embeddings' => $this->actionResetEmbeddings(),
+            'clear_embedding_cache' => $this->actionClearEmbeddingCache(),
+            'clear_conversation_summaries' => $this->actionClearConversationSummaries(),
+            default => response()->json(['message' => 'Unknown action.'], 400),
+        };
+    }
 
-            return response()->json(['message' => 'All agents have been paused.']);
+    private function actionPauseAgents(): JsonResponse
+    {
+        $count = User::where('type', 'agent')
+            ->where('workspace_id', workspace()->id)
+            ->whereNotIn('status', ['offline', 'paused'])
+            ->update(['status' => 'paused']);
+
+        return response()->json(['message' => "{$count} agent(s) paused."]);
+    }
+
+    private function actionResumeAgents(): JsonResponse
+    {
+        $count = User::where('type', 'agent')
+            ->where('workspace_id', workspace()->id)
+            ->whereIn('status', ['paused', 'sleeping'])
+            ->update(['status' => 'idle']);
+
+        return response()->json(['message' => "{$count} agent(s) resumed."]);
+    }
+
+    private function actionResetMemory(): JsonResponse
+    {
+        User::where('type', 'agent')->where('workspace_id', workspace()->id)->each(function (User $agent) {
+            $memoryFile = storage_path("app/agents/{$agent->id}/memory.md");
+            if (file_exists($memoryFile)) {
+                file_put_contents($memoryFile, '');
+            }
+        });
+
+        return response()->json(['message' => 'Agent memory has been reset.']);
+    }
+
+    private function actionRetryFailedJobs(): JsonResponse
+    {
+        $count = DB::table('failed_jobs')->count();
+        if ($count === 0) {
+            return response()->json(['message' => 'No failed jobs to retry.']);
         }
 
-        if ($action === 'reset_memory') {
-            // Clear agent identity files (memory/context)
-            User::where('type', 'agent')->where('workspace_id', workspace()->id)->each(function (User $agent) {
-                $identityDir = storage_path("app/agents/{$agent->id}");
-                $memoryFile = $identityDir . '/memory.md';
-                if (file_exists($memoryFile)) {
-                    file_put_contents($memoryFile, '');
-                }
-            });
+        Artisan::call('queue:retry', ['id' => ['all']]);
 
-            return response()->json(['message' => 'Agent memory has been reset.']);
+        return response()->json(['message' => "{$count} failed job(s) queued for retry."]);
+    }
+
+    private function actionFlushFailedJobs(): JsonResponse
+    {
+        $count = DB::table('failed_jobs')->count();
+        DB::table('failed_jobs')->truncate();
+
+        return response()->json(['message' => "{$count} failed job(s) cleared."]);
+    }
+
+    private function actionRefreshMcpTools(): JsonResponse
+    {
+        $servers = McpServer::forWorkspace()->where('enabled', true)->get();
+
+        if ($servers->isEmpty()) {
+            return response()->json(['message' => 'No enabled MCP servers found.']);
         }
 
-        return response()->json(['message' => 'Unknown action.'], 400);
+        $refreshed = 0;
+        $errors = [];
+
+        foreach ($servers as $server) {
+            try {
+                $client = McpClient::fromServer($server);
+                $tools = $client->listTools();
+                $server->update([
+                    'discovered_tools' => $tools,
+                    'tools_discovered_at' => now(),
+                ]);
+                $refreshed++;
+            } catch (\Throwable $e) {
+                $errors[] = "{$server->name}: {$e->getMessage()}";
+            }
+        }
+
+        $message = "{$refreshed}/{$servers->count()} server(s) refreshed.";
+        if (! empty($errors)) {
+            $message .= ' Errors: ' . implode('; ', array_map(fn ($e) => Str::limit($e, 80), $errors));
+        }
+
+        return response()->json(['message' => $message]);
+    }
+
+    private function actionTestTelegram(): JsonResponse
+    {
+        try {
+            $telegram = app(TelegramService::class);
+
+            if (! $telegram->isConfigured()) {
+                return response()->json(['message' => 'Telegram is not configured. Add a bot token in integration settings.']);
+            }
+
+            $result = $telegram->getMe();
+            $botName = $result['result']['username'] ?? 'unknown';
+
+            return response()->json(['message' => "Connected to @{$botName}."]);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Telegram test failed: ' . Str::limit($e->getMessage(), 150)], 422);
+        }
+    }
+
+    private function actionReindexDocuments(bool $fresh): JsonResponse
+    {
+        $workspaceId = workspace()->id;
+
+        if ($fresh) {
+            DocumentIndexingService::resetEmbeddings($workspaceId);
+        }
+
+        $documents = Document::forWorkspace()
+            ->where('is_folder', false)
+            ->whereNotNull('content')
+            ->where('content', '!=', '')
+            ->get();
+
+        if ($documents->isEmpty()) {
+            return response()->json(['message' => 'No documents to index.']);
+        }
+
+        foreach ($documents as $document) {
+            IndexDocumentJob::dispatch($document);
+        }
+
+        $prefix = $fresh ? 'Fresh reindex' : 'Reindex';
+
+        return response()->json(['message' => "{$prefix}: {$documents->count()} document(s) queued for indexing."]);
+    }
+
+    private function actionResetEmbeddings(): JsonResponse
+    {
+        $workspaceId = workspace()->id;
+        $chunkCount = DocumentChunk::forWorkspace()->count();
+
+        DocumentIndexingService::resetEmbeddings($workspaceId);
+
+        return response()->json(['message' => "{$chunkCount} chunk(s) and embedding cache cleared."]);
+    }
+
+    private function actionClearEmbeddingCache(): JsonResponse
+    {
+        $count = EmbeddingCache::forWorkspace()->count();
+        EmbeddingCache::forWorkspace()->delete();
+
+        return response()->json(['message' => "{$count} cache entries cleared."]);
+    }
+
+    private function actionClearConversationSummaries(): JsonResponse
+    {
+        $count = ConversationSummary::forWorkspace()->count();
+        ConversationSummary::forWorkspace()->delete();
+
+        return response()->json(['message' => "{$count} conversation summary(ies) cleared."]);
     }
 
     public function debug(): JsonResponse
