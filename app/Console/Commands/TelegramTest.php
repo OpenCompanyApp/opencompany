@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Workspace;
 use App\Services\TelegramService;
 use Illuminate\Console\Command;
 
@@ -12,6 +13,11 @@ class TelegramTest extends Command
 
     public function handle(): int
     {
+        $workspace = Workspace::first();
+        if ($workspace) {
+            app()->instance('currentWorkspace', $workspace);
+        }
+
         $telegram = app(TelegramService::class);
 
         if (!$telegram->isConfigured()) {

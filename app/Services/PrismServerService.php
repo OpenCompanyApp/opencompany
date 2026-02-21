@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Models\IntegrationSetting;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\Log;
 use Prism\Prism\Facades\PrismServer;
 use Prism\Prism\Facades\Prism;
@@ -30,6 +31,15 @@ class PrismServerService
 
         if (! $setting) {
             return;
+        }
+
+        // Set workspace context from the integration setting for API key resolution
+        if ($setting->workspace_id) {
+            $workspace = Workspace::find($setting->workspace_id);
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+                $this->resolver->setWorkspaceId($workspace->id);
+            }
         }
 
         $enabledModels = $setting->getConfigValue('enabled_models', []);

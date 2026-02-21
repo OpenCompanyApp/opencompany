@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentCommunicationService;
+use App\Models\Workspace;
 use App\Services\AgentPermissionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
@@ -33,6 +34,12 @@ class TestAgentComms extends Command
         if (!$agentA || !$agentB) {
             $this->error('Need at least 2 agents. Create agents first.');
             return 1;
+        }
+
+        // Set workspace context from the first agent
+        $workspace = Workspace::find($agentA->workspace_id) ?? Workspace::first();
+        if ($workspace) {
+            app()->instance('currentWorkspace', $workspace);
         }
 
         $this->info("Agent A: {$agentA->name} ({$agentA->id}) [{$agentA->status}]");

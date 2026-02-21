@@ -55,6 +55,8 @@ class SendApprovalToTelegramJob implements ShouldQueue
                 'chat_id' => $this->chatId,
                 'error' => $e->getMessage(),
             ]);
+
+            throw $e;
         }
     }
 }

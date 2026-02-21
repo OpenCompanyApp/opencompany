@@ -15,7 +15,10 @@ class TelegramService
 
     public function __construct()
     {
-        $setting = IntegrationSetting::where('integration_id', 'telegram')->first();
+        $setting = app()->bound('currentWorkspace')
+            ? IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first()
+            : IntegrationSetting::where('integration_id', 'telegram')->first();
+
         $this->botToken = $setting?->getConfigValue('api_key');
     }
 

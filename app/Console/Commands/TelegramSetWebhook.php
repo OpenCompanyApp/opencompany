@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\IntegrationSetting;
+use App\Models\Workspace;
 use App\Services\TelegramService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
@@ -14,6 +15,11 @@ class TelegramSetWebhook extends Command
 
     public function handle(): int
     {
+        $workspace = Workspace::first();
+        if ($workspace) {
+            app()->instance('currentWorkspace', $workspace);
+        }
+
         $telegram = app(TelegramService::class);
 
         if (!$telegram->isConfigured()) {
@@ -28,7 +34,7 @@ class TelegramSetWebhook extends Command
         }
 
         // Ensure webhook_secret exists
-        $setting = IntegrationSetting::where('integration_id', 'telegram')->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
         $webhookSecret = $setting->getConfigValue('webhook_secret');
 
         if (!$webhookSecret) {

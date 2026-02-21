@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\IntegrationSetting;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\AgentAvatarService;
 use App\Services\TelegramService;
 use Illuminate\Console\Command;
@@ -15,6 +16,13 @@ class TelegramSync extends Command
 
     public function handle(TelegramService $telegram, AgentAvatarService $avatarService): int
     {
+        if (!app()->bound('currentWorkspace')) {
+            $workspace = Workspace::first();
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+            }
+        }
+
         if (!$telegram->isConfigured()) {
             $this->components->warn('Telegram not configured, skipping.');
             return self::SUCCESS;
@@ -29,7 +37,7 @@ class TelegramSync extends Command
         }
 
         // 2. Sync profile photo from agent avatar
-        $setting = IntegrationSetting::where('integration_id', 'telegram')->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
         $agentId = $setting?->getConfigValue('default_agent_id');
 
         if (!$agentId) {

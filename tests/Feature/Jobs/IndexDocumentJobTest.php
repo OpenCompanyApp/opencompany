@@ -52,7 +52,7 @@ class IndexDocumentJobTest extends TestCase
         $job->handle($indexer);
     }
 
-    public function test_job_catches_indexer_exception(): void
+    public function test_job_rethrows_indexer_exception(): void
     {
         $doc = $this->createDocument();
 
@@ -65,8 +65,10 @@ class IndexDocumentJobTest extends TestCase
             ->once()
             ->withArgs(fn ($msg) => str_contains($msg, 'IndexDocumentJob failed') && str_contains($msg, 'Embedding API down'));
 
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Embedding API down');
+
         $job = new IndexDocumentJob($doc);
-        // Should not throw
         $job->handle($indexer);
     }
 
@@ -113,8 +115,11 @@ class IndexDocumentJobTest extends TestCase
             ->once()
             ->withArgs(fn ($msg) => str_contains($msg, 'IndexDocumentJob failed'));
 
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Model not found');
+
         // Reconstruct a stub for the job — in reality SerializesModels would throw,
-        // but our try-catch should handle that too
+        // but our try-catch logs the warning and rethrows so the job fails visibly
         $job = new IndexDocumentJob($doc);
         $job->handle($indexer);
     }

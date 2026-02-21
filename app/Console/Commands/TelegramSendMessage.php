@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\IntegrationSetting;
+use App\Models\Workspace;
 use App\Services\TelegramService;
 use Illuminate\Console\Command;
 
@@ -13,6 +14,11 @@ class TelegramSendMessage extends Command
 
     public function handle(): int
     {
+        $workspace = Workspace::first();
+        if ($workspace) {
+            app()->instance('currentWorkspace', $workspace);
+        }
+
         $telegram = app(TelegramService::class);
 
         if (!$telegram->isConfigured()) {

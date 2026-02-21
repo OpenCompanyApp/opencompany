@@ -169,6 +169,8 @@ class RunAutomationJob implements ShouldQueue
             }
 
             $this->automation->recordFailure($e->getMessage());
+
+            throw $e;
         } finally {
             $agent->refresh();
 
