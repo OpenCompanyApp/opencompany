@@ -143,6 +143,10 @@ class RerankingService
         $systemPrompt = 'Judge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".';
 
         try {
+            $workspace = app('currentWorkspace');
+            if ($workspace) {
+                $this->providerResolver->setWorkspaceId($workspace->id);
+            }
             $resolved = $this->providerResolver->resolveFromParts($provider, $model);
         } catch (\Throwable $e) {
             Log::warning('LLM reranking provider resolution failed, falling back to passthrough', [

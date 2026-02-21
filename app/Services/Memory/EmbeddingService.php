@@ -22,6 +22,7 @@ class EmbeddingService
     public function embed(string $text): array
     {
         [$providerKey, $modelName] = $this->resolveProviderModel();
+        $this->ensureWorkspaceContext();
 
         $cacheKey = EmbeddingCache::cacheKey($providerKey, $modelName, $text);
         $cached = EmbeddingCache::find($cacheKey);
@@ -61,6 +62,7 @@ class EmbeddingService
         }
 
         [$providerKey, $modelName] = $this->resolveProviderModel();
+        $this->ensureWorkspaceContext();
         $resolved = $this->providerResolver->resolveFromParts($providerKey, $modelName);
 
         $results = [];
@@ -122,5 +124,16 @@ class EmbeddingService
         return AppSetting::resolveProviderModel(
             'memory_embedding_model', 'memory.embedding.provider', 'memory.embedding.model'
         );
+    }
+
+    /**
+     * Ensure DynamicProviderResolver has workspace context for API key lookups.
+     */
+    private function ensureWorkspaceContext(): void
+    {
+        $workspace = app('currentWorkspace');
+        if ($workspace) {
+            $this->providerResolver->setWorkspaceId($workspace->id);
+        }
     }
 }

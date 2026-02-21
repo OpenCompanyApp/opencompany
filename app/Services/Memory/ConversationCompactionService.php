@@ -177,6 +177,10 @@ class ConversationCompactionService
         );
 
         try {
+            $workspace = app('currentWorkspace');
+            if ($workspace) {
+                $this->providerResolver->setWorkspaceId($workspace->id);
+            }
             $resolved = $this->providerResolver->resolveFromParts($provider, $model);
 
             $response = Prism::text()
