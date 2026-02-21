@@ -53,49 +53,48 @@ class RunScheduledAutomationJob implements ShouldQueue
             return;
         }
 
-        $channelId = $this->automation->channel_id;
+        try {
+            $channelId = $this->automation->channel_id;
 
-        // Backfill: create channel if automation doesn't have one yet
-        if (! $channelId) {
-            $channel = Channel::create([
+            // Backfill: create channel if automation doesn't have one yet
+            if (! $channelId) {
+                $channel = Channel::create([
+                    'id' => Str::uuid()->toString(),
+                    'workspace_id' => $this->automation->workspace_id,
+                    'name' => $this->automation->name,
+                    'type' => 'dm',
+                    'description' => "Automation channel for: {$this->automation->name}",
+                    'creator_id' => $this->automation->created_by_id,
+                ]);
+                $channel->users()->attach(array_filter([$this->automation->created_by_id, $this->automation->agent_id]));
+                $this->automation->updateQuietly(['channel_id' => $channel->id]);
+                $channelId = $channel->id;
+            }
+
+            // Clear channel history if keep_history is disabled
+            if ($channelId && ! $this->automation->keep_history) {
+                Message::where('channel_id', $channelId)->delete();
+            }
+
+            $task = Task::create([
                 'id' => Str::uuid()->toString(),
                 'workspace_id' => $this->automation->workspace_id,
-                'name' => $this->automation->name,
-                'type' => 'dm',
-                'description' => "Automation channel for: {$this->automation->name}",
-                'creator_id' => $this->automation->created_by_id,
+                'title' => "Scheduled: {$this->automation->name}",
+                'description' => $this->automation->prompt,
+                'type' => Task::TYPE_CUSTOM,
+                'status' => Task::STATUS_ACTIVE,
+                'priority' => Task::PRIORITY_NORMAL,
+                'source' => Task::SOURCE_AUTOMATION,
+                'agent_id' => $agent->id,
+                'requester_id' => $this->automation->created_by_id,
+                'channel_id' => $channelId,
+                'started_at' => now(),
+                'context' => [
+                    'scheduled_automation_id' => $this->automation->id,
+                    'schedule' => $this->automation->cron_expression,
+                    'run_number' => $this->automation->run_count + 1,
+                ],
             ]);
-            $channel->users()->attach(array_filter(['system', $this->automation->agent_id]));
-            $this->automation->updateQuietly(['channel_id' => $channel->id]);
-            $channelId = $channel->id;
-        }
-
-        // Clear channel history if keep_history is disabled
-        if ($channelId && ! $this->automation->keep_history) {
-            Message::where('channel_id', $channelId)->delete();
-        }
-
-        $task = Task::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => $this->automation->workspace_id,
-            'title' => "Scheduled: {$this->automation->name}",
-            'description' => $this->automation->prompt,
-            'type' => Task::TYPE_CUSTOM,
-            'status' => Task::STATUS_ACTIVE,
-            'priority' => Task::PRIORITY_NORMAL,
-            'source' => Task::SOURCE_AUTOMATION,
-            'agent_id' => $agent->id,
-            'requester_id' => $this->automation->created_by_id,
-            'channel_id' => $channelId,
-            'started_at' => now(),
-            'context' => [
-                'scheduled_automation_id' => $this->automation->id,
-                'schedule' => $this->automation->cron_expression,
-                'run_number' => $this->automation->run_count + 1,
-            ],
-        ]);
-
-        try {
             // Post the prompt into the channel from the system user
             if ($channelId) {
                 $promptMessage = Message::create([
@@ -161,12 +160,14 @@ class RunScheduledAutomationJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
 
-            $task->fail();
-            $task->update([
-                'result' => ['error' => $e->getMessage()],
-            ]);
+            if (isset($task)) {
+                $task->fail();
+                $task->update([
+                    'result' => ['error' => $e->getMessage()],
+                ]);
+                broadcast(new TaskUpdated($task, 'failed'));
+            }
 
-            broadcast(new TaskUpdated($task, 'failed'));
             $this->automation->recordFailure($e->getMessage());
         } finally {
             $agent->refresh();

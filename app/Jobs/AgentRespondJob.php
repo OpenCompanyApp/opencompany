@@ -13,6 +13,7 @@ use App\Models\MessageAttachment;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -27,7 +28,7 @@ use Laravel\Ai\Responses\Data\FinishReason;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-class AgentRespondJob implements ShouldQueue
+class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -48,6 +49,11 @@ class AgentRespondJob implements ShouldQueue
      */
     public array $backoff = [10];
 
+    /**
+     * The number of seconds the unique lock should be maintained.
+     */
+    public int $uniqueFor = 1800;
+
     private ?string $telegramChatId = null;
 
     public function __construct(
@@ -56,6 +62,11 @@ class AgentRespondJob implements ShouldQueue
         private string $channelId,
         private ?string $taskId = null,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return $this->userMessage->id;
+    }
 
     public function handle(): void
     {
@@ -512,8 +523,11 @@ class AgentRespondJob implements ShouldQueue
     }
 
     /**
-     * Start a periodic typing indicator for Telegram channels.
-     * Resends every 4 seconds using SIGALRM until stopped.
+     * Send a typing indicator for Telegram channels.
+     *
+     * Note: We intentionally do NOT use SIGALRM for periodic typing because
+     * it overrides the queue worker's timeout handler, breaking job timeouts
+     * and causing jobs to be picked up by multiple workers.
      */
     private function startTypingIndicator(): void
     {
@@ -530,35 +544,17 @@ class AgentRespondJob implements ShouldQueue
 
             $this->telegramChatId = $channel->external_id;
             $telegram->sendChatAction($this->telegramChatId);
-
-            if (function_exists('pcntl_async_signals')) {
-                pcntl_async_signals(true);
-                pcntl_signal(SIGALRM, function () use ($telegram) {
-                    if ($this->telegramChatId) {
-                        try {
-                            $telegram->sendChatAction($this->telegramChatId);
-                        } catch (\Throwable) {
-                            // Non-critical
-                        }
-                        pcntl_alarm(4);
-                    }
-                });
-                pcntl_alarm(4);
-            }
         } catch (\Throwable) {
             // Non-critical
         }
     }
 
     /**
-     * Stop the periodic typing indicator.
+     * Stop the typing indicator (no-op now that SIGALRM is not used).
      */
     private function stopTypingIndicator(): void
     {
         $this->telegramChatId = null;
-        if (function_exists('pcntl_alarm')) {
-            pcntl_alarm(0);
-        }
     }
 
     /**
