@@ -397,10 +397,11 @@ export interface CalendarFeed {
   createdAt: string
 }
 
-// Scheduled Automations
-export interface ScheduledAutomation {
+// Automations
+export interface Automation {
   id: string
   name: string
+  triggerType: string
   description: string | null
   agentId: string
   prompt: string

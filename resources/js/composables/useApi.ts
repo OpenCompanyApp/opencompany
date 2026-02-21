@@ -346,12 +346,12 @@ export const useApi = () => {
   const deleteAutomationRule = (id: string) =>
     api.delete(`/automation-rules/${id}`)
 
-  // Scheduled Automations
-  const fetchScheduledAutomations = () =>
-    useFetch<import('@/types').ScheduledAutomation[]>('/scheduled-automations')
-  const fetchScheduledAutomation = (id: string) =>
-    useFetch<import('@/types').ScheduledAutomation>(`/scheduled-automations/${id}`)
-  const createScheduledAutomation = (data: {
+  // Automations
+  const fetchAutomations = () =>
+    useFetch<import('@/types').Automation[]>('/automations')
+  const fetchAutomation = (id: string) =>
+    useFetch<import('@/types').Automation>(`/automations/${id}`)
+  const createAutomation = (data: {
     name: string
     agentId: string
     prompt: string
@@ -361,13 +361,13 @@ export const useApi = () => {
     channelId?: string
     keepHistory?: boolean
     createdById?: string
-  }) => api.post('/scheduled-automations', data)
-  const updateScheduledAutomation = (id: string, data: Record<string, unknown>) =>
-    api.patch(`/scheduled-automations/${id}`, data)
-  const deleteScheduledAutomation = (id: string) =>
-    api.delete(`/scheduled-automations/${id}`)
-  const triggerScheduledAutomation = (id: string) =>
-    api.post(`/scheduled-automations/${id}/run`)
+  }) => api.post('/automations', data)
+  const updateAutomation = (id: string, data: Record<string, unknown>) =>
+    api.patch(`/automations/${id}`, data)
+  const deleteAutomation = (id: string) =>
+    api.delete(`/automations/${id}`)
+  const triggerAutomation = (id: string) =>
+    api.post(`/automations/${id}/run`)
   const fetchAutomationRuns = (id: string) =>
     useFetch<Array<{
       id: string
@@ -379,9 +379,9 @@ export const useApi = () => {
       startedAt: string | null
       completedAt: string | null
       createdAt: string
-    }>>(`/scheduled-automations/${id}/runs`)
+    }>>(`/automations/${id}/runs`)
   const previewSchedule = (cronExpression: string, timezone = 'UTC') =>
-    api.get('/scheduled-automations/preview-schedule', {
+    api.get('/automations/preview-schedule', {
       params: { cronExpression, timezone },
     })
 
@@ -468,6 +468,7 @@ export const useApi = () => {
     api.patch('/settings', { category, settings })
   const dangerAction = (action: string) =>
     api.post('/settings/danger-action', { action })
+  const fetchDebugInfo = () => useFetch<Record<string, unknown>>('/settings/debug')
 
   // Notifications
   const fetchNotifications = (userId?: string, unreadOnly?: boolean) => {
@@ -602,13 +603,13 @@ export const useApi = () => {
     createAutomationRule,
     updateAutomationRule,
     deleteAutomationRule,
-    // Scheduled Automations
-    fetchScheduledAutomations,
-    fetchScheduledAutomation,
-    createScheduledAutomation,
-    updateScheduledAutomation,
-    deleteScheduledAutomation,
-    triggerScheduledAutomation,
+    // Automations
+    fetchAutomations,
+    fetchAutomation,
+    createAutomation,
+    updateAutomation,
+    deleteAutomation,
+    triggerAutomation,
     fetchAutomationRuns,
     previewSchedule,
     // Agents
@@ -648,6 +649,7 @@ export const useApi = () => {
     fetchSettings,
     updateSettings,
     dangerAction,
+    fetchDebugInfo,
     // Notifications
     fetchNotifications,
     markNotificationRead,

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Concerns\BelongsToWorkspace;
 
-class ScheduledAutomation extends Model
+class Automation extends Model
 {
     use BelongsToWorkspace;
 
@@ -20,6 +20,7 @@ class ScheduledAutomation extends Model
         'id',
         'workspace_id',
         'name',
+        'trigger_type',
         'description',
         'agent_id',
         'prompt',
@@ -50,7 +51,7 @@ class ScheduledAutomation extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (ScheduledAutomation $automation) {
+        static::creating(function (Automation $automation) {
             if (! $automation->next_run_at && $automation->cron_expression) {
                 $automation->next_run_at = $automation->computeNextRunAt();
             }

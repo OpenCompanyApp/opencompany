@@ -4,7 +4,8 @@ namespace App\Agents\Tools\Workspace;
 
 use App\Models\ListAutomationRule;
 use App\Models\ListTemplate;
-use App\Models\ScheduledAutomation;
+use App\Jobs\RunAutomationJob;
+use App\Models\Automation;
 use App\Models\User;
 use Cron\CronExpression;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -20,7 +21,7 @@ class ManageAutomation implements Tool
 
     public function description(): string
     {
-        return 'Create and manage automation rules, list templates, and scheduled automations (cron jobs for agents).';
+        return 'Create and manage automation rules, list templates, and automations (scheduled cron jobs, triggers for agents).';
     }
 
     public function handle(Request $request): string
@@ -39,7 +40,8 @@ class ManageAutomation implements Tool
                 'list_schedules' => $this->listSchedules(),
                 'enable_schedule' => $this->toggleSchedule($request, true),
                 'disable_schedule' => $this->toggleSchedule($request, false),
-                default => "Unknown action: {$request['action']}. Use: create_rule, update_rule, delete_rule, create_template, update_template, delete_template, create_schedule, update_schedule, delete_schedule, list_schedules, enable_schedule, disable_schedule",
+                'trigger_schedule' => $this->triggerSchedule($request),
+                default => "Unknown action: {$request['action']}. Use: create_rule, update_rule, delete_rule, create_template, update_template, delete_template, create_schedule, update_schedule, delete_schedule, list_schedules, enable_schedule, disable_schedule, trigger_schedule",
             };
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
@@ -258,7 +260,7 @@ class ManageAutomation implements Tool
 
         $agentId = $request['agentId'] ?? $this->agent->id;
 
-        $schedule = ScheduledAutomation::create([
+        $schedule = Automation::create([
             'id' => Str::uuid()->toString(),
             'name' => $name,
             'description' => $request['description'] ?? null,
@@ -286,7 +288,7 @@ class ManageAutomation implements Tool
             return 'scheduleId is required.';
         }
 
-        $schedule = ScheduledAutomation::forWorkspace()->find($scheduleId);
+        $schedule = Automation::forWorkspace()->find($scheduleId);
         if (!$schedule) {
             return "Schedule not found: {$scheduleId}";
         }
@@ -335,7 +337,7 @@ class ManageAutomation implements Tool
             return 'scheduleId is required.';
         }
 
-        $schedule = ScheduledAutomation::forWorkspace()->find($scheduleId);
+        $schedule = Automation::forWorkspace()->find($scheduleId);
         if (!$schedule) {
             return "Schedule not found: {$scheduleId}";
         }
@@ -348,16 +350,16 @@ class ManageAutomation implements Tool
 
     private function listSchedules(): string
     {
-        $schedules = ScheduledAutomation::forWorkspace()
+        $schedules = Automation::forWorkspace()
             ->with('agent')
             ->orderBy('name')
             ->get();
 
         if ($schedules->isEmpty()) {
-            return 'No scheduled automations found.';
+            return 'No automations found.';
         }
 
-        return $schedules->map(function (ScheduledAutomation $s) {
+        return $schedules->map(function (Automation $s) {
             $status = $s->is_active ? 'active' : 'disabled';
             /** @var \Carbon\Carbon|null $nextRunAt */
             $nextRunAt = $s->next_run_at;
@@ -377,7 +379,7 @@ class ManageAutomation implements Tool
             return 'scheduleId is required.';
         }
 
-        $schedule = ScheduledAutomation::forWorkspace()->find($scheduleId);
+        $schedule = Automation::forWorkspace()->find($scheduleId);
         if (!$schedule) {
             return "Schedule not found: {$scheduleId}";
         }
@@ -396,13 +398,34 @@ class ManageAutomation implements Tool
         return "Schedule {$state}: {$schedule->name}";
     }
 
+    private function triggerSchedule(Request $request): string
+    {
+        $scheduleId = $request['scheduleId'] ?? null;
+        if (!$scheduleId) {
+            return 'scheduleId is required.';
+        }
+
+        $schedule = Automation::forWorkspace()->find($scheduleId);
+        if (!$schedule) {
+            return "Schedule not found: {$scheduleId}";
+        }
+
+        if (!$schedule->is_active) {
+            return "Schedule '{$schedule->name}' is disabled. Enable it first.";
+        }
+
+        RunAutomationJob::dispatch($schedule);
+
+        return "Triggered: {$schedule->name}. Running in the background.";
+    }
+
     /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [
             'action' => $schema
                 ->string()
-                ->description("Action: 'create_rule', 'update_rule', 'delete_rule', 'create_template', 'update_template', 'delete_template', 'create_schedule', 'update_schedule', 'delete_schedule', 'list_schedules', 'enable_schedule', 'disable_schedule'")
+                ->description("Action: 'create_rule', 'update_rule', 'delete_rule', 'create_template', 'update_template', 'delete_template', 'create_schedule', 'update_schedule', 'delete_schedule', 'list_schedules', 'enable_schedule', 'disable_schedule', 'trigger_schedule'")
                 ->required(),
             'name' => $schema
                 ->string()
@@ -448,7 +471,7 @@ class ManageAutomation implements Tool
                 ->description('JSON array of tags for template, e.g. ["support","bug"].'),
             'scheduleId' => $schema
                 ->string()
-                ->description('Schedule UUID. Required for update_schedule, delete_schedule, enable_schedule, disable_schedule.'),
+                ->description('Schedule UUID. Required for update_schedule, delete_schedule, enable_schedule, disable_schedule, trigger_schedule.'),
             'prompt' => $schema
                 ->string()
                 ->description('The prompt to send to the agent on each scheduled run. Required for create_schedule.'),

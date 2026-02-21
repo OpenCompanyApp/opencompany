@@ -161,6 +161,7 @@ const agentWorkItems = computed<NavItemType[]>(() => [
   { to: workspacePath('/tasks'), icon: 'ph:check-square', iconActive: 'ph:check-square-fill', label: 'Tasks' },
   { to: workspacePath('/approvals'), icon: 'ph:seal-check', iconActive: 'ph:seal-check-fill', label: 'Approvals', badge: 3 },
   { to: workspacePath('/org'), icon: 'ph:tree-structure', iconActive: 'ph:tree-structure-fill', label: 'Organization' },
+  { to: workspacePath('/automation'), icon: 'ph:lightning', iconActive: 'ph:lightning-fill', label: 'Automation' },
 ])
 
 // Office - Daily productivity tools

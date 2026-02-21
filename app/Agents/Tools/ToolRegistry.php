@@ -393,7 +393,7 @@ class ToolRegistry
             'class' => ManageAutomation::class,
             'type' => 'write',
             'name' => 'Manage Automation',
-            'description' => 'Create and manage automation rules, list templates, and scheduled automations (cron jobs for agents).',
+            'description' => 'Create and manage automation rules, list templates, and automations (scheduled cron jobs, triggers for agents).',
             'icon' => 'ph:lightning',
         ],
     ];

@@ -75,9 +75,9 @@ class Workspace extends Model
         return $this->hasMany(AppSetting::class);
     }
 
-    public function scheduledAutomations(): HasMany
+    public function automations(): HasMany
     {
-        return $this->hasMany(ScheduledAutomation::class);
+        return $this->hasMany(Automation::class);
     }
 
     public function mcpServers(): HasMany

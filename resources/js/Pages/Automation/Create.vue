@@ -133,7 +133,7 @@ import { useWorkspace } from '@/composables/useWorkspace'
 
 const { workspacePath } = useWorkspace()
 
-const { createScheduledAutomation, fetchAgents } = useApi()
+const { createAutomation, fetchAgents } = useApi()
 
 const { data: agentsData } = fetchAgents()
 
@@ -186,7 +186,7 @@ async function handleSave() {
   if (!isValid.value || saving.value) return
   saving.value = true
   try {
-    await createScheduledAutomation({
+    await createAutomation({
       name: form.value.name.trim(),
       agentId: form.value.agentId,
       prompt: form.value.prompt.trim(),

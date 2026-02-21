@@ -139,25 +139,8 @@
 
     <!-- Bottom section -->
     <div class="mt-auto">
-      <!-- Config: Automation, Integrations, Settings -->
+      <!-- Config: Integrations, Settings -->
       <div :class="['space-y-0.5', collapsed ? 'px-2' : 'px-2']">
-        <Link
-          :href="workspacePath('/automation')"
-          :class="[
-            'group flex items-center rounded-lg transition-colors duration-150 outline-none',
-            collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-            isActive(workspacePath('/automation'))
-              ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-              : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
-            'focus-visible:ring-1 focus-visible:ring-neutral-400',
-          ]"
-        >
-          <Icon
-            :name="isActive(workspacePath('/automation')) ? 'ph:lightning-fill' : 'ph:lightning'"
-            class="w-[18px] h-[18px] shrink-0"
-          />
-          <span v-if="!collapsed" class="text-sm truncate">Automation</span>
-        </Link>
         <Link
           v-if="isAdmin"
           :href="workspacePath('/integrations')"

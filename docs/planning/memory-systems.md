@@ -1,208 +1,348 @@
-# Memory Systems Research
+# Memory & Learning Systems Research
+
+Goal: agents that learn from experience, get better at their work over time, and function like a human organization — developing expertise, sharing knowledge, and improving collectively.
+
+---
 
 ## Current System
 
-OpenCompany already has a solid two-tier memory architecture:
+OpenCompany has a two-tier memory architecture:
 
 | Layer | What | How |
 |-------|------|-----|
-| **STM** | Conversation history | Auto-compacted when context fills (~75% threshold), summary stored in `conversation_summaries` |
-| **LTM Core** | `MEMORY.md` | Always loaded in system prompt, agent-editable via `save_memory(target: "core")` |
+| **STM** | Conversation history | Auto-compacted at ~75% context, summary stored in `conversation_summaries` |
+| **LTM Core** | `MEMORY.md` | Always in system prompt, agent-editable via `save_memory(target: "core")` |
 | **LTM Logs** | Daily logs (`YYYY-MM-DD.md`) | On-demand via `recall_memory`, timestamped entries with category tags |
-| **Retrieval** | Hybrid search | pgvector cosine similarity (70%) + PostgreSQL tsvector FTS (30%), merged via RRF |
-| **Flush** | Pre-compaction promotion | Agent gets a silent turn to `save_memory` before STM is compressed |
+| **Retrieval** | Hybrid search | pgvector cosine (70%) + tsvector FTS (30%), merged via RRF |
+| **Flush** | Pre-compaction promotion | Silent agent turn to `save_memory` before STM is compressed |
 | **Reranking** | Post-retrieval scoring | Ollama Qwen3-Reranker or LLM-based pointwise relevance |
 
-Key services: `EmbeddingService`, `DocumentIndexingService`, `ChunkingService`, `ConversationCompactionService`, `MemoryFlushService`, `RerankingService`, `MemoryScopeGuard`, `ModelContextRegistry`.
+Key services: `EmbeddingService`, `DocumentIndexingService`, `ChunkingService`, `ConversationCompactionService`, `MemoryFlushService`, `RerankingService`, `MemoryScopeGuard`.
 
 ### What's missing
 
-1. No entity/relationship tracking (can't answer "what does user think about project X?")
-2. No temporal decay on retrieval (old and new memories weighted equally)
-3. No memory consolidation (daily logs grow unbounded, never summarized)
-4. No contradiction resolution (conflicting facts coexist silently)
-5. No cross-agent shared memory (each agent's memory is isolated)
-6. No importance scoring (all memories treated equally)
-7. No structured types (everything is free-text)
+**Memory gaps:**
+1. No temporal decay (old and new memories weighted equally)
+2. No consolidation (daily logs grow unbounded, never summarized)
+3. No contradiction resolution (conflicting facts coexist silently)
+4. No cross-agent shared memory (each agent is siloed)
+5. No entity/relationship tracking
+6. No importance scoring
+
+**Learning gaps:**
+7. No feedback capture (approvals, corrections, user edits are not stored)
+8. No procedural memory (agents don't learn multi-step workflows)
+9. No self-reflection (agents don't evaluate their own output quality)
+10. No skill distillation (repeated successful patterns aren't codified)
+11. No performance tracking (no metrics on whether an agent is improving)
+12. No organizational learning (agents don't learn from each other)
 
 ---
 
-## Researched Systems
+## Part 1: Memory Storage Systems
 
-### 1. Graph-Based Memory
+### Graph-Based Memory
 
-Stores knowledge as entities (nodes) and relationships (edges). Enables multi-hop reasoning across connected facts.
+Entities (nodes) + relationships (edges). Multi-hop reasoning.
 
-**Key implementations:**
-- **Zep/Graphiti** — Temporal knowledge graph on Neo4j. Bi-temporal model tracks when facts were learned vs. when they're valid. Hybrid retrieval: embeddings + BM25 + graph traversal. 94.8% on Deep Memory Retrieval benchmark.
-- **Microsoft GraphRAG** — 5x query speed over RAG, 40% infra cost reduction.
-- **MAGMA** — Four orthogonal graphs (semantic, temporal, causal, entity). 45.5% higher reasoning accuracy, 95% fewer tokens.
+- **Zep/Graphiti** — Temporal knowledge graph on Neo4j. Bi-temporal: tracks when facts were learned vs. when valid. 94.8% DMR benchmark.
+- **MAGMA** — Four orthogonal graphs (semantic, temporal, causal, entity). 45.5% higher reasoning, 95% fewer tokens.
 
-**Strengths:** Multi-hop reasoning, relationship queries, contradiction detection, transparent reasoning paths.
-**Weaknesses:** Requires graph DB infrastructure (Neo4j/FalkorDB), entity resolution is hard, higher cost for graph construction (LLM extraction calls).
+Strengths: relationship queries, contradiction detection. Weaknesses: requires graph DB, entity resolution is hard.
 
-### 2. Hierarchical Memory
+### Hierarchical Memory
 
-Inspired by cognitive science: working memory (context window), episodic (experiences), semantic (facts), procedural (skills).
+Working memory (context) + episodic (experiences) + semantic (facts) + procedural (skills).
 
-**Key implementations:**
-- **MIRIX** — Six memory types including resource memory and knowledge vault. 85.4% on LOCOMO benchmark. Multimodal support.
-- **CoALA Framework** — Theoretical reference architecture (working + long-term: procedural, semantic, episodic).
-- **AWS AgentCore** — Managed service with strategy-based extraction and consolidation.
+- **MIRIX** — Six memory types. 85.4% LOCOMO.
+- **CoALA** — Reference architecture from Stanford.
 
-**Strengths:** Mirrors human cognition, natural separation of concerns, consolidation prevents unbounded growth.
-**Weaknesses:** Complex to manage multiple stores, classification decisions require LLM calls.
+Strengths: mirrors cognition, natural separation. Weaknesses: complex, classification costs LLM calls.
 
-### 3. Memory Agents (Self-Managing)
+### Memory Agents
 
-A dedicated agent actively manages what to store, retrieve, and organize.
+Dedicated agent manages what to store/retrieve/organize.
 
-**Key implementations:**
-- **Letta/MemGPT** (29k stars) — Treats context window like OS RAM. Core memory (mutable system prompt section), archival memory (disk-like external store), recall memory (conversation history). Agent pages info in/out via tool calls.
-- **A-MEM** (NeurIPS 2025) — Zettelkasten-inspired. New memories trigger structured notes with keywords/tags, link to existing memories, and can update old memories.
-- **Mastra Observational Memory** — Two background agents: Observer (compresses history into dated logs) and Reflector (synthesizes into insights). No vector DB needed. 94.87% LongMemEval, 10x cost reduction.
+- **Letta/MemGPT** (29k stars) — Context as OS RAM. Core memory (mutable prompt), archival (disk), recall (history). Agent pages info in/out.
+- **A-MEM** (NeurIPS 2025) — Zettelkasten-inspired. New memories link to existing, can trigger updates to old memories.
+- **Mastra Observational** — Observer compresses, Reflector synthesizes. No vector DB. 94.87% LongMemEval, 10x cost cut.
 
-**Strengths:** Maximum flexibility, self-organizing, handles novel situations.
-**Weaknesses:** Requires capable models, more LLM calls, harder to debug.
+### Temporal Memory
 
-### 4. Temporal Memory
+- **Park et al.** — `score = recency_decay + importance_rating + semantic_relevance`
+- **Graphiti** — Four timestamps per edge, old facts invalidated but preserved.
 
-Weights memories by recency, importance, and relevance.
+### Structured Memory
 
-**Key implementations:**
-- **Park et al. Generative Agents** — `score = recency * decay^hours + importance * llm_rating + relevance * cosine_sim`
-- **Graphiti bi-temporal** — Four timestamps per edge (created, expired, valid, invalid). Old facts invalidated but preserved.
-- **Memoria Framework** — Exponential decay + normalized weights for knowledge triplets.
+- **Hindsight** (91.4% LongMemEval) — Four networks: World (facts), Bank (experiences), Opinion (beliefs with confidence), Observation (summaries). Separates evidence from inference.
+- **Zep Entity Types** — Custom schemas per domain.
 
-**Strengths:** Prevents information overload, natural prioritization of recent context.
-**Weaknesses:** Important old memories can decay away, importance scoring costs LLM calls.
+### Hybrid (Mem0-style)
 
-### 5. Structured Memory
-
-Typed entities, schemas, and ontologies instead of free-text.
-
-**Key implementations:**
-- **Zep Entity Types** — Custom schemas (e.g., "Customer" with fields: name, company, plan_tier).
-- **Hindsight** (91.4% LongMemEval) — Four structurally distinct networks: World (facts), Bank (experiences), Opinion (beliefs with confidence), Observation (entity summaries). Separates evidence from inference.
-- **Tapestry** — Shared ontologies for multi-agent systems.
-
-**Strengths:** Consistent organization, conflict detection, explainability, multi-agent coordination.
-**Weaknesses:** Requires upfront schema design, less flexible for unexpected info.
-
-### 6. Hybrid Approaches
-
-Combine multiple backends: KV (state) + vector (recall) + graph (reasoning).
-
-**Key implementations:**
-- **Mem0** (41k stars, $24M raised) — Two-phase: extract candidates from conversation, then compare against existing memories and decide ADD/UPDATE/DELETE/NOOP. Graph variant adds entity extraction and conflict detection. 26% improvement over OpenAI memory, 90%+ token cost savings.
-- **MemOS** — Memory operating system with composable "memory cubes" per user/project/agent.
-
-**Strengths:** Best accuracy through complementary strategies, production-proven.
-**Weaknesses:** Increased complexity, more infrastructure, more failure modes.
-
-### 7. Memory Consolidation/Reflection
-
-Periodic summarization, contradiction resolution, importance filtering.
-
-**Key implementations:**
-- **Mastra Observer/Reflector** — Background agents compress and synthesize. 10x cost reduction.
-- **Mem0 consolidation** — Every new memory compared against existing; LLM decides ADD/UPDATE/DELETE/NOOP.
-- **Hindsight CARA** — Reasoning dispositions (skepticism, literalism, empathy) during reflection. Beliefs updated with confidence scores.
-
-**Strengths:** Bounds memory growth, improves retrieval quality over time, enables higher-order insights.
-**Weaknesses:** Risk of losing details, additional LLM cost, timing matters.
+- **Mem0** (41k stars, $24M) — Extract candidates from conversation → compare against existing → ADD/UPDATE/DELETE/NOOP. Graph variant adds entity extraction. 26% improvement over OpenAI memory.
 
 ---
 
-## Comparison
+## Part 2: Self-Learning Systems
 
-| System | Complexity | Infra Cost | LLM Cost | Retrieval Quality | Multi-hop | Temporal | Self-healing |
-|--------|-----------|-----------|----------|------------------|-----------|----------|-------------|
-| Vector (current) | Low | Low (pgvector) | Low | Good | Poor | None | None |
-| + Temporal decay | Low | Same | None | Better | Poor | Good | None |
-| + Consolidation | Medium | Same | Medium | Much better | Poor | Good | Good |
-| + Graph layer | High | High (Neo4j) | High | Excellent | Excellent | Good | Good |
-| + Memory agent | Medium | Same | High | Very good | Medium | Good | Excellent |
-| Full hybrid (Mem0-style) | High | High | High | Excellent | Excellent | Excellent | Excellent |
+### Reflexion & Self-Critique
+
+Agents evaluate their own outputs, store reflections, and improve on retry.
+
+- **Reflexion** (Shinn et al.) — Actor generates, Evaluator scores, Self-Reflection produces verbal critique stored as episodic memory. Performance jumps 73% → 93% on ALFWorld.
+- **Self-Refine** — Generate → critique → revise cycle until convergence.
+- **Multi-Agent Reflexion (MAR)** — Agents critique each other's reasoning.
+
+**Applicability to OC:** After completing a task, an agent runs a self-critique step against known criteria (task requirements, user preferences from memory). The reflection is stored as episodic memory for future similar tasks. Low cost (one extra LLM call), high impact.
+
+### Procedural Memory (Learning Workflows)
+
+Agents store and retrieve multi-step task execution patterns.
+
+- **LEGOMem** (Microsoft, AAMAS 2026) — Decomposes trajectories into full-task memories (plans/reasoning) and subtask memories (tool interactions). Even small models benefit substantially. Orchestrator memory is critical for task decomposition.
+- **Memp** — Distills trajectories into step-by-step instructions AND higher-level script abstractions. Success rates improve steadily as the repository is refined.
+- **PRAXIS** — Stores consequences of actions indexed by (env state, task state, action, result). Retrieves by matching current state against stored states.
+- **AgentRR (Record & Replay)** — Record trace → Summarize into experience → Replay for similar future tasks. Multi-level abstraction: low-level (precise action sequences) and high-level (generalized procedures).
+
+**Applicability to OC:** When an agent runs a weekly report for the 10th time, each execution trajectory is stored. Successful steps become subtask memories. The overall flow becomes a full-task memory. On run #11, the agent retrieves procedural memories and executes with higher accuracy. Failed steps generate "lessons from failure."
+
+### Dynamic Context Evolution (Learning Without Fine-Tuning)
+
+These are the most directly implementable — they improve agent behavior by evolving the prompt/context, not the model weights.
+
+- **SCOPE** — Frames context as an optimization problem. Dual-stream: tactical guidelines (immediate, task-specific) and strategic guidelines (persist across tasks, require confidence ≥ 0.85). HLE benchmark: 14.23% → 38.64%.
+- **Dynamic Cheatsheet** (Suzgun et al.) — Agent maintains a persistent notebook of strategies/snippets during inference. Self-curated, focused on transferable insights. Claude 3.5 Sonnet accuracy doubled on AIME. GPT-4o Game of 24: 10% → 99%.
+- **EvolveR** — Two phases: (1) offline distill trajectories into strategic principles, (2) online retrieve principles for new tasks. Each principle carries `score = (successes + 1) / (uses + 2)`. Low-scoring principles are pruned.
+- **GEPA** (ICLR 2026 Oral) — Reflective prompt evolution outperforms RL. Reads full execution traces to diagnose failures. Outperforms GRPO by 6-20% with 35x fewer rollouts.
+
+**Applicability to OC:** This is the core mechanism. Agents maintain evolving guidelines in their identity files (MEMORY.md or a new GUIDELINES.md). Tactical rules for specific tasks, strategic principles for general behavior. Each guideline carries an effectiveness score. Periodic review prunes underperforming guidelines. No model fine-tuning needed — just better prompts over time.
+
+### Feedback Loops
+
+How agents incorporate user corrections and approvals.
+
+- **PAHF** (Personalized Agents from Human Feedback) — Three-step: pre-action clarification, preference-grounded action, post-action feedback integration. Dual feedback channels learn substantially faster than single-channel.
+- **RLUF** (Reinforcement Learning from User Feedback) — Framework for implicit binary feedback in production (e.g., emoji reactions as satisfaction proxies).
+- **ICML 2025** — Contents of user feedback (what they wanted changed), not just polarity (happy/unhappy), improve performance. Direct edits to agent output are the highest-signal feedback.
+
+**Practical signals in OC:**
+- User re-doing what agent did → strong negative signal
+- User editing agent output → preference correction (capture the diff)
+- User accepting without changes → positive signal
+- Time-to-accept → confidence proxy (immediate = strong positive)
+- Thumbs up/down → explicit binary
+- Approval workflow approve/reject → direct training signal
+- Follow-up corrections in natural language → richest signal
+
+### Skill Distillation
+
+Turning repeated successful patterns into reusable skills.
+
+- **Voyager** — First LLM-powered lifelong learning agent. Automatic curriculum (proposes increasingly complex tasks) + skill library (ever-growing executable code). Skills transfer to new environments. 15.3x faster milestones.
+- **SkillRL** (2026) — Experience-based distillation: successful trajectories → strategic patterns, failed → "lessons from failure." Hierarchical SkillBank: general skills + task-specific skills. Skills co-evolve with the agent via RL.
+- **Anthropic Agent Skills** — Open standard. Skills are instruction packages agents can discover and load dynamically. Future: agents create, edit, and evaluate skills themselves.
+
+**Applicability to OC:** This connects directly to the planned skill system (`$skill-name`). The loop: agent performs a task repeatedly → recognizes a pattern → creates a skill via `manage_skill` tool → skill becomes available to other agents. The `$create-skill` builtin teaches agents how to codify their own patterns.
+
+---
+
+## Part 3: Organizational Learning
+
+### Cross-Agent Knowledge Sharing
+
+- **Collaborative Memory** (ICML 2025) — Two bipartite graphs (user↔agent, agent↔resource) with access control. Private + shared memory tiers. Each memory fragment carries immutable provenance (who created, which agent, what resources). 61% resource reduction while maintaining >90% accuracy.
+- **SiriuS** (NeurIPS 2025) — Shared experience library. Successful dialogues logged, failed ones repaired. All agents fine-tune on shared library — one agent's discovery becomes available to all.
+- **LEGOMem** — Orchestrator memory benefits all task agents it coordinates.
+
+### Apprenticeship / Mentoring
+
+- **Multi-Agent Evolve (MAE)** — Three roles from one LLM: Proposer (creates challenges), Solver (attempts), Judge (evaluates). Closed-loop curriculum. Outperforms supervised fine-tuning with ground-truth answers.
+- **Selective social learning** — Agents compute whether another agent's approach would benefit them under their own preferences. Don't blindly copy — evaluate context fit first.
+
+### Performance Tracking
+
+- **Goal completion rate** — Did the agent accomplish what was asked?
+- **Tool usage efficiency** — Steps taken vs. minimum necessary
+- **Human approval rate** — How often humans accept agent output
+- **Improvement over time** — Are metrics trending up?
+- **EvolveR metric score** — `s(p) = (success_count + 1) / (usage_count + 2)` per learned guideline
+
+### Generative Agents (Simulated Organizations)
+
+- **Park et al.** (Stanford) — 25 agents in simulated town. Three emergent behaviors: information spreading, relationship formation, spontaneous cooperation. Architecture: memory stream + reflection + planning.
+- **AgentSociety** (2025) — Up to 10,000 agents, 500 interactions/day each. Reproduced real social phenomena (polarization, policy effects).
+
+Key insight: agents with memory, reflection, and planning develop emergent collaborative behaviors without being explicitly programmed to do so. Organizational culture and institutional knowledge emerge from bottom-up interactions.
+
+### Real Products Building "AI Workforces"
+
+| Product | Learning Mechanism | Key Metric |
+|---------|-------------------|------------|
+| **Devin** (Cognition) | RL + playbooks, fleet learns in parallel | PR merge: 34% → 67% YoY |
+| **Cursor 2.0** | MoE model trained via RL in real codebases | Learns to run tests, fix linters |
+| **OpenHands** | Critic model with TD learning + rejection fine-tuning | SOTA on SWE-Bench |
+| **Letta** | Self-editing memory, sleep-time compute | Agent file (.af) for stateful agents |
+| **CrewAI** | Composite scoring (similarity 0.5 + recency 0.3 + importance 0.2), auto-extraction, dedup | LanceDB backend |
+| **Lindy AI** | Learns from feedback/examples over time | 30+ hour autonomous tasks |
+| **11x (Alice)** | Multi-agent SDR, adapts messaging in real-time | Reply rates match human SDRs |
 
 ---
 
 ## Recommendations for OpenCompany
 
-Ranked by impact-to-effort ratio, considering that OpenCompany is a multi-workspace SaaS with multiple agents per workspace and long-running user relationships.
+Organized into three tiers: memory improvements, learning mechanisms, and organizational systems.
 
-### 1. Memory Consolidation (HIGH priority, MEDIUM effort)
+### Tier 1: Memory Improvements
 
-**What:** A scheduled job that periodically consolidates old daily logs into distilled semantic facts. Similar to Mastra's Observer/Reflector pattern but simpler.
+#### 1a. Temporal Decay on Retrieval (LOW effort)
 
-**Why:** Daily logs grow unbounded. After a few weeks, an agent has dozens of log files. `recall_memory` search degrades as noise increases. Consolidation compresses old logs into a curated set of facts, improving retrieval quality and bounding storage.
+Modify `DocumentIndexingService::search()` to weight results by recency: `score = semantic_score * (0.995 ^ hours_since_creation)`. Drop-in change to existing RRF scoring.
 
-**How it fits:** Add a `ConsolidateMemoryJob` that runs weekly per agent. Reads logs older than 7 days, extracts key facts/preferences/decisions via LLM, appends distilled facts to a `CONSOLIDATED.md` or new log entries tagged as consolidated, then archives raw logs. Uses existing `AgentDocumentService` and `DocumentIndexingService`.
+#### 1b. Memory Consolidation Job (MEDIUM effort)
 
-### 2. Temporal Decay on Retrieval (HIGH priority, LOW effort)
+Scheduled `ConsolidateMemoryJob` runs weekly per agent. Reads logs older than 7 days, extracts key facts via LLM, writes to `CONSOLIDATED.md`, archives raw logs. Bounds growth, improves retrieval quality.
 
-**What:** Weight `recall_memory` results by recency using an exponential decay function.
+#### 1c. Mem0-Style Auto-Extract (MEDIUM effort)
 
-**Why:** Currently a memory from 6 months ago and one from yesterday have equal retrieval weight (only cosine similarity matters). Adding `score = semantic_score * recency_weight` would naturally prioritize recent context without losing old memories entirely.
+Post-response hook in `AgentRespondJob`. Lightweight LLM call extracts candidate facts → compares against existing memories → ADD/UPDATE/DELETE/NOOP. Handles contradiction resolution. Replaces reliance on agent explicitly calling `save_memory`.
 
-**How it fits:** Modify `DocumentIndexingService::search()` to apply a decay multiplier based on document `created_at`. Formula: `recency = decay_rate ^ hours_since_creation` (e.g., 0.995^hours). Merge into the existing RRF scoring. Near-zero infrastructure change.
+#### 1d. Cross-Agent Shared Memory (LOW effort)
 
-### 3. Mem0-Style Extract/Consolidate Pipeline (HIGH priority, MEDIUM effort)
+Add `workspace` collection to `DocumentChunk`. New `save_memory(target: "shared")`. `recall_memory` searches both agent-specific and workspace collections.
 
-**What:** Instead of relying on the agent to explicitly call `save_memory`, automatically extract memory candidates from every conversation and compare against existing memories (ADD/UPDATE/DELETE/NOOP).
+### Tier 2: Learning Mechanisms
 
-**Why:** The current system depends on the agent choosing to save memories. Agents often forget, especially in fast-paced conversations. Automatic extraction catches what the agent misses. The UPDATE/DELETE decisions handle contradiction resolution for free.
+#### 2a. Feedback Capture & Integration (MEDIUM effort)
 
-**How it fits:** Post-conversation hook in `AgentRespondJob`. After the agent responds, a lightweight LLM call extracts candidate facts from the exchange. Each candidate is compared against existing memories via `recall_memory` search. An LLM decides the action. New memories are saved via `AgentDocumentService::createMemoryLog()`. This replaces or complements the current `MemoryFlushService`.
+Capture signals from existing workflows:
+- Approval approve/reject → store as preference in agent memory
+- User edits to agent output → capture diff, store as correction
+- Task completion/failure → store outcome with context
 
-### 4. Entity/Relationship Tracking (MEDIUM priority, HIGH effort)
+New `feedback` category in daily logs. Agent retrieves relevant feedback before similar tasks. Over time, agents learn what users want without being told repeatedly.
 
-**What:** Extract entities (people, projects, preferences, decisions) and relationships from conversations and store them in a lightweight graph structure.
+#### 2b. Evolving Guidelines (MEDIUM effort)
 
-**Why:** Enables queries like "what does Rutger think about the new design?" or "what decisions were made about the API?" Currently these require the agent to have manually saved the right free-text memory with the right keywords.
+Add a `GUIDELINES.md` identity file per agent (alongside MEMORY.md). Two tiers:
+- **Tactical** — Task-specific rules: "When user asks for a report, always include date range"
+- **Strategic** — Cross-task principles: "Always confirm assumptions before irreversible actions"
 
-**How it fits:** Two options:
-- **Lightweight (recommended):** Store entities as structured JSON in the existing PostgreSQL (JSONB column on a new `memory_entities` table). No Neo4j needed. Entity extraction via LLM during the extract/consolidate pipeline from recommendation #3.
-- **Full graph:** Add Neo4j/FalkorDB for proper graph traversal. Higher accuracy for multi-hop queries but significant infrastructure overhead.
+Each guideline carries an effectiveness score (EvolveR pattern): `(successes + 1) / (uses + 2)`. Periodic review prunes low-scoring guidelines. Agents can add guidelines via a new `save_guideline` tool or automatically during self-reflection.
 
-The lightweight approach gives 80% of the value at 20% of the cost. Full graph can be added later if needed.
+#### 2c. Post-Task Self-Reflection (LOW effort)
 
-### 5. Cross-Agent Shared Memory (MEDIUM priority, LOW effort)
+After completing a task, agent runs a brief self-critique:
+- Did I accomplish the goal?
+- What worked well?
+- What would I do differently?
+- Store reflection as episodic memory
 
-**What:** A workspace-level memory store that any agent in the workspace can read (and optionally write to).
+Triggered automatically for tasks (not every message). One extra LLM call per task. Reflections are retrievable by future similar tasks via `recall_memory`.
 
-**Why:** Currently each agent's memory is siloed. If Agent A learns that "the client prefers weekly reports on Monday," Agent B doesn't know this. Shared memory enables organizational knowledge.
+#### 2d. Procedural Memory (HIGH effort)
 
-**How it fits:** Add a `workspace` collection to `DocumentChunk` alongside the existing per-agent collections. New `save_memory(target: "shared")` option. `recall_memory` searches both agent-specific and workspace collections, with agent-specific results weighted higher.
+Record task execution trajectories:
+- Task type + context → steps taken → tools used → outcome
+- Successful sequences become retrievable procedures
+- Failed sequences become "lessons from failure"
 
-### 6. Importance Scoring (LOW priority, LOW effort)
+New `procedures` collection in `DocumentChunk`. Before executing a task, agent searches for relevant procedures. LEGOMem-style: full-task plans + subtask memories.
 
-**What:** Rate each memory's importance (1-10) at save time and use it as a retrieval signal.
+### Tier 3: Organizational Systems
 
-**Why:** Not all memories are equal. "User's name is Rutger" is more important than "user asked about the weather." Importance scoring prevents high-value facts from being drowned out by trivial ones.
+#### 3a. Workspace Knowledge Base (MEDIUM effort)
 
-**How it fits:** Add an `importance` field to memory log entries. Score at save time via a simple LLM call or heuristic (memories from flush get higher scores, explicit `save_memory` calls get medium, auto-extracted get variable). Factor into retrieval scoring alongside semantic similarity and recency.
+A shared memory tier accessible to all agents in a workspace:
+- Workspace procedures ("how we do things here")
+- Client/project context
+- Cross-agent decisions
+
+Provenance tracking: who stored it, when, which agent contributed. Permission-respecting: uses existing `AgentPermissionService` patterns.
+
+#### 3b. Agent Performance Metrics (MEDIUM effort)
+
+Track per agent over time:
+- Task completion rate
+- Average task duration
+- Human approval rate (from approval system)
+- Guideline effectiveness scores
+- Memory retrieval hit rate
+
+Stored in a new `agent_metrics` table. Surfaced in the agent detail page. Used to identify which agents need attention and which are improving.
+
+#### 3c. Skill Auto-Creation (HIGH effort, builds on skill system)
+
+When an agent completes the same type of task successfully N times:
+1. Detect the pattern (same task type, similar steps)
+2. Distill into a skill template
+3. Propose the skill to the user/admin for approval
+4. Published skill becomes available to all agents
+
+Connects the procedural memory system (#2d) to the skill system (`$skill-name`). The loop: experience → procedure → skill → shared capability.
+
+#### 3d. Knowledge Transfer on Agent Creation (LOW effort)
+
+When a new agent joins a workspace, automatically:
+1. Load workspace shared memory into its context
+2. Copy relevant guidelines from similar-role agents
+3. Provide access to the workspace skill library
+
+New agents start with organizational knowledge instead of from zero.
 
 ---
 
 ## Implementation Roadmap
 
-### Phase 1: Quick Wins (1-2 days each)
-- Temporal decay on retrieval (#2)
-- Importance scoring (#6)
+### Phase 1: Foundation
+- Temporal decay on retrieval (1a)
+- Feedback capture (2a)
+- Post-task self-reflection (2c)
+- Cross-agent shared memory (1d)
 
-### Phase 2: Core Upgrades (3-5 days each)
-- Memory consolidation job (#1)
-- Cross-agent shared memory (#5)
+### Phase 2: Learning Loop
+- Evolving guidelines with effectiveness scores (2b)
+- Memory consolidation job (1b)
+- Mem0-style auto-extract (1c)
+- Agent performance metrics (3b)
 
-### Phase 3: Major Features (1-2 weeks)
-- Mem0-style extract/consolidate pipeline (#3)
-- Lightweight entity tracking (#4)
+### Phase 3: Organizational Intelligence
+- Procedural memory (2d)
+- Workspace knowledge base (3a)
+- Knowledge transfer on agent creation (3d)
+- Skill auto-creation (3c)
 
-### Phase 4: Future (if needed)
-- Full graph database (Neo4j) for multi-hop reasoning
-- Memory agent (dedicated agent managing memory for other agents)
-- Structured entity schemas (typed facts with validation)
+---
+
+## The Learning Loop (Summary)
+
+```
+Agent performs task
+    │
+    ├── Feedback captured (approval, edits, corrections)
+    ├── Self-reflection stored (what worked, what didn't)
+    ├── Facts auto-extracted (Mem0-style ADD/UPDATE/DELETE)
+    │
+    ▼
+Memory consolidation (weekly)
+    │
+    ├── Raw logs → distilled facts
+    ├── Reflections → updated guidelines (with scores)
+    ├── Procedures → refined workflows
+    │
+    ▼
+Next similar task
+    │
+    ├── Retrieve relevant guidelines (scored)
+    ├── Retrieve procedural memory
+    ├── Retrieve past feedback for similar work
+    │
+    ▼
+Agent performs task better
+    │
+    ├── If pattern repeats N times → propose as skill
+    ├── If knowledge is general → share to workspace
+    └── Cycle continues
+```
 
 ---
 
@@ -210,25 +350,55 @@ The lightweight approach gives 80% of the value at 20% of the cost. Full graph c
 
 | File | Role |
 |------|------|
-| `app/Services/Memory/DocumentIndexingService.php` | Hybrid search — add temporal decay here |
-| `app/Services/Memory/MemoryFlushService.php` | Pre-compaction flush — extend or replace with extract/consolidate |
+| `app/Services/Memory/DocumentIndexingService.php` | Hybrid search — add temporal decay, importance scoring |
+| `app/Services/Memory/MemoryFlushService.php` | Pre-compaction flush — extend with auto-extraction |
 | `app/Services/Memory/ConversationCompactionService.php` | STM management |
-| `app/Services/AgentDocumentService.php` | Memory log creation — add shared memory support |
-| `app/Agents/Tools/Memory/SaveMemory.php` | Save tool — add importance scoring, shared target |
+| `app/Services/AgentDocumentService.php` | Memory logs — add shared memory, guidelines |
+| `app/Agents/Tools/Memory/SaveMemory.php` | Save tool — add shared target, guidelines |
 | `app/Agents/Tools/Memory/RecallMemory.php` | Recall tool — surface temporal/importance signals |
-| `app/Jobs/AgentRespondJob.php` | Post-response hook point for auto-extraction |
-| `config/memory.php` | Configuration for all memory subsystems |
+| `app/Jobs/AgentRespondJob.php` | Post-response hook for auto-extraction, feedback capture |
+| `app/Agents/OpenCompanyAgent.php` | System prompt — add guidelines section, procedural memory |
+| `config/memory.php` | Configuration for all subsystems |
 
 ## Sources
 
-- [Mem0](https://mem0.ai/) — 41k stars, hybrid vector+graph, $24M raised
-- [Letta/MemGPT](https://github.com/letta-ai/letta) — 29k stars, self-editing context window
-- [Zep/Graphiti](https://github.com/getzep/graphiti) — Temporal knowledge graph on Neo4j
-- [Hindsight](https://github.com/vectorize-io/hindsight) — 91.4% LongMemEval, four structured networks
+**Memory Systems:**
+- [Mem0](https://mem0.ai/) — Hybrid vector+graph, $24M raised
+- [Letta/MemGPT](https://github.com/letta-ai/letta) — Self-editing context window
+- [Zep/Graphiti](https://github.com/getzep/graphiti) — Temporal knowledge graph
+- [Hindsight](https://github.com/vectorize-io/hindsight) — 91.4% LongMemEval
 - [A-MEM](https://github.com/agiresearch/A-mem) — NeurIPS 2025, Zettelkasten-inspired
-- [MAGMA](https://arxiv.org/abs/2601.03236) — Multi-graph architecture, 95% token reduction
-- [MIRIX](https://github.com/Mirix-AI/MIRIX) — Six memory types, multimodal
+- [MAGMA](https://arxiv.org/abs/2601.03236) — Multi-graph, 95% token reduction
 - [Mastra Observational Memory](https://venturebeat.com/data/observational-memory-cuts-ai-agent-costs-10x-and-outscores-rag-on-long) — 10x cost reduction
-- [CoALA](https://arxiv.org/abs/2309.02427) — Cognitive agent architecture framework
-- [Park et al. Generative Agents](https://dl.acm.org/doi/fullHtml/10.1145/3586183.3606763) — Recency/importance/relevance scoring
 - [Memory in the Age of AI Agents (survey)](https://arxiv.org/abs/2512.13564)
+- [Collaborative Memory (ICML 2025)](https://arxiv.org/abs/2505.18279)
+
+**Self-Learning:**
+- [Reflexion](https://arxiv.org/abs/2303.11366) — Verbal reinforcement learning
+- [Stanford CS329A: Self-Improving AI Agents](https://cs329a.stanford.edu/)
+- [Self-Evolving AI Agents (survey)](https://arxiv.org/abs/2508.07407)
+- [Yohei Nakajima: Building Self-Improving AI Agents](https://yoheinakajima.com/better-ways-to-build-self-improving-ai-agents/)
+- [SCOPE](https://arxiv.org/abs/2512.15374) — Dual-stream context optimization
+- [Dynamic Cheatsheet](https://arxiv.org/abs/2504.07952) — Test-time learning with adaptive memory
+- [EvolveR](https://arxiv.org/abs/2510.16079) — Experience-driven lifecycle with scored principles
+- [GEPA (ICLR 2026 Oral)](https://arxiv.org/abs/2507.19457) — Reflective prompt evolution
+- [PAHF](https://arxiv.org/abs/2602.16173) — Personalized agents from human feedback
+
+**Procedural Memory:**
+- [LEGOMem (AAMAS 2026)](https://arxiv.org/abs/2510.04851) — Modular procedural memory for multi-agent
+- [Memp](https://arxiv.org/abs/2508.06433) — Task-agnostic procedural memory
+- [PRAXIS](https://arxiv.org/html/2511.22074v2) — Real-time procedural learning
+- [AgentRR](https://arxiv.org/abs/2505.17716) — Record & replay
+
+**Skill Distillation:**
+- [Voyager](https://arxiv.org/abs/2305.16291) — Lifelong learning with skill library
+- [SkillRL](https://arxiv.org/abs/2602.08234) — Recursive skill evolution
+- [Anthropic Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
+
+**Organizational Learning:**
+- [Park et al. Generative Agents](https://dl.acm.org/doi/fullHtml/10.1145/3586183.3606763)
+- [Multi-Agent Evolve (MAE)](https://arxiv.org/abs/2510.23595)
+- [SiriuS (NeurIPS 2025)](https://arxiv.org/abs/2512.02731) — Shared experience library
+- [Agent-as-a-Judge](https://arxiv.org/html/2508.02994v1)
+- [Devin 2025 Performance Review](https://cognition.ai/blog/devin-annual-performance-review-2025)
+- [CrewAI Memory](https://docs.crewai.com/en/concepts/memory)

@@ -154,18 +154,18 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { ScheduledAutomation } from '@/types'
+import type { Automation } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 
 const props = defineProps<{
-  automation: ScheduledAutomation
+  automation: Automation
 }>()
 
 defineEmits<{
-  toggle: [automation: ScheduledAutomation]
-  edit: [automation: ScheduledAutomation]
-  trigger: [automation: ScheduledAutomation]
-  delete: [automation: ScheduledAutomation]
+  toggle: [automation: Automation]
+  edit: [automation: Automation]
+  trigger: [automation: Automation]
+  delete: [automation: Automation]
 }>()
 
 const showActions = ref(false)

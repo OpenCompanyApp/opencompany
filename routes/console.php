@@ -11,7 +11,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('agent:resume-waiting')->everyMinute();
 
-Schedule::command('automation:run-scheduled')->everyMinute();
+Schedule::command('automation:run-due')->everyMinute();
 
 Schedule::job(new \App\Jobs\RefreshMcpToolsJob)->hourly();
 

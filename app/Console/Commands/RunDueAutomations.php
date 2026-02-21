@@ -2,20 +2,20 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\RunScheduledAutomationJob;
-use App\Models\ScheduledAutomation;
+use App\Jobs\RunAutomationJob;
+use App\Models\Automation;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
-class RunScheduledAutomations extends Command
+class RunDueAutomations extends Command
 {
-    protected $signature = 'automation:run-scheduled';
+    protected $signature = 'automation:run-due';
 
-    protected $description = 'Evaluate and dispatch due scheduled automations';
+    protected $description = 'Evaluate and dispatch due automations';
 
     public function handle(): int
     {
-        $due = ScheduledAutomation::where('is_active', true)
+        $due = Automation::where('is_active', true)
             ->whereNotNull('next_run_at')
             ->where('next_run_at', '<=', now())
             ->get();
@@ -26,16 +26,16 @@ class RunScheduledAutomations extends Command
                 'next_run_at' => $automation->computeNextRunAt(),
             ]);
 
-            RunScheduledAutomationJob::dispatch($automation);
+            RunAutomationJob::dispatch($automation);
 
-            Log::info('Scheduled automation dispatched', [
+            Log::info('Automation dispatched', [
                 'automation' => $automation->name,
                 'agent' => $automation->agent_id,
             ]);
         }
 
         if ($due->isNotEmpty()) {
-            $this->info("Dispatched {$due->count()} scheduled automation(s).");
+            $this->info("Dispatched {$due->count()} automation(s).");
         }
 
         return Command::SUCCESS;

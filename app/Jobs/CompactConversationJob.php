@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ConversationSummary;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\Memory\ConversationCompactionService;
 use App\Services\Memory\MemoryFlushService;
 use Illuminate\Bus\Queueable;
@@ -29,6 +30,14 @@ class CompactConversationJob implements ShouldQueue
 
     public function handle(ConversationCompactionService $compactor, MemoryFlushService $flusher): void
     {
+        // Set workspace context from agent
+        if ($this->agent->workspace_id) {
+            $workspace = Workspace::find($this->agent->workspace_id);
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+            }
+        }
+
         // Ensure memory flush before compaction (race condition safety net:
         // AgentRespondJob dispatches this job before its own flush runs)
         try {

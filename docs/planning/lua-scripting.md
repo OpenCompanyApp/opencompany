@@ -93,7 +93,7 @@ Lua wins on embeddability, sandboxing, and startup cost. Its simplicity also mak
 1. Trigger fires (cron, event, webhook)
 2. `AutomationRouter` checks `script_language` field on the automation
 3. If `"lua"`: dispatches `RunLuaAutomationJob` (lightweight, no agent)
-4. If `"agent"` or null: dispatches existing `RunScheduledAutomationJob` (full agent)
+4. If `"agent"` or null: dispatches existing `RunAutomationJob` (full agent)
 5. Lua executes in sandboxed runtime with platform API bindings
 6. Results logged to `automation_execution_log` table
 
@@ -971,7 +971,7 @@ class GenerateLuaScript implements Tool
         }
 
         // Deploy
-        $automation = ScheduledAutomation::create([
+        $automation = Automation::create([
             'name' => $name,
             'script_language' => 'lua',
             'script_content' => $code,
@@ -1238,10 +1238,10 @@ class LuaExecutor
 
 ## Schema Changes
 
-### New columns on `scheduled_automations`
+### New columns on `automations`
 
 ```sql
-ALTER TABLE scheduled_automations
+ALTER TABLE automations
     ADD COLUMN script_language VARCHAR(10) DEFAULT NULL,  -- 'lua' | null (null = agent prompt)
     ADD COLUMN script_content TEXT DEFAULT NULL;           -- Lua source code
 ```

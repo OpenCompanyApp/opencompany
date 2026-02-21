@@ -6,9 +6,9 @@ use App\Agents\OpenCompanyAgent;
 use App\Events\AgentStatusUpdated;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
+use App\Models\Automation;
 use App\Models\Channel;
 use App\Models\Message;
-use App\Models\ScheduledAutomation;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\Workspace;
@@ -20,7 +20,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-class RunScheduledAutomationJob implements ShouldQueue
+class RunAutomationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -32,7 +32,7 @@ class RunScheduledAutomationJob implements ShouldQueue
     public array $backoff = [30];
 
     public function __construct(
-        private ScheduledAutomation $automation,
+        private Automation $automation,
     ) {}
 
     public function handle(): void
@@ -90,7 +90,7 @@ class RunScheduledAutomationJob implements ShouldQueue
                 'channel_id' => $channelId,
                 'started_at' => now(),
                 'context' => [
-                    'scheduled_automation_id' => $this->automation->id,
+                    'automation_id' => $this->automation->id,
                     'schedule' => $this->automation->cron_expression,
                     'run_number' => $this->automation->run_count + 1,
                 ],
@@ -122,7 +122,7 @@ class RunScheduledAutomationJob implements ShouldQueue
                     'channel_id' => $channelId,
                     'author_id' => $agent->id,
                     'timestamp' => now(),
-                    'source' => 'scheduled_automation',
+                    'source' => 'automation',
                 ]);
 
                 Channel::where('id', $channelId)
@@ -148,13 +148,13 @@ class RunScheduledAutomationJob implements ShouldQueue
                 'completed_at' => now()->toIso8601String(),
             ]);
 
-            Log::info('Scheduled automation completed', [
+            Log::info('Automation completed', [
                 'automation' => $this->automation->name,
                 'agent' => $agent->name,
                 'task' => $task->id,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Scheduled automation failed', [
+            Log::error('Automation failed', [
                 'automation' => $this->automation->name,
                 'agent' => $agent->name,
                 'error' => $e->getMessage(),

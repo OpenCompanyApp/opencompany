@@ -31,7 +31,7 @@ use App\Http\Controllers\Api\AgentPermissionController;
 use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\CodexAuthController;
 use App\Http\Controllers\Api\IntegrationController;
-use App\Http\Controllers\Api\ScheduledAutomationController;
+use App\Http\Controllers\Api\AutomationController;
 use App\Http\Controllers\Api\McpServerController;
 use App\Http\Controllers\Api\PrismServerController;
 use App\Http\Controllers\Api\SettingController;
@@ -135,15 +135,15 @@ Route::middleware('resolve.workspace')->group(function () {
     Route::patch('/automation-rules/{id}', [AutomationRuleController::class, 'update']);
     Route::delete('/automation-rules/{id}', [AutomationRuleController::class, 'destroy']);
 
-    // Scheduled Automations
-    Route::get('/scheduled-automations', [ScheduledAutomationController::class, 'index']);
-    Route::get('/scheduled-automations/preview-schedule', [ScheduledAutomationController::class, 'previewSchedule']);
-    Route::post('/scheduled-automations', [ScheduledAutomationController::class, 'store']);
-    Route::get('/scheduled-automations/{id}', [ScheduledAutomationController::class, 'show']);
-    Route::patch('/scheduled-automations/{id}', [ScheduledAutomationController::class, 'update']);
-    Route::delete('/scheduled-automations/{id}', [ScheduledAutomationController::class, 'destroy']);
-    Route::get('/scheduled-automations/{id}/runs', [ScheduledAutomationController::class, 'runs']);
-    Route::post('/scheduled-automations/{id}/run', [ScheduledAutomationController::class, 'triggerRun']);
+    // Automations
+    Route::get('/automations', [AutomationController::class, 'index']);
+    Route::get('/automations/preview-schedule', [AutomationController::class, 'previewSchedule']);
+    Route::post('/automations', [AutomationController::class, 'store']);
+    Route::get('/automations/{id}', [AutomationController::class, 'show']);
+    Route::patch('/automations/{id}', [AutomationController::class, 'update']);
+    Route::delete('/automations/{id}', [AutomationController::class, 'destroy']);
+    Route::get('/automations/{id}/runs', [AutomationController::class, 'runs']);
+    Route::post('/automations/{id}/run', [AutomationController::class, 'triggerRun']);
 
     // Documents
     Route::get('/documents', [DocumentController::class, 'index']);
@@ -299,6 +299,7 @@ Route::middleware('resolve.workspace')->group(function () {
         Route::get('/settings', [SettingController::class, 'index']);
         Route::patch('/settings', [SettingController::class, 'update']);
         Route::post('/settings/danger-action', [SettingController::class, 'dangerAction']);
+        Route::get('/settings/debug', [SettingController::class, 'debug']);
 
         // Integration config (admin-only)
         Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConfig']);

@@ -188,9 +188,9 @@ const props = defineProps<{
 }>()
 
 const { workspacePath } = useWorkspace()
-const { fetchScheduledAutomation, updateScheduledAutomation, fetchAgents, fetchAutomationRuns } = useApi()
+const { fetchAutomation, updateAutomation, fetchAgents, fetchAutomationRuns } = useApi()
 
-const { data: automationData, loading } = fetchScheduledAutomation(props.automationId)
+const { data: automationData, loading } = fetchAutomation(props.automationId)
 const { data: agentsData } = fetchAgents()
 const { data: runsData } = fetchAutomationRuns(props.automationId)
 
@@ -272,7 +272,7 @@ async function handleSave() {
   if (!isValid.value || saving.value) return
   saving.value = true
   try {
-    await updateScheduledAutomation(props.automationId, {
+    await updateAutomation(props.automationId, {
       name: form.value.name.trim(),
       agentId: form.value.agentId,
       prompt: form.value.prompt.trim(),

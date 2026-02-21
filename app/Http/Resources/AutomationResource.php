@@ -6,9 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\ScheduledAutomation
+ * @mixin \App\Models\Automation
  */
-class ScheduledAutomationResource extends JsonResource
+class AutomationResource extends JsonResource
 {
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
@@ -16,6 +16,7 @@ class ScheduledAutomationResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'triggerType' => $this->trigger_type,
             'description' => $this->description,
             'agentId' => $this->agent_id,
             'prompt' => $this->prompt,
