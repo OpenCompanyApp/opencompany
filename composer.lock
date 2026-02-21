@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4d8ded9bfabb884a36e1e92fb3b9dece",
+    "content-hash": "04f3cffd2784d9a5ee3f77358a70c56f",
     "packages": [
         {
             "name": "brick/math",
@@ -3404,6 +3404,55 @@
                 "issues": "https://github.com/OpenCompanyApp/ai-tool-coingecko/issues"
             },
             "time": "2026-02-20T22:06:59+00:00"
+        },
+        {
+            "name": "opencompanyapp/ai-tool-exchangerate",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/ai-tool-exchangerate",
+                "reference": "954a0d8aeeda0e0b160d2ff290d32d7edae25f4c"
+            },
+            "require": {
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolExchangeRate\\AiToolExchangeRateServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolExchangeRate\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Currency exchange rate AI tool for Laravel AI SDK — 340 fiat, crypto, and metal conversions. Part of the OpenCompany AI tool ecosystem.",
+            "keywords": [
+                "ai",
+                "currency",
+                "exchange-rate",
+                "forex",
+                "laravel",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "opencompanyapp/ai-tool-google",
@@ -11242,6 +11291,7 @@
         "opencompanyapp/ai-tool-celestial": 20,
         "opencompanyapp/ai-tool-clickup": 20,
         "opencompanyapp/ai-tool-coingecko": 20,
+        "opencompanyapp/ai-tool-exchangerate": 20,
         "opencompanyapp/ai-tool-google": 20,
         "opencompanyapp/ai-tool-mermaid": 20,
         "opencompanyapp/ai-tool-plantuml": 20,

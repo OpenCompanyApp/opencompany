@@ -55,6 +55,10 @@
             "url": "tmp/ai-tool-worldbank"
         },
         {
+            "type": "path",
+            "url": "tmp/ai-tool-exchangerate"
+        },
+        {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/prism-codex"
         },
@@ -108,6 +112,10 @@
         },
         {
             "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/ai-tool-exchangerate"
+        },
+        {
+            "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php"
         }
     ],
@@ -124,6 +132,7 @@
         "opencompanyapp/ai-tool-celestial": "@dev",
         "opencompanyapp/ai-tool-clickup": "@dev",
         "opencompanyapp/ai-tool-coingecko": "@dev",
+        "opencompanyapp/ai-tool-exchangerate": "@dev",
         "opencompanyapp/ai-tool-google": "@dev",
         "opencompanyapp/ai-tool-mermaid": "@dev",
         "opencompanyapp/ai-tool-plantuml": "@dev",
