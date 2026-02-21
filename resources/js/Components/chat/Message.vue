@@ -89,7 +89,14 @@
           <div class="min-w-0">
             <!-- Text content -->
             <div v-if="!isEditing" class="relative">
-              <p :class="textClasses" v-html="formattedContent" />
+              <div
+                :class="[
+                  'prose prose-sm max-w-none break-words',
+                  isOwn ? 'prose-invert' : 'prose-neutral dark:prose-invert',
+                  size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-base' : 'text-sm',
+                ]"
+                v-html="formattedContent"
+              />
               <!-- Inline timestamp (Telegram-style float-right) -->
               <span :class="inlineTimestampClasses">
                 <span v-if="message.editedAt" class="italic">edited</span>
@@ -390,6 +397,7 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useHighlight } from '@/composables/useHighlight'
+import { useMarkdown } from '@/composables/useMarkdown'
 import Icon from '@/Components/shared/Icon.vue'
 import Badge from '@/Components/shared/Badge.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
@@ -475,6 +483,7 @@ const emit = defineEmits<{
 
 const { workspacePath } = useWorkspace()
 const { highlight } = useHighlight()
+const { renderMarkdown } = useMarkdown()
 
 const isHovered = ref(false)
 const isEditing = ref(false)
@@ -631,65 +640,10 @@ const moreActionsDropdownItems = computed(() => [
 
 // Format message content with full markdown support
 const formattedContent = computed(() => {
-  let content = props.message.content
-
-  // Parse markdown code blocks with syntax highlighting
-  content = content.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
-    const highlighted = highlight(code.trim(), lang)
-    const langLabel = lang ? `<div class="text-xs text-neutral-400 mb-1 font-mono">${lang}</div>` : ''
-    return `<div class="my-1">${langLabel}<pre class="p-2 rounded-lg bg-neutral-800 dark:bg-neutral-900 overflow-x-auto"><code class="text-sm text-neutral-100 hljs">${highlighted}</code></pre></div>`
-  })
-
-  // Convert headers
-  content = content.replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-2 mb-0.5">$1</h3>')
-  content = content.replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold mt-2 mb-0.5">$1</h2>')
-  content = content.replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold mt-2 mb-0.5">$1</h1>')
-
-  // Convert horizontal rules
-  content = content.replace(/^---$/gm, '<hr class="my-2 border-current opacity-20" />')
+  let content = renderMarkdown(props.message.content)
 
   // Convert @mentions
   content = content.replace(/@(\w+)/g, `<span class="${props.isOwn ? 'text-blue-300' : 'text-blue-600 dark:text-blue-400'} font-medium cursor-pointer hover:underline">@$1</span>`)
-
-  // Convert markdown images
-  content = content.replace(
-    /!\[([^\]]*)\]\(([^)]+)\)/g,
-    '<img src="$2" alt="$1" class="max-w-full rounded-lg my-1" loading="lazy" />',
-  )
-
-  // Convert markdown links
-  content = content.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    `<a href="$2" target="_blank" rel="noopener" class="${props.isOwn ? 'text-blue-300 hover:text-blue-200' : 'text-blue-500 hover:text-blue-600'} underline">$1</a>`,
-  )
-
-  // Convert bare URLs
-  content = content.replace(
-    /(?<!="|='|=)(https?:\/\/[^\s<"']+)/g,
-    `<a href="$1" target="_blank" rel="noopener" class="${props.isOwn ? 'text-blue-300 hover:text-blue-200' : 'text-blue-500 hover:text-blue-600'} underline">$1</a>`,
-  )
-
-  // Convert **bold**
-  content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-
-  // Convert *italic*
-  content = content.replace(/\*(.+?)\*/g, '<em>$1</em>')
-
-  // Convert `inline code`
-  const inlineCodeClasses = props.isOwn
-    ? 'px-1 py-0.5 bg-white/15 rounded text-xs font-mono'
-    : 'px-1 py-0.5 bg-neutral-200 dark:bg-neutral-700 rounded text-xs font-mono'
-  content = content.replace(/`([^`\n]+?)`/g, `<code class="${inlineCodeClasses}">$1</code>`)
-
-  // Convert numbered lists
-  content = content.replace(/^(\d+)\.\s+(.+)$/gm, '<li class="ml-3 list-decimal">$2</li>')
-
-  // Convert bullet lists
-  content = content.replace(/^[\-]\s+(.+)$/gm, '<li class="ml-3 list-disc">$1</li>')
-
-  // Wrap consecutive list items
-  content = content.replace(/(<li class="ml-3 list-decimal">.+<\/li>\n?)+/g, '<ol class="my-0.5 pl-4">$&</ol>')
-  content = content.replace(/(<li class="ml-3 list-disc">.+<\/li>\n?)+/g, '<ul class="my-0.5 pl-4">$&</ul>')
 
   // Highlight search matches
   if (props.searchQuery && props.searchQuery.trim()) {
