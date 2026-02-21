@@ -6,7 +6,6 @@ use Carbon\Carbon;
 use Cron\CronExpression;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 use App\Models\Concerns\BelongsToWorkspace;
 
 class ScheduledAutomation extends Model
@@ -55,25 +54,6 @@ class ScheduledAutomation extends Model
             if (! $automation->next_run_at && $automation->cron_expression) {
                 $automation->next_run_at = $automation->computeNextRunAt();
             }
-        });
-
-        static::created(function (ScheduledAutomation $automation) {
-            if ($automation->channel_id) {
-                return;
-            }
-
-            $channel = Channel::create([
-                'id' => Str::uuid()->toString(),
-                'name' => $automation->name,
-                'type' => 'dm',
-                'description' => "Automation channel for: {$automation->name}",
-                'creator_id' => $automation->created_by_id,
-                'workspace_id' => $automation->workspace_id,
-            ]);
-
-            $channel->users()->attach(array_filter([$automation->created_by_id, $automation->agent_id]));
-
-            $automation->updateQuietly(['channel_id' => $channel->id]);
         });
     }
 
