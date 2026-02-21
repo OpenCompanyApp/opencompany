@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "04f3cffd2784d9a5ee3f77358a70c56f",
+    "content-hash": "8850e803670717417654ca3f49ee5c76",
     "packages": [
         {
             "name": "brick/math",
@@ -3408,16 +3408,23 @@
         {
             "name": "opencompanyapp/ai-tool-exchangerate",
             "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-exchangerate.git",
+                "reference": "f72779c2eb305be3d7e837fdefdb5a5ebb4a8b7b"
+            },
             "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-exchangerate",
-                "reference": "954a0d8aeeda0e0b160d2ff290d32d7edae25f4c"
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-exchangerate/zipball/f72779c2eb305be3d7e837fdefdb5a5ebb4a8b7b",
+                "reference": "f72779c2eb305be3d7e837fdefdb5a5ebb4a8b7b",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
                 "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "laravel": {
@@ -3450,9 +3457,11 @@
                 "opencompany",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-exchangerate/tree/main",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-exchangerate/issues"
+            },
+            "time": "2026-02-20T23:44:35+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-google",
