@@ -8,6 +8,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Concerns\BelongsToWorkspace;
 
+/**
+ * @property string $id
+ * @property string $workspace_id
+ * @property string $name
+ * @property string $trigger_type
+ * @property string|null $description
+ * @property string $agent_id
+ * @property string $prompt
+ * @property string $cron_expression
+ * @property string $timezone
+ * @property bool $is_active
+ * @property Carbon|null $last_run_at
+ * @property Carbon|null $next_run_at
+ * @property int $run_count
+ * @property int $consecutive_failures
+ * @property string|null $channel_id
+ * @property bool $keep_history
+ * @property string $created_by_id
+ * @property array<string, mixed>|null $last_result
+ */
 class Automation extends Model
 {
     use BelongsToWorkspace;
