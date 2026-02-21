@@ -63,8 +63,8 @@ class DocumentIndexingService
             'chunks' => count($chunks),
         ]);
 
-        // Ensure HNSW index exists for fast similarity search
-        $this->ensureHnswIndex(count($embeddings[0] ?? []));
+        // Ensure vector index exists for fast similarity search
+        $this->ensureVectorIndex(count($embeddings[0] ?? []));
     }
 
     /**
@@ -362,19 +362,18 @@ class DocumentIndexingService
     }
 
     /**
-     * Ensure the HNSW index exists on document_chunks.embedding.
+     * Ensure a vector index exists on document_chunks.embedding.
      *
-     * HNSW requires a dimension-constrained vector column, so this method
-     * ALTERs the unconstrained column to add the dimension and then creates
-     * the index. This is a one-time operation per embedding model.
+     * Uses HNSW for ≤2000 dimensions (pgvector limit), IVFFlat for larger.
+     * Both require a dimension-constrained vector column, so this method
+     * ALTERs the unconstrained column first. One-time operation per model.
      */
-    private function ensureHnswIndex(int $dimensions): void
+    private function ensureVectorIndex(int $dimensions): void
     {
         if ($dimensions <= 0 || DB::getDriverName() !== 'pgsql') {
             return;
         }
 
-        // Check if index already exists
         $exists = DB::selectOne(
             "SELECT 1 FROM pg_indexes WHERE tablename = 'document_chunks' AND indexname = 'document_chunks_embedding_idx'"
         );
@@ -384,13 +383,19 @@ class DocumentIndexingService
         }
 
         try {
-            // Add dimension constraint (required for HNSW)
             DB::statement("ALTER TABLE document_chunks ALTER COLUMN embedding TYPE vector({$dimensions})");
-            DB::statement('CREATE INDEX document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops)');
 
-            Log::info('HNSW index created on document_chunks', ['dimensions' => $dimensions]);
+            if ($dimensions <= 2000) {
+                DB::statement('CREATE INDEX document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops)');
+                Log::info('HNSW index created on document_chunks', ['dimensions' => $dimensions]);
+            } else {
+                // HNSW supports max 2000 dimensions; use IVFFlat for larger embeddings
+                $numLists = max(1, (int) ceil(sqrt((float) DocumentChunk::count())));
+                DB::statement("CREATE INDEX document_chunks_embedding_idx ON document_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = {$numLists})");
+                Log::info('IVFFlat index created on document_chunks', ['dimensions' => $dimensions, 'lists' => $numLists]);
+            }
         } catch (\Throwable $e) {
-            Log::warning('Could not create HNSW index', ['error' => $e->getMessage()]);
+            Log::warning('Could not create vector index', ['error' => $e->getMessage()]);
         }
     }
 }

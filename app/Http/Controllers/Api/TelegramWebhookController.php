@@ -13,8 +13,6 @@ use App\Models\Message;
 use App\Models\User;
 use App\Models\UserExternalIdentity;
 use App\Services\ApprovalExecutionService;
-use App\Services\Memory\ConversationCompactionService;
-use App\Services\Memory\MemoryFlushService;
 use App\Services\TelegramService;
 use App\Services\WorkspaceStatusService;
 use Illuminate\Http\Request;
@@ -208,6 +206,9 @@ class TelegramWebhookController extends Controller
 
     /**
      * Handle the /compact command — compact conversation memory for this chat.
+     *
+     * Dispatches compaction as a queued job to avoid hitting the 30-second
+     * webhook timeout (the LLM summarization call can be slow).
      */
     private function handleCompactCommand(string $chatId, IntegrationSetting $setting): void
     {
@@ -227,7 +228,6 @@ class TelegramWebhookController extends Controller
         $agent = $defaultAgentId ? User::find($defaultAgentId) : null;
 
         if (!$agent || $agent->type !== 'agent') {
-            // Fallback: find agent members of this channel
             $agentIds = ChannelMember::where('channel_id', $channel->id)->pluck('user_id');
             $agent = User::where('type', 'agent')->whereIn('id', $agentIds)->first();
         }
@@ -237,33 +237,9 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        try {
-            // Flush important memories to daily logs before compacting
-            try {
-                app(MemoryFlushService::class)->flush($channel->id, $agent);
-            } catch (\Throwable $e) {
-                Log::warning('Memory flush before compact failed', ['error' => $e->getMessage()]);
-            }
+        $telegram->sendMessage($chatId, '🧠 Compacting conversation memory…');
 
-            $summary = app(ConversationCompactionService::class)->compact($channel->id, $agent);
-
-            if (!$summary) {
-                $telegram->sendMessage($chatId, "Nothing to compact (fewer than 5 messages).");
-                return;
-            }
-
-            $telegram->sendMessage($chatId,
-                "<b>Compaction complete</b>\n\n"
-                . "Messages summarized: <b>{$summary->messages_summarized}</b>\n"
-                . "Tokens before: {$summary->tokens_before}\n"
-                . "Tokens after: {$summary->tokens_after}\n"
-                . "Compaction #: {$summary->compaction_count}\n\n"
-                . "<i>" . Str::limit($summary->summary, 200) . "</i>"
-            );
-        } catch (\Throwable $e) {
-            Log::error('Telegram /compact failed', ['error' => $e->getMessage(), 'channel' => $channel->id]);
-            $telegram->sendMessage($chatId, "Compaction failed: " . Str::limit($e->getMessage(), 100));
-        }
+        \App\Jobs\CompactConversationJob::dispatch($channel->id, $agent, $chatId);
     }
 
     /**
