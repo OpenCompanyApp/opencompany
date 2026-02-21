@@ -6,6 +6,7 @@ use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use App\Models\DocumentChunk;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Console\Command;
 
 class MemoryIndexDocuments extends Command
@@ -16,6 +17,12 @@ class MemoryIndexDocuments extends Command
 
     public function handle(): int
     {
+        // Set workspace context (needed for AppSetting reads and EmbeddingCache writes)
+        $workspace = Workspace::first();
+        if ($workspace) {
+            app()->instance('currentWorkspace', $workspace);
+        }
+
         if ($this->option('fresh')) {
             $count = DocumentChunk::count();
             DocumentChunk::truncate();
@@ -77,7 +84,7 @@ class MemoryIndexDocuments extends Command
         $parent = $document->parent;
 
         while ($parent) {
-            if ($parent->parent->title === 'agents' && $parent->parent->parent_id === null) {
+            if ($parent->parent && $parent->parent->title === 'agents' && $parent->parent->parent_id === null) {
                 $agent = User::where('type', 'agent')
                     ->whereRaw("LOWER(REPLACE(name, ' ', '-')) = ?", [strtolower($parent->title)])
                     ->first();

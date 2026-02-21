@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Document;
+use App\Models\Workspace;
 use App\Services\Memory\DocumentIndexingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,10 +29,19 @@ class IndexDocumentJob implements ShouldQueue
 
     public function handle(DocumentIndexingService $indexer): void
     {
+        // Set workspace context from document (needed for EmbeddingCache writes)
+        if ($this->document->workspace_id) {
+            $workspace = Workspace::find($this->document->workspace_id);
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+            }
+        }
+
         try {
             $indexer->index($this->document, $this->collection, $this->agentId);
         } catch (\Throwable $e) {
             Log::warning("IndexDocumentJob failed for document {$this->document->id}: {$e->getMessage()}");
+            throw $e;
         }
     }
 }

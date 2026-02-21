@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\AppSetting;
 use App\Models\DocumentChunk;
 use App\Models\EmbeddingCache;
+use App\Models\Workspace;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -16,6 +17,11 @@ class MemoryStatus extends Command
 
     public function handle(): int
     {
+        // Set workspace context for AppSetting reads
+        $workspace = Workspace::first();
+        if ($workspace) {
+            app()->instance('currentWorkspace', $workspace);
+        }
         $this->info('Memory Subsystem Status');
         $this->line('');
 
