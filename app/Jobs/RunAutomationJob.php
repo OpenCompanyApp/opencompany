@@ -17,6 +17,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Laravel\Ai\Responses\AgentResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -112,6 +113,22 @@ class RunAutomationJob implements ShouldQueue
             broadcast(new AgentStatusUpdated($agent));
 
             $agentInstance = OpenCompanyAgent::for($agent, $channelId, $task->id);
+
+            // Capture LLM context for observability
+            try {
+                $toolRegistry = app(\App\Agents\Tools\ToolRegistry::class);
+                $task->update([
+                    'context' => array_merge($task->context ?? [], [
+                        'tools' => $toolRegistry->getToolSlugsForAgent($agent),
+                        'model' => $agentInstance->model(),
+                        'provider' => $agentInstance->provider(),
+                        'prompt_sections' => $agentInstance->instructionsBreakdown(),
+                    ]),
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to capture automation LLM context', ['error' => $e->getMessage()]);
+            }
+
             $prompt = $this->buildScheduledPrompt();
             $response = $agentInstance->prompt($prompt);
 
@@ -131,12 +148,20 @@ class RunAutomationJob implements ShouldQueue
                 broadcast(new MessageSent($agentMessage));
             }
 
-            $task->complete();
-            $task->update([
-                'result' => [
-                    'response' => Str::limit($response->text, 500),
-                    'tokens' => $response->usage->promptTokens + $response->usage->completionTokens,
-                ],
+            $this->logToolSteps($task, $response);
+
+            $lastStep = $response->steps->last();
+            $toolCallsCount = collect($response->steps)->sum(fn ($step) => count($step->toolCalls));
+
+            $task->complete([
+                'response' => Str::limit($response->text, 500),
+                'prompt_tokens' => $lastStep?->usage->promptTokens ?? $response->usage->promptTokens,
+                'completion_tokens' => $lastStep?->usage->completionTokens ?? $response->usage->completionTokens,
+                'total_prompt_tokens' => $response->usage->promptTokens,
+                'total_completion_tokens' => $response->usage->completionTokens,
+                'cache_read_tokens' => $response->usage->cacheReadInputTokens,
+                'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
+                'tool_calls_count' => $toolCallsCount,
             ]);
 
             broadcast(new TaskUpdated($task, 'completed'));
@@ -145,6 +170,7 @@ class RunAutomationJob implements ShouldQueue
                 'task_id' => $task->id,
                 'response_preview' => Str::limit($response->text, 200),
                 'tokens' => $response->usage->promptTokens + $response->usage->completionTokens,
+                'tool_calls' => $toolCallsCount,
                 'completed_at' => now()->toIso8601String(),
             ]);
 
@@ -179,6 +205,40 @@ class RunAutomationJob implements ShouldQueue
             }
 
             broadcast(new AgentStatusUpdated($agent));
+        }
+    }
+
+    private function logToolSteps(Task $task, AgentResponse $response): void
+    {
+        foreach ($response->steps as $step) {
+            $resultsByCallId = [];
+            foreach ($step->toolResults as $toolResult) {
+                $resultsByCallId[$toolResult->id] = $toolResult->result;
+            }
+
+            foreach ($step->toolCalls as $toolCall) {
+                $result = $resultsByCallId[$toolCall->id] ?? null;
+
+                if (is_string($result) && strlen($result) > 2000) {
+                    $result = mb_strcut($result, 0, 2000, 'UTF-8').'... [truncated]';
+                }
+
+                if (is_string($result)) {
+                    $result = mb_convert_encoding($result, 'UTF-8', 'UTF-8');
+                }
+
+                $toolStep = $task->addStep(
+                    "Used tool: {$toolCall->name}",
+                    'action',
+                    [
+                        'tool' => $toolCall->name,
+                        'arguments' => $toolCall->arguments,
+                        'result' => $result,
+                    ]
+                );
+                $toolStep->start();
+                $toolStep->complete();
+            }
         }
     }
 

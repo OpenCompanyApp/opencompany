@@ -15,7 +15,7 @@
         <Button variant="ghost" size="sm" icon-left="ph:trash" class="!text-red-600 dark:!text-red-400" @click="showBulkDeleteConfirm = true">
           Delete
         </Button>
-        <button class="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" @click="selectedIds = new Set()">
+        <button class="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" @click="selectedIds.clear()">
           Clear
         </button>
       </div>
@@ -330,17 +330,18 @@ const filteredAutomations = computed(() => {
 watch([statusFilter, searchQuery], () => selectedIds.value.clear())
 
 function toggleSelection(id: string) {
-  const s = new Set(selectedIds.value)
-  if (s.has(id)) s.delete(id)
-  else s.add(id)
-  selectedIds.value = s
+  if (selectedIds.value.has(id)) {
+    selectedIds.value.delete(id)
+  } else {
+    selectedIds.value.add(id)
+  }
 }
 
 function toggleSelectAll() {
   if (allSelected.value) {
-    selectedIds.value = new Set()
+    selectedIds.value.clear()
   } else {
-    selectedIds.value = new Set(filteredAutomations.value.map(a => a.id))
+    filteredAutomations.value.forEach(a => selectedIds.value.add(a.id))
   }
 }
 
@@ -444,14 +445,14 @@ async function handleDelete(automation: Automation) {
 
 async function handleBulkDelete() {
   await bulkDeleteAutomations(Array.from(selectedIds.value))
-  selectedIds.value = new Set()
+  selectedIds.value.clear()
   showBulkDeleteConfirm.value = false
   await refreshAutomations()
 }
 
 async function handleBulkRun() {
   await bulkTriggerAutomations(Array.from(selectedIds.value))
-  selectedIds.value = new Set()
+  selectedIds.value.clear()
   showBulkRunConfirm.value = false
   await refreshAutomations()
 }
