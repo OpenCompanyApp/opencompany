@@ -138,6 +138,8 @@ Route::middleware('resolve.workspace')->group(function () {
     // Automations
     Route::get('/automations', [AutomationController::class, 'index']);
     Route::get('/automations/preview-schedule', [AutomationController::class, 'previewSchedule']);
+    Route::post('/automations/bulk-delete', [AutomationController::class, 'bulkDestroy']);
+    Route::post('/automations/bulk-run', [AutomationController::class, 'bulkTriggerRun']);
     Route::post('/automations', [AutomationController::class, 'store']);
     Route::get('/automations/{id}', [AutomationController::class, 'show']);
     Route::patch('/automations/{id}', [AutomationController::class, 'update']);

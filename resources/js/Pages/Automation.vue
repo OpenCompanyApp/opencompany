@@ -4,8 +4,24 @@
     <header class="h-14 px-4 md:px-6 border-b border-neutral-200 dark:border-neutral-700 flex items-center gap-4 bg-white dark:bg-neutral-900 shrink-0">
       <span class="text-lg font-semibold text-neutral-900 dark:text-white">Automations</span>
 
+      <!-- Bulk actions toolbar -->
+      <div v-if="selectedIds.size > 0" class="flex items-center gap-3">
+        <span class="text-sm font-medium text-neutral-600 dark:text-neutral-300">
+          {{ selectedIds.size }} selected
+        </span>
+        <Button variant="ghost" size="sm" icon-left="ph:play" @click="showBulkRunConfirm = true">
+          Run
+        </Button>
+        <Button variant="ghost" size="sm" icon-left="ph:trash" class="!text-red-600 dark:!text-red-400" @click="showBulkDeleteConfirm = true">
+          Delete
+        </Button>
+        <button class="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" @click="selectedIds = new Set()">
+          Clear
+        </button>
+      </div>
+
       <!-- Status tabs -->
-      <div v-if="!loading" class="hidden md:flex items-center gap-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5">
+      <div v-else-if="!loading" class="hidden md:flex items-center gap-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5">
         <button
           v-for="s in statusTabs"
           :key="s.value"
@@ -71,6 +87,14 @@
 
         <!-- Automations list -->
         <div v-else class="rounded-lg border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
+          <!-- Select all row -->
+          <div class="px-4 py-2 flex items-center gap-3">
+            <Checkbox :checked="allSelected" @update:checked="toggleSelectAll()" />
+            <span class="text-xs text-neutral-400 dark:text-neutral-500">
+              {{ filteredAutomations.length }} automation{{ filteredAutomations.length !== 1 ? 's' : '' }}
+            </span>
+          </div>
+
           <div
             v-for="automation in filteredAutomations"
             :key="automation.id"
@@ -79,9 +103,15 @@
               automation.isActive
                 ? 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                 : 'opacity-60 hover:opacity-80',
+              selectedIds.has(automation.id) && 'bg-neutral-50 dark:bg-neutral-800/50',
             ]"
           >
             <div class="flex items-start gap-3">
+              <!-- Selection checkbox -->
+              <div class="shrink-0 mt-1.5">
+                <Checkbox :checked="selectedIds.has(automation.id)" @update:checked="toggleSelection(automation.id)" />
+              </div>
+
               <!-- Status icon badge -->
               <div :class="['w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5', statusBg(automation)]">
                 <Icon name="ph:lightning" :class="['w-4 h-4', statusIconColor(automation)]" />
@@ -202,16 +232,41 @@
         </div>
       </div>
     </div>
+
+    <!-- Bulk delete confirm -->
+    <ConfirmDialog
+      :open="showBulkDeleteConfirm"
+      variant="danger"
+      title="Delete Automations"
+      :description="`Delete ${selectedIds.size} automation${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`"
+      confirm-label="Delete"
+      @confirm="handleBulkDelete"
+      @cancel="showBulkDeleteConfirm = false"
+      @update:open="showBulkDeleteConfirm = $event"
+    />
+
+    <!-- Bulk run confirm -->
+    <ConfirmDialog
+      :open="showBulkRunConfirm"
+      title="Run Automations"
+      :description="`Trigger ${selectedIds.size} automation${selectedIds.size !== 1 ? 's' : ''} to run now?`"
+      confirm-label="Run"
+      @confirm="handleBulkRun"
+      @cancel="showBulkRunConfirm = false"
+      @update:open="showBulkRunConfirm = $event"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import type { Automation } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import SearchInput from '@/Components/shared/SearchInput.vue'
+import Checkbox from '@/Components/shared/Checkbox.vue'
+import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
 import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
 
@@ -221,6 +276,8 @@ const {
   updateAutomation,
   deleteAutomation,
   triggerAutomation,
+  bulkDeleteAutomations,
+  bulkTriggerAutomations,
 } = useApi()
 
 // Data
@@ -231,6 +288,15 @@ const automations = computed<Automation[]>(() => automationsData.value ?? [])
 const statusFilter = ref<'all' | 'active' | 'inactive' | 'failed'>('all')
 const searchQuery = ref('')
 const openMenuId = ref<string | null>(null)
+
+// Bulk selection
+const selectedIds = ref(new Set<string>())
+const showBulkDeleteConfirm = ref(false)
+const showBulkRunConfirm = ref(false)
+const allSelected = computed(() =>
+  filteredAutomations.value.length > 0 &&
+  filteredAutomations.value.every(a => selectedIds.value.has(a.id))
+)
 
 // Status tabs
 const statusTabs = computed(() => {
@@ -259,6 +325,24 @@ const filteredAutomations = computed(() => {
   }
   return result
 })
+
+// Clear selection when filters change
+watch([statusFilter, searchQuery], () => selectedIds.value.clear())
+
+function toggleSelection(id: string) {
+  const s = new Set(selectedIds.value)
+  if (s.has(id)) s.delete(id)
+  else s.add(id)
+  selectedIds.value = s
+}
+
+function toggleSelectAll() {
+  if (allSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(filteredAutomations.value.map(a => a.id))
+  }
+}
 
 // Status helpers
 const statusBg = (a: Automation): string => {
@@ -355,6 +439,20 @@ async function handleTrigger(automation: Automation) {
 async function handleDelete(automation: Automation) {
   if (!confirm(`Delete "${automation.name}"? This cannot be undone.`)) return
   await deleteAutomation(automation.id)
+  await refreshAutomations()
+}
+
+async function handleBulkDelete() {
+  await bulkDeleteAutomations(Array.from(selectedIds.value))
+  selectedIds.value = new Set()
+  showBulkDeleteConfirm.value = false
+  await refreshAutomations()
+}
+
+async function handleBulkRun() {
+  await bulkTriggerAutomations(Array.from(selectedIds.value))
+  selectedIds.value = new Set()
+  showBulkRunConfirm.value = false
   await refreshAutomations()
 }
 </script>

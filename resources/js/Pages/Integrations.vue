@@ -877,11 +877,7 @@ const integrationCategories = ref<IntegrationCategory[]>([
     name: 'Communication',
     icon: 'ph:chat-circle',
     integrations: [
-      { id: 'slack', name: 'Slack', icon: 'ph:slack-logo', description: 'Team messaging and notifications', installed: false },
-      { id: 'discord', name: 'Discord', icon: 'ph:discord-logo', description: 'Community chat and voice', installed: false },
-      { id: 'teams', name: 'Microsoft Teams', icon: 'ph:microsoft-teams-logo', description: 'Enterprise collaboration', installed: false },
       { id: 'telegram', name: 'Telegram', icon: 'ph:telegram-logo', description: 'Secure messaging', installed: false, badge: 'verified' },
-      { id: 'matrix', name: 'Matrix', icon: 'ph:chat-centered-dots', description: 'Decentralized chat (self-hosted)', installed: false },
     ],
   },
   {
@@ -890,9 +886,6 @@ const integrationCategories = ref<IntegrationCategory[]>([
     icon: 'ph:code',
     integrations: [
       { id: 'github', name: 'GitHub', icon: 'ph:github-logo', description: 'Repos, issues, PRs, actions', installed: true },
-      { id: 'gitlab', name: 'GitLab', icon: 'ph:gitlab-logo', description: 'Git hosting and CI/CD', installed: false },
-      { id: 'linear', name: 'Linear', icon: 'ph:square-split-horizontal', description: 'Issue tracking', installed: false },
-      { id: 'jira', name: 'Jira', icon: 'ph:kanban', description: 'Project management', installed: false },
     ],
   },
   {
@@ -900,21 +893,8 @@ const integrationCategories = ref<IntegrationCategory[]>([
     name: 'Productivity',
     icon: 'ph:briefcase',
     integrations: [
-      { id: 'notion', name: 'Notion', icon: 'ph:notebook', description: 'Docs and knowledge base', installed: false },
-      { id: 'trello', name: 'Trello', icon: 'ph:trello-logo', description: 'Kanban boards', installed: false },
       { id: 'google-calendar', name: 'Google Calendar', icon: 'ph:calendar', description: 'Calendar sync', installed: false },
-      { id: 'obsidian', name: 'Obsidian', icon: 'ph:vault', description: 'Knowledge management', installed: false },
       { id: 'google-drive', name: 'Google Drive', icon: 'ph:google-drive-logo', description: 'File storage and sharing', installed: false },
-    ],
-  },
-  {
-    id: 'automation',
-    name: 'Automation',
-    icon: 'ph:flow-arrow',
-    integrations: [
-      { id: 'n8n', name: 'n8n', icon: 'ph:flow-arrow', description: 'Open-source workflow automation', installed: false },
-      { id: 'zapier', name: 'Zapier', icon: 'ph:lightning', description: 'Connect to 5,000+ apps', installed: false },
-      { id: 'make', name: 'Make (Integromat)', icon: 'ph:circles-three-plus', description: 'Visual automation platform', installed: false },
     ],
   },
   {

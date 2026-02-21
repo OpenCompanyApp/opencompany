@@ -142,6 +142,46 @@ class AutomationController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'required|string',
+        ]);
+
+        $deleted = Automation::forWorkspace()
+            ->whereIn('id', $request->input('ids'))
+            ->delete();
+
+        return response()->json(['success' => true, 'deleted' => $deleted]);
+    }
+
+    public function bulkTriggerRun(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'required|string',
+        ]);
+
+        $automations = Automation::forWorkspace()
+            ->whereIn('id', $request->input('ids'))
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($automations as $automation) {
+            RunAutomationJob::dispatch($automation);
+        }
+
+        $total = count($request->input('ids'));
+        $triggered = $automations->count();
+
+        return response()->json([
+            'success' => true,
+            'triggered' => $triggered,
+            'skipped' => $total - $triggered,
+        ]);
+    }
+
     /**
      * @return \Illuminate\Support\Collection<int, mixed>
      */

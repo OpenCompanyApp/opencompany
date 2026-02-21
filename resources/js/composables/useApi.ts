@@ -368,6 +368,10 @@ export const useApi = () => {
     api.delete(`/automations/${id}`)
   const triggerAutomation = (id: string) =>
     api.post(`/automations/${id}/run`)
+  const bulkDeleteAutomations = (ids: string[]) =>
+    api.post('/automations/bulk-delete', { ids })
+  const bulkTriggerAutomations = (ids: string[]) =>
+    api.post('/automations/bulk-run', { ids })
   const fetchAutomationRuns = (id: string) =>
     useFetch<Array<{
       id: string
@@ -610,6 +614,8 @@ export const useApi = () => {
     updateAutomation,
     deleteAutomation,
     triggerAutomation,
+    bulkDeleteAutomations,
+    bulkTriggerAutomations,
     fetchAutomationRuns,
     previewSchedule,
     // Agents
