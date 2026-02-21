@@ -179,6 +179,7 @@ Route::middleware('resolve.workspace')->group(function () {
 
     // Stats
     Route::get('/stats', [StatsController::class, 'index']);
+    Route::get('/stats/status', [StatsController::class, 'status']);
     Route::patch('/stats', [StatsController::class, 'update']);
 
     // Notifications

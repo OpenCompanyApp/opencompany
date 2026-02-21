@@ -16,6 +16,7 @@ use App\Services\ApprovalExecutionService;
 use App\Services\Memory\ConversationCompactionService;
 use App\Services\Memory\MemoryFlushService;
 use App\Services\TelegramService;
+use App\Services\WorkspaceStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
@@ -108,6 +109,12 @@ class TelegramWebhookController extends Controller
         // Handle /compact command — compact conversation memory
         if (str_starts_with($text, '/compact')) {
             $this->handleCompactCommand($chatId, $setting);
+            return;
+        }
+
+        // Handle /status command — show workspace overview
+        if ($text === '/status') {
+            $this->handleStatusCommand($chatId, $setting);
             return;
         }
 
@@ -256,6 +263,70 @@ class TelegramWebhookController extends Controller
         } catch (\Throwable $e) {
             Log::error('Telegram /compact failed', ['error' => $e->getMessage(), 'channel' => $channel->id]);
             $telegram->sendMessage($chatId, "Compaction failed: " . Str::limit($e->getMessage(), 100));
+        }
+    }
+
+    /**
+     * Handle the /status command — show workspace overview.
+     */
+    private function handleStatusCommand(string $chatId, IntegrationSetting $setting): void
+    {
+        $telegram = app(TelegramService::class);
+
+        try {
+            $status = app(WorkspaceStatusService::class)->gather($setting->workspace_id);
+
+            $lines = ["<b>Workspace Status</b>\n"];
+
+            // Agents
+            $lines[] = "🤖 <b>Agents</b>: {$status['agents_online']}/{$status['agents_total']} online";
+            foreach ($status['agents'] as $a) {
+                $icon = match ($a['status']) {
+                    'working' => '🟢',
+                    'idle' => '🟡',
+                    default => '⚫',
+                };
+                $line = "   {$icon} {$a['name']} — {$a['status']}";
+                if ($a['current_task']) {
+                    $line .= " · " . Str::limit($a['current_task'], 30);
+                }
+                $lines[] = $line;
+            }
+
+            // Tasks
+            $lines[] = "\n📋 <b>Tasks</b>";
+            $lines[] = "   Active: {$status['tasks_active']}";
+            $lines[] = "   Completed today: {$status['tasks_today']}";
+            $lines[] = "   Total completed: {$status['tasks_completed']}";
+
+            // Messages
+            $lines[] = "\n💬 <b>Messages</b>";
+            $lines[] = "   Today: {$status['messages_today']}";
+            $lines[] = "   Total: {$status['messages_total']}";
+
+            // Conversation context for this chat
+            $channel = Channel::where('external_provider', 'telegram')
+                ->where('external_id', $chatId)
+                ->first();
+
+            if ($channel) {
+                $summary = \App\Models\ConversationSummary::where('channel_id', $channel->id)
+                    ->latest()
+                    ->first();
+
+                if ($summary) {
+                    $lines[] = "\n🧠 <b>This conversation</b>";
+                    $lines[] = "   Compactions: {$summary->compaction_count}";
+                    $lines[] = "   Context tokens: ~" . number_format($summary->tokens_after);
+                }
+            }
+
+            $lines[] = "\n🕐 " . now()->utc()->format('Y-m-d H:i') . ' UTC';
+
+            $telegram->sendMessage($chatId, implode("\n", $lines));
+        } catch (\Throwable $e) {
+            Log::error('Telegram /status failed', ['error' => $e->getMessage()]);
+            $telegram->sendMessage($chatId, "Failed to get status: " . Str::limit($e->getMessage(), 100));
         }
     }
 

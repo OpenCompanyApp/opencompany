@@ -284,6 +284,7 @@ class TelegramService
         return $this->request('setMyCommands', [
             'commands' => json_encode([
                 ['command' => 'start', 'description' => 'Get started and show your user ID'],
+                ['command' => 'status', 'description' => 'Show workspace and agent status'],
                 ['command' => 'compact', 'description' => 'Compact conversation memory'],
             ]),
         ]);

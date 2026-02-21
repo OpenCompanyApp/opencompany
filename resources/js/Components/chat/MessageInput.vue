@@ -496,7 +496,7 @@ const slashCommands = computed<SlashCommand[]>(() => [
   { name: '/giphy', description: 'Search for a GIF', icon: 'ph:gif', action: () => {} },
   { name: '/poll', description: 'Create a poll', icon: 'ph:chart-bar', action: () => {} },
   { name: '/remind', description: 'Set a reminder', icon: 'ph:alarm', action: () => {} },
-  { name: '/status', description: 'Set your status', icon: 'ph:user-circle', action: () => {} },
+  { name: '/status', description: 'Show workspace and agent status', icon: 'ph:pulse', action: () => {} },
   { name: '/invite', description: 'Invite someone', icon: 'ph:user-plus', action: () => {} },
 ])
 

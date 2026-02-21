@@ -124,6 +124,24 @@ class AgentRespondJob implements ShouldQueue
             }
         }
 
+        // Guard: skip retry if a response was already delivered for this task
+        $hasDeliveredResponse = $task->steps()
+            ->where('description', 'Response delivered')
+            ->where('status', \App\Models\TaskStep::STATUS_COMPLETED)
+            ->exists();
+
+        if ($hasDeliveredResponse) {
+            Log::info('Skipping retry — response already delivered', [
+                'task' => $task->id,
+                'agent' => $this->agent->name,
+                'attempt' => $this->attempts(),
+            ]);
+            if (!$task->isTerminal()) {
+                $task->complete(['response' => '(completed on previous attempt)']);
+            }
+            return;
+        }
+
         try {
             broadcast(new TaskUpdated($task, 'started'));
         } catch (\Throwable $e) {
@@ -281,31 +299,28 @@ class AgentRespondJob implements ShouldQueue
 
             $deliveryStep->complete();
 
-            // Complete the task
-            $task->complete([
-                'response' => $responseText,
-                'prompt_tokens' => $lastStep?->usage->promptTokens ?? $response->usage->promptTokens,
-                'completion_tokens' => $lastStep?->usage->completionTokens ?? $response->usage->completionTokens,
-                'total_prompt_tokens' => $response->usage->promptTokens,
-                'total_completion_tokens' => $response->usage->completionTokens,
-                'cache_read_tokens' => $response->usage->cacheReadInputTokens,
-                'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
-                'tool_calls_count' => collect($response->steps)->sum(fn ($step) => count($step->toolCalls)),
-            ]);
-
-            // Compute token breakdown from actual usage
+            // ── Post-delivery bookkeeping ──
+            // Everything below must NOT cause a job retry (response is already sent).
             try {
-                // Cumulative totals across all steps (for cost tracking)
+                $task->complete([
+                    'response' => $responseText,
+                    'prompt_tokens' => $lastStep?->usage->promptTokens ?? $response->usage->promptTokens,
+                    'completion_tokens' => $lastStep?->usage->completionTokens ?? $response->usage->completionTokens,
+                    'total_prompt_tokens' => $response->usage->promptTokens,
+                    'total_completion_tokens' => $response->usage->completionTokens,
+                    'cache_read_tokens' => $response->usage->cacheReadInputTokens,
+                    'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
+                    'tool_calls_count' => collect($response->steps)->sum(fn ($step) => count($step->toolCalls)),
+                ]);
+
+                // Compute token breakdown from actual usage
                 $promptTokens = $response->usage->promptTokens;
                 $completionTokens = $response->usage->completionTokens;
-
-                // Last step's prompt tokens represent actual context window utilization
                 $lastStepPromptTokens = $lastStep?->usage->promptTokens ?? $promptTokens;
 
                 $contextWindow = $task->context['context_window'] ?? 128_000;
                 $outputReserve = (int) config('memory.compaction.output_reserve', 4_096);
 
-                // Estimate system vs message split from char lengths
                 $systemChars = mb_strlen($task->context['system_prompt'] ?? '');
                 $messageChars = array_sum(array_map(
                     fn ($m) => mb_strlen($m['content'] ?? ''),
@@ -314,11 +329,9 @@ class AgentRespondJob implements ShouldQueue
                 $totalChars = $systemChars + $messageChars;
                 $systemRatio = $totalChars > 0 ? $systemChars / $totalChars : 0.5;
 
-                // Use last-step tokens for context window breakdown
                 $systemTokens = (int) round($lastStepPromptTokens * $systemRatio);
                 $messageTokens = $lastStepPromptTokens - $systemTokens;
 
-                // Compaction math using last-step tokens (actual window state)
                 $available = max(0, $contextWindow - $systemTokens - $outputReserve);
                 $thresholdRatio = (float) config('memory.compaction.threshold_ratio', 0.75);
                 $safetyMargin = (float) config('memory.compaction.safety_margin', 1.2);
@@ -355,7 +368,10 @@ class AgentRespondJob implements ShouldQueue
                 unset($context['prompt_sections'], $context['context_window']);
                 $task->update(['context' => $context]);
             } catch (\Throwable $e) {
-                Log::warning('Failed to compute token breakdown', ['error' => $e->getMessage()]);
+                Log::warning('Post-delivery bookkeeping failed', ['error' => $e->getMessage(), 'task' => $task->id]);
+                if (!$task->isTerminal()) {
+                    $task->complete(['response' => $responseText]);
+                }
             }
 
             // If this was a delegated task, send result back to the delegating agent
@@ -373,7 +389,7 @@ class AgentRespondJob implements ShouldQueue
                 'agent' => $this->agent->name,
                 'channel' => $this->channelId,
                 'task' => $task->id,
-                'tokens' => $response->usage->promptTokens + $response->usage->completionTokens,
+                'tokens' => ($response->usage->promptTokens ?? 0) + ($response->usage->completionTokens ?? 0),
             ]);
         } catch (\Throwable $e) {
             Log::error('Agent response failed', [
@@ -397,8 +413,10 @@ class AgentRespondJob implements ShouldQueue
                 Log::warning('Failed to broadcast task failed', ['error' => $broadcastError->getMessage()]);
             }
 
-            // Send error message as agent response so user isn't left hanging
-            $this->sendErrorMessage($e);
+            // Only notify user of error on the final attempt (avoid error + retry double message)
+            if ($this->attempts() >= $this->tries) {
+                $this->sendErrorMessage($e);
+            }
         } finally {
             $this->stopTypingIndicator();
 

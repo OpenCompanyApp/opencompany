@@ -3,44 +3,32 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Message;
-use App\Models\Task;
-use App\Models\User;
+use App\Services\WorkspaceStatusService;
 
 class StatsController extends Controller
 {
-    public function index(): \Illuminate\Http\JsonResponse
+    public function index(WorkspaceStatusService $statusService): \Illuminate\Http\JsonResponse
     {
-        // Calculate dynamic stats
-        $agentsOnline = User::where('type', 'agent')
-            ->where('workspace_id', workspace()->id)
-            ->whereIn('status', ['working', 'idle'])
-            ->count();
-
-        $totalAgents = User::where('type', 'agent')
-            ->where('workspace_id', workspace()->id)
-            ->count();
-
-        $tasksCompleted = Task::forWorkspace()->where('status', 'completed')->count();
-        $tasksToday = Task::forWorkspace()->where('status', 'completed')
-            ->whereDate('updated_at', today())
-            ->count();
-
-        $messagesTotal = Message::whereHas('channel', function ($q) {
-            $q->where('workspace_id', workspace()->id);
-        })->count();
-        $messagesToday = Message::whereHas('channel', function ($q) {
-            $q->where('workspace_id', workspace()->id);
-        })->whereDate('created_at', today())->count();
+        $status = $statusService->gather(workspace()->id);
 
         // Return all stats in camelCase format as expected by the frontend
         return response()->json([
-            'agentsOnline' => $agentsOnline,
-            'totalAgents' => $totalAgents,
-            'tasksCompleted' => $tasksCompleted,
-            'tasksToday' => $tasksToday,
-            'messagesTotal' => $messagesTotal,
-            'messagesToday' => $messagesToday,
+            'agentsOnline' => $status['agents_online'],
+            'totalAgents' => $status['agents_total'],
+            'tasksCompleted' => $status['tasks_completed'],
+            'tasksToday' => $status['tasks_today'],
+            'messagesTotal' => $status['messages_total'],
+            'messagesToday' => $status['messages_today'],
         ]);
+    }
+
+    /**
+     * Detailed workspace status (agents with tasks, full stats).
+     */
+    public function status(WorkspaceStatusService $statusService): \Illuminate\Http\JsonResponse
+    {
+        return response()->json(
+            $statusService->gather(workspace()->id)
+        );
     }
 }

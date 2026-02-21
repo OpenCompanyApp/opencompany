@@ -185,7 +185,7 @@ const { workspacePath } = useWorkspace()
 const page = usePage()
 const currentUser = computed(() => (page.props.auth as any)?.user)
 const currentUserId = computed(() => currentUser.value?.id ?? '')
-const { fetchChannels, fetchMessages, sendMessage, markChannelRead, addMessageReaction, fetchMessageThread, removeChannelMember, pinMessage, fetchPinnedMessages, sendTypingIndicator, uploadMessageAttachment, compactChannel, fetchDm } = useApi()
+const { fetchChannels, fetchMessages, sendMessage, markChannelRead, addMessageReaction, fetchMessageThread, removeChannelMember, pinMessage, fetchPinnedMessages, sendTypingIndicator, uploadMessageAttachment, compactChannel, fetchWorkspaceStatus, fetchDm } = useApi()
 const isMobile = useIsMobile()
 
 interface Thread {
@@ -401,6 +401,53 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
       } as any]
     } catch (error: any) {
       const msg = error.response?.data?.message || 'Compaction failed'
+      messages.value = [...messages.value, {
+        id: `system-${Date.now()}`,
+        content: `⚠️ ${msg}`,
+        channelId: selectedChannel.value.id,
+        channel_id: selectedChannel.value.id,
+        authorId: 'system',
+        author: { id: 'system', name: 'System', type: 'system' },
+        timestamp: new Date().toISOString(),
+        reactions: [],
+        attachments: [],
+      } as any]
+    }
+    return
+  }
+
+  // Intercept /status command
+  if (content.trim() === '/status') {
+    try {
+      const { data } = await fetchWorkspaceStatus()
+      const statusIcon = (s: string) => s === 'working' ? '🟢' : s === 'idle' ? '🟡' : '⚫'
+      const agentLines = data.agents.map((a: any) => {
+        let line = `${statusIcon(a.status)} **${a.name}** — ${a.status}`
+        if (a.current_task) line += ` · ${a.current_task}`
+        return line
+      }).join('\n')
+
+      const text = [
+        `**Workspace Status**\n`,
+        `🤖 **Agents**: ${data.agents_online}/${data.agents_total} online`,
+        agentLines,
+        `\n📋 **Tasks**: ${data.tasks_active} active · ${data.tasks_today} completed today · ${data.tasks_completed} total`,
+        `💬 **Messages**: ${data.messages_today} today · ${data.messages_total} total`,
+      ].join('\n')
+
+      messages.value = [...messages.value, {
+        id: `system-${Date.now()}`,
+        content: text,
+        channelId: selectedChannel.value.id,
+        channel_id: selectedChannel.value.id,
+        authorId: 'system',
+        author: { id: 'system', name: 'System', type: 'system' },
+        timestamp: new Date().toISOString(),
+        reactions: [],
+        attachments: [],
+      } as any]
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Failed to fetch status'
       messages.value = [...messages.value, {
         id: `system-${Date.now()}`,
         content: `⚠️ ${msg}`,

@@ -289,6 +289,7 @@ export const useApi = () => {
 
   // Stats
   const fetchStats = () => useFetch<Stats>('/stats')
+  const fetchWorkspaceStatus = () => api.get('/stats/status')
   const updateStats = (data: Partial<Stats>) =>
     api.patch('/stats', data)
 
@@ -582,6 +583,7 @@ export const useApi = () => {
     fetchActivities,
     // Stats
     fetchStats,
+    fetchWorkspaceStatus,
     updateStats,
     // List Templates
     fetchListTemplates,
