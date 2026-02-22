@@ -20,10 +20,10 @@ class ExecuteAgentTaskJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 2;
+    public int $tries = 3;
     public int $timeout = 1800;
     /** @var array<int, int> */
-    public array $backoff = [10];
+    public array $backoff = [10, 30];
 
     public function __construct(
         private Task $task,
@@ -110,6 +110,8 @@ class ExecuteAgentTaskJob implements ShouldQueue
             ]);
 
             broadcast(new TaskUpdated($this->task, 'failed'));
+
+            throw $e;
         } finally {
             $agent->update(['status' => 'idle']);
             broadcast(new AgentStatusUpdated($agent));

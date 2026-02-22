@@ -68,8 +68,6 @@ Converts raw SVG markup to a PNG image using `rsvg-convert`. Use this for custom
 
 Accepts a [Vega-Lite](https://vega.github.io/vega-lite/) JSON specification and renders it to a PNG image. This is the primary tool for data charts — bar, line, area, pie, scatter, and everything else Vega-Lite supports.
 
-Call `get_tool_info("render_vegalite")` to confirm exact parameters before first use.
-
 ### Spec Format
 
 Pass a standard Vega-Lite v5 specification. At minimum you need `mark`, `encoding`, and either inline `data` or a `data.values` array.
@@ -225,8 +223,6 @@ Set `"innerRadius": 0` for a solid pie, or increase it for a donut.
 
 Renders [Mermaid](https://mermaid.js.org/) diagram markup to a PNG image. Best for flowcharts, sequence diagrams, class diagrams, ER diagrams, Gantt charts, and similar structural diagrams.
 
-Call `get_tool_info("render_mermaid")` to confirm exact parameters before first use.
-
 ### Example — Flowchart
 
 ```
@@ -271,8 +267,6 @@ gantt
 
 Renders [PlantUML](https://plantuml.com/) markup to a PNG image. Best for UML diagrams — class, component, activity, state, deployment, use-case, and more.
 
-Call `get_tool_info("render_plantuml")` to confirm exact parameters before first use.
-
 ### Example — Class Diagram
 
 ```
@@ -316,8 +310,6 @@ stop
 ## `render_typst` — Typst to PDF (External)
 
 Renders [Typst](https://typst.app/) markup to a PDF document. Use this for formatted reports, invoices, letters, or any document that needs precise layout and typography.
-
-Call `get_tool_info("render_typst")` to confirm exact parameters before first use.
 
 ### Example — Simple Report
 

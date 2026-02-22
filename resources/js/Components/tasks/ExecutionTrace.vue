@@ -50,37 +50,48 @@
           v-if="expandedSteps.has(step.id) && hasExpandableContent(step)"
           class="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-700/50 space-y-3"
         >
-          <!-- Tool Arguments -->
-          <div v-if="step.metadata?.arguments">
-            <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 block">Arguments</label>
-            <pre class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-48 overflow-y-auto"><code class="hljs" v-html="highlightJson(step.metadata.arguments)" /></pre>
-          </div>
+          <!-- Lua Execute: dedicated rendering with Monaco + output + bridge calls -->
+          <LuaExecutionDetail
+            v-if="step.metadata?.tool === 'LuaExec'"
+            :code="String(step.metadata.arguments?.code ?? '')"
+            :result="String(step.metadata.result ?? '')"
+            :lua-meta="step.metadata.lua_meta"
+          />
 
-          <!-- Tool Result -->
-          <div v-if="step.metadata?.result !== undefined && step.metadata?.result !== null">
-            <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 block">Result</label>
-            <!-- JSON result -->
-            <pre v-if="isJsonResult(step.metadata.result)" class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-64 overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlightResult(step.metadata.result)" /></pre>
-            <!-- Markdown/text result with raw/preview toggle -->
-            <template v-else>
-              <div class="flex justify-end mb-1.5">
-                <div class="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-md p-0.5">
-                  <button
-                    class="px-2 py-0.5 text-xs font-medium rounded transition-colors"
-                    :class="resultViewModes[step.id] !== 'preview' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400'"
-                    @click="resultViewModes[step.id] = 'raw'"
-                  >Raw</button>
-                  <button
-                    class="px-2 py-0.5 text-xs font-medium rounded transition-colors"
-                    :class="resultViewModes[step.id] === 'preview' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400'"
-                    @click="resultViewModes[step.id] = 'preview'"
-                  >Preview</button>
+          <!-- Generic tool rendering -->
+          <template v-else>
+            <!-- Tool Arguments -->
+            <div v-if="step.metadata?.arguments">
+              <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 block">Arguments</label>
+              <pre class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-48 overflow-y-auto"><code class="hljs" v-html="highlightJson(step.metadata.arguments)" /></pre>
+            </div>
+
+            <!-- Tool Result -->
+            <div v-if="step.metadata?.result !== undefined && step.metadata?.result !== null">
+              <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 block">Result</label>
+              <!-- JSON result -->
+              <pre v-if="isJsonResult(step.metadata.result)" class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-64 overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlightResult(step.metadata.result)" /></pre>
+              <!-- Markdown/text result with raw/preview toggle -->
+              <template v-else>
+                <div class="flex justify-end mb-1.5">
+                  <div class="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-md p-0.5">
+                    <button
+                      class="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                      :class="resultViewModes[step.id] !== 'preview' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400'"
+                      @click="resultViewModes[step.id] = 'raw'"
+                    >Raw</button>
+                    <button
+                      class="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                      :class="resultViewModes[step.id] === 'preview' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400'"
+                      @click="resultViewModes[step.id] = 'preview'"
+                    >Preview</button>
+                  </div>
                 </div>
-              </div>
-              <pre v-if="resultViewModes[step.id] !== 'preview'" class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-64 overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlight(String(step.metadata.result), 'markdown')" /></pre>
-              <div v-else class="text-xs bg-white dark:bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-200 dark:border-neutral-700 max-h-64 overflow-y-auto prose prose-sm prose-neutral dark:prose-invert max-w-none" v-html="renderMarkdown(String(step.metadata.result))" />
-            </template>
-          </div>
+                <pre v-if="resultViewModes[step.id] !== 'preview'" class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-64 overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlight(String(step.metadata.result), 'markdown')" /></pre>
+                <div v-else class="text-xs bg-white dark:bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-200 dark:border-neutral-700 max-h-64 overflow-y-auto prose prose-sm prose-neutral dark:prose-invert max-w-none" v-html="renderMarkdown(String(step.metadata.result))" />
+              </template>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -95,6 +106,7 @@
 import { ref, reactive } from 'vue'
 import type { TaskStep } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
+import LuaExecutionDetail from '@/Components/tasks/LuaExecutionDetail.vue'
 import { useHighlight } from '@/composables/useHighlight'
 import { useMarkdown } from '@/composables/useMarkdown'
 
@@ -120,32 +132,12 @@ const hasExpandableContent = (step: TaskStep): boolean => {
   return !!(step.metadata?.arguments || step.metadata?.result !== undefined && step.metadata?.result !== null)
 }
 
-const toolIconMap: Record<string, string> = {
-  send_channel_message: 'ph:paper-plane-tilt',
-  read_channel: 'ph:chat-circle',
-  list_channels: 'ph:list',
-  search_documents: 'ph:magnifying-glass',
-  manage_document: 'ph:file-text',
-  web_search: 'ph:globe',
-  web_fetch: 'ph:download',
-  render_vegalite: 'ph:chart-bar',
-  render_svg: 'ph:file-svg',
-  query_table: 'ph:table',
-  manage_table_rows: 'ph:rows',
-  get_tool_info: 'ph:info',
-  update_current_task: 'ph:pencil-simple',
-  manage_list_item: 'ph:check-square',
-  request_approval: 'ph:shield-check',
-  manage_calendar: 'ph:calendar',
-  set_sleep_timer: 'ph:alarm',
-  send_telegram: 'ph:telegram-logo',
-  contact_agent: 'ph:users-three',
-}
-
 const stepTypeIcon = (step: TaskStep): string => {
-  if (step.metadata?.tool) {
-    return toolIconMap[step.metadata.tool as string] ?? 'ph:wrench'
+  // Tool icon from backend metadata (stored when logging tool calls)
+  if (step.metadata?.icon) {
+    return step.metadata.icon as string
   }
+  // Step type fallback
   const icons: Record<string, string> = {
     action: 'ph:lightning',
     decision: 'ph:git-branch',
@@ -153,7 +145,7 @@ const stepTypeIcon = (step: TaskStep): string => {
     sub_task: 'ph:git-fork',
     message: 'ph:chat-circle',
   }
-  return icons[step.stepType] || 'ph:circle'
+  return icons[step.stepType] || 'ph:wrench'
 }
 
 const stepStatusIcon = (step: TaskStep): string => {

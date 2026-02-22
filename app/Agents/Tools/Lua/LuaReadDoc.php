@@ -1,0 +1,84 @@
+<?php
+
+namespace App\Agents\Tools\Lua;
+
+use App\Models\User;
+use App\Services\LuaApiDocGenerator;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Tools\Request;
+
+class LuaReadDoc implements Tool
+{
+    public function __construct(
+        private LuaApiDocGenerator $docs,
+        private User $agent,
+    ) {}
+
+    public function description(): string
+    {
+        return <<<'DESC'
+Read Lua API documentation for a namespace, function, or supplementary guide.
+
+- Namespace (e.g. "chat") → full API reference with all functions and parameters
+- Function (e.g. "chat.send") → detailed single-function docs
+- Guide (e.g. "context", "errors", "examples") → supplementary documentation
+DESC;
+    }
+
+    public function handle(Request $request): string
+    {
+        try {
+            $page = $request['page'];
+
+            // Try static page first
+            $static = $this->docs->readStaticPage($page);
+            if ($static !== null) {
+                return $static;
+            }
+
+            // Try namespace.function format (e.g. "chat.send")
+            if (str_contains($page, '.')) {
+                $parts = explode('.', $page, 2);
+                $namespace = $parts[0];
+                $function = $parts[1];
+
+                // Handle multi-level namespaces like "integrations.telegram.send"
+                // or "mcp.github.create_issue"
+                if (in_array($namespace, ['integrations', 'mcp']) && str_contains($function, '.')) {
+                    $subParts = explode('.', $function, 2);
+                    $namespace = $namespace . '.' . $subParts[0];
+                    $function = $subParts[1];
+                }
+
+                return $this->docs->generateFunctionDocs($namespace, $function, $this->agent);
+            }
+
+            // Try as namespace
+            $namespaceDocs = $this->docs->generateNamespaceDocs($page, $this->agent);
+            if (!str_starts_with($namespaceDocs, "Namespace '{$page}' not found.")) {
+                return $namespaceDocs;
+            }
+
+            // Not found — show available pages
+            $available = $this->docs->getAvailablePages($this->agent);
+
+            return "Page '{$page}' not found. Available pages:\n\n"
+                . "**Namespaces:** " . implode(', ', array_filter($available, fn ($p) => !in_array($p, ['overview', 'context', 'errors', 'examples']))) . "\n"
+                . "**Guides:** overview, context, errors, examples";
+        } catch (\Throwable $e) {
+            return "Error reading Lua doc: {$e->getMessage()}";
+        }
+    }
+
+    /** @return array<string, mixed> */
+    public function schema(JsonSchema $schema): array
+    {
+        return [
+            'page' => $schema
+                ->string()
+                ->description('Page to read: namespace name (e.g. "chat", "docs"), function path (e.g. "chat.send"), or guide name (e.g. "context", "errors", "examples", "overview").')
+                ->required(),
+        ];
+    }
+}

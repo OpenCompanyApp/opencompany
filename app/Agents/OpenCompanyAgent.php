@@ -141,7 +141,6 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         }
 
         $apps = "## Apps\n\n";
-        $apps .= "**IMPORTANT: Before calling ANY tool you have not used in this conversation, call `get_tool_info(name)` first to get its parameters. Do NOT guess parameters.**\n\n";
         $apps .= $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
         $apps .= "To generate images: use render_mermaid, render_plantuml, render_svg, or render_vegalite. To generate PDFs: use render_typst. NEVER fabricate image/document URLs.\n";
         if (!$identityFiles->isEmpty()) {

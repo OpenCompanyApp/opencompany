@@ -180,7 +180,6 @@ class AgentPermissionServiceTest extends TestCase
             'wait',
             'update_current_task',
             'create_task_step',
-            'get_tool_info',
         ];
 
         foreach ($exemptTools as $tool) {

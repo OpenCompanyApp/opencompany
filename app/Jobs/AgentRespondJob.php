@@ -35,7 +35,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
     /**
      * The number of times the job may be attempted.
      */
-    public int $tries = 2;
+    public int $tries = 3;
 
     /**
      * The number of seconds the job can run before timing out.
@@ -47,7 +47,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
      *
      * @var array<int, int>
      */
-    public array $backoff = [10];
+    public array $backoff = [10, 30];
 
     /**
      * The number of seconds the unique lock should be maintained.
@@ -66,6 +66,16 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
     public function uniqueId(): string
     {
         return $this->userMessage->id;
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('AgentRespondJob failed', [
+            'message_id' => $this->userMessage->id ?? null,
+            'agent' => $this->agent->name ?? null,
+            'channel' => $this->channelId,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 
     public function handle(): void
@@ -428,6 +438,8 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             if ($this->attempts() >= $this->tries) {
                 $this->sendErrorMessage($e);
             }
+
+            throw $e;
         } finally {
             $this->stopTypingIndicator();
 
@@ -487,6 +499,8 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
      */
     private function logToolSteps(Task $task, AgentResponse $response): void
     {
+        $toolRegistry = app(\App\Agents\Tools\ToolRegistry::class);
+
         foreach ($response->steps as $step) {
             // Build a lookup of tool results keyed by tool call ID
             $resultsByCallId = [];
@@ -496,6 +510,11 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
             foreach ($step->toolCalls as $toolCall) {
                 $result = $resultsByCallId[$toolCall->id] ?? null;
+
+                // Extract LuaExec structured metadata before truncation
+                $extracted = \App\Support\LuaMetaParser::extract($result);
+                $luaMeta = $extracted['meta'];
+                $result = $extracted['result'];
 
                 // Truncate large string results to prevent DB bloat
                 if (is_string($result) && strlen($result) > 2000) {
@@ -510,11 +529,13 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 $toolStep = $task->addStep(
                     "Used tool: {$toolCall->name}",
                     'action',
-                    [
+                    array_filter([
                         'tool' => $toolCall->name,
+                        'icon' => $toolRegistry->getIconByClassName($toolCall->name),
                         'arguments' => $toolCall->arguments,
                         'result' => $result,
-                    ]
+                        'lua_meta' => $luaMeta,
+                    ])
                 );
                 $toolStep->start();
                 $toolStep->complete();

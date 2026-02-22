@@ -23,7 +23,6 @@ use App\Agents\Tools\Lists\ManageListItem;
 use App\Agents\Tools\Lists\ManageListStatus;
 use App\Agents\Tools\Lists\QueryListItems;
 use App\Agents\Tools\System\ApprovalWrappedTool;
-use App\Agents\Tools\System\GetToolInfo;
 use App\Agents\Tools\System\Wait;
 use App\Agents\Tools\System\WaitForApproval;
 use App\Agents\Tools\Tables\ManageTable;
@@ -112,6 +111,11 @@ class ToolRegistry
             'label' => 'render',
             'description' => 'Render SVG markup to PNG images',
         ],
+        'lua' => [
+            'tools' => ['lua_list_docs', 'lua_search_docs', 'lua_read_doc', 'lua_exec'],
+            'label' => 'list_docs, search_docs, read_doc, exec',
+            'description' => 'Lua scripting API reference and code execution',
+        ],
     ];
 
     /**
@@ -133,6 +137,7 @@ class ToolRegistry
         'lists' => 'ph:kanban',
         'tasks' => 'ph:list-checks',
         'svg' => 'ph:file-svg',
+        'lua' => 'ph:code',
         'system' => 'ph:gear',
         'workspace' => 'ph:gear-six',
     ];
@@ -323,13 +328,34 @@ class ToolRegistry
             'description' => 'Convert SVG markup to a PNG image.',
             'icon' => 'ph:file-svg',
         ],
-        // Meta
-        'get_tool_info' => [
-            'class' => GetToolInfo::class,
+        // Lua scripting
+        'lua_list_docs' => [
+            'class' => Lua\LuaListDocs::class,
             'type' => 'read',
-            'name' => 'Get Tool Info',
-            'description' => 'Get detailed parameter info for a tool or app before using it.',
-            'icon' => 'ph:info',
+            'name' => 'List Lua API Docs',
+            'description' => 'List available Lua scripting API namespaces and functions.',
+            'icon' => 'ph:list-bullets',
+        ],
+        'lua_search_docs' => [
+            'class' => Lua\LuaSearchDocs::class,
+            'type' => 'read',
+            'name' => 'Search Lua API Docs',
+            'description' => 'Search the Lua scripting API documentation by keyword.',
+            'icon' => 'ph:magnifying-glass',
+        ],
+        'lua_read_doc' => [
+            'class' => Lua\LuaReadDoc::class,
+            'type' => 'read',
+            'name' => 'Read Lua API Doc',
+            'description' => 'Read detailed Lua API documentation for a namespace, function, or guide.',
+            'icon' => 'ph:book-open-text',
+        ],
+        'lua_exec' => [
+            'class' => Lua\LuaExec::class,
+            'type' => 'write',
+            'name' => 'Execute Lua Code',
+            'description' => 'Execute Lua code in a sandboxed environment and return the output.',
+            'icon' => 'ph:play',
         ],
         // Control Flow
         'wait_for_approval' => [
@@ -442,6 +468,20 @@ class ToolRegistry
             }
         }
         return $this->effectiveToolMap;
+    }
+
+    /**
+     * Look up a tool's icon by its class basename (e.g. "SendChannelMessage").
+     */
+    public function getIconByClassName(string $className): string
+    {
+        foreach ($this->getEffectiveToolMap() as $meta) {
+            if (class_basename($meta['class']) === $className) {
+                return $meta['icon'] ?? 'ph:wrench';
+            }
+        }
+
+        return 'ph:wrench';
     }
 
     /** @return array<string, array<string, mixed>> */
@@ -770,7 +810,7 @@ class ToolRegistry
 
         // Display order grouped by priority, null = section separator
         // Start with known apps, then append any dynamic provider apps
-        $knownIntegrations = ['svg'];
+        $knownIntegrations = ['svg', 'lua'];
         $providerApps = array_keys($this->providerRegistry->all());
         $integrations = array_unique(array_merge($providerApps, $knownIntegrations));
 
@@ -831,6 +871,11 @@ class ToolRegistry
             $approval = $hasApproval ? ' *' : '';
             $lines[] = "{$appName}: {$group['label']} — {$group['description']}{$approval}";
             $lastWasSeparator = false;
+
+            // After lua line, append the Lua API namespace summary
+            if ($appName === 'lua') {
+                $lines[] = app(\App\Services\LuaApiDocGenerator::class)->getNamespaceSummary($agent);
+            }
         }
 
         // Trim trailing blank lines
@@ -841,103 +886,6 @@ class ToolRegistry
         return implode("\n", $lines);
     }
 
-    /**
-     * Get detailed info about a tool or app for the get_tool_info meta-tool.
-     */
-    public function getToolDetail(string $query, User $agent): string
-    {
-        // Check if query matches an app name
-        $queryLower = strtolower(trim($query));
-        if (isset($this->getEffectiveAppGroups()[$queryLower])) {
-            return $this->getAppDetail($queryLower, $agent);
-        }
-
-        // Check if query matches a tool slug
-        if (isset($this->getEffectiveToolMap()[$queryLower])) {
-            return $this->getSingleToolDetail($queryLower, $agent);
-        }
-
-        // Fuzzy search — try to find a matching tool
-        foreach ($this->getEffectiveToolMap() as $slug => $meta) {
-            if (str_contains($slug, $queryLower) || str_contains(strtolower($meta['name']), $queryLower)) {
-                return $this->getSingleToolDetail($slug, $agent);
-            }
-        }
-
-        // List available apps
-        $apps = implode(', ', array_keys($this->getEffectiveAppGroups()));
-        $tools = implode(', ', array_keys($this->getEffectiveToolMap()));
-        return "Not found: '{$query}'. Available apps: {$apps}. Or query a specific tool: {$tools}";
-    }
-
-    private function getAppDetail(string $appName, User $agent): string
-    {
-        $group = $this->getEffectiveAppGroups()[$appName];
-        $lines = ["App: {$appName} — {$group['description']}", '', 'Tools:'];
-
-        foreach ($group['tools'] as $slug) {
-            if (!isset($this->getEffectiveToolMap()[$slug])) {
-                continue;
-            }
-            $meta = $this->getEffectiveToolMap()[$slug];
-            $perm = $this->permissionService->resolveToolPermission($agent, $slug, $meta['type']);
-
-            if (!$perm['allowed']) {
-                continue;
-            }
-
-            $approval = $perm['requires_approval'] ? ' (requires approval)' : '';
-            $tool = $this->instantiateTool($meta['class'], $agent, $slug);
-            $schema = $tool->schema(new \Illuminate\JsonSchema\JsonSchemaTypeFactory);
-
-            $params = [];
-            foreach ($schema as $paramName => $paramSchema) {
-                $arr = method_exists($paramSchema, 'toArray') ? $paramSchema->toArray() : [];
-                $required = !empty($arr['required']) ? ', required' : '';
-                $desc = $arr['description'] ?? '';
-                $params[] = "      {$paramName}{$required}" . ($desc ? " — {$desc}" : '');
-            }
-
-            $lines[] = "  {$slug} ({$meta['type']}){$approval} — {$meta['description']}";
-            if (!empty($params)) {
-                $lines[] = "    Params:";
-                $lines = array_merge($lines, $params);
-            }
-            $lines[] = '';
-        }
-
-        return implode("\n", $lines);
-    }
-
-    private function getSingleToolDetail(string $slug, User $agent): string
-    {
-        $meta = $this->getEffectiveToolMap()[$slug];
-        $perm = $this->permissionService->resolveToolPermission($agent, $slug, $meta['type']);
-
-        if (!$perm['allowed']) {
-            return "You do not have permission to use '{$slug}'.";
-        }
-
-        $approval = $perm['requires_approval'] ? 'yes' : 'no';
-        $tool = $this->instantiateTool($meta['class'], $agent, $slug);
-        $schema = $tool->schema(new \Illuminate\JsonSchema\JsonSchemaTypeFactory);
-
-        $lines = [
-            "{$slug} — {$meta['description']}",
-            "Type: {$meta['type']} | Requires approval: {$approval}",
-            '',
-            'Parameters:',
-        ];
-
-        foreach ($schema as $paramName => $paramSchema) {
-            $arr = method_exists($paramSchema, 'toArray') ? $paramSchema->toArray() : [];
-            $required = !empty($arr['required']) ? ' (required)' : '';
-            $desc = $arr['description'] ?? '';
-            $lines[] = "  {$paramName}{$required}" . ($desc ? " — {$desc}" : '');
-        }
-
-        return implode("\n", $lines);
-    }
 
     /**
      * Instantiate a tool class with the appropriate constructor arguments.
@@ -975,7 +923,6 @@ class ToolRegistry
             CommentOnDocument::class => new CommentOnDocument($agent, $this->permissionService),
             QueryDocuments::class => new QueryDocuments($agent, $this->permissionService),
             ListChannels::class => new ListChannels($agent, $this->permissionService),
-            GetToolInfo::class => new GetToolInfo($agent, $this),
             // Tools needing only agent
             QueryTable::class => new QueryTable($agent),
             ManageTable::class => new ManageTable($agent),
@@ -988,6 +935,16 @@ class ToolRegistry
             UpdateCurrentTask::class => new UpdateCurrentTask($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
             RenderSvg::class => new RenderSvg(),
+            // Lua scripting
+            Lua\LuaListDocs::class => new Lua\LuaListDocs(app(\App\Services\LuaApiDocGenerator::class), $agent),
+            Lua\LuaSearchDocs::class => new Lua\LuaSearchDocs(app(\App\Services\LuaApiDocGenerator::class), $agent),
+            Lua\LuaReadDoc::class => new Lua\LuaReadDoc(app(\App\Services\LuaApiDocGenerator::class), $agent),
+            Lua\LuaExec::class => new Lua\LuaExec(
+                app(\App\Services\LuaSandboxService::class),
+                $this,
+                app(\App\Services\LuaApiDocGenerator::class),
+                $agent,
+            ),
             WaitForApproval::class => new WaitForApproval($agent),
             Wait::class => new Wait($agent),
             // Workspace Management

@@ -21,7 +21,6 @@ class AgentPermissionService
         'wait',
         'update_current_task',
         'create_task_step',
-        'get_tool_info',
         'contact_agent',
     ];
 

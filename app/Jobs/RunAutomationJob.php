@@ -210,6 +210,8 @@ class RunAutomationJob implements ShouldQueue
 
     private function logToolSteps(Task $task, AgentResponse $response): void
     {
+        $toolRegistry = app(\App\Agents\Tools\ToolRegistry::class);
+
         foreach ($response->steps as $step) {
             $resultsByCallId = [];
             foreach ($step->toolResults as $toolResult) {
@@ -218,6 +220,11 @@ class RunAutomationJob implements ShouldQueue
 
             foreach ($step->toolCalls as $toolCall) {
                 $result = $resultsByCallId[$toolCall->id] ?? null;
+
+                // Extract LuaExec structured metadata before truncation
+                $extracted = \App\Support\LuaMetaParser::extract($result);
+                $luaMeta = $extracted['meta'];
+                $result = $extracted['result'];
 
                 if (is_string($result) && strlen($result) > 2000) {
                     $result = mb_strcut($result, 0, 2000, 'UTF-8').'... [truncated]';
@@ -230,11 +237,13 @@ class RunAutomationJob implements ShouldQueue
                 $toolStep = $task->addStep(
                     "Used tool: {$toolCall->name}",
                     'action',
-                    [
+                    array_filter([
                         'tool' => $toolCall->name,
+                        'icon' => $toolRegistry->getIconByClassName($toolCall->name),
                         'arguments' => $toolCall->arguments,
                         'result' => $result,
-                    ]
+                        'lua_meta' => $luaMeta,
+                    ])
                 );
                 $toolStep->start();
                 $toolStep->complete();

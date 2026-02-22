@@ -342,12 +342,12 @@ Added as a section in `OpenCompanyAgent::buildSections()`, after the Apps catalo
 ```
 ## Skills
 
-Invoke with $skill-name or use_skill tool. Use get_tool_info("skills") for details.
+Invoke with $skill-name or use_skill tool.
 
 create-skill — Guide for creating new skills with proper structure and arguments
 ```
 
-One line per skill. Costs ~10 tokens per skill. Capped at 30 skills in the catalog; beyond that, show "... and N more (use get_tool_info('skills') to list all)". Initially only `create-skill` appears; user/agent-created skills populate the catalog over time.
+One line per skill. Costs ~10 tokens per skill. Capped at 30 skills in the catalog; beyond that, show "... and N more". Initially only `create-skill` appears; user/agent-created skills populate the catalog over time.
 
 ### Active skill (injected on invocation)
 
@@ -563,8 +563,7 @@ public function renderSkillContent(Skill $skill, array $arguments = []): string
 18. Skill usage analytics (invocation count per skill)
 19. "Reset to default" for builtin skills
 20. Skill argument validation + error messages in chat
-21. `get_tool_info("skills")` support in ToolRegistry
-22. Skill categories filter on management page
+21. Skill categories filter on management page
 
 ---
 
