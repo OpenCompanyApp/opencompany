@@ -45,11 +45,11 @@ class LuaApiDocGeneratorTest extends TestCase
     {
         $map = $this->generator->buildFunctionMap($this->agent);
 
-        $this->assertArrayHasKey('calendar.query', $map);
-        $this->assertEquals('query_calendar', $map['calendar.query']);
+        $this->assertArrayHasKey('calendar.list_events', $map);
+        $this->assertEquals('list_calendar_events', $map['calendar.list_events']);
 
-        $this->assertArrayHasKey('calendar.manage_event', $map);
-        $this->assertEquals('manage_calendar_event', $map['calendar.manage_event']);
+        $this->assertArrayHasKey('calendar.create_event', $map);
+        $this->assertEquals('create_calendar_event', $map['calendar.create_event']);
 
         $this->assertArrayHasKey('chat.send_channel_message', $map);
         $this->assertEquals('send_channel_message', $map['chat.send_channel_message']);
@@ -136,7 +136,7 @@ class LuaApiDocGeneratorTest extends TestCase
         $docs = $this->generator->generateNamespaceDocs('calendar', $this->agent);
 
         $this->assertStringContainsString('| Parameter | Type | Required | Description |', $docs);
-        $this->assertStringContainsString('action', $docs);
+        $this->assertStringContainsString('eventId', $docs);
     }
 
     public function test_generate_namespace_docs_unknown_namespace(): void
@@ -146,28 +146,31 @@ class LuaApiDocGeneratorTest extends TestCase
         $this->assertStringContainsString("Namespace 'bogus' not found", $docs);
     }
 
-    // ── Action non-decomposition ─────────────────────────────────
+    // ── Atomic calendar tools ─────────────────────────────────
 
-    public function test_action_tools_are_not_decomposed(): void
+    public function test_atomic_calendar_tools_appear_separately(): void
     {
         $map = $this->generator->buildFunctionMap($this->agent);
 
-        // QueryCalendar supports list_events and get_event actions, but should
-        // appear as a single entry, not decomposed into separate functions
-        $calendarEntries = array_filter(
+        // Each atomic calendar tool should appear as its own entry
+        $calendarSlugs = array_filter(
             $map,
-            fn ($slug) => $slug === 'query_calendar',
+            fn ($slug) => str_contains($slug, 'calendar'),
         );
 
-        $this->assertCount(1, $calendarEntries, 'QueryCalendar should have exactly ONE function entry, not one per action');
+        $this->assertContains('list_calendar_events', $calendarSlugs);
+        $this->assertContains('get_calendar_event', $calendarSlugs);
+        $this->assertContains('create_calendar_event', $calendarSlugs);
+        $this->assertContains('update_calendar_event', $calendarSlugs);
+        $this->assertContains('delete_calendar_event', $calendarSlugs);
     }
 
-    public function test_action_param_appears_in_generated_docs(): void
+    public function test_calendar_docs_contain_event_id_param(): void
     {
         $docs = $this->generator->generateNamespaceDocs('calendar', $this->agent);
 
-        // The action parameter should be listed as required
-        $this->assertMatchesRegularExpression('/\| action \| string \| yes \|/', $docs);
+        // The eventId parameter should be listed as required on get/update/delete tools
+        $this->assertMatchesRegularExpression('/\| eventId \| string \| yes \|/', $docs);
     }
 
     public function test_all_function_names_are_valid_lua_identifiers(): void

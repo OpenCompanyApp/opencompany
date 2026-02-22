@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Tables\QueryTable;
+use App\Agents\Tools\Tables\GetTable;
+use App\Agents\Tools\Tables\GetTableRows;
+use App\Agents\Tools\Tables\ListTables;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
@@ -15,13 +17,6 @@ class QueryTableTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeTool(?User $agent = null): QueryTable
-    {
-        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
-
-        return new QueryTable($agent);
-    }
-
     public function test_lists_all_tables(): void
     {
         $agent = User::factory()->create(['type' => 'agent']);
@@ -32,8 +27,8 @@ class QueryTableTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        $tool = new QueryTable($agent);
-        $request = new Request(['action' => 'list_tables']);
+        $tool = new ListTables($agent);
+        $request = new Request([]);
 
         $result = $tool->handle($request);
 
@@ -67,8 +62,8 @@ class QueryTableTest extends TestCase
             'required' => false,
         ]);
 
-        $tool = new QueryTable($agent);
-        $request = new Request(['action' => 'get_table', 'tableId' => $table->id]);
+        $tool = new GetTable($agent);
+        $request = new Request(['tableId' => $table->id]);
 
         $result = $tool->handle($request);
 
@@ -95,8 +90,8 @@ class QueryTableTest extends TestCase
             'created_by' => $agent->id,
         ]);
 
-        $tool = new QueryTable($agent);
-        $request = new Request(['action' => 'get_rows', 'tableId' => $table->id]);
+        $tool = new GetTableRows($agent);
+        $request = new Request(['tableId' => $table->id]);
 
         $result = $tool->handle($request);
 
@@ -107,18 +102,25 @@ class QueryTableTest extends TestCase
 
     public function test_returns_empty_when_no_tables(): void
     {
-        $tool = $this->makeTool();
-        $request = new Request(['action' => 'list_tables']);
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new ListTables($agent);
+        $request = new Request([]);
 
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('No data tables found', $result);
     }
 
-    public function test_has_correct_description(): void
+    public function test_has_correct_descriptions(): void
     {
-        $tool = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
 
-        $this->assertStringContainsString('Query data tables', $tool->description());
+        $listTool = new ListTables($agent);
+        $getTool = new GetTable($agent);
+        $getRowsTool = new GetTableRows($agent);
+
+        $this->assertStringContainsString('List all data tables', $listTool->description());
+        $this->assertStringContainsString('structure', $getTool->description());
+        $this->assertStringContainsString('rows', $getRowsTool->description());
     }
 }

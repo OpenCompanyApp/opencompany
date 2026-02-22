@@ -2,7 +2,8 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Calendar\QueryCalendar;
+use App\Agents\Tools\Calendar\GetCalendarEvent;
+use App\Agents\Tools\Calendar\ListCalendarEvents;
 use App\Models\CalendarEvent;
 use App\Models\CalendarEventAttendee;
 use App\Models\User;
@@ -14,17 +15,25 @@ class QueryCalendarTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeTool(?User $agent = null): array
+    private function makeListTool(?User $agent = null): array
     {
         $agent = $agent ?? User::factory()->create(['type' => 'agent']);
-        $tool = new QueryCalendar($agent);
+        $tool = new ListCalendarEvents($agent);
+
+        return [$tool, $agent];
+    }
+
+    private function makeGetTool(?User $agent = null): array
+    {
+        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
+        $tool = new GetCalendarEvent($agent);
 
         return [$tool, $agent];
     }
 
     public function test_lists_events(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        [$tool, $agent] = $this->makeListTool();
 
         CalendarEvent::create([
             'title' => 'Team Standup',
@@ -35,7 +44,7 @@ class QueryCalendarTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        $request = new Request(['action' => 'list_events']);
+        $request = new Request([]);
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('Team Standup', $result);
@@ -44,7 +53,7 @@ class QueryCalendarTest extends TestCase
 
     public function test_gets_event_details(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        [$tool, $agent] = $this->makeGetTool();
 
         $event = CalendarEvent::create([
             'title' => 'Sprint Planning',
@@ -64,7 +73,7 @@ class QueryCalendarTest extends TestCase
             'status' => 'accepted',
         ]);
 
-        $request = new Request(['action' => 'get_event', 'eventId' => $event->id]);
+        $request = new Request(['eventId' => $event->id]);
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('Event: Sprint Planning', $result);
@@ -76,7 +85,7 @@ class QueryCalendarTest extends TestCase
 
     public function test_filters_by_date_range(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        [$tool, $agent] = $this->makeListTool();
 
         CalendarEvent::create([
             'title' => 'Early Meeting',
@@ -97,7 +106,6 @@ class QueryCalendarTest extends TestCase
         ]);
 
         $request = new Request([
-            'action' => 'list_events',
             'startDate' => '2026-03-01',
             'endDate' => '2026-03-31',
         ]);
@@ -109,18 +117,25 @@ class QueryCalendarTest extends TestCase
 
     public function test_returns_empty_when_no_events(): void
     {
-        [$tool] = $this->makeTool();
+        [$tool] = $this->makeListTool();
 
-        $request = new Request(['action' => 'list_events']);
+        $request = new Request([]);
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('No calendar events found', $result);
     }
 
-    public function test_has_correct_description(): void
+    public function test_list_has_correct_description(): void
     {
-        [$tool] = $this->makeTool();
+        [$tool] = $this->makeListTool();
 
-        $this->assertStringContainsString('Query calendar events', $tool->description());
+        $this->assertStringContainsString('List calendar events', $tool->description());
+    }
+
+    public function test_get_has_correct_description(): void
+    {
+        [$tool] = $this->makeGetTool();
+
+        $this->assertStringContainsString('Get detailed information', $tool->description());
     }
 }

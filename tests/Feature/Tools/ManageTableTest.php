@@ -2,7 +2,11 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Tables\ManageTable;
+use App\Agents\Tools\Tables\AddTableColumn;
+use App\Agents\Tools\Tables\CreateTable;
+use App\Agents\Tools\Tables\DeleteTable;
+use App\Agents\Tools\Tables\DeleteTableColumn;
+use App\Agents\Tools\Tables\UpdateTable;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\User;
@@ -14,19 +18,12 @@ class ManageTableTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeTool(?User $agent = null): ManageTable
-    {
-        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
-
-        return new ManageTable($agent);
-    }
-
     public function test_creates_table(): void
     {
         $agent = User::factory()->create(['type' => 'agent']);
-        $tool = new ManageTable($agent);
+        $tool = new CreateTable($agent);
 
-        $request = new Request(['action' => 'create_table', 'name' => 'Projects']);
+        $request = new Request(['name' => 'Projects']);
 
         $result = $tool->handle($request);
 
@@ -48,9 +45,8 @@ class ManageTableTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        $tool = new ManageTable($agent);
+        $tool = new UpdateTable($agent);
         $request = new Request([
-            'action' => 'update_table',
             'tableId' => $table->id,
             'name' => 'New Name',
         ]);
@@ -74,15 +70,14 @@ class ManageTableTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        $tool = new ManageTable($agent);
+        $tool = new DeleteTable($agent);
         $request = new Request([
-            'action' => 'delete_table',
             'tableId' => $table->id,
         ]);
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString("Table 'To Delete' deleted", $result);
+        $this->assertStringContainsString('Table To Delete deleted', $result);
         $this->assertDatabaseMissing('data_tables', [
             'id' => $table->id,
         ]);
@@ -98,9 +93,8 @@ class ManageTableTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        $tool = new ManageTable($agent);
+        $tool = new AddTableColumn($agent);
         $request = new Request([
-            'action' => 'add_column',
             'tableId' => $table->id,
             'name' => 'Status',
             'columnType' => 'select',
@@ -108,7 +102,7 @@ class ManageTableTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString("Column 'Status' added", $result);
+        $this->assertStringContainsString('Column Status added', $result);
         $this->assertDatabaseHas('data_table_columns', [
             'table_id' => $table->id,
             'name' => 'Status',
@@ -134,9 +128,8 @@ class ManageTableTest extends TestCase
             'required' => false,
         ]);
 
-        $tool = new ManageTable($agent);
+        $tool = new DeleteTableColumn($agent);
         $request = new Request([
-            'action' => 'delete_column',
             'columnId' => $column->id,
         ]);
 
@@ -148,10 +141,20 @@ class ManageTableTest extends TestCase
         ]);
     }
 
-    public function test_has_correct_description(): void
+    public function test_has_correct_descriptions(): void
     {
-        $tool = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
 
-        $this->assertStringContainsString('Create, update, or delete data tables', $tool->description());
+        $createTool = new CreateTable($agent);
+        $updateTool = new UpdateTable($agent);
+        $deleteTool = new DeleteTable($agent);
+        $addColumnTool = new AddTableColumn($agent);
+        $deleteColumnTool = new DeleteTableColumn($agent);
+
+        $this->assertStringContainsString('Create a new data table', $createTool->description());
+        $this->assertStringContainsString('Update an existing data table', $updateTool->description());
+        $this->assertStringContainsString('Delete a data table', $deleteTool->description());
+        $this->assertStringContainsString('Add a new column', $addColumnTool->description());
+        $this->assertStringContainsString('Delete a column', $deleteColumnTool->description());
     }
 }

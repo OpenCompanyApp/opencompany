@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Lists\QueryListItems;
+use App\Agents\Tools\Lists\GetListItem;
+use App\Agents\Tools\Lists\ListAllItems;
+use App\Agents\Tools\Lists\ListItemsByAssignee;
+use App\Agents\Tools\Lists\ListItemsByStatus;
 use App\Models\ListItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,14 +32,6 @@ class QueryListItemsTest extends TestCase
         ]);
     }
 
-    private function makeTool(?User $agent = null): array
-    {
-        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
-        $tool = new QueryListItems($agent);
-
-        return [$tool, $agent];
-    }
-
     private function createListItem(array $attributes = []): ListItem
     {
         return ListItem::create(array_merge([
@@ -52,12 +47,13 @@ class QueryListItemsTest extends TestCase
 
     public function test_lists_all_items(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new ListAllItems($agent);
 
         $this->createListItem(['title' => 'Fix login bug', 'assignee_id' => $agent->id]);
         $this->createListItem(['title' => 'Update docs', 'assignee_id' => $agent->id]);
 
-        $request = new Request(['action' => 'list_all', 'parentId' => $this->folder->id]);
+        $request = new Request(['parentId' => $this->folder->id]);
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('Fix login bug', $result);
@@ -67,7 +63,8 @@ class QueryListItemsTest extends TestCase
 
     public function test_gets_item_details(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new GetListItem($agent);
 
         $item = $this->createListItem([
             'title' => 'Refactor auth',
@@ -78,7 +75,7 @@ class QueryListItemsTest extends TestCase
             'creator_id' => $agent->id,
         ]);
 
-        $request = new Request(['action' => 'get_item', 'listItemId' => $item->id]);
+        $request = new Request(['listItemId' => $item->id]);
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('Title: Refactor auth', $result);
@@ -89,12 +86,13 @@ class QueryListItemsTest extends TestCase
 
     public function test_lists_by_status(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new ListItemsByStatus($agent);
 
         $this->createListItem(['title' => 'Backlog Item', 'status' => 'backlog', 'assignee_id' => $agent->id]);
         $this->createListItem(['title' => 'Done Item', 'status' => 'done', 'assignee_id' => $agent->id]);
 
-        $request = new Request(['action' => 'list_by_status', 'status' => 'backlog']);
+        $request = new Request(['status' => 'backlog']);
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('Backlog Item', $result);
@@ -104,7 +102,8 @@ class QueryListItemsTest extends TestCase
 
     public function test_lists_by_assignee(): void
     {
-        [$tool] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new ListItemsByAssignee($agent);
 
         $assignee = User::factory()->create(['name' => 'Bob Builder']);
         $otherUser = User::factory()->create();
@@ -112,7 +111,7 @@ class QueryListItemsTest extends TestCase
         $this->createListItem(['title' => 'Bob Task', 'assignee_id' => $assignee->id]);
         $this->createListItem(['title' => 'Other Task', 'assignee_id' => $otherUser->id]);
 
-        $request = new Request(['action' => 'list_by_assignee', 'assigneeId' => $assignee->id]);
+        $request = new Request(['assigneeId' => $assignee->id]);
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('Bob Task', $result);
@@ -120,10 +119,11 @@ class QueryListItemsTest extends TestCase
         $this->assertStringContainsString('Bob Builder', $result);
     }
 
-    public function test_has_correct_description(): void
+    public function test_list_all_items_has_correct_description(): void
     {
-        [$tool] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new ListAllItems($agent);
 
-        $this->assertStringContainsString('Query list items', $tool->description());
+        $this->assertStringContainsString('List all list items', $tool->description());
     }
 }

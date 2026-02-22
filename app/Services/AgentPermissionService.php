@@ -19,7 +19,10 @@ class AgentPermissionService
     private const APPROVAL_EXEMPT_TOOLS = [
         'wait_for_approval',
         'wait',
-        'update_current_task',
+        'update_task',
+        'add_task_step',
+        'update_task_step',
+        'set_task_status',
         'create_task_step',
         'contact_agent',
     ];

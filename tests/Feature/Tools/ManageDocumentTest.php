@@ -2,11 +2,15 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Docs\ManageDocument;
+use App\Agents\Tools\Docs\CreateDocument;
+use App\Agents\Tools\Docs\DeleteDocument;
+use App\Agents\Tools\Docs\UpdateDocument;
+use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
@@ -14,20 +18,14 @@ class ManageDocumentTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeTool(?User $agent = null): array
-    {
-        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
-        $tool = new ManageDocument($agent, app(AgentPermissionService::class));
-
-        return [$tool, $agent];
-    }
-
     public function test_creates_document(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        Bus::fake([IndexDocumentJob::class]);
+
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new CreateDocument($agent, app(AgentPermissionService::class));
 
         $request = new Request([
-            'action' => 'create',
             'title' => 'Test Doc',
             'content' => 'Hello',
         ]);
@@ -46,12 +44,14 @@ class ManageDocumentTest extends TestCase
 
     public function test_updates_document(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        Bus::fake([IndexDocumentJob::class]);
+
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new UpdateDocument($agent, app(AgentPermissionService::class));
 
         $document = Document::factory()->create(['author_id' => $agent->id]);
 
         $request = new Request([
-            'action' => 'update',
             'documentId' => $document->id,
             'title' => 'New Title',
         ]);
@@ -67,13 +67,15 @@ class ManageDocumentTest extends TestCase
 
     public function test_deletes_document(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        Bus::fake([IndexDocumentJob::class]);
+
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new DeleteDocument($agent, app(AgentPermissionService::class));
 
         $document = Document::factory()->create(['author_id' => $agent->id]);
         $documentId = $document->id;
 
         $request = new Request([
-            'action' => 'delete',
             'documentId' => $documentId,
         ]);
 
@@ -85,10 +87,10 @@ class ManageDocumentTest extends TestCase
 
     public function test_creates_folder(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new CreateDocument($agent, app(AgentPermissionService::class));
 
         $request = new Request([
-            'action' => 'create',
             'title' => 'My Folder',
             'isFolder' => true,
         ]);
@@ -103,10 +105,17 @@ class ManageDocumentTest extends TestCase
         $this->assertTrue($folder->is_folder);
     }
 
-    public function test_has_correct_description(): void
+    public function test_has_correct_descriptions(): void
     {
-        [$tool] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $permissionService = app(AgentPermissionService::class);
 
-        $this->assertStringContainsString('Create, update, or delete', $tool->description());
+        $createTool = new CreateDocument($agent, $permissionService);
+        $updateTool = new UpdateDocument($agent, $permissionService);
+        $deleteTool = new DeleteDocument($agent, $permissionService);
+
+        $this->assertStringContainsString('Create a new workspace document', $createTool->description());
+        $this->assertStringContainsString('Update an existing workspace document', $updateTool->description());
+        $this->assertStringContainsString('Delete a workspace document', $deleteTool->description());
     }
 }

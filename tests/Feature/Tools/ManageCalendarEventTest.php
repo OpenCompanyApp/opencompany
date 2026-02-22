@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Calendar\ManageCalendarEvent;
+use App\Agents\Tools\Calendar\CreateCalendarEvent;
+use App\Agents\Tools\Calendar\DeleteCalendarEvent;
+use App\Agents\Tools\Calendar\UpdateCalendarEvent;
 use App\Models\CalendarEvent;
 use App\Models\CalendarEventAttendee;
 use App\Models\User;
@@ -14,20 +16,35 @@ class ManageCalendarEventTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeTool(?User $agent = null): array
+    private function makeCreateTool(?User $agent = null): array
     {
         $agent = $agent ?? User::factory()->create(['type' => 'agent']);
-        $tool = new ManageCalendarEvent($agent);
+        $tool = new CreateCalendarEvent($agent);
+
+        return [$tool, $agent];
+    }
+
+    private function makeUpdateTool(?User $agent = null): array
+    {
+        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
+        $tool = new UpdateCalendarEvent($agent);
+
+        return [$tool, $agent];
+    }
+
+    private function makeDeleteTool(?User $agent = null): array
+    {
+        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
+        $tool = new DeleteCalendarEvent($agent);
 
         return [$tool, $agent];
     }
 
     public function test_creates_event(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        [$tool, $agent] = $this->makeCreateTool();
 
         $request = new Request([
-            'action' => 'create',
             'title' => 'Weekly Sync',
             'startAt' => '2026-02-10T10:00:00Z',
             'endAt' => '2026-02-10T11:00:00Z',
@@ -45,13 +62,12 @@ class ManageCalendarEventTest extends TestCase
 
     public function test_creates_event_with_attendees(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        [$tool, $agent] = $this->makeCreateTool();
 
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
 
         $request = new Request([
-            'action' => 'create',
             'title' => 'Team Retro',
             'startAt' => '2026-02-11T14:00:00Z',
             'attendeeIds' => "{$user1->id},{$user2->id}",
@@ -72,7 +88,7 @@ class ManageCalendarEventTest extends TestCase
 
     public function test_updates_event(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        [$tool, $agent] = $this->makeUpdateTool();
 
         $event = CalendarEvent::create([
             'title' => 'Old Title',
@@ -84,7 +100,6 @@ class ManageCalendarEventTest extends TestCase
         ]);
 
         $request = new Request([
-            'action' => 'update',
             'eventId' => $event->id,
             'title' => 'Updated Title',
         ]);
@@ -99,7 +114,7 @@ class ManageCalendarEventTest extends TestCase
 
     public function test_deletes_event(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        [$tool, $agent] = $this->makeDeleteTool();
 
         $event = CalendarEvent::create([
             'title' => 'To Be Deleted',
@@ -113,7 +128,6 @@ class ManageCalendarEventTest extends TestCase
         $eventId = $event->id;
 
         $request = new Request([
-            'action' => 'delete',
             'eventId' => $eventId,
         ]);
 
@@ -124,10 +138,24 @@ class ManageCalendarEventTest extends TestCase
         $this->assertNull(CalendarEvent::find($eventId));
     }
 
-    public function test_has_correct_description(): void
+    public function test_create_has_correct_description(): void
     {
-        [$tool] = $this->makeTool();
+        [$tool] = $this->makeCreateTool();
 
-        $this->assertStringContainsString('Create, update, or delete calendar events', $tool->description());
+        $this->assertStringContainsString('Create a new calendar event', $tool->description());
+    }
+
+    public function test_update_has_correct_description(): void
+    {
+        [$tool] = $this->makeUpdateTool();
+
+        $this->assertStringContainsString('Update an existing calendar event', $tool->description());
+    }
+
+    public function test_delete_has_correct_description(): void
+    {
+        [$tool] = $this->makeDeleteTool();
+
+        $this->assertStringContainsString('Delete a calendar event', $tool->description());
     }
 }

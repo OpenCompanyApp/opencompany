@@ -203,17 +203,17 @@ class LuaBridgeTest extends TestCase
 
         $bridge = $this->makeBridge([
             'chat.send' => 'send_channel_message',
-            'docs.query' => 'query_documents',
+            'docs.list' => 'list_documents',
         ], $registry);
 
         $bridge->call('chat.send', ['content' => 'a']);
-        $bridge->call('docs.query', ['action' => 'list']);
+        $bridge->call('docs.list', []);
         $bridge->call('chat.send', ['content' => 'b']);
 
         $log = $bridge->getCallLog();
         $this->assertCount(3, $log);
         $this->assertEquals('chat.send', $log[0]['path']);
-        $this->assertEquals('docs.query', $log[1]['path']);
+        $this->assertEquals('docs.list', $log[1]['path']);
         $this->assertEquals('chat.send', $log[2]['path']);
     }
 }

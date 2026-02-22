@@ -2,46 +2,126 @@
 
 namespace App\Agents\Tools;
 
-use App\Agents\Tools\Calendar\ManageCalendarEvent;
-use App\Agents\Tools\Calendar\QueryCalendar;
+use App\Agents\Tools\Agents\ContactAgent;
+use App\Agents\Tools\Calendar\CreateCalendarEvent;
+use App\Agents\Tools\Calendar\DeleteCalendarEvent;
+use App\Agents\Tools\Calendar\GetCalendarEvent;
+use App\Agents\Tools\Calendar\ListCalendarEvents;
+use App\Agents\Tools\Calendar\UpdateCalendarEvent;
 use App\Agents\Tools\Charts\RenderSvg;
-use App\Agents\Tools\Chat\DiscoverExternalChannels;
+use App\Agents\Tools\Chat\AddMessageReaction;
+use App\Agents\Tools\Chat\DeleteMessage;
+use App\Agents\Tools\Chat\EditMessage;
+use App\Agents\Tools\Chat\JoinExternalChannel;
+use App\Agents\Tools\Chat\LeaveExternalChannel;
 use App\Agents\Tools\Chat\ListChannels;
-use App\Agents\Tools\Chat\ManageMessage;
-use App\Agents\Tools\Chat\ReadChannel;
+use App\Agents\Tools\Chat\ListExternalChannels;
+use App\Agents\Tools\Chat\PinMessage;
+use App\Agents\Tools\Chat\ReadPinnedMessages;
+use App\Agents\Tools\Chat\ReadRecentMessages;
+use App\Agents\Tools\Chat\ReadThread;
+use App\Agents\Tools\Chat\RemoveMessageReaction;
 use App\Agents\Tools\Chat\SearchMessages;
 use App\Agents\Tools\Chat\SendChannelMessage;
-use App\Agents\Tools\Docs\CommentOnDocument;
-use App\Agents\Tools\Docs\ManageDocument;
-use App\Agents\Tools\Docs\QueryDocuments;
+use App\Agents\Tools\Docs\AddDocumentComment;
+use App\Agents\Tools\Docs\CreateDocument;
+use App\Agents\Tools\Docs\DeleteDocument;
+use App\Agents\Tools\Docs\DeleteDocumentComment;
+use App\Agents\Tools\Docs\GetDocument;
+use App\Agents\Tools\Docs\GetDocumentTree;
+use App\Agents\Tools\Docs\ListDocuments;
+use App\Agents\Tools\Docs\ResolveDocumentComment;
 use App\Agents\Tools\Docs\SearchDocuments;
+use App\Agents\Tools\Docs\UpdateDocument;
+use App\Agents\Tools\Lists\AddListItemComment;
+use App\Agents\Tools\Lists\CreateListItem;
+use App\Agents\Tools\Lists\CreateListStatus;
+use App\Agents\Tools\Lists\DeleteListItem;
+use App\Agents\Tools\Lists\DeleteListItemComment;
+use App\Agents\Tools\Lists\DeleteListStatus;
+use App\Agents\Tools\Lists\GetListItem;
+use App\Agents\Tools\Lists\ListAllItems;
+use App\Agents\Tools\Lists\ListItemsByAssignee;
+use App\Agents\Tools\Lists\ListItemsByStatus;
+use App\Agents\Tools\Lists\ListItemStatuses;
+use App\Agents\Tools\Lists\ListProjects;
+use App\Agents\Tools\Lists\UpdateListItem;
+use App\Agents\Tools\Lists\UpdateListStatus;
 use App\Agents\Tools\Memory\RecallMemory;
 use App\Agents\Tools\Memory\SaveMemory;
-use App\Services\Memory\DocumentIndexingService;
-use App\Services\Memory\MemoryScopeGuard;
-use App\Agents\Tools\Lists\ManageListItem;
-use App\Agents\Tools\Lists\ManageListStatus;
-use App\Agents\Tools\Lists\QueryListItems;
 use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Agents\Tools\System\Wait;
 use App\Agents\Tools\System\WaitForApproval;
-use App\Agents\Tools\Tables\ManageTable;
-use App\Agents\Tools\Tables\ManageTableRows;
-use App\Agents\Tools\Tables\QueryTable;
+use App\Agents\Tools\Tables\AddTableColumn;
+use App\Agents\Tools\Tables\AddTableRow;
+use App\Agents\Tools\Tables\BulkAddTableRows;
+use App\Agents\Tools\Tables\CreateTable;
+use App\Agents\Tools\Tables\DeleteTable;
+use App\Agents\Tools\Tables\DeleteTableColumn;
+use App\Agents\Tools\Tables\DeleteTableRow;
+use App\Agents\Tools\Tables\GetTable;
+use App\Agents\Tools\Tables\GetTableRows;
+use App\Agents\Tools\Tables\ListTables;
+use App\Agents\Tools\Tables\SearchTableRows;
+use App\Agents\Tools\Tables\UpdateTable;
+use App\Agents\Tools\Tables\UpdateTableColumn;
+use App\Agents\Tools\Tables\UpdateTableRow;
+use App\Agents\Tools\Tasks\AddTaskStep;
 use App\Agents\Tools\Tasks\CreateTaskStep;
-use App\Agents\Tools\Tasks\UpdateCurrentTask;
-use App\Agents\Tools\Agents\ContactAgent;
-use App\Agents\Tools\Workspace\ManageAgent;
-use App\Agents\Tools\Workspace\ManageAgentPermissions;
-use App\Agents\Tools\Workspace\ManageAutomation;
-use App\Agents\Tools\Workspace\ManageChannel;
-use App\Agents\Tools\Workspace\ManageIntegration;
-use App\Agents\Tools\Workspace\ManageMcpServer;
-use App\Agents\Tools\Workspace\QueryWorkspace;
+use App\Agents\Tools\Tasks\SetTaskStatus;
+use App\Agents\Tools\Tasks\UpdateTask;
+use App\Agents\Tools\Tasks\UpdateTaskStep;
+use App\Agents\Tools\Workspace\AddChannelMember;
+use App\Agents\Tools\Workspace\AddMcpServer;
+use App\Agents\Tools\Workspace\CreateAgent;
+use App\Agents\Tools\Workspace\CreateAutomationRule;
+use App\Agents\Tools\Workspace\CreateChannel;
+use App\Agents\Tools\Workspace\CreateItemTemplate;
+use App\Agents\Tools\Workspace\CreateSchedule;
+use App\Agents\Tools\Workspace\DeleteAgent;
+use App\Agents\Tools\Workspace\DeleteAutomationRule;
+use App\Agents\Tools\Workspace\DeleteItemTemplate;
+use App\Agents\Tools\Workspace\DeleteSchedule;
+use App\Agents\Tools\Workspace\DisableSchedule;
+use App\Agents\Tools\Workspace\DiscoverMcpTools;
+use App\Agents\Tools\Workspace\EnableSchedule;
+use App\Agents\Tools\Workspace\GetAgentDetails;
+use App\Agents\Tools\Workspace\GetAgentPermissions;
+use App\Agents\Tools\Workspace\GetIntegrationConfig;
+use App\Agents\Tools\Workspace\GetIntegrationSetup;
+use App\Agents\Tools\Workspace\LinkExternalUser;
+use App\Agents\Tools\Workspace\ListAgents;
+use App\Agents\Tools\Workspace\ListAutomationRules;
+use App\Agents\Tools\Workspace\ListAvailableModels;
+use App\Agents\Tools\Workspace\ListIntegrations;
+use App\Agents\Tools\Workspace\ListMcpServers;
+use App\Agents\Tools\Workspace\ListMembers;
+use App\Agents\Tools\Workspace\ListSchedules;
+use App\Agents\Tools\Workspace\ReadAgentIdentityFile;
+use App\Agents\Tools\Workspace\RemoveChannelMember;
+use App\Agents\Tools\Workspace\RemoveMcpServer;
+use App\Agents\Tools\Workspace\SetupIntegrationWebhook;
+use App\Agents\Tools\Workspace\TestIntegrationConnection;
+use App\Agents\Tools\Workspace\TestMcpServer;
+use App\Agents\Tools\Workspace\TriggerSchedule;
+use App\Agents\Tools\Workspace\UpdateAgent;
+use App\Agents\Tools\Workspace\UpdateAgentIdentityFile;
+use App\Agents\Tools\Workspace\UpdateAgentChannelAccess;
+use App\Agents\Tools\Workspace\UpdateAgentFolderAccess;
+use App\Agents\Tools\Workspace\UpdateAgentIntegrationAccess;
+use App\Agents\Tools\Workspace\UpdateAgentToolPermissions;
+use App\Agents\Tools\Workspace\UpdateAutomationRule;
+use App\Agents\Tools\Workspace\UpdateIntegrationConfig;
+use App\Agents\Tools\Workspace\UpdateItemTemplate;
+use App\Agents\Tools\Workspace\UpdateMcpServer;
+use App\Agents\Tools\Workspace\UpdateSchedule;
 use App\Models\AppSetting;
 use App\Models\User;
+use App\Services\AgentAvatarService;
 use App\Services\AgentDocumentService;
 use App\Services\AgentPermissionService;
+use App\Services\Memory\DocumentIndexingService;
+use App\Services\Memory\MemoryScopeGuard;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class ToolRegistry
@@ -53,8 +133,8 @@ class ToolRegistry
     public const APP_GROUPS = [
         // System & task management
         'tasks' => [
-            'tools' => ['update_current_task', 'create_task_step'],
-            'label' => 'update, log_step',
+            'tools' => ['update_task', 'add_task_step', 'update_task_step', 'set_task_status', 'create_task_step'],
+            'label' => 'update, add_step, update_step, set_status',
             'description' => 'Work progress tracking',
         ],
         'system' => [
@@ -75,33 +155,43 @@ class ToolRegistry
             'description' => 'Long-term agent memory',
         ],
         'chat' => [
-            'tools' => ['send_channel_message', 'read_channel', 'list_channels', 'manage_message', 'search_messages', 'discover_external_channels'],
-            'label' => 'send, read, list, manage, search, discover',
+            'tools' => ['send_channel_message', 'read_recent_messages', 'read_thread', 'read_pinned_messages', 'list_channels', 'edit_message', 'delete_message', 'pin_message', 'add_message_reaction', 'remove_message_reaction', 'search_messages', 'list_external_channels', 'join_external_channel', 'leave_external_channel'],
+            'label' => 'send, read, list, edit, delete, pin, react, search, external',
             'description' => 'Channel messaging (incl. external: Telegram, Slack)',
         ],
         'docs' => [
-            'tools' => ['query_documents', 'search_documents', 'manage_document', 'comment_on_document'],
-            'label' => 'query, search, manage, comment',
+            'tools' => ['list_documents', 'get_document', 'get_document_tree', 'search_documents', 'create_document', 'update_document', 'delete_document', 'add_document_comment', 'resolve_document_comment', 'delete_document_comment'],
+            'label' => 'list, get, tree, search, create, update, delete, comment',
             'description' => 'Document workspace',
         ],
         'tables' => [
-            'tools' => ['query_table', 'manage_table', 'manage_table_rows'],
-            'label' => 'query, manage, rows',
+            'tools' => ['list_tables', 'get_table', 'get_table_rows', 'search_table_rows', 'create_table', 'update_table', 'delete_table', 'add_table_column', 'update_table_column', 'delete_table_column', 'add_table_row', 'update_table_row', 'delete_table_row', 'bulk_add_table_rows'],
+            'label' => 'list, get, search, create, update, delete, columns, rows',
             'description' => 'Structured data tables',
         ],
         'calendar' => [
-            'tools' => ['query_calendar', 'manage_calendar_event'],
-            'label' => 'query, manage',
+            'tools' => ['list_calendar_events', 'get_calendar_event', 'create_calendar_event', 'update_calendar_event', 'delete_calendar_event'],
+            'label' => 'list, get, create, update, delete',
             'description' => 'Events and scheduling',
         ],
         'lists' => [
-            'tools' => ['query_list_items', 'manage_list_item', 'manage_list_status'],
-            'label' => 'query, manage items, manage statuses',
+            'tools' => ['list_all_items', 'get_list_item', 'list_items_by_status', 'list_items_by_assignee', 'list_projects', 'list_item_statuses', 'create_list_item', 'update_list_item', 'delete_list_item', 'add_list_item_comment', 'delete_list_item_comment', 'create_list_status', 'update_list_status', 'delete_list_status'],
+            'label' => 'list, get, filter, projects, statuses, create, update, delete, comments',
             'description' => 'Kanban board items and workflow statuses',
         ],
         'workspace' => [
-            'tools' => ['query_workspace', 'manage_agent', 'manage_agent_permissions', 'manage_integration', 'manage_mcp_server', 'manage_channel', 'manage_automation'],
-            'label' => 'query, agents, permissions, integrations, mcp_servers, channels, automation',
+            'tools' => [
+                'list_agents', 'list_members', 'get_agent_details', 'get_agent_permissions', 'list_integrations', 'get_integration_config', 'list_available_models', 'list_automation_rules',
+                'create_agent', 'update_agent', 'delete_agent', 'read_agent_identity_file', 'update_agent_identity_file',
+                'update_agent_tool_permissions', 'update_agent_channel_access', 'update_agent_folder_access', 'update_agent_integration_access',
+                'get_integration_setup', 'update_integration_config', 'test_integration_connection', 'setup_integration_webhook', 'link_external_user',
+                'list_mcp_servers', 'add_mcp_server', 'update_mcp_server', 'remove_mcp_server', 'test_mcp_server', 'discover_mcp_tools',
+                'create_channel', 'add_channel_member', 'remove_channel_member',
+                'create_automation_rule', 'update_automation_rule', 'delete_automation_rule',
+                'create_item_template', 'update_item_template', 'delete_item_template',
+                'create_schedule', 'update_schedule', 'delete_schedule', 'list_schedules', 'enable_schedule', 'disable_schedule', 'trigger_schedule',
+            ],
+            'label' => 'agents, members, permissions, integrations, mcp, channels, automation, schedules',
             'description' => 'Workspace management',
         ],
 
@@ -182,12 +272,26 @@ class ToolRegistry
             'description' => 'Send a message to any workspace channel, including external channels (Telegram, Slack). Messages to external channels are automatically delivered to the external platform.',
             'icon' => 'ph:chat-circle',
         ],
-        'read_channel' => [
-            'class' => ReadChannel::class,
+        'read_recent_messages' => [
+            'class' => ReadRecentMessages::class,
             'type' => 'read',
-            'name' => 'Read Channel',
-            'description' => 'Read recent messages, threads, or pinned messages from a channel.',
+            'name' => 'Read Recent Messages',
+            'description' => 'Read the most recent messages from a channel.',
             'icon' => 'ph:chat-dots',
+        ],
+        'read_thread' => [
+            'class' => ReadThread::class,
+            'type' => 'read',
+            'name' => 'Read Thread',
+            'description' => 'Read a message thread (replies) by thread root message ID.',
+            'icon' => 'ph:chat-dots',
+        ],
+        'read_pinned_messages' => [
+            'class' => ReadPinnedMessages::class,
+            'type' => 'read',
+            'name' => 'Read Pinned Messages',
+            'description' => 'Read pinned messages from a channel.',
+            'icon' => 'ph:push-pin',
         ],
         'list_channels' => [
             'class' => ListChannels::class,
@@ -196,12 +300,40 @@ class ToolRegistry
             'description' => 'List channels you have access to, including external (Telegram, Slack) channels.',
             'icon' => 'ph:list-bullets',
         ],
-        'manage_message' => [
-            'class' => ManageMessage::class,
+        'edit_message' => [
+            'class' => EditMessage::class,
             'type' => 'write',
-            'name' => 'Manage Message',
-            'description' => 'Edit, delete, pin, or add/remove reactions on a message. Syncs to external platforms.',
-            'icon' => 'ph:chat-circle-dots',
+            'name' => 'Edit Message',
+            'description' => 'Edit a message\'s content.',
+            'icon' => 'ph:pencil-simple',
+        ],
+        'delete_message' => [
+            'class' => DeleteMessage::class,
+            'type' => 'write',
+            'name' => 'Delete Message',
+            'description' => 'Delete a message.',
+            'icon' => 'ph:trash',
+        ],
+        'pin_message' => [
+            'class' => PinMessage::class,
+            'type' => 'write',
+            'name' => 'Pin Message',
+            'description' => 'Toggle pin status on a message.',
+            'icon' => 'ph:push-pin',
+        ],
+        'add_message_reaction' => [
+            'class' => AddMessageReaction::class,
+            'type' => 'write',
+            'name' => 'Add Message Reaction',
+            'description' => 'Add an emoji reaction to a message.',
+            'icon' => 'ph:smiley',
+        ],
+        'remove_message_reaction' => [
+            'class' => RemoveMessageReaction::class,
+            'type' => 'write',
+            'name' => 'Remove Message Reaction',
+            'description' => 'Remove an emoji reaction from a message.',
+            'icon' => 'ph:smiley',
         ],
         'search_messages' => [
             'class' => SearchMessages::class,
@@ -210,20 +342,48 @@ class ToolRegistry
             'description' => 'Search messages across channels by keyword, with optional channel and author filtering.',
             'icon' => 'ph:magnifying-glass',
         ],
-        'discover_external_channels' => [
-            'class' => DiscoverExternalChannels::class,
+        'list_external_channels' => [
+            'class' => ListExternalChannels::class,
             'type' => 'read',
-            'name' => 'Discover External Channels',
-            'description' => 'List, join, or leave external platform channels (Telegram, Discord).',
+            'name' => 'List External Channels',
+            'description' => 'List available channels on external platforms (Telegram, Discord).',
             'icon' => 'ph:globe',
         ],
+        'join_external_channel' => [
+            'class' => JoinExternalChannel::class,
+            'type' => 'write',
+            'name' => 'Join External Channel',
+            'description' => 'Join an external platform channel to start receiving messages.',
+            'icon' => 'ph:sign-in',
+        ],
+        'leave_external_channel' => [
+            'class' => LeaveExternalChannel::class,
+            'type' => 'write',
+            'name' => 'Leave External Channel',
+            'description' => 'Leave an external platform channel.',
+            'icon' => 'ph:sign-out',
+        ],
         // Docs
-        'query_documents' => [
-            'class' => QueryDocuments::class,
+        'list_documents' => [
+            'class' => ListDocuments::class,
             'type' => 'read',
-            'name' => 'Query Documents',
-            'description' => 'List documents and folders, browse folder contents, get document details.',
+            'name' => 'List Documents',
+            'description' => 'List documents and folders, optionally filtered by parent folder.',
             'icon' => 'ph:folder-open',
+        ],
+        'get_document' => [
+            'class' => GetDocument::class,
+            'type' => 'read',
+            'name' => 'Get Document',
+            'description' => 'Get full details and content of a specific document.',
+            'icon' => 'ph:file-text',
+        ],
+        'get_document_tree' => [
+            'class' => GetDocumentTree::class,
+            'type' => 'read',
+            'name' => 'Get Document Tree',
+            'description' => 'Get the full document tree hierarchy.',
+            'icon' => 'ph:tree-structure',
         ],
         'search_documents' => [
             'class' => SearchDocuments::class,
@@ -232,85 +392,313 @@ class ToolRegistry
             'description' => 'Search workspace documents by keyword or semantic similarity.',
             'icon' => 'ph:magnifying-glass',
         ],
-        'manage_document' => [
-            'class' => ManageDocument::class,
+        'create_document' => [
+            'class' => CreateDocument::class,
             'type' => 'write',
-            'name' => 'Manage Document',
-            'description' => 'Create, update, or delete a document or folder.',
+            'name' => 'Create Document',
+            'description' => 'Create a new document or folder.',
+            'icon' => 'ph:file-plus',
+        ],
+        'update_document' => [
+            'class' => UpdateDocument::class,
+            'type' => 'write',
+            'name' => 'Update Document',
+            'description' => 'Update a document\'s title, content, or parent folder.',
             'icon' => 'ph:file-text',
         ],
-        'comment_on_document' => [
-            'class' => CommentOnDocument::class,
+        'delete_document' => [
+            'class' => DeleteDocument::class,
             'type' => 'write',
-            'name' => 'Comment on Document',
-            'description' => 'Add, resolve, or delete comments on a document.',
+            'name' => 'Delete Document',
+            'description' => 'Delete a document or folder.',
+            'icon' => 'ph:file-minus',
+        ],
+        'add_document_comment' => [
+            'class' => AddDocumentComment::class,
+            'type' => 'write',
+            'name' => 'Add Document Comment',
+            'description' => 'Add a comment to a document.',
             'icon' => 'ph:chat-teardrop-text',
         ],
-        // Tables
-        'query_table' => [
-            'class' => QueryTable::class,
+        'resolve_document_comment' => [
+            'class' => ResolveDocumentComment::class,
+            'type' => 'write',
+            'name' => 'Resolve Document Comment',
+            'description' => 'Mark a document comment as resolved.',
+            'icon' => 'ph:chat-teardrop-text',
+        ],
+        'delete_document_comment' => [
+            'class' => DeleteDocumentComment::class,
+            'type' => 'write',
+            'name' => 'Delete Document Comment',
+            'description' => 'Delete a comment from a document.',
+            'icon' => 'ph:chat-teardrop-text',
+        ],
+        // Tables — Read
+        'list_tables' => [
+            'class' => ListTables::class,
             'type' => 'read',
-            'name' => 'Query Table',
-            'description' => 'List tables, get schema, or search and filter rows.',
+            'name' => 'List Tables',
+            'description' => 'List all data tables in the workspace.',
             'icon' => 'ph:table',
         ],
-        'manage_table' => [
-            'class' => ManageTable::class,
-            'type' => 'write',
-            'name' => 'Manage Table',
-            'description' => 'Create, update, or delete tables and columns.',
+        'get_table' => [
+            'class' => GetTable::class,
+            'type' => 'read',
+            'name' => 'Get Table',
+            'description' => 'Get a table structure and columns.',
             'icon' => 'ph:table',
         ],
-        'manage_table_rows' => [
-            'class' => ManageTableRows::class,
+        'get_table_rows' => [
+            'class' => GetTableRows::class,
+            'type' => 'read',
+            'name' => 'Get Table Rows',
+            'description' => 'Retrieve rows from a data table.',
+            'icon' => 'ph:table',
+        ],
+        'search_table_rows' => [
+            'class' => SearchTableRows::class,
+            'type' => 'read',
+            'name' => 'Search Table Rows',
+            'description' => 'Search rows by matching a term against row data.',
+            'icon' => 'ph:magnifying-glass',
+        ],
+        // Tables — Write (structure)
+        'create_table' => [
+            'class' => CreateTable::class,
             'type' => 'write',
-            'name' => 'Manage Table Rows',
-            'description' => 'Add, update, or delete rows in a data table.',
+            'name' => 'Create Table',
+            'description' => 'Create a new data table.',
+            'icon' => 'ph:table',
+        ],
+        'update_table' => [
+            'class' => UpdateTable::class,
+            'type' => 'write',
+            'name' => 'Update Table',
+            'description' => 'Update a table name or description.',
+            'icon' => 'ph:table',
+        ],
+        'delete_table' => [
+            'class' => DeleteTable::class,
+            'type' => 'write',
+            'name' => 'Delete Table',
+            'description' => 'Delete a table and all its data.',
+            'icon' => 'ph:table',
+        ],
+        'add_table_column' => [
+            'class' => AddTableColumn::class,
+            'type' => 'write',
+            'name' => 'Add Table Column',
+            'description' => 'Add a column to a table.',
+            'icon' => 'ph:table',
+        ],
+        'update_table_column' => [
+            'class' => UpdateTableColumn::class,
+            'type' => 'write',
+            'name' => 'Update Table Column',
+            'description' => 'Update a column name, type, or options.',
+            'icon' => 'ph:table',
+        ],
+        'delete_table_column' => [
+            'class' => DeleteTableColumn::class,
+            'type' => 'write',
+            'name' => 'Delete Table Column',
+            'description' => 'Delete a column from a table.',
+            'icon' => 'ph:table',
+        ],
+        // Tables — Write (rows)
+        'add_table_row' => [
+            'class' => AddTableRow::class,
+            'type' => 'write',
+            'name' => 'Add Table Row',
+            'description' => 'Add a row to a data table.',
+            'icon' => 'ph:rows',
+        ],
+        'update_table_row' => [
+            'class' => UpdateTableRow::class,
+            'type' => 'write',
+            'name' => 'Update Table Row',
+            'description' => 'Update an existing row.',
+            'icon' => 'ph:rows',
+        ],
+        'delete_table_row' => [
+            'class' => DeleteTableRow::class,
+            'type' => 'write',
+            'name' => 'Delete Table Row',
+            'description' => 'Delete a row from a table.',
+            'icon' => 'ph:rows',
+        ],
+        'bulk_add_table_rows' => [
+            'class' => BulkAddTableRows::class,
+            'type' => 'write',
+            'name' => 'Bulk Add Table Rows',
+            'description' => 'Add multiple rows at once.',
             'icon' => 'ph:rows',
         ],
         // Calendar
-        'query_calendar' => [
-            'class' => QueryCalendar::class,
+        'list_calendar_events' => [
+            'class' => ListCalendarEvents::class,
             'type' => 'read',
-            'name' => 'Query Calendar',
-            'description' => 'List events by date range or view event details.',
+            'name' => 'List Calendar Events',
+            'description' => 'List events by date range, optionally filtered by user.',
             'icon' => 'ph:calendar',
         ],
-        'manage_calendar_event' => [
-            'class' => ManageCalendarEvent::class,
+        'get_calendar_event' => [
+            'class' => GetCalendarEvent::class,
+            'type' => 'read',
+            'name' => 'Get Calendar Event',
+            'description' => 'Get detailed information about a specific calendar event.',
+            'icon' => 'ph:calendar',
+        ],
+        'create_calendar_event' => [
+            'class' => CreateCalendarEvent::class,
             'type' => 'write',
-            'name' => 'Manage Calendar Event',
-            'description' => 'Create, update, or delete calendar events with attendees.',
+            'name' => 'Create Calendar Event',
+            'description' => 'Create a new calendar event with attendees.',
             'icon' => 'ph:calendar-plus',
         ],
-        // Lists
-        'query_list_items' => [
-            'class' => QueryListItems::class,
+        'update_calendar_event' => [
+            'class' => UpdateCalendarEvent::class,
+            'type' => 'write',
+            'name' => 'Update Calendar Event',
+            'description' => 'Update an existing calendar event.',
+            'icon' => 'ph:calendar-plus',
+        ],
+        'delete_calendar_event' => [
+            'class' => DeleteCalendarEvent::class,
+            'type' => 'write',
+            'name' => 'Delete Calendar Event',
+            'description' => 'Delete a calendar event.',
+            'icon' => 'ph:calendar-minus',
+        ],
+        // Lists — Read
+        'list_all_items' => [
+            'class' => ListAllItems::class,
             'type' => 'read',
-            'name' => 'Query List Items',
-            'description' => 'Browse, filter, and search kanban board items.',
+            'name' => 'List All Items',
+            'description' => 'List all kanban board items, optionally filtered by parent project.',
             'icon' => 'ph:kanban',
         ],
-        'manage_list_item' => [
-            'class' => ManageListItem::class,
+        'get_list_item' => [
+            'class' => GetListItem::class,
+            'type' => 'read',
+            'name' => 'Get List Item',
+            'description' => 'Get full details of a single list item.',
+            'icon' => 'ph:kanban',
+        ],
+        'list_items_by_status' => [
+            'class' => ListItemsByStatus::class,
+            'type' => 'read',
+            'name' => 'List Items by Status',
+            'description' => 'List items filtered by a specific status.',
+            'icon' => 'ph:kanban',
+        ],
+        'list_items_by_assignee' => [
+            'class' => ListItemsByAssignee::class,
+            'type' => 'read',
+            'name' => 'List Items by Assignee',
+            'description' => 'List items assigned to a specific user.',
+            'icon' => 'ph:kanban',
+        ],
+        'list_projects' => [
+            'class' => ListProjects::class,
+            'type' => 'read',
+            'name' => 'List Projects',
+            'description' => 'List projects (folders) on the kanban board.',
+            'icon' => 'ph:kanban',
+        ],
+        'list_item_statuses' => [
+            'class' => ListItemStatuses::class,
+            'type' => 'read',
+            'name' => 'List Item Statuses',
+            'description' => 'List available workflow statuses and their slugs.',
+            'icon' => 'ph:columns',
+        ],
+        // Lists — Write (items)
+        'create_list_item' => [
+            'class' => CreateListItem::class,
             'type' => 'write',
-            'name' => 'Manage List Item',
-            'description' => 'Create, update, or delete list items and their comments.',
+            'name' => 'Create List Item',
+            'description' => 'Create a new list item or project/folder.',
             'icon' => 'ph:list-plus',
         ],
-        'manage_list_status' => [
-            'class' => ManageListStatus::class,
+        'update_list_item' => [
+            'class' => UpdateListItem::class,
             'type' => 'write',
-            'name' => 'Manage List Status',
-            'description' => 'Create, update, or delete list statuses (workflow columns).',
+            'name' => 'Update List Item',
+            'description' => 'Update an existing list item.',
+            'icon' => 'ph:list-plus',
+        ],
+        'delete_list_item' => [
+            'class' => DeleteListItem::class,
+            'type' => 'write',
+            'name' => 'Delete List Item',
+            'description' => 'Delete a list item.',
+            'icon' => 'ph:list-plus',
+        ],
+        'add_list_item_comment' => [
+            'class' => AddListItemComment::class,
+            'type' => 'write',
+            'name' => 'Add List Item Comment',
+            'description' => 'Add a comment to a list item.',
+            'icon' => 'ph:chat-teardrop-text',
+        ],
+        'delete_list_item_comment' => [
+            'class' => DeleteListItemComment::class,
+            'type' => 'write',
+            'name' => 'Delete List Item Comment',
+            'description' => 'Delete a comment from a list item.',
+            'icon' => 'ph:chat-teardrop-text',
+        ],
+        // Lists — Write (statuses)
+        'create_list_status' => [
+            'class' => CreateListStatus::class,
+            'type' => 'write',
+            'name' => 'Create List Status',
+            'description' => 'Create a new workflow status column.',
+            'icon' => 'ph:columns',
+        ],
+        'update_list_status' => [
+            'class' => UpdateListStatus::class,
+            'type' => 'write',
+            'name' => 'Update List Status',
+            'description' => 'Update an existing workflow status.',
+            'icon' => 'ph:columns',
+        ],
+        'delete_list_status' => [
+            'class' => DeleteListStatus::class,
+            'type' => 'write',
+            'name' => 'Delete List Status',
+            'description' => 'Delete a workflow status column.',
             'icon' => 'ph:columns',
         ],
         // Tasks
-        'update_current_task' => [
-            'class' => UpdateCurrentTask::class,
+        'update_task' => [
+            'class' => UpdateTask::class,
             'type' => 'write',
-            'name' => 'Update Current Task',
-            'description' => 'Update your running task: rename, add/update steps, or set final status.',
+            'name' => 'Update Task',
+            'description' => 'Update a task\'s title or description.',
+            'icon' => 'ph:list-checks',
+        ],
+        'add_task_step' => [
+            'class' => AddTaskStep::class,
+            'type' => 'write',
+            'name' => 'Add Task Step',
+            'description' => 'Add a progress step to a task.',
+            'icon' => 'ph:list-checks',
+        ],
+        'update_task_step' => [
+            'class' => UpdateTaskStep::class,
+            'type' => 'write',
+            'name' => 'Update Task Step',
+            'description' => 'Update the description of a task step.',
+            'icon' => 'ph:list-checks',
+        ],
+        'set_task_status' => [
+            'class' => SetTaskStatus::class,
+            'type' => 'write',
+            'name' => 'Set Task Status',
+            'description' => 'Set a task as completed or failed.',
             'icon' => 'ph:list-checks',
         ],
         'create_task_step' => [
@@ -372,54 +760,319 @@ class ToolRegistry
             'description' => 'Suspend execution for a specified number of minutes, then auto-resume.',
             'icon' => 'ph:timer',
         ],
-        // Workspace Management
-        'query_workspace' => [
-            'class' => QueryWorkspace::class,
+        // Workspace — Query
+        'list_agents' => [
+            'class' => ListAgents::class,
             'type' => 'read',
-            'name' => 'Query Workspace',
-            'description' => 'List agents, view agent details, permissions, integrations, and available models.',
-            'icon' => 'ph:magnifying-glass',
-        ],
-        'manage_agent' => [
-            'class' => ManageAgent::class,
-            'type' => 'write',
-            'name' => 'Manage Agent',
-            'description' => 'Create, update, or delete agents and their identity files.',
+            'name' => 'List Agents',
+            'description' => 'List all agents in the workspace.',
             'icon' => 'ph:robot',
         ],
-        'manage_agent_permissions' => [
-            'class' => ManageAgentPermissions::class,
-            'type' => 'write',
-            'name' => 'Manage Agent Permissions',
-            'description' => 'Update tool, channel, folder, and integration permissions for agents.',
+        'list_members' => [
+            'class' => ListMembers::class,
+            'type' => 'read',
+            'name' => 'List Members',
+            'description' => 'List all human members of the workspace.',
+            'icon' => 'ph:users',
+        ],
+        'get_agent_details' => [
+            'class' => GetAgentDetails::class,
+            'type' => 'read',
+            'name' => 'Get Agent Details',
+            'description' => 'Get detailed information about a specific agent.',
+            'icon' => 'ph:robot',
+        ],
+        'get_agent_permissions' => [
+            'class' => GetAgentPermissions::class,
+            'type' => 'read',
+            'name' => 'Get Agent Permissions',
+            'description' => 'View an agent\'s tool, channel, folder, and integration permissions.',
             'icon' => 'ph:shield-check',
         ],
-        'manage_integration' => [
-            'class' => ManageIntegration::class,
-            'type' => 'write',
-            'name' => 'Manage Integration',
-            'description' => 'Configure API keys, test connections, and set up webhooks for integrations.',
+        'list_integrations' => [
+            'class' => ListIntegrations::class,
+            'type' => 'read',
+            'name' => 'List Integrations',
+            'description' => 'List configured integrations and their status.',
             'icon' => 'ph:plugs-connected',
         ],
-        'manage_mcp_server' => [
-            'class' => ManageMcpServer::class,
-            'type' => 'write',
-            'name' => 'Manage MCP Server',
-            'description' => 'Add, configure, test, and remove remote MCP servers to expose their tools to agents.',
+        'get_integration_config' => [
+            'class' => GetIntegrationConfig::class,
+            'type' => 'read',
+            'name' => 'Get Integration Config',
+            'description' => 'Get configuration details for a specific integration.',
             'icon' => 'ph:plugs-connected',
         ],
-        'manage_channel' => [
-            'class' => ManageChannel::class,
+        'list_available_models' => [
+            'class' => ListAvailableModels::class,
+            'type' => 'read',
+            'name' => 'List Available Models',
+            'description' => 'List available AI models that agents can use.',
+            'icon' => 'ph:brain',
+        ],
+        'list_automation_rules' => [
+            'class' => ListAutomationRules::class,
+            'type' => 'read',
+            'name' => 'List Automation Rules',
+            'description' => 'List all automation rules in the workspace.',
+            'icon' => 'ph:lightning',
+        ],
+        // Workspace — Agent management
+        'create_agent' => [
+            'class' => CreateAgent::class,
             'type' => 'write',
-            'name' => 'Manage Channel',
-            'description' => 'Create channels and manage channel membership.',
+            'name' => 'Create Agent',
+            'description' => 'Create a new agent in the workspace.',
+            'icon' => 'ph:robot',
+        ],
+        'update_agent' => [
+            'class' => UpdateAgent::class,
+            'type' => 'write',
+            'name' => 'Update Agent',
+            'description' => 'Update an agent\'s name, brain, status, or behavior mode.',
+            'icon' => 'ph:robot',
+        ],
+        'delete_agent' => [
+            'class' => DeleteAgent::class,
+            'type' => 'write',
+            'name' => 'Delete Agent',
+            'description' => 'Delete an agent from the workspace.',
+            'icon' => 'ph:robot',
+        ],
+        'read_agent_identity_file' => [
+            'class' => ReadAgentIdentityFile::class,
+            'type' => 'read',
+            'name' => 'Read Agent Identity File',
+            'description' => 'Read an agent\'s identity file (IDENTITY, SOUL, TOOLS, etc.).',
+            'icon' => 'ph:file-text',
+        ],
+        'update_agent_identity_file' => [
+            'class' => UpdateAgentIdentityFile::class,
+            'type' => 'write',
+            'name' => 'Update Agent Identity File',
+            'description' => 'Update an agent\'s identity file content.',
+            'icon' => 'ph:file-text',
+        ],
+        // Workspace — Permissions
+        'update_agent_tool_permissions' => [
+            'class' => UpdateAgentToolPermissions::class,
+            'type' => 'write',
+            'name' => 'Update Agent Tool Permissions',
+            'description' => 'Update tool permissions for an agent.',
+            'icon' => 'ph:shield-check',
+        ],
+        'update_agent_channel_access' => [
+            'class' => UpdateAgentChannelAccess::class,
+            'type' => 'write',
+            'name' => 'Update Agent Channel Access',
+            'description' => 'Update channel access for an agent.',
+            'icon' => 'ph:shield-check',
+        ],
+        'update_agent_folder_access' => [
+            'class' => UpdateAgentFolderAccess::class,
+            'type' => 'write',
+            'name' => 'Update Agent Folder Access',
+            'description' => 'Update folder access for an agent.',
+            'icon' => 'ph:shield-check',
+        ],
+        'update_agent_integration_access' => [
+            'class' => UpdateAgentIntegrationAccess::class,
+            'type' => 'write',
+            'name' => 'Update Agent Integration Access',
+            'description' => 'Update integration access for an agent.',
+            'icon' => 'ph:shield-check',
+        ],
+        // Workspace — Integration management
+        'get_integration_setup' => [
+            'class' => GetIntegrationSetup::class,
+            'type' => 'read',
+            'name' => 'Get Integration Setup',
+            'description' => 'Get setup information and schema for an integration.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'update_integration_config' => [
+            'class' => UpdateIntegrationConfig::class,
+            'type' => 'write',
+            'name' => 'Update Integration Config',
+            'description' => 'Update configuration settings for an integration.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'test_integration_connection' => [
+            'class' => TestIntegrationConnection::class,
+            'type' => 'write',
+            'name' => 'Test Integration Connection',
+            'description' => 'Test connectivity to an integration.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'setup_integration_webhook' => [
+            'class' => SetupIntegrationWebhook::class,
+            'type' => 'write',
+            'name' => 'Setup Integration Webhook',
+            'description' => 'Configure a webhook for an integration.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'link_external_user' => [
+            'class' => LinkExternalUser::class,
+            'type' => 'write',
+            'name' => 'Link External User',
+            'description' => 'Link an external identity to a workspace user.',
+            'icon' => 'ph:link',
+        ],
+        // Workspace — MCP servers
+        'list_mcp_servers' => [
+            'class' => ListMcpServers::class,
+            'type' => 'read',
+            'name' => 'List MCP Servers',
+            'description' => 'List all configured MCP servers.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'add_mcp_server' => [
+            'class' => AddMcpServer::class,
+            'type' => 'write',
+            'name' => 'Add MCP Server',
+            'description' => 'Add a new MCP server and auto-discover its tools.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'update_mcp_server' => [
+            'class' => UpdateMcpServer::class,
+            'type' => 'write',
+            'name' => 'Update MCP Server',
+            'description' => 'Update an MCP server\'s configuration.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'remove_mcp_server' => [
+            'class' => RemoveMcpServer::class,
+            'type' => 'write',
+            'name' => 'Remove MCP Server',
+            'description' => 'Remove an MCP server and its tools.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'test_mcp_server' => [
+            'class' => TestMcpServer::class,
+            'type' => 'write',
+            'name' => 'Test MCP Server',
+            'description' => 'Test connection to an MCP server.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        'discover_mcp_tools' => [
+            'class' => DiscoverMcpTools::class,
+            'type' => 'write',
+            'name' => 'Discover MCP Tools',
+            'description' => 'Refresh tool discovery for an MCP server.',
+            'icon' => 'ph:plugs-connected',
+        ],
+        // Workspace — Channels
+        'create_channel' => [
+            'class' => CreateChannel::class,
+            'type' => 'write',
+            'name' => 'Create Channel',
+            'description' => 'Create a new channel.',
             'icon' => 'ph:hash',
         ],
-        'manage_automation' => [
-            'class' => ManageAutomation::class,
+        'add_channel_member' => [
+            'class' => AddChannelMember::class,
             'type' => 'write',
-            'name' => 'Manage Automation',
-            'description' => 'Create and manage automation rules, list templates, and automations (scheduled cron jobs, triggers for agents).',
+            'name' => 'Add Channel Member',
+            'description' => 'Add a user to a channel.',
+            'icon' => 'ph:user-plus',
+        ],
+        'remove_channel_member' => [
+            'class' => RemoveChannelMember::class,
+            'type' => 'write',
+            'name' => 'Remove Channel Member',
+            'description' => 'Remove a user from a channel.',
+            'icon' => 'ph:user-minus',
+        ],
+        // Workspace — Automation
+        'create_automation_rule' => [
+            'class' => CreateAutomationRule::class,
+            'type' => 'write',
+            'name' => 'Create Automation Rule',
+            'description' => 'Create a new automation rule.',
+            'icon' => 'ph:lightning',
+        ],
+        'update_automation_rule' => [
+            'class' => UpdateAutomationRule::class,
+            'type' => 'write',
+            'name' => 'Update Automation Rule',
+            'description' => 'Update an automation rule.',
+            'icon' => 'ph:lightning',
+        ],
+        'delete_automation_rule' => [
+            'class' => DeleteAutomationRule::class,
+            'type' => 'write',
+            'name' => 'Delete Automation Rule',
+            'description' => 'Delete an automation rule.',
+            'icon' => 'ph:lightning',
+        ],
+        'create_item_template' => [
+            'class' => CreateItemTemplate::class,
+            'type' => 'write',
+            'name' => 'Create Item Template',
+            'description' => 'Create a list item template for automation.',
+            'icon' => 'ph:copy',
+        ],
+        'update_item_template' => [
+            'class' => UpdateItemTemplate::class,
+            'type' => 'write',
+            'name' => 'Update Item Template',
+            'description' => 'Update a list item template.',
+            'icon' => 'ph:copy',
+        ],
+        'delete_item_template' => [
+            'class' => DeleteItemTemplate::class,
+            'type' => 'write',
+            'name' => 'Delete Item Template',
+            'description' => 'Delete a list item template.',
+            'icon' => 'ph:copy',
+        ],
+        'create_schedule' => [
+            'class' => CreateSchedule::class,
+            'type' => 'write',
+            'name' => 'Create Schedule',
+            'description' => 'Create a scheduled agent task (cron job).',
+            'icon' => 'ph:clock',
+        ],
+        'update_schedule' => [
+            'class' => UpdateSchedule::class,
+            'type' => 'write',
+            'name' => 'Update Schedule',
+            'description' => 'Update a scheduled task.',
+            'icon' => 'ph:clock',
+        ],
+        'delete_schedule' => [
+            'class' => DeleteSchedule::class,
+            'type' => 'write',
+            'name' => 'Delete Schedule',
+            'description' => 'Delete a scheduled task.',
+            'icon' => 'ph:clock',
+        ],
+        'list_schedules' => [
+            'class' => ListSchedules::class,
+            'type' => 'read',
+            'name' => 'List Schedules',
+            'description' => 'List all scheduled tasks and their status.',
+            'icon' => 'ph:clock',
+        ],
+        'enable_schedule' => [
+            'class' => EnableSchedule::class,
+            'type' => 'write',
+            'name' => 'Enable Schedule',
+            'description' => 'Enable a scheduled task.',
+            'icon' => 'ph:play',
+        ],
+        'disable_schedule' => [
+            'class' => DisableSchedule::class,
+            'type' => 'write',
+            'name' => 'Disable Schedule',
+            'description' => 'Disable a scheduled task.',
+            'icon' => 'ph:pause',
+        ],
+        'trigger_schedule' => [
+            'class' => TriggerSchedule::class,
+            'type' => 'write',
+            'name' => 'Trigger Schedule',
+            'description' => 'Immediately trigger a scheduled task.',
             'icon' => 'ph:lightning',
         ],
     ];
@@ -912,27 +1565,70 @@ class ToolRegistry
             // Memory tools
             SaveMemory::class => new SaveMemory($agent, app(AgentDocumentService::class), app(DocumentIndexingService::class), app(MemoryScopeGuard::class), $this->currentChannelId),
             RecallMemory::class => new RecallMemory($agent, app(DocumentIndexingService::class), app(AgentDocumentService::class), app(MemoryScopeGuard::class), $this->currentChannelId),
-            // Tools needing permission service (channel/folder scoping)
+            // Chat tools needing permission service
             SendChannelMessage::class => new SendChannelMessage($agent, $this->permissionService),
-            ReadChannel::class => new ReadChannel($agent, $this->permissionService),
-            ManageMessage::class => new ManageMessage($agent, $this->permissionService),
-            SearchMessages::class => new SearchMessages($agent, $this->permissionService),
-            DiscoverExternalChannels::class => new DiscoverExternalChannels($agent, $this->permissionService),
-            SearchDocuments::class => new SearchDocuments($agent, $this->permissionService, app(DocumentIndexingService::class)),
-            ManageDocument::class => new ManageDocument($agent, $this->permissionService),
-            CommentOnDocument::class => new CommentOnDocument($agent, $this->permissionService),
-            QueryDocuments::class => new QueryDocuments($agent, $this->permissionService),
+            ReadRecentMessages::class => new ReadRecentMessages($agent, $this->permissionService),
+            ReadThread::class => new ReadThread($agent, $this->permissionService),
+            ReadPinnedMessages::class => new ReadPinnedMessages($agent, $this->permissionService),
             ListChannels::class => new ListChannels($agent, $this->permissionService),
+            EditMessage::class => new EditMessage($agent, $this->permissionService),
+            DeleteMessage::class => new DeleteMessage($agent, $this->permissionService),
+            PinMessage::class => new PinMessage($agent, $this->permissionService),
+            AddMessageReaction::class => new AddMessageReaction($agent, $this->permissionService),
+            RemoveMessageReaction::class => new RemoveMessageReaction($agent, $this->permissionService),
+            SearchMessages::class => new SearchMessages($agent, $this->permissionService),
+            ListExternalChannels::class => new ListExternalChannels($agent, $this->permissionService),
+            JoinExternalChannel::class => new JoinExternalChannel($agent, $this->permissionService),
+            LeaveExternalChannel::class => new LeaveExternalChannel($agent, $this->permissionService),
+            // Docs tools needing permission service
+            ListDocuments::class => new ListDocuments($agent, $this->permissionService),
+            GetDocument::class => new GetDocument($agent, $this->permissionService),
+            GetDocumentTree::class => new GetDocumentTree($agent, $this->permissionService),
+            SearchDocuments::class => new SearchDocuments($agent, $this->permissionService, app(DocumentIndexingService::class)),
+            CreateDocument::class => new CreateDocument($agent, $this->permissionService),
+            UpdateDocument::class => new UpdateDocument($agent, $this->permissionService),
+            DeleteDocument::class => new DeleteDocument($agent, $this->permissionService),
+            AddDocumentComment::class => new AddDocumentComment($agent, $this->permissionService),
+            ResolveDocumentComment::class => new ResolveDocumentComment($agent, $this->permissionService),
+            DeleteDocumentComment::class => new DeleteDocumentComment($agent, $this->permissionService),
             // Tools needing only agent
-            QueryTable::class => new QueryTable($agent),
-            ManageTable::class => new ManageTable($agent),
-            ManageTableRows::class => new ManageTableRows($agent),
-            QueryCalendar::class => new QueryCalendar($agent),
-            ManageCalendarEvent::class => new ManageCalendarEvent($agent),
-            QueryListItems::class => new QueryListItems($agent),
-            ManageListItem::class => new ManageListItem($agent),
-            ManageListStatus::class => new ManageListStatus($agent),
-            UpdateCurrentTask::class => new UpdateCurrentTask($agent),
+            ListTables::class => new ListTables($agent),
+            GetTable::class => new GetTable($agent),
+            GetTableRows::class => new GetTableRows($agent),
+            SearchTableRows::class => new SearchTableRows($agent),
+            CreateTable::class => new CreateTable($agent),
+            UpdateTable::class => new UpdateTable($agent),
+            DeleteTable::class => new DeleteTable($agent),
+            AddTableColumn::class => new AddTableColumn($agent),
+            UpdateTableColumn::class => new UpdateTableColumn($agent),
+            DeleteTableColumn::class => new DeleteTableColumn($agent),
+            AddTableRow::class => new AddTableRow($agent),
+            UpdateTableRow::class => new UpdateTableRow($agent),
+            DeleteTableRow::class => new DeleteTableRow($agent),
+            BulkAddTableRows::class => new BulkAddTableRows($agent),
+            ListCalendarEvents::class => new ListCalendarEvents($agent),
+            GetCalendarEvent::class => new GetCalendarEvent($agent),
+            CreateCalendarEvent::class => new CreateCalendarEvent($agent),
+            UpdateCalendarEvent::class => new UpdateCalendarEvent($agent),
+            DeleteCalendarEvent::class => new DeleteCalendarEvent($agent),
+            ListAllItems::class => new ListAllItems($agent),
+            GetListItem::class => new GetListItem($agent),
+            ListItemsByStatus::class => new ListItemsByStatus($agent),
+            ListItemsByAssignee::class => new ListItemsByAssignee($agent),
+            ListProjects::class => new ListProjects($agent),
+            ListItemStatuses::class => new ListItemStatuses($agent),
+            CreateListItem::class => new CreateListItem($agent),
+            UpdateListItem::class => new UpdateListItem($agent),
+            DeleteListItem::class => new DeleteListItem($agent),
+            AddListItemComment::class => new AddListItemComment($agent),
+            DeleteListItemComment::class => new DeleteListItemComment($agent),
+            CreateListStatus::class => new CreateListStatus($agent),
+            UpdateListStatus::class => new UpdateListStatus($agent),
+            DeleteListStatus::class => new DeleteListStatus($agent),
+            UpdateTask::class => new UpdateTask($agent),
+            AddTaskStep::class => new AddTaskStep($agent),
+            UpdateTaskStep::class => new UpdateTaskStep($agent),
+            SetTaskStatus::class => new SetTaskStatus($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
             RenderSvg::class => new RenderSvg(),
             // Lua scripting
@@ -947,14 +1643,57 @@ class ToolRegistry
             ),
             WaitForApproval::class => new WaitForApproval($agent),
             Wait::class => new Wait($agent),
-            // Workspace Management
-            QueryWorkspace::class => new QueryWorkspace($this->permissionService, $this),
-            ManageAgent::class => new ManageAgent($agent, app(AgentDocumentService::class), app(\App\Services\AgentAvatarService::class)),
-            ManageAgentPermissions::class => new ManageAgentPermissions($agent, $this->permissionService),
-            ManageIntegration::class => new ManageIntegration($agent),
-            ManageMcpServer::class => new ManageMcpServer($agent),
-            ManageChannel::class => new ManageChannel($agent),
-            ManageAutomation::class => new ManageAutomation($agent),
+            // Workspace — Query
+            ListAgents::class => new ListAgents(),
+            ListMembers::class => new ListMembers(),
+            GetAgentDetails::class => new GetAgentDetails(),
+            GetAgentPermissions::class => new GetAgentPermissions($this->permissionService, $this),
+            ListIntegrations::class => new ListIntegrations(),
+            GetIntegrationConfig::class => new GetIntegrationConfig($agent),
+            ListAvailableModels::class => new ListAvailableModels(),
+            ListAutomationRules::class => new ListAutomationRules(),
+            // Workspace — Agent management
+            CreateAgent::class => new CreateAgent($agent, app(AgentDocumentService::class), app(AgentAvatarService::class)),
+            UpdateAgent::class => new UpdateAgent($agent),
+            DeleteAgent::class => new DeleteAgent($agent, app(AgentDocumentService::class)),
+            ReadAgentIdentityFile::class => new ReadAgentIdentityFile($agent, app(AgentDocumentService::class)),
+            UpdateAgentIdentityFile::class => new UpdateAgentIdentityFile($agent, app(AgentDocumentService::class)),
+            // Workspace — Permissions
+            UpdateAgentToolPermissions::class => new UpdateAgentToolPermissions($agent, $this->permissionService),
+            UpdateAgentChannelAccess::class => new UpdateAgentChannelAccess($agent, $this->permissionService),
+            UpdateAgentFolderAccess::class => new UpdateAgentFolderAccess($agent, $this->permissionService),
+            UpdateAgentIntegrationAccess::class => new UpdateAgentIntegrationAccess($agent, $this->permissionService),
+            // Workspace — Integration management
+            GetIntegrationSetup::class => new GetIntegrationSetup($agent),
+            UpdateIntegrationConfig::class => new UpdateIntegrationConfig($agent),
+            TestIntegrationConnection::class => new TestIntegrationConnection($agent),
+            SetupIntegrationWebhook::class => new SetupIntegrationWebhook($agent),
+            LinkExternalUser::class => new LinkExternalUser($agent),
+            // Workspace — MCP servers
+            ListMcpServers::class => new ListMcpServers($agent),
+            AddMcpServer::class => new AddMcpServer($agent),
+            UpdateMcpServer::class => new UpdateMcpServer($agent),
+            RemoveMcpServer::class => new RemoveMcpServer($agent),
+            TestMcpServer::class => new TestMcpServer($agent),
+            DiscoverMcpTools::class => new DiscoverMcpTools($agent),
+            // Workspace — Channels
+            CreateChannel::class => new CreateChannel($agent),
+            AddChannelMember::class => new AddChannelMember($agent),
+            RemoveChannelMember::class => new RemoveChannelMember($agent),
+            // Workspace — Automation
+            CreateAutomationRule::class => new CreateAutomationRule($agent),
+            UpdateAutomationRule::class => new UpdateAutomationRule($agent),
+            DeleteAutomationRule::class => new DeleteAutomationRule($agent),
+            CreateItemTemplate::class => new CreateItemTemplate($agent),
+            UpdateItemTemplate::class => new UpdateItemTemplate($agent),
+            DeleteItemTemplate::class => new DeleteItemTemplate($agent),
+            CreateSchedule::class => new CreateSchedule($agent),
+            UpdateSchedule::class => new UpdateSchedule($agent),
+            DeleteSchedule::class => new DeleteSchedule($agent),
+            ListSchedules::class => new ListSchedules($agent),
+            EnableSchedule::class => new EnableSchedule($agent),
+            DisableSchedule::class => new DisableSchedule($agent),
+            TriggerSchedule::class => new TriggerSchedule($agent),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),
         };
     }

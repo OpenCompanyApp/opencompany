@@ -134,7 +134,7 @@ class ToolRegistryTest extends TestCase
         // The vast majority of tools should be wrapped; only approval-exempt tools remain unwrapped
         $this->assertGreaterThan(0, $wrappedCount);
         // Unwrapped tools should only be approval-exempt ones (system tools like contact_agent, wait, etc.)
-        $this->assertLessThanOrEqual(6, $unwrappedCount, 'Too many unwrapped tools in strict mode');
+        $this->assertLessThanOrEqual(8, $unwrappedCount, 'Too many unwrapped tools in strict mode');
     }
 
     // ── getAllToolsMeta Tests ───────────────────────────────────────────

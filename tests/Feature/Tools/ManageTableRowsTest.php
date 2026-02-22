@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Tables\ManageTableRows;
+use App\Agents\Tools\Tables\AddTableRow;
+use App\Agents\Tools\Tables\BulkAddTableRows;
+use App\Agents\Tools\Tables\DeleteTableRow;
+use App\Agents\Tools\Tables\UpdateTableRow;
 use App\Models\DataTable;
 use App\Models\DataTableRow;
 use App\Models\User;
@@ -14,13 +17,6 @@ class ManageTableRowsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeTool(?User $agent = null): ManageTableRows
-    {
-        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
-
-        return new ManageTableRows($agent);
-    }
-
     public function test_adds_row(): void
     {
         $agent = User::factory()->create(['type' => 'agent']);
@@ -31,9 +27,8 @@ class ManageTableRowsTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        $tool = new ManageTableRows($agent);
+        $tool = new AddTableRow($agent);
         $request = new Request([
-            'action' => 'add_row',
             'tableId' => $table->id,
             'data' => '{"name":"Alice","email":"alice@example.com"}',
         ]);
@@ -61,24 +56,23 @@ class ManageTableRowsTest extends TestCase
         ]);
 
         // Create row through the tool so data keys are column UUIDs
-        $tool = new ManageTableRows($agent);
+        $addTool = new AddTableRow($agent);
         $addRequest = new Request([
-            'action' => 'add_row',
             'tableId' => $table->id,
             'data' => '{"name":"Alice","email":"alice@example.com"}',
         ]);
-        $tool->handle($addRequest);
+        $addTool->handle($addRequest);
 
         $row = DataTableRow::where('table_id', $table->id)->first();
 
+        $updateTool = new UpdateTableRow($agent);
         $updateRequest = new Request([
-            'action' => 'update_row',
             'tableId' => $table->id,
             'rowId' => $row->id,
             'data' => '{"email":"alice@newdomain.com","phone":"555-1234"}',
         ]);
 
-        $result = $tool->handle($updateRequest);
+        $result = $updateTool->handle($updateRequest);
 
         $this->assertStringContainsString('Row updated', $result);
 
@@ -105,9 +99,8 @@ class ManageTableRowsTest extends TestCase
             'created_by' => $agent->id,
         ]);
 
-        $tool = new ManageTableRows($agent);
+        $tool = new DeleteTableRow($agent);
         $request = new Request([
-            'action' => 'delete_row',
             'tableId' => $table->id,
             'rowId' => $row->id,
         ]);
@@ -130,7 +123,7 @@ class ManageTableRowsTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        $tool = new ManageTableRows($agent);
+        $tool = new BulkAddTableRows($agent);
         $rows = json_encode([
             ['name' => 'Alice', 'role' => 'Engineer'],
             ['name' => 'Bob', 'role' => 'Designer'],
@@ -138,7 +131,6 @@ class ManageTableRowsTest extends TestCase
         ]);
 
         $request = new Request([
-            'action' => 'bulk_add',
             'tableId' => $table->id,
             'rows' => $rows,
         ]);
@@ -149,10 +141,18 @@ class ManageTableRowsTest extends TestCase
         $this->assertEquals(3, DataTableRow::where('table_id', $table->id)->count());
     }
 
-    public function test_has_correct_description(): void
+    public function test_has_correct_descriptions(): void
     {
-        $tool = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
 
-        $this->assertStringContainsString('Add, update, or delete rows', $tool->description());
+        $addTool = new AddTableRow($agent);
+        $updateTool = new UpdateTableRow($agent);
+        $deleteTool = new DeleteTableRow($agent);
+        $bulkTool = new BulkAddTableRows($agent);
+
+        $this->assertStringContainsString('Add a single row', $addTool->description());
+        $this->assertStringContainsString('Update an existing row', $updateTool->description());
+        $this->assertStringContainsString('Delete a row', $deleteTool->description());
+        $this->assertStringContainsString('Add multiple rows', $bulkTool->description());
     }
 }

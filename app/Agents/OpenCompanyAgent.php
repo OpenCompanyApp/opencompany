@@ -220,7 +220,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             $prompt .= "Channel members: " . implode(', ', $members) . "\n";
         }
 
-        $prompt .= "\nYour response text is sent directly to this channel — you do NOT need to use send_channel_message or read_channel for the current conversation. Use those tools only to interact with OTHER channels.\n\n";
+        $prompt .= "\nYour response text is sent directly to this channel — you do NOT need to use send_channel_message or read_recent_messages for the current conversation. Use those tools only to interact with OTHER channels.\n\n";
 
         return $prompt;
     }
@@ -256,7 +256,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         }
 
         $prompt .= "\nTask management is internal — NEVER mention tasks, steps, or task status in your response to the user.\n";
-        $prompt .= "ALWAYS call update_current_task(action: \"update_task\") FIRST, before doing anything else, to set:\n";
+        $prompt .= "ALWAYS call update_task() FIRST, before doing anything else, to set:\n";
         $prompt .= "- title: a short action summary (e.g., \"Generate pirate jokes\"), NOT the user's raw message\n";
         $prompt .= "- description: brief context of what was requested and what you plan to do\n\n";
 

@@ -27,7 +27,7 @@ class ContactAgent implements Tool
 
     public function description(): string
     {
-        return 'Send a message, ask a question, or delegate work to another agent. Actions: "ask" (synchronous — wait for response), "delegate" (async — hand off work, result comes back automatically), "notify" (fire-and-forget FYI). Use query_workspace(action: "list_agents") to discover available agents.';
+        return 'Send a message, ask a question, or delegate work to another agent. Actions: "ask" (synchronous — wait for response), "delegate" (async — hand off work, result comes back automatically), "notify" (fire-and-forget FYI). Use list_agents() to discover available agents.';
     }
 
     public function handle(Request $request): string
@@ -52,7 +52,7 @@ class ContactAgent implements Tool
             // Find target agent
             $target = User::where('id', $agentId)->where('type', 'agent')->where('workspace_id', $this->agent->workspace_id)->first();
             if (!$target) {
-                return "Error: Agent not found. Use query_workspace(action: \"list_agents\") to find available agents.";
+                return "Error: Agent not found. Use list_agents() to find available agents.";
             }
 
             // Check permission
@@ -302,7 +302,7 @@ class ContactAgent implements Tool
                 ->required(),
             'agentId' => $schema
                 ->string()
-                ->description('UUID of the target agent. Use query_workspace(action: "list_agents") to discover available agents.')
+                ->description('UUID of the target agent. Use list_agents() to discover available agents.')
                 ->required(),
             'message' => $schema
                 ->string()

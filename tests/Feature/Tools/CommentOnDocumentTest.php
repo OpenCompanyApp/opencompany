@@ -2,12 +2,16 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Docs\CommentOnDocument;
+use App\Agents\Tools\Docs\AddDocumentComment;
+use App\Agents\Tools\Docs\DeleteDocumentComment;
+use App\Agents\Tools\Docs\ResolveDocumentComment;
+use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use App\Models\DocumentComment;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
@@ -15,22 +19,16 @@ class CommentOnDocumentTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeTool(?User $agent = null): array
-    {
-        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
-        $tool = new CommentOnDocument($agent, app(AgentPermissionService::class));
-
-        return [$tool, $agent];
-    }
-
     public function test_adds_comment_to_document(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        Bus::fake([IndexDocumentJob::class]);
+
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new AddDocumentComment($agent, app(AgentPermissionService::class));
 
         $document = Document::factory()->create(['author_id' => $agent->id]);
 
         $request = new Request([
-            'action' => 'add',
             'documentId' => $document->id,
             'content' => 'This looks great!',
         ]);
@@ -48,7 +46,10 @@ class CommentOnDocumentTest extends TestCase
 
     public function test_resolves_comment(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        Bus::fake([IndexDocumentJob::class]);
+
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new ResolveDocumentComment($agent, app(AgentPermissionService::class));
 
         $document = Document::factory()->create(['author_id' => $agent->id]);
         $comment = DocumentComment::factory()->create([
@@ -57,7 +58,6 @@ class CommentOnDocumentTest extends TestCase
         ]);
 
         $request = new Request([
-            'action' => 'resolve',
             'documentId' => $document->id,
             'commentId' => $comment->id,
         ]);
@@ -74,7 +74,10 @@ class CommentOnDocumentTest extends TestCase
 
     public function test_deletes_comment(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        Bus::fake([IndexDocumentJob::class]);
+
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new DeleteDocumentComment($agent, app(AgentPermissionService::class));
 
         $document = Document::factory()->create(['author_id' => $agent->id]);
         $comment = DocumentComment::factory()->create([
@@ -84,7 +87,6 @@ class CommentOnDocumentTest extends TestCase
         $commentId = $comment->id;
 
         $request = new Request([
-            'action' => 'delete',
             'documentId' => $document->id,
             'commentId' => $commentId,
         ]);
@@ -95,10 +97,17 @@ class CommentOnDocumentTest extends TestCase
         $this->assertNull(DocumentComment::find($commentId));
     }
 
-    public function test_has_correct_description(): void
+    public function test_has_correct_descriptions(): void
     {
-        [$tool] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $permissionService = app(AgentPermissionService::class);
 
-        $this->assertStringContainsString('Add, resolve, or delete comments', $tool->description());
+        $addTool = new AddDocumentComment($agent, $permissionService);
+        $resolveTool = new ResolveDocumentComment($agent, $permissionService);
+        $deleteTool = new DeleteDocumentComment($agent, $permissionService);
+
+        $this->assertStringContainsString('Add a comment', $addTool->description());
+        $this->assertStringContainsString('Resolve a comment', $resolveTool->description());
+        $this->assertStringContainsString('Delete a comment', $deleteTool->description());
     }
 }

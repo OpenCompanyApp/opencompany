@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Chat\ReadChannel;
+use App\Agents\Tools\Chat\ReadPinnedMessages;
+use App\Agents\Tools\Chat\ReadRecentMessages;
+use App\Agents\Tools\Chat\ReadThread;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
@@ -33,7 +35,7 @@ class ReadChannelTest extends TestCase
             'content' => 'How is it going?',
         ]);
 
-        $tool = new ReadChannel($agent, app(AgentPermissionService::class));
+        $tool = new ReadRecentMessages($agent, app(AgentPermissionService::class));
         $request = new Request(['channelId' => $channel->id]);
 
         $result = $tool->handle($request);
@@ -48,7 +50,7 @@ class ReadChannelTest extends TestCase
     {
         $agent = User::factory()->create(['type' => 'agent']);
 
-        $tool = new ReadChannel($agent, app(AgentPermissionService::class));
+        $tool = new ReadRecentMessages($agent, app(AgentPermissionService::class));
         $request = new Request(['channelId' => 'nonexistent-uuid']);
 
         $result = $tool->handle($request);
@@ -77,8 +79,8 @@ class ReadChannelTest extends TestCase
             'is_pinned' => false,
         ]);
 
-        $tool = new ReadChannel($agent, app(AgentPermissionService::class));
-        $request = new Request(['channelId' => $channel->id, 'action' => 'pinned']);
+        $tool = new ReadPinnedMessages($agent, app(AgentPermissionService::class));
+        $request = new Request(['channelId' => $channel->id]);
 
         $result = $tool->handle($request);
 
@@ -114,10 +116,9 @@ class ReadChannelTest extends TestCase
             'reply_to_id' => $parent->id,
         ]);
 
-        $tool = new ReadChannel($agent, app(AgentPermissionService::class));
+        $tool = new ReadThread($agent, app(AgentPermissionService::class));
         $request = new Request([
             'channelId' => $channel->id,
-            'action' => 'thread',
             'messageId' => $parent->id,
         ]);
 
@@ -131,11 +132,17 @@ class ReadChannelTest extends TestCase
         $this->assertStringContainsString('Dave', $result);
     }
 
-    public function test_has_correct_description(): void
+    public function test_has_correct_descriptions(): void
     {
         $agent = User::factory()->create(['type' => 'agent']);
-        $tool = new ReadChannel($agent, app(AgentPermissionService::class));
+        $permissionService = app(AgentPermissionService::class);
 
-        $this->assertStringContainsString('Read messages from a channel', $tool->description());
+        $recentTool = new ReadRecentMessages($agent, $permissionService);
+        $threadTool = new ReadThread($agent, $permissionService);
+        $pinnedTool = new ReadPinnedMessages($agent, $permissionService);
+
+        $this->assertStringContainsString('Read recent messages', $recentTool->description());
+        $this->assertStringContainsString('thread', $threadTool->description());
+        $this->assertStringContainsString('pinned messages', $pinnedTool->description());
     }
 }

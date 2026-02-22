@@ -2,7 +2,11 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Lists\ManageListItem;
+use App\Agents\Tools\Lists\AddListItemComment;
+use App\Agents\Tools\Lists\CreateListItem;
+use App\Agents\Tools\Lists\DeleteListItem;
+use App\Agents\Tools\Lists\DeleteListItemComment;
+use App\Agents\Tools\Lists\UpdateListItem;
 use App\Models\ListItem;
 use App\Models\ListItemComment;
 use App\Models\ListStatus;
@@ -43,14 +47,6 @@ class ManageListItemTest extends TestCase
         ]);
     }
 
-    private function makeTool(?User $agent = null): array
-    {
-        $agent = $agent ?? User::factory()->create(['type' => 'agent']);
-        $tool = new ManageListItem($agent);
-
-        return [$tool, $agent];
-    }
-
     private function createListItem(array $attributes = []): ListItem
     {
         return ListItem::create(array_merge([
@@ -66,10 +62,10 @@ class ManageListItemTest extends TestCase
 
     public function test_creates_list_item(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new CreateListItem($agent);
 
         $request = new Request([
-            'action' => 'create',
             'title' => 'New Task',
             'description' => 'A brand new task',
             'parentId' => $this->folder->id,
@@ -90,7 +86,8 @@ class ManageListItemTest extends TestCase
 
     public function test_updates_list_item(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new UpdateListItem($agent);
 
         $item = $this->createListItem([
             'title' => 'Original Title',
@@ -98,7 +95,6 @@ class ManageListItemTest extends TestCase
         ]);
 
         $request = new Request([
-            'action' => 'update',
             'listItemId' => $item->id,
             'title' => 'Updated Title',
             'status' => 'done',
@@ -116,13 +112,13 @@ class ManageListItemTest extends TestCase
 
     public function test_deletes_list_item(): void
     {
-        [$tool] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new DeleteListItem($agent);
 
         $item = $this->createListItem(['title' => 'To Be Removed']);
         $itemId = $item->id;
 
         $request = new Request([
-            'action' => 'delete',
             'listItemId' => $itemId,
         ]);
 
@@ -135,12 +131,12 @@ class ManageListItemTest extends TestCase
 
     public function test_adds_comment(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new AddListItemComment($agent);
 
         $item = $this->createListItem(['assignee_id' => $agent->id]);
 
         $request = new Request([
-            'action' => 'add_comment',
             'listItemId' => $item->id,
             'commentContent' => 'This looks good!',
         ]);
@@ -157,7 +153,8 @@ class ManageListItemTest extends TestCase
 
     public function test_deletes_comment(): void
     {
-        [$tool, $agent] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new DeleteListItemComment($agent);
 
         $item = $this->createListItem(['assignee_id' => $agent->id]);
 
@@ -171,7 +168,6 @@ class ManageListItemTest extends TestCase
         $commentId = $comment->id;
 
         $request = new Request([
-            'action' => 'delete_comment',
             'commentId' => $commentId,
         ]);
 
@@ -181,10 +177,11 @@ class ManageListItemTest extends TestCase
         $this->assertNull(ListItemComment::find($commentId));
     }
 
-    public function test_has_correct_description(): void
+    public function test_create_list_item_has_correct_description(): void
     {
-        [$tool] = $this->makeTool();
+        $agent = User::factory()->create(['type' => 'agent']);
+        $tool = new CreateListItem($agent);
 
-        $this->assertStringContainsString('Create, update, or delete list items', $tool->description());
+        $this->assertStringContainsString('Create a new list item', $tool->description());
     }
 }

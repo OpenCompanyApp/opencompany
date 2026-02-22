@@ -2,14 +2,15 @@
 
 namespace Tests\Feature\Tools;
 
-use App\Agents\Tools\Chat\ManageMessage;
+use App\Agents\Tools\Chat\AddMessageReaction;
+use App\Agents\Tools\Chat\DeleteMessage;
+use App\Agents\Tools\Chat\PinMessage;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\MessageReaction;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
@@ -27,8 +28,8 @@ class ManageMessageTest extends TestCase
             'content' => 'Message to delete',
         ]);
 
-        $tool = new ManageMessage($agent, app(AgentPermissionService::class));
-        $request = new Request(['messageId' => $message->id, 'action' => 'delete']);
+        $tool = new DeleteMessage($agent, app(AgentPermissionService::class));
+        $request = new Request(['messageId' => $message->id]);
 
         $result = $tool->handle($request);
 
@@ -47,8 +48,8 @@ class ManageMessageTest extends TestCase
             'is_pinned' => false,
         ]);
 
-        $tool = new ManageMessage($agent, app(AgentPermissionService::class));
-        $request = new Request(['messageId' => $message->id, 'action' => 'pin']);
+        $tool = new PinMessage($agent, app(AgentPermissionService::class));
+        $request = new Request(['messageId' => $message->id]);
 
         $result = $tool->handle($request);
 
@@ -73,8 +74,8 @@ class ManageMessageTest extends TestCase
             'pinned_by_id' => $agent->id,
         ]);
 
-        $tool = new ManageMessage($agent, app(AgentPermissionService::class));
-        $request = new Request(['messageId' => $message->id, 'action' => 'pin']);
+        $tool = new PinMessage($agent, app(AgentPermissionService::class));
+        $request = new Request(['messageId' => $message->id]);
 
         $result = $tool->handle($request);
 
@@ -96,11 +97,10 @@ class ManageMessageTest extends TestCase
             'content' => 'React to this',
         ]);
 
-        $tool = new ManageMessage($agent, app(AgentPermissionService::class));
+        $tool = new AddMessageReaction($agent, app(AgentPermissionService::class));
         $request = new Request([
             'messageId' => $message->id,
-            'action' => 'add_reaction',
-            'emoji' => '👍',
+            'emoji' => "\u{1F44D}",
         ]);
 
         $result = $tool->handle($request);
@@ -112,26 +112,32 @@ class ManageMessageTest extends TestCase
             ->first();
 
         $this->assertNotNull($reaction);
-        $this->assertEquals('👍', $reaction->emoji);
+        $this->assertEquals("\u{1F44D}", $reaction->emoji);
     }
 
     public function test_returns_error_for_nonexistent_message(): void
     {
         $agent = User::factory()->create(['type' => 'agent']);
 
-        $tool = new ManageMessage($agent, app(AgentPermissionService::class));
-        $request = new Request(['messageId' => 'nonexistent-uuid', 'action' => 'delete']);
+        $tool = new DeleteMessage($agent, app(AgentPermissionService::class));
+        $request = new Request(['messageId' => 'nonexistent-uuid']);
 
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('not found', $result);
     }
 
-    public function test_has_correct_description(): void
+    public function test_has_correct_descriptions(): void
     {
         $agent = User::factory()->create(['type' => 'agent']);
-        $tool = new ManageMessage($agent, app(AgentPermissionService::class));
+        $permissionService = app(AgentPermissionService::class);
 
-        $this->assertStringContainsString('Manage messages', $tool->description());
+        $deleteTool = new DeleteMessage($agent, $permissionService);
+        $pinTool = new PinMessage($agent, $permissionService);
+        $reactionTool = new AddMessageReaction($agent, $permissionService);
+
+        $this->assertStringContainsString('Delete a message', $deleteTool->description());
+        $this->assertStringContainsString('pinned status', $pinTool->description());
+        $this->assertStringContainsString('emoji reaction', $reactionTool->description());
     }
 }
