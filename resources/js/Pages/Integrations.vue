@@ -5,13 +5,22 @@
       <header class="mb-4 md:mb-6 shrink-0">
         <div class="flex items-center justify-between">
           <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Integrations</h1>
-          <Link
-            :href="workspacePath('/developer/tools')"
-            class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
-          >
-            <Icon name="ph:code" class="w-3.5 h-3.5" />
-            Tool Catalog
-          </Link>
+          <div class="flex items-center gap-1">
+            <Link
+              :href="workspacePath('/developer/tools')"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+            >
+              <Icon name="ph:code" class="w-3.5 h-3.5" />
+              Tool Catalog
+            </Link>
+            <Link
+              :href="workspacePath('/developer/lua-console')"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+            >
+              <Icon name="ph:terminal" class="w-3.5 h-3.5" />
+              Lua Console
+            </Link>
+          </div>
         </div>
         <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
           Connect external services and manage API access

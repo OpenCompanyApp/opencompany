@@ -274,6 +274,9 @@ Route::middleware('resolve.workspace')->group(function () {
     // Tool catalog (developer reference)
     Route::get('/tools/catalog', [\App\Http\Controllers\Api\ToolCatalogController::class, 'index']);
 
+    // Lua console
+    Route::post('/lua/execute', [\App\Http\Controllers\Api\LuaConsoleController::class, 'execute']);
+
     // Integrations (read-only for all members)
     Route::get('/integrations', [IntegrationController::class, 'index']);
     Route::get('/integrations/models', [IntegrationController::class, 'enabledModels']);

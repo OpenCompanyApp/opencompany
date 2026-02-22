@@ -40,6 +40,7 @@
         "highlight.js": "^11.11.1",
         "laravel-echo": "^1.19.0",
         "marked": "^17.0.1",
+        "monaco-editor": "^0.55.1",
         "pixi.js": "^8.16.0",
         "pusher-js": "^8.4.0",
         "reka-ui": "^2.0.0",

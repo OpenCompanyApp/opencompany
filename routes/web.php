@@ -158,6 +158,11 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             return Inertia::render('Developer/Tools');
         })->name('developer.tools');
 
+        // Lua console
+        Route::get('/developer/lua-console', function () {
+            return Inertia::render('Developer/LuaConsole');
+        })->name('developer.lua-console');
+
         // Calendar
         Route::get('/calendar', function () {
             return Inertia::render('Calendar');

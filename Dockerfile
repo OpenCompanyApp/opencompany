@@ -31,6 +31,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pecl install redis && docker-php-ext-enable redis \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Lua Sandbox PHP extension (Luau runtime)
+ARG LUA_SANDBOX_VERSION=v1.0.0
+RUN curl -fsSL "https://github.com/OpenCompanyApp/lua-sandbox/releases/download/${LUA_SANDBOX_VERSION}/liblua_sandbox-linux-x86_64.so" \
+    -o "$(php-config --extension-dir)/liblua_sandbox.so" \
+    && echo "extension=liblua_sandbox.so" > /usr/local/etc/php/conf.d/lua-sandbox.ini
+
 # PlantUML JAR
 RUN curl -fsSL https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar \
     -o /usr/local/share/plantuml.jar
