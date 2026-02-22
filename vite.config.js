@@ -19,6 +19,15 @@ export default defineConfig({
             },
         }),
     ],
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'monaco-editor': ['monaco-editor'],
+                },
+            },
+        },
+    },
     resolve: {
         alias: {
             '@': '/resources/js',
