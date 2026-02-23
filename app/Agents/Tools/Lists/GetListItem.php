@@ -33,42 +33,40 @@ class GetListItem implements Tool
                 return "Error: List item '{$listItemId}' not found.";
             }
 
-            $assignee = ($item->assignee ? $item->assignee->name : 'Unassigned');
-            $creator = ($item->creator ? $item->creator->name : 'Unknown');
-            $commentCount = $item->comments->count();
-
-            $lines = [
-                "Title: {$item->title}",
-                "Description: " . ($item->description ?: 'None'),
-                "Status: {$item->status}",
-                "Priority: " . ($item->priority ?? 'None'),
-                "Assignee: {$assignee}",
-                "Creator: {$creator}",
-                "Is Folder: " . ($item->is_folder ? 'Yes' : 'No'),
-                "Parent ID: " . ($item->parent_id ?? 'None'),
-                "Due Date: " . ($item->due_date ?? 'None'),
-                "Channel ID: " . ($item->channel_id ?? 'None'),
-                "Created: " . $item->created_at->format('Y-m-d H:i'),
-                "Completed: " . ($item->completed_at ? $item->completed_at->format('Y-m-d H:i') : 'Not completed'),
+            $result = [
+                'id' => $item->id,
+                'title' => $item->title,
+                'description' => $item->description,
+                'status' => $item->status,
+                'priority' => $item->priority,
+                'assignee' => $item->assignee?->name,
+                'assigneeId' => $item->assignee_id,
+                'creator' => $item->creator?->name ?? 'Unknown',
+                'isFolder' => $item->is_folder,
+                'parentId' => $item->parent_id,
+                'dueDate' => $item->due_date,
+                'channelId' => $item->channel_id,
+                'createdAt' => $item->created_at->toIso8601String(),
+                'completedAt' => $item->completed_at?->toIso8601String(),
             ];
 
             if ($item->collaborators->isNotEmpty()) {
-                $collabNames = $item->collaborators->pluck('name')->implode(', ');
-                $lines[] = "Collaborators: {$collabNames}";
+                $result['collaborators'] = $item->collaborators->map(fn ($c) => [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                ])->values()->toArray();
             }
 
-            $lines[] = "Comments: {$commentCount}";
             if ($item->comments->isNotEmpty()) {
-                foreach ($item->comments->take(20) as $comment) {
-                    $author = ($comment->author ? $comment->author->name : 'Unknown');
-                    $date = $comment->created_at->format('Y-m-d H:i');
-                    $content = Str::limit($comment->content, 200);
-                    $lines[] = "  [{$date}] {$author}: {$content}";
-                    $lines[] = "    Comment ID: {$comment->id}";
-                }
+                $result['comments'] = $item->comments->take(20)->map(fn ($comment) => [
+                    'id' => $comment->id,
+                    'author' => $comment->author?->name ?? 'Unknown',
+                    'content' => Str::limit($comment->content, 200),
+                    'createdAt' => $comment->created_at->toIso8601String(),
+                ])->values()->toArray();
             }
 
-            return implode("\n", $lines);
+            return json_encode($result, JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error getting list item: {$e->getMessage()}";
         }

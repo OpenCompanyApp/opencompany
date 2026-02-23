@@ -75,28 +75,18 @@ class ListDocuments implements Tool
             $items = $query->get();
 
             if ($items->isEmpty()) {
-                return $parentId
-                    ? 'No documents or folders found in this folder.'
-                    : 'No documents or folders found at root level.';
+                return json_encode([]);
             }
 
-            $lines = [];
-            $folderLabel = $parentId ? "Folder contents" : "Root level";
-            $lines[] = "{$folderLabel} ({$items->count()} items):";
-
-            foreach ($items as $item) {
-                $author = $item->author ? $item->author->name : 'Unknown';
-                $updated = $item->updated_at->format('Y-m-d');
-
-                if ($item->is_folder) {
-                    $lines[] = "- [Folder] {$item->title} ({$item->document_count} docs, {$item->folder_count} subfolders)";
-                } else {
-                    $lines[] = "- {$item->title}";
-                }
-                $lines[] = "  ID: {$item->id} | Author: {$author} | Updated: {$updated}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($items->map(fn ($item) => array_filter([
+                'id' => $item->id,
+                'title' => $item->title,
+                'isFolder' => $item->is_folder,
+                'author' => $item->author?->name ?? 'Unknown',
+                'updatedAt' => $item->updated_at->toIso8601String(),
+                'documentCount' => $item->is_folder ? $item->document_count : null,
+                'folderCount' => $item->is_folder ? $item->folder_count : null,
+            ]))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error listing documents: {$e->getMessage()}";
         }

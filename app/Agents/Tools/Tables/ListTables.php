@@ -32,18 +32,17 @@ class ListTables implements Tool
                 ->get();
 
             if ($tables->isEmpty()) {
-                return "No data tables found in the workspace.";
+                return json_encode([]);
             }
 
-            $lines = ["Data tables ({$tables->count()}):"];
-            foreach ($tables as $table) {
-                $creator = ($table->creator ? $table->creator->name : 'Unknown');
-                $desc = $table->description ? " - {$table->description}" : '';
-                $lines[] = "- {$table->name}{$desc} ({$table->columnsCount} columns, {$table->rowsCount} rows, created by {$creator})";
-                $lines[] = "  ID: {$table->id}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($tables->map(fn ($table) => [
+                'id' => $table->id,
+                'name' => $table->name,
+                'description' => $table->description,
+                'columns' => $table->columnsCount,
+                'rows' => $table->rowsCount,
+                'createdBy' => $table->creator?->name ?? 'Unknown',
+            ])->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error querying table: {$e->getMessage()}";
         }

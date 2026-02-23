@@ -32,19 +32,20 @@ class GetAgentDetails implements Tool
                 ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
                 ->first();
 
-            $lines = [
-                "Agent: {$agent->name}",
-                "ID: {$agent->id}",
-                "Type: {$agent->agent_type}",
-                "Brain: {$agent->brain}",
-                "Status: {$agent->status}",
-                "Behavior Mode: " . ($agent->behavior_mode ?? 'autonomous'),
-                "Must Wait For Approval: " . ($agent->must_wait_for_approval ? 'yes' : 'no'),
-                "Current Task: " . ($agent->current_task ?? 'none'),
-                "Tasks: " . (int) ($taskStats->completed ?? 0) . " completed / " . (int) ($taskStats->total ?? 0) . " total",
-            ];
-
-            return implode("\n", $lines);
+            return json_encode([
+                'id' => $agent->id,
+                'name' => $agent->name,
+                'agentType' => $agent->agent_type,
+                'brain' => $agent->brain,
+                'status' => $agent->status,
+                'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
+                'mustWaitForApproval' => $agent->must_wait_for_approval,
+                'currentTask' => $agent->current_task,
+                'tasks' => [
+                    'completed' => (int) ($taskStats->completed ?? 0),
+                    'total' => (int) ($taskStats->total ?? 0),
+                ],
+            ], JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }

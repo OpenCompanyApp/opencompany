@@ -21,31 +21,27 @@ class ListMembers implements Tool
             $members = $workspace->members()->withPivot('role')->orderBy('name')->get();
             $invitations = $workspace->invitations()->whereNull('accepted_at')->with('inviter:id,name')->get();
 
-            if ($members->isEmpty() && $invitations->isEmpty()) {
-                return 'No members or pending invitations found.';
-            }
-
-            $lines = [];
+            $result = [];
 
             if ($members->isNotEmpty()) {
-                $lines[] = "Members ({$members->count()}):";
-                foreach ($members as $member) {
-                    $role = $member->pivot->role ?? 'member';
-                    $isOwner = $member->id === $workspace->owner_id ? ' (owner)' : '';
-                    $lines[] = "- {$member->name} <{$member->email}> — role: {$role}{$isOwner}";
-                }
+                $result['members'] = $members->map(fn ($member) => [
+                    'id' => $member->id,
+                    'name' => $member->name,
+                    'email' => $member->email,
+                    'role' => $member->pivot->role ?? 'member',
+                    'isOwner' => $member->id === $workspace->owner_id,
+                ])->values()->toArray();
             }
 
             if ($invitations->isNotEmpty()) {
-                $lines[] = '';
-                $lines[] = "Pending Invitations ({$invitations->count()}):";
-                foreach ($invitations as $invitation) {
-                    $inviter = $invitation->inviter?->name ?? 'unknown';
-                    $lines[] = "- {$invitation->email} — role: {$invitation->role}, invited by: {$inviter}";
-                }
+                $result['invitations'] = $invitations->map(fn ($inv) => [
+                    'email' => $inv->email,
+                    'role' => $inv->role,
+                    'invitedBy' => $inv->inviter?->name ?? 'unknown',
+                ])->values()->toArray();
             }
 
-            return implode("\n", $lines);
+            return json_encode($result, JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }

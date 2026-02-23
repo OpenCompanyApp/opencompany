@@ -30,33 +30,25 @@ class GetCalendarEvent implements Tool
                 return "Error: Event '{$eventId}' not found.";
             }
 
-            $creator = ($event->creator ? $event->creator->name : 'Unknown');
-            $date = $event->all_day
-                ? $event->start_at->format('Y-m-d') . ' (all day)'
-                : $event->start_at->format('Y-m-d H:i') . ' - ' . ($event->end_at ? $event->end_at->format('Y-m-d H:i') : 'TBD');
-
-            $lines = [
-                "Event: {$event->title}",
-                "Date: {$date}",
-                "Location: " . ($event->location ?? 'None'),
-                "Description: " . ($event->description ?? 'None'),
-                "Created by: {$creator}",
-                "Recurrence: " . ($event->recurrence_rule ?? 'None'),
-                "Recurrence End: " . ($event->recurrence_end ? $event->recurrence_end->format('Y-m-d') : 'None'),
+            $result = [
+                'id' => $event->id,
+                'title' => $event->title,
+                'startAt' => $event->start_at->toIso8601String(),
+                'endAt' => $event->end_at?->toIso8601String(),
+                'allDay' => $event->all_day,
+                'location' => $event->location,
+                'description' => $event->description,
+                'createdBy' => $event->creator?->name ?? 'Unknown',
+                'recurrenceRule' => $event->recurrence_rule,
+                'recurrenceEnd' => $event->recurrence_end?->toIso8601String(),
+                'attendees' => $event->attendees->map(fn ($a) => [
+                    'userId' => $a->user_id,
+                    'name' => $a->user?->name ?? 'Unknown',
+                    'status' => $a->status ?? 'pending',
+                ])->values()->toArray(),
             ];
 
-            if ($event->attendees->isNotEmpty()) {
-                $lines[] = "Attendees ({$event->attendees->count()}):";
-                foreach ($event->attendees as $attendee) {
-                    $name = ($attendee->user ? $attendee->user->name : 'Unknown');
-                    $status = $attendee->status ?? 'pending';
-                    $lines[] = "- {$name} ({$status})";
-                }
-            } else {
-                $lines[] = "Attendees: None";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($result, JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error getting calendar event: {$e->getMessage()}";
         }

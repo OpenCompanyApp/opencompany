@@ -37,35 +37,28 @@ class ListExternalChannels implements Tool
             $channels = $query->get();
 
             if ($channels->isEmpty()) {
-                $scope = $provider ? " for {$provider}" : '';
-                return "No external channels found{$scope}.";
+                return json_encode([]);
             }
 
-            $lines = ['External channels:'];
-
-            foreach ($channels as $channel) {
+            return json_encode($channels->map(function ($channel) {
                 $memberCount = ChannelMember::where('channel_id', $channel->id)->count();
                 $messageCount = Message::where('channel_id', $channel->id)->count();
                 $lastMessage = Message::where('channel_id', $channel->id)
                     ->orderBy('created_at', 'desc')
                     ->first();
-                $lastActivity = $lastMessage
-                    ? $lastMessage->created_at->diffForHumans()
-                    : 'no activity';
 
-                $isMember = ChannelMember::where('channel_id', $channel->id)
-                    ->where('user_id', $this->agent->id)
-                    ->exists();
-                $status = $isMember ? 'joined' : 'not joined';
-
-                $lines[] = "- {$channel->name} ({$channel->external_provider})"
-                    . " | id: {$channel->id}"
-                    . " | {$status}"
-                    . " | {$memberCount} members, {$messageCount} messages"
-                    . " | last: {$lastActivity}";
-            }
-
-            return implode("\n", $lines);
+                return [
+                    'id' => $channel->id,
+                    'name' => $channel->name,
+                    'provider' => $channel->external_provider,
+                    'joined' => ChannelMember::where('channel_id', $channel->id)
+                        ->where('user_id', $this->agent->id)
+                        ->exists(),
+                    'members' => $memberCount,
+                    'messages' => $messageCount,
+                    'lastActivity' => $lastMessage?->created_at->toIso8601String(),
+                ];
+            })->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error discovering channels: {$e->getMessage()}";
         }

@@ -63,21 +63,13 @@ class SearchTableRows implements Tool
                 ->get();
 
             if ($rows->isEmpty()) {
-                return "No rows matching {$search} found in table {$table->name}.";
+                return json_encode([]);
             }
 
-            $lines = ["Search results for {$search} in {$table->name} ({$rows->count()}):"];
-            foreach ($rows as $index => $row) {
-                $lines[] = "Row " . ($index + 1) . " (ID: {$row->id}):";
-                if (is_array($row->data)) {
-                    foreach ($row->data as $key => $value) {
-                        $displayValue = is_array($value) ? json_encode($value) : $value;
-                        $lines[] = "  {$key}: {$displayValue}";
-                    }
-                }
-            }
-
-            return implode("\n", $lines);
+            return json_encode($rows->map(fn ($row) => [
+                'id' => $row->id,
+                'data' => $row->data ?? [],
+            ])->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error querying table: {$e->getMessage()}";
         }

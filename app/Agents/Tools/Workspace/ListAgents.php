@@ -23,17 +23,17 @@ class ListAgents implements Tool
                 ->get();
 
             if ($agents->isEmpty()) {
-                return 'No agents found in workspace.';
+                return json_encode([]);
             }
 
-            $lines = ["Agents ({$agents->count()}):"];
-            foreach ($agents as $agent) {
-                $status = $agent->status ?? 'unknown';
-                $behavior = $agent->behavior_mode ?? 'autonomous';
-                $lines[] = "- {$agent->name} (ID: {$agent->id}) \xe2\x80\x94 type: {$agent->agent_type}, brain: {$agent->brain}, status: {$status}, behavior: {$behavior}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($agents->map(fn ($agent) => [
+                'id' => $agent->id,
+                'name' => $agent->name,
+                'agentType' => $agent->agent_type,
+                'brain' => $agent->brain,
+                'status' => $agent->status ?? 'unknown',
+                'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
+            ])->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }

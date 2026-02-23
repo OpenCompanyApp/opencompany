@@ -22,15 +22,18 @@ class ListIntegrations implements Tool
             $settings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
             $available = IntegrationSetting::getAvailableIntegrations();
 
-            $lines = ['Available Integrations:'];
+            $integrations = [];
 
             // Static integrations
             foreach ($available as $id => $info) {
                 /** @var \App\Models\IntegrationSetting|null $setting */
                 $setting = $settings->get($id);
-                $enabled = ($setting && $setting->enabled) ? 'enabled' : 'disabled';
-                $configured = ($setting && $setting->hasValidConfig()) ? 'configured' : 'not configured';
-                $lines[] = "- {$id}: {$info['name']} — {$enabled}, {$configured}";
+                $integrations[] = [
+                    'id' => $id,
+                    'name' => $info['name'],
+                    'enabled' => (bool) ($setting && $setting->enabled),
+                    'configured' => (bool) ($setting && $setting->hasValidConfig()),
+                ];
             }
 
             // Dynamic integrations from packages
@@ -40,18 +43,20 @@ class ListIntegrations implements Tool
                 }
                 $id = $provider->appName();
                 if (isset($available[$id])) {
-                    continue; // Already listed as static
+                    continue;
                 }
                 $meta = $provider->integrationMeta();
                 /** @var \App\Models\IntegrationSetting|null $setting */
                 $setting = $settings->get($id);
-                $enabled = ($setting && $setting->enabled) ? 'enabled' : 'disabled';
-                $hasConfig = $setting && !empty($setting->config);
-                $configured = $hasConfig ? 'configured' : 'not configured';
-                $lines[] = "- {$id}: {$meta['name']} — {$enabled}, {$configured}";
+                $integrations[] = [
+                    'id' => $id,
+                    'name' => $meta['name'],
+                    'enabled' => (bool) ($setting && $setting->enabled),
+                    'configured' => (bool) ($setting && !empty($setting->config)),
+                ];
             }
 
-            return implode("\n", $lines);
+            return json_encode($integrations, JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }

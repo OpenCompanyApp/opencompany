@@ -47,8 +47,10 @@ class QueryCalendarTest extends TestCase
         $request = new Request([]);
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Team Standup', $result);
-        $this->assertStringContainsString('Calendar events (1)', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertCount(1, $decoded);
+        $this->assertEquals('Team Standup', $decoded[0]['title']);
     }
 
     public function test_gets_event_details(): void
@@ -76,11 +78,13 @@ class QueryCalendarTest extends TestCase
         $request = new Request(['eventId' => $event->id]);
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Event: Sprint Planning', $result);
-        $this->assertStringContainsString('Plan the next sprint', $result);
-        $this->assertStringContainsString('Conference Room A', $result);
-        $this->assertStringContainsString('Alice Tester', $result);
-        $this->assertStringContainsString('accepted', $result);
+        $decoded = json_decode($result, true);
+        $this->assertEquals('Sprint Planning', $decoded['title']);
+        $this->assertEquals('Plan the next sprint', $decoded['description']);
+        $this->assertEquals('Conference Room A', $decoded['location']);
+        $this->assertCount(1, $decoded['attendees']);
+        $this->assertEquals('Alice Tester', $decoded['attendees'][0]['name']);
+        $this->assertEquals('accepted', $decoded['attendees'][0]['status']);
     }
 
     public function test_filters_by_date_range(): void
@@ -111,8 +115,10 @@ class QueryCalendarTest extends TestCase
         ]);
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Late Meeting', $result);
-        $this->assertStringNotContainsString('Early Meeting', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertCount(1, $decoded);
+        $this->assertEquals('Late Meeting', $decoded[0]['title']);
     }
 
     public function test_returns_empty_when_no_events(): void
@@ -122,7 +128,9 @@ class QueryCalendarTest extends TestCase
         $request = new Request([]);
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('No calendar events found', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertEmpty($decoded);
     }
 
     public function test_list_has_correct_description(): void

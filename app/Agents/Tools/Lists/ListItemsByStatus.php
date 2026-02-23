@@ -36,18 +36,17 @@ class ListItemsByStatus implements Tool
                 ->get();
 
             if ($items->isEmpty()) {
-                return "No list items found with status '{$status}'.";
+                return json_encode([]);
             }
 
-            $lines = ["List items with status '{$status}' ({$items->count()}):"];
-            foreach ($items as $item) {
-                $assignee = ($item->assignee ? $item->assignee->name : 'Unassigned');
-                $priority = $item->priority ? " [{$item->priority}]" : '';
-                $lines[] = "- {$item->title} | Assignee: {$assignee}{$priority}";
-                $lines[] = "  ID: {$item->id}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($items->map(fn ($item) => array_filter([
+                'id' => $item->id,
+                'title' => $item->title,
+                'status' => $item->status,
+                'assignee' => $item->assignee?->name,
+                'assigneeId' => $item->assignee_id,
+                'priority' => $item->priority,
+            ]))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error listing items by status: {$e->getMessage()}";
         }

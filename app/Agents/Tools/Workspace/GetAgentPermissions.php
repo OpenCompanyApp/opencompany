@@ -39,25 +39,18 @@ class GetAgentPermissions implements Tool
             $channelIds = $agent->channelPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
             $folderIds = $agent->folderPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
 
-            $lines = [
-                "Permissions for {$agent->name}:",
-                '',
-                'Behavior Mode: ' . ($agent->behavior_mode ?? 'autonomous'),
-                '',
-                'Enabled Integrations: ' . ($enabledIntegrations ? implode(', ', $enabledIntegrations) : 'all (no restrictions)'),
-                'Allowed Channels: ' . ($channelIds->isEmpty() ? 'unrestricted' : $channelIds->implode(', ')),
-                'Allowed Folders: ' . ($folderIds->isEmpty() ? 'unrestricted' : $folderIds->implode(', ')),
-                '',
-                'Tools:',
-            ];
-
-            foreach ($tools as $tool) {
-                $status = $tool['enabled'] ? 'enabled' : 'DENIED';
-                $approval = $tool['requiresApproval'] ? ' (requires approval)' : '';
-                $lines[] = "- {$tool['id']}: {$status}{$approval}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode([
+                'agentName' => $agent->name,
+                'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
+                'integrations' => $enabledIntegrations ?: null,
+                'channels' => $channelIds->isEmpty() ? null : $channelIds->toArray(),
+                'folders' => $folderIds->isEmpty() ? null : $folderIds->toArray(),
+                'tools' => collect($tools)->map(fn ($tool) => [
+                    'id' => $tool['id'],
+                    'enabled' => $tool['enabled'],
+                    'requiresApproval' => $tool['requiresApproval'],
+                ])->values()->toArray(),
+            ], JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }

@@ -20,8 +20,7 @@ class ListAvailableModels implements Tool
             $settings = IntegrationSetting::forWorkspace()->where('enabled', true)->get();
             $available = IntegrationSetting::getAvailableIntegrations();
 
-            $lines = ['Available AI Models:'];
-            $count = 0;
+            $models = [];
 
             foreach ($settings as $setting) {
                 if (!isset($available[$setting->integration_id])) {
@@ -34,17 +33,16 @@ class ListAvailableModels implements Tool
                 }
 
                 foreach ($info['models'] as $modelId => $modelName) {
-                    $brainId = $setting->integration_id . ':' . $modelId;
-                    $lines[] = "- {$brainId} — {$modelName} ({$info['name']})";
-                    $count++;
+                    $models[] = [
+                        'brainId' => $setting->integration_id . ':' . $modelId,
+                        'modelId' => $modelId,
+                        'modelName' => $modelName,
+                        'integration' => $info['name'],
+                    ];
                 }
             }
 
-            if ($count === 0) {
-                return 'No AI models available. Enable integrations first.';
-            }
-
-            return implode("\n", $lines);
+            return json_encode($models, JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }

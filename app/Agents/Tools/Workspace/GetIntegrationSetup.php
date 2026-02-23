@@ -34,29 +34,20 @@ class GetIntegrationSetup implements Tool
             }
 
             $meta = $provider->integrationMeta();
-            $schema = $provider->configSchema();
+            $configSchema = $provider->configSchema();
 
-            $lines = ["{$meta['name']} setup requirements:"];
-            /** @var array{key: string, type: string, label: string, required?: bool, default?: mixed, placeholder?: string} $field */
-            foreach ($schema as $field) {
-                $parts = ["{$field['key']} ({$field['type']})"];
-                if (!empty($field['required'])) {
-                    $parts[] = 'REQUIRED';
-                }
-                if (isset($field['default']) && $field['default'] !== '' && $field['default'] !== []) {
-                    $defaultStr = is_array($field['default']) ? json_encode($field['default']) : $field['default'];
-                    $parts[] = "default: {$defaultStr}";
-                }
-                if (!empty($field['placeholder'])) {
-                    $parts[] = "e.g. {$field['placeholder']}";
-                }
-                $lines[] = '- ' . implode(' — ', $parts);
-            }
-
-            $lines[] = '';
-            $lines[] = "Use update_integration_config with integrationId='{$integrationId}' and provide values for the fields above. For string_list fields, pass a JSON array string.";
-
-            return implode("\n", $lines);
+            return json_encode([
+                'id' => $integrationId,
+                'name' => $meta['name'],
+                'fields' => collect($configSchema)->map(fn ($field) => array_filter([
+                    'key' => $field['key'],
+                    'type' => $field['type'],
+                    'label' => $field['label'],
+                    'required' => !empty($field['required']) ?: null,
+                    'default' => isset($field['default']) && $field['default'] !== '' && $field['default'] !== [] ? $field['default'] : null,
+                    'placeholder' => $field['placeholder'] ?? null,
+                ]))->values()->toArray(),
+            ], JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }

@@ -32,8 +32,10 @@ class QueryTableTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Customers', $result);
-        $this->assertStringContainsString('Data tables (1)', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertCount(1, $decoded);
+        $this->assertEquals('Customers', $decoded[0]['name']);
     }
 
     public function test_gets_table_with_columns(): void
@@ -67,11 +69,14 @@ class QueryTableTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Table: Employees', $result);
-        $this->assertStringContainsString('Full Name [text]', $result);
-        $this->assertStringContainsString('(required)', $result);
-        $this->assertStringContainsString('Email [email]', $result);
-        $this->assertStringContainsString('Columns (2)', $result);
+        $decoded = json_decode($result, true);
+        $this->assertEquals('Employees', $decoded['name']);
+        $this->assertCount(2, $decoded['columns']);
+        $this->assertEquals('Full Name', $decoded['columns'][0]['name']);
+        $this->assertEquals('text', $decoded['columns'][0]['type']);
+        $this->assertTrue($decoded['columns'][0]['required']);
+        $this->assertEquals('Email', $decoded['columns'][1]['name']);
+        $this->assertEquals('email', $decoded['columns'][1]['type']);
     }
 
     public function test_gets_rows(): void
@@ -95,9 +100,11 @@ class QueryTableTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Contacts', $result);
-        $this->assertStringContainsString('Alice', $result);
-        $this->assertStringContainsString('alice@example.com', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertCount(1, $decoded);
+        $this->assertStringContainsString('Alice', json_encode($decoded[0]['data']));
+        $this->assertStringContainsString('alice@example.com', json_encode($decoded[0]['data']));
     }
 
     public function test_returns_empty_when_no_tables(): void
@@ -108,7 +115,9 @@ class QueryTableTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('No data tables found', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertEmpty($decoded);
     }
 
     public function test_has_correct_descriptions(): void

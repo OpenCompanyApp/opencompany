@@ -42,23 +42,17 @@ class GetDocumentTree implements Tool
             $folders = $query->get();
 
             if ($folders->isEmpty()) {
-                return 'No folders found in the workspace.';
+                return json_encode([]);
             }
 
-            // Build tree structure
             $byParent = $folders->groupBy('parent_id');
-            $lines = ['Folder tree:'];
+            $tree = $this->buildTree($byParent, $parentId);
 
-            $this->renderTree($byParent, $parentId, $lines, 0);
-
-            if (count($lines) === 1) {
-                // No folders matched the requested parent
-                return $parentId
-                    ? 'No subfolders found in this folder.'
-                    : 'No folders found at root level.';
+            if (empty($tree)) {
+                return json_encode([]);
             }
 
-            return implode("\n", $lines);
+            return json_encode($tree, JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error getting document tree: {$e->getMessage()}";
         }
@@ -66,23 +60,30 @@ class GetDocumentTree implements Tool
 
     /**
      * @param \Illuminate\Support\Collection<string|int, \Illuminate\Support\Collection<int, Document>> $byParent
-     * @param list<string> $lines
+     * @return list<array<string, mixed>>
      */
-    private function renderTree($byParent, ?string $parentId, array &$lines, int $depth): void
+    private function buildTree($byParent, ?string $parentId, int $depth = 0): array
     {
         $key = $parentId ?? '';
         $children = $byParent->get($key, collect());
 
-        foreach ($children as $folder) {
-            $indent = str_repeat('  ', $depth);
-            $lines[] = "{$indent}- {$folder->title} ({$folder->document_count} docs, {$folder->folder_count} subfolders)";
-            $lines[] = "{$indent}  ID: {$folder->id}";
+        return $children->map(function ($folder) use ($byParent, $depth) {
+            $node = [
+                'id' => $folder->id,
+                'title' => $folder->title,
+                'documents' => $folder->document_count,
+                'subfolders' => $folder->folder_count,
+            ];
 
-            // Recurse into subfolders (max 5 levels deep)
             if ($depth < 5) {
-                $this->renderTree($byParent, $folder->id, $lines, $depth + 1);
+                $childNodes = $this->buildTree($byParent, $folder->id, $depth + 1);
+                if (!empty($childNodes)) {
+                    $node['children'] = $childNodes;
+                }
             }
-        }
+
+            return $node;
+        })->values()->toArray();
     }
 
     /** @return array<string, mixed> */

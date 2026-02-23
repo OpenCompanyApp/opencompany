@@ -37,22 +37,19 @@ class ListAllItems implements Tool
             $items = $query->get();
 
             if ($items->isEmpty()) {
-                return "No list items found.";
+                return json_encode([]);
             }
 
-            $lines = ["List items ({$items->count()}):"];
-            foreach ($items as $item) {
-                $assignee = ($item->assignee ? $item->assignee->name : 'Unassigned');
-                $priority = $item->priority ? " [{$item->priority}]" : '';
-                $folder = $item->is_folder ? ' (folder)' : '';
-                $lines[] = "- {$item->title} | Status: {$item->status} | Assignee: {$assignee}{$priority}{$folder}";
-                $lines[] = "  ID: {$item->id}";
-                if ($item->description) {
-                    $lines[] = "  Description: " . Str::limit($item->description, 120);
-                }
-            }
-
-            return implode("\n", $lines);
+            return json_encode($items->map(fn ($item) => array_filter([
+                'id' => $item->id,
+                'title' => $item->title,
+                'status' => $item->status,
+                'assignee' => $item->assignee?->name,
+                'assigneeId' => $item->assignee_id,
+                'priority' => $item->priority,
+                'isFolder' => $item->is_folder ?: null,
+                'description' => $item->description ? Str::limit($item->description, 120) : null,
+            ]))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error listing items: {$e->getMessage()}";
         }

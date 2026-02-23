@@ -44,20 +44,16 @@ class ListChannels implements Tool
             $channels = $query->orderBy('name')->get();
 
             if ($channels->isEmpty()) {
-                return 'No channels found.';
+                return json_encode([]);
             }
 
-            $lines = ['Workspace channels:'];
-            foreach ($channels as $channel) {
-                $prefix = $channel->type === 'external' ? '' : '#';
-                $extra = '';
-                if ($channel->type === 'external' && $channel->external_provider) {
-                    $extra = ", provider: {$channel->external_provider}";
-                }
-                $lines[] = "- {$prefix}{$channel->name} (id: {$channel->id}, type: {$channel->type}, {$channel->members_count} members{$extra})";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($channels->map(fn ($channel) => array_filter([
+                'id' => $channel->id,
+                'name' => $channel->name,
+                'type' => $channel->type,
+                'members' => $channel->members_count,
+                'externalProvider' => $channel->type === 'external' ? $channel->external_provider : null,
+            ]))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error listing channels: {$e->getMessage()}";
         }

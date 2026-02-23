@@ -52,26 +52,20 @@ class GetDocument implements Tool
                 }
             }
 
-            $author = $doc->author ? $doc->author->name : 'Unknown';
-            $parent = $doc->parent ? "{$doc->parent->title} (ID: {$doc->parent_id})" : 'Root';
-
-            $lines = [
-                "Title: {$doc->title}",
-                "Type: " . ($doc->is_folder ? 'Folder' : 'Document'),
-                "ID: {$doc->id}",
-                "Author: {$author}",
-                "Parent: {$parent}",
-                "Created: " . $doc->created_at->format('Y-m-d H:i'),
-                "Updated: " . $doc->updated_at->format('Y-m-d H:i'),
-                "Comments: {$doc->comments_count}",
+            $result = [
+                'id' => $doc->id,
+                'title' => $doc->title,
+                'isFolder' => $doc->is_folder,
+                'author' => $doc->author?->name ?? 'Unknown',
+                'parentId' => $doc->parent_id,
+                'parentTitle' => $doc->parent?->title,
+                'createdAt' => $doc->created_at->toIso8601String(),
+                'updatedAt' => $doc->updated_at->toIso8601String(),
+                'comments' => $doc->comments_count,
+                'isSystem' => $doc->is_system ?: null,
             ];
 
-            if ($doc->is_system) {
-                $lines[] = "System: yes (cannot be deleted)";
-            }
-
             if ($doc->is_folder) {
-                // Show folder contents summary
                 $children = Document::forWorkspace()
                     ->where('parent_id', $doc->id)
                     ->orderBy('is_folder', 'desc')
@@ -79,20 +73,16 @@ class GetDocument implements Tool
                     ->take(50)
                     ->get(['id', 'title', 'is_folder']);
 
-                $folderCount = $children->where('is_folder', true)->count();
-                $docCount = $children->where('is_folder', false)->count();
-                $lines[] = "Contents: {$docCount} documents, {$folderCount} subfolders";
-
-                foreach ($children as $child) {
-                    $prefix = $child->is_folder ? '[Folder] ' : '';
-                    $lines[] = "  - {$prefix}{$child->title} (ID: {$child->id})";
-                }
+                $result['children'] = $children->map(fn ($child) => [
+                    'id' => $child->id,
+                    'title' => $child->title,
+                    'isFolder' => $child->is_folder,
+                ])->values()->toArray();
             } else {
-                // Show content snippet
-                $lines[] = "Content:\n" . Str::limit($doc->content, 1000);
+                $result['content'] = Str::limit($doc->content, 1000);
             }
 
-            return implode("\n", $lines);
+            return json_encode(array_filter($result), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error getting document: {$e->getMessage()}";
         }

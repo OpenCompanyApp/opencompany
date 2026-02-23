@@ -22,17 +22,17 @@ class ListAutomationRules implements Tool
                 ->get();
 
             if ($rules->isEmpty()) {
-                return 'No automation rules found.';
+                return json_encode([]);
             }
 
-            $lines = ["Automation Rules ({$rules->count()}):"];
-            foreach ($rules as $rule) {
-                $active = $rule->is_active ? 'active' : 'inactive';
-                $template = $rule->template ? " (template: {$rule->template->name})" : '';
-                $lines[] = "- {$rule->name} (ID: {$rule->id}) — trigger: {$rule->trigger_type}, action: {$rule->action_type}, {$active}{$template}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($rules->map(fn ($rule) => array_filter([
+                'id' => $rule->id,
+                'name' => $rule->name,
+                'triggerType' => $rule->trigger_type,
+                'actionType' => $rule->action_type,
+                'isActive' => $rule->is_active,
+                'template' => $rule->template?->name,
+            ]))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }

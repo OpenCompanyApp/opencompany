@@ -42,20 +42,18 @@ class GetTable implements Tool
                 return "Error: Table '{$tableId}' not found.";
             }
 
-            $creator = ($table->creator ? $table->creator->name : 'Unknown');
-            $lines = [
-                "Table: {$table->name}",
-                "Description: " . ($table->description ?? 'None'),
-                "Created by: {$creator}",
-                "Columns ({$table->columns->count()}):",
-            ];
-
-            foreach ($table->columns as $column) {
-                $required = $column->required ? ' (required)' : '';
-                $lines[] = "- {$column->name} [{$column->type}]{$required}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode([
+                'id' => $table->id,
+                'name' => $table->name,
+                'description' => $table->description,
+                'createdBy' => $table->creator?->name ?? 'Unknown',
+                'columns' => $table->columns->map(fn ($col) => [
+                    'id' => $col->id,
+                    'name' => $col->name,
+                    'type' => $col->type,
+                    'required' => $col->required,
+                ])->values()->toArray(),
+            ], JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error querying table: {$e->getMessage()}";
         }

@@ -47,28 +47,28 @@ class GetIntegrationConfig implements Tool
             $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
             $info = $available[$integrationId];
 
-            $lines = [
-                "Integration: {$info['name']} ({$integrationId})",
-                "Description: {$info['description']}",
-                "Enabled: " . (($setting && $setting->enabled) ? 'yes' : 'no'),
-                "Configured: " . (($setting?->hasValidConfig() ?? false) ? 'yes' : 'no'),
-                "API Key: " . ($setting?->getMaskedApiKey() ?? 'not set'),
+            $result = [
+                'id' => $integrationId,
+                'name' => $info['name'],
+                'description' => $info['description'],
+                'enabled' => (bool) ($setting && $setting->enabled),
+                'configured' => (bool) ($setting?->hasValidConfig() ?? false),
+                'apiKey' => $setting?->getMaskedApiKey(),
             ];
 
             if ($integrationId === 'telegram') {
-                $lines[] = "Default Agent ID: " . ($setting?->getConfigValue('default_agent_id') ?? 'not set');
-                $lines[] = "Notify Chat ID: " . ($setting?->getConfigValue('notify_chat_id') ?? 'not set');
-                $allowed = $setting?->getConfigValue('allowed_telegram_users', []) ?? [];
-                $lines[] = "Allowed Telegram Users: " . ($allowed ? implode(', ', $allowed) : 'none');
+                $result['defaultAgentId'] = $setting?->getConfigValue('default_agent_id');
+                $result['notifyChatId'] = $setting?->getConfigValue('notify_chat_id');
+                $result['allowedTelegramUsers'] = $setting?->getConfigValue('allowed_telegram_users', []) ?? [];
             } else {
-                $lines[] = "URL: " . ($setting?->getConfigValue('url') ?? ($info['default_url'] ?? 'not set'));
-                $lines[] = "Default Model: " . ($setting?->getConfigValue('default_model') ?? 'not set');
+                $result['url'] = $setting?->getConfigValue('url') ?? ($info['default_url'] ?? null);
+                $result['defaultModel'] = $setting?->getConfigValue('default_model');
                 if (!empty($info['models'])) {
-                    $lines[] = "Available Models: " . implode(', ', array_keys($info['models']));
+                    $result['availableModels'] = array_keys($info['models']);
                 }
             }
 
-            return implode("\n", $lines);
+            return json_encode($result, JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }
@@ -82,10 +82,11 @@ class GetIntegrationConfig implements Tool
         $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
         $config = $setting ? $setting->config : [];
 
-        $lines = [
-            "Integration: {$meta['name']} ({$integrationId})",
-            "Description: {$meta['description']}",
-            "Enabled: " . (($setting && $setting->enabled) ? 'yes' : 'no'),
+        $result = [
+            'id' => $integrationId,
+            'name' => $meta['name'],
+            'description' => $meta['description'],
+            'enabled' => (bool) ($setting && $setting->enabled),
         ];
 
         /** @var array{key: string, type: string, label: string, default?: mixed} $field */
@@ -93,18 +94,15 @@ class GetIntegrationConfig implements Tool
             $value = $config[$field['key']] ?? null;
 
             if ($field['type'] === 'secret') {
-                $masked = $setting?->getMaskedValue($field['key']) ?? 'not set';
-                $lines[] = "{$field['label']}: {$masked}";
+                $result[$field['key']] = $setting?->getMaskedValue($field['key']);
             } elseif ($field['type'] === 'string_list') {
-                $items = is_array($value) ? $value : [];
-                $lines[] = "{$field['label']}: " . ($items ? implode(', ', $items) : 'none');
+                $result[$field['key']] = is_array($value) ? $value : [];
             } else {
-                $display = $value ?? ($field['default'] ?? 'not set');
-                $lines[] = "{$field['label']}: {$display}";
+                $result[$field['key']] = $value ?? ($field['default'] ?? null);
             }
         }
 
-        return implode("\n", $lines);
+        return json_encode($result, JSON_PRETTY_PRINT);
     }
 
     /** @return array<string, mixed> */

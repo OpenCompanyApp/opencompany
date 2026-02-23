@@ -25,18 +25,18 @@ class ListItemStatuses implements Tool
             $statuses = ListStatus::forWorkspace()->orderBy('position')->get();
 
             if ($statuses->isEmpty()) {
-                return 'No statuses configured.';
+                return json_encode([]);
             }
 
-            $lines = ["Available statuses ({$statuses->count()}):"];
-            foreach ($statuses as $status) {
-                $default = $status->is_default ? ' (default)' : '';
-                $done = $status->is_done ? ' [marks as done]' : '';
-                $lines[] = "- {$status->name} (slug: {$status->slug}) | Color: {$status->color} | Icon: {$status->icon}{$default}{$done}";
-                $lines[] = "  ID: {$status->id}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($statuses->map(fn ($status) => array_filter([
+                'id' => $status->id,
+                'name' => $status->name,
+                'slug' => $status->slug,
+                'color' => $status->color,
+                'icon' => $status->icon,
+                'isDefault' => $status->is_default ?: null,
+                'isDone' => $status->is_done ?: null,
+            ]))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error listing statuses: {$e->getMessage()}";
         }

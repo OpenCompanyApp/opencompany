@@ -40,19 +40,15 @@ class ListProjects implements Tool
             $projects = $query->get();
 
             if ($projects->isEmpty()) {
-                return 'No projects found.' . ($parentId ? '' : ' Use create_list_item with isFolder=true to create one.');
+                return json_encode([]);
             }
 
-            $lines = ["Projects ({$projects->count()}):"];
-            foreach ($projects as $project) {
-                $lines[] = "- {$project->title} ({$project->item_count} items)";
-                $lines[] = "  ID: {$project->id}";
-                if ($project->description) {
-                    $lines[] = "  Description: " . Str::limit($project->description, 120);
-                }
-            }
-
-            return implode("\n", $lines);
+            return json_encode($projects->map(fn ($project) => array_filter([
+                'id' => $project->id,
+                'title' => $project->title,
+                'itemCount' => $project->item_count,
+                'description' => $project->description ? Str::limit($project->description, 120) : null,
+            ]))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error listing projects: {$e->getMessage()}";
         }

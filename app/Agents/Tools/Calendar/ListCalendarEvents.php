@@ -46,22 +46,19 @@ class ListCalendarEvents implements Tool
             $events = $query->orderBy("start_at", "asc")->get();
 
             if ($events->isEmpty()) {
-                return "No calendar events found matching the criteria.";
+                return json_encode([]);
             }
 
-            $lines = ["Calendar events ({$events->count()}):"];
-            foreach ($events as $event) {
-                $date = $event->all_day
-                    ? $event->start_at->format("Y-m-d") . " (all day)"
-                    : $event->start_at->format("Y-m-d H:i") . " - " . ($event->end_at ? $event->end_at->format("H:i") : "TBD");
-                $location = $event->location ? " | Location: {$event->location}" : "";
-                $recurrence = $event->recurrence_rule ? " | Recurring: {$event->recurrence_rule}" : "";
-                $attendeeCount = $event->attendees->count();
-                $lines[] = "- {$event->title} | {$date}{$location}{$recurrence} | {$attendeeCount} attendee(s)";
-                $lines[] = "  ID: {$event->id}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($events->map(fn ($event) => array_filter([
+                'id' => $event->id,
+                'title' => $event->title,
+                'startAt' => $event->start_at->toIso8601String(),
+                'endAt' => $event->end_at?->toIso8601String(),
+                'allDay' => $event->all_day ?: null,
+                'location' => $event->location,
+                'recurrenceRule' => $event->recurrence_rule,
+                'attendees' => $event->attendees->count(),
+            ]))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error listing calendar events: {$e->getMessage()}";
         }

@@ -40,10 +40,12 @@ class ReadChannelTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Recent messages in #general', $result);
-        $this->assertStringContainsString('Alice', $result);
-        $this->assertStringContainsString('Hello everyone!', $result);
-        $this->assertStringContainsString('How is it going?', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertCount(2, $decoded);
+        $this->assertStringContainsString('Alice', json_encode($decoded));
+        $this->assertStringContainsString('Hello everyone!', json_encode($decoded));
+        $this->assertStringContainsString('How is it going?', json_encode($decoded));
     }
 
     public function test_returns_error_for_nonexistent_channel(): void
@@ -84,9 +86,11 @@ class ReadChannelTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Pinned messages in #announcements', $result);
-        $this->assertStringContainsString('Important pinned message', $result);
-        $this->assertStringNotContainsString('Regular unpinned message', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertCount(1, $decoded);
+        $this->assertStringContainsString('Important pinned message', json_encode($decoded));
+        $this->assertStringNotContainsString('Regular unpinned message', json_encode($decoded));
     }
 
     public function test_reads_thread_replies(): void
@@ -124,12 +128,14 @@ class ReadChannelTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Thread for message by Carol', $result);
-        $this->assertStringContainsString('Parent message here', $result);
-        $this->assertStringContainsString('Replies (2)', $result);
-        $this->assertStringContainsString('This is a reply', $result);
-        $this->assertStringContainsString('Another reply', $result);
-        $this->assertStringContainsString('Dave', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertEquals('Carol', $decoded['parent']['author']);
+        $this->assertStringContainsString('Parent message here', $decoded['parent']['content']);
+        $this->assertCount(2, $decoded['replies']);
+        $this->assertStringContainsString('This is a reply', json_encode($decoded['replies']));
+        $this->assertStringContainsString('Another reply', json_encode($decoded['replies']));
+        $this->assertStringContainsString('Dave', json_encode($decoded['replies']));
     }
 
     public function test_has_correct_descriptions(): void

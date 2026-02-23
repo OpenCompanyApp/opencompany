@@ -39,17 +39,15 @@ class ListItemsByAssignee implements Tool
             $assigneeName = ($assignee ? $assignee->name : $assigneeId);
 
             if ($items->isEmpty()) {
-                return "No list items found assigned to '{$assigneeName}'.";
+                return json_encode([]);
             }
 
-            $lines = ["List items assigned to '{$assigneeName}' ({$items->count()}):"];
-            foreach ($items as $item) {
-                $priority = $item->priority ? " [{$item->priority}]" : '';
-                $lines[] = "- {$item->title} | Status: {$item->status}{$priority}";
-                $lines[] = "  ID: {$item->id}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($items->map(fn ($item) => array_filter([
+                'id' => $item->id,
+                'title' => $item->title,
+                'status' => $item->status,
+                'priority' => $item->priority,
+            ]))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error listing items by assignee: {$e->getMessage()}";
         }

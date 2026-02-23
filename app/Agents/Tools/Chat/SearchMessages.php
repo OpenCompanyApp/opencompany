@@ -55,31 +55,18 @@ class SearchMessages implements Tool
             $messages = $search->get();
 
             if ($messages->isEmpty()) {
-                return "No messages found matching '{$query}'.";
+                return json_encode([]);
             }
 
-            $lines = ["Search results for '{$query}' ({$messages->count()} found):"];
-
-            foreach ($messages as $message) {
-                $shortId = substr($message->id, 0, 6);
-                $time = $message->created_at->format('Y-m-d H:i');
-
-                /** @var User|null $author */
-                $author = $message->author;
-                $authorName = $author->name ?? 'Unknown';
-
-                /** @var Channel|null $channel */
-                $channel = $message->channel;
-                $channelName = $channel->name ?? 'unknown';
-
-                $snippet = mb_strlen($message->content) > 120
-                    ? mb_substr($message->content, 0, 120) . '...'
-                    : $message->content;
-
-                $lines[] = "[msg:{$shortId}] [#{$channelName}] [{$time}] {$authorName}: {$snippet}";
-            }
-
-            return implode("\n", $lines);
+            return json_encode($messages->map(fn ($message) => [
+                'id' => $message->id,
+                'channelId' => $message->channel_id,
+                'channelName' => $message->channel?->name,
+                'author' => $message->author?->name ?? 'Unknown',
+                'authorId' => $message->author_id,
+                'content' => $message->content,
+                'createdAt' => $message->created_at->toIso8601String(),
+            ])->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error searching messages: {$e->getMessage()}";
         }

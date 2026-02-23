@@ -25,23 +25,17 @@ class ListMcpServers implements Tool
             $servers = McpServer::forWorkspace()->orderBy('name')->get();
 
             if ($servers->isEmpty()) {
-                return "No MCP servers configured. Use add_mcp_server to add one.";
+                return json_encode([]);
             }
 
-            $lines = ["MCP Servers ({$servers->count()}):"];
-            foreach ($servers as $server) {
-                $toolCount = count($server->discovered_tools ?? []);
-                $status = $server->enabled ? 'enabled' : 'disabled';
-                $stale = $server->isToolDiscoveryStale() ? ' (stale)' : '';
-                $lines[] = "- {$server->name} (ID: {$server->id}, slug: {$server->slug}) — {$status}, {$toolCount} tools{$stale}";
-
-                if (!empty($server->discovered_tools)) {
-                    $toolNames = collect($server->discovered_tools)->pluck('name')->implode(', ');
-                    $lines[] = "  Tools: {$toolNames}";
-                }
-            }
-
-            return implode("\n", $lines);
+            return json_encode($servers->map(fn ($server) => [
+                'id' => $server->id,
+                'name' => $server->name,
+                'slug' => $server->slug,
+                'enabled' => $server->enabled,
+                'stale' => $server->isToolDiscoveryStale(),
+                'tools' => collect($server->discovered_tools ?? [])->pluck('name')->values()->toArray(),
+            ])->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }

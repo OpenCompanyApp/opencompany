@@ -54,39 +54,26 @@ class ReadThread implements Tool
                 ->orderBy('created_at', 'asc')
                 ->get();
 
-            /** @var User|null $parentAuthor */
-            $parentAuthor = $parent->author;
-            $author = $parentAuthor->name ?? 'Unknown';
-            $lines = ["Thread for message by {$author}:"];
-            $lines[] = $this->formatMessage($parent);
-            $lines[] = "--- Replies ({$replies->count()}) ---";
-
-            foreach ($replies as $reply) {
-                $lines[] = $this->formatMessage($reply);
-            }
-
-            return implode("\n", $lines);
+            return json_encode([
+                'parent' => $this->formatMessage($parent),
+                'replies' => $replies->map(fn ($reply) => $this->formatMessage($reply))->values()->toArray(),
+            ], JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error reading channel: {$e->getMessage()}";
         }
     }
 
-    private function formatMessage(Message $message): string
+    private function formatMessage(Message $message): array
     {
-        $shortId = substr($message->id, 0, 6);
-        $time = $message->created_at->format('Y-m-d H:i');
-
-        /** @var User|null $author */
-        $author = $message->author;
-        $authorName = $author->name ?? 'Unknown';
-
-        $source = $message->source && $message->source !== 'workspace'
-            ? " (via {$message->source})"
-            : '';
-
-        $pin = $message->is_pinned ? ' 📌' : '';
-
-        return "[msg:{$shortId}] [{$time}] {$authorName}{$source}: {$message->content}{$pin}";
+        return array_filter([
+            'id' => $message->id,
+            'author' => $message->author?->name ?? 'Unknown',
+            'authorId' => $message->author_id,
+            'content' => $message->content,
+            'source' => $message->source !== 'workspace' ? $message->source : null,
+            'pinned' => $message->is_pinned ?: null,
+            'createdAt' => $message->created_at->toIso8601String(),
+        ]);
     }
 
     /** @return array<string, mixed> */

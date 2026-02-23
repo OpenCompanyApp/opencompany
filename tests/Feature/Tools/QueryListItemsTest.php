@@ -56,9 +56,11 @@ class QueryListItemsTest extends TestCase
         $request = new Request(['parentId' => $this->folder->id]);
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Fix login bug', $result);
-        $this->assertStringContainsString('Update docs', $result);
-        $this->assertStringContainsString('List items (2)', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertCount(2, $decoded);
+        $this->assertStringContainsString('Fix login bug', json_encode($decoded));
+        $this->assertStringContainsString('Update docs', json_encode($decoded));
     }
 
     public function test_gets_item_details(): void
@@ -78,10 +80,11 @@ class QueryListItemsTest extends TestCase
         $request = new Request(['listItemId' => $item->id]);
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Title: Refactor auth', $result);
-        $this->assertStringContainsString('Clean up the auth module', $result);
-        $this->assertStringContainsString('Status: in_progress', $result);
-        $this->assertStringContainsString('Priority: high', $result);
+        $decoded = json_decode($result, true);
+        $this->assertEquals('Refactor auth', $decoded['title']);
+        $this->assertEquals('Clean up the auth module', $decoded['description']);
+        $this->assertEquals('in_progress', $decoded['status']);
+        $this->assertEquals('high', $decoded['priority']);
     }
 
     public function test_lists_by_status(): void
@@ -95,9 +98,11 @@ class QueryListItemsTest extends TestCase
         $request = new Request(['status' => 'backlog']);
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Backlog Item', $result);
-        $this->assertStringNotContainsString('Done Item', $result);
-        $this->assertStringContainsString("status 'backlog'", $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $titles = array_column($decoded, 'title');
+        $this->assertContains('Backlog Item', $titles);
+        $this->assertNotContains('Done Item', $titles);
     }
 
     public function test_lists_by_assignee(): void
@@ -114,9 +119,11 @@ class QueryListItemsTest extends TestCase
         $request = new Request(['assigneeId' => $assignee->id]);
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Bob Task', $result);
-        $this->assertStringNotContainsString('Other Task', $result);
-        $this->assertStringContainsString('Bob Builder', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertCount(1, $decoded);
+        $this->assertEquals('Bob Task', $decoded[0]['title']);
+        $this->assertStringNotContainsString('Other Task', json_encode($decoded));
     }
 
     public function test_list_all_items_has_correct_description(): void
