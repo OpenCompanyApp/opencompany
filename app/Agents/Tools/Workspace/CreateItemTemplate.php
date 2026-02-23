@@ -28,11 +28,7 @@ class CreateItemTemplate implements Tool
                 return 'name is required.';
             }
 
-            $tags = [];
-            if (!empty($request['tags'])) {
-                $raw = $request['tags'];
-                $tags = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
-            }
+            $tags = $request['tags'] ?? [];
 
             $template = ListTemplate::create([
                 'id' => Str::uuid()->toString(),
@@ -78,8 +74,9 @@ class CreateItemTemplate implements Tool
                 ->string()
                 ->description('Estimated cost (decimal).'),
             'tags' => $schema
-                ->string()
-                ->description('JSON array of tags, e.g. ["support","bug"].'),
+                ->array()
+                ->items($schema->string())
+                ->description('Array of tag names, e.g. ["support","bug"].'),
         ];
     }
 }

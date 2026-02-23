@@ -40,8 +40,7 @@ class UpdateAgentChannelAccess implements Tool
                 return "Agent not found: {$agentId}";
             }
 
-            $raw = $request['channels'] ?? [];
-            $channels = is_array($raw) ? $raw : json_decode($raw, true);
+            $channels = $request['channels'] ?? [];
 
             if (!is_array($channels)) {
                 return 'Invalid channels parameter. Expected array of channel UUIDs.';
@@ -92,8 +91,9 @@ class UpdateAgentChannelAccess implements Tool
                 ->description('Target agent UUID.')
                 ->required(),
             'channels' => $schema
-                ->string()
-                ->description('JSON array of channel UUIDs. Empty array = unrestricted.')
+                ->array()
+                ->items($schema->string())
+                ->description('Array of channel UUIDs. Empty array = unrestricted.')
                 ->required(),
         ];
     }

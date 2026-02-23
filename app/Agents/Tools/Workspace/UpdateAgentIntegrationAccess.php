@@ -41,8 +41,7 @@ class UpdateAgentIntegrationAccess implements Tool
                 return "Agent not found: {$agentId}";
             }
 
-            $raw = $request['integrations'] ?? [];
-            $integrations = is_array($raw) ? $raw : json_decode($raw, true);
+            $integrations = $request['integrations'] ?? [];
 
             if (!is_array($integrations)) {
                 return 'Invalid integrations parameter. Expected array of app names (e.g., {"telegram","plausible"}).';
@@ -84,8 +83,9 @@ class UpdateAgentIntegrationAccess implements Tool
                 ->description('Target agent UUID.')
                 ->required(),
             'integrations' => $schema
-                ->string()
-                ->description('JSON array of integration app names, e.g. ["telegram","plausible"].')
+                ->array()
+                ->items($schema->string())
+                ->description('Array of integration app names to enable, e.g. ["telegram","plausible"].')
                 ->required(),
         ];
     }

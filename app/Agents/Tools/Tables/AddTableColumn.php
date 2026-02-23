@@ -35,8 +35,8 @@ class AddTableColumn implements Tool
                 ->string()
                 ->description("The column type: text, number, date, select, multiselect, checkbox, url, email, user, or attachment."),
             "columnOptions" => $schema
-                ->string()
-                ->description("JSON string of column options (e.g. select choices)."),
+                ->object()
+                ->description("Column options configuration (e.g. select choices)."),
             "required" => $schema
                 ->boolean()
                 ->description("Whether the column is required."),
@@ -54,9 +54,7 @@ class AddTableColumn implements Tool
                 "table_id" => $table->id,
                 "name" => $request["name"],
                 "type" => $request["columnType"] ?? "text",
-                "options" => isset($request["columnOptions"])
-                    ? (is_array($request["columnOptions"]) ? $request["columnOptions"] : json_decode($request["columnOptions"], true))
-                    : null,
+                "options" => $request["columnOptions"] ?? null,
                 "order" => $maxOrder + 1,
                 "required" => $request["required"] ?? false,
             ]);

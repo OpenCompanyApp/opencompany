@@ -30,7 +30,7 @@ class ManageTableRowsTest extends TestCase
         $tool = new AddTableRow($agent);
         $request = new Request([
             'tableId' => $table->id,
-            'data' => '{"name":"Alice","email":"alice@example.com"}',
+            'data' => ['name' => 'Alice', 'email' => 'alice@example.com'],
         ]);
 
         $result = $tool->handle($request);
@@ -59,7 +59,7 @@ class ManageTableRowsTest extends TestCase
         $addTool = new AddTableRow($agent);
         $addRequest = new Request([
             'tableId' => $table->id,
-            'data' => '{"name":"Alice","email":"alice@example.com"}',
+            'data' => ['name' => 'Alice', 'email' => 'alice@example.com'],
         ]);
         $addTool->handle($addRequest);
 
@@ -69,7 +69,7 @@ class ManageTableRowsTest extends TestCase
         $updateRequest = new Request([
             'tableId' => $table->id,
             'rowId' => $row->id,
-            'data' => '{"email":"alice@newdomain.com","phone":"555-1234"}',
+            'data' => ['email' => 'alice@newdomain.com', 'phone' => '555-1234'],
         ]);
 
         $result = $updateTool->handle($updateRequest);
@@ -124,15 +124,14 @@ class ManageTableRowsTest extends TestCase
         ]);
 
         $tool = new BulkAddTableRows($agent);
-        $rows = json_encode([
-            ['name' => 'Alice', 'role' => 'Engineer'],
-            ['name' => 'Bob', 'role' => 'Designer'],
-            ['name' => 'Carol', 'role' => 'Manager'],
-        ]);
 
         $request = new Request([
             'tableId' => $table->id,
-            'rows' => $rows,
+            'rows' => [
+                ['name' => 'Alice', 'role' => 'Engineer'],
+                ['name' => 'Bob', 'role' => 'Designer'],
+                ['name' => 'Carol', 'role' => 'Manager'],
+            ],
         ]);
 
         $result = $tool->handle($request);

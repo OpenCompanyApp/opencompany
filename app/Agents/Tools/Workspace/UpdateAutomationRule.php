@@ -41,18 +41,16 @@ class UpdateAutomationRule implements Tool
                 $updates['trigger_type'] = $request['triggerType'];
             }
             if (!empty($request['triggerConditions'])) {
-                $raw = $request['triggerConditions'];
-                $updates['trigger_conditions'] = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
+                $updates['trigger_conditions'] = $request['triggerConditions'];
             }
             if (isset($request['actionType'])) {
                 $updates['action_type'] = $request['actionType'];
             }
             if (!empty($request['actionConfig'])) {
-                $raw = $request['actionConfig'];
-                $updates['action_config'] = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
+                $updates['action_config'] = $request['actionConfig'];
             }
             if (isset($request['isActive'])) {
-                $updates['is_active'] = filter_var($request['isActive'], FILTER_VALIDATE_BOOLEAN);
+                $updates['is_active'] = $request['isActive'];
             }
 
             if (empty($updates)) {
@@ -82,17 +80,17 @@ class UpdateAutomationRule implements Tool
                 ->string()
                 ->description('Trigger type (e.g., "status_change", "new_item", "schedule").'),
             'triggerConditions' => $schema
-                ->string()
-                ->description('JSON object with trigger conditions.'),
+                ->object()
+                ->description('Trigger conditions.'),
             'actionType' => $schema
                 ->string()
                 ->description('Action type (e.g., "create_item", "notify", "assign_agent").'),
             'actionConfig' => $schema
-                ->string()
-                ->description('JSON object with action configuration.'),
+                ->object()
+                ->description('Action configuration.'),
             'isActive' => $schema
-                ->string()
-                ->description("'true' or 'false' to activate/deactivate the rule."),
+                ->boolean()
+                ->description('Whether the rule should be active.'),
         ];
     }
 }

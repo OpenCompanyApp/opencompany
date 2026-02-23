@@ -31,17 +31,8 @@ class CreateAutomationRule implements Tool
                 return 'Required: name, triggerType, actionType.';
             }
 
-            $triggerConditions = [];
-            if (!empty($request['triggerConditions'])) {
-                $raw = $request['triggerConditions'];
-                $triggerConditions = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
-            }
-
-            $actionConfig = [];
-            if (!empty($request['actionConfig'])) {
-                $raw = $request['actionConfig'];
-                $actionConfig = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
-            }
+            $triggerConditions = $request['triggerConditions'] ?? [];
+            $actionConfig = $request['actionConfig'] ?? [];
 
             $rule = ListAutomationRule::create([
                 'id' => Str::uuid()->toString(),
@@ -79,11 +70,11 @@ class CreateAutomationRule implements Tool
                 ->description('Action type (e.g., "create_item", "notify", "assign_agent").')
                 ->required(),
             'triggerConditions' => $schema
-                ->string()
-                ->description('JSON object with trigger conditions, e.g. {"from_status":"todo","to_status":"done"}'),
+                ->object()
+                ->description('Trigger conditions, e.g. {"from_status":"todo","to_status":"done"}.'),
             'actionConfig' => $schema
-                ->string()
-                ->description('JSON object with action configuration, e.g. {"channel_id":"...","message":"..."}'),
+                ->object()
+                ->description('Action configuration, e.g. {"channel_id":"...","message":"..."}.'),
             'templateId' => $schema
                 ->string()
                 ->description('Template UUID to link the rule to.'),

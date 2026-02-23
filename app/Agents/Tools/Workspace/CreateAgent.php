@@ -97,12 +97,7 @@ class CreateAgent implements Tool
                 'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
             ]);
 
-            // Parse identity content (accepts Lua table or JSON string)
-            $identityContent = [];
-            if (!empty($request['identity'])) {
-                $raw = $request['identity'];
-                $identityContent = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
-            }
+            $identityContent = $request['identity'] ?? [];
 
             $agentFolder = $this->agentDocumentService->createAgentDocumentStructure($agent, $identityContent);
             $agent->update(['docs_folder_id' => $agentFolder->id]);
@@ -166,8 +161,8 @@ class CreateAgent implements Tool
                 ->boolean()
                 ->description('Whether agent is ephemeral (temporary). Default: false.'),
             'identity' => $schema
-                ->string()
-                ->description('JSON string with identity file contents, e.g. {"IDENTITY":"...","SOUL":"..."}'),
+                ->object()
+                ->description('Identity file contents, e.g. {"IDENTITY":"...","SOUL":"..."}.'),
         ];
     }
 }

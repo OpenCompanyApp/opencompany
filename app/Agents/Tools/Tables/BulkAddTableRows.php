@@ -29,8 +29,9 @@ class BulkAddTableRows implements Tool
                 ->description("The UUID of the table.")
                 ->required(),
             "rows" => $schema
-                ->string()
-                ->description("JSON array of row data objects. Each element is a key:value map. Keys can be column names or UUIDs.")
+                ->array()
+                ->items($schema->object())
+                ->description("Array of row data objects. Each element is a key:value map. Keys can be column names or UUIDs.")
                 ->required(),
         ];
     }
@@ -39,8 +40,7 @@ class BulkAddTableRows implements Tool
     {
         try {
             $table = DataTable::forWorkspace()->findOrFail($request["tableId"]);
-            $raw = $request["rows"];
-            $rows = is_array($raw) ? $raw : json_decode($raw, true);
+            $rows = $request["rows"] ?? [];
 
             // Pre-resolve columns from the first row so we do not re-create per row
             if (!empty($rows)) {

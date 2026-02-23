@@ -29,8 +29,8 @@ class AddTableRow implements Tool
                 ->description("The UUID of the table.")
                 ->required(),
             "data" => $schema
-                ->string()
-                ->description("JSON string of key:value pairs for the row data. Keys can be column names (e.g. status) or column UUIDs. New columns are auto-created for unknown keys.")
+                ->object()
+                ->description("Key:value pairs for the row data. Keys can be column names (e.g. status) or column UUIDs. New columns are auto-created for unknown keys.")
                 ->required(),
         ];
     }
@@ -39,8 +39,7 @@ class AddTableRow implements Tool
     {
         try {
             $table = DataTable::forWorkspace()->findOrFail($request["tableId"]);
-            $raw = $request["data"] ?? null;
-            $data = is_array($raw) ? $raw : (is_string($raw) ? json_decode($raw, true) : []);
+            $data = $request["data"] ?? [];
 
             $data = $this->resolveDataKeys($table, $data);
 

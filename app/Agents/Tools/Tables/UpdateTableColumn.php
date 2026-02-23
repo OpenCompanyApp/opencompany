@@ -34,8 +34,8 @@ class UpdateTableColumn implements Tool
                 ->string()
                 ->description("The column type: text, number, date, select, multiselect, checkbox, url, email, user, or attachment."),
             "columnOptions" => $schema
-                ->string()
-                ->description("JSON string of column options (e.g. select choices)."),
+                ->object()
+                ->description("Column options configuration (e.g. select choices)."),
             "required" => $schema
                 ->boolean()
                 ->description("Whether the column is required."),
@@ -57,8 +57,7 @@ class UpdateTableColumn implements Tool
             }
 
             if (isset($request["columnOptions"])) {
-                $raw = $request["columnOptions"];
-                $column->options = is_array($raw) ? $raw : json_decode($raw, true);
+                $column->options = $request["columnOptions"];
             }
 
             if (isset($request["required"])) {

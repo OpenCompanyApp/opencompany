@@ -40,14 +40,9 @@ class UpdateAgentToolPermissions implements Tool
                 return "Agent not found: {$agentId}";
             }
 
-            $toolsJson = $request['tools'] ?? null;
-            if (!$toolsJson) {
-                return 'tools is required. JSON array: [{"scopeKey":"slug","permission":"allow|deny","requiresApproval":true|false}]';
-            }
-
-            $tools = is_array($toolsJson) ? $toolsJson : json_decode($toolsJson, true);
-            if (!is_array($tools)) {
-                return 'Invalid tools parameter. Expected array.';
+            $tools = $request['tools'] ?? null;
+            if (!$tools || !is_array($tools)) {
+                return 'tools is required. Array of: [{"scopeKey":"slug","permission":"allow|deny","requiresApproval":true|false}]';
             }
 
             // Privilege escalation check: caller can only grant tools it has
@@ -117,8 +112,8 @@ class UpdateAgentToolPermissions implements Tool
                 ->description('Target agent UUID.')
                 ->required(),
             'tools' => $schema
-                ->string()
-                ->description('JSON array: [{"scopeKey":"tool_slug","permission":"allow|deny","requiresApproval":true|false}]')
+                ->array()
+                ->description('Array of tool permission objects: [{"scopeKey":"tool_slug","permission":"allow|deny","requiresApproval":true|false}].')
                 ->required(),
         ];
     }

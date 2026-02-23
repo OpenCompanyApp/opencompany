@@ -40,8 +40,7 @@ class UpdateAgentFolderAccess implements Tool
                 return "Agent not found: {$agentId}";
             }
 
-            $raw = $request['folders'] ?? [];
-            $folders = is_array($raw) ? $raw : json_decode($raw, true);
+            $folders = $request['folders'] ?? [];
 
             if (!is_array($folders)) {
                 return 'Invalid folders parameter. Expected array of folder UUIDs.';
@@ -92,8 +91,9 @@ class UpdateAgentFolderAccess implements Tool
                 ->description('Target agent UUID.')
                 ->required(),
             'folders' => $schema
-                ->string()
-                ->description('JSON array of folder UUIDs. Empty array = unrestricted.')
+                ->array()
+                ->items($schema->string())
+                ->description('Array of folder UUIDs. Empty array = unrestricted.')
                 ->required(),
         ];
     }
