@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "66db87d144ab103c3beb5932c519510e",
+    "content-hash": "17bb1af1b67d57641928ca31502bbebf",
     "packages": [
         {
             "name": "brick/math",
@@ -3577,16 +3577,16 @@
         },
         {
             "name": "opencompanyapp/ai-tool-plantuml",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/OpenCompanyApp/ai-tool-plantuml.git",
-                "reference": "5659c637d8a8d960c121516015d165d3060286e0"
+                "reference": "6ac64a89ea447ae96cfe58c60be5515b2cf6cce8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-plantuml/zipball/5659c637d8a8d960c121516015d165d3060286e0",
-                "reference": "5659c637d8a8d960c121516015d165d3060286e0",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-plantuml/zipball/6ac64a89ea447ae96cfe58c60be5515b2cf6cce8",
+                "reference": "6ac64a89ea447ae96cfe58c60be5515b2cf6cce8",
                 "shasum": ""
             },
             "require": {
@@ -3628,23 +3628,23 @@
                 "uml"
             ],
             "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-plantuml/tree/1.0.0",
+                "source": "https://github.com/OpenCompanyApp/ai-tool-plantuml/tree/1.0.1",
                 "issues": "https://github.com/OpenCompanyApp/ai-tool-plantuml/issues"
             },
-            "time": "2026-02-09T21:47:36+00:00"
+            "time": "2026-02-23T19:07:37+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-plausible",
-            "version": "1.2.1",
+            "version": "1.3.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/OpenCompanyApp/ai-tool-plausible.git",
-                "reference": "af424c78e062a088fccc77c8012af393cd219d12"
+                "reference": "f6a2f1f131286e496f68d5de25094549700d7047"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-plausible/zipball/af424c78e062a088fccc77c8012af393cd219d12",
-                "reference": "af424c78e062a088fccc77c8012af393cd219d12",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-plausible/zipball/f6a2f1f131286e496f68d5de25094549700d7047",
+                "reference": "f6a2f1f131286e496f68d5de25094549700d7047",
                 "shasum": ""
             },
             "require": {
@@ -3684,10 +3684,10 @@
                 "tools"
             ],
             "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-plausible/tree/1.2.1",
+                "source": "https://github.com/OpenCompanyApp/ai-tool-plausible/tree/1.3.1",
                 "issues": "https://github.com/OpenCompanyApp/ai-tool-plausible/issues"
             },
-            "time": "2026-02-22T22:21:45+00:00"
+            "time": "2026-02-23T19:17:24+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-ticktick",
@@ -3748,16 +3748,16 @@
         },
         {
             "name": "opencompanyapp/ai-tool-typst",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/OpenCompanyApp/ai-tool-typst.git",
-                "reference": "835a35a3fee25832ab0259551481ca1d9def5843"
+                "reference": "ec36989b68a506e2ae64289d0f20cbd10dc8641c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-typst/zipball/835a35a3fee25832ab0259551481ca1d9def5843",
-                "reference": "835a35a3fee25832ab0259551481ca1d9def5843",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-typst/zipball/ec36989b68a506e2ae64289d0f20cbd10dc8641c",
+                "reference": "ec36989b68a506e2ae64289d0f20cbd10dc8641c",
                 "shasum": ""
             },
             "require": {
@@ -3799,23 +3799,23 @@
                 "typst"
             ],
             "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-typst/tree/1.0.0",
+                "source": "https://github.com/OpenCompanyApp/ai-tool-typst/tree/1.0.1",
                 "issues": "https://github.com/OpenCompanyApp/ai-tool-typst/issues"
             },
-            "time": "2026-02-09T21:47:39+00:00"
+            "time": "2026-02-23T19:08:00+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-vegalite",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/OpenCompanyApp/ai-tool-vegalite.git",
-                "reference": "a5ea702d27ce3d693f36442dbcd7ccae0033df0e"
+                "reference": "afbab47c742210903b6b0876feb0f3d9e7cbcd66"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-vegalite/zipball/a5ea702d27ce3d693f36442dbcd7ccae0033df0e",
-                "reference": "a5ea702d27ce3d693f36442dbcd7ccae0033df0e",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-vegalite/zipball/afbab47c742210903b6b0876feb0f3d9e7cbcd66",
+                "reference": "afbab47c742210903b6b0876feb0f3d9e7cbcd66",
                 "shasum": ""
             },
             "require": {
@@ -3842,10 +3842,10 @@
             ],
             "description": "Vega-Lite data visualization tool for OpenCompany AI agents",
             "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-vegalite/tree/1.0.0",
+                "source": "https://github.com/OpenCompanyApp/ai-tool-vegalite/tree/1.0.1",
                 "issues": "https://github.com/OpenCompanyApp/ai-tool-vegalite/issues"
             },
-            "time": "2026-02-09T21:47:40+00:00"
+            "time": "2026-02-23T19:08:14+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-worldbank",

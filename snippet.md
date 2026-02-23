@@ -84,9 +84,6 @@ show tokens per second as metric
 
 -----
 
-───
-Bottom line: Lua system is production-ready. 98% pass rate with only minor documentation/formatting issues. ⬛
-
 
 
 ---
