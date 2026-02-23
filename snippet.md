@@ -49,77 +49,17 @@ if lua script, it will execute the lua script and return the result.
 you can call an agent from lua code, (make sure this is in docs somewhere tho)
 --
 
-tool catalog should also have the lua docs in a ux friendly way for the user, like click capability see tools/lua docs.
+
 -- 
 when a automation is triggered, the agent should be able to check previous ctx of an exectuion somehow to help create the automation script.
 
 --
 
-you put the lua docs in docs/lua-api/ but that's for other docs for the developer, make a seperate folder for it, better place. not under docs/
----
-i don't like those fixed def.:
-    */
-    private function actionPrefix(string $slug, string $appName): string
-    {
-        // Map tool slugs to prefixes within their namespace.
-        // Tools with no prefix are the "primary" tools — their actions become top-level.
-        // Tools with a prefix get "{prefix}_{action}" names.
-        $prefixes = [
-            // docs: query_documents is primary, others get prefixes
-            'query_documents' => '',
-            'manage_document' => '',
-            'comment_on_document' => 'comment',
-            // tables: query_table is primary, manage actions already contain context
-            'query_table' => '',
-            'manage_table' => '',
-            'manage_table_rows' => '',
-            // lists: query_list_items is primary
-            'query_list_items' => '',
-            'manage_list_item' => 'item',
-            'manage_list_status' => 'status',
-            // calendar: both are primary (no overlapping actions)
-            'query_calendar' => '',
-            'manage_calendar_event' => 'event',
-            // chat: read_channel and manage_message get prefixes
-            'read_channel' => 'read',
-            'manage_message' => 'message',
-            'discover_external_channels' => 'external',
-            // workspace: all management tools get prefixes
-            'query_workspace' => '',
-            'manage_agent' => 'agent',
-            'manage_agent_permissions' => 'permissions',
-            'manage_integration' => 'integration',
-            'manage_mcp_server' => 'mcp_server',
-            'manage_channel' => 'channel',
-            'manage_automation' => 'automation',
-            // agents
-            'contact_agent' => '',
-            // tasks
-            'update_current_task' => '',
-        ];
 
-or 
-
-        // Common prefixes to strip based on app context
-        $prefixes = [
-            'chat' => ['send_channel_message' => 'send', 'read_channel' => 'read', 'list_channels' => 'list_channels', 'search_messages' => 'search', 'manage_message' => 'manage', 'discover_external_channels' => 'discover_external'],
-            'docs' => ['query_documents' => 'query', 'search_documents' => 'search', 'manage_document' => 'manage', 'comment_on_document' => 'comment'],
-            'tables' => ['query_table' => 'query', 'manage_table' => 'manage', 'manage_table_rows' => 'manage_rows'],
-            'calendar' => ['query_calendar' => 'query', 'manage_calendar_event' => 'manage'],
-            'lists' => ['query_list_items' => 'query', 'manage_list_item' => 'manage_item', 'manage_list_status' => 'manage_status'],
-            'agents' => ['contact_agent' => 'contact'],
-            'memory' => ['save_memory' => 'save', 'recall_memory' => 'recall'],
-            'workspace' => ['query_workspace' => 'query', 'manage_agent' => 'manage_agent', 'manage_agent_permissions' => 'manage_permissions', 'manage_integration' => 'manage_integration', 'manage_mcp_server' => 'manage_mcp_server', 'manage_channel' => 'manage_channel', 'manage_automation' => 'manage_automation'],
-            'svg' => ['render_svg' => 'render'],
-        ];
-
-there should be a bettter way, doesn't every integration/capability already have a name?
-
---
 ok, external integrations should only be able to be used in a lua script to save context, same for some internal stuff like docs/tables, calendars etc. Only the very impoirtant stuff like system, maybe agents, memory should be available as tools (in additon to lua api). all the rest lua,.
 
 -- 
-can save more tokens in system prompt
+can save more tokens in system prompt for lua libs
 
 --
 in _overview doc add that we are using roblox luau dialect of lua, intercompatible with lua 5.1, in line/tool exec we use regular lua 5.1, but for automation and reusable stuff we prefer luau types etc and explicit.
@@ -311,3 +251,113 @@ The JSON stringification is an implementation detail that shouldn't leak to the 
 
 
 show tokens per second as metric
+
+
+-----
+
+issues: 
+
+Atlas
+Lua System QA Complete — Full Report ✅
+
+───
+Summary
+
+Test Suite        Tests  Passed  Failed  Pass Rate
+----------------  -----  ------  ------  ---------
+Core Lua          6      6       0       100%     
+App Namespaces    27     25      2       93%      
+Integrations      10     10      0       100%     
+MCP Servers       2      2       0       100%     
+Write Operations  12     12      0       100%     
+Edge Cases        24     24      0       100%     
+TOTAL             81     79      2       98%      
+───
+What Works
+
+Core Lua (100%)
+• Variables, tables, math, strings, patterns
+• bit32, utf8, os libraries
+• Metatables, closures, recursion
+• Algorithms (Fibonacci, factorial, quicksort)
+• Error handling with pcall
+
+App Namespace (100%)
+• app.chat — list, search, send
+• app.tables — list, get, search, add rows
+• app.docs — list, search
+• app.calendar — list events
+• app.memory — save, recall
+• app.workspace — list agents, members
+• app.lists — kanban projects, statuses
+• app.svg — render SVG to PNG
+
+Integrations (100%)
+• Plausible Analytics
+• TickTick
+• CoinGecko
+• Exchange Rates
+• Celestial (astronomy)
+• World Bank
+• VegaLite charts
+• Typst PDFs
+• PlantUML
+• Mermaid
+
+MCP Servers (100%)
+• Exa Web Search
+• Context7 (app.mcp["context7"]["resolve-library-uri"])
+
+───
+Issues Found (2)
+
+Issue                   Cause                                                Fix                                              
+----------------------  ---------------------------------------------------  -------------------------------------------------
+Context7 function name  Underscores in docs vs dashes in API                 Use `app.mcp["context7"]["resolve-library-uri"]` 
+Tables return string    `query_list_tables` returns string, not table array  Minor parsing issue, doesn't affect functionality
+───
+Performance
+
+Metric         Value         
+-------------  --------------
+100K math ops  0.024s        
+Ops/second     4.1M          
+Memory usage   ~700KB average
+Max memory     32MB          
+CPU limit      5 seconds     
+───
+Key Findings
+
+1. All 22 namespaces functional
+2. Write operations work — Added joke to table successfully
+3. Rendering works — SVG, VegaLite, Typst all generate output
+4. Error handling solid — pcall catches errors correctly
+5. Large data supported — 10K item tables, 5K+ char strings
+
+───
+Recommendations
+
+1. Fix Context7 docs — Change resolve_library_uri to resolve-library-uri in docs
+2. Fix tables return type — query_list_tables should return array, not string
+3. Add JSON stringify helper — Auto-convert tables to JSON for data param
+
+───
+Bottom line: Lua system is production-ready. 98% pass rate with only minor documentation/formatting issues. ⬛
+
+
+
+---
+
+autocomplete in monaco editor
+
+
+----
+\
+clear overview which tools were used in a task, with icons etc.
+
+--
+
+tool catalog should only show installed integrations
+
+--
+luau type check and linter

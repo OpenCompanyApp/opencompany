@@ -583,6 +583,56 @@ class LuaApiDocGenerator
     }
 
     /**
+     * Get the built namespace structure for the tool catalog UI.
+     *
+     * @return array<string, array{description: string, functions: array}>
+     */
+    public function getNamespacesForCatalog(User $agent): array
+    {
+        return $this->buildNamespaces($agent);
+    }
+
+    /**
+     * Get supplementary Lua docs for a namespace (public wrapper).
+     */
+    public function getSupplementaryDocs(string $namespace): ?string
+    {
+        return $this->getProviderLuaDocs($namespace);
+    }
+
+    /**
+     * Get all static documentation pages with their content.
+     *
+     * @return list<array{slug: string, title: string, content: string}>
+     */
+    public function getStaticDocsForCatalog(): array
+    {
+        $pages = $this->getStaticPages();
+        $result = [];
+
+        foreach ($pages as $slug => $path) {
+            $content = file_get_contents($path);
+            if ($content === false) {
+                continue;
+            }
+
+            // Extract title from first markdown heading
+            $title = ucfirst($slug);
+            if (preg_match('/^#\s+(.+)$/m', $content, $m)) {
+                $title = $m[1];
+            }
+
+            $result[] = [
+                'slug' => $slug,
+                'title' => $title,
+                'content' => $content,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * Get a compact namespace summary for the system prompt, grouped by tier.
      * Shows Internal / Integrations / MCP categories with app.* prefixed names.
      */

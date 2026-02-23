@@ -1,8 +1,8 @@
 <template>
   <div class="h-full overflow-hidden flex flex-col">
-    <div class="max-w-6xl mx-auto w-full p-4 md:p-6 flex flex-col flex-1 min-h-0">
+    <div class="max-w-7xl mx-auto w-full p-4 md:p-6 flex flex-col flex-1 min-h-0">
       <!-- Header -->
-      <header class="mb-4 md:mb-6 shrink-0">
+      <header class="mb-4 md:mb-5 shrink-0">
         <div class="flex items-center justify-between gap-4">
           <div>
             <div class="flex items-center gap-3">
@@ -15,7 +15,7 @@
               <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Tool Catalog</h1>
             </div>
             <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1 ml-7">
-              Developer reference for all tools available to agents
+              API reference for all tools and Lua functions
             </p>
           </div>
           <!-- Search -->
@@ -56,81 +56,175 @@
             <Icon name="ph:x" class="w-3.5 h-3.5" />
           </button>
         </div>
-
-        <!-- Stats -->
-        <div v-if="!loading && catalog.length > 0" class="flex items-center gap-4 mt-3 ml-7 text-xs text-neutral-400 dark:text-neutral-500">
-          <span>{{ totalTools }} tools</span>
-          <span>{{ builtInCount }} built-in</span>
-          <span v-if="integrationCount > 0">{{ integrationCount }} from integrations</span>
-          <span>{{ catalog.length }} apps</span>
-        </div>
       </header>
 
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto min-h-0 -mx-4 md:-mx-6 px-4 md:px-6 pb-6">
-        <!-- Loading -->
-        <div v-if="loading" class="flex items-center justify-center py-12">
-          <Icon name="ph:spinner" class="w-5 h-5 text-neutral-400 animate-spin" />
-          <span class="ml-2 text-sm text-neutral-500">Loading tool catalog...</span>
-        </div>
+      <!-- Loading -->
+      <div v-if="loading" class="flex items-center justify-center py-16">
+        <Icon name="ph:spinner" class="w-5 h-5 text-neutral-400 animate-spin" />
+        <span class="ml-2 text-sm text-neutral-500">Loading tool catalog...</span>
+      </div>
 
-        <!-- Empty -->
-        <div v-else-if="filteredCatalog.length === 0 && searchQuery" class="text-center py-12">
-          <Icon name="ph:magnifying-glass" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
-          <p class="text-sm text-neutral-500 dark:text-neutral-400">No tools match "{{ searchQuery }}"</p>
-        </div>
+      <!-- Mobile Nav (horizontal pills) -->
+      <div v-if="!loading" class="flex gap-1.5 overflow-x-auto pb-3 -mx-4 px-4 md:hidden shrink-0" style="-ms-overflow-style: none; scrollbar-width: none;">
+        <button
+          v-for="item in visibleSidebarItems"
+          :key="'mobile-' + item.id"
+          type="button"
+          :class="[
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+            activeItem === item.id
+              ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+              : item.enabled === false
+                ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
+          ]"
+          @click="activeItem = item.id"
+        >
+          <Icon :name="item.icon" class="w-3.5 h-3.5" />
+          {{ item.label }}
+        </button>
+      </div>
 
-        <div v-else-if="filteredCatalog.length === 0" class="text-center py-12">
-          <Icon name="ph:wrench" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
-          <p class="text-sm text-neutral-500 dark:text-neutral-400">No tools available</p>
-        </div>
-
-        <!-- App groups -->
-        <div v-else class="space-y-2">
-          <template v-for="(group, idx) in filteredCatalog" :key="group.name">
-            <!-- Separator between integration and built-in tools -->
-            <div
-              v-if="!group.isIntegration && idx > 0 && filteredCatalog[idx - 1].isIntegration"
-              class="flex items-center gap-3 pt-2 pb-1"
+      <!-- Sidebar + Content -->
+      <div v-if="!loading" class="flex flex-col md:flex-row gap-4 md:gap-6 flex-1 min-h-0">
+        <!-- Desktop Sidebar -->
+        <nav class="hidden md:flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto pb-6">
+          <!-- Guides section -->
+          <template v-if="guideItems.length > 0">
+            <div class="px-2 py-1.5 text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 font-medium">Guides</div>
+            <button
+              v-for="item in guideItems"
+              :key="item.id"
+              type="button"
+              :class="sidebarButtonClass(item.id)"
+              @click="activeItem = item.id"
             >
-              <div class="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
-              <span class="text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 font-medium">Built-in</span>
-              <div class="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
-            </div>
+              <Icon :name="item.icon" class="w-4 h-4 shrink-0" />
+              <span class="flex-1 truncate">{{ item.label }}</span>
+            </button>
+          </template>
 
-            <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-              <!-- Group header -->
+          <!-- Built-in section -->
+          <template v-if="builtInItems.length > 0">
+            <div class="border-t border-neutral-200 dark:border-neutral-700 my-2" />
+            <div class="px-2 py-1.5 text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 font-medium">Built-in</div>
+            <button
+              v-for="item in builtInItems"
+              :key="item.id"
+              type="button"
+              :class="sidebarButtonClass(item.id)"
+              @click="activeItem = item.id"
+            >
+              <Icon :name="item.icon" class="w-4 h-4 shrink-0" />
+              <span class="flex-1 truncate">{{ item.label }}</span>
+              <span class="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500 shrink-0">{{ item.toolCount }}</span>
+            </button>
+          </template>
+
+          <!-- Integrations section -->
+          <template v-if="allIntegrationItems.length > 0">
+            <div class="border-t border-neutral-200 dark:border-neutral-700 my-2" />
+            <div class="flex items-center justify-between px-2 py-1.5">
+              <span class="text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 font-medium">Integrations</span>
               <button
                 type="button"
-                class="w-full px-4 py-3 flex items-center gap-3 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
-                @click="toggleGroup(group.name)"
+                class="text-[10px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                :title="showAllIntegrations ? 'Show enabled only' : 'Show all integrations'"
+                @click="showAllIntegrations = !showAllIntegrations"
               >
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-neutral-200 dark:bg-neutral-700/50">
+                {{ showAllIntegrations ? 'enabled only' : 'show all' }}
+              </button>
+            </div>
+            <button
+              v-for="item in integrationItems"
+              :key="item.id"
+              type="button"
+              :class="sidebarButtonClass(item.id, item.enabled === false)"
+              @click="activeItem = item.id"
+            >
+              <Icon :name="item.logo || item.icon" :class="['w-4 h-4 shrink-0', item.enabled === false ? 'opacity-40' : '']" />
+              <span class="flex-1 truncate">{{ item.label }}</span>
+              <span v-if="item.enabled === false" class="px-1 py-0.5 text-[9px] font-medium rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 shrink-0">off</span>
+              <span v-else class="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500 shrink-0">{{ item.toolCount }}</span>
+            </button>
+          </template>
+
+          <!-- MCP section -->
+          <template v-if="mcpItems.length > 0">
+            <div class="border-t border-neutral-200 dark:border-neutral-700 my-2" />
+            <div class="px-2 py-1.5 text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 font-medium">MCP Servers</div>
+            <button
+              v-for="item in mcpItems"
+              :key="item.id"
+              type="button"
+              :class="sidebarButtonClass(item.id)"
+              @click="activeItem = item.id"
+            >
+              <Icon :name="item.icon" class="w-4 h-4 shrink-0" />
+              <span class="flex-1 truncate">{{ item.label }}</span>
+              <span class="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500 shrink-0">{{ item.toolCount }}</span>
+            </button>
+          </template>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 min-w-0 overflow-y-auto pb-6">
+          <!-- Empty state -->
+          <div v-if="!activeItem" class="text-center py-16">
+            <Icon name="ph:book-open-text" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
+            <p class="text-sm text-neutral-500 dark:text-neutral-400">Select a capability from the sidebar</p>
+          </div>
+
+          <!-- Static doc content -->
+          <div v-else-if="activeStaticDoc" class="max-w-3xl">
+            <div
+              v-html="renderMarkdown(activeStaticDoc.content)"
+              class="prose-doc"
+            />
+          </div>
+
+          <!-- App group content -->
+          <div v-else-if="activeGroup" class="max-w-3xl">
+            <!-- Group header -->
+            <div class="mb-6">
+              <div class="flex items-center gap-3 mb-1">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-neutral-100 dark:bg-neutral-800">
                   <Icon
-                    :name="group.logo || group.icon"
-                    :class="[group.logo ? 'w-5 h-5' : 'w-4 h-4 text-neutral-600 dark:text-neutral-300']"
+                    :name="activeGroup.logo || activeGroup.icon"
+                    :class="[activeGroup.logo ? 'w-5 h-5' : 'w-4 h-4 text-neutral-600 dark:text-neutral-300']"
                   />
                 </div>
-                <div class="flex-1 min-w-0 text-left">
-                  <p class="text-sm font-medium text-neutral-900 dark:text-white capitalize">{{ group.name.replace(/_/g, ' ') }}</p>
-                  <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ group.description }}</p>
+                <div>
+                  <h2 class="text-lg font-semibold text-neutral-900 dark:text-white capitalize">{{ activeGroup.name.replace(/_/g, ' ') }}</h2>
+                  <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ activeGroup.description }}</p>
                 </div>
-                <span class="text-xs text-neutral-400 dark:text-neutral-500 tabular-nums shrink-0">
-                  {{ group.tools.length }} {{ group.tools.length === 1 ? 'tool' : 'tools' }}
+              </div>
+              <div class="flex items-center gap-3 mt-2 ml-11 text-xs text-neutral-400 dark:text-neutral-500">
+                <span v-if="activeGroup.luaNamespace" class="font-mono">{{ activeGroup.luaNamespace }}.*</span>
+                <span>{{ filteredTools.length }} {{ filteredTools.length === 1 ? 'tool' : 'tools' }}</span>
+                <span
+                  v-if="activeGroup.isIntegration && activeGroup.enabled === false"
+                  class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500"
+                >
+                  not enabled
                 </span>
-                <Icon
-                  name="ph:caret-right"
-                  :class="[
-                    'w-4 h-4 text-neutral-400 dark:text-neutral-500 transition-transform shrink-0',
-                    isGroupExpanded(group.name) ? 'rotate-90' : ''
-                  ]"
-                />
-              </button>
+              </div>
+            </div>
 
-              <!-- Tools list -->
-              <div v-if="isGroupExpanded(group.name)" class="divide-y divide-neutral-200 dark:divide-neutral-700 border-t border-neutral-200 dark:border-neutral-700">
-                <div v-for="tool in group.tools" :key="tool.slug" class="px-4 py-3">
-                  <!-- Tool header row: slug + type badge -->
+            <!-- Search empty state within group -->
+            <div v-if="searchQuery && filteredTools.length === 0" class="text-center py-12">
+              <p class="text-sm text-neutral-500 dark:text-neutral-400">No tools match "{{ searchQuery }}" in this namespace</p>
+            </div>
+
+            <!-- Tool cards -->
+            <div class="space-y-3">
+              <div
+                v-for="tool in filteredTools"
+                :key="tool.slug"
+                class="bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden"
+              >
+                <div class="px-4 py-3">
+                  <!-- Slug + type badge -->
                   <div class="flex items-center justify-between gap-2">
                     <code class="text-xs font-mono text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-900 px-1.5 py-0.5 rounded">
                       {{ tool.slug }}
@@ -147,53 +241,28 @@
                     </span>
                   </div>
 
-                  <!-- Tool name + short description -->
-                  <p class="text-sm font-medium text-neutral-900 dark:text-white mt-1">{{ tool.name }}</p>
+                  <!-- Name + description -->
+                  <p class="text-sm font-medium text-neutral-900 dark:text-white mt-1.5">{{ tool.name }}</p>
                   <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{{ tool.description }}</p>
 
-                  <!-- Full description toggle (when different from short) -->
-                  <div v-if="hasFullDescription(tool)" class="mt-2">
-                    <button
-                      type="button"
-                      class="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
-                      @click="toggleDescription(tool.slug)"
-                    >
-                      <Icon
-                        name="ph:caret-right"
-                        :class="[
-                          'w-3 h-3 transition-transform',
-                          isDescriptionExpanded(tool.slug) ? 'rotate-90' : ''
-                        ]"
-                      />
-                      <span class="font-medium">Details</span>
-                    </button>
-                    <div
-                      v-if="isDescriptionExpanded(tool.slug)"
-                      v-html="renderMarkdown(tool.fullDescription!)"
-                      class="tool-description mt-2 ml-1 text-xs text-neutral-600 dark:text-neutral-300"
-                    />
+                  <!-- Lua function signature -->
+                  <div v-if="tool.luaFunction && activeGroup.luaNamespace" class="mt-2">
+                    <code class="text-xs font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded inline-block">
+                      {{ buildLuaSignature(tool, activeGroup.luaNamespace) }}
+                    </code>
                   </div>
 
-                  <!-- Parameters toggle -->
-                  <div v-if="tool.parameters?.length" class="mt-2">
-                    <button
-                      type="button"
-                      class="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
-                      @click="toggleParams(tool.slug)"
-                    >
-                      <Icon
-                        name="ph:caret-right"
-                        :class="[
-                          'w-3 h-3 transition-transform',
-                          isParamsExpanded(tool.slug) ? 'rotate-90' : ''
-                        ]"
-                      />
-                      <span class="font-medium">Parameters</span>
-                      <span class="text-neutral-400 dark:text-neutral-500">({{ tool.parameters.length }})</span>
-                    </button>
+                  <!-- Full description (when different from short) -->
+                  <div
+                    v-if="hasFullDescription(tool)"
+                    v-html="renderMarkdown(tool.fullDescription!)"
+                    class="tool-description mt-2 text-xs text-neutral-600 dark:text-neutral-300"
+                  />
 
-                    <!-- Parameter list — compact divider layout -->
-                    <div v-if="isParamsExpanded(tool.slug)" class="mt-2 ml-1 bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-100 dark:divide-neutral-800">
+                  <!-- Parameters -->
+                  <div v-if="tool.parameters?.length" class="mt-3">
+                    <p class="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">Parameters</p>
+                    <div class="bg-neutral-50 dark:bg-neutral-900/50 rounded-md border border-neutral-100 dark:border-neutral-700/50 divide-y divide-neutral-100 dark:divide-neutral-800">
                       <div
                         v-for="param in tool.parameters"
                         :key="param.name"
@@ -244,19 +313,28 @@
                   </div>
 
                   <!-- No parameters -->
-                  <p v-else class="mt-1.5 text-[10px] text-neutral-400 dark:text-neutral-500 italic">No parameters</p>
+                  <p v-else class="mt-2 text-[10px] text-neutral-400 dark:text-neutral-500 italic">No parameters</p>
                 </div>
               </div>
             </div>
-          </template>
-        </div>
+
+            <!-- Supplementary Lua docs -->
+            <div v-if="activeGroup.luaDocs" class="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+              <h3 class="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">Supplementary Documentation</h3>
+              <div
+                v-html="renderMarkdown(activeGroup.luaDocs)"
+                class="prose-doc"
+              />
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import axios from 'axios'
 import Icon from '@/Components/shared/Icon.vue'
@@ -284,6 +362,7 @@ interface ToolEntry {
   type: 'read' | 'write'
   icon: string
   parameters: ToolParameter[]
+  luaFunction?: string
 }
 
 interface AppGroup {
@@ -292,83 +371,148 @@ interface AppGroup {
   icon: string
   logo?: string
   isIntegration: boolean
+  enabled?: boolean
   tools: ToolEntry[]
+  luaNamespace?: string
+  luaDocs?: string
+}
+
+interface StaticDoc {
+  slug: string
+  title: string
+  content: string
+}
+
+interface SidebarItem {
+  id: string
+  label: string
+  icon: string
+  logo?: string
+  toolCount?: number
+  enabled?: boolean
+  section: 'guide' | 'builtin' | 'integration' | 'mcp'
 }
 
 const loading = ref(true)
-const catalog = ref<AppGroup[]>([])
+const groups = ref<AppGroup[]>([])
+const staticDocs = ref<StaticDoc[]>([])
 const searchQuery = ref('')
-const expandedGroups = reactive<Record<string, boolean>>({})
-const expandedParams = reactive(new Set<string>())
-const expandedDescriptions = reactive(new Set<string>())
+const activeItem = ref<string | null>(null)
+const showAllIntegrations = ref(false)
 
-const totalTools = computed(() => catalog.value.reduce((sum, g) => sum + g.tools.length, 0))
-const builtInCount = computed(() => catalog.value.filter(g => !g.isIntegration).reduce((sum, g) => sum + g.tools.length, 0))
-const integrationCount = computed(() => catalog.value.filter(g => g.isIntegration).reduce((sum, g) => sum + g.tools.length, 0))
+// Sidebar items derived from data
+const sidebarItems = computed<SidebarItem[]>(() => {
+  const items: SidebarItem[] = []
 
-const filteredCatalog = computed<AppGroup[]>(() => {
-  if (!searchQuery.value) return catalog.value
+  // Static docs
+  for (const doc of staticDocs.value) {
+    items.push({
+      id: `doc:${doc.slug}`,
+      label: doc.title,
+      icon: 'ph:book-open-text',
+      section: 'guide',
+    })
+  }
+
+  // App groups
+  for (const group of groups.value) {
+    const isMcp = group.name.startsWith('mcp_') || group.luaNamespace?.startsWith('app.mcp.')
+    const section = isMcp ? 'mcp' : group.isIntegration ? 'integration' : 'builtin'
+
+    items.push({
+      id: `group:${group.name}`,
+      label: group.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      icon: group.icon,
+      logo: group.logo,
+      toolCount: group.tools.length,
+      enabled: group.enabled,
+      section,
+    })
+  }
+
+  return items
+})
+
+const guideItems = computed(() => sidebarItems.value.filter(i => i.section === 'guide'))
+const builtInItems = computed(() => sidebarItems.value.filter(i => i.section === 'builtin'))
+const allIntegrationItems = computed(() => sidebarItems.value.filter(i => i.section === 'integration'))
+const integrationItems = computed(() => {
+  if (showAllIntegrations.value) return allIntegrationItems.value
+  return allIntegrationItems.value.filter(i => i.enabled !== false)
+})
+const mcpItems = computed(() => sidebarItems.value.filter(i => i.section === 'mcp'))
+
+// Mobile: all visible items respecting the integration toggle
+const visibleSidebarItems = computed(() => {
+  return sidebarItems.value.filter(i => {
+    if (i.section !== 'integration') return true
+    if (showAllIntegrations.value) return true
+    return i.enabled !== false
+  })
+})
+
+// Active content
+const activeStaticDoc = computed(() => {
+  if (!activeItem.value?.startsWith('doc:')) return null
+  const slug = activeItem.value.slice(4)
+  return staticDocs.value.find(d => d.slug === slug) || null
+})
+
+const activeGroup = computed(() => {
+  if (!activeItem.value?.startsWith('group:')) return null
+  const name = activeItem.value.slice(6)
+  return groups.value.find(g => g.name === name) || null
+})
+
+// Filtered tools within the active group (for search)
+const filteredTools = computed(() => {
+  if (!activeGroup.value) return []
+  if (!searchQuery.value) return activeGroup.value.tools
 
   const q = searchQuery.value.toLowerCase()
-  return catalog.value
-    .map(group => ({
-      ...group,
-      tools: group.tools.filter(
-        t => t.slug.includes(q)
-          || t.name.toLowerCase().includes(q)
-          || t.description.toLowerCase().includes(q)
-          || (t.fullDescription && t.fullDescription.toLowerCase().includes(q))
-      ),
-    }))
-    .filter(group => group.tools.length > 0)
+  return activeGroup.value.tools.filter(
+    t => t.slug.includes(q)
+      || t.name.toLowerCase().includes(q)
+      || t.description.toLowerCase().includes(q)
+      || (t.fullDescription && t.fullDescription.toLowerCase().includes(q))
+      || (t.luaFunction && t.luaFunction.toLowerCase().includes(q))
+  )
+})
+
+// When searching, auto-select first group that has matches
+watch(searchQuery, (q) => {
+  if (!q) return
+
+  const qLower = q.toLowerCase()
+
+  // Check if current active group has matches
+  if (activeGroup.value) {
+    const hasMatches = activeGroup.value.tools.some(
+      t => t.slug.includes(qLower)
+        || t.name.toLowerCase().includes(qLower)
+        || t.description.toLowerCase().includes(qLower)
+        || (t.fullDescription && t.fullDescription.toLowerCase().includes(qLower))
+    )
+    if (hasMatches) return
+  }
+
+  // Find first group with matches
+  for (const group of groups.value) {
+    const hasMatches = group.tools.some(
+      t => t.slug.includes(qLower)
+        || t.name.toLowerCase().includes(qLower)
+        || t.description.toLowerCase().includes(qLower)
+        || (t.fullDescription && t.fullDescription.toLowerCase().includes(qLower))
+    )
+    if (hasMatches) {
+      activeItem.value = `group:${group.name}`
+      return
+    }
+  }
 })
 
 const hasFullDescription = (tool: ToolEntry) => {
   return tool.fullDescription && tool.fullDescription !== tool.description
-}
-
-// Set of tool slugs that belong to integration groups (auto-expand details+params)
-const integrationSlugs = computed(() => {
-  const slugs = new Set<string>()
-  for (const group of catalog.value) {
-    if (group.isIntegration) {
-      for (const tool of group.tools) slugs.add(tool.slug)
-    }
-  }
-  return slugs
-})
-
-// Auto-expand groups when searching
-const isGroupExpanded = (name: string) => {
-  if (searchQuery.value) return true
-  return expandedGroups[name] ?? false
-}
-
-// Auto-expand descriptions and params when searching or for integration tools
-const isDescriptionExpanded = (slug: string) => {
-  if (searchQuery.value) return true
-  if (integrationSlugs.value.has(slug)) return !expandedDescriptions.has(slug) // default open, toggle closes
-  return expandedDescriptions.has(slug)
-}
-
-const isParamsExpanded = (slug: string) => {
-  if (searchQuery.value) return true
-  if (integrationSlugs.value.has(slug)) return !expandedParams.has(slug) // default open, toggle closes
-  return expandedParams.has(slug)
-}
-
-const toggleGroup = (name: string) => {
-  expandedGroups[name] = !expandedGroups[name]
-}
-
-const toggleDescription = (slug: string) => {
-  if (expandedDescriptions.has(slug)) expandedDescriptions.delete(slug)
-  else expandedDescriptions.add(slug)
-}
-
-const toggleParams = (slug: string) => {
-  if (expandedParams.has(slug)) expandedParams.delete(slug)
-  else expandedParams.add(slug)
 }
 
 const formatType = (type: string | string[]) => {
@@ -376,10 +520,40 @@ const formatType = (type: string | string[]) => {
   return type
 }
 
+const buildLuaSignature = (tool: ToolEntry, namespace: string) => {
+  if (!tool.luaFunction) return ''
+  const params = (tool.parameters || []).map(p => p.required ? p.name : p.name + '?')
+  return `${namespace}.${tool.luaFunction}(${params.join(', ')})`
+}
+
+const sidebarButtonClass = (id: string, dimmed = false) => [
+  'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors text-left w-full',
+  activeItem.value === id
+    ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
+    : dimmed
+      ? 'text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+      : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+]
+
 onMounted(async () => {
   try {
     const { data } = await axios.get('/api/tools/catalog')
-    catalog.value = data
+
+    // Handle both old (array) and new (object) response shapes
+    if (Array.isArray(data)) {
+      groups.value = data
+      staticDocs.value = []
+    } else {
+      groups.value = data.groups || []
+      staticDocs.value = data.staticDocs || []
+    }
+
+    // Auto-select first guide or first group
+    if (staticDocs.value.length > 0) {
+      activeItem.value = `doc:${staticDocs.value[0].slug}`
+    } else if (groups.value.length > 0) {
+      activeItem.value = `group:${groups.value[0].name}`
+    }
   } catch (err) {
     console.error('Failed to load tool catalog:', err)
   } finally {
@@ -389,6 +563,98 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Prose styling for full markdown docs */
+.prose-doc :deep(h1) {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-neutral-900);
+  margin: 0 0 0.75rem;
+}
+:is(.dark) .prose-doc :deep(h1) {
+  color: white;
+}
+.prose-doc :deep(h2) {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-neutral-800);
+  margin: 1.5rem 0 0.5rem;
+}
+:is(.dark) .prose-doc :deep(h2) {
+  color: var(--color-neutral-100);
+}
+.prose-doc :deep(h3) {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  margin: 1.25rem 0 0.375rem;
+}
+:is(.dark) .prose-doc :deep(h3) {
+  color: var(--color-neutral-200);
+}
+.prose-doc :deep(p) {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-neutral-600);
+  margin: 0.5rem 0;
+}
+:is(.dark) .prose-doc :deep(p) {
+  color: var(--color-neutral-300);
+}
+.prose-doc :deep(ul),
+.prose-doc :deep(ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+.prose-doc :deep(li) {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-neutral-600);
+  margin: 0.25rem 0;
+}
+:is(.dark) .prose-doc :deep(li) {
+  color: var(--color-neutral-300);
+}
+.prose-doc :deep(table) {
+  width: 100%;
+  font-size: 0.8125rem;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+.prose-doc :deep(th),
+.prose-doc :deep(td) {
+  text-align: left;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--color-neutral-200);
+}
+:is(.dark) .prose-doc :deep(th),
+:is(.dark) .prose-doc :deep(td) {
+  border-color: var(--color-neutral-700);
+}
+.prose-doc :deep(th) {
+  font-weight: 600;
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-700);
+}
+:is(.dark) .prose-doc :deep(th) {
+  background: var(--color-neutral-800);
+  color: var(--color-neutral-200);
+}
+.prose-doc :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--color-neutral-200);
+  margin: 1.5rem 0;
+}
+:is(.dark) .prose-doc :deep(hr) {
+  border-color: var(--color-neutral-700);
+}
+.prose-doc :deep(strong) {
+  font-weight: 600;
+  color: var(--color-neutral-700);
+}
+:is(.dark) .prose-doc :deep(strong) {
+  color: var(--color-neutral-200);
+}
+
 /* Compact prose for tool full descriptions */
 .tool-description :deep(p) {
   margin: 0.25rem 0;
