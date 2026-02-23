@@ -247,9 +247,10 @@
 
                   <!-- Lua function signature -->
                   <div v-if="tool.luaFunction && activeGroup.luaNamespace" class="mt-2">
-                    <code class="text-xs font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded inline-block">
-                      {{ buildLuaSignature(tool, activeGroup.luaNamespace) }}
-                    </code>
+                    <code
+                      v-html="highlightSignature(buildLuaSignature(tool, activeGroup.luaNamespace))"
+                      class="text-xs font-mono bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700/50 px-2 py-1 rounded inline-block lua-sig"
+                    />
                   </div>
 
                   <!-- Full description (when different from short) -->
@@ -526,6 +527,29 @@ const buildLuaSignature = (tool: ToolEntry, namespace: string) => {
   return `${namespace}.${tool.luaFunction}(${params.join(', ')})`
 }
 
+const highlightSignature = (sig: string): string => {
+  const match = sig.match(/^(.+)\.(\w+)\(([^)]*)\)$/)
+  if (!match) return sig
+
+  const [, ns, fn, paramsStr] = match
+
+  const nsHtml = ns.split('.').map(s =>
+    `<span class="sig-ns">${s}</span>`
+  ).join('<span class="sig-dot">.</span>')
+
+  const paramsHtml = paramsStr
+    ? paramsStr.split(/,\s*/).map(p => {
+        const optional = p.endsWith('?')
+        const name = optional ? p.slice(0, -1) : p
+        return optional
+          ? `<span class="sig-param sig-optional">${name}</span><span class="sig-opt-mark">?</span>`
+          : `<span class="sig-param">${name}</span>`
+      }).join('<span class="sig-comma">, </span>')
+    : ''
+
+  return `${nsHtml}<span class="sig-dot">.</span><span class="sig-fn">${fn}</span><span class="sig-paren">(</span>${paramsHtml}<span class="sig-paren">)</span>`
+}
+
 const sidebarButtonClass = (id: string, dimmed = false) => [
   'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors text-left w-full',
   activeItem.value === id
@@ -719,4 +743,23 @@ onMounted(async () => {
   background: var(--color-neutral-800);
   color: var(--color-neutral-400);
 }
+
+/* Lua signature syntax highlighting (v-html needs :deep) */
+.lua-sig :deep(.sig-ns)       { color: var(--color-neutral-500); }
+.lua-sig :deep(.sig-dot)      { color: var(--color-neutral-400); }
+.lua-sig :deep(.sig-fn)       { color: #16a34a; font-weight: 600; }
+.lua-sig :deep(.sig-paren)    { color: var(--color-neutral-500); }
+.lua-sig :deep(.sig-param)    { color: #2563eb; }
+.lua-sig :deep(.sig-optional) { color: #a855f7; }
+.lua-sig :deep(.sig-opt-mark) { color: #a855f7; }
+.lua-sig :deep(.sig-comma)    { color: var(--color-neutral-400); }
+
+:is(.dark) .lua-sig :deep(.sig-ns)       { color: var(--color-neutral-400); }
+:is(.dark) .lua-sig :deep(.sig-dot)      { color: var(--color-neutral-500); }
+:is(.dark) .lua-sig :deep(.sig-fn)       { color: #4ade80; font-weight: 600; }
+:is(.dark) .lua-sig :deep(.sig-paren)    { color: var(--color-neutral-400); }
+:is(.dark) .lua-sig :deep(.sig-param)    { color: #60a5fa; }
+:is(.dark) .lua-sig :deep(.sig-optional) { color: #c084fc; }
+:is(.dark) .lua-sig :deep(.sig-opt-mark) { color: #c084fc; }
+:is(.dark) .lua-sig :deep(.sig-comma)    { color: var(--color-neutral-500); }
 </style>

@@ -56,7 +56,7 @@ when a automation is triggered, the agent should be able to check previous ctx o
 --
 
 
-ok, external integrations should only be able to be used in a lua script to save context, same for some internal stuff like docs/tables, calendars etc. Only the very impoirtant stuff like system, maybe agents, memory should be available as tools (in additon to lua api). all the rest lua,.
+ok, external integrations should only be able to be used in a lua script to save context, same for some internal stuff like docs/tables, calendars etc. Only the very impoirtant stuff like system, tasks, maybe agents, memory should be available as tools (in additon to lua api). all the rest lua,. I want a code first approach for tool callng (code mode kinda)
 
 -- 
 can save more tokens in system prompt for lua libs
