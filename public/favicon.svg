@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect width="32" height="32" rx="7" fill="#171717"/>
-  <text x="16" y="22" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-weight="600" font-size="16" fill="white">OC</text>
+  <!-- Triangle connecting the three pillars -->
+  <polygon points="16,6 5,25 27,25" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Human (top) -->
+  <circle cx="16" cy="6" r="3" fill="#f0f0f0"/>
+  <!-- Agent (bottom-left) -->
+  <circle cx="5" cy="25" r="3" fill="#f0f0f0"/>
+  <!-- Code (bottom-right) -->
+  <circle cx="27" cy="25" r="3" fill="#f0f0f0"/>
 </svg>
