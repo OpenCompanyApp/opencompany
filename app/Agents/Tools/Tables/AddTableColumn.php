@@ -54,7 +54,9 @@ class AddTableColumn implements Tool
                 "table_id" => $table->id,
                 "name" => $request["name"],
                 "type" => $request["columnType"] ?? "text",
-                "options" => isset($request["columnOptions"]) ? json_decode($request["columnOptions"], true) : null,
+                "options" => isset($request["columnOptions"])
+                    ? (is_array($request["columnOptions"]) ? $request["columnOptions"] : json_decode($request["columnOptions"], true))
+                    : null,
                 "order" => $maxOrder + 1,
                 "required" => $request["required"] ?? false,
             ]);

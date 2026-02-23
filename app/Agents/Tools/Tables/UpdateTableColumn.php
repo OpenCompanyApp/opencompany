@@ -57,7 +57,8 @@ class UpdateTableColumn implements Tool
             }
 
             if (isset($request["columnOptions"])) {
-                $column->options = json_decode($request["columnOptions"], true);
+                $raw = $request["columnOptions"];
+                $column->options = is_array($raw) ? $raw : json_decode($raw, true);
             }
 
             if (isset($request["required"])) {

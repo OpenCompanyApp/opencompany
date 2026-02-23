@@ -41,19 +41,15 @@ class UpdateAutomationRule implements Tool
                 $updates['trigger_type'] = $request['triggerType'];
             }
             if (!empty($request['triggerConditions'])) {
-                $decoded = json_decode($request['triggerConditions'], true);
-                if (is_array($decoded)) {
-                    $updates['trigger_conditions'] = $decoded;
-                }
+                $raw = $request['triggerConditions'];
+                $updates['trigger_conditions'] = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
             }
             if (isset($request['actionType'])) {
                 $updates['action_type'] = $request['actionType'];
             }
             if (!empty($request['actionConfig'])) {
-                $decoded = json_decode($request['actionConfig'], true);
-                if (is_array($decoded)) {
-                    $updates['action_config'] = $decoded;
-                }
+                $raw = $request['actionConfig'];
+                $updates['action_config'] = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
             }
             if (isset($request['isActive'])) {
                 $updates['is_active'] = filter_var($request['isActive'], FILTER_VALIDATE_BOOLEAN);

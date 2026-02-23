@@ -30,10 +30,8 @@ class CreateItemTemplate implements Tool
 
             $tags = [];
             if (!empty($request['tags'])) {
-                $decoded = json_decode($request['tags'], true);
-                if (is_array($decoded)) {
-                    $tags = $decoded;
-                }
+                $raw = $request['tags'];
+                $tags = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
             }
 
             $template = ListTemplate::create([

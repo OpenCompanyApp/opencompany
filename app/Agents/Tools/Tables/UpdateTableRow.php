@@ -39,7 +39,8 @@ class UpdateTableRow implements Tool
     {
         try {
             $row = DataTableRow::findOrFail($request["rowId"]);
-            $data = isset($request["data"]) ? json_decode($request["data"], true) : [];
+            $raw = $request["data"] ?? null;
+            $data = is_array($raw) ? $raw : (is_string($raw) ? json_decode($raw, true) : []);
 
             $table = DataTable::forWorkspace()->findOrFail($row->table_id);
             $data = $this->resolveDataKeys($table, $data);

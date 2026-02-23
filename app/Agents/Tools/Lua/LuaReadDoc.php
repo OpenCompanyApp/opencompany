@@ -43,12 +43,15 @@ DESC;
                 $namespace = $parts[0];
                 $function = $parts[1];
 
-                // Handle multi-level namespaces like "integrations.telegram.send"
-                // or "mcp.github.create_issue"
+                // Handle multi-level: "integrations.gmail.send_email" or "mcp.exa_search.search"
                 if (in_array($namespace, ['integrations', 'mcp']) && str_contains($function, '.')) {
                     $subParts = explode('.', $function, 2);
                     $namespace = $namespace . '.' . $subParts[0];
                     $function = $subParts[1];
+                }
+                // Handle namespace-only: "integrations.gmail" or "mcp.exa_search"
+                elseif (in_array($namespace, ['integrations', 'mcp'])) {
+                    return $this->docs->generateNamespaceDocs($namespace . '.' . $function, $this->agent);
                 }
 
                 return $this->docs->generateFunctionDocs($namespace, $function, $this->agent);

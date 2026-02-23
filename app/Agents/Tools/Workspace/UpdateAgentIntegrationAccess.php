@@ -41,11 +41,11 @@ class UpdateAgentIntegrationAccess implements Tool
                 return "Agent not found: {$agentId}";
             }
 
-            $integrationsJson = $request['integrations'] ?? '[]';
-            $integrations = json_decode($integrationsJson, true);
+            $raw = $request['integrations'] ?? [];
+            $integrations = is_array($raw) ? $raw : json_decode($raw, true);
 
             if (!is_array($integrations)) {
-                return 'Invalid JSON for integrations parameter. Expected array of app names (e.g., ["telegram","plausible"]).';
+                return 'Invalid integrations parameter. Expected array of app names (e.g., {"telegram","plausible"}).';
             }
 
             // Privilege escalation check: can only enable integrations the caller has

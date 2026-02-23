@@ -45,9 +45,9 @@ class UpdateAgentToolPermissions implements Tool
                 return 'tools is required. JSON array: [{"scopeKey":"slug","permission":"allow|deny","requiresApproval":true|false}]';
             }
 
-            $tools = json_decode($toolsJson, true);
+            $tools = is_array($toolsJson) ? $toolsJson : json_decode($toolsJson, true);
             if (!is_array($tools)) {
-                return 'Invalid JSON for tools parameter.';
+                return 'Invalid tools parameter. Expected array.';
             }
 
             // Privilege escalation check: caller can only grant tools it has

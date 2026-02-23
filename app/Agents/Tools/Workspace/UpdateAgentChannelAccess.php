@@ -40,11 +40,11 @@ class UpdateAgentChannelAccess implements Tool
                 return "Agent not found: {$agentId}";
             }
 
-            $channelsJson = $request['channels'] ?? '[]';
-            $channels = json_decode($channelsJson, true);
+            $raw = $request['channels'] ?? [];
+            $channels = is_array($raw) ? $raw : json_decode($raw, true);
 
             if (!is_array($channels)) {
-                return 'Invalid JSON for channels parameter. Expected array of channel UUIDs.';
+                return 'Invalid channels parameter. Expected array of channel UUIDs.';
             }
 
             // Privilege escalation check

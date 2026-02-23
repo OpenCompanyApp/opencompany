@@ -33,18 +33,14 @@ class CreateAutomationRule implements Tool
 
             $triggerConditions = [];
             if (!empty($request['triggerConditions'])) {
-                $decoded = json_decode($request['triggerConditions'], true);
-                if (is_array($decoded)) {
-                    $triggerConditions = $decoded;
-                }
+                $raw = $request['triggerConditions'];
+                $triggerConditions = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
             }
 
             $actionConfig = [];
             if (!empty($request['actionConfig'])) {
-                $decoded = json_decode($request['actionConfig'], true);
-                if (is_array($decoded)) {
-                    $actionConfig = $decoded;
-                }
+                $raw = $request['actionConfig'];
+                $actionConfig = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
             }
 
             $rule = ListAutomationRule::create([

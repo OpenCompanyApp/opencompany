@@ -215,6 +215,12 @@ class ToolRegistry
     public const INTEGRATION_APPS = ['telegram'];
 
     /**
+     * App groups that remain as direct AI tools.
+     * Everything else is accessible only via lua_exec (code-first approach).
+     */
+    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua'];
+
+    /**
      * Icons for each app group.
      */
     private const APP_ICONS = [
@@ -1209,8 +1215,14 @@ class ToolRegistry
         $tools = [];
 
         foreach ($this->getEffectiveToolMap() as $slug => $meta) {
-            // Skip tools from disabled integrations
             $app = $appLookup[$slug] ?? 'other';
+
+            // Code-first: only direct tool groups are registered as AI tools
+            if (!in_array($app, self::DIRECT_TOOL_GROUPS)) {
+                continue;
+            }
+
+            // Skip tools from disabled integrations
             if (in_array($app, $this->getEffectiveIntegrationApps()) && !in_array($app, $enabledIntegrations)) {
                 continue;
             }
@@ -1248,6 +1260,12 @@ class ToolRegistry
 
         foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             $app = $appLookup[$slug] ?? 'other';
+
+            // Code-first: only direct tool groups are registered as AI tools
+            if (!in_array($app, self::DIRECT_TOOL_GROUPS)) {
+                continue;
+            }
+
             if (in_array($app, $this->getEffectiveIntegrationApps()) && !in_array($app, $enabledIntegrations)) {
                 continue;
             }
@@ -1455,52 +1473,26 @@ class ToolRegistry
 
     /**
      * Build a compact app catalog string for the system prompt.
-     * Only includes apps that have at least one allowed tool for the agent.
+     * Code-first: only direct tool groups are listed as tools.
+     * Everything else is accessible through lua_exec.
      */
     public function getAppCatalog(User $agent): string
     {
-        $enabledIntegrations = $this->permissionService->getEnabledIntegrations($agent);
-
-        // Display order grouped by priority, null = section separator
-        // Start with known apps, then append any dynamic provider apps
-        $knownIntegrations = ['svg', 'lua'];
-        $providerApps = array_keys($this->providerRegistry->all());
-        $integrations = array_unique(array_merge($providerApps, $knownIntegrations));
-
-        $displayOrder = array_merge(
-            // System & task management
-            ['tasks', 'system', null],
-            // Internal apps
-            ['agents', 'memory', 'chat', 'docs', 'tables', 'calendar', 'lists', 'workspace', null],
-            // Integrations & utilities (dynamic + static)
-            $integrations,
-        );
-
         $lines = [];
-        $lastWasSeparator = true; // avoid leading blank line
 
-        foreach ($displayOrder as $appName) {
-            if ($appName === null) {
-                if (!$lastWasSeparator) {
-                    $lines[] = '';
-                }
-                $lastWasSeparator = true;
-                continue;
-            }
+        // Section 1: Direct tools (the handful of AI-callable tools)
+        $lines[] = '## Tools';
+        $lines[] = '';
 
+        foreach (self::DIRECT_TOOL_GROUPS as $appName) {
             $group = $this->getEffectiveAppGroups()[$appName] ?? null;
             if (!$group) {
                 continue;
             }
 
-            // Skip disabled integrations
-            if (in_array($appName, $this->getEffectiveIntegrationApps()) && !in_array($appName, $enabledIntegrations)) {
-                continue;
-            }
-
             // Check which tools in this app the agent has access to
-            $allowedSlugs = [];
             $hasApproval = false;
+            $hasAllowed = false;
 
             foreach ($group['tools'] as $slug) {
                 if (!isset($this->getEffectiveToolMap()[$slug])) {
@@ -1510,31 +1502,29 @@ class ToolRegistry
                     $agent, $slug, $this->getEffectiveToolMap()[$slug]['type']
                 );
                 if ($result['allowed']) {
-                    $allowedSlugs[] = $slug;
+                    $hasAllowed = true;
                     if ($result['requires_approval']) {
                         $hasApproval = true;
                     }
                 }
             }
 
-            if (empty($allowedSlugs)) {
+            if (!$hasAllowed) {
                 continue;
             }
 
             $approval = $hasApproval ? ' *' : '';
             $lines[] = "{$appName}: {$group['label']} — {$group['description']}{$approval}";
-            $lastWasSeparator = false;
-
-            // After lua line, append the Lua API namespace summary
-            if ($appName === 'lua') {
-                $lines[] = app(\App\Services\LuaApiDocGenerator::class)->getNamespaceSummary($agent);
-            }
         }
 
-        // Trim trailing blank lines
-        while (!empty($lines) && $lines[count($lines) - 1] === '') {
-            array_pop($lines);
-        }
+        // Section 2: Lua API (everything else, accessible via lua_exec)
+        $lines[] = '';
+        $lines[] = '## Lua API (code-first)';
+        $lines[] = '';
+        $lines[] = 'All data operations and integrations are available through lua_exec.';
+        $lines[] = 'Use lua_read_doc(namespace) for function signatures and parameters.';
+        $lines[] = '';
+        $lines[] = app(\App\Services\LuaApiDocGenerator::class)->getNamespaceSummary($agent);
 
         return implode("\n", $lines);
     }

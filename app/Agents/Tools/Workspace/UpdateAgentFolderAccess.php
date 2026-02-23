@@ -40,11 +40,11 @@ class UpdateAgentFolderAccess implements Tool
                 return "Agent not found: {$agentId}";
             }
 
-            $foldersJson = $request['folders'] ?? '[]';
-            $folders = json_decode($foldersJson, true);
+            $raw = $request['folders'] ?? [];
+            $folders = is_array($raw) ? $raw : json_decode($raw, true);
 
             if (!is_array($folders)) {
-                return 'Invalid JSON for folders parameter. Expected array of folder UUIDs.';
+                return 'Invalid folders parameter. Expected array of folder UUIDs.';
             }
 
             // Privilege escalation check

@@ -36,7 +36,7 @@ DESC;
     {
         $svg = trim($request['svg'] ?? '');
         if (empty($svg)) {
-            return 'Error: SVG markup is required.';
+            return 'Error: SVG markup is required. Pass your SVG code in the "svg" parameter.';
         }
 
         $title = $request['title'] ?? 'Image';

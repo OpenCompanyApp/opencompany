@@ -25,14 +25,33 @@ class LuaBridge
     /**
      * Handle a Lua app.* function call by routing it to the corresponding PHP tool.
      *
-     * Called from Lua via: app.chat.send_channel_message({channelId = "abc", content = "hi"})
-     * Which routes through metatables to: __app.call("chat.send_channel_message", {channelId = "abc", ...})
+     * Called from Lua via: app.chat.send_channel_message({channel_id = "abc", content = "hi"})
+     * Which routes through metatables to: __app.call("chat.send_channel_message", {channel_id = "abc", ...})
+     * Snake_case keys are auto-converted to camelCase for the tool.
      */
-    public function call(string $path, mixed ...$args): string
+    public function call(string $path, mixed ...$args): string|array
     {
         if (!isset($this->functionMap[$path])) {
-            $this->callLog[] = ['path' => $path, 'durationMs' => 0, 'status' => 'error', 'error' => "Unknown function: app.{$path}"];
-            throw new \RuntimeException("Unknown function: app.{$path}");
+            $msg = "Unknown function: app.{$path}";
+
+            // Suggest available functions from the same namespace
+            $parts = explode('.', $path);
+            if (count($parts) > 1) {
+                $nsPrefix = implode('.', array_slice($parts, 0, -1));
+                $available = [];
+                foreach ($this->functionMap as $fnPath => $_) {
+                    if (str_starts_with($fnPath, $nsPrefix . '.')) {
+                        $fnParts = explode('.', $fnPath);
+                        $available[] = end($fnParts);
+                    }
+                }
+                if (!empty($available)) {
+                    $msg .= '. Did you mean: ' . implode(', ', $available);
+                }
+            }
+
+            $this->callLog[] = ['path' => $path, 'durationMs' => 0, 'status' => 'error', 'error' => $msg];
+            throw new \RuntimeException($msg);
         }
 
         $toolSlug = $this->functionMap[$path];
@@ -53,6 +72,9 @@ class LuaBridge
             $params = $this->mapPositionalArgs($path, $args);
         }
 
+        // Convert snake_case keys to camelCase (Lua convention → tool convention)
+        $params = $this->snakeToCamel($params);
+
         $request = new Request($params);
 
         $start = microtime(true);
@@ -60,6 +82,17 @@ class LuaBridge
         try {
             $result = $tool->handle($request);
             $this->callLog[] = ['path' => $path, 'durationMs' => round((microtime(true) - $start) * 1000, 1), 'status' => 'ok'];
+
+            // Auto-decode JSON responses → PHP arrays (sandbox converts to Lua tables)
+            if (is_string($result)) {
+                $trimmed = ltrim($result);
+                if (($trimmed[0] ?? '') === '{' || ($trimmed[0] ?? '') === '[') {
+                    $decoded = json_decode($result, true);
+                    if ($decoded !== null) {
+                        return $decoded;
+                    }
+                }
+            }
 
             return $result;
         } catch (\Throwable $e) {
@@ -72,6 +105,23 @@ class LuaBridge
     public function getCallLog(): array
     {
         return $this->callLog;
+    }
+
+    /**
+     * Convert snake_case array keys to camelCase.
+     * Lua convention is snake_case, tool schemas use camelCase.
+     *
+     * @return array<string, mixed>
+     */
+    private function snakeToCamel(array $params): array
+    {
+        $converted = [];
+        foreach ($params as $key => $value) {
+            $camelKey = lcfirst(str_replace('_', '', ucwords((string) $key, '_')));
+            $converted[$camelKey] = $value;
+        }
+
+        return $converted;
     }
 
     /**

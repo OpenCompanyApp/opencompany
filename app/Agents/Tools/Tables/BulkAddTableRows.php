@@ -39,7 +39,8 @@ class BulkAddTableRows implements Tool
     {
         try {
             $table = DataTable::forWorkspace()->findOrFail($request["tableId"]);
-            $rows = json_decode($request["rows"], true);
+            $raw = $request["rows"];
+            $rows = is_array($raw) ? $raw : json_decode($raw, true);
 
             // Pre-resolve columns from the first row so we do not re-create per row
             if (!empty($rows)) {

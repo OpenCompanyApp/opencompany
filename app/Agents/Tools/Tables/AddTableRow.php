@@ -39,7 +39,8 @@ class AddTableRow implements Tool
     {
         try {
             $table = DataTable::forWorkspace()->findOrFail($request["tableId"]);
-            $data = isset($request["data"]) ? json_decode($request["data"], true) : [];
+            $raw = $request["data"] ?? null;
+            $data = is_array($raw) ? $raw : (is_string($raw) ? json_decode($raw, true) : []);
 
             $data = $this->resolveDataKeys($table, $data);
 

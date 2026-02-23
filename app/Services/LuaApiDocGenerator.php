@@ -365,7 +365,7 @@ class LuaApiDocGenerator
     {
         $params = [];
         foreach ($fn['parameters'] as $param) {
-            $name = $param['name'];
+            $name = $this->toSnakeCase($param['name']);
             $required = $param['required'] ?? false;
             $params[] = $required ? $name : $name . '?';
         }
@@ -388,7 +388,7 @@ class LuaApiDocGenerator
         ];
 
         foreach ($parameters as $param) {
-            $name = $param['name'];
+            $name = $this->toSnakeCase($param['name']);
             $type = $param['type'] ?? 'string';
             if (is_array($type)) {
                 $type = implode(' | ', $type);
@@ -406,6 +406,14 @@ class LuaApiDocGenerator
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Convert camelCase to snake_case for Lua-facing parameter names.
+     */
+    private function toSnakeCase(string $name): string
+    {
+        return strtolower(preg_replace('/[A-Z]/', '_$0', $name));
     }
 
     /**

@@ -28,6 +28,16 @@ class ToolCatalogController extends Controller
 
         $catalog = $toolRegistry->getToolCatalog($agent);
 
+        // Convert parameter names to snake_case for Lua convention display
+        foreach ($catalog as &$group) {
+            foreach ($group['tools'] as &$tool) {
+                foreach ($tool['parameters'] as &$param) {
+                    $param['name'] = strtolower(preg_replace('/[A-Z]/', '_$0', $param['name']));
+                }
+            }
+        }
+        unset($group, $tool, $param);
+
         // Build slug → lua function path map
         $fnMap = $docGenerator->buildFunctionMap($agent);
         $slugToLua = array_flip($fnMap);

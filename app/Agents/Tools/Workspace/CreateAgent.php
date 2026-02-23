@@ -97,13 +97,11 @@ class CreateAgent implements Tool
                 'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
             ]);
 
-            // Parse identity content from JSON string
+            // Parse identity content (accepts Lua table or JSON string)
             $identityContent = [];
             if (!empty($request['identity'])) {
-                $decoded = json_decode($request['identity'], true);
-                if (is_array($decoded)) {
-                    $identityContent = $decoded;
-                }
+                $raw = $request['identity'];
+                $identityContent = is_array($raw) ? $raw : (json_decode($raw, true) ?: []);
             }
 
             $agentFolder = $this->agentDocumentService->createAgentDocumentStructure($agent, $identityContent);
