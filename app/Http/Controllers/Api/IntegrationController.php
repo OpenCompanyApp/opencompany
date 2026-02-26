@@ -696,7 +696,7 @@ class IntegrationController extends Controller
         }
 
         $appUrl = config('app.url');
-        $webhookUrl = rtrim($appUrl, '/') . '/api/webhooks/telegram';
+        $webhookUrl = rtrim($appUrl, '/') . '/api/webhooks/chat/telegram';
 
         try {
             $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/setWebhook", [

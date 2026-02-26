@@ -45,7 +45,7 @@ class TelegramSetWebhook extends Command
         }
 
         $appUrl = config('app.url');
-        $webhookUrl = rtrim($appUrl, '/') . '/api/webhooks/telegram';
+        $webhookUrl = rtrim($appUrl, '/') . '/api/webhooks/chat/telegram';
 
         $this->info("Setting webhook to: {$webhookUrl}");
 

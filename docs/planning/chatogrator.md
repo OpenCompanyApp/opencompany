@@ -1,22 +1,22 @@
-# opencompany/laravel-chat
+# opencompany/chatogrator
 
-Laravel Chat Aggregator Package — port of the [Vercel Chat SDK](https://github.com/vercel/chat/) to PHP/Laravel.
+Chatogrator — Laravel Chat Aggregator. Port of the [Vercel Chat SDK](https://github.com/vercel/chat/) to PHP/Laravel.
 
 A standalone, open-source package that lets any Laravel developer build multi-platform chat bots with a single unified API. Write bot logic once, deploy to Slack, Discord, Microsoft Teams, Google Chat, GitHub, and Linear.
 
-- Package: `opencompany/laravel-chat`
-- Namespace: `OpenCompany\LaravelChat`
-- Location: `tmp/laravel-chat/`
+- Package: `opencompany/chatogrator`
+- Namespace: `OpenCompany\Chatogrator`
+- Location: `tmp/chatogrator/`
 
 ---
 
 ## Architecture Overview
 
 ```text
-opencompany/laravel-chat
+opencompany/chatogrator
 ├── src/
 │   ├── Chat.php                          # Orchestrator (handler registration, webhook routing)
-│   ├── ChatServiceProvider.php           # Laravel auto-discovery
+│   ├── ChatogratorServiceProvider.php    # Laravel auto-discovery
 │   ├── Facades/Chat.php                  # Optional facade
 │   │
 │   ├── Contracts/                        # Interfaces
@@ -127,7 +127,7 @@ opencompany/laravel-chat
 │       └── ChatWebhookController.php     # Universal webhook router
 │
 ├── config/
-│   └── laravel-chat.php
+│   └── chatogrator.php
 ├── routes/
 │   └── webhooks.php
 ├── composer.json
@@ -142,9 +142,9 @@ opencompany/laravel-chat
 ### 1. Chat (Orchestrator)
 
 ```php
-use OpenCompany\LaravelChat\Chat;
-use OpenCompany\LaravelChat\Adapters\Slack\SlackAdapter;
-use OpenCompany\LaravelChat\Adapters\Discord\DiscordAdapter;
+use OpenCompany\Chatogrator\Chat;
+use OpenCompany\Chatogrator\Adapters\Slack\SlackAdapter;
+use OpenCompany\Chatogrator\Adapters\Discord\DiscordAdapter;
 
 $chat = Chat::make('my-bot')
     ->adapter('slack', SlackAdapter::fromConfig([
@@ -248,7 +248,7 @@ $chat = Chat::make('my-bot')
 ### 2. Adapter Interface
 
 ```php
-namespace OpenCompany\LaravelChat\Contracts;
+namespace OpenCompany\Chatogrator\Contracts;
 
 interface Adapter
 {
@@ -312,7 +312,7 @@ interface Adapter
 ### 3. StateAdapter Interface
 
 ```php
-namespace OpenCompany\LaravelChat\Contracts;
+namespace OpenCompany\Chatogrator\Contracts;
 
 interface StateAdapter
 {
@@ -477,7 +477,7 @@ $message = Message::fromJSON($json);
 The SDK uses mdast (Markdown Abstract Syntax Tree) as the canonical format for message content, not plain markdown strings. This preserves structure across platforms.
 
 ```php
-use OpenCompany\LaravelChat\Markdown\{Markdown, AstBuilder, AstWalker, TypeGuards};
+use OpenCompany\Chatogrator\Markdown\{Markdown, AstBuilder, AstWalker, TypeGuards};
 
 // Parse markdown string to AST
 $ast = Markdown::parse('**Hello** world');
@@ -548,9 +548,9 @@ $thread->post(PostableMessage::raw($slackBlockKitJson));
 ### 9. Card Builder (replaces JSX)
 
 ```php
-use OpenCompany\LaravelChat\Cards\Card;
-use OpenCompany\LaravelChat\Cards\Elements\{Text, Image, Divider, Section, Fields};
-use OpenCompany\LaravelChat\Cards\Interactive\{Button, LinkButton, Select, SelectOption};
+use OpenCompany\Chatogrator\Cards\Card;
+use OpenCompany\Chatogrator\Cards\Elements\{Text, Image, Divider, Section, Fields};
+use OpenCompany\Chatogrator\Cards\Interactive\{Button, LinkButton, Select, SelectOption};
 
 $card = Card::make('Welcome!')
     ->subtitle('You have a new notification')
@@ -595,8 +595,8 @@ Each adapter renders cards to its native format:
 ### 10. Modal Builder
 
 ```php
-use OpenCompany\LaravelChat\Cards\Modal;
-use OpenCompany\LaravelChat\Cards\Interactive\{TextInput, Select, SelectOption, RadioSelect};
+use OpenCompany\Chatogrator\Cards\Modal;
+use OpenCompany\Chatogrator\Cards\Interactive\{TextInput, Select, SelectOption, RadioSelect};
 
 $modal = Modal::make('feedback_form', 'Send Feedback')
     ->submitLabel('Send')
@@ -642,8 +642,8 @@ $modal = Modal::make('feedback_form', 'Send Feedback')
 ### 11. Emoji System
 
 ```php
-use OpenCompany\LaravelChat\Emoji\Emoji;
-use OpenCompany\LaravelChat\Emoji\EmojiResolver;
+use OpenCompany\Chatogrator\Emoji\Emoji;
+use OpenCompany\Chatogrator\Emoji\EmojiResolver;
 
 // ~105 normalized constants (object identity for comparison)
 Emoji::thumbsUp;
@@ -740,7 +740,7 @@ The package registers routes automatically via the ServiceProvider:
 POST /webhooks/chat/{adapter}  →  ChatWebhookController@handle
 ```
 
-Config (`config/laravel-chat.php`):
+Config (`chatogrator.php`):
 
 ```php
 return [

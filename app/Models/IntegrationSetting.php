@@ -93,7 +93,7 @@ class IntegrationSetting extends Model
     /** @return array<string, mixed> */
     public static function getAvailableIntegrations(): array
     {
-        $base = config('integrations', []);
+        $base = array_merge(config('integrations', []), config('chat_integrations', []));
 
         try {
             $settings = (app()->bound('currentWorkspace') ? static::forWorkspace()->get() : static::all())->keyBy('integration_id');
