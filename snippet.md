@@ -104,3 +104,30 @@ automations are chats, can be chosen how much previous messages if at all can be
 
 --
 
+oddities with automatin, retries, double responses, stuck, recovery on restart etc. better retries ui in tasks show page etc. Statefullness.
+
+--
+
+live update progress along tool calls
+
+--
+
+oath redirect works but 404, also check worspace context/specific stuff.
+
+--
+no available server
+
+--
+
+stress test, do lots of automations at once, see what happens.
+
+--
+
+better doc structure/tree tools
+
+--
+
+comms integrations are seperate section in opencompany, so linear can be double, but easily transfer credentials
+
+--
+code automation can have agent input
