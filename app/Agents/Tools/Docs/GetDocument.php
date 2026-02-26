@@ -6,7 +6,6 @@ use App\Models\Document;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
@@ -19,7 +18,7 @@ class GetDocument implements Tool
 
     public function description(): string
     {
-        return 'Get full details of a document or folder by ID. Returns content (or child listing for folders), metadata, and comment count.';
+        return 'Get full details of a document or folder by ID. Returns content (or child listing for folders), metadata, and comment count. Use include flags to also fetch comments, attachments, or version history.';
     }
 
     public function handle(Request $request): string
@@ -79,10 +78,61 @@ class GetDocument implements Tool
                     'isFolder' => $child->is_folder,
                 ])->values()->toArray();
             } else {
-                $result['content'] = Str::limit($doc->content, 1000);
+                $result['content'] = $doc->content;
             }
 
-            return json_encode(array_filter($result), JSON_PRETTY_PRINT);
+            if ($request['includeComments'] ?? false) {
+                $comments = $doc->comments()
+                    ->with(['author:id,name', 'resolvedBy:id,name'])
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+
+                $result['commentsList'] = $comments->map(fn ($c) => array_filter([
+                    'id' => $c->id,
+                    'author' => $c->author?->name ?? 'Unknown',
+                    'content' => $c->content,
+                    'parentId' => $c->parent_id,
+                    'resolved' => $c->resolved ?: null,
+                    'resolvedBy' => $c->resolved ? ($c->resolvedBy?->name) : null,
+                    'resolvedAt' => $c->resolved_at?->toIso8601String(),
+                    'createdAt' => $c->created_at->toIso8601String(),
+                ], fn ($v) => $v !== null))->values()->toArray();
+            }
+
+            if ($request['includeAttachments'] ?? false) {
+                $attachments = $doc->attachments()
+                    ->with('uploadedBy:id,name')
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+
+                $result['attachments'] = $attachments->map(fn ($a) => [
+                    'id' => $a->id,
+                    'originalName' => $a->original_name,
+                    'mimeType' => $a->mime_type,
+                    'size' => $a->size,
+                    'url' => $a->url,
+                    'uploadedBy' => $a->uploadedBy?->name ?? 'Unknown',
+                    'createdAt' => $a->created_at->toIso8601String(),
+                ])->values()->toArray();
+            }
+
+            if ($request['includeVersions'] ?? false) {
+                $versions = $doc->versions()
+                    ->with('author:id,name')
+                    ->orderBy('version_number', 'desc')
+                    ->take(10)
+                    ->get();
+
+                $result['versions'] = $versions->map(fn ($v) => [
+                    'id' => $v->id,
+                    'versionNumber' => $v->version_number,
+                    'changeDescription' => $v->change_description,
+                    'author' => $v->author?->name ?? 'Unknown',
+                    'createdAt' => $v->created_at->toIso8601String(),
+                ])->values()->toArray();
+            }
+
+            return json_encode(array_filter($result, fn ($v) => $v !== null), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error getting document: {$e->getMessage()}";
         }
@@ -96,6 +146,15 @@ class GetDocument implements Tool
                 ->string()
                 ->description('The UUID of the document or folder to retrieve.')
                 ->required(),
+            'includeComments' => $schema
+                ->boolean()
+                ->description('Include full comments with author and threading. Default: false.'),
+            'includeAttachments' => $schema
+                ->boolean()
+                ->description('Include file attachments. Default: false.'),
+            'includeVersions' => $schema
+                ->boolean()
+                ->description('Include recent version history (last 10). Default: false.'),
         ];
     }
 }

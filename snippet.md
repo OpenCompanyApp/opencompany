@@ -123,14 +123,8 @@ stress test, do lots of automations at once, see what happens.
 
 --
 
-better doc structure/tree tools
-
---
-
 comms integrations are seperate section in opencompany, so linear can be double, but easily transfer credentials
 
 --
 code automation can have agent input
 
---
-chatogrator pin

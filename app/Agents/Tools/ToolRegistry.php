@@ -29,8 +29,12 @@ use App\Agents\Tools\Docs\DeleteDocument;
 use App\Agents\Tools\Docs\DeleteDocumentComment;
 use App\Agents\Tools\Docs\GetDocument;
 use App\Agents\Tools\Docs\GetDocumentTree;
+use App\Agents\Tools\Docs\ListDocumentAttachments;
+use App\Agents\Tools\Docs\ListDocumentComments;
 use App\Agents\Tools\Docs\ListDocuments;
+use App\Agents\Tools\Docs\ListDocumentVersions;
 use App\Agents\Tools\Docs\ResolveDocumentComment;
+use App\Agents\Tools\Docs\RestoreDocumentVersion;
 use App\Agents\Tools\Docs\SearchDocuments;
 use App\Agents\Tools\Docs\UpdateDocument;
 use App\Agents\Tools\Lists\AddListItemComment;
@@ -55,17 +59,23 @@ use App\Agents\Tools\System\WaitForApproval;
 use App\Agents\Tools\Tables\AddTableColumn;
 use App\Agents\Tools\Tables\AddTableRow;
 use App\Agents\Tools\Tables\BulkAddTableRows;
+use App\Agents\Tools\Tables\BulkDeleteTableRows;
 use App\Agents\Tools\Tables\CreateTable;
+use App\Agents\Tools\Tables\CreateTableView;
 use App\Agents\Tools\Tables\DeleteTable;
 use App\Agents\Tools\Tables\DeleteTableColumn;
 use App\Agents\Tools\Tables\DeleteTableRow;
+use App\Agents\Tools\Tables\DeleteTableView;
 use App\Agents\Tools\Tables\GetTable;
 use App\Agents\Tools\Tables\GetTableRows;
 use App\Agents\Tools\Tables\ListTables;
+use App\Agents\Tools\Tables\ListTableViews;
+use App\Agents\Tools\Tables\ReorderTableColumns;
 use App\Agents\Tools\Tables\SearchTableRows;
 use App\Agents\Tools\Tables\UpdateTable;
 use App\Agents\Tools\Tables\UpdateTableColumn;
 use App\Agents\Tools\Tables\UpdateTableRow;
+use App\Agents\Tools\Tables\UpdateTableView;
 use App\Agents\Tools\Tasks\AddTaskStep;
 use App\Agents\Tools\Tasks\CreateTaskStep;
 use App\Agents\Tools\Tasks\SetTaskStatus;
@@ -160,13 +170,13 @@ class ToolRegistry
             'description' => 'Channel messaging (incl. external: Telegram, Slack)',
         ],
         'docs' => [
-            'tools' => ['list_documents', 'get_document', 'get_document_tree', 'search_documents', 'create_document', 'update_document', 'delete_document', 'add_document_comment', 'resolve_document_comment', 'delete_document_comment'],
+            'tools' => ['list_documents', 'get_document', 'get_document_tree', 'search_documents', 'create_document', 'update_document', 'delete_document', 'add_document_comment', 'list_document_comments', 'resolve_document_comment', 'delete_document_comment', 'list_document_versions', 'restore_document_version', 'list_document_attachments'],
             'label' => 'list, get, tree, search, create, update, delete, comment',
             'description' => 'Document workspace',
         ],
         'tables' => [
-            'tools' => ['list_tables', 'get_table', 'get_table_rows', 'search_table_rows', 'create_table', 'update_table', 'delete_table', 'add_table_column', 'update_table_column', 'delete_table_column', 'add_table_row', 'update_table_row', 'delete_table_row', 'bulk_add_table_rows'],
-            'label' => 'list, get, search, create, update, delete, columns, rows',
+            'tools' => ['list_tables', 'get_table', 'get_table_rows', 'search_table_rows', 'create_table', 'update_table', 'delete_table', 'add_table_column', 'update_table_column', 'delete_table_column', 'reorder_table_columns', 'add_table_row', 'update_table_row', 'delete_table_row', 'bulk_add_table_rows', 'bulk_delete_table_rows', 'list_table_views', 'create_table_view', 'update_table_view', 'delete_table_view'],
+            'label' => 'list, get, search, create, update, delete, columns, rows, views',
             'description' => 'Structured data tables',
         ],
         'calendar' => [
@@ -440,6 +450,34 @@ class ToolRegistry
             'description' => 'Delete a comment from a document.',
             'icon' => 'ph:chat-teardrop-text',
         ],
+        'list_document_comments' => [
+            'class' => ListDocumentComments::class,
+            'type' => 'read',
+            'name' => 'List Document Comments',
+            'description' => 'List comments on a document with author and resolved status.',
+            'icon' => 'ph:chat-teardrop-text',
+        ],
+        'list_document_versions' => [
+            'class' => ListDocumentVersions::class,
+            'type' => 'read',
+            'name' => 'List Document Versions',
+            'description' => 'List version history for a document.',
+            'icon' => 'ph:clock-counter-clockwise',
+        ],
+        'restore_document_version' => [
+            'class' => RestoreDocumentVersion::class,
+            'type' => 'write',
+            'name' => 'Restore Document Version',
+            'description' => 'Restore a document to a previous version.',
+            'icon' => 'ph:clock-counter-clockwise',
+        ],
+        'list_document_attachments' => [
+            'class' => ListDocumentAttachments::class,
+            'type' => 'read',
+            'name' => 'List Document Attachments',
+            'description' => 'List file attachments on a document.',
+            'icon' => 'ph:paperclip',
+        ],
         // Tables — Read
         'list_tables' => [
             'class' => ListTables::class,
@@ -540,6 +578,48 @@ class ToolRegistry
             'name' => 'Bulk Add Table Rows',
             'description' => 'Add multiple rows at once.',
             'icon' => 'ph:rows',
+        ],
+        'bulk_delete_table_rows' => [
+            'class' => BulkDeleteTableRows::class,
+            'type' => 'write',
+            'name' => 'Bulk Delete Table Rows',
+            'description' => 'Delete multiple rows at once.',
+            'icon' => 'ph:rows',
+        ],
+        'reorder_table_columns' => [
+            'class' => ReorderTableColumns::class,
+            'type' => 'write',
+            'name' => 'Reorder Table Columns',
+            'description' => 'Reorder columns in a table.',
+            'icon' => 'ph:arrows-down-up',
+        ],
+        'list_table_views' => [
+            'class' => ListTableViews::class,
+            'type' => 'read',
+            'name' => 'List Table Views',
+            'description' => 'List saved views for a table.',
+            'icon' => 'ph:eye',
+        ],
+        'create_table_view' => [
+            'class' => CreateTableView::class,
+            'type' => 'write',
+            'name' => 'Create Table View',
+            'description' => 'Create a saved table view (grid, kanban, gallery, calendar).',
+            'icon' => 'ph:eye',
+        ],
+        'update_table_view' => [
+            'class' => UpdateTableView::class,
+            'type' => 'write',
+            'name' => 'Update Table View',
+            'description' => 'Update a saved table view.',
+            'icon' => 'ph:eye',
+        ],
+        'delete_table_view' => [
+            'class' => DeleteTableView::class,
+            'type' => 'write',
+            'name' => 'Delete Table View',
+            'description' => 'Delete a saved table view.',
+            'icon' => 'ph:eye',
         ],
         // Calendar
         'list_calendar_events' => [
@@ -1581,6 +1661,10 @@ class ToolRegistry
             AddDocumentComment::class => new AddDocumentComment($agent, $this->permissionService),
             ResolveDocumentComment::class => new ResolveDocumentComment($agent, $this->permissionService),
             DeleteDocumentComment::class => new DeleteDocumentComment($agent, $this->permissionService),
+            ListDocumentComments::class => new ListDocumentComments($agent, $this->permissionService),
+            ListDocumentVersions::class => new ListDocumentVersions($agent, $this->permissionService),
+            RestoreDocumentVersion::class => new RestoreDocumentVersion($agent, $this->permissionService),
+            ListDocumentAttachments::class => new ListDocumentAttachments($agent, $this->permissionService),
             // Tools needing only agent
             ListTables::class => new ListTables($agent),
             GetTable::class => new GetTable($agent),
@@ -1596,6 +1680,12 @@ class ToolRegistry
             UpdateTableRow::class => new UpdateTableRow($agent),
             DeleteTableRow::class => new DeleteTableRow($agent),
             BulkAddTableRows::class => new BulkAddTableRows($agent),
+            BulkDeleteTableRows::class => new BulkDeleteTableRows($agent),
+            ReorderTableColumns::class => new ReorderTableColumns($agent),
+            ListTableViews::class => new ListTableViews($agent),
+            CreateTableView::class => new CreateTableView($agent),
+            UpdateTableView::class => new UpdateTableView($agent),
+            DeleteTableView::class => new DeleteTableView($agent),
             ListCalendarEvents::class => new ListCalendarEvents($agent),
             GetCalendarEvent::class => new GetCalendarEvent($agent),
             CreateCalendarEvent::class => new CreateCalendarEvent($agent),

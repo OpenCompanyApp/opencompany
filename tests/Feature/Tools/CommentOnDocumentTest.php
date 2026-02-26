@@ -107,7 +107,7 @@ class CommentOnDocumentTest extends TestCase
         $deleteTool = new DeleteDocumentComment($agent, $permissionService);
 
         $this->assertStringContainsString('Add a comment', $addTool->description());
-        $this->assertStringContainsString('Resolve a comment', $resolveTool->description());
+        $this->assertStringContainsString('Resolve or unresolve a comment', $resolveTool->description());
         $this->assertStringContainsString('Delete a comment', $deleteTool->description());
     }
 }

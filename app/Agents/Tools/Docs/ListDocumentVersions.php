@@ -9,7 +9,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class ResolveDocumentComment implements Tool
+class ListDocumentVersions implements Tool
 {
     public function __construct(
         private User $agent,
@@ -18,38 +18,33 @@ class ResolveDocumentComment implements Tool
 
     public function description(): string
     {
-        return 'Resolve or unresolve a comment on a workspace document.';
+        return 'List version history for a document, showing version numbers, change descriptions, and authors.';
     }
 
     public function handle(Request $request): string
     {
         try {
             $document = Document::forWorkspace()->findOrFail($request['documentId']);
-            $comment = $document->comments()->findOrFail($request['commentId']);
 
             if (! $this->checkDocumentAccess($document)) {
                 return 'Permission denied: you do not have access to this document.';
             }
 
-            $resolve = $request['resolved'] ?? true;
+            $versions = $document->versions()
+                ->with('author:id,name')
+                ->orderBy('version_number', 'desc')
+                ->take($request['limit'] ?? 20)
+                ->get();
 
-            if ($resolve) {
-                $comment->update([
-                    'resolved' => true,
-                    'resolved_by_id' => $this->agent->id,
-                    'resolved_at' => now(),
-                ]);
-            } else {
-                $comment->update([
-                    'resolved' => false,
-                    'resolved_by_id' => null,
-                    'resolved_at' => null,
-                ]);
-            }
-
-            return $resolve ? 'Comment resolved.' : 'Comment unresolved.';
+            return json_encode($versions->map(fn ($v) => [
+                'id' => $v->id,
+                'versionNumber' => $v->version_number,
+                'changeDescription' => $v->change_description,
+                'author' => $v->author?->name ?? 'Unknown',
+                'createdAt' => $v->created_at->toIso8601String(),
+            ])->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
-            return "Error resolving comment: {$e->getMessage()}";
+            return "Error listing versions: {$e->getMessage()}";
         }
     }
 
@@ -57,7 +52,7 @@ class ResolveDocumentComment implements Tool
     {
         $allowedFolderIds = $this->permissionService->getAllowedFolderIds($this->agent);
 
-        if ($allowedFolderIds !== null && ! in_array($document->parent_id, $allowedFolderIds)) {
+        if ($allowedFolderIds !== null && $document->parent_id && ! in_array($document->parent_id, $allowedFolderIds)) {
             return false;
         }
 
@@ -72,13 +67,9 @@ class ResolveDocumentComment implements Tool
                 ->string()
                 ->description('The UUID of the document.')
                 ->required(),
-            'commentId' => $schema
-                ->string()
-                ->description('The UUID of the comment to resolve or unresolve.')
-                ->required(),
-            'resolved' => $schema
-                ->boolean()
-                ->description('Set to true to resolve, false to unresolve. Default: true.'),
+            'limit' => $schema
+                ->integer()
+                ->description('Maximum versions to return. Default: 20.'),
         ];
     }
 }

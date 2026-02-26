@@ -16,7 +16,7 @@ class UpdateTable implements Tool
 
     public function description(): string
     {
-        return "Update an existing data table name or description.";
+        return "Update an existing data table name, description, or icon.";
     }
 
     public function schema(JsonSchema $schema): array
@@ -32,6 +32,9 @@ class UpdateTable implements Tool
             "description" => $schema
                 ->string()
                 ->description("The new description for the table."),
+            "icon" => $schema
+                ->string()
+                ->description("Icon identifier for the table."),
         ];
     }
 
@@ -46,6 +49,10 @@ class UpdateTable implements Tool
 
             if (isset($request["description"])) {
                 $table->description = $request["description"];
+            }
+
+            if (isset($request["icon"])) {
+                $table->icon = $request["icon"];
             }
 
             $table->save();

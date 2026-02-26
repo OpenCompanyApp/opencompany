@@ -38,26 +38,39 @@ class SearchDocuments implements Tool
                 [$semanticResults, $semanticCount] = $this->semanticSearch($query, $limit);
 
                 if ($semanticResults !== null && ($mode === 'semantic' || $semanticCount >= 2)) {
-                    return $semanticResults ?: "No documents found matching '{$query}'.";
+                    return json_encode([
+                        'mode' => 'semantic',
+                        'count' => $semanticCount,
+                        'results' => $semanticResults,
+                    ], JSON_PRETTY_PRINT);
                 }
             }
 
             // Keyword search (or auto fallback)
-            $keywordResult = $this->keywordSearch($query, $limit);
+            $keywordResults = $this->keywordSearch($query, $limit);
 
             // In auto mode, merge semantic + keyword if we got some semantic results
-            if ($mode === 'auto' && $semanticResults !== null && $semanticResults !== '') {
-                return $semanticResults . "\n\n---\n\n**Keyword matches:**\n\n" . $keywordResult;
+            if ($mode === 'auto' && $semanticResults !== null && count($semanticResults) > 0) {
+                return json_encode([
+                    'mode' => 'auto',
+                    'count' => count($semanticResults) + count($keywordResults),
+                    'semantic' => $semanticResults,
+                    'keyword' => $keywordResults,
+                ], JSON_PRETTY_PRINT);
             }
 
-            return $keywordResult;
+            return json_encode([
+                'mode' => 'keyword',
+                'count' => count($keywordResults),
+                'results' => $keywordResults,
+            ], JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error searching documents: {$e->getMessage()}";
         }
     }
 
     /**
-     * @return array{0: ?string, 1: int}  [formatted results or null, count]
+     * @return array{0: ?array<int, array<string, mixed>>, 1: int}  [results array or null, count]
      */
     private function semanticSearch(string $query, int $limit): array
     {
@@ -75,7 +88,7 @@ class SearchDocuments implements Tool
             );
 
             if ($chunks->isEmpty()) {
-                return ['', 0];
+                return [[], 0];
             }
 
             // Filter by folder permissions (same as keyword search)
@@ -88,29 +101,37 @@ class SearchDocuments implements Tool
                 $chunks = $chunks->filter(fn ($c) => $allowedDocIds->contains($c->document_id));
 
                 if ($chunks->isEmpty()) {
-                    return ['', 0];
+                    return [[], 0];
                 }
             }
 
-            $results = $chunks->map(function ($chunk) {
-                $similarity = isset($chunk->similarity) ? round($chunk->similarity * 100) . '% match' : '';
+            // Load document records for IDs
+            $docIds = $chunks->pluck('document_id')->unique()->filter();
+            $documents = Document::whereIn('id', $docIds)->get(['id', 'title', 'updated_at'])->keyBy('id');
+
+            $results = $chunks->map(function ($chunk) use ($documents) {
+                $doc = $documents->get($chunk->document_id);
                 $meta = is_array($chunk->metadata) ? $chunk->metadata : [];
-                $title = $meta['title'] ?? 'Untitled';
-                $snippet = Str::limit($chunk->content, 300);
 
-                return "**{$title}** ({$similarity})\n{$snippet}";
-            });
+                return [
+                    'id' => $chunk->document_id,
+                    'title' => $doc?->title ?? $meta['title'] ?? 'Untitled',
+                    'snippet' => Str::limit($chunk->content, 300),
+                    'similarity' => isset($chunk->similarity) ? round($chunk->similarity * 100) : null,
+                    'updatedAt' => $doc?->updated_at?->toIso8601String(),
+                ];
+            })->values()->toArray();
 
-            return [
-                "Found {$chunks->count()} relevant document(s):\n\n" . $results->implode("\n\n---\n\n"),
-                $chunks->count(),
-            ];
+            return [$results, count($results)];
         } catch (\Throwable) {
             return [null, 0];
         }
     }
 
-    private function keywordSearch(string $query, int $limit): string
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function keywordSearch(string $query, int $limit): array
     {
         $lowerQuery = '%' . strtolower($query) . '%';
 
@@ -130,17 +151,12 @@ class SearchDocuments implements Tool
             ->take($limit)
             ->get(['id', 'title', 'content', 'updated_at']);
 
-        if ($documents->isEmpty()) {
-            return "No documents found matching '{$query}'.";
-        }
-
-        $results = $documents->map(function ($doc) {
-            $snippet = Str::limit($doc->content, 300);
-
-            return "**{$doc->title}** (ID: {$doc->id})\n{$snippet}";
-        });
-
-        return "Found {$documents->count()} document(s) matching '{$query}':\n\n" . $results->implode("\n\n---\n\n");
+        return $documents->map(fn ($doc) => [
+            'id' => $doc->id,
+            'title' => $doc->title,
+            'snippet' => Str::limit($doc->content, 300),
+            'updatedAt' => $doc->updated_at->toIso8601String(),
+        ])->values()->toArray();
     }
 
     /** @return array<string, mixed> */

@@ -18,7 +18,7 @@ class UpdateTableRow implements Tool
 
     public function description(): string
     {
-        return "Update an existing row in a data table. Merges the provided data with existing row data.";
+        return "Update an existing row in a data table. By default merges with existing data; set merge to false to replace entirely.";
     }
 
     public function schema(JsonSchema $schema): array
@@ -32,6 +32,9 @@ class UpdateTableRow implements Tool
                 ->object()
                 ->description("Key:value pairs for the row data. Keys can be column names (e.g. status) or column UUIDs. New columns are auto-created for unknown keys.")
                 ->required(),
+            "merge" => $schema
+                ->boolean()
+                ->description("Merge with existing data (true, default) or replace entirely (false)."),
         ];
     }
 
@@ -44,7 +47,8 @@ class UpdateTableRow implements Tool
             $table = DataTable::forWorkspace()->findOrFail($row->table_id);
             $data = $this->resolveDataKeys($table, $data);
 
-            $row->data = array_merge($row->data ?? [], $data);
+            $merge = $request["merge"] ?? true;
+            $row->data = $merge ? array_merge($row->data ?? [], $data) : $data;
             $row->save();
 
             return "Row updated.";

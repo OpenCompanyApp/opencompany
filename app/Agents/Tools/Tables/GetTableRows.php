@@ -17,7 +17,7 @@ class GetTableRows implements Tool
 
     public function description(): string
     {
-        return "Retrieve rows from a data table, with an optional limit.";
+        return "Retrieve rows from a data table with pagination support.";
     }
 
     public function schema(JsonSchema $schema): array
@@ -30,6 +30,9 @@ class GetTableRows implements Tool
             "limit" => $schema
                 ->integer()
                 ->description("Maximum number of rows to return (default: 25, max: 100)."),
+            "offset" => $schema
+                ->integer()
+                ->description("Number of rows to skip (default: 0). Use with limit for pagination."),
         ];
     }
 
@@ -41,25 +44,30 @@ class GetTableRows implements Tool
                 return "Error: tableId is required.";
             }
 
-            $limit = $request["limit"] ?? 25;
+            $limit = min($request["limit"] ?? 25, 100);
+            $offset = $request["offset"] ?? 0;
 
             $table = DataTable::forWorkspace()->find($tableId);
             if (!$table) {
                 return "Error: Table {$tableId} not found.";
             }
 
+            $total = DataTableRow::where("table_id", $tableId)->count();
+
             $rows = DataTableRow::where("table_id", $tableId)
-                ->take(min($limit, 100))
+                ->orderBy('created_at', 'desc')
+                ->skip($offset)
+                ->take($limit)
                 ->get();
 
-            if ($rows->isEmpty()) {
-                return json_encode([]);
-            }
-
-            return json_encode($rows->map(fn ($row) => [
-                'id' => $row->id,
-                'data' => $row->data ?? [],
-            ])->values()->toArray(), JSON_PRETTY_PRINT);
+            return json_encode([
+                'total' => $total,
+                'offset' => $offset,
+                'rows' => $rows->map(fn ($row) => [
+                    'id' => $row->id,
+                    'data' => $row->data ?? [],
+                ])->values()->toArray(),
+            ], JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error querying table: {$e->getMessage()}";
         }
