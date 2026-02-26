@@ -880,7 +880,7 @@ const integrationCategories = ref<IntegrationCategory[]>([
       { id: 'slack', name: 'Slack', icon: 'ph:slack-logo', description: 'Connect your Slack workspace for team chat', installed: false },
       { id: 'discord', name: 'Discord', icon: 'ph:discord-logo', description: 'Connect a Discord server', installed: false },
       { id: 'teams', name: 'Microsoft Teams', icon: 'ph:microsoft-teams-logo', description: 'Connect a Teams channel', installed: false },
-      { id: 'google_chat', name: 'Google Chat', icon: 'ph:google-chat-logo', description: 'Google Chat space integration', installed: false },
+      { id: 'google_chat', name: 'Google Chat', icon: 'ph:google-logo', description: 'Google Chat space integration', installed: false },
       { id: 'github_chat', name: 'GitHub', icon: 'ph:github-logo', description: 'Chat via GitHub issue/PR comments', installed: false },
       { id: 'linear_chat', name: 'Linear', icon: 'ph:line-segments', description: 'Chat via Linear issue comments', installed: false },
     ],
