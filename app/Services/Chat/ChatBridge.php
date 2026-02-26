@@ -332,6 +332,8 @@ class ChatBridge
             'telegram' => $decoded['chatId'] ?? '',
             'slack' => $decoded['channel'] ?? '',
             'discord' => $decoded['channelId'] ?? $decoded['channel'] ?? '',
+            'teams' => $decoded['conversationId'] ?? '',
+            'gchat' => $decoded['spaceName'] ?? '',
             'github' => ($decoded['owner'] ?? '').'/'.($decoded['repo'] ?? ''),
             'linear' => $decoded['issueId'] ?? '',
             default => $decoded['chatId'] ?? $decoded['channel'] ?? '',

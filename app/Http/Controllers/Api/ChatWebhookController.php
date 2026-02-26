@@ -41,6 +41,8 @@ class ChatWebhookController
             'telegram' => $this->resolveFromTelegramSecret($request),
             'slack' => $this->resolveFromSlackSignature($request),
             'discord' => $this->resolveFromDiscordAppId($request),
+            'teams' => $this->resolveFromTeamsAppId($request),
+            'google_chat', 'github_chat', 'linear_chat' => $this->resolveFromGenericSecret($adapter, $request),
             default => $this->resolveFromGenericSecret($adapter, $request),
         };
     }
@@ -109,6 +111,26 @@ class ChatWebhookController
             ->where('enabled', true)
             ->get()
             ->first(fn ($s) => $s->getConfigValue('application_id') === $applicationId);
+
+        return $setting ? Workspace::find($setting->workspace_id) : null;
+    }
+
+    /**
+     * Teams sends the bot's app_id as recipient.id in the activity payload.
+     */
+    private function resolveFromTeamsAppId(Request $request): ?Workspace
+    {
+        $body = json_decode($request->getContent(), true);
+        $recipientId = $body['recipient']['id'] ?? null;
+
+        if (! $recipientId) {
+            return null;
+        }
+
+        $setting = IntegrationSetting::where('integration_id', 'teams')
+            ->where('enabled', true)
+            ->get()
+            ->first(fn ($s) => $s->getConfigValue('app_id') === $recipientId);
 
         return $setting ? Workspace::find($setting->workspace_id) : null;
     }

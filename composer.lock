@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6364f9e0a37367f4f87ed23e911bca18",
+    "content-hash": "47dd4b1a7980044f854e1e1398bbfddf",
     "packages": [
         {
             "name": "brick/math",
@@ -3163,11 +3163,17 @@
         },
         {
             "name": "opencompany/chatogrator",
-            "version": "dev-main",
+            "version": "v1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/chatogrator.git",
+                "reference": "2f009f127471585755097c019bd48b056cca707c"
+            },
             "dist": {
-                "type": "path",
-                "url": "tmp/chatogrator",
-                "reference": "1c59d9e6dd00a774cafd27b0f627ead5c41d486e"
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/chatogrator/zipball/2f009f127471585755097c019bd48b056cca707c",
+                "reference": "2f009f127471585755097c019bd48b056cca707c",
+                "shasum": ""
             },
             "require": {
                 "illuminate/cache": "^11.0 || ^12.0",
@@ -3233,9 +3239,11 @@
                 "teams",
                 "webhook"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/chatogrator/tree/v1.1.0",
+                "issues": "https://github.com/OpenCompanyApp/chatogrator/issues"
+            },
+            "time": "2026-02-26T21:42:41+00:00"
         },
         {
             "name": "opencompany/prism-codex",
@@ -11369,7 +11377,6 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "opencompany/chatogrator": 20,
         "opencompany/prism-codex": 20,
         "opencompanyapp/ai-tool-celestial": 20,
         "opencompanyapp/ai-tool-clickup": 20,

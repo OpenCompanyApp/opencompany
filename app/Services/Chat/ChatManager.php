@@ -36,6 +36,12 @@ class ChatManager
             $adapter = ChatAdapterFactory::create($setting);
             if ($adapter) {
                 $chat->adapter($setting->integration_id, $adapter);
+
+                // Also register by adapter's canonical name if different
+                // (e.g., 'github_chat' vs 'github') so SyncToChat can find it
+                if ($adapter->name() !== $setting->integration_id) {
+                    $chat->adapter($adapter->name(), $adapter);
+                }
             }
         }
 

@@ -7,12 +7,12 @@ use App\Events\MessageEdited;
 use App\Events\MessagePinned;
 use App\Events\MessageReactionAdded;
 use App\Events\MessageSent;
-use App\Models\IntegrationSetting;
 use App\Models\Message;
 use App\Services\Chat\ChatManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
+use OpenCompany\Chatogrator\Messages\FileUpload;
 use OpenCompany\Chatogrator\Messages\PostableMessage;
 
 class SyncToChat implements ShouldQueue
@@ -43,8 +43,8 @@ class SyncToChat implements ShouldQueue
 
         try {
             // Send chart/attachment images first
-            $sentImagePaths = $this->sendInlineImages($adapter, $threadId, $message->content, $channel);
-            $this->sendAttachmentImages($adapter, $threadId, $message, $sentImagePaths, $channel);
+            $sentImagePaths = $this->sendInlineImages($adapter, $threadId, $message->content);
+            $this->sendAttachmentImages($adapter, $threadId, $message, $sentImagePaths);
 
             // Strip inline images from text content
             $textContent = preg_replace('/!\[[^\]]*\]\([^)]+\)\s*/', '', $message->content);
@@ -137,25 +137,11 @@ class SyncToChat implements ShouldQueue
             return;
         }
 
-        // Chatogrator doesn't have a pinMessage interface method.
-        // Use Telegram API directly for pin support.
         try {
-            if ($channel->external_provider === 'telegram') {
-                $setting = IntegrationSetting::where('integration_id', 'telegram')
-                    ->where('workspace_id', $channel->workspace_id)
-                    ->first();
-                $botToken = $setting?->getConfigValue('api_key');
-                if ($botToken) {
-                    \Illuminate\Support\Facades\Http::timeout(10)->post(
-                        "https://api.telegram.org/bot{$botToken}/pinChatMessage",
-                        [
-                            'chat_id' => $channel->external_id,
-                            'message_id' => (int) $message->external_message_id,
-                            'disable_notification' => true,
-                        ]
-                    );
-                }
-            }
+            $adapter->pinMessage(
+                $this->resolveThreadId($channel),
+                $message->external_message_id
+            );
         } catch (\Throwable $e) {
             Log::error('SyncToChat: failed to pin message', [
                 'message_id' => $message->id,
@@ -246,21 +232,16 @@ class SyncToChat implements ShouldQueue
 
     /**
      * Extract inline image URLs from markdown and send via adapter.
-     * Uses Telegram-specific API calls for photo/document uploads since the
-     * Chatogrator adapter expects file paths, not content buffers.
      *
      * @return string[] File paths that were sent
      */
-    private function sendInlineImages($adapter, string $threadId, string $content, $channel): array
+    private function sendInlineImages($adapter, string $threadId, string $content): array
     {
         $sentPaths = [];
 
         if (! preg_match_all('/!\[([^\]]*)\]\(([^)]+)\)/', $content, $matches, PREG_SET_ORDER)) {
             return $sentPaths;
         }
-
-        $decoded = $adapter->decodeThreadId($threadId);
-        $chatId = $this->extractChatId($channel->external_provider, $decoded);
 
         foreach ($matches as $match) {
             $alt = $match[1];
@@ -282,24 +263,16 @@ class SyncToChat implements ShouldQueue
                     || str_contains($url, '/storage/plantuml/')
                     || str_contains($url, '/storage/typst/');
 
-                $this->sendFileViaAdapter($adapter, $channel->external_provider, $chatId, $filePath, $alt, $isDocument);
+                $adapter->sendFile($threadId, FileUpload::fromPath(
+                    $filePath,
+                    caption: $alt ?: null,
+                    forceDocument: $isDocument,
+                ));
                 $sentPaths[] = $filePath;
             } catch (\Throwable $e) {
-                // Retry as document if photo fails
-                if (! $isDocument && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
-                    try {
-                        $this->sendFileViaAdapter($adapter, $channel->external_provider, $chatId, $filePath, $alt, true);
-                        $sentPaths[] = $filePath;
-                    } catch (\Throwable $docErr) {
-                        Log::error('SyncToChat: failed to send image as document', [
-                            'path' => $filePath, 'error' => $docErr->getMessage(),
-                        ]);
-                    }
-                } else {
-                    Log::error('SyncToChat: failed to send image', [
-                        'path' => $filePath, 'error' => $e->getMessage(),
-                    ]);
-                }
+                Log::error('SyncToChat: failed to send image', [
+                    'path' => $filePath, 'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -311,11 +284,8 @@ class SyncToChat implements ShouldQueue
      *
      * @param  string[]  $alreadySentPaths
      */
-    private function sendAttachmentImages($adapter, string $threadId, Message $message, array $alreadySentPaths, $channel): void
+    private function sendAttachmentImages($adapter, string $threadId, Message $message, array $alreadySentPaths): void
     {
-        $decoded = $adapter->decodeThreadId($threadId);
-        $chatId = $this->extractChatId($channel->external_provider, $decoded);
-
         foreach ($message->attachments as $attachment) {
             $mime = $attachment->mime_type ?? '';
             if (! str_starts_with($mime, 'image/') && $mime !== 'application/pdf') {
@@ -339,61 +309,16 @@ class SyncToChat implements ShouldQueue
                     || str_contains($url, '/storage/plantuml/')
                     || str_contains($url, '/storage/typst/');
 
-                $this->sendFileViaAdapter($adapter, $channel->external_provider, $chatId, $filePath, $attachment->original_name, $isDocument);
+                $adapter->sendFile($threadId, FileUpload::fromPath(
+                    $filePath,
+                    filename: $attachment->original_name,
+                    forceDocument: $isDocument,
+                ));
             } catch (\Throwable $e) {
-                if (! $isDocument && str_contains($e->getMessage(), 'PHOTO_INVALID_DIMENSIONS')) {
-                    try {
-                        $this->sendFileViaAdapter($adapter, $channel->external_provider, $chatId, $filePath, $attachment->original_name, true);
-                    } catch (\Throwable) {
-                        // Silently fail on retry
-                    }
-                } else {
-                    Log::error('SyncToChat: failed to send attachment', [
-                        'path' => $filePath, 'error' => $e->getMessage(),
-                    ]);
-                }
+                Log::error('SyncToChat: failed to send attachment', [
+                    'path' => $filePath, 'error' => $e->getMessage(),
+                ]);
             }
-        }
-    }
-
-    private function extractChatId(string $provider, array $decoded): string
-    {
-        return match ($provider) {
-            'telegram' => $decoded['chatId'] ?? '',
-            'slack' => $decoded['channel'] ?? '',
-            'discord' => $decoded['channelId'] ?? $decoded['channel'] ?? '',
-            default => $decoded['chatId'] ?? $decoded['channel'] ?? '',
-        };
-    }
-
-    /**
-     * Send a file using adapter-specific API calls.
-     * For Telegram, uses sendPhoto/sendDocument via HTTP. Other adapters are not yet supported.
-     */
-    private function sendFileViaAdapter(\OpenCompany\Chatogrator\Contracts\Adapter $adapter, string $provider, string $chatId, string $filePath, ?string $caption, bool $asDocument): void
-    {
-        if ($provider === 'telegram') {
-            $setting = IntegrationSetting::where('integration_id', 'telegram')
-                ->where('workspace_id', app('currentWorkspace')->id ?? null)
-                ->first();
-
-            $botToken = $setting?->getConfigValue('api_key');
-            if (! $botToken) {
-                return;
-            }
-
-            $method = $asDocument ? 'sendDocument' : 'sendPhoto';
-            $fileKey = $asDocument ? 'document' : 'photo';
-            $url = "https://api.telegram.org/bot{$botToken}/{$method}";
-
-            $params = ['chat_id' => $chatId];
-            if ($caption) {
-                $params['caption'] = substr($caption, 0, 1024);
-            }
-
-            \Illuminate\Support\Facades\Http::timeout(30)
-                ->attach($fileKey, file_get_contents($filePath), basename($filePath))
-                ->post($url, $params);
         }
     }
 }

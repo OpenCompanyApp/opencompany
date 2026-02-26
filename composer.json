@@ -59,8 +59,8 @@
             "url": "tmp/ai-tool-exchangerate"
         },
         {
-            "type": "path",
-            "url": "tmp/chatogrator"
+            "type": "vcs",
+            "url": "https://github.com/OpenCompanyApp/chatogrator.git"
         },
         {
             "type": "vcs",
@@ -146,7 +146,7 @@
         "opencompanyapp/ai-tool-vegalite": "@dev",
         "opencompanyapp/ai-tool-worldbank": "@dev",
         "opencompanyapp/astronomy-bundle": "^3.0",
-        "opencompany/chatogrator": "@dev",
+        "opencompany/chatogrator": "^1.1",
         "opencompanyapp/integration-core": "@dev",
         "pgvector/pgvector": "^0.2.2",
         "prism-php/prism": "^0.99.19",
