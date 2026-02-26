@@ -35,13 +35,15 @@ use App\Http\Controllers\Api\AutomationController;
 use App\Http\Controllers\Api\McpServerController;
 use App\Http\Controllers\Api\PrismServerController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\ChatWebhookController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\Api\WorkspaceMemberController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Webhooks (external, no auth, no workspace) ───────────────────
-Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']);
+Route::post('/webhooks/chat/{adapter}', ChatWebhookController::class);
+Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']); // Legacy, kept during migration
 
 // ─── Invitation acceptance (no workspace middleware needed) ───────
 Route::post('/invitations/{token}/accept', [\App\Http\Controllers\Api\InvitationController::class, 'accept']);

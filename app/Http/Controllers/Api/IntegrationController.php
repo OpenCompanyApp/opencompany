@@ -53,6 +53,7 @@ class IntegrationController extends Controller
 
             /** @var IntegrationSetting|null $setting */
             $setting = $settings->get($id);
+            $configFields = $info['config_fields'] ?? null;
             $integrations[] = [
                 'id' => $id,
                 'name' => $info['name'],
@@ -63,7 +64,8 @@ class IntegrationController extends Controller
                 'defaultUrl' => $info['default_url'] ?? null,
                 'enabled' => $setting ? $setting->enabled : false,
                 'configured' => $setting ? $setting->hasValidConfig() : false,
-                'configurable' => false,
+                'configurable' => $configFields !== null,
+                'configSchema' => $configFields ? $this->buildConfigSchema($configFields) : null,
             ];
         }
 
@@ -197,7 +199,7 @@ class IntegrationController extends Controller
             ]);
         }
 
-        // Static integrations (GLM, Telegram)
+        // Static integrations (GLM, Telegram, chat platforms)
         $available = IntegrationSetting::getAvailableIntegrations();
         if (!isset($available[$id])) {
             return response()->json(['error' => 'Integration not found'], 404);
@@ -205,20 +207,38 @@ class IntegrationController extends Controller
 
         $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
 
+        // Chat platform integrations with config_fields → use generic schema-based config
+        $configFields = $available[$id]['config_fields'] ?? null;
+        if ($configFields) {
+            $schema = $this->buildConfigSchema($configFields);
+            $config = [];
+            foreach ($schema as $field) {
+                $key = $field['key'];
+                if ($field['type'] === 'secret') {
+                    $config[$key] = $setting?->getMaskedValue($key);
+                } else {
+                    $config[$key] = $setting?->getConfigValue($key, $field['default'] ?? null)
+                        ?? ($field['default'] ?? null);
+                }
+            }
+
+            return response()->json([
+                'id' => $id,
+                'name' => $available[$id]['name'],
+                'description' => $available[$id]['description'],
+                'icon' => $available[$id]['icon'] ?? 'ph:gear',
+                'enabled' => $setting ? $setting->enabled : false,
+                'config' => $config,
+                'configSchema' => $schema,
+            ]);
+        }
+
+        // AI model integrations (GLM etc.)
         $config = [
             'apiKey' => $setting?->getMaskedApiKey(),
+            'url' => $setting?->getConfigValue('url') ?? ($available[$id]['default_url'] ?? ''),
+            'defaultModel' => $setting?->getConfigValue('default_model') ?? array_key_first($available[$id]['models'] ?? []),
         ];
-
-        if ($id === 'telegram') {
-            $config['defaultAgentId'] = $setting?->getConfigValue('default_agent_id') ?? '';
-            $config['notifyChatId'] = $setting?->getConfigValue('notify_chat_id') ?? '';
-            $config['allowedTelegramUsers'] = $setting?->getConfigValue('allowed_telegram_users', []) ?? [];
-            $config['botUsername'] = $setting?->getConfigValue('bot_username') ?? '';
-            $config['webhookActive'] = (bool) ($setting?->getConfigValue('webhook_active') ?? false);
-        } else {
-            $config['url'] = $setting?->getConfigValue('url') ?? ($available[$id]['default_url'] ?? '');
-            $config['defaultModel'] = $setting?->getConfigValue('default_model') ?? array_key_first($available[$id]['models'] ?? []);
-        }
 
         return response()->json([
             'id' => $id,
@@ -311,12 +331,53 @@ class IntegrationController extends Controller
             ]);
         }
 
-        // Static integrations (GLM, Telegram)
+        // Static integrations (GLM, chat platforms)
         $available = IntegrationSetting::getAvailableIntegrations();
         if (!isset($available[$id])) {
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
+        $setting = IntegrationSetting::forWorkspace()->firstOrNew(['integration_id' => $id]);
+        if (!$setting->exists) {
+            $setting->id = Str::uuid()->toString();
+            $setting->workspace_id = workspace()->id;
+        }
+
+        $config = $setting->config ?? [];
+
+        // Chat platform integrations with config_fields → use generic schema-based save
+        $configFields = $available[$id]['config_fields'] ?? null;
+        if ($configFields) {
+            $schema = $this->buildConfigSchema($configFields);
+            foreach ($schema as $field) {
+                $key = $field['key'];
+                if (!$request->has($key)) {
+                    continue;
+                }
+
+                // Skip masked secret values (user didn't change them)
+                if ($field['type'] === 'secret') {
+                    $value = $request->input($key);
+                    if (!$value || str_contains($value, '*')) {
+                        continue;
+                    }
+                }
+
+                $config[$key] = $request->input($key, $field['default'] ?? null);
+            }
+
+            $setting->config = $config;
+            $setting->enabled = $request->input('enabled', true);
+            $setting->save();
+
+            return response()->json([
+                'success' => true,
+                'enabled' => $setting->enabled,
+                'configured' => $setting->hasValidConfig(),
+            ]);
+        }
+
+        // AI model integrations (GLM etc.)
         $request->validate([
             'apiKey' => 'nullable|string',
             'url' => 'nullable|string|url',
@@ -324,14 +385,6 @@ class IntegrationController extends Controller
             'enabled' => 'nullable|boolean',
         ]);
 
-        $setting = IntegrationSetting::forWorkspace()->firstOrNew(['integration_id' => $id]);
-
-        if (!$setting->exists) {
-            $setting->id = Str::uuid()->toString();
-            $setting->workspace_id = workspace()->id;
-        }
-
-        $config = $setting->config ?? [];
         if ($request->has('apiKey') && $request->input('apiKey') && !str_contains($request->input('apiKey'), '*')) {
             $config['api_key'] = $request->input('apiKey');
         }
@@ -340,16 +393,6 @@ class IntegrationController extends Controller
         }
         if ($request->has('defaultModel')) {
             $config['default_model'] = $request->input('defaultModel');
-        }
-        // Telegram-specific fields
-        if ($request->has('defaultAgentId')) {
-            $config['default_agent_id'] = $request->input('defaultAgentId');
-        }
-        if ($request->has('notifyChatId')) {
-            $config['notify_chat_id'] = $request->input('notifyChatId');
-        }
-        if ($request->has('allowedTelegramUsers')) {
-            $config['allowed_telegram_users'] = $request->input('allowedTelegramUsers', []);
         }
 
         $setting->config = $config;
@@ -361,18 +404,16 @@ class IntegrationController extends Controller
         $setting->save();
 
         // Auto-fetch models if this integration has a valid API key and no models yet
-        if ($setting->hasValidConfig() && $id !== 'telegram') {
-            $existingModels = $setting->getConfigValue('models');
-            if (empty($existingModels)) {
-                try {
-                    $models = $this->fetchModelsFromProvider($id);
-                    if (!empty($models)) {
-                        $setting->setConfigValue('models', $models);
-                        $setting->save();
-                    }
-                } catch (\Throwable) {
-                    // Silently ignore — user can manually fetch later
+        $existingModels = $setting->getConfigValue('models');
+        if ($setting->hasValidConfig() && empty($existingModels)) {
+            try {
+                $models = $this->fetchModelsFromProvider($id);
+                if (!empty($models)) {
+                    $setting->setConfigValue('models', $models);
+                    $setting->save();
                 }
+            } catch (\Throwable) {
+                // Silently ignore — user can manually fetch later
             }
         }
 
@@ -452,6 +493,12 @@ class IntegrationController extends Controller
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
+        // Chat platform integrations — test via adapter
+        $configFields = $available[$id]['config_fields'] ?? null;
+        if ($configFields) {
+            return $this->testChatIntegrationConnection($id, $request);
+        }
+
         $apiKey = $request->input('apiKey');
         if (!$apiKey || str_contains($apiKey, '*')) {
             $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
@@ -469,10 +516,6 @@ class IntegrationController extends Controller
         }
 
         try {
-            if ($id === 'telegram') {
-                return $this->testTelegramConnection($apiKey);
-            }
-
             $url = $request->input('url') ?: ($available[$id]['default_url'] ?? '');
             $model = $request->input('defaultModel') ?: array_key_first($available[$id]['models'] ?? []);
 
@@ -696,7 +739,7 @@ class IntegrationController extends Controller
         }
 
         $appUrl = config('app.url');
-        $webhookUrl = rtrim($appUrl, '/') . '/api/webhooks/telegram';
+        $webhookUrl = rtrim($appUrl, '/') . '/api/webhooks/chat/telegram';
 
         try {
             $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/setWebhook", [
@@ -1653,5 +1696,76 @@ class IntegrationController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Convert config_fields from chat_integrations.php to the configSchema format
+     * that DynamicConfigModal expects.
+     */
+    private function buildConfigSchema(array $configFields): array
+    {
+        $schema = [];
+        foreach ($configFields as $key => $field) {
+            $schema[] = [
+                'key' => $key,
+                'type' => match ($field['type']) {
+                    'array' => 'string_list',
+                    'agent_select' => 'text',
+                    default => $field['type'],
+                },
+                'label' => $field['label'],
+                'required' => $field['required'] ?? false,
+                'placeholder' => $field['placeholder'] ?? null,
+                'hint' => $field['hint'] ?? null,
+            ];
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Test connection for a chat platform integration by attempting to create the adapter.
+     */
+    private function testChatIntegrationConnection(string $id, Request $request): \Illuminate\Http\JsonResponse
+    {
+        try {
+            // Build config from request, substituting masked values with stored ones
+            $available = IntegrationSetting::getAvailableIntegrations();
+            $configFields = $available[$id]['config_fields'] ?? [];
+            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
+
+            $config = [];
+            foreach ($configFields as $key => $field) {
+                $value = $request->input($key);
+                if ($field['type'] === 'secret' && (!$value || str_contains($value, '*'))) {
+                    $config[$key] = $setting?->getConfigValue($key);
+                } else {
+                    $config[$key] = $value;
+                }
+            }
+
+            // Build a temporary IntegrationSetting to test with the adapter factory
+            $testSetting = new IntegrationSetting;
+            $testSetting->integration_id = $id;
+            $testSetting->config = $config;
+
+            $adapter = \App\Services\Chat\ChatAdapterFactory::create($testSetting);
+            if (!$adapter) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Adapter not supported',
+                ], 400);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Connection configured successfully',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

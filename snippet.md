@@ -131,3 +131,6 @@ comms integrations are seperate section in opencompany, so linear can be double,
 
 --
 code automation can have agent input
+
+--
+chatogrator pin

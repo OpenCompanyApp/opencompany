@@ -7,6 +7,8 @@ use App\Agents\Providers\GlmPrismGateway;
 use App\Models\ApprovalRequest;
 use App\Models\Document;
 use App\Services\Mcp\McpServerRegistrar;
+use App\Services\Chat\ChatBridge;
+use App\Services\Chat\ChatManager;
 use App\Services\PrismServerService;
 use App\Observers\ApprovalRequestObserver;
 use App\Observers\DocumentObserver;
@@ -32,6 +34,10 @@ class AppServiceProvider extends ServiceProvider
             \OpenCompany\IntegrationCore\Contracts\CredentialResolver::class,
             \App\Services\IntegrationSettingCredentialResolver::class
         );
+
+        // Chat integration manager (workspace-scoped Chat instances)
+        $this->app->singleton(ChatManager::class);
+        $this->app->singleton(ChatBridge::class);
     }
 
     /**

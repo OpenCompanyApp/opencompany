@@ -528,13 +528,7 @@
       @saved="handleCodexSaved"
     />
 
-    <!-- Telegram Config Modal -->
-    <TelegramConfigModal
-      v-model:open="showTelegramConfigModal"
-      @saved="handleTelegramSaved"
-    />
-
-    <!-- Dynamic Config Modal (for package-provided integrations) -->
+    <!-- Dynamic Config Modal (for package-provided integrations and chat platforms) -->
     <DynamicConfigModal
       v-model:open="showDynamicConfigModal"
       :integration-id="dynamicIntegrationId"
@@ -626,7 +620,6 @@ import Modal from '@/Components/shared/Modal.vue'
 import IntegrationCard from '@/Components/integrations/IntegrationCard.vue'
 import ProviderConfigModal from '@/Components/integrations/ProviderConfigModal.vue'
 import CodexConfigModal from '@/Components/integrations/CodexConfigModal.vue'
-import TelegramConfigModal from '@/Components/integrations/TelegramConfigModal.vue'
 import DynamicConfigModal from '@/Components/integrations/DynamicConfigModal.vue'
 import McpConfigModal from '@/Components/integrations/McpConfigModal.vue'
 import PrismServerConfigModal from '@/Components/integrations/PrismServerConfigModal.vue'
@@ -687,10 +680,7 @@ const activeProviderId = ref('glm-coding')
 // Codex Config modal
 const showCodexConfigModal = ref(false)
 
-// Telegram Config modal
-const showTelegramConfigModal = ref(false)
-
-// Dynamic Config modal (for package-provided integrations)
+// Dynamic Config modal (for package-provided integrations and chat platforms)
 const showDynamicConfigModal = ref(false)
 const dynamicIntegrationId = ref('')
 const dynamicConfigSchema = ref<any[]>([])
@@ -882,11 +872,17 @@ const integrationCategories = ref<IntegrationCategory[]>([
     ],
   },
   {
-    id: 'communication',
-    name: 'Communication',
-    icon: 'ph:chat-circle',
+    id: 'chat-platforms',
+    name: 'Chat Platforms',
+    icon: 'ph:chat-dots',
     integrations: [
-      { id: 'telegram', name: 'Telegram', icon: 'ph:telegram-logo', description: 'Secure messaging', installed: false, badge: 'verified' },
+      { id: 'telegram', name: 'Telegram', icon: 'ph:telegram-logo', description: 'Telegram Bot for DMs, notifications, and approvals', installed: false, badge: 'verified' },
+      { id: 'slack', name: 'Slack', icon: 'ph:slack-logo', description: 'Connect your Slack workspace for team chat', installed: false },
+      { id: 'discord', name: 'Discord', icon: 'ph:discord-logo', description: 'Connect a Discord server', installed: false },
+      { id: 'teams', name: 'Microsoft Teams', icon: 'ph:microsoft-teams-logo', description: 'Connect a Teams channel', installed: false },
+      { id: 'google_chat', name: 'Google Chat', icon: 'ph:google-logo', description: 'Google Chat space integration', installed: false },
+      { id: 'github_chat', name: 'GitHub', icon: 'ph:github-logo', description: 'Chat via GitHub issue/PR comments', installed: false },
+      { id: 'linear_chat', name: 'Linear', icon: 'ph:line-segments', description: 'Chat via Linear issue comments', installed: false },
     ],
   },
   {
@@ -1183,12 +1179,7 @@ const handleInstall = async (integration: Integration) => {
     return
   }
 
-  if (integration.id === 'telegram') {
-    showTelegramConfigModal.value = true
-    return
-  }
-
-  // Check if this is a configurable package-provided integration
+  // Check if this is a configurable integration (chat platforms, package-provided, etc.)
   if (configurableIntegrations.value[integration.id]) {
     openDynamicModal(integration.id)
     return
@@ -1238,8 +1229,6 @@ const handleConfigure = (integration: Integration) => {
     showProviderConfigModal.value = true
   } else if (integration.id === 'codex') {
     showCodexConfigModal.value = true
-  } else if (integration.id === 'telegram') {
-    showTelegramConfigModal.value = true
   } else if (configurableIntegrations.value[integration.id]) {
     openDynamicModal(integration.id)
   }
@@ -1249,16 +1238,6 @@ const handleDynamicSaved = (result: { enabled: boolean; configured: boolean }) =
   const id = dynamicIntegrationId.value
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === id)
-    if (found) {
-      found.installed = result.enabled
-      break
-    }
-  }
-}
-
-const handleTelegramSaved = (result: { enabled: boolean; configured: boolean }) => {
-  for (const category of integrationCategories.value) {
-    const found = category.integrations.find(i => i.id === 'telegram')
     if (found) {
       found.installed = result.enabled
       break

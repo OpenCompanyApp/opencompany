@@ -182,17 +182,7 @@ return [
         'icon' => 'ph:open-ai-logo',
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Communication Integrations
-    |--------------------------------------------------------------------------
-    */
-
-    'telegram' => [
-        'name' => 'Telegram',
-        'description' => 'Telegram Bot for DMs, notifications, and approvals',
-        'icon' => 'ph:telegram-logo',
-    ],
-
+    // Chat platform integrations (Telegram, Slack, Discord) have been moved
+    // to config/chat_integrations.php to keep them separate from AI model providers.
 
 ];

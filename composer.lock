@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "17bb1af1b67d57641928ca31502bbebf",
+    "content-hash": "47dd4b1a7980044f854e1e1398bbfddf",
     "packages": [
         {
             "name": "brick/math",
@@ -3160,6 +3160,90 @@
                 }
             ],
             "time": "2026-02-16T23:10:27+00:00"
+        },
+        {
+            "name": "opencompany/chatogrator",
+            "version": "v1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/chatogrator.git",
+                "reference": "2f009f127471585755097c019bd48b056cca707c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/chatogrator/zipball/2f009f127471585755097c019bd48b056cca707c",
+                "reference": "2f009f127471585755097c019bd48b056cca707c",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/cache": "^11.0 || ^12.0",
+                "illuminate/http": "^11.0 || ^12.0",
+                "illuminate/routing": "^11.0 || ^12.0",
+                "illuminate/support": "^11.0 || ^12.0",
+                "php": "^8.2",
+                "psr/log": "^1.0 || ^2.0 || ^3.0"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^11.0"
+            },
+            "suggest": {
+                "ext-sodium": "Required for Discord adapter (Ed25519 signature verification)",
+                "ratchet/pawl": "Required for Discord Gateway WebSocket (chat:discord-gateway command)"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Chatogrator\\ChatServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Chatogrator\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "OpenCompany\\Chatogrator\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "vendor/bin/phpunit"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Chatogrator — build multi-platform chat bots with a single unified API. Supports Slack, Discord, Teams, Google Chat, GitHub, and Linear.",
+            "keywords": [
+                "aggregator",
+                "chat",
+                "chatbot",
+                "chatogrator",
+                "discord",
+                "github",
+                "google-chat",
+                "laravel",
+                "linear",
+                "slack",
+                "teams",
+                "webhook"
+            ],
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/chatogrator/tree/v1.1.0",
+                "issues": "https://github.com/OpenCompanyApp/chatogrator/issues"
+            },
+            "time": "2026-02-26T21:42:41+00:00"
         },
         {
             "name": "opencompany/prism-codex",
