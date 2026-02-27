@@ -40,6 +40,7 @@ use App\Agents\Tools\Docs\RestoreDocumentVersion;
 use App\Agents\Tools\Docs\SearchDocuments;
 use App\Agents\Tools\Docs\UpdateDocument;
 use App\Agents\Tools\Lists\AddListItemComment;
+use App\Agents\Tools\Lists\ConvertListItemToTask;
 use App\Agents\Tools\Lists\CreateListItem;
 use App\Agents\Tools\Lists\CreateListStatus;
 use App\Agents\Tools\Lists\DeleteListItem;
@@ -187,8 +188,8 @@ class ToolRegistry
             'description' => 'Events and scheduling',
         ],
         'lists' => [
-            'tools' => ['list_all_items', 'get_list_item', 'list_items_by_status', 'list_items_by_assignee', 'list_projects', 'list_item_statuses', 'create_list_item', 'update_list_item', 'delete_list_item', 'add_list_item_comment', 'delete_list_item_comment', 'create_list_status', 'update_list_status', 'delete_list_status'],
-            'label' => 'list, get, filter, projects, statuses, create, update, delete, comments',
+            'tools' => ['list_all_items', 'get_list_item', 'list_items_by_status', 'list_items_by_assignee', 'list_projects', 'list_item_statuses', 'create_list_item', 'update_list_item', 'delete_list_item', 'add_list_item_comment', 'delete_list_item_comment', 'create_list_status', 'update_list_status', 'delete_list_status', 'convert_list_item_to_task'],
+            'label' => 'list, get, filter, projects, statuses, create, update, delete, comments, convert',
             'description' => 'Kanban board items and workflow statuses',
         ],
         'workspace' => [
@@ -773,6 +774,13 @@ class ToolRegistry
             'name' => 'Delete List Status',
             'description' => 'Delete a workflow status column.',
             'icon' => 'ph:columns',
+        ],
+        'convert_list_item_to_task' => [
+            'class' => ConvertListItemToTask::class,
+            'type' => 'write',
+            'name' => 'Convert List Item to Task',
+            'description' => 'Convert a list item into an agent task.',
+            'icon' => 'ph:arrow-right',
         ],
         // Tasks
         'update_task' => [
@@ -1723,6 +1731,7 @@ class ToolRegistry
             CreateListStatus::class => new CreateListStatus($agent),
             UpdateListStatus::class => new UpdateListStatus($agent),
             DeleteListStatus::class => new DeleteListStatus($agent),
+            ConvertListItemToTask::class => new ConvertListItemToTask($agent),
             UpdateTask::class => new UpdateTask($agent),
             AddTaskStep::class => new AddTaskStep($agent),
             UpdateTaskStep::class => new UpdateTaskStep($agent),

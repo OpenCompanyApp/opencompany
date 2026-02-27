@@ -3,6 +3,7 @@
 namespace App\Agents\Tools\Lists;
 
 use App\Models\ListItem;
+use App\Models\ListItemCollaborator;
 use App\Models\ListStatus;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -69,7 +70,38 @@ class UpdateListItem implements Tool
 
             $item->save();
 
-            return 'List item updated.';
+            if (isset($request['collaboratorIds'])) {
+                ListItemCollaborator::where('list_item_id', $item->id)->delete();
+                foreach ($request['collaboratorIds'] as $collaboratorId) {
+                    ListItemCollaborator::create([
+                        'id' => \Illuminate\Support\Str::uuid()->toString(),
+                        'list_item_id' => $item->id,
+                        'user_id' => $collaboratorId,
+                    ]);
+                }
+            }
+
+            $item->load(['assignee:id,name', 'creator:id,name', 'collaborators:id,name']);
+
+            return json_encode(array_filter([
+                'id' => $item->id,
+                'title' => $item->title,
+                'description' => $item->description ?: null,
+                'status' => $item->status,
+                'priority' => $item->priority,
+                'isFolder' => $item->is_folder ?: null,
+                'parentId' => $item->parent_id,
+                'assignee' => $item->assignee ? $item->assignee->name : null,
+                'assigneeId' => $item->assignee_id,
+                'createdBy' => $item->creator?->name,
+                'dueDate' => $item->due_date?->toDateString(),
+                'channelId' => $item->channel_id,
+                'completedAt' => $item->completed_at?->toIso8601String(),
+                'collaborators' => $item->collaborators->map(fn ($c) => [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                ])->values()->toArray() ?: null,
+            ], fn ($v) => $v !== null), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error updating list item: {$e->getMessage()}";
         }
@@ -107,6 +139,9 @@ class UpdateListItem implements Tool
             'channelId' => $schema
                 ->string()
                 ->description('The UUID of the channel to link this item to.'),
+            'collaboratorIds' => $schema
+                ->array()
+                ->description('Array of user UUIDs to set as collaborators. Replaces all existing collaborators.'),
         ];
     }
 }

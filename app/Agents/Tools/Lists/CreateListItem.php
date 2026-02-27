@@ -3,6 +3,7 @@
 namespace App\Agents\Tools\Lists;
 
 use App\Models\ListItem;
+use App\Models\ListItemCollaborator;
 use App\Models\ListStatus;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -66,11 +67,35 @@ class CreateListItem implements Tool
                 'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
             ]);
 
-            if ($isFolder) {
-                return "Project created: '{$item->title}' (ID: {$item->id}). Use this ID as parentId when creating items in this project.";
+            $collaboratorIds = $request['collaboratorIds'] ?? [];
+            foreach ($collaboratorIds as $collaboratorId) {
+                ListItemCollaborator::create([
+                    'id' => Str::uuid()->toString(),
+                    'list_item_id' => $item->id,
+                    'user_id' => $collaboratorId,
+                ]);
             }
 
-            return "List item created: '{$item->title}' (ID: {$item->id})";
+            $item->load(['assignee:id,name', 'creator:id,name', 'collaborators:id,name']);
+
+            return json_encode(array_filter([
+                'id' => $item->id,
+                'title' => $item->title,
+                'description' => $item->description ?: null,
+                'status' => $item->status,
+                'priority' => $item->priority,
+                'isFolder' => $item->is_folder ?: null,
+                'parentId' => $item->parent_id,
+                'assignee' => $item->assignee ? $item->assignee->name : null,
+                'assigneeId' => $item->assignee_id,
+                'createdBy' => $item->creator?->name,
+                'dueDate' => $item->due_date?->toDateString(),
+                'channelId' => $item->channel_id,
+                'collaborators' => $item->collaborators->map(fn ($c) => [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                ])->values()->toArray() ?: null,
+            ], fn ($v) => $v !== null), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error creating list item: {$e->getMessage()}";
         }
@@ -108,6 +133,9 @@ class CreateListItem implements Tool
             'channelId' => $schema
                 ->string()
                 ->description('The UUID of the channel to link this item to.'),
+            'collaboratorIds' => $schema
+                ->array()
+                ->description('Array of user UUIDs to add as collaborators on this item.'),
         ];
     }
 }

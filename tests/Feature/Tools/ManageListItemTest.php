@@ -73,8 +73,10 @@ class ManageListItemTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('List item created', $result);
-        $this->assertStringContainsString('New Task', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertEquals('New Task', $decoded['title']);
+        $this->assertEquals('backlog', $decoded['status']);
 
         $item = ListItem::where('title', 'New Task')->first();
         $this->assertNotNull($item);
@@ -102,7 +104,10 @@ class ManageListItemTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('updated', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertEquals('Updated Title', $decoded['title']);
+        $this->assertEquals('done', $decoded['status']);
 
         $item->refresh();
         $this->assertEquals('Updated Title', $item->title);
@@ -143,7 +148,9 @@ class ManageListItemTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Comment added', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertEquals('This looks good!', $decoded['content']);
 
         $comment = ListItemComment::where('list_item_id', $item->id)->first();
         $this->assertNotNull($comment);

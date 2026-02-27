@@ -52,7 +52,14 @@ class CreateListStatus implements Tool
                 'workspace_id' => workspace()->id,
             ]);
 
-            return "Status created: '{$status->name}' (slug: {$status->slug}, ID: {$status->id})";
+            return json_encode(array_filter([
+                'id' => $status->id,
+                'name' => $status->name,
+                'slug' => $status->slug,
+                'color' => $status->color,
+                'icon' => $status->icon,
+                'isDone' => $status->is_done ?: null,
+            ], fn ($v) => $v !== null), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error creating status: {$e->getMessage()}";
         }

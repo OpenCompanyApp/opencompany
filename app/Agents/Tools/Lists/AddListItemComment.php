@@ -26,14 +26,20 @@ class AddListItemComment implements Tool
         try {
             $item = ListItem::forWorkspace()->findOrFail($request['listItemId']);
 
-            ListItemComment::create([
+            $comment = ListItemComment::create([
                 'id' => Str::uuid()->toString(),
                 'list_item_id' => $item->id,
                 'author_id' => $this->agent->id,
                 'content' => $request['commentContent'],
+                'parent_id' => $request['parentId'] ?? null,
             ]);
 
-            return 'Comment added.';
+            return json_encode(array_filter([
+                'id' => $comment->id,
+                'content' => $comment->content,
+                'authorId' => $comment->author_id,
+                'parentId' => $comment->parent_id,
+            ], fn ($v) => $v !== null), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error adding comment: {$e->getMessage()}";
         }
@@ -51,6 +57,9 @@ class AddListItemComment implements Tool
                 ->string()
                 ->description('The content of the comment.')
                 ->required(),
+            'parentId' => $schema
+                ->string()
+                ->description('The UUID of a parent comment to reply to (for threaded comments).'),
         ];
     }
 }

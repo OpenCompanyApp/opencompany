@@ -50,7 +50,15 @@ class UpdateListStatus implements Tool
 
             $status->save();
 
-            return "Status '{$status->name}' updated.";
+            return json_encode(array_filter([
+                'id' => $status->id,
+                'name' => $status->name,
+                'slug' => $status->slug,
+                'color' => $status->color,
+                'icon' => $status->icon,
+                'isDone' => $status->is_done ?: null,
+                'isDefault' => $status->is_default ?: null,
+            ], fn ($v) => $v !== null), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error updating status: {$e->getMessage()}";
         }
