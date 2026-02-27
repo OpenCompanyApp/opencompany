@@ -13,6 +13,15 @@
         <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 leading-none">
           Luau
         </span>
+        <span class="w-px h-4 bg-neutral-200 dark:bg-neutral-700" />
+        <Link
+          :href="workspacePath('/developer/tools')"
+          class="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+          title="API Reference"
+        >
+          <Icon name="ph:book-open" class="w-3.5 h-3.5" />
+          <span class="hidden sm:inline">API Reference</span>
+        </Link>
       </div>
 
       <div class="flex items-center gap-2">
@@ -81,9 +90,11 @@ import Button from '@/Components/shared/Button.vue'
 import MonacoEditor from '@/Components/developer/MonacoEditor.vue'
 import ConsoleOutput from '@/Components/developer/ConsoleOutput.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { useLuaCompletions } from '@/composables/useLuaCompletions'
 import type { editor as MonacoEditorType } from 'monaco-editor'
 
 const { workspacePath } = useWorkspace()
+useLuaCompletions()
 
 const code = ref('')
 const running = ref(false)

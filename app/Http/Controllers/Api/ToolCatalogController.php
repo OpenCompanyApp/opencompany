@@ -51,10 +51,14 @@ class ToolCatalogController extends Controller
         // Enrich each group with Lua metadata
         foreach ($catalog as &$group) {
             $appName = $group['name'];
-            $nsKey = ($group['isIntegration'] ? 'integrations.' : '') . $appName;
-
-            // Lua namespace (e.g. "app.chat")
-            $group['luaNamespace'] = 'app.' . $nsKey;
+            // MCP tools use "app.mcp.{server}" namespace (matching LuaApiDocGenerator)
+            if (str_starts_with($appName, 'mcp_')) {
+                $serverName = substr($appName, strlen('mcp_'));
+                $group['luaNamespace'] = 'app.mcp.' . $serverName;
+            } else {
+                $nsKey = ($group['isIntegration'] ? 'integrations.' : '') . $appName;
+                $group['luaNamespace'] = 'app.' . $nsKey;
+            }
 
             // Supplementary Lua docs from ProvidesLuaDocs providers
             $group['luaDocs'] = $docGenerator->getSupplementaryDocs($nsKey);

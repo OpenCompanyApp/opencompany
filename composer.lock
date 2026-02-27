@@ -3547,17 +3547,11 @@
         },
         {
             "name": "opencompanyapp/ai-tool-google",
-            "version": "v2.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-google.git",
-                "reference": "6960827c79f5f93e2c3bd4dba7b623018c0cf999"
-            },
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-google/zipball/6960827c79f5f93e2c3bd4dba7b623018c0cf999",
-                "reference": "6960827c79f5f93e2c3bd4dba7b623018c0cf999",
-                "shasum": ""
+                "type": "path",
+                "url": "tmp/ai-tool-google",
+                "reference": "86dc20ff444216ac50e50941bd8eb8868e09d87d"
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3596,11 +3590,9 @@
                 "opencompany",
                 "tools"
             ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-google/tree/v2.0.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-google/issues"
-            },
-            "time": "2026-02-22T22:21:41+00:00"
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "opencompanyapp/ai-tool-mermaid",
@@ -3775,17 +3767,11 @@
         },
         {
             "name": "opencompanyapp/ai-tool-ticktick",
-            "version": "1.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-ticktick.git",
-                "reference": "d29e3b941257953b1b4aa2bba06a42fc9f46f868"
-            },
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-ticktick/zipball/d29e3b941257953b1b4aa2bba06a42fc9f46f868",
-                "reference": "d29e3b941257953b1b4aa2bba06a42fc9f46f868",
-                "shasum": ""
+                "type": "path",
+                "url": "tmp/ai-tool-ticktick",
+                "reference": "26b2dc2bf9e57667e546ecfae2b2e98107533f8f"
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3824,11 +3810,9 @@
                 "ticktick",
                 "tools"
             ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-ticktick/tree/1.0.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-ticktick/issues"
-            },
-            "time": "2026-02-14T18:14:56+00:00"
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "opencompanyapp/ai-tool-typst",

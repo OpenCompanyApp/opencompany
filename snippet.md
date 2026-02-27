@@ -64,9 +64,9 @@ can save more tokens in system prompt for lua libs
 --
 in _overview doc add that we are using roblox luau dialect of lua, intercompatible with lua 5.1, in line/tool exec we use regular lua 5.1, but for automation and reusable stuff we prefer luau types etc and explicit.
 
---
 
-open lua script from task show/automatin in console. also some snippet storage system, also in console.
+
+also some snippet storage system, also in console.
 
 --
 
@@ -110,9 +110,6 @@ oddities with automatin, retries, double responses, stuck, recovery on restart e
 
 live update progress along tool calls
 
---
-
-oath redirect works but 404, also check worspace context/specific stuff.
 
 --
 no available server
