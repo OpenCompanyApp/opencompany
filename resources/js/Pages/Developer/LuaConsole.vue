@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import axios from 'axios'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
@@ -98,6 +98,14 @@ const lastResult = ref<{
 } | null>(null)
 
 const metaKey = navigator.platform.includes('Mac') ? '\u2318' : 'Ctrl'
+
+onMounted(() => {
+  const initialCode = sessionStorage.getItem('lua-console-code')
+  if (initialCode) {
+    code.value = initialCode
+    sessionStorage.removeItem('lua-console-code')
+  }
+})
 
 let editorInstance: MonacoEditorType.IStandaloneCodeEditor | null = null
 
