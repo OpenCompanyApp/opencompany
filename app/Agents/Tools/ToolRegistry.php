@@ -7,6 +7,8 @@ use App\Agents\Tools\Calendar\CreateCalendarEvent;
 use App\Agents\Tools\Calendar\DeleteCalendarEvent;
 use App\Agents\Tools\Calendar\GetCalendarEvent;
 use App\Agents\Tools\Calendar\ListCalendarEvents;
+use App\Agents\Tools\Calendar\RemoveCalendarAttendee;
+use App\Agents\Tools\Calendar\UpdateCalendarAttendee;
 use App\Agents\Tools\Calendar\UpdateCalendarEvent;
 use App\Agents\Tools\Charts\RenderSvg;
 use App\Agents\Tools\Chat\AddMessageReaction;
@@ -180,8 +182,8 @@ class ToolRegistry
             'description' => 'Structured data tables',
         ],
         'calendar' => [
-            'tools' => ['list_calendar_events', 'get_calendar_event', 'create_calendar_event', 'update_calendar_event', 'delete_calendar_event'],
-            'label' => 'list, get, create, update, delete',
+            'tools' => ['list_calendar_events', 'get_calendar_event', 'create_calendar_event', 'update_calendar_event', 'delete_calendar_event', 'update_calendar_attendee', 'remove_calendar_attendee'],
+            'label' => 'list, get, create, update, delete, attendees',
             'description' => 'Events and scheduling',
         ],
         'lists' => [
@@ -656,6 +658,20 @@ class ToolRegistry
             'name' => 'Delete Calendar Event',
             'description' => 'Delete a calendar event.',
             'icon' => 'ph:calendar-minus',
+        ],
+        'update_calendar_attendee' => [
+            'class' => UpdateCalendarAttendee::class,
+            'type' => 'write',
+            'name' => 'Update Calendar Attendee',
+            'description' => 'Update an attendee\'s RSVP status on a calendar event.',
+            'icon' => 'ph:user-check',
+        ],
+        'remove_calendar_attendee' => [
+            'class' => RemoveCalendarAttendee::class,
+            'type' => 'write',
+            'name' => 'Remove Calendar Attendee',
+            'description' => 'Remove an attendee from a calendar event.',
+            'icon' => 'ph:user-minus',
         ],
         // Lists — Read
         'list_all_items' => [
@@ -1691,6 +1707,8 @@ class ToolRegistry
             CreateCalendarEvent::class => new CreateCalendarEvent($agent),
             UpdateCalendarEvent::class => new UpdateCalendarEvent($agent),
             DeleteCalendarEvent::class => new DeleteCalendarEvent($agent),
+            UpdateCalendarAttendee::class => new UpdateCalendarAttendee($agent),
+            RemoveCalendarAttendee::class => new RemoveCalendarAttendee($agent),
             ListAllItems::class => new ListAllItems($agent),
             GetListItem::class => new GetListItem($agent),
             ListItemsByStatus::class => new ListItemsByStatus($agent),

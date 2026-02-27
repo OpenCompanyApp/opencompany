@@ -35,21 +35,39 @@ class CreateCalendarEvent implements Tool
                 'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
             ]);
 
-            if (isset($request['attendeeIds']) && $request['attendeeIds'] !== '') {
-                $userIds = array_map('trim', explode(',', $request['attendeeIds']));
-
-                foreach ($userIds as $userId) {
-                    CalendarEventAttendee::create([
-                        'event_id' => $event->id,
-                        'user_id' => $userId,
-                        'status' => 'pending',
-                    ]);
-                }
+            $attendeeIds = $request['attendeeIds'] ?? [];
+            if (is_string($attendeeIds) && $attendeeIds !== '') {
+                $attendeeIds = array_map('trim', explode(',', $attendeeIds));
             }
 
-            $recurrence = $event->recurrence_rule ? " (recurring: {$event->recurrence_rule})" : '';
+            foreach ($attendeeIds as $userId) {
+                CalendarEventAttendee::create([
+                    'event_id' => $event->id,
+                    'user_id' => $userId,
+                    'status' => 'pending',
+                ]);
+            }
 
-            return "Event created: '{$event->title}' (ID: {$event->id}){$recurrence}";
+            $event->load(['creator:id,name', 'attendees.user:id,name']);
+
+            return json_encode(array_filter([
+                'id' => $event->id,
+                'title' => $event->title,
+                'description' => $event->description,
+                'startAt' => $event->start_at->toIso8601String(),
+                'endAt' => $event->end_at?->toIso8601String(),
+                'allDay' => $event->all_day ?: null,
+                'location' => $event->location,
+                'color' => $event->color,
+                'recurrenceRule' => $event->recurrence_rule,
+                'recurrenceEnd' => $event->recurrence_end?->toIso8601String(),
+                'attendees' => $event->attendees->map(fn ($a) => [
+                    'id' => $a->id,
+                    'userId' => $a->user_id,
+                    'name' => $a->user?->name ?? 'Unknown',
+                    'status' => $a->status,
+                ])->values()->toArray() ?: null,
+            ], fn ($v) => $v !== null), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error creating calendar event: {$e->getMessage()}";
         }

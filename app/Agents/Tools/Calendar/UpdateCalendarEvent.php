@@ -62,22 +62,43 @@ class UpdateCalendarEvent implements Tool
             $event->save();
 
             if (isset($request['attendeeIds'])) {
+                $attendeeIds = $request['attendeeIds'];
+                if (is_string($attendeeIds)) {
+                    $attendeeIds = $attendeeIds !== '' ? array_map('trim', explode(',', $attendeeIds)) : [];
+                }
+
                 $event->attendees()->delete();
 
-                if ($request['attendeeIds'] !== '') {
-                    $userIds = array_map('trim', explode(',', $request['attendeeIds']));
-
-                    foreach ($userIds as $userId) {
-                        CalendarEventAttendee::create([
-                            'event_id' => $event->id,
-                            'user_id' => $userId,
-                            'status' => 'pending',
-                        ]);
-                    }
+                foreach ($attendeeIds as $userId) {
+                    CalendarEventAttendee::create([
+                        'event_id' => $event->id,
+                        'user_id' => $userId,
+                        'status' => 'pending',
+                    ]);
                 }
             }
 
-            return 'Event updated.';
+            $event->load(['creator:id,name', 'attendees.user:id,name']);
+
+            return json_encode(array_filter([
+                'id' => $event->id,
+                'title' => $event->title,
+                'description' => $event->description,
+                'startAt' => $event->start_at->toIso8601String(),
+                'endAt' => $event->end_at?->toIso8601String(),
+                'allDay' => $event->all_day ?: null,
+                'location' => $event->location,
+                'color' => $event->color,
+                'recurrenceRule' => $event->recurrence_rule,
+                'recurrenceEnd' => $event->recurrence_end?->toIso8601String(),
+                'createdBy' => $event->creator?->name ?? 'Unknown',
+                'attendees' => $event->attendees->map(fn ($a) => [
+                    'id' => $a->id,
+                    'userId' => $a->user_id,
+                    'name' => $a->user?->name ?? 'Unknown',
+                    'status' => $a->status,
+                ])->values()->toArray() ?: null,
+            ], fn ($v) => $v !== null), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error updating calendar event: {$e->getMessage()}";
         }
@@ -119,8 +140,8 @@ class UpdateCalendarEvent implements Tool
                 ->string()
                 ->description('ISO 8601 date when the recurrence stops (e.g. "2026-12-31").'),
             'attendeeIds' => $schema
-                ->string()
-                ->description('Comma-separated UUIDs of users to invite as attendees. Pass empty string to remove all attendees.'),
+                ->array()
+                ->description('Array of user UUIDs to set as attendees. Replaces all existing attendees. Pass empty array to remove all.'),
         ];
     }
 }

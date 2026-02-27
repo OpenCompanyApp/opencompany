@@ -52,8 +52,9 @@ class ManageCalendarEventTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Event created', $result);
-        $this->assertStringContainsString('Weekly Sync', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertEquals('Weekly Sync', $decoded['title']);
 
         $event = CalendarEvent::where('title', 'Weekly Sync')->first();
         $this->assertNotNull($event);
@@ -75,7 +76,10 @@ class ManageCalendarEventTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Event created', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertEquals('Team Retro', $decoded['title']);
+        $this->assertCount(2, $decoded['attendees']);
 
         $event = CalendarEvent::where('title', 'Team Retro')->first();
         $this->assertNotNull($event);
@@ -106,7 +110,9 @@ class ManageCalendarEventTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('updated', $result);
+        $decoded = json_decode($result, true);
+        $this->assertIsArray($decoded);
+        $this->assertEquals('Updated Title', $decoded['title']);
 
         $event->refresh();
         $this->assertEquals('Updated Title', $event->title);

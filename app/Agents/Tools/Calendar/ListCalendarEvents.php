@@ -52,13 +52,20 @@ class ListCalendarEvents implements Tool
             return json_encode($events->map(fn ($event) => array_filter([
                 'id' => $event->id,
                 'title' => $event->title,
+                'description' => $event->description,
                 'startAt' => $event->start_at->toIso8601String(),
                 'endAt' => $event->end_at?->toIso8601String(),
                 'allDay' => $event->all_day ?: null,
                 'location' => $event->location,
+                'color' => $event->color,
+                'createdBy' => $event->creator?->name ?? 'Unknown',
                 'recurrenceRule' => $event->recurrence_rule,
-                'attendees' => $event->attendees->count(),
-            ]))->values()->toArray(), JSON_PRETTY_PRINT);
+                'attendees' => $event->attendees->map(fn ($a) => [
+                    'userId' => $a->user_id,
+                    'name' => $a->user?->name ?? 'Unknown',
+                    'status' => $a->status ?? 'pending',
+                ])->values()->toArray() ?: null,
+            ], fn ($v) => $v !== null))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error listing calendar events: {$e->getMessage()}";
         }
