@@ -181,6 +181,9 @@ Route::middleware('resolve.workspace')->group(function () {
     // Activities
     Route::get('/activities', [ActivityController::class, 'index']);
 
+    // Workload
+    Route::get('/workload', [\App\Http\Controllers\Api\WorkloadController::class, 'index']);
+
     // Stats
     Route::get('/stats', [StatsController::class, 'index']);
     Route::get('/stats/status', [StatsController::class, 'status']);

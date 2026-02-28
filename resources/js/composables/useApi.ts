@@ -282,10 +282,25 @@ export const useApi = () => {
     api.patch(`/approvals/${id}`, { status })
 
   // Activities
-  const fetchActivities = (limit?: number) => {
-    const params = limit ? `?limit=${limit}` : ''
-    return useFetch<Activity[]>(`/activities${params}`)
+  const fetchActivities = (filters?: { limit?: number; offset?: number; type?: string; userId?: string; since?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.limit) params.append('limit', String(filters.limit))
+    if (filters?.offset) params.append('offset', String(filters.offset))
+    if (filters?.type) params.append('type', filters.type)
+    if (filters?.userId) params.append('userId', filters.userId)
+    if (filters?.since) params.append('since', filters.since)
+    return useFetch<{ data: Activity[]; total: number; hasMore: boolean }>(`/activities?${params.toString()}`)
   }
+
+  // Workload
+  const fetchWorkload = () => useFetch<{
+    agents: Array<{
+      agent: { id: string; name: string; avatar: string | null; agentType: string | null; status: string }
+      metrics: { currentTasks: number; pendingTasks: number; completedToday: number; completedThisWeek: number; failedThisWeek: number; avgDurationSeconds: number | null }
+      currentTaskTitle: string | null
+    }>
+    summary: { totalAgents: number; activeAgents: number; totalActiveTasks: number; totalPendingTasks: number; completedToday: number; completedThisWeek: number; failedThisWeek: number }
+  }>('/workload')
 
   // Stats
   const fetchStats = () => useFetch<Stats>('/stats')
@@ -586,6 +601,8 @@ export const useApi = () => {
     respondToApproval,
     // Activities
     fetchActivities,
+    // Workload
+    fetchWorkload,
     // Stats
     fetchStats,
     fetchWorkspaceStatus,
