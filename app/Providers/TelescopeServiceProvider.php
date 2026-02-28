@@ -27,7 +27,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
                 return true;
             }
 
-            // Always record exceptions, failed jobs, scheduled tasks
+            // Always record these
             if ($entry->isReportableException() ||
                 $entry->isFailedJob() ||
                 $entry->isScheduledTask() ||
@@ -35,17 +35,17 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
                 return true;
             }
 
-            // Record failed requests (4xx, 5xx)
-            if ($entry->isFailedRequest()) {
+            // Record all jobs, requests, and logs
+            if (in_array($entry->type, ['job', 'request', 'log'])) {
                 return true;
             }
 
-            // Record slow queries (> 100ms) — configured in telescope.php
+            // Record slow queries (> 100ms)
             if ($entry->type === 'query' && ($entry->content['slow'] ?? false)) {
                 return true;
             }
 
-            // Drop everything else in production
+            // Drop noisy entries (cache, model, event, etc.)
             return false;
         });
     }
