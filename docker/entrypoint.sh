@@ -27,6 +27,9 @@ if [ -z "$APP_KEY" ]; then
     fi
 fi
 
+# Queue worker concurrency (default: 5)
+export QUEUE_WORKERS="${QUEUE_WORKERS:-5}"
+
 # Cache config with runtime env vars
 php /app/artisan config:cache
 
