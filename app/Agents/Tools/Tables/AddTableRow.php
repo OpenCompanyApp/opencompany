@@ -49,7 +49,7 @@ class AddTableRow implements Tool
                 "created_by" => $this->agent->id,
             ]);
 
-            return "Row added (ID: {$row->id})";
+            return json_encode(['id' => $row->id, 'message' => 'Row added']);
         } catch (\Throwable $e) {
             return "Error managing table rows: {$e->getMessage()}";
         }

@@ -158,8 +158,8 @@ class ToolRegistry
 
         // Internal apps
         'agents' => [
-            'tools' => ['contact_agent'],
-            'label' => 'ask, delegate, notify',
+            'tools' => ['contact_agent', 'list_agents'],
+            'label' => 'ask, delegate, notify, list',
             'description' => 'Inter-agent communication',
         ],
         'memory' => [
@@ -194,7 +194,7 @@ class ToolRegistry
         ],
         'workspace' => [
             'tools' => [
-                'list_agents', 'list_members', 'get_agent_details', 'get_agent_permissions', 'list_integrations', 'get_integration_config', 'list_available_models',
+                'list_members', 'get_agent_details', 'get_agent_permissions', 'list_integrations', 'get_integration_config', 'list_available_models',
                 'create_agent', 'update_agent', 'delete_agent', 'read_agent_identity_file', 'update_agent_identity_file',
                 'update_agent_tool_permissions', 'update_agent_channel_access', 'update_agent_folder_access', 'update_agent_integration_access',
                 'get_integration_setup', 'update_integration_config', 'test_integration_connection', 'setup_integration_webhook', 'link_external_user',
