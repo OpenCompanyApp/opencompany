@@ -29,6 +29,10 @@ DESC;
     public function handle(Request $request): string
     {
         try {
+            if (! isset($request['page']) || ! is_string($request['page']) || trim($request['page']) === '') {
+                return 'Missing required parameter "page". Provide a namespace (e.g. "chat"), function path (e.g. "chat.send"), or guide name (e.g. "examples").';
+            }
+
             $page = $request['page'];
 
             // Strip "app." prefix — docs display functions as app.namespace.fn()

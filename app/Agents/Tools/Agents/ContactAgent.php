@@ -175,7 +175,7 @@ class ContactAgent implements Tool
             $this->commService->formatRequestMessage('ask', $this->agent, $message, null, 'normal', $askTask->id),
             'agent_contact'
         );
-        AgentRespondJob::dispatch($triggerMessage, $target, $channelId);
+        AgentRespondJob::dispatch($triggerMessage, $target, $channelId, $askTask->id);
 
         return "Question sent to {$target->name}. Their response will be delivered when ready (task {$askTask->id}).";
     }
@@ -225,7 +225,7 @@ class ContactAgent implements Tool
         $triggerMessage = $this->commService->postMessage($channelId, $this->agent, $messageWithTask, 'agent_contact');
 
         // Dispatch AgentRespondJob for target (delay if sleeping)
-        $job = AgentRespondJob::dispatch($triggerMessage, $target, $channelId);
+        $job = AgentRespondJob::dispatch($triggerMessage, $target, $channelId, $subtask->id);
         if ($target->sleeping_until && $target->sleeping_until->isFuture()) {
             $job->delay($target->sleeping_until);
         }

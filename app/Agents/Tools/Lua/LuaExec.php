@@ -28,6 +28,10 @@ class LuaExec implements Tool
     public function handle(Request $request): string
     {
         try {
+            if (! isset($request['code']) || ! is_string($request['code']) || trim($request['code']) === '') {
+                return 'Missing required parameter "code". Provide the Lua source code to execute as a string.';
+            }
+
             $code = $request['code'];
             $options = [];
 

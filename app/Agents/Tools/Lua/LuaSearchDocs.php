@@ -23,6 +23,10 @@ class LuaSearchDocs implements Tool
     public function handle(Request $request): string
     {
         try {
+            if (! isset($request['query']) || ! is_string($request['query']) || trim($request['query']) === '') {
+                return 'Missing required parameter "query". Provide a search term (e.g. "send message", "calendar").';
+            }
+
             $query = $request['query'];
             $limit = $request['limit'] ?? 10;
 

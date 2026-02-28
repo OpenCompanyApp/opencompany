@@ -19,6 +19,8 @@ Read the reference implementation to understand the exact patterns:
 6. Read `tmp/integration-core/src/Contracts/ToolProvider.php` — The contract to implement
 7. Read `tmp/integration-core/src/Contracts/CredentialResolver.php` — For tools needing API keys
 8. Read `tmp/integration-core/src/Contracts/ProvidesLuaDocs.php` — Optional: supplementary Lua docs
+9. Read `tmp/integration-core/src/Contracts/ConfigurableIntegration.php` — Config UI contract for integrations with credentials
+10. Read `tmp/ai-tool-clickup/src/ClickUpToolProvider.php` — ConfigurableIntegration + ToolProvider example
 
 ## Package structure to create
 
@@ -54,7 +56,7 @@ tmp/ai-tool-$ARGUMENTS/
 - `appMeta()` returns label, description, icon (use `ph:` prefix for Phosphor icons), logo
 - `tools()` returns slug => metadata array — **one entry per atomic tool**
 - `isIntegration()` returns `true` for external integrations
-- `createTool()` factory — instantiate the tool class with proper dependencies
+- `createTool(string $class, array $context)` factory — instantiate the tool class with proper dependencies. The `$context` array contains `agent` (User), `timezone` (string), and `tool_slug` (string). Use `$context['timezone']` if your tool needs it (see celestial). Do **NOT** pass the agent User model directly to tool constructors.
 - **Do NOT pass `User $agent` or any OpenCompany model to tool constructors**
 
 Tool slug convention: `{appname}_{verb}_{noun}` — e.g., `weather_get_forecast`, `weather_list_locations`.
@@ -161,6 +163,104 @@ class WeatherGetForecast implements Tool
           ->register(new {Name}ToolProvider());
   }
   ```
+
+### ConfigurableIntegration (for integrations with credentials)
+
+Most external API integrations should also implement `ConfigurableIntegration` alongside `ToolProvider`. This gives you automatic config UI rendering in the Integrations page, a "Test Connection" button, and credential validation on save.
+
+```php
+use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
+use OpenCompany\IntegrationCore\Contracts\ToolProvider;
+
+class WeatherToolProvider implements ToolProvider, ConfigurableIntegration
+{
+    // ... ToolProvider methods (appName, appMeta, tools, isIntegration, createTool) ...
+
+    public function integrationMeta(): array
+    {
+        return [
+            'name' => 'Weather API',
+            'description' => 'Real-time weather data and forecasts',
+            'icon' => 'ph:cloud-sun',
+            'logo' => 'ph:cloud-sun',
+            'category' => 'data',        // productivity, data, communication, development, etc.
+            'badge' => 'verified',        // optional
+            'docs_url' => 'https://...',  // optional
+        ];
+    }
+
+    public function configSchema(): array
+    {
+        return [
+            [
+                'key' => 'api_key',
+                'type' => 'secret',       // secret, text, url, select, string_list, oauth_connect
+                'label' => 'API Key',
+                'placeholder' => 'wk_...',
+                'hint' => 'Get your key at <a href="...">the dashboard</a>.',
+                'required' => true,
+            ],
+        ];
+    }
+
+    public function testConnection(array $config): array
+    {
+        $apiKey = $config['api_key'] ?? '';
+        if (empty($apiKey)) {
+            return ['success' => false, 'error' => 'No API key provided.'];
+        }
+        try {
+            // Make a lightweight test API call
+            $response = Http::withHeaders(['Authorization' => "Bearer {$apiKey}"])
+                ->timeout(10)->get('https://api.example.com/ping');
+            return $response->successful()
+                ? ['success' => true, 'message' => 'Connected successfully.']
+                : ['success' => false, 'error' => 'API error: ' . $response->body()];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    public function validationRules(): array
+    {
+        return ['api_key' => 'nullable|string'];
+    }
+}
+```
+
+Config field types: `secret` (masked input), `text`, `url`, `select` (with `options`), `string_list` (with `item_icon`/`item_placeholder`), `oauth_connect` (with `authorize_url`/`redirect_uri`).
+
+See `tmp/ai-tool-clickup/src/ClickUpToolProvider.php` for a complete real-world example.
+
+### OAuth integrations
+
+For integrations using OAuth instead of API keys (e.g., TickTick, Google):
+
+1. Create an `{Name}OAuthController.php` with `authorize()` and `callback()` methods
+2. Register routes in `ServiceProvider::boot()`:
+   ```php
+   private function registerRoutes(): void
+   {
+       Route::prefix('api/integrations/{name}/oauth')
+           ->middleware(['web', 'auth'])
+           ->group(function () {
+               Route::get('authorize', [{Name}OAuthController::class, 'authorize']);
+               Route::get('callback', [{Name}OAuthController::class, 'callback']);
+           });
+   }
+   ```
+3. In `configSchema()`, use the `oauth_connect` field type:
+   ```php
+   [
+       'key' => 'access_token',
+       'type' => 'oauth_connect',
+       'label' => 'My Service Account',
+       'authorize_url' => '/api/integrations/{name}/oauth/authorize',
+       'redirect_uri' => '/api/integrations/{name}/oauth/callback',
+   ]
+   ```
+
+See `tmp/ai-tool-ticktick/` for a complete OAuth example.
 
 ### Optional: Supplementary Lua documentation (`ProvidesLuaDocs`)
 
