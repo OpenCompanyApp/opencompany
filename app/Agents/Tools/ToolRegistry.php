@@ -194,18 +194,25 @@ class ToolRegistry
         ],
         'workspace' => [
             'tools' => [
-                'list_agents', 'list_members', 'get_agent_details', 'get_agent_permissions', 'list_integrations', 'get_integration_config', 'list_available_models', 'list_automation_rules',
+                'list_agents', 'list_members', 'get_agent_details', 'get_agent_permissions', 'list_integrations', 'get_integration_config', 'list_available_models',
                 'create_agent', 'update_agent', 'delete_agent', 'read_agent_identity_file', 'update_agent_identity_file',
                 'update_agent_tool_permissions', 'update_agent_channel_access', 'update_agent_folder_access', 'update_agent_integration_access',
                 'get_integration_setup', 'update_integration_config', 'test_integration_connection', 'setup_integration_webhook', 'link_external_user',
                 'list_mcp_servers', 'add_mcp_server', 'update_mcp_server', 'remove_mcp_server', 'test_mcp_server', 'discover_mcp_tools',
                 'create_channel', 'add_channel_member', 'remove_channel_member',
-                'create_automation_rule', 'update_automation_rule', 'delete_automation_rule',
-                'create_item_template', 'update_item_template', 'delete_item_template',
-                'create_schedule', 'update_schedule', 'delete_schedule', 'list_schedules', 'enable_schedule', 'disable_schedule', 'trigger_schedule',
             ],
-            'label' => 'agents, members, permissions, integrations, mcp, channels, automation, schedules',
+            'label' => 'agents, members, permissions, integrations, mcp, channels',
             'description' => 'Workspace management',
+        ],
+        'automations' => [
+            'tools' => [
+                'list_automation_rules', 'create_automation_rule', 'update_automation_rule', 'delete_automation_rule',
+                'create_item_template', 'update_item_template', 'delete_item_template',
+                'create_schedule', 'update_schedule', 'delete_schedule', 'list_schedules',
+                'enable_schedule', 'disable_schedule', 'trigger_schedule',
+            ],
+            'label' => 'rules, templates, schedules',
+            'description' => 'Automation rules, templates, and scheduled triggers',
         ],
 
         // Integrations & utilities
@@ -249,6 +256,7 @@ class ToolRegistry
         'lua' => 'ph:code',
         'system' => 'ph:gear',
         'workspace' => 'ph:gear-six',
+        'automations' => 'ph:lightning',
     ];
 
     /**
