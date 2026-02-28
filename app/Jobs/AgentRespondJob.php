@@ -65,7 +65,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return $this->userMessage->id;
+        return $this->userMessage->id . ':' . $this->agent->id;
     }
 
     public function failed(\Throwable $exception): void
@@ -103,10 +103,10 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
         }
 
         if (!$task) {
-            // Check for a pending delegation subtask for this agent on this channel
+            // Check for a pending delegation/ask subtask for this agent on this channel
             $task = Task::where('agent_id', $this->agent->id)
                 ->where('channel_id', $this->channelId)
-                ->where('source', Task::SOURCE_AGENT_DELEGATION)
+                ->whereIn('source', [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK])
                 ->where('status', Task::STATUS_PENDING)
                 ->latest('created_at')
                 ->first();
@@ -295,7 +295,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             // delegation ID) before we reach this point.
             $this->agent->refresh();
             $hasActiveSubtasks = Task::where('parent_task_id', $task->id)
-                ->where('source', Task::SOURCE_AGENT_DELEGATION)
+                ->whereIn('source', [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK])
                 ->whereNotIn('status', [Task::STATUS_COMPLETED, Task::STATUS_FAILED, Task::STATUS_CANCELLED])
                 ->exists();
 
@@ -427,7 +427,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             }
 
             // If this was a delegated task, send result back to the delegating agent
-            if ($task->parent_task_id && $task->source === Task::SOURCE_AGENT_DELEGATION) {
+            if ($task->parent_task_id && in_array($task->source, [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK])) {
                 $this->handleDelegationCallback($task, $responseText);
             }
 
@@ -466,8 +466,8 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             $task->addStep("Error: {$e->getMessage()}", 'action');
             $task->fail($e->getMessage());
 
-            // If this was a delegated task, send error back to the delegating agent
-            if ($task->parent_task_id && $task->source === Task::SOURCE_AGENT_DELEGATION) {
+            // If this was a delegated/ask task, send error back to the requesting agent
+            if ($task->parent_task_id && in_array($task->source, [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK])) {
                 $this->handleDelegationCallback($task, "Error: {$this->agent->name} failed to complete the task: {$e->getMessage()}");
             }
 
@@ -607,7 +607,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             if (empty($parentAgent->awaiting_delegation_ids)) {
                 // Collect all completed subtask results
                 $completedSubtasks = Task::where('parent_task_id', $parentTask->id)
-                    ->where('source', Task::SOURCE_AGENT_DELEGATION)
+                    ->whereIn('source', [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK])
                     ->whereIn('status', [Task::STATUS_COMPLETED, Task::STATUS_FAILED])
                     ->get();
 

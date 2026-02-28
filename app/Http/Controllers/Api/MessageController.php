@@ -137,7 +137,9 @@ class MessageController extends Controller
         }
 
         // Find all agents and check if their name is @mentioned
-        $agents = User::where('type', 'agent')->get();
+        $agents = User::where('type', 'agent')
+            ->where('workspace_id', workspace()->id)
+            ->get();
 
         foreach ($agents as $agent) {
             if ($agent->id === $message->author_id) {

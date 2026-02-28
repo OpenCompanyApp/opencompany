@@ -2,7 +2,6 @@
 
 namespace App\Agents\Tools\Agents;
 
-use App\Agents\OpenCompanyAgent;
 use App\Jobs\AgentRespondJob;
 use App\Models\ApprovalRequest;
 use App\Models\Task;
@@ -16,8 +15,6 @@ use Laravel\Ai\Tools\Request;
 
 class ContactAgent implements Tool
 {
-    private const MAX_DEPTH = 3;
-    private const ASK_TIMEOUT_SECONDS = 120;
 
     public function __construct(
         private User $agent,
@@ -27,7 +24,7 @@ class ContactAgent implements Tool
 
     public function description(): string
     {
-        return 'Send a message, ask a question, or delegate work to another agent. Actions: "ask" (synchronous — wait for response), "delegate" (async — hand off work, result comes back automatically), "notify" (fire-and-forget FYI). Use list_agents() to discover available agents.';
+        return 'Send a message, ask a question, or delegate work to another agent. Actions: "ask" (ask a question — response comes back automatically), "delegate" (hand off work — result comes back when done), "notify" (fire-and-forget FYI). Use list_agents() to discover available agents.';
     }
 
     public function handle(Request $request): string
@@ -131,12 +128,7 @@ class ContactAgent implements Tool
 
     private function handleAsk(User $target, string $channelId, string $message, string $formattedMessage): string
     {
-        // Depth check
-        if (AgentCommunicationService::currentDepth() >= self::MAX_DEPTH) {
-            return "Error: Maximum agent communication depth (" . self::MAX_DEPTH . ") reached. Use 'delegate' for async processing instead.";
-        }
-
-        // Wake sleeping agent for ask (it's urgent enough that caller is waiting)
+        // Wake sleeping agent for ask (implies urgency)
         if ($target->sleeping_until) {
             $target->update([
                 'sleeping_until' => null,
@@ -166,32 +158,21 @@ class ContactAgent implements Tool
             'parent_task_id' => $currentTask?->id,
             'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
-        $askTask->start();
 
-        // Post request to DM
+        // Track on parent agent — delegation-hold mechanism will keep parent waiting
+        $this->agent->addAwaitingDelegation($askTask->id);
+
+        // Post request to DM and dispatch async job for target agent
         $this->commService->postMessage($channelId, $this->agent, $formattedMessage, 'agent_contact');
 
-        AgentCommunicationService::incrementDepth();
-        try {
-            $responseText = $this->invokeSynchronously($target, $channelId, $message);
+        $triggerMessage = $this->commService->postMessage(
+            $channelId, $this->agent,
+            $this->commService->formatRequestMessage('ask', $this->agent, $message, null, 'normal', $askTask->id),
+            'agent_contact'
+        );
+        AgentRespondJob::dispatch($triggerMessage, $target, $channelId);
 
-            if ($responseText === null) {
-                $askTask->fail('Timeout: no response within ' . self::ASK_TIMEOUT_SECONDS . ' seconds');
-                return "Error: {$target->name} did not respond within " . self::ASK_TIMEOUT_SECONDS . " seconds. Consider using 'delegate' for async processing.";
-            }
-
-            // Post response to DM
-            $this->commService->postMessage($channelId, $target, $responseText, 'agent_contact');
-
-            $askTask->complete(['response' => $responseText]);
-
-            return "Response from {$target->name}: {$responseText}";
-        } catch (\Throwable $e) {
-            $askTask->fail($e->getMessage());
-            throw $e;
-        } finally {
-            AgentCommunicationService::decrementDepth();
-        }
+        return "Question sent to {$target->name}. Their response will be delivered when ready (task {$askTask->id}).";
     }
 
     private function handleDelegate(
@@ -251,54 +232,13 @@ class ContactAgent implements Tool
         return "Notification sent to {$target->name}.";
     }
 
-    /**
-     * Invoke target agent's LLM synchronously with a timeout.
-     */
-    private function invokeSynchronously(User $target, string $channelId, string $message): ?string
-    {
-        // Use pcntl_alarm for timeout if available, otherwise fall back to no timeout
-        $useAlarm = function_exists('pcntl_alarm') && function_exists('pcntl_signal');
-
-        if ($useAlarm) {
-            $timedOut = false;
-
-            pcntl_signal(SIGALRM, function () use (&$timedOut) {
-                $timedOut = true;
-                throw new \RuntimeException('Agent ask timeout');
-            });
-            $previousAlarm = pcntl_alarm(self::ASK_TIMEOUT_SECONDS);
-
-            try {
-                $agentInstance = OpenCompanyAgent::for($target, $channelId);
-                $response = $agentInstance->prompt($message);
-                pcntl_alarm(0); // Cancel alarm on success
-
-                return $response->text;
-            } catch (\RuntimeException $e) {
-                if ($timedOut || str_contains($e->getMessage(), 'Agent ask timeout')) {
-                    return null;
-                }
-                throw $e;
-            } finally {
-                pcntl_alarm($previousAlarm ?: 0);
-                pcntl_signal(SIGALRM, SIG_DFL);
-            }
-        }
-
-        // Fallback: no timeout protection
-        $agentInstance = OpenCompanyAgent::for($target, $channelId);
-        $response = $agentInstance->prompt($message);
-
-        return $response->text;
-    }
-
     /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
         return [
             'action' => $schema
                 ->string()
-                ->description('Communication pattern: "ask" (synchronous — wait for response inline), "delegate" (async — hand off work, result comes back automatically when done), "notify" (fire-and-forget, no response expected).')
+                ->description('Communication pattern: "ask" (ask a question — response delivered automatically), "delegate" (hand off work — result delivered when done), "notify" (fire-and-forget, no response expected).')
                 ->required(),
             'agentId' => $schema
                 ->string()

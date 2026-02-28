@@ -188,6 +188,7 @@
         <div class="p-3 border-t border-neutral-200 dark:border-neutral-700">
           <ChatMessageInput
             :channel="channel"
+            :members="channel.members"
             variant="compact"
             @send="(content) => emit('threadReply', activeThread.parentMessage.id, content)"
           />
@@ -223,6 +224,7 @@
     <div class="border-t border-neutral-200 dark:border-neutral-700">
       <ChatMessageInput
         :channel="channel"
+        :members="channel.members"
         @send="handleSendMessage"
         @typing="emit('typing')"
       />

@@ -124,17 +124,3 @@ refresh ouath
 
 --
 
-it should use the existing folder instead of error: 
-
-            // Prevent duplicate folders — return existing if same name in same parent
-            if ($request['isFolder'] ?? false) {
-                $existing = Document::forWorkspace()
-                    ->where('title', $request['title'])
-                    ->where('parent_id', $parentId)
-                    ->where('is_folder', true)
-                    ->first();
-
-                if ($existing) {
-                    return "Folder already exists: '{$existing->title}' (ID: {$existing->id})";
-                }
-            }
