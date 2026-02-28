@@ -311,12 +311,19 @@ const pinnedChannels = computed(() =>
     .sort(sortByLastMessage),
 )
 
-// Unpinned channels (sorted by latest message)
-const unpinnedChannels = computed(() =>
-  filteredChannels.value
-    .filter(c => !c.pinned)
-    .sort(sortByLastMessage),
-)
+// Unpinned channels — public/private first, then DMs (each group sorted by latest message)
+const unpinnedChannels = computed(() => {
+  const items = filteredChannels.value.filter(c => !c.pinned)
+
+  // In "all" tab, show named channels above DMs (like Slack/Discord)
+  if (activeFilter.value === 'all' || !activeFilter.value) {
+    const named = items.filter(c => c.type === 'public' || c.type === 'private').sort(sortByLastMessage)
+    const rest = items.filter(c => c.type !== 'public' && c.type !== 'private').sort(sortByLastMessage)
+    return [...named, ...rest]
+  }
+
+  return items.sort(sortByLastMessage)
+})
 
 // Computed values
 const hasChannels = computed(() => filteredChannels.value.length > 0)

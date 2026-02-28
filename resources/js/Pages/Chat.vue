@@ -242,7 +242,7 @@ const channelsData = computed<Channel[]>(() =>
 const selectedChannel = ref<Channel | null>(null)
 
 // Initialize with first channel or from query
-watch(channelsData, (newChannels) => {
+watch(channelsData, async (newChannels) => {
   if (!selectedChannel.value && newChannels.length > 0) {
     const url = new URL(window.location.href)
     const channelId = url.searchParams.get('channel')
@@ -255,6 +255,18 @@ watch(channelsData, (newChannels) => {
       found = newChannels.find(c =>
         c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
       )
+      // Auto-create DM if it doesn't exist yet
+      if (!found) {
+        try {
+          await fetchDm(dmUserId)
+          await refreshChannels()
+          found = channelsData.value.find(c =>
+            c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
+          )
+        } catch (e) {
+          console.error('Failed to create DM:', e)
+        }
+      }
     }
 
     // Then check for channel parameter
@@ -274,14 +286,26 @@ watch(() => {
     channelId: url.searchParams.get('channel'),
     dmUserId: url.searchParams.get('dm')
   }
-}, ({ channelId, dmUserId }) => {
+}, async ({ channelId, dmUserId }) => {
   if (channelsData.value.length === 0) return
 
   // Handle dm parameter - find DM channel with this user
   if (dmUserId) {
-    const found = channelsData.value.find(c =>
+    let found = channelsData.value.find(c =>
       c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
     )
+    // Auto-create DM if it doesn't exist yet
+    if (!found) {
+      try {
+        await fetchDm(dmUserId)
+        await refreshChannels()
+        found = channelsData.value.find(c =>
+          c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
+        )
+      } catch (e) {
+        console.error('Failed to create DM:', e)
+      }
+    }
     if (found) selectedChannel.value = found
     return
   }
