@@ -39,6 +39,33 @@ app.calendar.create({
 | File system | None |
 | OS access | None |
 
+## Built-in Globals
+
+### `print(...)`
+
+Prints values to the output. Tables are automatically serialized to a readable format (not `table: 0x...`):
+
+```lua
+local result = app.integrations.plausible.list_sites()
+print(result)
+-- {
+--   sites: [
+--     {
+--       domain: "example.com"
+--     }
+--   ]
+-- }
+```
+
+### `dump(value)`
+
+Prints a table's contents and returns the value (useful for chaining). Equivalent to `print()` for a single value:
+
+```lua
+local sites = dump(app.integrations.plausible.list_sites())
+-- prints the table contents, then continues with sites as a variable
+```
+
 ## Return Values
 
 All `app.*` functions return Lua tables (objects/arrays) on success. On failure, they return `nil, error_message`. Use `pcall` for error handling:

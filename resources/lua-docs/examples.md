@@ -130,7 +130,7 @@ app.tables.add_row({
         event = payload.event,
         source = ctx.event.headers["X-Source"] or "unknown",
         received_at = os.date("%Y-%m-%dT%H:%M:%S"),
-        raw = app.util.json_encode(payload),
+        raw = tostring(payload),
     },
 })
 

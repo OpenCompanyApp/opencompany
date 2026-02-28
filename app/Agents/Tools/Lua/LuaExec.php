@@ -22,7 +22,7 @@ class LuaExec implements Tool
 
     public function description(): string
     {
-        return 'Execute Lua code in a sandboxed environment with access to the app.* namespace for workspace operations. Use print() for output. Call workspace tools via app.{namespace}.{function}({named_args}).';
+        return 'Execute Lua code with app.* namespace access. Always use lua_read_doc first to look up function names and parameters. Use print() or dump() for output (tables are auto-serialized).';
     }
 
     public function handle(Request $request): string
@@ -109,7 +109,7 @@ class LuaExec implements Tool
         return [
             'code' => $schema
                 ->string()
-                ->description('The Lua code to execute. Use print() for output. Access workspace tools via app.{namespace}.{function}({args_table}).')
+                ->description('Lua code to execute. Use print()/dump() for output.')
                 ->required(),
             'memoryLimit' => $schema
                 ->integer()

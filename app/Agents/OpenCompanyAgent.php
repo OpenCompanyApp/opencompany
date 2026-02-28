@@ -8,13 +8,19 @@ use App\Agents\Tools\ToolRegistry;
 use App\Models\AppSetting;
 use App\Models\Channel;
 use App\Models\Task;
+use App\Models\TaskStep;
 use App\Models\User;
 use App\Services\AgentDocumentService;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Attributes\MaxTokens;
+use Laravel\Ai\Messages\AssistantMessage;
+use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Promptable;
+use Laravel\Ai\Responses\Data\ToolCall;
+use Laravel\Ai\Responses\Data\ToolResult;
+use Illuminate\Support\Str;
 
 #[MaxTokens(16_384)]
 class OpenCompanyAgent implements Agent, HasTools, Conversational
@@ -23,6 +29,8 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
 
     /** @var array<string, mixed> */
     private array $resolvedProvider;
+
+    private ?string $resumeFromTaskId = null;
 
     public function __construct(
         private User $agent,
@@ -46,6 +54,26 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             'channelId' => $channelId,
             'taskId' => $taskId,
         ]);
+    }
+
+    /**
+     * Get the current task ID this agent is working on.
+     */
+    public function currentTaskId(): ?string
+    {
+        return $this->taskId;
+    }
+
+    /**
+     * Enable checkpoint resume: on the next prompt, inject saved tool call
+     * checkpoints from a previous attempt so the LLM continues from where
+     * it left off instead of repeating all tool calls.
+     */
+    public function resumeFrom(string $taskId): static
+    {
+        $this->resumeFromTaskId = $taskId;
+
+        return $this;
     }
 
     /**
@@ -154,11 +182,75 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
      * Get the conversation history for context.
      * Passes the system prompt for accurate token measurement during compaction checks.
      *
+     * On retry with checkpointing, injects saved tool call results so the LLM
+     * sees prior work and continues from the last checkpoint.
+     *
      * @return iterable<mixed>
      */
     public function messages(): iterable
     {
-        return $this->conversationLoader->load($this->channelId, $this->agent, $this->instructions());
+        $messages = $this->conversationLoader->load($this->channelId, $this->agent, $this->instructions());
+
+        if ($this->resumeFromTaskId) {
+            $messages = $this->injectCheckpointedSteps($messages);
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Inject completed tool call checkpoints into the message history.
+     *
+     * Each checkpointed step becomes an AssistantMessage (with the tool call)
+     * followed by a ToolResultMessage (with the result), so the LLM sees
+     * prior tool usage and naturally continues from where it left off.
+     *
+     * @return array<mixed>
+     */
+    private function injectCheckpointedSteps(iterable $messages): array
+    {
+        $messages = is_array($messages) ? $messages : iterator_to_array($messages);
+
+        $steps = TaskStep::where('task_id', $this->resumeFromTaskId)
+            ->where('status', TaskStep::STATUS_COMPLETED)
+            ->whereJsonContains('metadata->checkpointed', true)
+            ->orderBy('created_at')
+            ->get();
+
+        if ($steps->isEmpty()) {
+            return $messages;
+        }
+
+        foreach ($steps as $step) {
+            $meta = $step->metadata;
+            $toolCallId = $meta['tool_call_id'] ?? Str::random(12);
+
+            // Assistant message with tool call
+            $messages[] = new AssistantMessage(
+                content: '',
+                toolCalls: collect([
+                    new ToolCall(
+                        id: $toolCallId,
+                        name: $meta['tool'],
+                        arguments: $meta['arguments'] ?? [],
+                    ),
+                ]),
+            );
+
+            // Tool result message
+            $messages[] = new ToolResultMessage(
+                toolResults: collect([
+                    new ToolResult(
+                        id: $toolCallId,
+                        name: $meta['tool'],
+                        arguments: $meta['arguments'] ?? [],
+                        result: $meta['result'] ?? '',
+                    ),
+                ]),
+            );
+        }
+
+        return $messages;
     }
 
     /**

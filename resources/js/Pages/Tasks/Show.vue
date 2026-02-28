@@ -54,6 +54,16 @@
           <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">
             {{ task.title }}
           </h1>
+          <div class="flex items-center gap-2 mt-1">
+            <code class="text-xs text-neutral-400 dark:text-neutral-500 font-mono">{{ task.id.slice(0, 8) }}</code>
+            <button
+              class="text-neutral-300 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 transition-colors"
+              title="Copy full task ID"
+              @click="copyToClipboard(task.id)"
+            >
+              <Icon :name="copiedField === 'id' ? 'ph:check' : 'ph:copy'" class="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         <!-- Summary Stats Bar -->
@@ -788,6 +798,14 @@ const handleComplete = async () => {
 const handleCancel = async () => {
   await cancelAgentTask(props.taskId)
   await fetchData()
+}
+
+const copiedField = ref<string | null>(null)
+
+const copyToClipboard = async (text: string, field = 'id') => {
+  await navigator.clipboard.writeText(text)
+  copiedField.value = field
+  setTimeout(() => copiedField.value = null, 2000)
 }
 
 const goBack = () => window.history.back()

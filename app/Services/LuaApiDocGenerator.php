@@ -370,7 +370,7 @@ class LuaApiDocGenerator
             $params[] = $required ? $name : $name . '?';
         }
 
-        return $fn['name'] . '(' . implode(', ', $params) . ')';
+        return $fn['name'] . '({' . implode(', ', $params) . '})';
     }
 
     /**

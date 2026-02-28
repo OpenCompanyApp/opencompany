@@ -74,7 +74,7 @@ if ctx.trigger_type == "webhook" then
     local payload = ctx.event.body
     app.tables.add_row({
         tableId = "webhooks-log",
-        data = { source = "external", payload = app.util.json_encode(payload) },
+        data = { source = "external", payload = tostring(payload) },
     })
 end
 ```
