@@ -49,6 +49,13 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        // Script automations bypass the agent entirely
+        if ($this->automation->isScript()) {
+            RunScriptAutomationJob::dispatchSync($this->automation);
+
+            return;
+        }
+
         // Set workspace context from automation
         if ($this->automation->workspace_id) {
             $workspace = Workspace::find($this->automation->workspace_id);
@@ -95,7 +102,7 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
                     'description' => "Automation channel for: {$this->automation->name}",
                     'creator_id' => $this->automation->created_by_id,
                 ]);
-                $channel->users()->attach(array_filter([$this->automation->created_by_id, $this->automation->agent_id]));
+                $channel->users()->attach(array_unique(array_filter([$this->automation->created_by_id, $this->automation->agent_id])));
                 $this->automation->updateQuietly(['channel_id' => $channel->id]);
                 $channelId = $channel->id;
             }

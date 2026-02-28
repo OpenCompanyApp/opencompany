@@ -87,36 +87,35 @@ use App\Agents\Tools\Tasks\UpdateTaskStep;
 use App\Agents\Tools\Workspace\AddChannelMember;
 use App\Agents\Tools\Workspace\AddMcpServer;
 use App\Agents\Tools\Workspace\CreateAgent;
+use App\Agents\Tools\Workspace\CreateAutomation;
 use App\Agents\Tools\Workspace\CreateAutomationRule;
 use App\Agents\Tools\Workspace\CreateChannel;
 use App\Agents\Tools\Workspace\CreateItemTemplate;
-use App\Agents\Tools\Workspace\CreateSchedule;
 use App\Agents\Tools\Workspace\DeleteAgent;
+use App\Agents\Tools\Workspace\DeleteAutomation;
 use App\Agents\Tools\Workspace\DeleteAutomationRule;
 use App\Agents\Tools\Workspace\DeleteItemTemplate;
-use App\Agents\Tools\Workspace\DeleteSchedule;
-use App\Agents\Tools\Workspace\DisableSchedule;
 use App\Agents\Tools\Workspace\DiscoverMcpTools;
-use App\Agents\Tools\Workspace\EnableSchedule;
 use App\Agents\Tools\Workspace\GetAgentDetails;
+use App\Agents\Tools\Workspace\GetAutomation;
 use App\Agents\Tools\Workspace\GetAgentPermissions;
 use App\Agents\Tools\Workspace\GetIntegrationConfig;
 use App\Agents\Tools\Workspace\GetIntegrationSetup;
 use App\Agents\Tools\Workspace\LinkExternalUser;
 use App\Agents\Tools\Workspace\ListAgents;
 use App\Agents\Tools\Workspace\ListAutomationRules;
+use App\Agents\Tools\Workspace\ListAutomations;
 use App\Agents\Tools\Workspace\ListAvailableModels;
 use App\Agents\Tools\Workspace\ListIntegrations;
 use App\Agents\Tools\Workspace\ListMcpServers;
 use App\Agents\Tools\Workspace\ListMembers;
-use App\Agents\Tools\Workspace\ListSchedules;
 use App\Agents\Tools\Workspace\ReadAgentIdentityFile;
 use App\Agents\Tools\Workspace\RemoveChannelMember;
 use App\Agents\Tools\Workspace\RemoveMcpServer;
 use App\Agents\Tools\Workspace\SetupIntegrationWebhook;
 use App\Agents\Tools\Workspace\TestIntegrationConnection;
 use App\Agents\Tools\Workspace\TestMcpServer;
-use App\Agents\Tools\Workspace\TriggerSchedule;
+use App\Agents\Tools\Workspace\RunAutomation;
 use App\Agents\Tools\Workspace\UpdateAgent;
 use App\Agents\Tools\Workspace\UpdateAgentIdentityFile;
 use App\Agents\Tools\Workspace\UpdateAgentChannelAccess;
@@ -125,9 +124,9 @@ use App\Agents\Tools\Workspace\UpdateAgentIntegrationAccess;
 use App\Agents\Tools\Workspace\UpdateAgentToolPermissions;
 use App\Agents\Tools\Workspace\UpdateAutomationRule;
 use App\Agents\Tools\Workspace\UpdateIntegrationConfig;
+use App\Agents\Tools\Workspace\UpdateAutomation;
 use App\Agents\Tools\Workspace\UpdateItemTemplate;
 use App\Agents\Tools\Workspace\UpdateMcpServer;
-use App\Agents\Tools\Workspace\UpdateSchedule;
 use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\AgentAvatarService;
@@ -188,9 +187,15 @@ class ToolRegistry
             'description' => 'Events and scheduling',
         ],
         'lists' => [
-            'tools' => ['list_all_items', 'get_list_item', 'list_items_by_status', 'list_items_by_assignee', 'list_projects', 'list_item_statuses', 'create_list_item', 'update_list_item', 'delete_list_item', 'add_list_item_comment', 'delete_list_item_comment', 'create_list_status', 'update_list_status', 'delete_list_status', 'convert_list_item_to_task'],
-            'label' => 'list, get, filter, projects, statuses, create, update, delete, comments, convert',
-            'description' => 'Kanban board items and workflow statuses',
+            'tools' => [
+                'list_all_items', 'get_list_item', 'list_items_by_status', 'list_items_by_assignee', 'list_projects', 'list_item_statuses',
+                'create_list_item', 'update_list_item', 'delete_list_item', 'add_list_item_comment', 'delete_list_item_comment',
+                'create_list_status', 'update_list_status', 'delete_list_status', 'convert_list_item_to_task',
+                'list_automation_rules', 'create_automation_rule', 'update_automation_rule', 'delete_automation_rule',
+                'create_item_template', 'update_item_template', 'delete_item_template',
+            ],
+            'label' => 'list, get, filter, projects, statuses, create, update, delete, comments, convert, rules, templates',
+            'description' => 'Kanban board items, workflow statuses, event rules, and item templates',
         ],
         'workspace' => [
             'tools' => [
@@ -206,13 +211,11 @@ class ToolRegistry
         ],
         'automations' => [
             'tools' => [
-                'list_automation_rules', 'create_automation_rule', 'update_automation_rule', 'delete_automation_rule',
-                'create_item_template', 'update_item_template', 'delete_item_template',
-                'create_schedule', 'update_schedule', 'delete_schedule', 'list_schedules',
-                'enable_schedule', 'disable_schedule', 'trigger_schedule',
+                'list_automations', 'get_automation', 'create_automation', 'update_automation',
+                'delete_automation', 'run_automation',
             ],
-            'label' => 'rules, templates, schedules',
-            'description' => 'Automation rules, templates, and scheduled triggers',
+            'label' => 'list, get, create, update, delete, run',
+            'description' => 'Scheduled automations. "prompt" (agent, costs tokens) or "script" (--!strict Luau, zero cost). Use lua_read_doc() for script APIs.',
         ],
 
         // Integrations & utilities
@@ -1144,54 +1147,47 @@ class ToolRegistry
             'description' => 'Delete a list item template.',
             'icon' => 'ph:copy',
         ],
-        'create_schedule' => [
-            'class' => CreateSchedule::class,
-            'type' => 'write',
-            'name' => 'Create Schedule',
-            'description' => 'Create a scheduled agent task (cron job).',
-            'icon' => 'ph:clock',
-        ],
-        'update_schedule' => [
-            'class' => UpdateSchedule::class,
-            'type' => 'write',
-            'name' => 'Update Schedule',
-            'description' => 'Update a scheduled task.',
-            'icon' => 'ph:clock',
-        ],
-        'delete_schedule' => [
-            'class' => DeleteSchedule::class,
-            'type' => 'write',
-            'name' => 'Delete Schedule',
-            'description' => 'Delete a scheduled task.',
-            'icon' => 'ph:clock',
-        ],
-        'list_schedules' => [
-            'class' => ListSchedules::class,
+        'list_automations' => [
+            'class' => ListAutomations::class,
             'type' => 'read',
-            'name' => 'List Schedules',
-            'description' => 'List all scheduled tasks and their status.',
-            'icon' => 'ph:clock',
-        ],
-        'enable_schedule' => [
-            'class' => EnableSchedule::class,
-            'type' => 'write',
-            'name' => 'Enable Schedule',
-            'description' => 'Enable a scheduled task.',
-            'icon' => 'ph:play',
-        ],
-        'disable_schedule' => [
-            'class' => DisableSchedule::class,
-            'type' => 'write',
-            'name' => 'Disable Schedule',
-            'description' => 'Disable a scheduled task.',
-            'icon' => 'ph:pause',
-        ],
-        'trigger_schedule' => [
-            'class' => TriggerSchedule::class,
-            'type' => 'write',
-            'name' => 'Trigger Schedule',
-            'description' => 'Immediately trigger a scheduled task.',
+            'name' => 'List Automations',
+            'description' => 'List all automations with status, type, run count, and next run time.',
             'icon' => 'ph:lightning',
+        ],
+        'get_automation' => [
+            'class' => GetAutomation::class,
+            'type' => 'read',
+            'name' => 'Get Automation',
+            'description' => 'Get full automation details including config, content, execution history, and status.',
+            'icon' => 'ph:lightning',
+        ],
+        'create_automation' => [
+            'class' => CreateAutomation::class,
+            'type' => 'write',
+            'name' => 'Create Automation',
+            'description' => 'Create an automation. Types: "prompt" (agent, costs tokens) or "script" (--!strict Luau, zero cost).',
+            'icon' => 'ph:lightning',
+        ],
+        'update_automation' => [
+            'class' => UpdateAutomation::class,
+            'type' => 'write',
+            'name' => 'Update Automation',
+            'description' => "Update an automation's configuration or active status.",
+            'icon' => 'ph:lightning',
+        ],
+        'delete_automation' => [
+            'class' => DeleteAutomation::class,
+            'type' => 'write',
+            'name' => 'Delete Automation',
+            'description' => 'Delete an automation permanently.',
+            'icon' => 'ph:trash',
+        ],
+        'run_automation' => [
+            'class' => RunAutomation::class,
+            'type' => 'write',
+            'name' => 'Run Automation',
+            'description' => 'Manually trigger an automation to run immediately.',
+            'icon' => 'ph:play',
         ],
     ];
 
@@ -1821,20 +1817,20 @@ class ToolRegistry
             CreateChannel::class => new CreateChannel($agent),
             AddChannelMember::class => new AddChannelMember($agent),
             RemoveChannelMember::class => new RemoveChannelMember($agent),
-            // Workspace — Automation
+            // Lists — Automation rules & templates
             CreateAutomationRule::class => new CreateAutomationRule($agent),
             UpdateAutomationRule::class => new UpdateAutomationRule($agent),
             DeleteAutomationRule::class => new DeleteAutomationRule($agent),
             CreateItemTemplate::class => new CreateItemTemplate($agent),
             UpdateItemTemplate::class => new UpdateItemTemplate($agent),
             DeleteItemTemplate::class => new DeleteItemTemplate($agent),
-            CreateSchedule::class => new CreateSchedule($agent),
-            UpdateSchedule::class => new UpdateSchedule($agent),
-            DeleteSchedule::class => new DeleteSchedule($agent),
-            ListSchedules::class => new ListSchedules($agent),
-            EnableSchedule::class => new EnableSchedule($agent),
-            DisableSchedule::class => new DisableSchedule($agent),
-            TriggerSchedule::class => new TriggerSchedule($agent),
+            // Automations
+            ListAutomations::class => new ListAutomations($agent),
+            GetAutomation::class => new GetAutomation($agent),
+            CreateAutomation::class => new CreateAutomation($agent),
+            UpdateAutomation::class => new UpdateAutomation($agent),
+            DeleteAutomation::class => new DeleteAutomation($agent),
+            RunAutomation::class => new RunAutomation($agent),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),
         };
     }

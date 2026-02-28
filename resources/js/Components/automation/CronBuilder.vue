@@ -1,13 +1,13 @@
 <template>
-  <div class="space-y-5">
+  <div class="space-y-3">
     <!-- Frequency Tabs -->
-    <div class="flex p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg gap-1">
+    <div class="flex flex-wrap p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg gap-1">
       <button
         v-for="freq in frequencies"
         :key="freq.id"
         type="button"
         :class="[
-          'flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 text-xs font-medium rounded-md transition-all',
+          'flex items-center justify-center gap-1.5 px-2.5 py-2 text-xs font-medium rounded-md transition-all',
           selectedFrequency === freq.id
             ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
             : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300',
@@ -20,7 +20,7 @@
     </div>
 
     <!-- Frequency-specific controls -->
-    <div class="min-h-[100px]">
+    <div>
       <!-- Interval -->
       <div v-if="selectedFrequency === 'interval'" class="space-y-4">
         <div class="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-200 flex-wrap">
@@ -131,7 +131,7 @@
     </div>
 
     <!-- Human-readable summary -->
-    <div class="flex items-center gap-2 px-4 py-3 bg-neutral-900/5 dark:bg-white/5 rounded-lg">
+    <div class="flex items-center gap-2 px-3 py-2 bg-neutral-900/5 dark:bg-white/5 rounded-lg">
       <Icon name="ph:repeat" class="w-4 h-4 text-neutral-500 dark:text-neutral-400 shrink-0" />
       <span class="text-sm font-medium text-neutral-700 dark:text-neutral-200">
         {{ humanReadable }}

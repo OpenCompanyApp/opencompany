@@ -8,7 +8,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class DeleteSchedule implements Tool
+class DeleteAutomation implements Tool
 {
     public function __construct(
         private User $agent,
@@ -16,26 +16,26 @@ class DeleteSchedule implements Tool
 
     public function description(): string
     {
-        return 'Delete a scheduled automation.';
+        return 'Delete an automation and its schedule permanently.';
     }
 
     public function handle(Request $request): string
     {
         try {
-            $scheduleId = $request['scheduleId'] ?? null;
-            if (!$scheduleId) {
-                return 'scheduleId is required.';
+            $automationId = $request['automationId'] ?? null;
+            if (! $automationId) {
+                return 'automationId is required.';
             }
 
-            $schedule = Automation::forWorkspace()->find($scheduleId);
-            if (!$schedule) {
-                return "Schedule not found: {$scheduleId}";
+            $automation = Automation::forWorkspace()->find($automationId);
+            if (! $automation) {
+                return "Automation not found: {$automationId}";
             }
 
-            $name = $schedule->name;
-            $schedule->delete();
+            $name = $automation->name;
+            $automation->delete();
 
-            return "Schedule deleted: {$name}";
+            return "Automation deleted: {$name}";
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }
@@ -45,9 +45,9 @@ class DeleteSchedule implements Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'scheduleId' => $schema
+            'automationId' => $schema
                 ->string()
-                ->description('Schedule UUID.')
+                ->description('Automation UUID.')
                 ->required(),
         ];
     }

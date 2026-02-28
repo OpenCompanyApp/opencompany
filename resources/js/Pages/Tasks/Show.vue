@@ -50,6 +50,13 @@
               <Icon :name="sourceIcons[task.source] || 'ph:hand'" class="w-3 h-3" />
               {{ task.source }}
             </span>
+            <span
+              v-if="isScriptRun"
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400"
+            >
+              <Icon name="ph:code" class="w-3 h-3" />
+              Luau Script
+            </span>
           </div>
           <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">
             {{ task.title }}
@@ -66,8 +73,36 @@
           </div>
         </div>
 
-        <!-- Summary Stats Bar -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <!-- Summary Stats Bar: Script automation -->
+        <div v-if="isScriptRun" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Duration</div>
+            <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
+              {{ formattedDuration }}
+            </div>
+          </div>
+          <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Execution</div>
+            <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
+              {{ task.result?.execution_time_ms != null ? task.result.execution_time_ms + 'ms' : '---' }}
+            </div>
+          </div>
+          <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Memory</div>
+            <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
+              {{ task.result?.memory_usage ?? '---' }}
+            </div>
+          </div>
+          <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">API Calls</div>
+            <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
+              {{ task.result?.tool_calls_count ?? (task.result?.bridge_calls as any[])?.length ?? 0 }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Stats Bar: LLM tasks -->
+        <div v-else class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
             <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Duration</div>
             <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
@@ -192,6 +227,16 @@
               {{ task.priority }}
             </span>
           </div>
+          <div v-if="ctx.automation_id">
+            <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Automation</label>
+            <button
+              class="text-sm text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
+              @click="router.visit(workspacePath(`/automation/${ctx.automation_id}/edit`))"
+            >
+              <Icon name="ph:lightning" class="w-3.5 h-3.5" />
+              View automation
+            </button>
+          </div>
           <div v-if="ctx.model">
             <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Model</label>
             <span class="text-sm text-neutral-700 dark:text-neutral-300 font-mono">{{ ctx.model }}</span>
@@ -220,8 +265,25 @@
           </div>
         </div>
 
-        <!-- Input -->
-        <div v-if="task.description" class="mb-6">
+        <!-- Input: Script -->
+        <div v-if="isScriptRun && task.description" class="mb-6">
+          <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-2 flex items-center gap-2">
+            <Icon name="ph:code" class="w-4 h-4 text-violet-500" />
+            Script
+          </h3>
+          <pre class="text-xs bg-neutral-900 rounded-lg p-4 overflow-x-auto border border-neutral-700 max-h-64 overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlight(task.description, 'lua')" /></pre>
+          <button
+            v-if="ctx.automation_id"
+            class="mt-2 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
+            @click="router.visit(workspacePath(`/automation/${ctx.automation_id}/edit`))"
+          >
+            <Icon name="ph:pencil-simple" class="w-3 h-3" />
+            Edit full script
+          </button>
+        </div>
+
+        <!-- Input: Standard -->
+        <div v-else-if="task.description" class="mb-6">
           <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-2 flex items-center gap-2">
             <Icon name="ph:arrow-right" class="w-4 h-4 text-blue-500" />
             Input
@@ -270,8 +332,21 @@
           </div>
         </div>
 
-        <!-- Output -->
-        <div v-if="task.result?.response" class="mb-6">
+        <!-- Output: Script -->
+        <div v-if="isScriptRun && (task.result?.output || task.result?.return_value)" class="mb-6">
+          <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-2 flex items-center gap-2">
+            <Icon name="ph:terminal" class="w-4 h-4 text-green-500" />
+            Output
+          </h3>
+          <pre v-if="task.result?.output" class="text-xs bg-neutral-900 text-green-400 rounded-lg p-4 overflow-x-auto border border-neutral-700 max-h-[32rem] overflow-y-auto font-mono whitespace-pre-wrap break-words">{{ task.result.output }}</pre>
+          <div v-if="task.result?.return_value" class="mt-3">
+            <span class="text-xs text-neutral-500 dark:text-neutral-400">Return value</span>
+            <pre class="mt-1 text-xs bg-neutral-900 text-neutral-300 rounded-lg p-4 overflow-x-auto border border-neutral-700 font-mono whitespace-pre-wrap break-words">{{ typeof task.result.return_value === 'string' ? task.result.return_value : JSON.stringify(task.result.return_value, null, 2) }}</pre>
+          </div>
+        </div>
+
+        <!-- Output: LLM response -->
+        <div v-if="!isScriptRun && task.result?.response" class="mb-6">
           <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium text-neutral-900 dark:text-white flex items-center gap-2">
               <Icon name="ph:arrow-left" class="w-4 h-4 text-green-500" />
@@ -302,8 +377,8 @@
           </div>
         </div>
 
-        <!-- Context Panel -->
-        <div v-if="ctx.system_prompt || ctx.messages?.length || ctx.tools?.length" class="mb-6">
+        <!-- Context Panel (LLM tasks only) -->
+        <div v-if="!isScriptRun && (ctx.system_prompt || ctx.messages?.length || ctx.tools?.length)" class="mb-6">
           <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
             <Icon name="ph:brain" class="w-4 h-4" />
             LLM Context
@@ -573,6 +648,8 @@ interface TaskContext {
   model?: string
   provider?: string
   token_breakdown?: TokenBreakdown
+  automation_id?: string
+  execution_type?: string
 }
 
 const props = defineProps<{
@@ -692,6 +769,7 @@ const sourceIcons: Record<string, string> = {
 
 // Computed
 const ctx = computed<TaskContext>(() => (task.value?.context as TaskContext) ?? {})
+const isScriptRun = computed(() => (task.value?.context as any)?.execution_type === 'script')
 
 const tb = computed(() => ctx.value.token_breakdown)
 
@@ -776,8 +854,10 @@ const capitalize = (s: string): string =>
 
 const toolGroups = computed(() => {
   const groups: Record<string, { count: number; icon: string }> = {}
-  for (const step of task.value?.steps ?? []) {
-    for (const call of (step.metadata?.lua_meta?.bridgeCalls ?? []) as Array<{ group?: string; path?: string; icon?: string }>) {
+
+  // Script runs: extract from result.bridge_calls
+  if (isScriptRun.value && task.value?.result?.bridge_calls) {
+    for (const call of task.value.result.bridge_calls as Array<{ group?: string; path?: string; icon?: string }>) {
       const group = extractGroup(call)
       if (!group) continue
       if (!groups[group]) {
@@ -785,7 +865,20 @@ const toolGroups = computed(() => {
       }
       groups[group].count++
     }
+  } else {
+    // LLM tasks: extract from step metadata
+    for (const step of task.value?.steps ?? []) {
+      for (const call of (step.metadata?.lua_meta?.bridgeCalls ?? []) as Array<{ group?: string; path?: string; icon?: string }>) {
+        const group = extractGroup(call)
+        if (!group) continue
+        if (!groups[group]) {
+          groups[group] = { count: 0, icon: call.icon || GROUP_ICONS[group]?.icon || 'ph:wrench' }
+        }
+        groups[group].count++
+      }
+    }
   }
+
   return Object.entries(groups)
     .map(([name, { count, icon }]) => ({
       name,

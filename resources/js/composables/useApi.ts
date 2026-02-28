@@ -374,7 +374,9 @@ export const useApi = () => {
   const createAutomation = (data: {
     name: string
     agentId: string
-    prompt: string
+    executionType?: 'prompt' | 'script'
+    prompt?: string
+    script?: string
     cronExpression: string
     timezone?: string
     description?: string

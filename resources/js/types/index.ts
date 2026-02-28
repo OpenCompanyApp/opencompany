@@ -195,6 +195,12 @@ export interface AgentTaskResult {
   tool_calls_count?: number
   generation_time_ms?: number
   tokens_per_second?: number
+  // Script automation fields
+  output?: string
+  return_value?: unknown
+  execution_time_ms?: number
+  memory_usage?: string
+  bridge_calls?: Array<{ path: string; group?: string; icon?: string; durationMs: number; status: string; error?: string }>
 }
 
 /**
@@ -417,9 +423,11 @@ export interface Automation {
   id: string
   name: string
   triggerType: string
+  executionType: 'prompt' | 'script'
   description: string | null
   agentId: string
   prompt: string
+  script: string | null
   cronExpression: string
   timezone: string
   isActive: boolean

@@ -5,10 +5,12 @@ Every Lua automation script receives a `ctx` object with information about what 
 ## Common Fields
 
 ```lua
-ctx.trigger_type   -- "schedule" | "task_created" | "task_completed" | "webhook" | ...
-ctx.automation_id  -- UUID of the automation
-ctx.run_number     -- Execution count
-ctx.last_run_at    -- ISO timestamp of previous run (nil if first)
+ctx.trigger_type     -- "schedule" | "task_created" | "task_completed" | "webhook" | ...
+ctx.automation_id    -- UUID of the automation
+ctx.automation_name  -- Name of the automation
+ctx.run_number       -- Execution count (1-indexed)
+ctx.last_run_at      -- ISO timestamp of previous run (nil if first)
+ctx.last_result      -- Table with previous run's return data (nil if first run)
 ```
 
 ## Event-Triggered Scripts

@@ -122,6 +122,16 @@
                 <!-- Title + schedule -->
                 <div class="flex items-center gap-2">
                   <p class="text-sm font-medium text-neutral-900 dark:text-white truncate">{{ automation.name }}</p>
+                  <span
+                    :class="[
+                      'px-1.5 py-0.5 text-[10px] font-medium rounded shrink-0',
+                      automation.executionType === 'script'
+                        ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400'
+                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400',
+                    ]"
+                  >
+                    {{ automation.executionType === 'script' ? 'Script' : 'Prompt' }}
+                  </span>
                   <span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 shrink-0">
                     {{ humanSchedule(automation) }}
                   </span>
@@ -137,7 +147,7 @@
                     {{ automation.agent.name }}
                   </span>
                   <span class="text-neutral-400 dark:text-neutral-500 truncate">
-                    {{ automation.prompt }}
+                    {{ automation.executionType === 'script' ? (automation.script || '').slice(0, 80) : automation.prompt }}
                   </span>
                 </div>
 
@@ -322,7 +332,8 @@ const filteredAutomations = computed(() => {
     result = result.filter(a =>
       a.name.toLowerCase().includes(q) ||
       a.agent?.name?.toLowerCase().includes(q) ||
-      a.prompt.toLowerCase().includes(q)
+      (a.prompt || '').toLowerCase().includes(q) ||
+      (a.script || '').toLowerCase().includes(q)
     )
   }
   return result

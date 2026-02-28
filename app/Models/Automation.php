@@ -15,7 +15,9 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property string $trigger_type
  * @property string|null $description
  * @property string $agent_id
+ * @property string $execution_type
  * @property string $prompt
+ * @property string|null $script
  * @property string $cron_expression
  * @property string $timezone
  * @property bool $is_active
@@ -41,9 +43,11 @@ class Automation extends Model
         'workspace_id',
         'name',
         'trigger_type',
+        'execution_type',
         'description',
         'agent_id',
         'prompt',
+        'script',
         'cron_expression',
         'timezone',
         'is_active',
@@ -76,6 +80,18 @@ class Automation extends Model
                 $automation->next_run_at = $automation->computeNextRunAt();
             }
         });
+    }
+
+    // --- Type Helpers ---
+
+    public function isScript(): bool
+    {
+        return $this->execution_type === 'script';
+    }
+
+    public function isPrompt(): bool
+    {
+        return $this->execution_type === 'prompt';
     }
 
     // --- Relationships ---

@@ -33,13 +33,23 @@ class AutomationController extends Controller
      */
     public function store(Request $request): array|JsonResponse
     {
-        $request->validate([
+        $executionType = $request->input('executionType', 'prompt');
+
+        $rules = [
             'name' => 'required|string|max:255',
             'agentId' => 'required|exists:users,id',
-            'prompt' => 'required|string|max:10000',
+            'executionType' => 'nullable|string|in:prompt,script',
             'cronExpression' => 'required|string',
             'timezone' => 'nullable|string|timezone',
-        ]);
+        ];
+
+        if ($executionType === 'script') {
+            $rules['script'] = 'required|string|max:50000';
+        } else {
+            $rules['prompt'] = 'required|string|max:10000';
+        }
+
+        $request->validate($rules);
 
         if (! CronExpression::isValidExpression($request->input('cronExpression'))) {
             return response()->json(['message' => 'Invalid cron expression'], 422);
@@ -50,8 +60,10 @@ class AutomationController extends Controller
             'workspace_id' => workspace()->id,
             'name' => $request->input('name'),
             'description' => $request->input('description'),
+            'execution_type' => $executionType,
             'agent_id' => $request->input('agentId'),
             'prompt' => $request->input('prompt'),
+            'script' => $request->input('script'),
             'cron_expression' => $request->input('cronExpression'),
             'timezone' => $request->input('timezone', 'UTC'),
             'channel_id' => $request->input('channelId'),
@@ -98,8 +110,18 @@ class AutomationController extends Controller
         if ($request->has('agentId')) {
             $data['agent_id'] = $request->input('agentId');
         }
+        if ($request->has('executionType')) {
+            $execType = $request->input('executionType');
+            if (! in_array($execType, ['prompt', 'script'])) {
+                return response()->json(['message' => "executionType must be 'prompt' or 'script'"], 422);
+            }
+            $data['execution_type'] = $execType;
+        }
         if ($request->has('prompt')) {
             $data['prompt'] = $request->input('prompt');
+        }
+        if ($request->has('script')) {
+            $data['script'] = $request->input('script');
         }
         if ($request->has('channelId')) {
             $data['channel_id'] = $request->input('channelId');

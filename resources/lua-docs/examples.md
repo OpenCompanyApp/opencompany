@@ -3,6 +3,7 @@
 ## 1. Daily Summary Report (Scheduled)
 
 ```lua
+--!strict
 -- Scheduled: 0 9 * * 1-5 (weekdays at 9am)
 -- Gathers data from a tracking table and posts a summary
 
@@ -96,6 +97,7 @@ app.agents.contact({
 ## 4. Lead Scoring (Scheduled)
 
 ```lua
+--!strict
 -- Scheduled: 0 */6 * * * (every 6 hours)
 -- Scores leads in a data table
 
@@ -219,7 +221,80 @@ for _, channel in ipairs(channels) do
 end
 ```
 
-## 8. Calendar Reminder (Scheduled)
+## 8. Calling Agents from Scripts (Hybrid Pattern)
+
+```lua
+--!strict
+-- Hybrid: script handles deterministic logic, escalates to agent for reasoning
+-- Use this pattern when most runs are simple but some need AI judgment
+
+local items = app.lists.list_all_items({
+    status = "flagged",
+})
+
+if #items > 5 then
+    -- Too many to handle programmatically — let an agent reason about them
+    app.agents.contact_agent({
+        agent_id = "agent-uuid",
+        action = "delegate",
+        title = "Review " .. #items .. " flagged items",
+        message = "Please review these flagged items and take appropriate action:\n" ..
+            table.concat(
+                (function()
+                    local names = {}
+                    for _, item in ipairs(items) do
+                        table.insert(names, "- " .. item.title)
+                    end
+                    return names
+                end)(),
+                "\n"
+            ),
+    })
+else
+    -- Small batch — handle deterministically
+    for _, item in ipairs(items) do
+        app.lists.update_list_item({
+            itemId = item.id,
+            status = "reviewed",
+        })
+    end
+    print("Reviewed " .. #items .. " items")
+end
+```
+
+## 9. Using Previous Run Context
+
+```lua
+--!strict
+-- Automation scripts receive a `ctx` table with run metadata
+-- Use ctx.last_result to build on previous executions
+
+print("Run #" .. ctx.run_number .. " of " .. ctx.automation_name)
+
+if ctx.last_run_at then
+    print("Last run: " .. ctx.last_run_at)
+end
+
+-- Compare with last run's data
+local current_count = #app.tables.get_rows({
+    tableId = "orders-table-id",
+    where = { status = "pending" },
+})
+
+local last_count = ctx.last_result and ctx.last_result.pending_count or 0
+
+if current_count > last_count then
+    app.chat.send_channel_message({
+        channel_id = alertChannelId,
+        content = "Pending orders increased: " .. last_count .. " → " .. current_count,
+    })
+end
+
+-- Return data that will be available as ctx.last_result in the next run
+return { pending_count = current_count }
+```
+
+## 10. Calendar Reminder (Scheduled)
 
 ```lua
 -- Scheduled: 0 8 * * * (daily at 8am)

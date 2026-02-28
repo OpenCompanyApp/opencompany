@@ -12,7 +12,10 @@ class LuaSandboxService
      *
      * @param  array{memoryLimit?: int, cpuLimit?: float}  $options
      */
-    public function execute(string $code, array $options = [], ?LuaBridge $bridge = null): LuaResult
+    /**
+     * @param  array<string, mixed>  $globals  Named globals to inject as Lua tables (e.g., ['ctx' => [...]])
+     */
+    public function execute(string $code, array $options = [], ?LuaBridge $bridge = null, array $globals = []): LuaResult
     {
         $memoryLimit = $options['memoryLimit'] ?? 32 * 1024 * 1024; // 32 MB
         $cpuLimit = $options['cpuLimit'] ?? 30.0; // 30 seconds
@@ -27,6 +30,10 @@ class LuaSandboxService
 
         if ($bridge !== null) {
             $this->setupAppNamespace($sandbox, $bridge);
+        }
+
+        foreach ($globals as $name => $value) {
+            $sandbox->load("{$name} = " . $this->phpToLua($value))->call();
         }
 
         $start = microtime(true);
@@ -125,6 +132,56 @@ class LuaSandboxService
                 return val
             end
         ')->call();
+    }
+
+    /**
+     * Register the app.* namespace using metatables to route calls to PHP via LuaBridge.
+     *
+     * Creates an infinitely nested proxy table where any app.X.Y.Z(args) call
+     * is intercepted and routed to __app.call("X.Y.Z", args).
+     */
+    /**
+     * Serialize a PHP value to a Lua literal.
+     */
+    private function phpToLua(mixed $value): string
+    {
+        if ($value === null) {
+            return 'nil';
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+
+        if (is_string($value)) {
+            return '"' . addcslashes($value, "\"\\\n\r\t") . '"';
+        }
+
+        if (is_array($value)) {
+            if ($value === []) {
+                return '{}';
+            }
+
+            $parts = [];
+            $isSequential = array_keys($value) === range(0, count($value) - 1);
+
+            foreach ($value as $k => $v) {
+                if ($isSequential) {
+                    $parts[] = $this->phpToLua($v);
+                } else {
+                    $key = is_int($k) ? "[{$k}]" : $k;
+                    $parts[] = "{$key} = " . $this->phpToLua($v);
+                }
+            }
+
+            return '{' . implode(', ', $parts) . '}';
+        }
+
+        return '"' . addcslashes((string) $value, "\"\\\n\r\t") . '"';
     }
 
     /**
