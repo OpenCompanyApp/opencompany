@@ -1,5 +1,6 @@
 import { marked } from 'marked'
 import { useHighlight } from './useHighlight'
+import { sanitizeHtml } from '@/utils/sanitize'
 
 const { highlight } = useHighlight()
 
@@ -28,7 +29,7 @@ export function useMarkdown() {
   const renderMarkdown = (content: string): string => {
     if (!content) return ''
     try {
-      return marked.parse(content) as string
+      return sanitizeHtml(marked.parse(content) as string)
     } catch {
       return content
     }

@@ -30,7 +30,9 @@ class DirectMessageController extends Controller
 
     public function show(string $id): DirectMessage
     {
-        return DirectMessage::with(['user1', 'user2', 'channel'])->findOrFail($id);
+        return DirectMessage::with(['user1', 'user2', 'channel'])
+            ->whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->findOrFail($id);
     }
 
     public function store(Request $request): DirectMessage
@@ -38,12 +40,15 @@ class DirectMessageController extends Controller
         $user1Id = $request->input('user1Id');
         $user2Id = $request->input('user2Id');
 
-        // Check if DM already exists
-        $existingDm = DirectMessage::where(function ($query) use ($user1Id, $user2Id) {
-            $query->where('user1_id', $user1Id)->where('user2_id', $user2Id);
-        })->orWhere(function ($query) use ($user1Id, $user2Id) {
-            $query->where('user1_id', $user2Id)->where('user2_id', $user1Id);
-        })->first();
+        // Check if DM already exists (scoped to workspace)
+        $existingDm = DirectMessage::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->where(function ($query) use ($user1Id, $user2Id) {
+                $query->where(function ($q) use ($user1Id, $user2Id) {
+                    $q->where('user1_id', $user1Id)->where('user2_id', $user2Id);
+                })->orWhere(function ($q) use ($user1Id, $user2Id) {
+                    $q->where('user1_id', $user2Id)->where('user2_id', $user1Id);
+                });
+            })->first();
 
         if ($existingDm) {
             return $existingDm->load(['user1', 'user2', 'channel']);
@@ -80,11 +85,11 @@ class DirectMessageController extends Controller
 
     public function markRead(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        $dm = DirectMessage::findOrFail($id);
-        $userId = $request->input('userId');
+        $dm = DirectMessage::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->findOrFail($id);
 
         ChannelMember::where('channel_id', $dm->channel_id)
-            ->where('user_id', $userId)
+            ->where('user_id', auth()->id())
             ->update(['last_read_at' => now()]);
 
         return response()->json(['success' => true]);
@@ -92,7 +97,7 @@ class DirectMessageController extends Controller
 
     public function unreadCount(Request $request): \Illuminate\Http\JsonResponse
     {
-        $userId = $request->input('userId');
+        $userId = auth()->id();
 
         $dms = DirectMessage::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
             ->where(function ($q) use ($userId) {

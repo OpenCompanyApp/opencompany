@@ -17,6 +17,8 @@ class DataTableRowController extends Controller
      */
     public function index(Request $request, string $tableId): Collection|LengthAwarePaginator
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         $query = DataTableRow::where('table_id', $tableId)
             ->with('creator');
 
@@ -37,6 +39,8 @@ class DataTableRowController extends Controller
 
     public function show(string $tableId, string $rowId): DataTableRow
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         return DataTableRow::where('table_id', $tableId)
             ->with('creator')
             ->findOrFail($rowId);
@@ -44,7 +48,7 @@ class DataTableRowController extends Controller
 
     public function store(Request $request, string $tableId): DataTableRow
     {
-        $table = DataTable::findOrFail($tableId);
+        $table = DataTable::forWorkspace()->findOrFail($tableId);
 
         $request->validate([
             'data' => 'required|array',
@@ -60,6 +64,8 @@ class DataTableRowController extends Controller
 
     public function update(Request $request, string $tableId, string $rowId): DataTableRow
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         $row = DataTableRow::where('table_id', $tableId)
             ->findOrFail($rowId);
 
@@ -77,6 +83,8 @@ class DataTableRowController extends Controller
 
     public function destroy(string $tableId, string $rowId): JsonResponse
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         DataTableRow::where('table_id', $tableId)
             ->findOrFail($rowId)
             ->delete();
@@ -89,7 +97,7 @@ class DataTableRowController extends Controller
      */
     public function bulkCreate(Request $request, string $tableId): Collection
     {
-        $table = DataTable::findOrFail($tableId);
+        $table = DataTable::forWorkspace()->findOrFail($tableId);
 
         $request->validate([
             'rows' => 'required|array',
@@ -114,6 +122,8 @@ class DataTableRowController extends Controller
 
     public function bulkDelete(Request $request, string $tableId): JsonResponse
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         $request->validate([
             'rowIds' => 'required|array',
             'rowIds.*' => 'required|string',

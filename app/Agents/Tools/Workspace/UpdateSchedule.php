@@ -51,9 +51,19 @@ class UpdateSchedule implements Tool
                 $updates['timezone'] = $request['timezone'];
             }
             if (isset($request['agentId'])) {
+                $targetAgent = \App\Models\User::where('type', 'agent')
+                    ->where('workspace_id', $this->agent->workspace_id)
+                    ->find($request['agentId']);
+                if (!$targetAgent) {
+                    return "Error: Agent not found in this workspace.";
+                }
                 $updates['agent_id'] = $request['agentId'];
             }
             if (isset($request['channelId'])) {
+                $channel = \App\Models\Channel::forWorkspace()->find($request['channelId']);
+                if (!$channel) {
+                    return "Error: Channel not found in this workspace.";
+                }
                 $updates['channel_id'] = $request['channelId'];
             }
 

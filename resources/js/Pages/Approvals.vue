@@ -271,7 +271,7 @@ const typeBadge = (type: string): string => {
 const handleApproval = async (id: string, status: 'approved' | 'rejected') => {
   processing.value = id
   try {
-    await respondToApproval(id, status, currentUserId.value)
+    await respondToApproval(id, status)
     await refresh()
   } catch (error) {
     console.error('Failed to update approval:', error)

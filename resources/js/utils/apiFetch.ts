@@ -9,5 +9,9 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   if (!headers.has('X-Requested-With')) {
     headers.set('X-Requested-With', 'XMLHttpRequest')
   }
-  return fetch(url, { ...options, headers })
+  const response = await fetch(url, { ...options, headers })
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status} ${response.statusText}`)
+  }
+  return response
 }

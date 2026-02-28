@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useMagicKeys, whenever } from '@vueuse/core'
 import { useWorkspace } from '@/composables/useWorkspace'
@@ -137,6 +137,11 @@ export const useKeyboardShortcuts = () => {
       // TODO: Open agent spawn modal
       nPressed.value = false
     }
+  })
+
+  onUnmounted(() => {
+    if (gTimeout) clearTimeout(gTimeout)
+    if (nTimeout) clearTimeout(nTimeout)
   })
 
   return {

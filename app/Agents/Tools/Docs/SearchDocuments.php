@@ -119,6 +119,7 @@ class SearchDocuments implements Tool
                     'id' => $chunk->document_id,
                     'name' => $title,
                     'title' => $title,
+                    'type' => 'document',
                     'snippet' => Str::limit($chunk->content, 300),
                     'similarity' => isset($chunk->similarity) ? round($chunk->similarity * 100) : null,
                     'updatedAt' => $doc?->updated_at?->toIso8601String(),
@@ -158,6 +159,7 @@ class SearchDocuments implements Tool
             'id' => $doc->id,
             'name' => $doc->title,
             'title' => $doc->title,
+            'type' => 'document',
             'snippet' => Str::limit($doc->content, 300),
             'updatedAt' => $doc->updated_at->toIso8601String(),
         ])->values()->toArray();

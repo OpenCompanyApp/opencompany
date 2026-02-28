@@ -57,6 +57,9 @@ class SearchTableRows implements Tool
                 return "Error: Table {$tableId} not found.";
             }
 
+            // Build column UUID → human-readable name mapping
+            $columnMap = $table->columns()->pluck('name', 'id')->toArray();
+
             $rows = DataTableRow::where("table_id", $tableId)
                 ->whereRaw("CAST(data AS TEXT) LIKE ?", ["%" . $search . "%"])
                 ->take(min($limit, 100))
@@ -66,10 +69,15 @@ class SearchTableRows implements Tool
                 return json_encode([]);
             }
 
-            return json_encode($rows->map(fn ($row) => [
-                'id' => $row->id,
-                'data' => $row->data ?? [],
-            ])->values()->toArray(), JSON_PRETTY_PRINT);
+            // Return flat array with resolved column names (matches GetTableRows format)
+            return json_encode($rows->map(function ($row) use ($columnMap) {
+                $mapped = ['_id' => $row->id];
+                foreach ($row->data ?? [] as $colId => $value) {
+                    $key = $columnMap[$colId] ?? $colId;
+                    $mapped[$key] = $value;
+                }
+                return $mapped;
+            })->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error querying table: {$e->getMessage()}";
         }

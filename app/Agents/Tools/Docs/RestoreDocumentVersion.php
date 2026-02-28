@@ -55,6 +55,7 @@ class RestoreDocumentVersion implements Tool
             return json_encode([
                 'status' => 'restored',
                 'id' => $document->id,
+                'name' => $document->title,
                 'title' => $document->title,
                 'restoredFromVersion' => $version->version_number,
             ], JSON_PRETTY_PRINT);

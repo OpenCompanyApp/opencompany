@@ -14,6 +14,8 @@ class DataTableColumnController extends Controller
      */
     public function index(string $tableId): \Illuminate\Database\Eloquent\Collection
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         return DataTableColumn::where('table_id', $tableId)
             ->orderBy('order')
             ->get();
@@ -21,7 +23,7 @@ class DataTableColumnController extends Controller
 
     public function store(Request $request, string $tableId): DataTableColumn
     {
-        $table = DataTable::findOrFail($tableId);
+        $table = DataTable::forWorkspace()->findOrFail($tableId);
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -43,6 +45,8 @@ class DataTableColumnController extends Controller
 
     public function update(Request $request, string $tableId, string $columnId): DataTableColumn
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         $column = DataTableColumn::where('table_id', $tableId)
             ->findOrFail($columnId);
 
@@ -71,6 +75,8 @@ class DataTableColumnController extends Controller
 
     public function destroy(string $tableId, string $columnId): \Illuminate\Http\JsonResponse
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         DataTableColumn::where('table_id', $tableId)
             ->findOrFail($columnId)
             ->delete();
@@ -80,6 +86,8 @@ class DataTableColumnController extends Controller
 
     public function reorder(Request $request, string $tableId): \Illuminate\Http\JsonResponse
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         $request->validate([
             'columnOrders' => 'required|array',
             'columnOrders.*.id' => 'required|string',

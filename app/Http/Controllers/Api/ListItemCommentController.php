@@ -28,7 +28,7 @@ class ListItemCommentController extends Controller
         $comment = ListItemComment::create([
             'id' => Str::uuid()->toString(),
             'list_item_id' => $listItemId,
-            'author_id' => $request->input('authorId') ?? auth()->id(),
+            'author_id' => auth()->id(),
             'content' => $request->input('content'),
             'parent_id' => $request->input('parentId'),
         ]);

@@ -73,7 +73,8 @@ class ExecuteAgentTaskJob implements ShouldQueue
             $analyzeStep->complete();
 
             // Log the result
-            $resultStep = $this->task->addStep('Task completed: ' . substr($response->text, 0, 200), 'action');
+            $responseText = $response->text ?: 'Task processed (no text response).';
+            $resultStep = $this->task->addStep('Task completed: ' . substr($responseText, 0, 200), 'action');
             $resultStep->start();
             $resultStep->complete();
 
@@ -86,7 +87,11 @@ class ExecuteAgentTaskJob implements ShouldQueue
                 ],
             ]);
 
-            broadcast(new TaskUpdated($this->task, 'completed'));
+            try {
+                broadcast(new TaskUpdated($this->task, 'completed'));
+            } catch (\Throwable $broadcastError) {
+                Log::warning('Failed to broadcast task completion', ['error' => $broadcastError->getMessage()]);
+            }
 
             Log::info('Agent task completed', [
                 'task' => $this->task->id,
@@ -109,12 +114,31 @@ class ExecuteAgentTaskJob implements ShouldQueue
                 'result' => ['error' => $e->getMessage()],
             ]);
 
-            broadcast(new TaskUpdated($this->task, 'failed'));
+            try {
+                broadcast(new TaskUpdated($this->task, 'failed'));
+            } catch (\Throwable $broadcastError) {
+                Log::warning('Failed to broadcast task failure', ['error' => $broadcastError->getMessage()]);
+            }
 
             throw $e;
         } finally {
-            $agent->update(['status' => 'idle']);
-            broadcast(new AgentStatusUpdated($agent));
+            $agent->refresh();
+
+            if ($agent->sleeping_until) {
+                $agent->update(['status' => 'sleeping']);
+            } elseif ($agent->awaiting_approval_id) {
+                $agent->update(['status' => 'awaiting_approval']);
+            } elseif (!empty($agent->awaiting_delegation_ids)) {
+                $agent->update(['status' => 'awaiting_delegation']);
+            } else {
+                $agent->update(['status' => 'idle']);
+            }
+
+            try {
+                broadcast(new AgentStatusUpdated($agent));
+            } catch (\Throwable $broadcastError) {
+                Log::warning('Failed to broadcast agent status', ['error' => $broadcastError->getMessage()]);
+            }
         }
     }
 

@@ -224,7 +224,11 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
                 $task->update([
                     'result' => ['error' => $e->getMessage()],
                 ]);
-                broadcast(new TaskUpdated($task, 'failed'));
+                try {
+                    broadcast(new TaskUpdated($task, 'failed'));
+                } catch (\Throwable $broadcastError) {
+                    Log::warning('Failed to broadcast automation task failure', ['error' => $broadcastError->getMessage()]);
+                }
             }
 
             $this->automation->recordFailure($e->getMessage());
@@ -233,11 +237,21 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
         } finally {
             $agent->refresh();
 
-            if (! $agent->sleeping_until) {
+            if ($agent->sleeping_until) {
+                $agent->update(['status' => 'sleeping']);
+            } elseif ($agent->awaiting_approval_id) {
+                $agent->update(['status' => 'awaiting_approval']);
+            } elseif (!empty($agent->awaiting_delegation_ids)) {
+                $agent->update(['status' => 'awaiting_delegation']);
+            } else {
                 $agent->update(['status' => 'idle']);
             }
 
-            broadcast(new AgentStatusUpdated($agent));
+            try {
+                broadcast(new AgentStatusUpdated($agent));
+            } catch (\Throwable $broadcastError) {
+                Log::warning('Failed to broadcast agent status', ['error' => $broadcastError->getMessage()]);
+            }
         }
     }
 

@@ -55,6 +55,7 @@ class GetDocument implements Tool
                 'id' => $doc->id,
                 'name' => $doc->title,
                 'title' => $doc->title,
+                'type' => $doc->is_folder ? 'folder' : 'document',
                 'isFolder' => $doc->is_folder,
                 'author' => $doc->author?->name ?? 'Unknown',
                 'parentId' => $doc->parent_id,

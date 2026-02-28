@@ -38,6 +38,24 @@ class CreateSchedule implements Tool
 
             $agentId = $request['agentId'] ?? $this->agent->id;
 
+            // Validate agentId belongs to the same workspace
+            if ($agentId !== $this->agent->id) {
+                $targetAgent = User::where('type', 'agent')
+                    ->where('workspace_id', $this->agent->workspace_id)
+                    ->find($agentId);
+                if (!$targetAgent) {
+                    return "Error: Agent not found in this workspace.";
+                }
+            }
+
+            // Validate channelId belongs to workspace
+            if (isset($request['channelId'])) {
+                $channel = \App\Models\Channel::forWorkspace()->find($request['channelId']);
+                if (!$channel) {
+                    return "Error: Channel not found in this workspace.";
+                }
+            }
+
             $schedule = Automation::create([
                 'id' => Str::uuid()->toString(),
                 'name' => $name,

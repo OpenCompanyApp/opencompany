@@ -14,6 +14,8 @@ class DataTableViewController extends Controller
     /** @return Collection<int, DataTableView> */
     public function index(string $tableId): Collection
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         return DataTableView::where('table_id', $tableId)
             ->orderBy('created_at')
             ->get();
@@ -21,7 +23,7 @@ class DataTableViewController extends Controller
 
     public function store(Request $request, string $tableId): DataTableView
     {
-        $table = DataTable::findOrFail($tableId);
+        $table = DataTable::forWorkspace()->findOrFail($tableId);
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -42,6 +44,8 @@ class DataTableViewController extends Controller
 
     public function update(Request $request, string $tableId, string $viewId): DataTableView
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         $view = DataTableView::where('table_id', $tableId)
             ->findOrFail($viewId);
 
@@ -73,6 +77,8 @@ class DataTableViewController extends Controller
 
     public function destroy(string $tableId, string $viewId): JsonResponse
     {
+        DataTable::forWorkspace()->findOrFail($tableId);
+
         DataTableView::where('table_id', $tableId)
             ->findOrFail($viewId)
             ->delete();

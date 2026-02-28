@@ -20,6 +20,7 @@ export const usePresence = (userId: string, workspaceId?: string) => {
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null
   let unsubscribePresence: (() => void) | null = null
   let activityListenersAttached = false
+  const activityCleanups: (() => void)[] = []
 
   // Update presence on server
   const setPresence = async (presence: PresenceStatus) => {
@@ -58,23 +59,27 @@ export const usePresence = (userId: string, workspaceId?: string) => {
       const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart']
       activityEvents.forEach(event => {
         window.addEventListener(event, resetActivityTimer, { passive: true })
+        activityCleanups.push(() => window.removeEventListener(event, resetActivityTimer))
       })
 
       // Handle page visibility changes
-      document.addEventListener('visibilitychange', () => {
+      const handleVisibility = () => {
         if (document.hidden) {
           setPresence('away')
         } else {
           resetActivityTimer()
         }
-      })
+      }
+      document.addEventListener('visibilitychange', handleVisibility)
+      activityCleanups.push(() => document.removeEventListener('visibilitychange', handleVisibility))
 
       // Handle page close
-      window.addEventListener('beforeunload', () => {
-        // Use sendBeacon for reliable delivery on page close
+      const handleBeforeUnload = () => {
         const data = JSON.stringify({ presence: 'offline' })
         navigator.sendBeacon(`/api/users/${userId}/presence`, data)
-      })
+      }
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      activityCleanups.push(() => window.removeEventListener('beforeunload', handleBeforeUnload))
 
       activityListenersAttached = true
     }
@@ -130,6 +135,9 @@ export const usePresence = (userId: string, workspaceId?: string) => {
       clearInterval(heartbeatInterval)
       heartbeatInterval = null
     }
+    activityCleanups.forEach(fn => fn())
+    activityCleanups.length = 0
+    activityListenersAttached = false
     unsubscribePresence?.()
     leaveChannel(presenceChannelName)
     setPresence('offline')

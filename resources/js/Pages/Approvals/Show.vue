@@ -286,7 +286,7 @@ const riskIconColor = computed(() => {
 const handleAction = async (status: 'approved' | 'rejected') => {
   processing.value = status
   try {
-    await respondToApproval(props.approvalId, status, currentUserId.value)
+    await respondToApproval(props.approvalId, status)
     await refresh()
   } catch (err) {
     console.error('Failed to update approval:', err)

@@ -11,7 +11,7 @@ class CalendarEventAttendeeController extends Controller
 {
     public function store(Request $request, string $eventId): mixed
     {
-        $event = CalendarEvent::findOrFail($eventId);
+        $event = CalendarEvent::forWorkspace()->findOrFail($eventId);
 
         $request->validate([
             'userId' => 'required|string|exists:users,id',
@@ -27,6 +27,8 @@ class CalendarEventAttendeeController extends Controller
 
     public function update(Request $request, string $eventId, string $attendeeId): mixed
     {
+        CalendarEvent::forWorkspace()->findOrFail($eventId);
+
         $attendee = CalendarEventAttendee::where('event_id', $eventId)
             ->findOrFail($attendeeId);
 
@@ -43,6 +45,8 @@ class CalendarEventAttendeeController extends Controller
 
     public function destroy(string $eventId, string $attendeeId): \Illuminate\Http\JsonResponse
     {
+        CalendarEvent::forWorkspace()->findOrFail($eventId);
+
         CalendarEventAttendee::where('event_id', $eventId)
             ->findOrFail($attendeeId)
             ->delete();

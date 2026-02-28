@@ -20,7 +20,7 @@ class AgentPermissionController extends Controller
      */
     public function index(string $id): \Illuminate\Http\JsonResponse
     {
-        $agent = User::where('type', 'agent')->findOrFail($id);
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
         return response()->json([
             'tools' => $this->toolRegistry->getAllToolsMeta($agent),
@@ -35,7 +35,7 @@ class AgentPermissionController extends Controller
      */
     public function updateTools(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        $agent = User::where('type', 'agent')->findOrFail($id);
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
         $validated = $request->validate([
             'tools' => 'required|array',
@@ -70,7 +70,7 @@ class AgentPermissionController extends Controller
      */
     public function updateChannels(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        User::where('type', 'agent')->findOrFail($id);
+        User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
         $validated = $request->validate([
             'channels' => 'present|array',
@@ -103,7 +103,7 @@ class AgentPermissionController extends Controller
      */
     public function updateIntegrations(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        User::where('type', 'agent')->findOrFail($id);
+        User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
         $validated = $request->validate([
             'integrations' => 'present|array',
@@ -138,7 +138,7 @@ class AgentPermissionController extends Controller
      */
     public function updateFolders(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        User::where('type', 'agent')->findOrFail($id);
+        User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
         $validated = $request->validate([
             'folders' => 'present|array',

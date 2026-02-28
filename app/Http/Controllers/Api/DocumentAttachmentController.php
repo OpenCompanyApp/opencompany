@@ -12,6 +12,8 @@ class DocumentAttachmentController extends Controller
 {
     public function index(string $documentId): mixed
     {
+        \App\Models\Document::forWorkspace()->findOrFail($documentId);
+
         return DocumentAttachment::with('uploadedBy')
             ->where('document_id', $documentId)
             ->orderBy('created_at', 'desc')
@@ -20,6 +22,8 @@ class DocumentAttachmentController extends Controller
 
     public function store(Request $request, string $documentId): mixed
     {
+        \App\Models\Document::forWorkspace()->findOrFail($documentId);
+
         $file = $request->file('file');
         $workspaceId = workspace()->id;
         $path = $file->store("{$workspaceId}/document-attachments", 'public');
@@ -40,6 +44,8 @@ class DocumentAttachmentController extends Controller
 
     public function destroy(string $documentId, string $attachmentId): \Illuminate\Http\JsonResponse
     {
+        \App\Models\Document::forWorkspace()->findOrFail($documentId);
+
         $attachment = DocumentAttachment::where('id', $attachmentId)
             ->where('document_id', $documentId)
             ->firstOrFail();

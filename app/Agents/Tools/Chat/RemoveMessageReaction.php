@@ -26,9 +26,11 @@ class RemoveMessageReaction implements Tool
         try {
             $reactionId = $request['reactionId'];
 
-            $reaction = MessageReaction::find($reactionId);
+            $reaction = MessageReaction::whereHas('message', fn ($q) => $q->whereHas('channel', fn ($cq) => $cq->where('workspace_id', workspace()->id)))
+                ->where('user_id', $this->agent->id)
+                ->find($reactionId);
             if (!$reaction) {
-                return "Error: Reaction '{$reactionId}' not found.";
+                return "Error: Reaction '{$reactionId}' not found or you don't own it.";
             }
 
             $reaction->delete();

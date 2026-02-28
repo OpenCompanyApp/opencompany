@@ -119,6 +119,8 @@ class ChannelController extends Controller
 
     public function addMember(Request $request, string $channelId): ChannelMember
     {
+        Channel::forWorkspace()->findOrFail($channelId);
+
         $member = ChannelMember::create([
             'channel_id' => $channelId,
             'user_id' => $request->input('userId'),
@@ -130,6 +132,8 @@ class ChannelController extends Controller
 
     public function removeMember(string $channelId, string $userId): JsonResponse
     {
+        Channel::forWorkspace()->findOrFail($channelId);
+
         ChannelMember::where('channel_id', $channelId)
             ->where('user_id', $userId)
             ->delete();
@@ -139,10 +143,10 @@ class ChannelController extends Controller
 
     public function markRead(Request $request, string $channelId): JsonResponse
     {
-        $userId = $request->input('userId');
+        Channel::forWorkspace()->findOrFail($channelId);
 
         ChannelMember::where('channel_id', $channelId)
-            ->where('user_id', $userId)
+            ->where('user_id', auth()->id())
             ->update(['last_read_at' => now()]);
 
         return response()->json(['success' => true]);
@@ -150,12 +154,12 @@ class ChannelController extends Controller
 
     public function typing(Request $request, string $channelId): JsonResponse
     {
-        // This will be handled by broadcasting events
-        // For now, just return success
+        Channel::forWorkspace()->findOrFail($channelId);
+
         return response()->json([
             'channelId' => $channelId,
-            'userId' => $request->input('userId'),
-            'userName' => $request->input('userName'),
+            'userId' => auth()->id(),
+            'userName' => auth()->user()->name,
             'isTyping' => $request->input('isTyping'),
         ]);
     }
@@ -165,6 +169,8 @@ class ChannelController extends Controller
      */
     public function pinned(string $channelId)
     {
+        Channel::forWorkspace()->findOrFail($channelId);
+
         return Message::where('channel_id', $channelId)
             ->where('is_pinned', true)
             ->with(['author', 'reactions.user', 'attachments'])

@@ -53,6 +53,12 @@ class UserController extends Controller
     public function update(Request $request, string $id): User
     {
         $user = $this->findWorkspaceUser($id);
+
+        // Only allow self-updates for non-agent users
+        if ($user->type !== 'agent' && auth()->id() !== $id) {
+            abort(403);
+        }
+
         $oldName = $user->name;
 
         $user->update($request->only([
@@ -73,6 +79,11 @@ class UserController extends Controller
 
     public function updatePresence(Request $request, string $id): User
     {
+        // Only allow updating own presence
+        if (auth()->id() !== $id) {
+            abort(403);
+        }
+
         $user = $this->findWorkspaceUser($id);
         $user->update([
             'presence' => $request->input('presence'),

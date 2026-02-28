@@ -23,12 +23,15 @@ class DmController extends Controller
     {
         $currentUserId = auth()->id();
 
-        // Find or create the DM conversation
-        $dm = DirectMessage::where(function ($query) use ($currentUserId, $userId) {
-            $query->where('user1_id', $currentUserId)->where('user2_id', $userId);
-        })->orWhere(function ($query) use ($currentUserId, $userId) {
-            $query->where('user1_id', $userId)->where('user2_id', $currentUserId);
-        })->first();
+        // Find or create the DM conversation (scoped to workspace)
+        $dm = DirectMessage::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->where(function ($outer) use ($currentUserId, $userId) {
+                $outer->where(function ($q) use ($currentUserId, $userId) {
+                    $q->where('user1_id', $currentUserId)->where('user2_id', $userId);
+                })->orWhere(function ($q) use ($currentUserId, $userId) {
+                    $q->where('user1_id', $userId)->where('user2_id', $currentUserId);
+                });
+            })->first();
 
         if (!$dm) {
             // Create a new DM conversation
@@ -105,12 +108,15 @@ class DmController extends Controller
         $currentUserId = auth()->id();
         $currentUser = auth()->user();
 
-        // Find the DM conversation
-        $dm = DirectMessage::where(function ($query) use ($currentUserId, $userId) {
-            $query->where('user1_id', $currentUserId)->where('user2_id', $userId);
-        })->orWhere(function ($query) use ($currentUserId, $userId) {
-            $query->where('user1_id', $userId)->where('user2_id', $currentUserId);
-        })->first();
+        // Find the DM conversation (scoped to workspace)
+        $dm = DirectMessage::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->where(function ($outer) use ($currentUserId, $userId) {
+                $outer->where(function ($q) use ($currentUserId, $userId) {
+                    $q->where('user1_id', $currentUserId)->where('user2_id', $userId);
+                })->orWhere(function ($q) use ($currentUserId, $userId) {
+                    $q->where('user1_id', $userId)->where('user2_id', $currentUserId);
+                });
+            })->first();
 
         if (!$dm) {
             return response()->json(['error' => 'Conversation not found'], 404);
@@ -167,11 +173,14 @@ class DmController extends Controller
     {
         $currentUserId = auth()->id();
 
-        $dm = DirectMessage::where(function ($query) use ($currentUserId, $userId) {
-            $query->where('user1_id', $currentUserId)->where('user2_id', $userId);
-        })->orWhere(function ($query) use ($currentUserId, $userId) {
-            $query->where('user1_id', $userId)->where('user2_id', $currentUserId);
-        })->first();
+        $dm = DirectMessage::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->where(function ($outer) use ($currentUserId, $userId) {
+                $outer->where(function ($q) use ($currentUserId, $userId) {
+                    $q->where('user1_id', $currentUserId)->where('user2_id', $userId);
+                })->orWhere(function ($q) use ($currentUserId, $userId) {
+                    $q->where('user1_id', $userId)->where('user2_id', $currentUserId);
+                });
+            })->first();
 
         if ($dm) {
             ChannelMember::where('channel_id', $dm->channel_id)

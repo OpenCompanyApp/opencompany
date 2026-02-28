@@ -45,7 +45,11 @@ class AgentResumeFromSleepJob implements ShouldQueue
             'status' => 'idle',
         ]);
 
-        broadcast(new AgentStatusUpdated($this->agent));
+        try {
+            broadcast(new AgentStatusUpdated($this->agent));
+        } catch (\Throwable $e) {
+            Log::warning('Failed to broadcast agent status after sleep resume', ['error' => $e->getMessage()]);
+        }
 
         Log::info('Agent resumed from sleep', [
             'agent' => $this->agent->name,

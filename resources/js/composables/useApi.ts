@@ -25,7 +25,7 @@ export interface PaginatedResponse<T> {
   total: number
   from: number | null
   to: number | null
-  counts?: { total: number; active: number; completed: number }
+  counts?: { total: number; pending: number; active: number; completed: number }
 }
 
 const api = axios.create({

@@ -31,6 +31,7 @@ class MessageController extends Controller
         $query = Message::with(['author', 'reactions.user', 'attachments', 'replyTo.author']);
 
         if ($request->has('channelId')) {
+            Channel::forWorkspace()->findOrFail($request->input('channelId'));
             $query->where('channel_id', $request->input('channelId'));
         }
 
@@ -242,6 +243,9 @@ class MessageController extends Controller
 
     public function addReaction(Request $request, string $messageId): MessageReaction
     {
+        Message::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->findOrFail($messageId);
+
         $reaction = MessageReaction::create([
             'id' => Str::uuid()->toString(),
             'message_id' => $messageId,
@@ -266,7 +270,8 @@ class MessageController extends Controller
      */
     public function thread(string $messageId)
     {
-        $parentMessage = Message::with(['author', 'reactions.user', 'attachments'])
+        $parentMessage = Message::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->with(['author', 'reactions.user', 'attachments'])
             ->findOrFail($messageId);
 
         $replies = Message::with(['author', 'reactions.user', 'attachments'])

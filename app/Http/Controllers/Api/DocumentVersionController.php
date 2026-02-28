@@ -13,6 +13,8 @@ class DocumentVersionController extends Controller
     /** @return \Illuminate\Database\Eloquent\Collection<int, DocumentVersion> */
     public function index(string $documentId): \Illuminate\Database\Eloquent\Collection
     {
+        Document::forWorkspace()->findOrFail($documentId);
+
         return DocumentVersion::with('author')
             ->where('document_id', $documentId)
             ->orderBy('version_number', 'desc')
@@ -21,11 +23,11 @@ class DocumentVersionController extends Controller
 
     public function restore(Request $request, string $documentId, string $versionId): Document
     {
+        $document = Document::forWorkspace()->findOrFail($documentId);
+
         $version = DocumentVersion::where('id', $versionId)
             ->where('document_id', $documentId)
             ->firstOrFail();
-
-        $document = Document::findOrFail($documentId);
 
         // Save current content as a new version before restoring
         $lastVersion = DocumentVersion::where('document_id', $documentId)

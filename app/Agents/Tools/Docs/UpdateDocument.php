@@ -82,6 +82,7 @@ class UpdateDocument implements Tool
             return json_encode([
                 'status' => 'updated',
                 'id' => $document->id,
+                'name' => $document->title,
                 'title' => $document->title,
             ], JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {

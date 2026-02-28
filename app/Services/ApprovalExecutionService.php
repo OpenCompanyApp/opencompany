@@ -9,6 +9,7 @@ use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Task;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request as ToolRequest;
@@ -32,6 +33,9 @@ class ApprovalExecutionService
         if (!$agent || !$toolSlug) {
             return;
         }
+
+        // Bind workspace context so workspace() and forWorkspace() work
+        $this->bindWorkspaceContext($agent);
 
         $tool = $this->toolRegistry->instantiateToolBySlug($toolSlug, $agent);
 
@@ -91,6 +95,8 @@ class ApprovalExecutionService
         if (!$agent || !$scopeType || !$scopeKey) {
             return;
         }
+
+        $this->bindWorkspaceContext($agent);
 
         try {
             // Remove any existing deny record for this scope
@@ -157,6 +163,8 @@ class ApprovalExecutionService
             return;
         }
 
+        $this->bindWorkspaceContext($agent);
+
         $context = $approval->tool_execution_context ?? [];
         $channelId = $approval->channel_id ?? ($context['parameters']['channelId'] ?? null);
 
@@ -180,6 +188,19 @@ class ApprovalExecutionService
             }
         } else {
             $agent->clearAwaitingApproval();
+        }
+    }
+
+    /**
+     * Bind workspace context from agent so workspace() and forWorkspace() work in queue workers.
+     */
+    private function bindWorkspaceContext(\App\Models\User $agent): void
+    {
+        if ($agent->workspace_id) {
+            $workspace = Workspace::find($agent->workspace_id);
+            if ($workspace) {
+                app()->instance('currentWorkspace', $workspace);
+            }
         }
     }
 }

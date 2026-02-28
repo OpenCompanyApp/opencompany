@@ -44,7 +44,9 @@ class NotificationController extends Controller
 
     public function update(Request $request, string $id): Notification
     {
-        $notification = Notification::forWorkspace()->findOrFail($id);
+        $notification = Notification::forWorkspace()
+            ->where('user_id', auth()->id())
+            ->findOrFail($id);
 
         $notification->update($request->only(['is_read']));
 

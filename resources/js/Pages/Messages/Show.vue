@@ -172,6 +172,7 @@ import TypingIndicator from '@/Components/chat/TypingIndicator.vue'
 import { useRealtime } from '@/composables/useRealtime'
 import { useHighlight } from '@/composables/useHighlight'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { sanitizeHtml } from '@/utils/sanitize'
 
 const { workspacePath } = useWorkspace()
 
@@ -253,7 +254,7 @@ const formatContent = (content: string): string => {
   // Convert line breaks to <br> for paragraphs (but not in code blocks)
   content = content.replace(/\n\n/g, '</p><p class="mt-2">')
 
-  return content
+  return sanitizeHtml(content)
 }
 
 const loading = ref(true)
