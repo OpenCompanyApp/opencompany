@@ -22,7 +22,7 @@ class ChannelController extends Controller
         // Exclude automation channels from chat listing
         $query->whereNotIn('id', function ($q) {
             $q->select('channel_id')
-              ->from('scheduled_automations')
+              ->from('automations')
               ->whereNotNull('channel_id');
         });
 

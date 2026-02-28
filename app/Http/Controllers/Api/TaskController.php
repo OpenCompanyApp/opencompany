@@ -19,7 +19,9 @@ class TaskController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Task::forWorkspace()->with(['agent', 'requester', 'channel', 'steps']);
+        $query = Task::forWorkspace()
+            ->whereNull('parent_task_id')
+            ->with(['agent', 'requester', 'channel', 'steps']);
 
         // Filter by status
         if ($request->has('status')) {
@@ -71,6 +73,18 @@ class TaskController extends Controller
         $perPage = (int) $request->input('perPage', 50);
         $paginated = $query->paginate($perPage);
 
+        // Append subtasks for the paginated root tasks so the frontend tree is complete
+        $rootIds = $paginated->getCollection()->pluck('id')->toArray();
+        if (!empty($rootIds)) {
+            $subtasks = Task::whereIn('parent_task_id', $rootIds)
+                ->with(['agent', 'requester', 'channel', 'steps'])
+                ->orderBy('created_at')
+                ->get();
+            $paginated->setCollection(
+                $paginated->getCollection()->concat($subtasks)
+            );
+        }
+
         $paginated->getCollection()->transform(function ($task) {
             $task->makeHidden(['context']);
 
@@ -79,10 +93,10 @@ class TaskController extends Controller
 
         return array_merge($paginated->toArray(), [
             'counts' => [
-                'total' => Task::forWorkspace()->count(),
-                'pending' => Task::forWorkspace()->where('status', 'pending')->count(),
-                'active' => Task::forWorkspace()->where('status', 'active')->count(),
-                'completed' => Task::forWorkspace()->where('status', 'completed')->count(),
+                'total' => Task::forWorkspace()->whereNull('parent_task_id')->count(),
+                'pending' => Task::forWorkspace()->whereNull('parent_task_id')->where('status', 'pending')->count(),
+                'active' => Task::forWorkspace()->whereNull('parent_task_id')->where('status', 'active')->count(),
+                'completed' => Task::forWorkspace()->whereNull('parent_task_id')->where('status', 'completed')->count(),
             ],
         ]);
     }

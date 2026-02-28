@@ -90,7 +90,7 @@ class ListStatusController extends Controller
         $orders = $request->input('orders', []);
 
         foreach ($orders as $order) {
-            ListStatus::where('id', $order['id'])->update(['position' => $order['position']]);
+            ListStatus::forWorkspace()->where('id', $order['id'])->update(['position' => $order['position']]);
         }
 
         return response()->json(['success' => true]);

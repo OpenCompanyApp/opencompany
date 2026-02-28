@@ -154,7 +154,7 @@ class ListItemController extends Controller
             if (isset($order['status'])) {
                 $data['status'] = $order['status'];
             }
-            ListItem::where('id', $order['id'])->update($data);
+            ListItem::forWorkspace()->where('id', $order['id'])->update($data);
         }
 
         return response()->json(['success' => true]);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Document;
 use App\Models\DocumentComment;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +15,8 @@ class DocumentCommentController extends Controller
     /** @return Collection<int, DocumentComment> */
     public function index(string $documentId): Collection
     {
+        Document::forWorkspace()->findOrFail($documentId);
+
         return DocumentComment::with(['author', 'parent', 'resolvedBy'])
             ->where('document_id', $documentId)
             ->orderBy('created_at', 'asc')
@@ -22,6 +25,8 @@ class DocumentCommentController extends Controller
 
     public function store(Request $request, string $documentId): DocumentComment
     {
+        Document::forWorkspace()->findOrFail($documentId);
+
         $comment = DocumentComment::create([
             'id' => Str::uuid()->toString(),
             'document_id' => $documentId,
@@ -35,6 +40,8 @@ class DocumentCommentController extends Controller
 
     public function update(Request $request, string $documentId, string $commentId): DocumentComment
     {
+        Document::forWorkspace()->findOrFail($documentId);
+
         $comment = DocumentComment::where('id', $commentId)
             ->where('document_id', $documentId)
             ->firstOrFail();
@@ -62,6 +69,8 @@ class DocumentCommentController extends Controller
 
     public function destroy(string $documentId, string $commentId): JsonResponse
     {
+        Document::forWorkspace()->findOrFail($documentId);
+
         DocumentComment::where('id', $commentId)
             ->where('document_id', $documentId)
             ->delete();

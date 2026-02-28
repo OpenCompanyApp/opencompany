@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ListItem;
 use App\Models\ListItemComment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -11,6 +12,8 @@ class ListItemCommentController extends Controller
 {
     public function index(string $listItemId): mixed
     {
+        ListItem::forWorkspace()->findOrFail($listItemId);
+
         return ListItemComment::with(['author', 'replies.author'])
             ->where('list_item_id', $listItemId)
             ->whereNull('parent_id')
@@ -20,6 +23,8 @@ class ListItemCommentController extends Controller
 
     public function store(Request $request, string $listItemId): mixed
     {
+        ListItem::forWorkspace()->findOrFail($listItemId);
+
         $comment = ListItemComment::create([
             'id' => Str::uuid()->toString(),
             'list_item_id' => $listItemId,
@@ -33,6 +38,8 @@ class ListItemCommentController extends Controller
 
     public function destroy(string $listItemId, string $commentId): \Illuminate\Http\JsonResponse
     {
+        ListItem::forWorkspace()->findOrFail($listItemId);
+
         ListItemComment::where('id', $commentId)
             ->where('list_item_id', $listItemId)
             ->delete();

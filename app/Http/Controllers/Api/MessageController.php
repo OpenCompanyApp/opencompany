@@ -159,7 +159,7 @@ class MessageController extends Controller
      */
     public function compact(string $channelId): JsonResponse
     {
-        $channel = Channel::findOrFail($channelId);
+        $channel = Channel::forWorkspace()->findOrFail($channelId);
         $agents = $this->resolveChannelAgents($channel);
 
         if ($agents->isEmpty()) {
@@ -233,7 +233,9 @@ class MessageController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        Message::findOrFail($id)->delete();
+        Message::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->findOrFail($id)
+            ->delete();
 
         return response()->json(['success' => true]);
     }
@@ -280,7 +282,8 @@ class MessageController extends Controller
 
     public function pin(Request $request, string $messageId): Message
     {
-        $message = Message::findOrFail($messageId);
+        $message = Message::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->findOrFail($messageId);
         $message->update([
             'is_pinned' => true,
             'pinned_at' => now(),

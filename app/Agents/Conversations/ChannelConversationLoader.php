@@ -68,9 +68,7 @@ class ChannelConversationLoader
             if ($message->author_id === $agent->id) {
                 $sdkMessages[] = new AssistantMessage($message->content);
             } else {
-                /** @var User|null $author */
-                $author = $message->author;
-                $authorName = $author->name ?? 'User';
+                $authorName = $message->author->name ?? 'User';
                 $sdkMessages[] = new UserMessage("[{$authorName}]: {$message->content}");
             }
         }

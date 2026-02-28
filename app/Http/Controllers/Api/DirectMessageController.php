@@ -20,8 +20,10 @@ class DirectMessageController extends Controller
         $userId = $request->input('userId');
 
         return DirectMessage::with(['user1', 'user2', 'channel'])
-            ->where('user1_id', $userId)
-            ->orWhere('user2_id', $userId)
+            ->whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->where(function ($q) use ($userId) {
+                $q->where('user1_id', $userId)->orWhere('user2_id', $userId);
+            })
             ->orderBy('last_message_at', 'desc')
             ->get();
     }
@@ -92,8 +94,10 @@ class DirectMessageController extends Controller
     {
         $userId = $request->input('userId');
 
-        $dms = DirectMessage::where('user1_id', $userId)
-            ->orWhere('user2_id', $userId)
+        $dms = DirectMessage::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->where(function ($q) use ($userId) {
+                $q->where('user1_id', $userId)->orWhere('user2_id', $userId);
+            })
             ->get();
 
         $totalUnread = 0;

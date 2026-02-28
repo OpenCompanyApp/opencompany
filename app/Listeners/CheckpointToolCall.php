@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Agents\OpenCompanyAgent;
 use App\Models\Task;
+use App\Models\User;
 use App\Support\LuaMetaParser;
 use Laravel\Ai\Events\ToolInvoked;
 use App\Agents\Tools\ToolRegistry;
@@ -60,8 +61,23 @@ class CheckpointToolCall
 
             $toolRegistry = app(ToolRegistry::class);
 
+            // Human-readable descriptions for agent communication steps
+            $description = "Used tool: {$toolName}";
+            if ($toolName === 'ContactAgent' && isset($event->arguments['action'])) {
+                $action = $event->arguments['action'];
+                $targetId = $event->arguments['agentId'] ?? null;
+                $targetName = $targetId ? (User::find($targetId)?->name ?? 'Unknown') : 'Unknown';
+
+                $description = match ($action) {
+                    'delegate' => "Delegated to {$targetName}",
+                    'ask' => "Asked {$targetName}",
+                    'notify' => "Notified {$targetName}",
+                    default => "Contacted {$targetName}",
+                };
+            }
+
             $step = $task->addStep(
-                "Used tool: {$toolName}",
+                $description,
                 'action',
                 array_filter([
                     'tool' => $toolName,

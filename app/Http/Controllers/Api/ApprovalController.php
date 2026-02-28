@@ -16,7 +16,8 @@ class ApprovalController extends Controller
 
     public function index(Request $request): mixed
     {
-        $query = ApprovalRequest::with(['requester', 'respondedBy']);
+        $query = ApprovalRequest::with(['requester', 'respondedBy'])
+            ->whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id));
 
         if ($request->has('status')) {
             $query->where('status', $request->input('status'));
@@ -28,6 +29,7 @@ class ApprovalController extends Controller
     public function show(string $id): ApprovalRequest
     {
         return ApprovalRequest::with(['requester', 'respondedBy'])
+            ->whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
             ->findOrFail($id);
     }
 
@@ -48,7 +50,8 @@ class ApprovalController extends Controller
 
     public function update(Request $request, string $id): mixed
     {
-        $approval = ApprovalRequest::findOrFail($id);
+        $approval = ApprovalRequest::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->findOrFail($id);
 
         $approval->update([
             'status' => $request->input('status'),

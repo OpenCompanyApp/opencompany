@@ -300,7 +300,21 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 ->exists();
 
             if (!empty($this->agent->awaiting_delegation_ids) || $hasActiveSubtasks) {
-                $task->addStep('Awaiting delegation results', 'action');
+                $awaitingIds = $this->agent->awaiting_delegation_ids ?? [];
+                $awaitingTasks = Task::whereIn('id', $awaitingIds)->with('agent')->get();
+                $agentNames = $awaitingTasks->pluck('agent.name')->filter()->unique()->join(', ') ?: 'agents';
+                $task->addStep(
+                    "Awaiting results from {$agentNames}",
+                    'action',
+                    [
+                        'icon' => 'ph:hourglass',
+                        'awaiting' => $awaitingTasks->map(fn ($t) => [
+                            'taskId' => $t->id,
+                            'agentName' => $t->agent?->name ?? 'Unknown',
+                            'source' => $t->source,
+                        ])->toArray(),
+                    ]
+                );
 
                 Log::info('Agent holding response while awaiting delegations', [
                     'agent' => $this->agent->name,
