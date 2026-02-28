@@ -16,6 +16,26 @@ class DocumentIndexingService
     ) {}
 
     /**
+     * Extract plain text from content based on its format.
+     */
+    private function extractText(string $content, string $format): string
+    {
+        if ($format === 'html') {
+            // Restore paragraph/block breaks before stripping
+            $text = preg_replace('/<\/(p|div|h[1-6]|li|tr|blockquote)>/i', "\n\n", $content);
+            $text = preg_replace('/<br\s*\/?>/i', "\n", $text);
+            $text = strip_tags($text);
+            $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            // Collapse excessive whitespace
+            $text = preg_replace('/\n{3,}/', "\n\n", $text);
+
+            return trim($text);
+        }
+
+        return $content;
+    }
+
+    /**
      * Index a document: chunk its content, embed, and store as DocumentChunks.
      */
     public function index(Document $document, string $collection = 'general', ?string $agentId = null): void
@@ -26,7 +46,8 @@ class DocumentIndexingService
             return;
         }
 
-        $chunks = $this->chunker->chunk($document->content);
+        $text = $this->extractText($document->content, $document->content_format ?? 'markdown');
+        $chunks = $this->chunker->chunk($text);
 
         if (empty($chunks)) {
             DocumentChunk::where('document_id', $document->id)->delete();

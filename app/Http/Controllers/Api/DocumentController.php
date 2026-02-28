@@ -152,6 +152,7 @@ class DocumentController extends Controller
         $data = $request->only([
             'title',
             'content',
+            'content_format',
             'status',
             'color',
             'icon',

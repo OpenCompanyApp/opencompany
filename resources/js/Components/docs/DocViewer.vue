@@ -25,7 +25,7 @@
         :custom-color="document.color"
         :custom-icon="document.icon"
         :read-only="readOnly"
-        @edit="handleEdit"
+        :save-status="saveStatus"
         @share="handleShare"
         @menu="handleMenu"
         @star="handleStar"
@@ -36,130 +36,16 @@
         @breadcrumb-click="emit('breadcrumbClick', $event)"
       />
 
-      <!-- Toolbar (when editing) -->
-      <Transition name="slide-down">
-        <div v-if="isEditing && showToolbar" :class="toolbarClasses">
-          <div class="flex items-center gap-1">
-            <!-- Text Formatting -->
-            <div class="flex items-center gap-0.5 pr-2 border-r border-neutral-200">
-              <Tooltip
-                v-for="action in textFormattingActions"
-                :key="action.id"
-                :text="action.label + (action.shortcut ? ' ' + action.shortcut : '')"
-                :delay-open="200"
-              >
-                <button
-                  type="button"
-                  :class="toolbarButtonClasses"
-                  @click="emit('format', action.id)"
-                >
-                  <Icon :name="action.icon" class="w-4 h-4" />
-                </button>
-              </Tooltip>
-            </div>
-
-            <!-- Heading Dropdown -->
-            <DropdownMenu :items="headingDropdownItems">
-              <Button variant="ghost" :class="toolbarButtonClasses">
-                <span class="text-xs">Heading</span>
-                <Icon name="ph:caret-down" class="w-3 h-3 ml-1" />
-              </Button>
-            </DropdownMenu>
-
-            <!-- Insert Actions -->
-            <div class="flex items-center gap-0.5 pl-2 border-l border-neutral-200">
-              <Tooltip
-                v-for="action in insertActions"
-                :key="action.id"
-                :text="action.label"
-                :delay-open="200"
-              >
-                <button
-                  type="button"
-                  :class="toolbarButtonClasses"
-                  @click="emit('insert', action.id)"
-                >
-                  <Icon :name="action.icon" class="w-4 h-4" />
-                </button>
-              </Tooltip>
-            </div>
-          </div>
-
-          <!-- Right Side Actions -->
-          <div class="flex items-center gap-2">
-            <span v-if="autoSaving" class="flex items-center gap-1.5 text-xs text-neutral-500">
-              <Icon name="ph:spinner" class="w-3.5 h-3.5 animate-spin" />
-              Saving...
-            </span>
-            <span v-else-if="lastSaved" class="text-xs text-neutral-400">
-              Saved {{ formatTimeAgo(lastSaved) }}
-            </span>
-
-            <button
-              type="button"
-              :class="[toolbarButtonClasses, 'px-3']"
-              @click="handleCancelEdit"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              :class="[saveButtonClasses]"
-              :disabled="!hasChanges || saving"
-              @click="handleSave"
-            >
-              <Icon v-if="saving" name="ph:spinner" class="w-4 h-4 animate-spin mr-1.5" />
-              Save
-            </button>
-          </div>
+      <!-- TipTap Editor (always mounted) -->
+      <div class="flex-1 overflow-auto">
+        <div class="max-w-3xl mx-auto px-8 py-6">
+          <TipTapEditor
+            :content="document.content ?? ''"
+            :content-format="document.contentFormat ?? 'markdown'"
+            :editable="!readOnly && !document.isLocked"
+            @update="handleEditorUpdate"
+          />
         </div>
-      </Transition>
-
-      <!-- Table of Contents Sidebar -->
-      <Transition name="slide-right">
-        <aside v-if="showTableOfContents && tableOfContents.length > 0" :class="tocSidebarClasses">
-          <div class="sticky top-6">
-            <h3 class="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
-              On this page
-            </h3>
-            <nav class="space-y-1">
-              <button
-                v-for="item in tableOfContents"
-                :key="item.id"
-                type="button"
-                :class="[
-                  tocItemClasses,
-                  activeSection === item.id && 'text-neutral-900 border-neutral-900',
-                ]"
-                :style="{ paddingLeft: `${8 + item.level * 12}px` }"
-                @click="scrollToSection(item.id)"
-              >
-                {{ item.title }}
-              </button>
-            </nav>
-          </div>
-        </aside>
-      </Transition>
-
-      <!-- Document Content (read mode) -->
-      <div v-if="!isEditing" class="flex-1 overflow-auto">
-        <div
-          class="max-w-3xl mx-auto px-8 py-6 prose prose-neutral dark:prose-invert max-w-none"
-          v-html="renderedContent"
-        />
-      </div>
-
-      <!-- Edit Mode: Raw markdown textarea -->
-      <div v-else class="flex-1 overflow-auto bg-neutral-50 dark:bg-neutral-800/30">
-        <textarea
-          ref="editorTextarea"
-          v-model="editorContent"
-          class="w-full min-h-[calc(100vh-200px)] px-8 py-6 max-w-3xl mx-auto block bg-transparent text-neutral-900 dark:text-white font-mono text-sm leading-relaxed resize-none outline-none"
-          placeholder="Write your document in Markdown..."
-          @input="autoResize"
-          @keydown.tab.prevent="handleTabKey"
-          @keydown="handleKeyboardShortcuts"
-        />
       </div>
 
       <!-- Comments Panel -->
@@ -167,13 +53,13 @@
         <aside v-if="showComments && comments.length > 0" :class="commentsSidebarClasses">
           <div class="sticky top-6">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-sm font-semibold text-neutral-900">
+              <h3 class="text-sm font-semibold text-neutral-900 dark:text-white">
                 Comments
                 <span class="ml-1 text-xs text-neutral-500">({{ comments.length }})</span>
               </h3>
               <button
                 type="button"
-                class="p-1 rounded hover:bg-neutral-100 transition-colors"
+                class="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                 @click="showComments = false"
               >
                 <Icon name="ph:x" class="w-4 h-4 text-neutral-500" />
@@ -188,15 +74,15 @@
                 <div class="flex items-start gap-2 mb-2">
                   <AgentAvatar :user="comment.author" size="xs" />
                   <div class="flex-1 min-w-0">
-                    <p class="text-xs font-medium text-neutral-700">{{ comment.author.name }}</p>
+                    <p class="text-xs font-medium text-neutral-700 dark:text-neutral-200">{{ comment.author.name }}</p>
                     <p class="text-[10px] text-neutral-400">{{ formatTimeAgo(comment.createdAt) }}</p>
                   </div>
                 </div>
-                <p class="text-sm text-neutral-700">{{ comment.content }}</p>
-                <div v-if="comment.replies?.length" class="mt-2 pl-4 border-l border-neutral-100 space-y-2">
+                <p class="text-sm text-neutral-700 dark:text-neutral-300">{{ comment.content }}</p>
+                <div v-if="comment.replies?.length" class="mt-2 pl-4 border-l border-neutral-100 dark:border-neutral-700 space-y-2">
                   <div v-for="reply in comment.replies" :key="reply.id" class="text-xs">
-                    <span class="font-medium text-neutral-700">{{ reply.author.name }}</span>
-                    <span class="text-neutral-500 ml-1">{{ reply.content }}</span>
+                    <span class="font-medium text-neutral-700 dark:text-neutral-200">{{ reply.author.name }}</span>
+                    <span class="text-neutral-500 dark:text-neutral-400 ml-1">{{ reply.content }}</span>
                   </div>
                 </div>
               </div>
@@ -226,21 +112,11 @@
           <button
             v-if="!showComments && comments.length > 0"
             type="button"
-            class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+            class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
             @click="showComments = true"
           >
             <Icon name="ph:chat-circle" class="w-3.5 h-3.5" />
             {{ comments.length }} comments
-          </button>
-
-          <button
-            v-if="!showTableOfContents && tableOfContents.length > 0"
-            type="button"
-            class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-            @click="showTableOfContents = true"
-          >
-            <Icon name="ph:list" class="w-3.5 h-3.5" />
-            Contents
           </button>
         </div>
       </footer>
@@ -248,11 +124,11 @@
 
     <!-- Empty State -->
     <div v-else :class="emptyStateClasses">
-      <div class="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
+      <div class="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
         <Icon name="ph:file-dashed" class="w-8 h-8 text-neutral-400" />
       </div>
-      <h3 class="text-base font-medium text-neutral-700 mb-1">No document selected</h3>
-      <p class="text-sm text-neutral-500 text-center max-w-[250px]">
+      <h3 class="text-base font-medium text-neutral-700 dark:text-neutral-200 mb-1">No document selected</h3>
+      <p class="text-sm text-neutral-500 dark:text-neutral-400 text-center max-w-[250px]">
         Select a document from the list to view its contents
       </p>
     </div>
@@ -260,25 +136,16 @@
 </template>
 
 <script setup lang="ts">
-import { h, defineComponent, ref, computed, watch, nextTick } from 'vue'
+import { h, defineComponent, ref, computed } from 'vue'
 import type { Document, User } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
-import Button from '@/Components/shared/Button.vue'
-import Tooltip from '@/Components/shared/Tooltip.vue'
-import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 import Skeleton from '@/Components/shared/Skeleton.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import DocViewerHeader from './doc-viewer/DocViewerHeader.vue'
-import { useMarkdown } from '@/composables/useMarkdown'
-const { renderMarkdown } = useMarkdown()
+import TipTapEditor from './TipTapEditor.vue'
 
 type DocViewerSize = 'sm' | 'md' | 'lg'
-
-interface TableOfContentsItem {
-  id: string
-  title: string
-  level: number
-}
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 interface Comment {
   id: string
@@ -308,233 +175,52 @@ interface ExtendedDocument extends Document {
 }
 
 const props = withDefaults(defineProps<{
-  // Core
   document?: ExtendedDocument | null
-
-  // Appearance
   size?: DocViewerSize
-
-  // Display options
   showBreadcrumb?: boolean
-  showToolbar?: boolean
-  showTableOfContents?: boolean
   showFooter?: boolean
   showVersionHistory?: boolean
-  showLineNumbers?: boolean
-  highlightSyntax?: boolean
-
-  // Data
   breadcrumb?: BreadcrumbItem[]
   comments?: Comment[]
-  tableOfContents?: TableOfContentsItem[]
-
-  // State
   loading?: boolean
-  isEditing?: boolean
-  hasChanges?: boolean
-  saving?: boolean
-  autoSaving?: boolean
-  lastSaved?: Date
   readOnly?: boolean
+  saveStatus?: SaveStatus
 }>(), {
   document: null,
   size: 'md',
   showBreadcrumb: true,
-  showToolbar: true,
-  showTableOfContents: false,
   showFooter: true,
   showVersionHistory: true,
-  showLineNumbers: false,
-  highlightSyntax: true,
   breadcrumb: () => [],
   comments: () => [],
-  tableOfContents: () => [],
   loading: false,
-  isEditing: false,
-  hasChanges: false,
-  saving: false,
-  autoSaving: false,
-  lastSaved: undefined,
   readOnly: false,
+  saveStatus: 'idle',
 })
 
 const emit = defineEmits<{
-  edit: []
   share: []
   menu: []
   star: []
   pin: []
-  save: [content: string]
-  cancel: []
-  format: [action: string]
-  insert: [type: string]
+  contentChange: [content: string]
   versionHistory: []
   breadcrumbClick: [item: BreadcrumbItem]
-  contentChange: [content: string]
   'update:color': [color: string | null]
   'update:icon': [icon: string | null]
 }>()
 
 // State
 const showComments = ref(false)
-const showTableOfContents = ref(props.showTableOfContents)
-const activeSection = ref<string | null>(null)
-const editorContent = ref('')
-const editorTextarea = ref<HTMLTextAreaElement | null>(null)
 
-// Watch for prop changes
-watch(() => props.showTableOfContents, (val) => {
-  showTableOfContents.value = val
-})
-
-// Rendered markdown content for read mode
-const renderedContent = computed(() => renderMarkdown(props.document?.content ?? ''))
-
-// Initialize editor content when entering edit mode
-watch(() => props.isEditing, (editing) => {
-  if (editing && props.document) {
-    editorContent.value = props.document.content ?? ''
-    nextTick(() => autoResize())
-  }
-})
-
-// Emit content changes as user types
-watch(editorContent, (content) => {
-  if (props.isEditing) {
-    emit('contentChange', content)
-  }
-})
-
-// Auto-resize textarea to fit content
-const autoResize = () => {
-  const el = editorTextarea.value
-  if (!el) return
-  el.style.height = 'auto'
-  el.style.height = el.scrollHeight + 'px'
+// Handle editor content updates
+const handleEditorUpdate = (html: string) => {
+  emit('contentChange', html)
 }
-
-// Tab key inserts 2 spaces at cursor
-const handleTabKey = (e: Event) => {
-  const textarea = e.target as HTMLTextAreaElement
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-  editorContent.value = editorContent.value.substring(0, start) + '  ' + editorContent.value.substring(end)
-  nextTick(() => {
-    textarea.selectionStart = textarea.selectionEnd = start + 2
-  })
-}
-
-// Wrap selected text with prefix/suffix
-const wrapSelection = (prefix: string, suffix: string) => {
-  const textarea = editorTextarea.value
-  if (!textarea) return
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-  const selected = editorContent.value.substring(start, end)
-  editorContent.value =
-    editorContent.value.substring(0, start) +
-    prefix + selected + suffix +
-    editorContent.value.substring(end)
-  nextTick(() => {
-    textarea.selectionStart = start + prefix.length
-    textarea.selectionEnd = end + prefix.length
-  })
-}
-
-// Keyboard shortcuts for markdown formatting
-const handleKeyboardShortcuts = (e: KeyboardEvent) => {
-  const mod = e.metaKey || e.ctrlKey
-  if (!mod) return
-
-  switch (e.key.toLowerCase()) {
-    case 'b':
-      e.preventDefault()
-      wrapSelection('**', '**')
-      break
-    case 'i':
-      e.preventDefault()
-      wrapSelection('*', '*')
-      break
-    case 'e':
-      e.preventDefault()
-      wrapSelection('`', '`')
-      break
-    case 's':
-      e.preventDefault()
-      handleSave()
-      break
-  }
-}
-
-// Text formatting actions
-const textFormattingActions = [
-  { id: 'bold', icon: 'ph:text-b', label: 'Bold', shortcut: '⌘B' },
-  { id: 'italic', icon: 'ph:text-italic', label: 'Italic', shortcut: '⌘I' },
-  { id: 'underline', icon: 'ph:text-underline', label: 'Underline', shortcut: '⌘U' },
-  { id: 'strikethrough', icon: 'ph:text-strikethrough', label: 'Strikethrough' },
-  { id: 'code', icon: 'ph:code', label: 'Code', shortcut: '⌘E' },
-]
-
-// Heading options
-const headingOptions = [
-  { value: 'h1', label: 'Heading 1' },
-  { value: 'h2', label: 'Heading 2' },
-  { value: 'h3', label: 'Heading 3' },
-  { value: 'p', label: 'Paragraph' },
-]
-
-// Insert actions
-const insertActions = [
-  { id: 'link', icon: 'ph:link', label: 'Insert link' },
-  { id: 'image', icon: 'ph:image', label: 'Insert image' },
-  { id: 'table', icon: 'ph:table', label: 'Insert table' },
-  { id: 'codeblock', icon: 'ph:brackets-curly', label: 'Code block' },
-  { id: 'quote', icon: 'ph:quotes', label: 'Blockquote' },
-  { id: 'divider', icon: 'ph:minus', label: 'Divider' },
-]
-
-// Heading dropdown items
-const headingDropdownItems = computed(() => [
-  headingOptions.map(heading => ({
-    label: heading.label,
-    click: () => emit('format', heading.value),
-  })),
-])
 
 // Container classes
 const containerClasses = computed(() => [
   'flex-1 bg-white dark:bg-neutral-900 flex flex-col h-full overflow-hidden relative',
-])
-
-// Toolbar classes
-const toolbarClasses = computed(() => [
-  'sticky top-0 z-20 flex items-center justify-between px-8 py-2',
-  'bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700',
-])
-
-const toolbarButtonClasses = computed(() => [
-  'p-2 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200',
-  'hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-150',
-  'outline-none focus-visible:ring-2 focus-visible:ring-neutral-300 dark:focus-visible:ring-neutral-600',
-])
-
-const saveButtonClasses = computed(() => [
-  'px-4 py-2 rounded-lg font-medium text-sm',
-  'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100',
-  'transition-colors duration-150',
-  'disabled:opacity-50 disabled:cursor-not-allowed',
-])
-
-// TOC sidebar classes
-const tocSidebarClasses = computed(() => [
-  'absolute right-0 top-0 bottom-0 w-64 p-6',
-  'bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 overflow-y-auto',
-])
-
-const tocItemClasses = computed(() => [
-  'block w-full text-left text-sm py-1 pr-2 border-l-2 border-transparent',
-  'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200',
-  'transition-colors duration-150',
 ])
 
 // Comments sidebar classes
@@ -558,30 +244,15 @@ const emptyStateClasses = computed(() => [
   'flex-1 flex flex-col items-center justify-center',
 ])
 
-// Dropdown classes
-const dropdownContentClasses = computed(() => [
-  'z-50 min-w-[160px] bg-white border border-neutral-200 rounded-lg',
-  'p-1 shadow-lg',
-  'animate-in fade-in-0 duration-150',
-])
-
-const dropdownItemClasses = computed(() => [
-  'flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer',
-  'text-neutral-700 hover:bg-neutral-50',
-  'transition-colors duration-150 outline-none',
-  'data-[highlighted]:bg-neutral-50',
-])
-
-// Tooltip classes
-const tooltipClasses = computed(() => [
-  'z-50 bg-white border border-neutral-200 rounded-lg',
-  'px-2 py-1 text-xs shadow-md',
-  'animate-in fade-in-0 duration-150',
-])
+// Handlers
+const handleShare = () => emit('share')
+const handleMenu = () => emit('menu')
+const handleStar = () => emit('star')
+const handlePin = () => emit('pin')
 
 // Helper functions
 const formatTimeAgo = (date: Date): string => {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
   if (seconds < 60) return 'just now'
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) return `${minutes}m ago`
@@ -596,53 +267,12 @@ const formatNumber = (num: number): string => {
   return `${(num / 1000).toFixed(1)}K`
 }
 
-const scrollToSection = (id: string) => {
-  const element = document.getElementById(id)
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-}
-
-// Handlers
-const handleEdit = () => {
-  emit('edit')
-}
-
-const handleShare = () => {
-  emit('share')
-}
-
-const handleMenu = () => {
-  emit('menu')
-}
-
-const handleStar = () => {
-  emit('star')
-}
-
-const handlePin = () => {
-  emit('pin')
-}
-
-const handleSave = () => {
-  emit('save', editorContent.value || props.document?.content || '')
-}
-
-const handleCancelEdit = () => {
-  emit('cancel')
-}
-
-const handleContentChange = (content: string) => {
-  emit('contentChange', content)
-}
-
 // Skeleton Component
 const DocViewerSkeleton = defineComponent({
   name: 'DocViewerSkeleton',
   setup() {
     return () => h('div', { class: 'flex-1 animate-pulse' }, [
-      // Header skeleton
-      h('div', { class: 'border-b border-neutral-200 px-8 py-4' }, [
+      h('div', { class: 'border-b border-neutral-200 dark:border-neutral-700 px-8 py-4' }, [
         h('div', { class: 'flex items-center justify-between' }, [
           h('div', { class: 'space-y-2' }, [
             h(Skeleton, { customClass: 'h-8 w-64' }),
@@ -655,11 +285,9 @@ const DocViewerSkeleton = defineComponent({
           h('div', { class: 'flex items-center gap-2' }, [
             h(Skeleton, { customClass: 'h-10 w-10 rounded-lg' }),
             h(Skeleton, { customClass: 'h-10 w-10 rounded-lg' }),
-            h(Skeleton, { customClass: 'h-10 w-10 rounded-lg' }),
           ]),
         ]),
       ]),
-      // Content skeleton
       h('div', { class: 'px-8 py-6 max-w-3xl mx-auto space-y-6' }, [
         h(Skeleton, { customClass: 'h-10 w-3/4' }),
         h('div', { class: 'space-y-3' }, [
@@ -682,29 +310,6 @@ const DocViewerSkeleton = defineComponent({
 </script>
 
 <style scoped>
-/* Slide transitions */
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.2s ease;
-}
-
-.slide-down-enter-from,
-.slide-down-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-right-enter-from,
-.slide-right-leave-to {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
 .slide-left-enter-active,
 .slide-left-leave-active {
   transition: all 0.3s ease;

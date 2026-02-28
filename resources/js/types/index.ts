@@ -236,6 +236,7 @@ export interface Document {
   id: string
   title: string
   content: string
+  contentFormat?: 'markdown' | 'html'
   updatedAt: Date
   createdAt: Date
   author: User

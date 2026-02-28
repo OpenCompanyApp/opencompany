@@ -80,6 +80,10 @@
           @select="handleSelect"
           @delete="(doc) => emit('delete', doc)"
           @rename="(doc) => emit('rename', doc)"
+          @rename-submit="(payload) => emit('rename-submit', payload)"
+          @create-child="(doc) => emit('create-child', doc)"
+          @drop="(event) => emit('drop', event)"
+          draggable
         />
       </template>
 
@@ -153,6 +157,9 @@ const emit = defineEmits<{
   createFolder: []
   delete: [doc: Document]
   rename: [doc: Document]
+  'rename-submit': [payload: { item: Document; title: string }]
+  'create-child': [doc: Document]
+  drop: [event: { item: Document; target: Document; position: string | null }]
 }>()
 
 const { searchDocuments } = useApi()

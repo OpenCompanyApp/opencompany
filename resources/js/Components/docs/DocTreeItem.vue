@@ -61,6 +61,8 @@
       @duplicate="$emit('duplicate', item)"
       @delete="$emit('delete', item)"
       @rename="$emit('rename', item)"
+      @rename-submit="(title: string) => $emit('rename-submit', { item, title })"
+      @create-child="$emit('create-child', item)"
       @move="$emit('move', item)"
     />
 
@@ -151,6 +153,8 @@
             @duplicate="$emit('duplicate', $event)"
             @delete="$emit('delete', $event)"
             @rename="$emit('rename', $event)"
+            @rename-submit="$emit('rename-submit', $event)"
+            @create-child="$emit('create-child', $event)"
             @move="$emit('move', $event)"
             @drop="$emit('drop', $event)"
             @context-menu="$emit('context-menu', $event)"
@@ -310,6 +314,10 @@ const emit = defineEmits<{
   delete: [doc: Document]
   /** Rename requested */
   rename: [doc: Document]
+  /** Inline rename submitted */
+  'rename-submit': [payload: { item: Document; title: string }]
+  /** Create child document in folder */
+  'create-child': [doc: Document]
   /** Move requested */
   move: [doc: Document]
   /** Item dropped */

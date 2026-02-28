@@ -202,15 +202,26 @@ const availableNewVersions = computed(() => {
   return props.versions.filter(v => v.versionNumber > selectedOldVersion.value!.versionNumber)
 })
 
+/**
+ * Strip HTML to plain text for readable diffing.
+ */
+const stripHtml = (html: string): string => {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || div.innerText || ''
+}
+
 const oldContent = computed(() => {
-  return selectedOldVersion.value?.content || ''
+  const content = selectedOldVersion.value?.content || ''
+  return stripHtml(content)
 })
 
 const newContent = computed(() => {
-  if (selectedNewVersion.value === props.currentDocument) {
-    return props.currentDocument?.content || ''
-  }
-  return (selectedNewVersion.value as DocumentVersion)?.content || ''
+  const raw = selectedNewVersion.value === props.currentDocument
+    ? (props.currentDocument?.content || '')
+    : ((selectedNewVersion.value as DocumentVersion)?.content || '')
+  return stripHtml(raw)
 })
 
 // Simple line-based diff algorithm

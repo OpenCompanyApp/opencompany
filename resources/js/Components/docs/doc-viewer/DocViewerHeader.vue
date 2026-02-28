@@ -349,26 +349,6 @@
             </button>
           </Tooltip>
 
-          <!-- Edit button -->
-          <Tooltip :text="isLocked ? 'Document is locked' : isEditing ? 'Stop editing' : 'Edit'" :delay-open="300">
-            <button
-              type="button"
-              :class="[actionButtonClasses, isEditing && 'bg-neutral-100']"
-              :disabled="isLocked"
-              :aria-label="isEditing ? 'Stop editing' : 'Edit document'"
-              @click="$emit('edit')"
-            >
-              <Icon
-                :name="isEditing ? 'ph:pencil-simple-fill' : 'ph:pencil-simple'"
-                :class="[
-                  'w-5 h-5',
-                  isEditing ? 'text-neutral-900' : 'text-neutral-500',
-                  isLocked && 'opacity-50'
-                ]"
-              />
-            </button>
-          </Tooltip>
-
           <!-- Share button -->
           <Tooltip text="Share" :delay-open="300">
             <button

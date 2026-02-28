@@ -58,6 +58,9 @@
         @create-folder="handleCreateFolder"
         @delete="handleDeleteDocument"
         @rename="handleRenameDocument"
+        @rename-submit="handleInlineRename"
+        @create-child="handleCreateChildDocument"
+        @drop="handleDrop"
       />
     </aside>
 
@@ -65,14 +68,9 @@
     <DocsDocViewer
       :document="selectedDoc"
       :comments="comments"
-      :is-editing="isEditing"
-      :has-changes="hasChanges"
-      :saving="saving"
+      :save-status="saveStatus"
       class="flex-1"
-      @edit="handleStartEdit"
-      @cancel="handleCancelEdit"
-      @save="handleSaveDocument"
-      @content-change="handleContentChange"
+      @content-change="handleAutoSave"
       @update:color="handleUpdateColor"
       @update:icon="handleUpdateIcon"
       @version-history="showVersionHistory = true"
@@ -254,6 +252,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
+import { useDebounceFn } from '@vueuse/core'
 import type { Document, User } from '@/types'
 import DocsDocList from '@/Components/docs/DocList.vue'
 import DocsDocViewer from '@/Components/docs/DocViewer.vue'
@@ -318,10 +317,7 @@ const documents = computed<Document[]>(() => documentsData.value ?? [])
 
 // Select the first actual document (not a folder)
 const selectedDoc = ref<Document | null>(null)
-const isEditing = ref(false)
-const hasChanges = ref(false)
-const saving = ref(false)
-const editedContent = ref('')
+const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
 const showVersionHistory = ref(false)
 const showCommentsSidebar = ref(false)
 const showMobileDocList = ref(false)
@@ -392,14 +388,8 @@ const loadAttachmentCount = async (documentId?: string) => {
 const filteredDocuments = computed(() => documents.value)
 
 const handleSelectDocument = async (doc: Document) => {
-  if (isEditing.value && hasChanges.value) {
-    if (!confirm('You have unsaved changes. Discard them?')) {
-      return
-    }
-  }
   selectedDoc.value = doc
-  isEditing.value = false
-  hasChanges.value = false
+  saveStatus.value = 'idle'
 }
 
 const handleSelectDocumentMobile = async (doc: Document) => {
@@ -471,23 +461,60 @@ const handleRenameDocument = async (doc: Document) => {
   }
 }
 
-const handleStartEdit = () => {
-  isEditing.value = true
-  editedContent.value = selectedDoc.value?.content ?? ''
+const handleInlineRename = async (payload: { item: Document; title: string }) => {
+  try {
+    await updateDocument(payload.item.id, { title: payload.title })
+    await refreshDocuments()
+    if (selectedDoc.value?.id === payload.item.id) {
+      const updated = documents.value.find(d => d.id === payload.item.id)
+      if (updated) selectedDoc.value = updated
+    }
+  } catch (error) {
+    console.error('Failed to rename document:', error)
+  }
 }
 
-const handleContentChange = (content: string) => {
-  editedContent.value = content
-  hasChanges.value = content !== selectedDoc.value?.content
+const handleCreateChildDocument = async (folder: Document) => {
+  const newDoc = await createDocument({
+    title: 'Untitled Document',
+    content: '',
+    authorId: currentUserId.value,
+    parentId: folder.id,
+  })
+  await refreshDocuments()
+  if (newDoc) {
+    selectedDoc.value = newDoc as Document
+  }
 }
 
-const handleSaveDocument = async () => {
-  if (!selectedDoc.value || !hasChanges.value) return
+const handleDrop = async (event: { item: Document; target: Document; position: string | null }) => {
+  const { item, target, position } = event
+  let newParentId: string | null = null
 
-  saving.value = true
+  if (position === 'inside' && target.isFolder) {
+    newParentId = target.id
+  } else {
+    // Place as sibling — use same parent as target
+    newParentId = target.parentId ?? null
+  }
+
+  try {
+    await updateDocument(item.id, { parentId: newParentId })
+    await refreshDocuments()
+  } catch (error) {
+    console.error('Failed to move document:', error)
+  }
+}
+
+// Auto-save: debounced content update
+const performSave = async (content: string) => {
+  if (!selectedDoc.value) return
+
+  saveStatus.value = 'saving'
   try {
     await updateDocument(selectedDoc.value.id, {
-      content: editedContent.value,
+      content,
+      content_format: 'html',
       changeDescription: 'Content updated',
     })
     await refreshDocuments()
@@ -499,17 +526,23 @@ const handleSaveDocument = async () => {
       selectedDoc.value = updatedDoc
     }
 
-    hasChanges.value = false
-    isEditing.value = false
-  } finally {
-    saving.value = false
+    saveStatus.value = 'saved'
+    // Reset to idle after 2 seconds
+    setTimeout(() => {
+      if (saveStatus.value === 'saved') {
+        saveStatus.value = 'idle'
+      }
+    }, 2000)
+  } catch {
+    saveStatus.value = 'error'
   }
 }
 
-const handleCancelEdit = () => {
-  isEditing.value = false
-  hasChanges.value = false
-  editedContent.value = selectedDoc.value?.content ?? ''
+const debouncedSave = useDebounceFn(performSave, 1500)
+
+const handleAutoSave = (content: string) => {
+  saveStatus.value = 'saving'
+  debouncedSave(content)
 }
 
 const handleUpdateColor = async (color: string | null) => {

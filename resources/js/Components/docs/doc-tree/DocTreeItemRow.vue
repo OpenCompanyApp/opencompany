@@ -119,8 +119,27 @@
             {{ path }} /
           </span>
 
+          <!-- Inline rename input -->
+          <input
+            v-if="isRenaming"
+            ref="renameInputRef"
+            v-model="renameValue"
+            :class="[
+              'bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded px-1.5 py-0.5 outline-none focus:border-neutral-500 dark:focus:border-neutral-400 w-full',
+              config.titleSize,
+            ]"
+            @keydown.enter.stop="submitRename"
+            @keydown.escape.stop="cancelRename"
+            @blur="submitRename"
+            @click.stop
+          />
+
           <!-- Title with highlight -->
-          <p :class="titleClasses">
+          <p
+            v-else
+            :class="titleClasses"
+            @dblclick.stop="startRename"
+          >
             <template v-if="highlightQuery && highlightedTitle.length > 0">
               <template v-for="(part, index) in highlightedTitle" :key="index">
                 <mark
@@ -197,6 +216,22 @@
           ]"
           @click.stop
         >
+          <!-- Add child document (folders only) -->
+          <Tooltip v-if="isFolder" text="New document" :delay-open="400">
+            <button
+              type="button"
+              :class="actionButtonClasses"
+              aria-label="Create document in folder"
+              @click.stop="$emit('create-child')"
+            >
+              <Icon
+                name="ph:plus"
+                class="text-neutral-400"
+                :style="actionIconSizeStyle"
+              />
+            </button>
+          </Tooltip>
+
           <!-- Star button -->
           <Tooltip :text="isStarred ? 'Unstar' : 'Star'" :delay-open="400">
             <button
@@ -234,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
@@ -400,6 +435,8 @@ const emit = defineEmits<{
   duplicate: []
   delete: []
   rename: []
+  'rename-submit': [title: string]
+  'create-child': []
   move: []
   dragstart: [event: DragEvent]
   dragend: []
@@ -410,6 +447,33 @@ const emit = defineEmits<{
 // ============================================================================
 
 const maxDisplayTags = 2
+
+// Inline rename state
+const isRenaming = ref(false)
+const renameValue = ref('')
+const renameInputRef = ref<HTMLInputElement | null>(null)
+
+const startRename = () => {
+  isRenaming.value = true
+  renameValue.value = props.title
+  nextTick(() => {
+    renameInputRef.value?.focus()
+    renameInputRef.value?.select()
+  })
+}
+
+const submitRename = () => {
+  const newTitle = renameValue.value.trim()
+  if (newTitle && newTitle !== props.title) {
+    emit('rename-submit', newTitle)
+  }
+  isRenaming.value = false
+}
+
+const cancelRename = () => {
+  isRenaming.value = false
+  renameValue.value = ''
+}
 
 // ============================================================================
 // Computed - Configuration
@@ -622,7 +686,7 @@ const ariaLabel = computed(() => {
 
 const moreOptionsDropdown = computed(() => [
   [
-    { label: 'Rename', icon: 'ph:pencil-simple', click: () => emit('rename') },
+    { label: 'Rename', icon: 'ph:pencil-simple', click: () => startRename() },
     { label: 'Duplicate', icon: 'ph:copy', click: () => emit('duplicate') },
     { label: props.isPinned ? 'Unpin' : 'Pin', icon: props.isPinned ? 'ph:push-pin-slash' : 'ph:push-pin', click: () => emit('pin') },
     { label: 'Move to...', icon: 'ph:folder-simple', click: () => emit('move') },
@@ -656,7 +720,10 @@ const formatDate = (date: Date) => {
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Enter' || event.key === ' ') {
+  if (event.key === 'F2') {
+    event.preventDefault()
+    startRename()
+  } else if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
     // Click is handled by the element's @click
   } else if (event.key === 'ArrowRight' && props.isFolder && !props.expanded) {
@@ -667,6 +734,8 @@ const handleKeydown = (event: KeyboardEvent) => {
     // Parent should handle collapse
   }
 }
+
+defineExpose({ startRename })
 </script>
 
 <style scoped>

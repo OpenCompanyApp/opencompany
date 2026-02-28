@@ -337,6 +337,233 @@ body {
   background: oklch(0.40 0 0);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   TIPTAP EDITOR STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Editor outline/focus removal — override global :focus-visible box-shadow */
+.tiptap-editor .tiptap {
+  outline: none;
+  box-shadow: none;
+}
+
+.tiptap-editor .tiptap:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.tiptap-editor .tiptap:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Placeholder styling */
+.tiptap-editor .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: oklch(0.60 0 0);
+  pointer-events: none;
+  height: 0;
+}
+
+.dark .tiptap-editor .tiptap p.is-editor-empty:first-child::before {
+  color: oklch(0.40 0 0);
+}
+
+/* Task list styling */
+.tiptap-editor .tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+.tiptap-editor .tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.tiptap-editor .tiptap ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.tiptap-editor .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1.5px solid oklch(0.75 0 0);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.tiptap-editor .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background-color: oklch(0.55 0.15 250);
+  border-color: oklch(0.55 0.15 250);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-size: 0.7rem;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.tiptap-editor .tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  text-decoration: line-through;
+  color: oklch(0.60 0 0);
+}
+
+.dark .tiptap-editor .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  border-color: oklch(0.40 0 0);
+}
+
+.dark .tiptap-editor .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background-color: oklch(0.60 0.15 250);
+  border-color: oklch(0.60 0.15 250);
+}
+
+/* Table styling */
+.tiptap-editor .tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.tiptap-editor .tiptap table td,
+.tiptap-editor .tiptap table th {
+  border: 1px solid oklch(0.88 0 0);
+  padding: 0.5rem 0.75rem;
+  min-width: 6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tiptap-editor .tiptap table th {
+  background: oklch(0.96 0 0);
+  font-weight: 600;
+}
+
+.dark .tiptap-editor .tiptap table td,
+.dark .tiptap-editor .tiptap table th {
+  border-color: oklch(0.30 0 0);
+}
+
+.dark .tiptap-editor .tiptap table th {
+  background: oklch(0.20 0 0);
+}
+
+/* Code block styling with syntax highlighting */
+.tiptap-editor .tiptap pre {
+  background: oklch(0.15 0 0);
+  color: oklch(0.90 0 0);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.tiptap-editor .tiptap pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Lowlight syntax colors */
+.tiptap-editor .tiptap pre .hljs-comment,
+.tiptap-editor .tiptap pre .hljs-quote {
+  color: oklch(0.50 0 0);
+}
+
+.tiptap-editor .tiptap pre .hljs-keyword,
+.tiptap-editor .tiptap pre .hljs-selector-tag {
+  color: oklch(0.70 0.15 290);
+}
+
+.tiptap-editor .tiptap pre .hljs-string,
+.tiptap-editor .tiptap pre .hljs-addition {
+  color: oklch(0.70 0.12 145);
+}
+
+.tiptap-editor .tiptap pre .hljs-number,
+.tiptap-editor .tiptap pre .hljs-literal {
+  color: oklch(0.70 0.12 60);
+}
+
+.tiptap-editor .tiptap pre .hljs-title,
+.tiptap-editor .tiptap pre .hljs-section {
+  color: oklch(0.70 0.12 250);
+}
+
+.tiptap-editor .tiptap pre .hljs-built_in,
+.tiptap-editor .tiptap pre .hljs-type {
+  color: oklch(0.70 0.10 200);
+}
+
+.tiptap-editor .tiptap pre .hljs-attr,
+.tiptap-editor .tiptap pre .hljs-attribute {
+  color: oklch(0.70 0.10 60);
+}
+
+.tiptap-editor .tiptap pre .hljs-deletion {
+  color: oklch(0.65 0.14 25);
+}
+
+/* Inline code */
+.tiptap-editor .tiptap :not(pre) > code {
+  background: oklch(0.94 0 0);
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.875em;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  color: oklch(0.45 0.12 25);
+}
+
+.dark .tiptap-editor .tiptap :not(pre) > code {
+  background: oklch(0.22 0 0);
+  color: oklch(0.75 0.12 25);
+}
+
+/* Blockquote */
+.tiptap-editor .tiptap blockquote {
+  border-left: 3px solid oklch(0.85 0 0);
+  padding-left: 1rem;
+  color: oklch(0.50 0 0);
+}
+
+.dark .tiptap-editor .tiptap blockquote {
+  border-left-color: oklch(0.35 0 0);
+  color: oklch(0.60 0 0);
+}
+
+/* Horizontal rule */
+.tiptap-editor .tiptap hr {
+  border: none;
+  border-top: 1px solid oklch(0.88 0 0);
+  margin: 1.5rem 0;
+}
+
+.dark .tiptap-editor .tiptap hr {
+  border-top-color: oklch(0.28 0 0);
+}
+
+/* Image styling */
+.tiptap-editor .tiptap img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
+
+/* Highlight mark */
+.tiptap-editor .tiptap mark {
+  background-color: oklch(0.90 0.10 90);
+  border-radius: 0.125rem;
+  padding: 0.05rem 0.15rem;
+}
+
+.dark .tiptap-editor .tiptap mark {
+  background-color: oklch(0.45 0.10 90);
+}
+
 /* System preference dark mode (when 'system' is selected and no class override) */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {

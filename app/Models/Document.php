@@ -20,6 +20,7 @@ class Document extends Model
         'workspace_id',
         'title',
         'content',
+        'content_format',
         'author_id',
         'parent_id',
         'is_folder',
@@ -55,6 +56,7 @@ class Document extends Model
         $array['authorId'] = $this->author_id;
         $array['createdAt'] = $this->created_at;
         $array['updatedAt'] = $this->updated_at;
+        $array['contentFormat'] = $this->content_format ?? 'markdown';
         $array['color'] = $this->color;
         $array['icon'] = $this->icon;
 
