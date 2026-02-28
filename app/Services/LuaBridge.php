@@ -15,7 +15,7 @@ class LuaBridge
     /** @var array<string, list<string>> path => [paramName1, paramName2, ...] */
     private array $parameterMap;
 
-    /** @var list<array{path: string, durationMs: float, status: string, error?: string}> */
+    /** @var list<array{path: string, durationMs: float, status: string, error?: string, icon?: string, name?: string, group?: string}> */
     private array $callLog = [];
 
     public function __construct(
@@ -55,16 +55,18 @@ class LuaBridge
                 }
             }
 
-            $this->callLog[] = ['path' => $path, 'durationMs' => 0, 'status' => 'error', 'error' => $msg];
+            $this->callLog[] = ['path' => $path, 'durationMs' => 0, 'status' => 'error', 'error' => $msg, 'group' => self::extractGroup($path)];
             throw new \RuntimeException($msg);
         }
 
         $toolSlug = $this->functionMap[$path];
+        $toolMeta = $this->registry->getToolMetaBySlug($toolSlug);
+        $group = self::extractGroup($path);
 
         $tool = $this->registry->instantiateToolBySlug($toolSlug, $this->agent);
 
         if ($tool === null) {
-            $this->callLog[] = ['path' => $path, 'durationMs' => 0, 'status' => 'error', 'error' => "Tool not available: {$toolSlug}"];
+            $this->callLog[] = ['path' => $path, 'durationMs' => 0, 'status' => 'error', 'error' => "Tool not available: {$toolSlug}", 'icon' => $toolMeta['icon'], 'name' => $toolMeta['name'], 'group' => $group];
             throw new \RuntimeException("Tool not available: {$toolSlug}");
         }
 
@@ -86,7 +88,7 @@ class LuaBridge
 
         try {
             $result = $tool->handle($request);
-            $this->callLog[] = ['path' => $path, 'durationMs' => round((microtime(true) - $start) * 1000, 1), 'status' => 'ok'];
+            $this->callLog[] = ['path' => $path, 'durationMs' => round((microtime(true) - $start) * 1000, 1), 'status' => 'ok', 'icon' => $toolMeta['icon'], 'name' => $toolMeta['name'], 'group' => $group];
 
             // Auto-decode JSON responses → PHP arrays (sandbox converts to Lua tables)
             if (is_string($result)) {
@@ -101,7 +103,7 @@ class LuaBridge
 
             return $result;
         } catch (\Throwable $e) {
-            $this->callLog[] = ['path' => $path, 'durationMs' => round((microtime(true) - $start) * 1000, 1), 'status' => 'error', 'error' => $e->getMessage()];
+            $this->callLog[] = ['path' => $path, 'durationMs' => round((microtime(true) - $start) * 1000, 1), 'status' => 'error', 'error' => $e->getMessage(), 'icon' => $toolMeta['icon'], 'name' => $toolMeta['name'], 'group' => $group];
             throw $e;
         }
     }
@@ -127,6 +129,23 @@ class LuaBridge
         }
 
         return $converted;
+    }
+
+    /**
+     * Extract the logical group from a bridge call path.
+     *
+     * For integration tools (paths like "integrations.clickup.create_task"),
+     * returns the actual app name ("clickup") instead of "integrations".
+     */
+    private static function extractGroup(string $path): string
+    {
+        $parts = explode('.', $path);
+
+        if ($parts[0] === 'integrations' && isset($parts[1])) {
+            return $parts[1];
+        }
+
+        return $parts[0] ?? '';
     }
 
     /**

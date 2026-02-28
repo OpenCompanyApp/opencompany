@@ -42,6 +42,16 @@
             {{ step.description }}
           </span>
 
+          <!-- Bridge call tool group icons (LuaExec only) -->
+          <div v-if="stepToolGroups(step).length" class="flex items-center gap-1 shrink-0">
+            <Icon
+              v-for="group in stepToolGroups(step)" :key="group.name"
+              :name="group.icon"
+              class="w-3.5 h-3.5 text-neutral-400"
+              :title="group.name"
+            />
+          </div>
+
           <!-- Duration badge -->
           <span v-if="stepDuration(step)" class="text-xs text-neutral-400 tabular-nums shrink-0 font-mono">
             {{ stepDuration(step) }}
@@ -160,6 +170,33 @@ const copyTraceMarkdown = async () => {
 
 const hasExpandableContent = (step: TaskStep): boolean => {
   return !!(step.metadata?.arguments || step.metadata?.result !== undefined && step.metadata?.result !== null)
+}
+
+const GROUP_ICONS: Record<string, string> = {
+  docs: 'ph:file-text', tables: 'ph:table', chat: 'ph:chat-circle',
+  agents: 'ph:users-three', lists: 'ph:kanban', calendar: 'ph:calendar',
+  memory: 'ph:brain', tasks: 'ph:list-checks', automations: 'ph:lightning',
+  svg: 'ph:file-svg', system: 'ph:gear', workspace: 'ph:gear-six',
+}
+
+const extractGroup = (call: { group?: string; path?: string }): string => {
+  if (call.group) return call.group
+  const parts = call.path?.split('.') ?? []
+  if (parts[0] === 'integrations' && parts[1]) return parts[1]
+  return parts[0] || ''
+}
+
+const stepToolGroups = (step: TaskStep): Array<{ name: string; icon: string }> => {
+  const calls = (step.metadata?.lua_meta as { bridgeCalls?: Array<{ group?: string; path?: string; icon?: string }> })?.bridgeCalls
+  if (!calls?.length) return []
+  const groups: Record<string, string> = {}
+  for (const call of calls) {
+    const group = extractGroup(call)
+    if (group && !groups[group]) {
+      groups[group] = call.icon || GROUP_ICONS[group] || 'ph:wrench'
+    }
+  }
+  return Object.entries(groups).map(([name, icon]) => ({ name, icon }))
 }
 
 const stepTypeIcon = (step: TaskStep): string => {

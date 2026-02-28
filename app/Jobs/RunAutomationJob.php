@@ -159,7 +159,9 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
             }
 
             $prompt = $this->buildScheduledPrompt();
+            $generationStartedAt = now();
             $response = $agentInstance->prompt($prompt);
+            $generationCompletedAt = now();
 
             if ($channelId && !empty(trim($response->text ?? ''))) {
                 $agentMessage = Message::create([
@@ -182,15 +184,23 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
             $lastStep = $response->steps->last();
             $toolCallsCount = collect($response->steps)->sum(fn ($step) => count($step->toolCalls));
 
+            $generationTimeMs = $generationStartedAt->diffInMilliseconds($generationCompletedAt);
+            $totalCompletionTokens = $response->usage->completionTokens;
+            $tokensPerSecond = ($generationTimeMs > 0 && $totalCompletionTokens > 0)
+                ? round($totalCompletionTokens / ($generationTimeMs / 1000), 1)
+                : null;
+
             $task->complete([
                 'response' => Str::limit($response->text, 500),
                 'prompt_tokens' => $lastStep?->usage->promptTokens ?? $response->usage->promptTokens,
                 'completion_tokens' => $lastStep?->usage->completionTokens ?? $response->usage->completionTokens,
                 'total_prompt_tokens' => $response->usage->promptTokens,
-                'total_completion_tokens' => $response->usage->completionTokens,
+                'total_completion_tokens' => $totalCompletionTokens,
                 'cache_read_tokens' => $response->usage->cacheReadInputTokens,
                 'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
                 'tool_calls_count' => $toolCallsCount,
+                'generation_time_ms' => $generationTimeMs,
+                'tokens_per_second' => $tokensPerSecond,
             ]);
 
             try {

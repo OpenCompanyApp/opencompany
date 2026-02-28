@@ -66,10 +66,7 @@ in _overview doc add that we are using roblox luau dialect of lua, intercompatib
 
 
 
-also some snippet storage system, also in console.
-
---
-
+also some snippet storage system, also in console. in skills
 
 --
 
@@ -78,27 +75,9 @@ display task steps better in task show page, like a timeline or something.
 ---------
 
 
-
-show tokens per second as metric
-
-
-
-----
-\
-clear overview which tools were used in a task, with icons etc.
-
-
 --
 luau type check and linter
 ---
-
-automations are chats, can be chosen how much previous messages if at all can be included
-
---
-
-oddities with automatin, retries, double responses, stuck, recovery on restart etc. better retries ui in tasks show page etc. Statefullness.
-
---
 
 live update progress along tool calls
 
@@ -111,8 +90,6 @@ no available server
 stress test, do lots of automations at once, see what happens.
 
 --
-
-comms integrations are seperate section in opencompany, so linear can be double, but easily transfer credentials
 
 --
 code automation can have agent input

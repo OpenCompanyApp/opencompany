@@ -196,7 +196,6 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
             // Step 1: Generate response
             $llmStep = $task->addStep('Generating response', 'action');
-            $llmStep->start();
 
             // Create the agent and get a response (task context is in system prompt)
             $agentInstance = OpenCompanyAgent::for($this->agent, $this->channelId, $task->id);
@@ -243,6 +242,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 Log::warning('Memory flush failed', ['error' => $e->getMessage()]);
             }
 
+            $llmStep->start();
             $response = $agentInstance->prompt($this->buildPromptWithThreadContext($this->userMessage));
 
             $lastStep = $response->steps->last();
@@ -368,15 +368,31 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             // ── Post-delivery bookkeeping ──
             // Everything below must NOT cause a job retry (response is already sent).
             try {
+                // Compute generation timing from llmStep (tightly wraps prompt() call)
+                $llmStep->refresh();
+                /** @var \Carbon\Carbon|null $llmStartedAt */
+                $llmStartedAt = $llmStep->started_at;
+                /** @var \Carbon\Carbon|null $llmCompletedAt */
+                $llmCompletedAt = $llmStep->completed_at;
+                $generationTimeMs = $llmStartedAt && $llmCompletedAt
+                    ? $llmStartedAt->diffInMilliseconds($llmCompletedAt)
+                    : null;
+                $totalCompletionTokens = $response->usage->completionTokens;
+                $tokensPerSecond = ($generationTimeMs && $generationTimeMs > 0 && $totalCompletionTokens > 0)
+                    ? round($totalCompletionTokens / ($generationTimeMs / 1000), 1)
+                    : null;
+
                 $task->complete([
                     'response' => $responseText,
                     'prompt_tokens' => $lastStep?->usage->promptTokens ?? $response->usage->promptTokens,
                     'completion_tokens' => $lastStep?->usage->completionTokens ?? $response->usage->completionTokens,
                     'total_prompt_tokens' => $response->usage->promptTokens,
-                    'total_completion_tokens' => $response->usage->completionTokens,
+                    'total_completion_tokens' => $totalCompletionTokens,
                     'cache_read_tokens' => $response->usage->cacheReadInputTokens,
                     'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
                     'tool_calls_count' => collect($response->steps)->sum(fn ($step) => count($step->toolCalls)),
+                    'generation_time_ms' => $generationTimeMs,
+                    'tokens_per_second' => $tokensPerSecond,
                 ]);
 
                 // Compute token breakdown from actual usage

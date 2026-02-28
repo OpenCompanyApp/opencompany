@@ -75,11 +75,15 @@
           class="flex items-center gap-2.5 px-3 py-1.5 bg-white dark:bg-neutral-900"
         >
           <Icon
-            :name="call.status === 'ok' ? 'ph:check-circle' : 'ph:x-circle'"
-            :class="['w-3.5 h-3.5 shrink-0', call.status === 'ok' ? 'text-green-500' : 'text-red-500']"
+            :name="bridgeCallIcon(call)"
+            class="w-3.5 h-3.5 shrink-0 text-neutral-500 dark:text-neutral-400"
           />
-          <code class="text-xs font-mono text-neutral-700 dark:text-neutral-300 flex-1 truncate">app.{{ call.path }}</code>
+          <span class="text-xs text-neutral-700 dark:text-neutral-300 flex-1 truncate">{{ call.name || call.path }}</span>
           <span v-if="call.error" class="text-xs text-red-500 dark:text-red-400 truncate max-w-48" :title="call.error">{{ call.error }}</span>
+          <Icon
+            :name="call.status === 'ok' ? 'ph:check-circle' : 'ph:x-circle'"
+            :class="['w-3 h-3 shrink-0', call.status === 'ok' ? 'text-green-500' : 'text-red-500']"
+          />
           <span class="text-xs text-neutral-400 tabular-nums font-mono shrink-0">{{ call.durationMs }}ms</span>
         </div>
       </div>
@@ -144,11 +148,15 @@
               class="flex items-center gap-2.5 px-3 py-1.5 bg-white dark:bg-neutral-900"
             >
               <Icon
-                :name="call.status === 'ok' ? 'ph:check-circle' : 'ph:x-circle'"
-                :class="['w-3.5 h-3.5 shrink-0', call.status === 'ok' ? 'text-green-500' : 'text-red-500']"
+                :name="bridgeCallIcon(call)"
+                class="w-3.5 h-3.5 shrink-0 text-neutral-500 dark:text-neutral-400"
               />
-              <code class="text-xs font-mono text-neutral-700 dark:text-neutral-300 flex-1 truncate">app.{{ call.path }}</code>
+              <span class="text-xs text-neutral-700 dark:text-neutral-300 flex-1 truncate">{{ call.name || call.path }}</span>
               <span v-if="call.error" class="text-xs text-red-500 dark:text-red-400 truncate max-w-48" :title="call.error">{{ call.error }}</span>
+              <Icon
+                :name="call.status === 'ok' ? 'ph:check-circle' : 'ph:x-circle'"
+                :class="['w-3 h-3 shrink-0', call.status === 'ok' ? 'text-green-500' : 'text-red-500']"
+              />
               <span class="text-xs text-neutral-400 tabular-nums font-mono shrink-0">{{ call.durationMs }}ms</span>
             </div>
           </div>
@@ -176,6 +184,23 @@ interface BridgeCall {
   durationMs: number
   status: 'ok' | 'error'
   error?: string
+  icon?: string
+  name?: string
+  group?: string
+}
+
+const GROUP_ICONS: Record<string, string> = {
+  docs: 'ph:file-text', tables: 'ph:table', chat: 'ph:chat-circle',
+  agents: 'ph:users-three', lists: 'ph:kanban', calendar: 'ph:calendar',
+  memory: 'ph:brain', tasks: 'ph:list-checks', automations: 'ph:lightning',
+  svg: 'ph:file-svg', system: 'ph:gear', workspace: 'ph:gear-six',
+}
+
+function bridgeCallIcon(call: BridgeCall): string {
+  if (call.icon) return call.icon
+  const parts = call.path?.split('.') ?? []
+  const group = call.group || (parts[0] === 'integrations' && parts[1] ? parts[1] : parts[0]) || ''
+  return GROUP_ICONS[group] ?? 'ph:wrench'
 }
 
 interface LuaMeta {

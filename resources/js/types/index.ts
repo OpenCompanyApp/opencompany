@@ -183,6 +183,20 @@ export interface ListItem {
 // Legacy alias for backwards compatibility
 export type Task = ListItem
 
+export interface AgentTaskResult {
+  response?: string
+  error?: string
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_prompt_tokens?: number
+  total_completion_tokens?: number
+  cache_read_tokens?: number
+  cache_write_tokens?: number
+  tool_calls_count?: number
+  generation_time_ms?: number
+  tokens_per_second?: number
+}
+
 /**
  * AgentTask - Discrete work items that agents work on (like cases)
  *
@@ -211,7 +225,7 @@ export interface AgentTask {
   subtasks?: AgentTask[]
   steps?: TaskStep[]
   context?: Record<string, unknown>
-  result?: Record<string, unknown>
+  result?: AgentTaskResult
   startedAt?: Date
   completedAt?: Date
   dueAt?: Date

@@ -54,8 +54,7 @@ class ExecuteAgentTaskJob implements ShouldQueue
             broadcast(new TaskUpdated($this->task, 'started'));
 
             // Log initial step
-            $analyzeStep = $this->task->addStep('Analyzing task requirements', 'action');
-            $analyzeStep->start();
+            $analyzeStep = $this->task->addStep('Generating response', 'action');
 
             // Build prompt from task details
             $prompt = $this->buildTaskPrompt();
@@ -68,8 +67,8 @@ class ExecuteAgentTaskJob implements ShouldQueue
             broadcast(new AgentStatusUpdated($agent));
 
             $agentInstance = OpenCompanyAgent::for($agent, $channelId, $this->task->id);
+            $analyzeStep->start();
             $response = $agentInstance->prompt($prompt);
-
             $analyzeStep->complete();
 
             // Log the result
@@ -78,12 +77,34 @@ class ExecuteAgentTaskJob implements ShouldQueue
             $resultStep->start();
             $resultStep->complete();
 
+            // Compute generation timing
+            $analyzeStep->refresh();
+            /** @var \Carbon\Carbon|null $stepStartedAt */
+            $stepStartedAt = $analyzeStep->started_at;
+            /** @var \Carbon\Carbon|null $stepCompletedAt */
+            $stepCompletedAt = $analyzeStep->completed_at;
+            $generationTimeMs = $stepStartedAt && $stepCompletedAt
+                ? $stepStartedAt->diffInMilliseconds($stepCompletedAt)
+                : null;
+            $completionTokens = $response->usage->completionTokens;
+            $tokensPerSecond = ($generationTimeMs && $generationTimeMs > 0 && $completionTokens > 0)
+                ? round($completionTokens / ($generationTimeMs / 1000), 1)
+                : null;
+
             // Complete the task with result
             $this->task->complete();
             $this->task->update([
                 'result' => [
                     'response' => $response->text,
-                    'tokens' => $response->usage->promptTokens + $response->usage->completionTokens,
+                    'prompt_tokens' => $response->usage->promptTokens,
+                    'completion_tokens' => $completionTokens,
+                    'total_prompt_tokens' => $response->usage->promptTokens,
+                    'total_completion_tokens' => $completionTokens,
+                    'cache_read_tokens' => $response->usage->cacheReadInputTokens,
+                    'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
+                    'tool_calls_count' => collect($response->steps)->sum(fn ($step) => count($step->toolCalls)),
+                    'generation_time_ms' => $generationTimeMs,
+                    'tokens_per_second' => $tokensPerSecond,
                 ],
             ]);
 

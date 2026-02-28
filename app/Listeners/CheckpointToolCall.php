@@ -63,6 +63,8 @@ class CheckpointToolCall
 
             // Human-readable descriptions for agent communication steps
             $description = "Used tool: {$toolName}";
+            $stepIcon = $toolRegistry->getIconByClassName($toolName);
+
             if ($toolName === 'ContactAgent' && isset($event->arguments['action'])) {
                 $action = $event->arguments['action'];
                 $targetId = $event->arguments['agentId'] ?? null;
@@ -83,13 +85,36 @@ class CheckpointToolCall
                 }
             }
 
+            // For LuaExec, derive description and icon from bridge calls
+            if ($toolName === 'LuaExec' && $luaMeta && !empty($luaMeta['bridgeCalls'])) {
+                $names = collect($luaMeta['bridgeCalls'])
+                    ->pluck('name')
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                if ($names->isNotEmpty()) {
+                    $description = $names->take(3)->join(', ');
+                    if ($names->count() > 3) {
+                        $description .= ' +'.($names->count() - 3).' more';
+                    }
+                    // Use first bridge call's icon as the step icon
+                    $firstIcon = collect($luaMeta['bridgeCalls'])->firstWhere('icon');
+                    if ($firstIcon) {
+                        $stepIcon = $firstIcon['icon'];
+                    }
+                } else {
+                    $description = 'Executed Lua script';
+                }
+            }
+
             $step = $task->addStep(
                 $description,
                 'action',
                 array_filter([
                     'tool' => $toolName,
                     'tool_call_id' => $event->toolInvocationId,
-                    'icon' => $toolRegistry->getIconByClassName($toolName),
+                    'icon' => $stepIcon,
                     'arguments' => $event->arguments,
                     'result' => $result,
                     'lua_meta' => $luaMeta,

@@ -67,7 +67,7 @@
         </div>
 
         <!-- Summary Stats Bar -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
             <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Duration</div>
             <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
@@ -77,22 +77,22 @@
           <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
             <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Input Tokens</div>
             <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
-              {{ task.result?.prompt_tokens?.toLocaleString() ?? '---' }}
+              {{ (task.result?.total_prompt_tokens ?? task.result?.prompt_tokens)?.toLocaleString() ?? '---' }}
             </div>
-            <div v-if="task.result?.total_prompt_tokens && task.result.total_prompt_tokens !== task.result.prompt_tokens" class="text-xs text-neutral-400 mt-0.5">
-              {{ task.result.total_prompt_tokens.toLocaleString() }} total
-            </div>
-            <div v-else-if="task.result?.cache_read_tokens" class="text-xs text-neutral-400 mt-0.5">
+            <div v-if="task.result?.cache_read_tokens" class="text-xs text-neutral-400 mt-0.5">
               {{ task.result.cache_read_tokens.toLocaleString() }} cached
             </div>
           </div>
           <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
             <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Output Tokens</div>
             <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
-              {{ task.result?.completion_tokens?.toLocaleString() ?? '---' }}
+              {{ (task.result?.total_completion_tokens ?? task.result?.completion_tokens)?.toLocaleString() ?? '---' }}
             </div>
-            <div v-if="task.result?.total_completion_tokens && task.result.total_completion_tokens !== task.result.completion_tokens" class="text-xs text-neutral-400 mt-0.5">
-              {{ task.result.total_completion_tokens.toLocaleString() }} total
+          </div>
+          <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Tokens/sec</div>
+            <div class="text-lg font-semibold text-neutral-900 dark:text-white tabular-nums font-mono">
+              {{ tokensPerSecond ?? '---' }}
             </div>
           </div>
           <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
@@ -101,6 +101,19 @@
               {{ task.result?.tool_calls_count || toolSteps.length }}
             </div>
           </div>
+        </div>
+
+        <!-- Tools Used Strip -->
+        <div v-if="toolGroups.length" class="flex items-center gap-2 mb-6 flex-wrap">
+          <span class="text-xs text-neutral-500 dark:text-neutral-400 mr-1">Tools used</span>
+          <span
+            v-for="group in toolGroups" :key="group.name"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+          >
+            <Icon :name="group.icon" class="w-3.5 h-3.5" />
+            {{ group.label }}
+            <span v-if="group.count > 1" class="text-neutral-400">&times;{{ group.count }}</span>
+          </span>
         </div>
 
         <!-- Error Banner -->
@@ -735,6 +748,78 @@ const maxSectionTokens = computed(() => {
 const toolSteps = computed(() =>
   task.value?.steps?.filter(s => s.metadata?.tool) ?? []
 )
+
+const GROUP_ICONS: Record<string, { icon: string; label: string }> = {
+  docs: { icon: 'ph:file-text', label: 'Docs' },
+  tables: { icon: 'ph:table', label: 'Tables' },
+  chat: { icon: 'ph:chat-circle', label: 'Chat' },
+  agents: { icon: 'ph:users-three', label: 'Agents' },
+  lists: { icon: 'ph:kanban', label: 'Lists' },
+  calendar: { icon: 'ph:calendar', label: 'Calendar' },
+  memory: { icon: 'ph:brain', label: 'Memory' },
+  tasks: { icon: 'ph:list-checks', label: 'Tasks' },
+  automations: { icon: 'ph:lightning', label: 'Automations' },
+  svg: { icon: 'ph:file-svg', label: 'SVG' },
+  system: { icon: 'ph:gear', label: 'System' },
+  workspace: { icon: 'ph:gear-six', label: 'Workspace' },
+}
+
+const extractGroup = (call: { group?: string; path?: string }): string => {
+  if (call.group) return call.group
+  const parts = call.path?.split('.') ?? []
+  if (parts[0] === 'integrations' && parts[1]) return parts[1]
+  return parts[0] || ''
+}
+
+const capitalize = (s: string): string =>
+  s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
+const toolGroups = computed(() => {
+  const groups: Record<string, { count: number; icon: string }> = {}
+  for (const step of task.value?.steps ?? []) {
+    for (const call of (step.metadata?.lua_meta?.bridgeCalls ?? []) as Array<{ group?: string; path?: string; icon?: string }>) {
+      const group = extractGroup(call)
+      if (!group) continue
+      if (!groups[group]) {
+        groups[group] = { count: 0, icon: call.icon || GROUP_ICONS[group]?.icon || 'ph:wrench' }
+      }
+      groups[group].count++
+    }
+  }
+  return Object.entries(groups)
+    .map(([name, { count, icon }]) => ({
+      name,
+      count,
+      icon,
+      label: GROUP_ICONS[name]?.label ?? capitalize(name),
+    }))
+    .sort((a, b) => b.count - a.count)
+})
+
+const tokensPerSecond = computed(() => {
+  // Prefer backend-computed value
+  const backendTps = task.value?.result?.tokens_per_second
+  if (backendTps) {
+    return backendTps >= 10 ? Math.round(backendTps).toLocaleString() : backendTps.toFixed(1)
+  }
+
+  // Fallback: client-side calculation for older tasks
+  const tokens = task.value?.result?.total_completion_tokens || task.value?.result?.completion_tokens
+  if (!tokens || !task.value?.startedAt) return null
+
+  const llmStep = task.value.steps?.find(s => s.description === 'Generating response')
+  const end = llmStep?.completedAt
+    ? new Date(llmStep.completedAt)
+    : task.value.completedAt ? new Date(task.value.completedAt) : new Date()
+  const start = llmStep?.startedAt
+    ? new Date(llmStep.startedAt)
+    : new Date(task.value.startedAt)
+
+  const seconds = (end.getTime() - start.getTime()) / 1000
+  if (seconds <= 0) return null
+  const tps = tokens / seconds
+  return tps >= 10 ? Math.round(tps).toLocaleString() : tps.toFixed(1)
+})
 
 const formattedDuration = computed(() => {
   if (!task.value?.startedAt) return '---'

@@ -1265,6 +1265,22 @@ class ToolRegistry
         return 'ph:wrench';
     }
 
+    /**
+     * Look up a tool's icon and display name by its slug (e.g. "get_document").
+     *
+     * @return array{icon: string, name: string}
+     */
+    public function getToolMetaBySlug(string $slug): array
+    {
+        $map = $this->getEffectiveToolMap();
+        $meta = $map[$slug] ?? null;
+
+        return [
+            'icon' => $meta['icon'] ?? 'ph:wrench',
+            'name' => $meta['name'] ?? $slug,
+        ];
+    }
+
     /** @return array<string, array<string, mixed>> */
     private function getEffectiveAppGroups(): array
     {
