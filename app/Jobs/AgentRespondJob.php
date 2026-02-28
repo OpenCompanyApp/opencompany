@@ -580,11 +580,31 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
         try {
             $parentTask = $subtask->parentTask;
             if (!$parentTask) {
+                Log::warning('Delegation callback: parent task not found', [
+                    'subtask' => $subtask->id,
+                    'parent_task_id' => $subtask->parent_task_id,
+                ]);
+                return;
+            }
+
+            // Don't resume a cancelled/completed parent
+            if ($parentTask->isClosed()) {
+                $parentAgent = User::find($parentTask->agent_id);
+                $parentAgent?->removeAwaitingDelegation($subtask->id);
+                Log::info('Delegation callback: parent task already closed, skipping resume', [
+                    'subtask' => $subtask->id,
+                    'parent_task_id' => $parentTask->id,
+                    'parent_status' => $parentTask->status,
+                ]);
                 return;
             }
 
             $parentAgent = User::find($parentTask->agent_id);
             if (!$parentAgent) {
+                Log::warning('Delegation callback: parent agent not found', [
+                    'subtask' => $subtask->id,
+                    'parent_agent_id' => $parentTask->agent_id,
+                ]);
                 return;
             }
 

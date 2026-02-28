@@ -14,17 +14,12 @@ use Illuminate\Support\Str;
 class AgentCommunicationService
 {
     /**
-     * Tracks synchronous ask nesting depth.
-     * Safe for queue workers: PHP processes are single-threaded, each worker has its own static.
-     */
-    private static int $depth = 0;
-
-    /**
      * Get or create a DM channel between two agents.
      * Returns the channel_id string.
      */
     public function getOrCreateDmChannel(User $agentA, User $agentB): string
     {
+        // Check for existing DM in either user order (backwards compatible)
         $existingDm = DirectMessage::where(function ($query) use ($agentA, $agentB) {
             $query->where('user1_id', $agentA->id)->where('user2_id', $agentB->id);
         })->orWhere(function ($query) use ($agentA, $agentB) {
@@ -35,30 +30,45 @@ class AgentCommunicationService
             return $existingDm->channel_id;
         }
 
-        $channel = Channel::create([
-            'id' => Str::uuid()->toString(),
-            'name' => 'DM',
-            'type' => 'dm',
-            'workspace_id' => $agentA->workspace_id ?? workspace()->id,
-        ]);
-
-        foreach ([$agentA->id, $agentB->id] as $userId) {
-            ChannelMember::create([
+        try {
+            $channel = Channel::create([
                 'id' => Str::uuid()->toString(),
-                'channel_id' => $channel->id,
-                'user_id' => $userId,
-                'role' => 'member',
+                'name' => 'DM',
+                'type' => 'dm',
+                'workspace_id' => $agentA->workspace_id ?? workspace()->id,
             ]);
+
+            foreach ([$agentA->id, $agentB->id] as $userId) {
+                ChannelMember::create([
+                    'id' => Str::uuid()->toString(),
+                    'channel_id' => $channel->id,
+                    'user_id' => $userId,
+                    'role' => 'member',
+                ]);
+            }
+
+            DirectMessage::create([
+                'id' => Str::uuid()->toString(),
+                'user1_id' => $agentA->id,
+                'user2_id' => $agentB->id,
+                'channel_id' => $channel->id,
+            ]);
+
+            return $channel->id;
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Race condition: another worker created the DM first
+            $dm = DirectMessage::where(function ($query) use ($agentA, $agentB) {
+                $query->where('user1_id', $agentA->id)->where('user2_id', $agentB->id);
+            })->orWhere(function ($query) use ($agentA, $agentB) {
+                $query->where('user1_id', $agentB->id)->where('user2_id', $agentA->id);
+            })->first();
+
+            if ($dm) {
+                return $dm->channel_id;
+            }
+
+            throw $e;
         }
-
-        DirectMessage::create([
-            'id' => Str::uuid()->toString(),
-            'user1_id' => $agentA->id,
-            'user2_id' => $agentB->id,
-            'channel_id' => $channel->id,
-        ]);
-
-        return $channel->id;
     }
 
     /**
@@ -103,10 +113,10 @@ class AgentCommunicationService
     ): string {
         $header = "[Agent Request from {$sender->name} | Pattern: {$action}";
 
-        if ($priority && $action === 'delegate') {
+        if ($priority && in_array($action, ['delegate', 'ask'])) {
             $header .= " | Priority: {$priority}";
         }
-        if ($taskId && $action === 'delegate') {
+        if ($taskId && in_array($action, ['delegate', 'ask'])) {
             $header .= " | Task: {$taskId}";
         }
 
@@ -135,25 +145,4 @@ class AgentCommunicationService
         return "[Delegation Result from {$agent->name} | {$subtaskId}]\n{$result}";
     }
 
-    // Depth tracking for synchronous ask nesting
-
-    public static function incrementDepth(): void
-    {
-        self::$depth++;
-    }
-
-    public static function decrementDepth(): void
-    {
-        self::$depth = max(0, self::$depth - 1);
-    }
-
-    public static function currentDepth(): int
-    {
-        return self::$depth;
-    }
-
-    public static function resetDepth(): void
-    {
-        self::$depth = 0;
-    }
 }

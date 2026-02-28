@@ -222,6 +222,11 @@ class Task extends Model
             'completed_at' => now(),
         ]);
 
+        // Cascade cancellation to active/pending subtasks
+        Task::where('parent_task_id', $this->id)
+            ->whereIn('status', [self::STATUS_ACTIVE, self::STATUS_PENDING])
+            ->each->cancel();
+
         return $this;
     }
 
@@ -317,6 +322,11 @@ class Task extends Model
             self::STATUS_FAILED,
             self::STATUS_CANCELLED,
         ]);
+    }
+
+    public function isTerminal(): bool
+    {
+        return $this->isClosed();
     }
 
     /** @param array<string, mixed> $metadata */

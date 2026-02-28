@@ -10,8 +10,8 @@ use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\AgentCommunicationService;
 use App\Services\AgentPermissionService;
+use App\Services\AgentCommunicationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
@@ -30,14 +30,7 @@ class ContactAgentTest extends TestCase
         Event::fake();
     }
 
-    protected function tearDown(): void
-    {
-        AgentCommunicationService::resetDepth();
-
-        parent::tearDown();
-    }
-
-    private function makeTool(User $agent): ContactAgent
+private function makeTool(User $agent): ContactAgent
     {
         return new ContactAgent(
             $agent,
@@ -161,30 +154,6 @@ class ContactAgentTest extends TestCase
         $this->assertStringContainsString('currently offline', $result);
     }
 
-    public function test_ask_error_at_max_depth(): void
-    {
-        AgentCommunicationService::incrementDepth();
-        AgentCommunicationService::incrementDepth();
-        AgentCommunicationService::incrementDepth();
-
-        $caller = User::factory()->agent()->create(['status' => 'idle']);
-        $target = User::factory()->agent()->create(['status' => 'idle']);
-
-        $tool = $this->makeTool($caller);
-        $request = new Request([
-            'action' => 'ask',
-            'agentId' => $target->id,
-            'message' => 'Nested question',
-        ]);
-
-        $result = $tool->handle($request);
-
-        $this->assertTrue(
-            str_contains($result, 'Maximum') || str_contains($result, 'depth'),
-            "Expected result to contain 'Maximum' or 'depth', got: {$result}"
-        );
-    }
-
     public function test_ask_wakes_sleeping_agent(): void
     {
         OpenCompanyAgent::fake(['I am awake now!']);
@@ -210,58 +179,41 @@ class ContactAgentTest extends TestCase
         $this->assertEquals('idle', $target->status);
     }
 
-    public function test_ask_returns_synchronous_response(): void
+    public function test_ask_dispatches_async_job(): void
     {
-        OpenCompanyAgent::fake(['I am the response']);
+        Bus::fake([AgentRespondJob::class]);
 
-        $caller = User::factory()->agent()->create(['status' => 'idle', 'brain' => 'anthropic:claude-sonnet-4-5-20250929']);
-        $target = User::factory()->agent()->create(['status' => 'idle', 'brain' => 'anthropic:claude-sonnet-4-5-20250929']);
+        $caller = User::factory()->agent()->create(['status' => 'idle']);
+        $target = User::factory()->agent()->create(['status' => 'idle']);
 
-        $commService = app(AgentCommunicationService::class);
+        $tool = $this->makeTool($caller);
+        $request = new Request([
+            'action' => 'ask',
+            'agentId' => $target->id,
+            'message' => 'What is the answer?',
+        ]);
 
-        // Exercise the ask flow components directly. The pcntl_signal()
-        // call in ContactAgent::invokeSynchronously() has a known issue:
-        // PHP's pcntl_signal() returns bool (not the previous handler),
-        // so the finally block fails when restoring. We replicate the
-        // handleAsk logic here to verify the core behavior end-to-end.
-        $channelId = $commService->getOrCreateDmChannel($caller, $target);
+        $result = $tool->handle($request);
 
-        // Post request message (as handleAsk does)
-        $formattedMessage = $commService->formatRequestMessage('ask', $caller, 'What is the answer?');
-        $commService->postMessage($channelId, $caller, $formattedMessage, 'agent_contact');
+        $this->assertStringContainsString('Question sent to', $result);
 
-        // Invoke the agent synchronously (non-pcntl fallback path)
-        AgentCommunicationService::incrementDepth();
-        try {
-            $agentInstance = OpenCompanyAgent::for($target, $channelId);
-            $response = $agentInstance->prompt('What is the answer?');
-            $responseText = $response->text;
-        } finally {
-            AgentCommunicationService::decrementDepth();
-        }
-
-        // Post response to DM (as handleAsk does)
-        $commService->postMessage($channelId, $target, $responseText, 'agent_contact');
-
-        $result = "Response from {$target->name}: {$responseText}";
-
-        $this->assertStringContainsString('Response from', $result);
-        $this->assertStringContainsString('I am the response', $result);
-
-        // Assert at least 2 messages in DM channel (request + response)
+        // Assert DM channel was created with messages
         $dmChannel = Channel::where('type', 'dm')->first();
         $this->assertNotNull($dmChannel);
 
         $messageCount = Message::where('channel_id', $dmChannel->id)->count();
         $this->assertGreaterThanOrEqual(2, $messageCount);
+
+        // Assert job was dispatched
+        Bus::assertDispatched(AgentRespondJob::class);
     }
 
     public function test_ask_creates_task_with_parent(): void
     {
-        OpenCompanyAgent::fake(['The answer is 42']);
+        Bus::fake([AgentRespondJob::class]);
 
-        $caller = User::factory()->agent()->create(['status' => 'idle', 'brain' => 'anthropic:claude-sonnet-4-5-20250929']);
-        $target = User::factory()->agent()->create(['status' => 'idle', 'brain' => 'anthropic:claude-sonnet-4-5-20250929']);
+        $caller = User::factory()->agent()->create(['status' => 'idle']);
+        $target = User::factory()->agent()->create(['status' => 'idle']);
         $channel = Channel::factory()->create();
 
         // Create an active parent task for the caller
@@ -287,18 +239,20 @@ class ContactAgentTest extends TestCase
 
         $result = $tool->handle($request);
 
-        $this->assertStringContainsString('Response from', $result);
-        $this->assertStringContainsString('The answer is 42', $result);
+        $this->assertStringContainsString('Question sent to', $result);
 
-        // Assert ask task was created, linked to parent, and completed
+        // Assert ask task was created, linked to parent, pending async execution
         $askTask = Task::where('source', Task::SOURCE_AGENT_ASK)
             ->where('agent_id', $target->id)
             ->first();
         $this->assertNotNull($askTask);
-        $this->assertEquals(Task::STATUS_COMPLETED, $askTask->status);
+        $this->assertEquals(Task::STATUS_PENDING, $askTask->status);
         $this->assertEquals($parentTask->id, $askTask->parent_task_id);
         $this->assertEquals($caller->id, $askTask->requester_id);
-        $this->assertEquals(['response' => 'The answer is 42'], $askTask->result);
+
+        // Assert caller is tracking the delegation
+        $caller->refresh();
+        $this->assertContains($askTask->id, $caller->awaiting_delegation_ids);
     }
 
     public function test_notify_does_not_create_task(): void

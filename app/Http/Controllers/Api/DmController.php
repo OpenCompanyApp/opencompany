@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
+use App\Jobs\AgentRespondJob;
 use App\Models\Channel;
 use App\Models\ChannelMember;
 use App\Models\DirectMessage;
 use App\Models\Message;
+use App\Models\Task;
 use App\Models\User;
-use App\Services\AgentChatService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -34,7 +35,7 @@ class DmController extends Controller
             $channel = Channel::create([
                 'id' => Str::uuid()->toString(),
                 'name' => 'DM',
-                'type' => 'direct',
+                'type' => 'dm',
                 'workspace_id' => workspace()->id,
             ]);
 
@@ -149,25 +150,11 @@ class DmController extends Controller
             'agentMessage' => null,
         ];
 
-        // Check if the other user is an agent and respond
+        // Check if the other user is an agent and dispatch async response
         $otherUser = User::find($userId);
-        if ($otherUser->type === 'agent') {
-            $agentMessage = $this->generateAgentResponse($dm, $otherUser, $message);
-            if ($agentMessage) {
-                $response['agentMessage'] = [
-                    'id' => $agentMessage->id,
-                    'content' => $agentMessage->content,
-                    'author' => [
-                        'id' => $otherUser->id,
-                        'name' => $otherUser->name,
-                        'avatar' => $otherUser->avatar,
-                        'type' => $otherUser->type,
-                        'agentType' => $otherUser->agent_type,
-                        'status' => $otherUser->status,
-                    ],
-                    'timestamp' => $agentMessage->created_at->toISOString(),
-                ];
-            }
+        if ($otherUser?->type === 'agent') {
+            $task = Task::createPending($message, $otherUser, $dm->channel_id);
+            AgentRespondJob::dispatch($message, $otherUser, $dm->channel_id, $task->id);
         }
 
         return response()->json($response);
@@ -195,37 +182,4 @@ class DmController extends Controller
         return response()->json(['success' => true]);
     }
 
-    /**
-     * Generate agent response for DM messages.
-     */
-    private function generateAgentResponse(DirectMessage $dm, User $agent, Message $userMessage): ?Message
-    {
-        try {
-            // Generate agent response
-            $responseText = app(AgentChatService::class)
-                ->respond($agent, $dm->channel_id, $userMessage->content);
-
-            // Create agent's response message
-            $agentMessage = Message::create([
-                'id' => Str::uuid()->toString(),
-                'content' => $responseText,
-                'channel_id' => $dm->channel_id,
-                'author_id' => $agent->id,
-                'timestamp' => now(),
-            ]);
-
-            // Update timestamps
-            Channel::where('id', $dm->channel_id)->update(['last_message_at' => now()]);
-            $dm->update(['last_message_at' => now()]);
-
-            // Broadcast agent's response
-            broadcast(new MessageSent($agentMessage));
-
-            return $agentMessage;
-        } catch (\Exception $e) {
-            // Log error but don't fail the request
-            \Log::error('Agent response failed: ' . $e->getMessage());
-            return null;
-        }
-    }
 }

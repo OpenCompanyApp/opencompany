@@ -82,9 +82,16 @@ class AgentRespondJobTest extends TestCase
         ]);
 
         $job = new AgentRespondJob($userMessage, $agent, $channel->id);
-        $job->handle();
+        // Simulate final attempt so error message is sent to user
+        $job->tries = 1;
 
-        // Verify error message was sent
+        try {
+            $job->handle();
+        } catch (\RuntimeException) {
+            // Expected: handle() re-throws for queue retry
+        }
+
+        // Verify error message was sent (only on final attempt)
         $agentMessages = Message::where('author_id', $agent->id)->get();
         $this->assertCount(1, $agentMessages);
         $this->assertStringContainsString('error', strtolower($agentMessages->first()->content));
@@ -336,7 +343,12 @@ class AgentRespondJobTest extends TestCase
         Bus::fake([AgentRespondJob::class]);
 
         $job = new AgentRespondJob($triggerMessage, $agentB, $dmChannel->id);
-        $job->handle();
+
+        try {
+            $job->handle();
+        } catch (\RuntimeException) {
+            // Expected: handle() re-throws for queue retry
+        }
 
         // Subtask should be marked as failed
         $subtask->refresh();

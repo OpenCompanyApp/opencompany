@@ -8,6 +8,7 @@ use App\Events\MessageSent;
 use App\Events\TaskUpdated;
 use App\Models\Automation;
 use App\Models\Channel;
+use App\Models\ConversationSummary;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
@@ -102,6 +103,7 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
             // Clear channel history if keep_history is disabled
             if ($channelId && ! $this->automation->keep_history) {
                 Message::where('channel_id', $channelId)->delete();
+                ConversationSummary::where('channel_id', $channelId)->delete();
             }
 
             $task = Task::create([
