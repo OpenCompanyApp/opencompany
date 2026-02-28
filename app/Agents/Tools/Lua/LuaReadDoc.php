@@ -31,6 +31,12 @@ DESC;
         try {
             $page = $request['page'];
 
+            // Strip "app." prefix — docs display functions as app.namespace.fn()
+            // but internal namespace keys don't include the "app." prefix
+            if (str_starts_with($page, 'app.')) {
+                $page = substr($page, 4);
+            }
+
             // Try static page first
             $static = $this->docs->readStaticPage($page);
             if ($static !== null) {
