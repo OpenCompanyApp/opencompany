@@ -3163,16 +3163,16 @@
         },
         {
             "name": "opencompany/chatogrator",
-            "version": "v1.1.0",
+            "version": "v1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/OpenCompanyApp/chatogrator.git",
-                "reference": "2f009f127471585755097c019bd48b056cca707c"
+                "reference": "a2fe13415f5d1229a6c06a8ea04ddc3663c58b01"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/chatogrator/zipball/2f009f127471585755097c019bd48b056cca707c",
-                "reference": "2f009f127471585755097c019bd48b056cca707c",
+                "url": "https://api.github.com/repos/OpenCompanyApp/chatogrator/zipball/a2fe13415f5d1229a6c06a8ea04ddc3663c58b01",
+                "reference": "a2fe13415f5d1229a6c06a8ea04ddc3663c58b01",
                 "shasum": ""
             },
             "require": {
@@ -3240,10 +3240,10 @@
                 "webhook"
             ],
             "support": {
-                "source": "https://github.com/OpenCompanyApp/chatogrator/tree/v1.1.0",
+                "source": "https://github.com/OpenCompanyApp/chatogrator/tree/v1.2.0",
                 "issues": "https://github.com/OpenCompanyApp/chatogrator/issues"
             },
-            "time": "2026-02-26T21:42:41+00:00"
+            "time": "2026-02-28T01:10:21+00:00"
         },
         {
             "name": "opencompany/prism-codex",

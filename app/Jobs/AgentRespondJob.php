@@ -151,6 +151,17 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             ->where('status', \App\Models\TaskStep::STATUS_COMPLETED)
             ->exists();
 
+        // Also check for an existing agent message (covers edge case where
+        // message was created but delivery step wasn't marked complete)
+        if (! $hasDeliveredResponse && $this->attempts() > 1) {
+            $hasDeliveredResponse = Message::where('channel_id', $this->channelId)
+                ->where('author_id', $this->agent->id)
+                ->where('created_at', '>', $this->userMessage->created_at)
+                ->where('created_at', '>', now()->subMinutes(30))
+                ->whereNull('source')
+                ->exists();
+        }
+
         if ($hasDeliveredResponse) {
             Log::info('Skipping retry — response already delivered', [
                 'task' => $task->id,
@@ -169,6 +180,8 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             Log::warning('Failed to broadcast task started', ['error' => $e->getMessage()]);
         }
 
+        $responseDelivered = false;
+
         try {
             // Update agent status to working
             $this->agent->update(['status' => 'working']);
@@ -183,6 +196,11 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
             // Create the agent and get a response (task context is in system prompt)
             $agentInstance = OpenCompanyAgent::for($this->agent, $this->channelId, $task->id);
+
+            // On retry: inject checkpointed tool calls so the LLM continues from where it left off
+            if ($this->attempts() > 1) {
+                $agentInstance->resumeFrom($task->id);
+            }
 
             // Capture LLM context before prompting (for observability)
             try {
@@ -265,8 +283,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 }
             }
 
-            // Log tool usage as task steps
-            $this->logToolSteps($task, $response);
+            // Tool steps are now saved in real-time by CheckpointToolCall listener
 
             // Hold response if agent delegated work — wait for all results
             $this->agent->refresh();
@@ -319,6 +336,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             }
 
             $deliveryStep->complete();
+            $responseDelivered = true;
 
             // ── Post-delivery bookkeeping ──
             // Everything below must NOT cause a job retry (response is already sent).
@@ -413,6 +431,18 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 'tokens' => ($response->usage->promptTokens ?? 0) + ($response->usage->completionTokens ?? 0),
             ]);
         } catch (\Throwable $e) {
+            // If response was already delivered to the user, don't retry —
+            // only post-delivery bookkeeping failed, which is non-critical.
+            if ($responseDelivered) {
+                Log::warning('Post-delivery error (not retrying — response already sent)', [
+                    'agent' => $this->agent->name,
+                    'task' => $task->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return;
+            }
+
             Log::error('Agent response failed', [
                 'agent' => $this->agent->name,
                 'channel' => $this->channelId,
@@ -491,55 +521,6 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             }
         } catch (\Throwable $e) {
             Log::warning('Failed to save image attachments', ['error' => $e->getMessage()]);
-        }
-    }
-
-    /**
-     * Log tool calls from the agent response as task steps.
-     */
-    private function logToolSteps(Task $task, AgentResponse $response): void
-    {
-        $toolRegistry = app(\App\Agents\Tools\ToolRegistry::class);
-
-        foreach ($response->steps as $step) {
-            // Build a lookup of tool results keyed by tool call ID
-            $resultsByCallId = [];
-            foreach ($step->toolResults as $toolResult) {
-                $resultsByCallId[$toolResult->id] = $toolResult->result;
-            }
-
-            foreach ($step->toolCalls as $toolCall) {
-                $result = $resultsByCallId[$toolCall->id] ?? null;
-
-                // Extract LuaExec structured metadata before truncation
-                $extracted = \App\Support\LuaMetaParser::extract($result);
-                $luaMeta = $extracted['meta'];
-                $result = $extracted['result'];
-
-                // Truncate large string results to prevent DB bloat
-                if (is_string($result) && strlen($result) > 2000) {
-                    $result = mb_strcut($result, 0, 2000, 'UTF-8') . '... [truncated]';
-                }
-
-                // Sanitize to valid UTF-8 to prevent JSON encoding failures
-                if (is_string($result)) {
-                    $result = mb_convert_encoding($result, 'UTF-8', 'UTF-8');
-                }
-
-                $toolStep = $task->addStep(
-                    "Used tool: {$toolCall->name}",
-                    'action',
-                    array_filter([
-                        'tool' => $toolCall->name,
-                        'icon' => $toolRegistry->getIconByClassName($toolCall->name),
-                        'arguments' => $toolCall->arguments,
-                        'result' => $result,
-                        'lua_meta' => $luaMeta,
-                    ])
-                );
-                $toolStep->start();
-                $toolStep->complete();
-            }
         }
     }
 

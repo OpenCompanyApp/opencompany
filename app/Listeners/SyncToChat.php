@@ -11,6 +11,7 @@ use App\Models\Message;
 use App\Services\Chat\ChatManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use OpenCompany\Chatogrator\Messages\FileUpload;
 use OpenCompany\Chatogrator\Messages\PostableMessage;
@@ -19,9 +20,25 @@ class SyncToChat implements ShouldQueue
 {
     use InteractsWithQueue;
 
+    /**
+     * Don't retry — external API may have received the message even if the job failed.
+     */
+    public int $tries = 1;
+
+    /**
+     * External API calls should complete well within 30 seconds.
+     */
+    public int $timeout = 30;
+
     public function handleMessageSent(MessageSent $event): void
     {
         $message = $event->message;
+
+        // Prevent duplicate external sends (e.g. if event fires twice)
+        $lock = Cache::lock("sync_chat:{$message->id}", 300);
+        if (! $lock->get()) {
+            return;
+        }
 
         // Skip messages originating from external platforms (echo prevention)
         if ($this->isFromExternal($message)) {
@@ -221,7 +238,8 @@ class SyncToChat implements ShouldQueue
         $channel = $message->channel;
 
         return $message->source === $channel?->external_provider
-            || $message->source === 'delegation_result';
+            || $message->source === 'delegation_result'
+            || $message->source === 'automation_prompt';
     }
 
     private function canSync(Message $message): bool

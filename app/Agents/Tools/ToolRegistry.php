@@ -1626,7 +1626,7 @@ class ToolRegistry
         $lines[] = '## Lua API (code-first)';
         $lines[] = '';
         $lines[] = 'All data operations and integrations are available through lua_exec.';
-        $lines[] = 'Use lua_read_doc(namespace) for function signatures and parameters.';
+        $lines[] = 'Always call lua_read_doc(namespace) before writing code to look up function names and parameters.';
         $lines[] = '';
         $lines[] = app(\App\Services\LuaApiDocGenerator::class)->getNamespaceSummary($agent);
 

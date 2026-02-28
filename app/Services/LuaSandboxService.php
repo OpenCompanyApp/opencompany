@@ -57,7 +57,11 @@ class LuaSandboxService
     }
 
     /**
-     * Override Lua's print() to capture output via a PHP callback.
+     * Override Lua's print() and add dump() with table-aware serialization.
+     *
+     * Standard Lua's tostring() outputs "table: 0x..." for tables, which is
+     * useless for agents trying to inspect bridge call results. The __serialize
+     * helper recursively converts tables to a readable JSON-like format.
      *
      * @param  array<int, string>  $output
      */
@@ -70,10 +74,55 @@ class LuaSandboxService
         ]);
 
         $sandbox->load('
+            local _tostring = tostring
+
+            local function __serialize(val, indent, seen)
+                local t = type(val)
+                if t ~= "table" then return _tostring(val) end
+                if seen[val] then return "<circular>" end
+                seen[val] = true
+                indent = indent or 0
+                local is_array = true
+                local n = 0
+                for _ in pairs(val) do n = n + 1 end
+                if n == 0 then return "{}" end
+                for i = 1, n do
+                    if val[i] == nil then is_array = false; break end
+                end
+                local pad = string.rep("  ", indent + 1)
+                local endpad = string.rep("  ", indent)
+                local parts = {}
+                if is_array then
+                    for i = 1, n do
+                        parts[i] = pad .. __serialize(val[i], indent + 1, seen)
+                    end
+                    return "[\\n" .. table.concat(parts, ",\\n") .. "\\n" .. endpad .. "]"
+                else
+                    for k, v in pairs(val) do
+                        parts[#parts + 1] = pad .. _tostring(k) .. ": " .. __serialize(v, indent + 1, seen)
+                    end
+                    return "{\\n" .. table.concat(parts, ",\\n") .. "\\n" .. endpad .. "}"
+                end
+            end
+
+            tostring = function(val)
+                if type(val) == "table" then return __serialize(val, 0, {}) end
+                return _tostring(val)
+            end
+
             function print(...)
                 local parts = {}
-                for i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end
-                __php.capture(table.concat(parts, "\t"))
+                for i = 1, select("#", ...) do
+                    local v = select(i, ...)
+                    parts[i] = type(v) == "table" and __serialize(v, 0, {}) or tostring(v)
+                end
+                __php.capture(table.concat(parts, "\\t"))
+            end
+
+            function dump(val)
+                local s = type(val) == "table" and __serialize(val, 0, {}) or tostring(val)
+                __php.capture(s)
+                return val
             end
         ')->call();
     }

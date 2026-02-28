@@ -1,10 +1,20 @@
 <template>
   <div>
-    <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
-      <Icon name="ph:tree-structure" class="w-4 h-4" />
-      Execution Trace
-      <span class="text-xs text-neutral-400 font-normal">({{ steps.length }} steps)</span>
-    </h3>
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+        <Icon name="ph:tree-structure" class="w-4 h-4" />
+        Execution Trace
+        <span class="text-xs text-neutral-400 font-normal">({{ steps.length }} steps)</span>
+      </h3>
+      <button
+        v-if="steps.length > 0"
+        class="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+        @click="copyTraceMarkdown"
+      >
+        <Icon :name="copied ? 'ph:check' : 'ph:clipboard-text'" class="w-3.5 h-3.5" />
+        {{ copied ? 'Copied' : 'Copy trace' }}
+      </button>
+    </div>
 
     <div v-if="steps.length > 0" class="border border-neutral-200 dark:border-neutral-700 rounded-lg divide-y divide-neutral-200 dark:divide-neutral-700 overflow-hidden">
       <div v-for="step in steps" :key="step.id">
@@ -110,13 +120,14 @@ import LuaExecutionDetail from '@/Components/tasks/LuaExecutionDetail.vue'
 import { useHighlight } from '@/composables/useHighlight'
 import { useMarkdown } from '@/composables/useMarkdown'
 
-defineProps<{
+const props = defineProps<{
   steps: TaskStep[]
 }>()
 
 const { highlight } = useHighlight()
 const { renderMarkdown } = useMarkdown()
 
+const copied = ref(false)
 const expandedSteps = ref(new Set<string>())
 const resultViewModes = reactive<Record<string, 'raw' | 'preview'>>({})
 
@@ -126,6 +137,25 @@ const toggleStep = (id: string) => {
   } else {
     expandedSteps.value.add(id)
   }
+}
+
+const copyTraceMarkdown = async () => {
+  const lines: string[] = ['## Execution Trace\n']
+  props.steps.forEach((step, i) => {
+    const dur = stepDuration(step)
+    lines.push(`${i + 1}. **[${step.status}]** ${step.description}${dur ? ` (${dur})` : ''}`)
+    if (step.metadata?.arguments) {
+      lines.push(`   - Arguments: \`${JSON.stringify(step.metadata.arguments)}\``)
+    }
+    if (step.metadata?.result != null) {
+      const result = String(step.metadata.result)
+      lines.push(`   - Result: \`${result.length > 500 ? result.slice(0, 500) + '...' : result}\``)
+    }
+    lines.push('')
+  })
+  await navigator.clipboard.writeText(lines.join('\n'))
+  copied.value = true
+  setTimeout(() => copied.value = false, 2000)
 }
 
 const hasExpandableContent = (step: TaskStep): boolean => {

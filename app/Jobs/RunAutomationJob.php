@@ -13,15 +13,15 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Laravel\Ai\Responses\AgentResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-class RunAutomationJob implements ShouldQueue
+class RunAutomationJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -32,9 +32,19 @@ class RunAutomationJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [30];
 
+    /**
+     * The number of seconds the unique lock should be maintained.
+     */
+    public int $uniqueFor = 1800;
+
     public function __construct(
         private Automation $automation,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'automation_' . $this->automation->id;
+    }
 
     public function handle(): void
     {
@@ -52,6 +62,23 @@ class RunAutomationJob implements ShouldQueue
             $this->automation->recordFailure('Agent not found');
 
             return;
+        }
+
+        // Guard: skip retry if this automation already produced a response recently
+        if ($this->attempts() > 1 && $this->automation->channel_id) {
+            $hasRecentResponse = Message::where('channel_id', $this->automation->channel_id)
+                ->where('source', 'automation')
+                ->where('created_at', '>', now()->subMinutes(30))
+                ->exists();
+
+            if ($hasRecentResponse) {
+                Log::info('Skipping automation retry — response already exists', [
+                    'automation' => $this->automation->name,
+                    'attempt' => $this->attempts(),
+                ]);
+
+                return;
+            }
         }
 
         try {
@@ -148,7 +175,7 @@ class RunAutomationJob implements ShouldQueue
                 broadcast(new MessageSent($agentMessage));
             }
 
-            $this->logToolSteps($task, $response);
+            // Tool steps are now saved in real-time by CheckpointToolCall listener
 
             $lastStep = $response->steps->last();
             $toolCallsCount = collect($response->steps)->sum(fn ($step) => count($step->toolCalls));
@@ -205,49 +232,6 @@ class RunAutomationJob implements ShouldQueue
             }
 
             broadcast(new AgentStatusUpdated($agent));
-        }
-    }
-
-    private function logToolSteps(Task $task, AgentResponse $response): void
-    {
-        $toolRegistry = app(\App\Agents\Tools\ToolRegistry::class);
-
-        foreach ($response->steps as $step) {
-            $resultsByCallId = [];
-            foreach ($step->toolResults as $toolResult) {
-                $resultsByCallId[$toolResult->id] = $toolResult->result;
-            }
-
-            foreach ($step->toolCalls as $toolCall) {
-                $result = $resultsByCallId[$toolCall->id] ?? null;
-
-                // Extract LuaExec structured metadata before truncation
-                $extracted = \App\Support\LuaMetaParser::extract($result);
-                $luaMeta = $extracted['meta'];
-                $result = $extracted['result'];
-
-                if (is_string($result) && strlen($result) > 2000) {
-                    $result = mb_strcut($result, 0, 2000, 'UTF-8').'... [truncated]';
-                }
-
-                if (is_string($result)) {
-                    $result = mb_convert_encoding($result, 'UTF-8', 'UTF-8');
-                }
-
-                $toolStep = $task->addStep(
-                    "Used tool: {$toolCall->name}",
-                    'action',
-                    array_filter([
-                        'tool' => $toolCall->name,
-                        'icon' => $toolRegistry->getIconByClassName($toolCall->name),
-                        'arguments' => $toolCall->arguments,
-                        'result' => $result,
-                        'lua_meta' => $luaMeta,
-                    ])
-                );
-                $toolStep->start();
-                $toolStep->complete();
-            }
         }
     }
 
