@@ -10,6 +10,7 @@ use App\Models\Channel;
 use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
 use App\Models\Message;
+use App\Models\Task;
 use App\Models\User;
 use App\Models\UserExternalIdentity;
 use App\Services\ApprovalExecutionService;
@@ -200,7 +201,8 @@ class TelegramWebhookController extends Controller
                 // Non-critical, continue
             }
 
-            AgentRespondJob::dispatch($internalMessage, $agent, $channel->id);
+            $task = Task::createPending($internalMessage, $agent, $channel->id);
+            AgentRespondJob::dispatch($internalMessage, $agent, $channel->id, $task->id);
         }
     }
 

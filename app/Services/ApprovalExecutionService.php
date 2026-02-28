@@ -8,6 +8,7 @@ use App\Models\AgentPermission;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\Message;
+use App\Models\Task;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request as ToolRequest;
@@ -59,7 +60,8 @@ class ApprovalExecutionService
                     // Resume agent if it was waiting for this approval
                     if ($agentIsWaiting) {
                         $agent->clearAwaitingApproval();
-                        AgentRespondJob::dispatch($resultMessage, $agent, $channelId);
+                        $task = Task::createPending($resultMessage, $agent, $channelId);
+                        AgentRespondJob::dispatch($resultMessage, $agent, $channelId, $task->id);
                     }
                 }
             } elseif ($agentIsWaiting) {
@@ -124,7 +126,8 @@ class ApprovalExecutionService
 
                     if ($agentIsWaiting) {
                         $agent->clearAwaitingApproval();
-                        AgentRespondJob::dispatch($message, $agent, $channelId);
+                        $task = Task::createPending($message, $agent, $channelId);
+                        AgentRespondJob::dispatch($message, $agent, $channelId, $task->id);
 
                         return;
                     }
@@ -170,7 +173,8 @@ class ApprovalExecutionService
                 $channel->update(['last_message_at' => now()]);
 
                 $agent->clearAwaitingApproval();
-                AgentRespondJob::dispatch($denialMessage, $agent, $channelId);
+                $task = Task::createPending($denialMessage, $agent, $channelId);
+                AgentRespondJob::dispatch($denialMessage, $agent, $channelId, $task->id);
             } else {
                 $agent->clearAwaitingApproval();
             }

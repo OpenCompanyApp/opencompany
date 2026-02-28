@@ -82,14 +82,6 @@ display task steps better in task show page, like a timeline or something.
 show tokens per second as metric
 
 
------
-
-
-
----
-
-autocomplete in monaco editor
-
 
 ----
 \
@@ -125,3 +117,7 @@ comms integrations are seperate section in opencompany, so linear can be double,
 --
 code automation can have agent input
 
+--
+read lua docs before lua exec
+--
+refresh ouath

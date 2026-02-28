@@ -80,6 +80,7 @@ class TaskController extends Controller
         return array_merge($paginated->toArray(), [
             'counts' => [
                 'total' => Task::forWorkspace()->count(),
+                'pending' => Task::forWorkspace()->where('status', 'pending')->count(),
                 'active' => Task::forWorkspace()->where('status', 'active')->count(),
                 'completed' => Task::forWorkspace()->where('status', 'completed')->count(),
             ],

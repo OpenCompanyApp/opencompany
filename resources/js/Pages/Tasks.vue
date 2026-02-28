@@ -17,9 +17,11 @@
           Activity
         </Link>
       </div>
-      <span class="hidden md:inline-flex items-center gap-1 text-xs tabular-nums shrink-0" title="Total / Active / Done">
+      <span class="hidden md:inline-flex items-center gap-1 text-xs tabular-nums shrink-0" title="Total / Pending / Active / Done">
         <span class="text-neutral-500 dark:text-neutral-400">{{ taskCounts.total }}</span>
         <span class="text-neutral-300 dark:text-neutral-600">/</span>
+        <span v-if="taskCounts.pending > 0" class="text-neutral-400 dark:text-neutral-500">{{ taskCounts.pending }}</span>
+        <span v-if="taskCounts.pending > 0" class="text-neutral-300 dark:text-neutral-600">/</span>
         <span class="text-blue-500 dark:text-blue-400">{{ taskCounts.active }}</span>
         <span class="text-neutral-300 dark:text-neutral-600">/</span>
         <span class="text-green-500 dark:text-green-400">{{ taskCounts.completed }}</span>
@@ -382,6 +384,7 @@ const taskCounts = computed(() => {
   const counts = tasksResponse.value?.counts
   return {
     total: counts?.total ?? 0,
+    pending: counts?.pending ?? 0,
     active: counts?.active ?? 0,
     completed: counts?.completed ?? 0,
   }

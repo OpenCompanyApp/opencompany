@@ -40,6 +40,12 @@ class SyncToChat implements ShouldQueue
             return;
         }
 
+        // Double-check: refresh from DB to catch concurrent sends
+        $message->refresh();
+        if ($message->external_message_id) {
+            return;
+        }
+
         // Skip messages originating from external platforms (echo prevention)
         if ($this->isFromExternal($message)) {
             return;

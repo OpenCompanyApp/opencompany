@@ -11,6 +11,7 @@ use App\Models\DirectMessage;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageReaction;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentChatService;
 use App\Services\Memory\ConversationCompactionService;
@@ -103,7 +104,8 @@ class MessageController extends Controller
 
         // Dispatch async agent response via Laravel AI SDK
         if (config('app.agent_async', true)) {
-            AgentRespondJob::dispatch($message, $otherUser, $message->channel_id);
+            $task = Task::createPending($message, $otherUser, $message->channel_id);
+            AgentRespondJob::dispatch($message, $otherUser, $message->channel_id, $task->id);
             return;
         }
 
@@ -144,7 +146,8 @@ class MessageController extends Controller
 
             // Match @AgentName (case-insensitive)
             if (preg_match('/@' . preg_quote($agent->name, '/') . '\b/i', $message->content)) {
-                AgentRespondJob::dispatch($message, $agent, $message->channel_id);
+                $task = Task::createPending($message, $agent, $message->channel_id);
+                AgentRespondJob::dispatch($message, $agent, $message->channel_id, $task->id);
             }
         }
     }

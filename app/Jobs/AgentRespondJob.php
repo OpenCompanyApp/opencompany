@@ -90,11 +90,15 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
         $task = null;
 
-        // Resume an existing task (delegation callback re-invoking parent)
+        // Resume or start an existing task (pending from dispatch, or delegation callback)
         if ($this->taskId) {
             $task = Task::find($this->taskId);
             if ($task) {
-                $task->resume();
+                if ($task->isPending()) {
+                    $task->start();
+                } else {
+                    $task->resume();
+                }
             }
         }
 

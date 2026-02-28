@@ -272,6 +272,27 @@ class Task extends Model
         return $query->where('requester_id', $requesterId);
     }
 
+    // Factory Methods
+
+    /**
+     * Create a pending task record for a queued agent job.
+     */
+    public static function createPending(Message $message, User $agent, string $channelId, string $source = self::SOURCE_CHAT): self
+    {
+        return self::create([
+            'id' => \Illuminate\Support\Str::uuid()->toString(),
+            'workspace_id' => $agent->workspace_id,
+            'title' => \Illuminate\Support\Str::limit($message->content, 80),
+            'description' => $message->content,
+            'status' => self::STATUS_PENDING,
+            'source' => $source,
+            'agent_id' => $agent->id,
+            'requester_id' => $message->author_id,
+            'channel_id' => $channelId,
+            'trigger_message_id' => $message->id,
+        ]);
+    }
+
     // Helper Methods
 
     public function isActive(): bool
