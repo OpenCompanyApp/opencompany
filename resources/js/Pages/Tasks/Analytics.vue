@@ -316,7 +316,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import { Icon } from '@iconify/vue'
+import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useApi } from '@/composables/useApi'
 import type { TokenAnalyticsResponse, TokenByAgent, TokenByModel, TokenBySource } from '@/types'
