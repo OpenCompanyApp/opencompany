@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "47dd4b1a7980044f854e1e1398bbfddf",
+    "content-hash": "890cde381f93036752d0460fb696884e",
     "packages": [
         {
             "name": "brick/math",
@@ -3548,16 +3548,23 @@
         {
             "name": "opencompanyapp/ai-tool-google",
             "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-google",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-google.git",
                 "reference": "86dc20ff444216ac50e50941bd8eb8868e09d87d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-google/zipball/86dc20ff444216ac50e50941bd8eb8868e09d87d",
+                "reference": "86dc20ff444216ac50e50941bd8eb8868e09d87d",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
                 "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "laravel": {
@@ -3590,9 +3597,11 @@
                 "opencompany",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-google/tree/v2.1.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-google/issues"
+            },
+            "time": "2026-02-27T23:19:56+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-mermaid",
@@ -3768,16 +3777,23 @@
         {
             "name": "opencompanyapp/ai-tool-ticktick",
             "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-ticktick",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-ticktick.git",
                 "reference": "26b2dc2bf9e57667e546ecfae2b2e98107533f8f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-ticktick/zipball/26b2dc2bf9e57667e546ecfae2b2e98107533f8f",
+                "reference": "26b2dc2bf9e57667e546ecfae2b2e98107533f8f",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
                 "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "laravel": {
@@ -3810,9 +3826,11 @@
                 "ticktick",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-ticktick/tree/v1.1.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-ticktick/issues"
+            },
+            "time": "2026-02-27T23:19:58+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-typst",
