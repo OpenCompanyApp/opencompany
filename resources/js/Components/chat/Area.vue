@@ -100,7 +100,7 @@
             v-for="(message, index) in messages"
             :key="message.id"
             :id="`message-${message.id}`"
-            :class="isFirstInGroup(index) ? 'mt-4 first:mt-0' : 'mt-0.5'"
+            :class="isFirstInGroup(index) ? 'mt-3 first:mt-0' : 'mt-px'"
           >
             <!-- Date Separator -->
             <div

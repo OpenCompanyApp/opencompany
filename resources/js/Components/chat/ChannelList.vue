@@ -25,50 +25,16 @@
         </Tooltip>
 
         <!-- Compose -->
-        <div class="relative">
+        <DropdownMenu :items="composeMenuItems" side="bottom" align="end">
           <Tooltip text="New conversation" :delay-open="300" side="bottom" :side-offset="5">
             <button
               type="button"
-              :class="headerButtonClasses(composeOpen)"
-              @click="composeOpen = !composeOpen"
+              :class="headerButtonClasses(false)"
             >
               <Icon name="ph:pencil-simple-line" class="w-4 h-4" />
             </button>
           </Tooltip>
-
-          <!-- Compose Dropdown -->
-          <Transition name="fade-scale">
-            <div
-              v-if="composeOpen"
-              class="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg py-1 z-20"
-            >
-              <button
-                type="button"
-                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                @click="handleCompose('dm')"
-              >
-                <Icon name="ph:chat-circle" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-                New Message
-              </button>
-              <button
-                type="button"
-                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                @click="handleCompose('channel')"
-              >
-                <Icon name="ph:hash" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-                New Channel
-              </button>
-              <button
-                type="button"
-                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                @click="handleCompose('external')"
-              >
-                <Icon name="ph:plug" class="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-                Connect External
-              </button>
-            </div>
-          </Transition>
-        </div>
+        </DropdownMenu>
       </div>
     </div>
 
@@ -124,6 +90,9 @@
         <div class="p-2 space-y-0.5">
           <!-- Pinned Chats -->
           <template v-if="pinnedChannels.length > 0">
+            <div class="px-3 pt-2 pb-1">
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Pinned</span>
+            </div>
             <ChatChannelItem
               v-for="channel in pinnedChannels"
               :key="channel.id"
@@ -134,8 +103,9 @@
               @click="handleSelect"
               @context-action="handleContextAction"
             />
-            <!-- Pinned divider -->
-            <div class="mx-3 my-1.5 border-b border-neutral-200 dark:border-neutral-700" />
+            <div class="px-3 pt-3 pb-1">
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Recent</span>
+            </div>
           </template>
 
           <!-- Unpinned Chats (sorted by latest message) -->
@@ -200,9 +170,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
+import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 import SearchInput from '@/Components/shared/SearchInput.vue'
 import ChatChannelItem from '@/Components/chat/ChannelItem.vue'
 import type { Channel } from '@/types'
@@ -230,23 +201,7 @@ const emit = defineEmits<{
 // State
 const searchQuery = ref('')
 const searchOpen = ref(false)
-const composeOpen = ref(false)
 const activeFilter = ref<FilterTab>('all')
-
-// Close compose dropdown when clicking outside
-const handleClickOutside = (e: MouseEvent) => {
-  if (composeOpen.value) {
-    composeOpen.value = false
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 
 // Filter options
 const filters: { value: FilterTab; label: string; icon?: string }[] = [
@@ -349,11 +304,19 @@ const headerButtonClasses = (active: boolean) => [
 // Filter chip classes
 const filterChipClasses = (active: boolean) => [
   'flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap',
-  'transition-all duration-150 shrink-0',
+  'transition-all duration-200 shrink-0',
+  'focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500',
   active
-    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-    : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700',
+    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm'
+    : 'bg-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800',
 ]
+
+// Compose menu items for DropdownMenu
+const composeMenuItems = computed(() => [[
+  { label: 'New Message', icon: 'ph:chat-circle', click: () => emit('createDm') },
+  { label: 'New Channel', icon: 'ph:hash', click: () => emit('create') },
+  { label: 'Connect External', icon: 'ph:plug', click: () => emit('createExternal') },
+]])
 
 // Handlers
 const handleSelect = (channel: Channel) => {
@@ -362,21 +325,6 @@ const handleSelect = (channel: Channel) => {
 
 const handleContextAction = (action: string, channel: Channel) => {
   emit('contextAction', action, channel)
-}
-
-const handleCompose = (type: 'dm' | 'channel' | 'external') => {
-  composeOpen.value = false
-  switch (type) {
-    case 'dm':
-      emit('createDm')
-      break
-    case 'channel':
-      emit('create')
-      break
-    case 'external':
-      emit('createExternal')
-      break
-  }
 }
 </script>
 
@@ -410,31 +358,16 @@ const handleCompose = (type: 'dm' | 'channel' | 'external') => {
 
 /* Slide down animation */
 .slide-down-enter-active {
-  transition: all 0.15s ease-out;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .slide-down-leave-active {
-  transition: all 0.1s ease-out;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .slide-down-enter-from,
 .slide-down-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
-}
-
-/* Fade scale animation for compose dropdown */
-.fade-scale-enter-active {
-  transition: all 0.15s ease-out;
-}
-
-.fade-scale-leave-active {
-  transition: all 0.1s ease-in;
-}
-
-.fade-scale-enter-from,
-.fade-scale-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
+  transform: translateY(-4px);
 }
 </style>

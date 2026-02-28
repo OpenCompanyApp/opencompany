@@ -688,16 +688,20 @@ const bubbleClasses = computed(() => {
   const base = ['relative px-3 py-2 min-w-[3rem]']
 
   if (props.isOwn) {
-    base.push('bg-neutral-900 dark:bg-blue-950 text-white')
+    base.push('bg-neutral-900 dark:bg-blue-900/60 text-white')
 
     // Border radius based on grouping
     if (props.isFirstInGroup && props.isLastInGroup) {
+      // Standalone message
       base.push('rounded-2xl rounded-br-md')
     } else if (props.isFirstInGroup) {
+      // First in group — flat bottom-right
       base.push('rounded-2xl rounded-br-md')
     } else if (props.isLastInGroup) {
-      base.push('rounded-2xl rounded-br-md')
+      // Last in group — flat top-right for continuity
+      base.push('rounded-2xl rounded-tr-md rounded-br-md')
     } else {
+      // Middle of group — both right corners flat
       base.push('rounded-2xl rounded-r-md')
     }
   } else {
@@ -708,7 +712,7 @@ const bubbleClasses = computed(() => {
     } else if (props.isFirstInGroup) {
       base.push('rounded-2xl rounded-bl-md')
     } else if (props.isLastInGroup) {
-      base.push('rounded-2xl rounded-bl-md')
+      base.push('rounded-2xl rounded-tl-md rounded-bl-md')
     } else {
       base.push('rounded-2xl rounded-l-md')
     }
@@ -747,11 +751,11 @@ const threadPreviewClasses = computed(() => [
 
 // Hover actions (floating above bubble)
 const hoverActionsClasses = computed(() => [
-  'absolute -top-4 z-10',
+  'absolute -top-3.5 z-10',
   props.isOwn ? 'left-0' : 'right-0',
   'flex items-center gap-0.5 p-0.5',
-  'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
-  'shadow-md',
+  'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg',
+  'shadow-sm ring-1 ring-black/[0.03]',
 ])
 
 // Action button in hover toolbar
@@ -922,16 +926,17 @@ const handleMoreAction = (action: MoreAction) => {
 <style scoped>
 /* Fade transition for hover actions */
 .fade-enter-active {
-  transition: opacity 0.15s ease-out;
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
 }
 
 .fade-leave-active {
-  transition: opacity 0.1s ease-out;
+  transition: opacity 0.1s ease-out, transform 0.1s ease-out;
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+  transform: translateY(2px);
 }
 
 /* Lightbox transition */

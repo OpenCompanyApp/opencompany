@@ -1,5 +1,22 @@
 <template>
-  <div :class="containerClasses">
+  <div
+    :class="containerClasses"
+    @dragenter.prevent="handleDragEnter"
+    @dragover.prevent
+    @dragleave.prevent="handleDragLeave"
+    @drop.prevent="handleDrop"
+  >
+    <!-- Drag & Drop Overlay -->
+    <Transition name="fade">
+      <div
+        v-if="isDragging"
+        class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/90 dark:bg-neutral-900/90 border-2 border-dashed border-neutral-300 dark:border-neutral-600 rounded-xl backdrop-blur-sm"
+      >
+        <Icon name="ph:upload-simple" class="w-8 h-8 text-neutral-400 dark:text-neutral-500 mb-2" />
+        <span class="text-sm font-medium text-neutral-500 dark:text-neutral-400">Drop files to upload</span>
+      </div>
+    </Transition>
+
     <!-- Reply Preview -->
     <Transition name="slide-up">
       <div v-if="replyTo" :class="replyPreviewClasses">
@@ -235,7 +252,7 @@
       <!-- Right Actions -->
       <div class="flex items-end gap-0.5 shrink-0">
         <!-- Emoji Picker -->
-        <Popover v-model:open="emojiPickerOpen" :side-offset="8" side="top" align="end">
+        <SharedEmojiPicker side="top" align="end" @select="insertEmoji">
           <Tooltip :delay-duration="300" side="top" :side-offset="5">
             <template #content>Add emoji</template>
             <button
@@ -246,10 +263,7 @@
               <Icon name="ph:smiley" class="w-5 h-5" />
             </button>
           </Tooltip>
-          <template #content>
-            <EmojiPicker @select="insertEmoji" />
-          </template>
-        </Popover>
+        </SharedEmojiPicker>
 
         <!-- Mention -->
         <Tooltip :delay-duration="300" side="top" :side-offset="5">
@@ -338,10 +352,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, h, defineComponent } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
-import Popover from '@/Components/shared/Popover.vue'
+import SharedEmojiPicker from '@/Components/shared/EmojiPicker.vue'
 import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import type { Channel, User, Message } from '@/types'
 
@@ -437,7 +451,8 @@ const commandsPopup = ref<HTMLElement | null>(null)
 const message = ref('')
 const isFocused = ref(false)
 const attachments = ref<Attachment[]>([])
-const emojiPickerOpen = ref(false)
+const isDragging = ref(false)
+const dragCounter = ref(0)
 const isRecording = ref(false)
 const hasDraft = ref(false)
 
@@ -549,7 +564,7 @@ watch(() => props.editMessage, (editMsg) => {
 // Container classes
 const containerClasses = computed(() => {
   const classes = [
-    'border-t border-neutral-200 dark:border-neutral-700 shrink-0 bg-white dark:bg-neutral-900',
+    'relative border-t border-neutral-200 dark:border-neutral-700 shrink-0 bg-white dark:bg-neutral-900',
     sizeConfig[props.size].container,
   ]
 
@@ -596,14 +611,14 @@ const addAttachmentButtonClasses = computed(() => [
 // Input area classes
 const inputAreaClasses = computed(() => {
   const classes = [
-    'flex items-end gap-3 bg-white dark:bg-neutral-900 rounded-lg border',
-    'transition-colors duration-150',
+    'flex items-end gap-3 bg-white dark:bg-neutral-900 rounded-xl border',
+    'transition-colors duration-200',
     sizeConfig[props.size].input,
   ]
 
   if (isFocused.value) {
     classes.push(
-      'border-neutral-400 dark:border-neutral-500 ring-1 ring-neutral-200 dark:ring-neutral-700',
+      'border-neutral-300 dark:border-neutral-500 shadow-sm',
     )
   } else {
     classes.push('border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600')
@@ -707,13 +722,6 @@ const commandItemClasses = (selected: boolean) => [
 const tooltipClasses = computed(() => [
   'z-50 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
   'px-2.5 py-1.5 text-xs shadow-md',
-  'animate-in fade-in-0 duration-150',
-])
-
-// Emoji picker classes
-const emojiPickerClasses = computed(() => [
-  'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg',
-  'shadow-lg',
   'animate-in fade-in-0 duration-150',
 ])
 
@@ -850,6 +858,30 @@ const handlePaste = (event: ClipboardEvent) => {
   }
 }
 
+// Drag and drop handlers
+const handleDragEnter = () => {
+  dragCounter.value++
+  isDragging.value = true
+}
+
+const handleDragLeave = () => {
+  dragCounter.value--
+  if (dragCounter.value === 0) {
+    isDragging.value = false
+  }
+}
+
+const handleDrop = (event: DragEvent) => {
+  isDragging.value = false
+  dragCounter.value = 0
+  const files = event.dataTransfer?.files
+  if (!files) return
+  for (const file of files) {
+    if (attachments.value.length >= props.maxAttachments) break
+    addAttachment(file)
+  }
+}
+
 // Check for mention
 const checkForMention = () => {
   const cursorPos = textarea.value?.selectionStart || 0
@@ -918,7 +950,6 @@ const insertEmoji = (emoji: string) => {
   const before = message.value.slice(0, cursorPos)
   const after = message.value.slice(cursorPos)
   message.value = `${before}${emoji}${after}`
-  emojiPickerOpen.value = false
   nextTick(() => {
     const newPos = cursorPos + emoji.length
     textarea.value?.setSelectionRange(newPos, newPos)
@@ -1044,34 +1075,6 @@ const handleCancelEdit = () => {
   emit('cancelEdit')
 }
 
-// Emoji Picker Component (placeholder)
-const EmojiPicker = defineComponent({
-  name: 'EmojiPicker',
-  emits: ['select'],
-  setup(_, { emit: pickerEmit }) {
-    const categories = [
-      { name: 'Smileys', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗'] },
-      { name: 'Gestures', emojis: ['👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👋', '🤚', '🖐️', '✋', '👊', '✊', '🤛', '🤜'] },
-      { name: 'Objects', emojis: ['💯', '🔥', '✨', '🎉', '🎊', '🏆', '🎯', '💡', '📌', '📎', '✏️', '📝', '💻', '🖥️', '⌨️', '🖱️'] },
-    ]
-
-    return () => h('div', { class: 'w-72 max-h-64 overflow-y-auto p-2' },
-      categories.map(category => h('div', { key: category.name, class: 'mb-3' }, [
-        h('p', { class: 'text-xs font-medium text-neutral-500 dark:text-neutral-300 uppercase tracking-wider mb-2 px-1' }, category.name),
-        h('div', { class: 'grid grid-cols-8 gap-1' },
-          category.emojis.map(emoji =>
-            h('button', {
-              key: emoji,
-              type: 'button',
-              class: 'w-8 h-8 flex items-center justify-center text-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors duration-150',
-              onClick: () => pickerEmit('select', emoji),
-            }, emoji),
-          ),
-        ),
-      ])),
-    )
-  },
-})
 </script>
 
 <style scoped>

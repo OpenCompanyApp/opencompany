@@ -144,11 +144,51 @@
         </template>
       </CollapsibleSection>
 
+      <!-- Shared Media Section -->
+      <CollapsibleSection
+        v-if="sharedMedia.length > 0"
+        title="Media"
+        :count="sharedMedia.length"
+        :default-open="false"
+        :class="sectionClasses"
+      >
+        <template #content>
+          <div class="grid grid-cols-3 gap-1">
+            <button
+              v-for="file in sharedMedia.slice(0, 9)"
+              :key="file.id"
+              type="button"
+              class="aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 group/media"
+              @click="handleFileClick(file)"
+            >
+              <img
+                v-if="file.url && file.type.startsWith('image/')"
+                :src="file.url"
+                :alt="file.name"
+                class="w-full h-full object-cover transition-transform duration-200 group-hover/media:scale-105"
+                loading="lazy"
+              />
+              <div v-else class="w-full h-full flex items-center justify-center">
+                <Icon name="ph:video" class="w-6 h-6 text-neutral-400" />
+              </div>
+            </button>
+          </div>
+          <button
+            v-if="sharedMedia.length > 9"
+            type="button"
+            class="w-full text-xs text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-colors py-2 mt-2"
+            @click="handleViewAllFiles"
+          >
+            View all {{ sharedMedia.length }} media
+          </button>
+        </template>
+      </CollapsibleSection>
+
       <!-- Shared Files Section -->
       <CollapsibleSection
-        v-if="sharedFiles.length > 0 || showAllSections"
-        title="Shared Files"
-        :count="sharedFiles.length"
+        v-if="sharedDocuments.length > 0 || showAllSections"
+        title="Files"
+        :count="sharedDocuments.length"
         :default-open="false"
         :class="sectionClasses"
       >
@@ -156,19 +196,19 @@
           <div v-if="loading" class="space-y-2">
             <SharedSkeleton v-for="i in 3" :key="i" class="h-10 w-full" />
           </div>
-          <div v-else-if="sharedFiles.length === 0" class="text-sm text-neutral-500 dark:text-neutral-300 text-center py-4">
+          <div v-else-if="sharedDocuments.length === 0" class="text-sm text-neutral-500 dark:text-neutral-300 text-center py-4">
             No shared files
           </div>
           <div v-else class="space-y-1">
             <button
-              v-for="file in sharedFiles.slice(0, maxSharedFiles)"
+              v-for="file in sharedDocuments.slice(0, maxSharedFiles)"
               :key="file.id"
               type="button"
               :class="sharedFileClasses"
               @click="handleFileClick(file)"
             >
               <div :class="fileIconContainerClasses(file)">
-                <Icon :name="getFileIcon(file.type)" class="w-4 h-4" />
+                <Icon :name="getFileIcon(file.type)" :class="fileIconTextClasses(file)" />
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm text-neutral-900 dark:text-white truncate">{{ file.name }}</p>
@@ -188,12 +228,12 @@
             </button>
 
             <button
-              v-if="sharedFiles.length > maxSharedFiles"
+              v-if="sharedDocuments.length > maxSharedFiles"
               type="button"
               class="w-full text-xs text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-colors py-2"
               @click="handleViewAllFiles"
             >
-              View all {{ sharedFiles.length }} files
+              View all {{ sharedDocuments.length }} files
             </button>
           </div>
         </template>
@@ -416,6 +456,7 @@ interface SharedFile {
   name: string
   type: string
   size: number
+  url?: string
   uploadedAt: Date
   uploadedBy: User
 }
@@ -582,6 +623,15 @@ const displayedMembers = computed(() => {
   return filteredMembers.value.slice(0, props.maxVisibleMembers)
 })
 
+// Split shared files into media and documents
+const sharedMedia = computed(() =>
+  props.sharedFiles.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/')),
+)
+
+const sharedDocuments = computed(() =>
+  props.sharedFiles.filter(f => !f.type.startsWith('image/') && !f.type.startsWith('video/')),
+)
+
 // Get member count by filter
 const getMemberCountByFilter = (filter: MemberFilter): number => {
   const members = props.channel.members || []
@@ -692,12 +742,37 @@ const sharedFileClasses = computed(() => [
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 dark:focus-visible:ring-neutral-500/50',
 ])
 
-// File icon container classes
-const fileIconContainerClasses = (_file: SharedFile) => {
+// File icon container classes — color-coded by file type
+const fileIconContainerClasses = (file: SharedFile) => {
+  const category = getFileCategory(file.type)
+  const colorMap: Record<string, string> = {
+    image: 'bg-blue-100 dark:bg-blue-900/30',
+    video: 'bg-pink-100 dark:bg-pink-900/30',
+    audio: 'bg-purple-100 dark:bg-purple-900/30',
+    document: 'bg-red-100 dark:bg-red-900/30',
+    code: 'bg-emerald-100 dark:bg-emerald-900/30',
+    archive: 'bg-amber-100 dark:bg-amber-900/30',
+    default: 'bg-neutral-100 dark:bg-neutral-700',
+  }
   return [
     'flex items-center justify-center w-8 h-8 rounded-lg shrink-0',
-    'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-300',
+    colorMap[category] || colorMap.default,
   ]
+}
+
+// File icon text classes — color-coded by file type
+const fileIconTextClasses = (file: SharedFile) => {
+  const category = getFileCategory(file.type)
+  const colorMap: Record<string, string> = {
+    image: 'text-blue-600 dark:text-blue-400',
+    video: 'text-pink-600 dark:text-pink-400',
+    audio: 'text-purple-600 dark:text-purple-400',
+    document: 'text-red-600 dark:text-red-400',
+    code: 'text-emerald-600 dark:text-emerald-400',
+    archive: 'text-amber-600 dark:text-amber-400',
+    default: 'text-neutral-500 dark:text-neutral-300',
+  }
+  return ['w-4 h-4', colorMap[category] || colorMap.default]
 }
 
 // Footer classes
@@ -883,7 +958,9 @@ const CollapsibleSection = defineComponent({
           }),
         ]),
       ]),
-      h(CollapsibleContent, {}, () => h('div', { class: 'pt-2' }, slots.content?.())),
+      h(CollapsibleContent, {
+        class: 'overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up',
+      }, () => h('div', { class: 'pt-2' }, slots.content?.())),
     ])
   },
 })
@@ -903,7 +980,7 @@ const MemberItem = defineComponent({
 
     return () => h('div', {
       class: [
-        'flex items-center gap-3 p-2 rounded-lg cursor-pointer group',
+        'flex items-center gap-3 p-2.5 rounded-lg cursor-pointer group',
         'transition-colors duration-150',
         'hover:bg-neutral-50 dark:hover:bg-neutral-800',
       ],
@@ -913,7 +990,7 @@ const MemberItem = defineComponent({
     }, [
       h(SharedAgentAvatar, {
         user: memberProps.member,
-        size: memberProps.size === 'sm' ? 'xs' : 'sm',
+        size: memberProps.size === 'sm' ? 'sm' : 'md',
       }),
       h('div', { class: 'flex-1 min-w-0' }, [
         h('div', { class: 'flex items-center gap-1.5' }, [
@@ -1060,11 +1137,11 @@ const MemberItem = defineComponent({
 }
 
 .animate-collapsible-down {
-  animation: collapsible-down 0.15s ease-out;
+  animation: collapsible-down 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .animate-collapsible-up {
-  animation: collapsible-up 0.1s ease-out;
+  animation: collapsible-up 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Check scale animation */
