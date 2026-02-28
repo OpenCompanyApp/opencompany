@@ -15,6 +15,8 @@ Schedule::command('automation:run-due')->everyMinute();
 
 Schedule::job(new \App\Jobs\RefreshMcpToolsJob)->hourly();
 
+Schedule::command('telescope:prune --hours=24')->daily();
+
 Schedule::call(function () {
     $dir = storage_path('app/public/charts');
     if (!is_dir($dir)) {
