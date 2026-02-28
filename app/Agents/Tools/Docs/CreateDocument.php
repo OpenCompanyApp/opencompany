@@ -32,10 +32,20 @@ class CreateDocument implements Tool
                 return 'Permission denied: you do not have access to the specified folder.';
             }
 
+            // Sanitize title: LLMs sometimes pass objects like {"name":"..."} instead of strings
+            $title = $request['title'];
+            if (is_array($title)) {
+                $title = $title['name'] ?? $title['title'] ?? json_encode($title);
+            }
+            $title = trim((string) $title);
+            if (empty($title)) {
+                return 'Error: title is required.';
+            }
+
             // Prevent duplicate folders — return existing if same name in same parent
             if ($request['isFolder'] ?? false) {
                 $existing = Document::forWorkspace()
-                    ->where('title', $request['title'])
+                    ->where('title', $title)
                     ->where('parent_id', $parentId)
                     ->where('is_folder', true)
                     ->first();
@@ -47,7 +57,7 @@ class CreateDocument implements Tool
 
             $document = Document::create([
                 'id' => Str::uuid()->toString(),
-                'title' => $request['title'],
+                'title' => $title,
                 'content' => $request['content'] ?? '',
                 'author_id' => $this->agent->id,
                 'parent_id' => $parentId,

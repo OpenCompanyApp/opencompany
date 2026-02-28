@@ -80,7 +80,9 @@ class ListDocuments implements Tool
 
             return json_encode($items->map(fn ($item) => array_filter([
                 'id' => $item->id,
+                'name' => $item->title,
                 'title' => $item->title,
+                'type' => $item->is_folder ? 'folder' : 'document',
                 'isFolder' => $item->is_folder,
                 'author' => $item->author?->name ?? 'Unknown',
                 'updatedAt' => $item->updated_at->toIso8601String(),

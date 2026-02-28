@@ -35,7 +35,11 @@ class UpdateDocument implements Tool
             }
 
             if (isset($request['title'])) {
-                $document->title = $request['title'];
+                $title = $request['title'];
+                if (is_array($title)) {
+                    $title = $title['name'] ?? $title['title'] ?? json_encode($title);
+                }
+                $document->title = (string) $title;
             }
 
             if (isset($request['content'])) {

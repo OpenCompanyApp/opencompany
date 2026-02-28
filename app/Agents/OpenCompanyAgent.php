@@ -259,6 +259,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
     public function tools(): iterable
     {
         $this->toolRegistry->setChannelContext($this->channelId);
+        $this->toolRegistry->setTaskContext($this->taskId);
 
         return $this->toolRegistry->getToolsForAgent($this->agent);
     }

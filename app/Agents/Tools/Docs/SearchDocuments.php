@@ -113,9 +113,12 @@ class SearchDocuments implements Tool
                 $doc = $documents->get($chunk->document_id);
                 $meta = is_array($chunk->metadata) ? $chunk->metadata : [];
 
+                $title = $doc?->title ?? $meta['title'] ?? 'Untitled';
+
                 return [
                     'id' => $chunk->document_id,
-                    'title' => $doc?->title ?? $meta['title'] ?? 'Untitled',
+                    'name' => $title,
+                    'title' => $title,
                     'snippet' => Str::limit($chunk->content, 300),
                     'similarity' => isset($chunk->similarity) ? round($chunk->similarity * 100) : null,
                     'updatedAt' => $doc?->updated_at?->toIso8601String(),
@@ -153,6 +156,7 @@ class SearchDocuments implements Tool
 
         return $documents->map(fn ($doc) => [
             'id' => $doc->id,
+            'name' => $doc->title,
             'title' => $doc->title,
             'snippet' => Str::limit($doc->content, 300),
             'updatedAt' => $doc->updated_at->toIso8601String(),

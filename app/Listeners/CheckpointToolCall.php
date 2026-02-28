@@ -66,14 +66,21 @@ class CheckpointToolCall
             if ($toolName === 'ContactAgent' && isset($event->arguments['action'])) {
                 $action = $event->arguments['action'];
                 $targetId = $event->arguments['agentId'] ?? null;
-                $targetName = $targetId ? (User::find($targetId)?->name ?? 'Unknown') : 'Unknown';
+                $targetName = $targetId ? User::find($targetId)?->name : null;
 
-                $description = match ($action) {
-                    'delegate' => "Delegated to {$targetName}",
-                    'ask' => "Asked {$targetName}",
-                    'notify' => "Notified {$targetName}",
-                    default => "Contacted {$targetName}",
-                };
+                if ($targetName) {
+                    $description = match ($action) {
+                        'delegate' => "Delegated to {$targetName}",
+                        'ask' => "Asked {$targetName}",
+                        'notify' => "Notified {$targetName}",
+                        default => "Contacted {$targetName}",
+                    };
+                } else {
+                    $verb = match ($action) {
+                        'delegate' => 'Delegate', 'ask' => 'Ask', 'notify' => 'Notify', default => 'Contact',
+                    };
+                    $description = "{$verb} failed: agent not found";
+                }
             }
 
             $step = $task->addStep(

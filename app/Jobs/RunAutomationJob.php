@@ -161,7 +161,7 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
             $prompt = $this->buildScheduledPrompt();
             $response = $agentInstance->prompt($prompt);
 
-            if ($channelId) {
+            if ($channelId && !empty(trim($response->text ?? ''))) {
                 $agentMessage = Message::create([
                     'id' => Str::uuid()->toString(),
                     'content' => $response->text,
@@ -193,7 +193,11 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
                 'tool_calls_count' => $toolCallsCount,
             ]);
 
-            broadcast(new TaskUpdated($task, 'completed'));
+            try {
+                broadcast(new TaskUpdated($task, 'completed'));
+            } catch (\Throwable $e) {
+                Log::warning('Failed to broadcast automation task completion', ['error' => $e->getMessage()]);
+            }
 
             $this->automation->recordSuccess([
                 'task_id' => $task->id,

@@ -1212,6 +1212,8 @@ class ToolRegistry
 
     private ?string $currentChannelId = null;
 
+    private ?string $currentTaskId = null;
+
     public function __construct(
         private AgentPermissionService $permissionService,
         private ToolProviderRegistry $providerRegistry,
@@ -1223,6 +1225,14 @@ class ToolRegistry
     public function setChannelContext(?string $channelId): void
     {
         $this->currentChannelId = $channelId;
+    }
+
+    /**
+     * Set the task context for tools that need the current task ID.
+     */
+    public function setTaskContext(?string $taskId): void
+    {
+        $this->currentTaskId = $taskId;
     }
 
     // ─── Effective (merged static + dynamic) accessors ──────────────────
@@ -1663,7 +1673,7 @@ class ToolRegistry
         // Built-in tools
         return match ($class) {
             // Inter-agent communication
-            ContactAgent::class => new ContactAgent($agent, $this->permissionService, app(\App\Services\AgentCommunicationService::class)),
+            ContactAgent::class => new ContactAgent($agent, $this->permissionService, app(\App\Services\AgentCommunicationService::class), $this->currentTaskId),
             // Memory tools
             SaveMemory::class => new SaveMemory($agent, app(AgentDocumentService::class), app(DocumentIndexingService::class), app(MemoryScopeGuard::class), $this->currentChannelId),
             RecallMemory::class => new RecallMemory($agent, app(DocumentIndexingService::class), app(AgentDocumentService::class), app(MemoryScopeGuard::class), $this->currentChannelId),

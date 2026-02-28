@@ -20,6 +20,7 @@ class ContactAgent implements Tool
         private User $agent,
         private AgentPermissionService $permissionService,
         private AgentCommunicationService $commService,
+        private ?string $currentTaskId = null,
     ) {}
 
     public function description(): string
@@ -137,11 +138,15 @@ class ContactAgent implements Tool
             ]);
         }
 
-        // Find caller's current task for parent_task_id
-        $currentTask = Task::forWorkspace()->where('agent_id', $this->agent->id)
-            ->where('status', Task::STATUS_ACTIVE)
-            ->latest('started_at')
-            ->first();
+        // Use task ID from execution context, fall back to query
+        $parentTaskId = $this->currentTaskId;
+        if (!$parentTaskId) {
+            $currentTask = Task::forWorkspace()->where('agent_id', $this->agent->id)
+                ->where('status', Task::STATUS_ACTIVE)
+                ->latest('started_at')
+                ->first();
+            $parentTaskId = $currentTask?->id;
+        }
 
         // Create ask subtask
         $askTask = Task::create([
@@ -155,7 +160,7 @@ class ContactAgent implements Tool
             'agent_id' => $target->id,
             'requester_id' => $this->agent->id,
             'channel_id' => $channelId,
-            'parent_task_id' => $currentTask?->id,
+            'parent_task_id' => $parentTaskId,
             'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
@@ -183,11 +188,15 @@ class ContactAgent implements Tool
         ?string $context,
         string $priority,
     ): string {
-        // Find caller's current task for parent_task_id
-        $currentTask = Task::forWorkspace()->where('agent_id', $this->agent->id)
-            ->where('status', Task::STATUS_ACTIVE)
-            ->latest('started_at')
-            ->first();
+        // Use task ID from execution context, fall back to query
+        $parentTaskId = $this->currentTaskId;
+        if (!$parentTaskId) {
+            $currentTask = Task::forWorkspace()->where('agent_id', $this->agent->id)
+                ->where('status', Task::STATUS_ACTIVE)
+                ->latest('started_at')
+                ->first();
+            $parentTaskId = $currentTask?->id;
+        }
 
         // Create subtask
         $subtask = Task::create([
@@ -201,7 +210,7 @@ class ContactAgent implements Tool
             'agent_id' => $target->id,
             'requester_id' => $this->agent->id,
             'channel_id' => $channelId,
-            'parent_task_id' => $currentTask?->id,
+            'parent_task_id' => $parentTaskId,
             'context' => $context ? ['delegation_context' => $context] : null,
             'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);

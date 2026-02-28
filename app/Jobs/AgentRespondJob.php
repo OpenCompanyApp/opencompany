@@ -675,6 +675,21 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 'subtask' => $subtask->id,
                 'error' => $e->getMessage(),
             ]);
+        } finally {
+            // Safety net: ensure delegation ID is always removed even on error/early-return.
+            // The happy path (line above) removes it normally; this catches edge cases.
+            $parentTask = $subtask->parentTask;
+            $cleanupAgentId = $parentTask ? $parentTask->agent_id : $subtask->requester_id;
+            if ($cleanupAgentId) {
+                $cleanupAgent = User::find($cleanupAgentId);
+                if ($cleanupAgent && in_array($subtask->id, $cleanupAgent->awaiting_delegation_ids ?? [])) {
+                    $cleanupAgent->removeAwaitingDelegation($subtask->id);
+                    Log::info('Delegation callback: safety-net cleanup removed delegation ID', [
+                        'subtask' => $subtask->id,
+                        'parent_agent' => $cleanupAgent->name,
+                    ]);
+                }
+            }
         }
     }
 

@@ -53,6 +53,7 @@ class GetDocument implements Tool
 
             $result = [
                 'id' => $doc->id,
+                'name' => $doc->title,
                 'title' => $doc->title,
                 'isFolder' => $doc->is_folder,
                 'author' => $doc->author?->name ?? 'Unknown',
@@ -74,7 +75,9 @@ class GetDocument implements Tool
 
                 $result['children'] = $children->map(fn ($child) => [
                     'id' => $child->id,
+                    'name' => $child->title,
                     'title' => $child->title,
+                    'type' => $child->is_folder ? 'folder' : 'document',
                     'isFolder' => $child->is_folder,
                 ])->values()->toArray();
             } else {

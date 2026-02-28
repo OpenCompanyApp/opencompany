@@ -70,7 +70,9 @@ class GetDocumentTree implements Tool
         return $children->map(function ($folder) use ($byParent, $depth) {
             $node = [
                 'id' => $folder->id,
+                'name' => $folder->title,
                 'title' => $folder->title,
+                'type' => 'folder',
                 'documents' => $folder->document_count,
                 'subfolders' => $folder->folder_count,
             ];
