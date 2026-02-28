@@ -110,6 +110,9 @@ Route::middleware('resolve.workspace')->group(function () {
     Route::delete('/list-templates/{id}', [ListTemplateController::class, 'destroy']);
     Route::post('/list-templates/{id}/create-item', [ListTemplateController::class, 'createListItem']);
 
+    // Token Analytics
+    Route::get('/tasks/analytics/tokens', [\App\Http\Controllers\Api\TokenAnalyticsController::class, 'index']);
+
     // Tasks (discrete work items - cases)
     Route::get('/tasks', [TaskController::class, 'index']);
     Route::post('/tasks', [TaskController::class, 'store']);

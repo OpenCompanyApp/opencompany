@@ -14,7 +14,8 @@ import type {
   ApprovalRequest,
   CalendarEvent,
   CalendarFeed,
-  ListStatus
+  ListStatus,
+  TokenAnalyticsResponse
 } from '@/types'
 
 export interface PaginatedResponse<T> {
@@ -301,6 +302,10 @@ export const useApi = () => {
     }>
     summary: { totalAgents: number; activeAgents: number; totalActiveTasks: number; totalPendingTasks: number; completedToday: number; completedThisWeek: number; failedThisWeek: number }
   }>('/workload')
+
+  // Token Analytics
+  const fetchTokenAnalytics = (period = '30') =>
+    useFetch<TokenAnalyticsResponse>(`/tasks/analytics/tokens?period=${period}`)
 
   // Stats
   const fetchStats = () => useFetch<Stats>('/stats')
@@ -603,6 +608,8 @@ export const useApi = () => {
     fetchActivities,
     // Workload
     fetchWorkload,
+    // Token Analytics
+    fetchTokenAnalytics,
     // Stats
     fetchStats,
     fetchWorkspaceStatus,

@@ -61,7 +61,7 @@ const { workspacePath } = useWorkspace()
 const { fetchStats, fetchActivities, fetchAgents, fetchApprovals, respondToApproval } = useApi()
 
 const { data: stats, refresh: refreshStats } = fetchStats()
-const { data: activities, refresh: refreshActivities } = fetchActivities(20)
+const { data: activities, refresh: refreshActivities } = fetchActivities({ limit: 20 })
 const { data: agents, refresh: refreshAgents } = fetchAgents()
 const { data: approvals, refresh: refreshApprovals } = fetchApprovals('pending')
 
@@ -97,7 +97,7 @@ const statsData = computed<Stats>(() => stats.value ?? {
   messagesToday: 0,
 })
 
-const activitiesData = computed<Activity[]>(() => activities.value ?? [])
+const activitiesData = computed<Activity[]>(() => activities.value?.data ?? [])
 
 const workingAgents = computed<User[]>(() =>
   (agents.value ?? []).filter(a => a.status === 'working')

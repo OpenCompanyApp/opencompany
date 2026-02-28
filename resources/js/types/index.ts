@@ -497,3 +497,62 @@ export interface DataTable {
   createdAt?: string
   updatedAt?: string
 }
+
+// Token Analytics
+export interface TokenAnalyticsSummary {
+  total_tasks: number
+  total_prompt_tokens: number
+  total_completion_tokens: number
+  total_cache_read_tokens: number
+  total_cache_write_tokens: number
+  avg_tokens_per_second: number
+  avg_generation_time_ms: number
+  total_tool_calls: number
+}
+
+export interface TokenTimeSeriesEntry {
+  date: string
+  prompt_tokens: number
+  completion_tokens: number
+  cache_read_tokens: number
+  task_count: number
+}
+
+export interface TokenByAgent {
+  agent_id: string
+  agent_name: string
+  agent_avatar: string | null
+  agent_type: string | null
+  task_count: number
+  prompt_tokens: number
+  completion_tokens: number
+  cache_read_tokens: number
+  avg_tokens_per_second: number
+  avg_generation_time_ms: number
+}
+
+export interface TokenByModel {
+  model: string
+  provider: string
+  task_count: number
+  prompt_tokens: number
+  completion_tokens: number
+  cache_read_tokens: number
+  avg_tokens_per_second: number
+  avg_generation_time_ms: number
+}
+
+export interface TokenBySource {
+  source: string
+  task_count: number
+  prompt_tokens: number
+  completion_tokens: number
+}
+
+export interface TokenAnalyticsResponse {
+  summary: TokenAnalyticsSummary
+  timeSeries: TokenTimeSeriesEntry[]
+  byAgent: TokenByAgent[]
+  byModel: TokenByModel[]
+  bySource: TokenBySource[]
+}

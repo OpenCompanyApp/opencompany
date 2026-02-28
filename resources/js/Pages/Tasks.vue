@@ -16,6 +16,12 @@
         >
           Activity
         </Link>
+        <Link
+          :href="workspacePath('/tasks/analytics')"
+          class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+        >
+          Analytics
+        </Link>
       </div>
       <span class="hidden md:inline-flex items-center gap-1 text-xs tabular-nums shrink-0" title="Total / Pending / Active / Done">
         <span class="text-neutral-500 dark:text-neutral-400">{{ taskCounts.total }}</span>

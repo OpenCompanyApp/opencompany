@@ -87,6 +87,10 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             return Inertia::render('Tasks');
         })->name('tasks');
 
+        Route::get('/tasks/analytics', function () {
+            return Inertia::render('Tasks/Analytics');
+        })->name('tasks.analytics');
+
         Route::get('/tasks/{id}', function () {
             return Inertia::render('Tasks/Show', [
                 'taskId' => request()->route('id'),

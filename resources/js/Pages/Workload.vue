@@ -17,6 +17,12 @@
           >
             Activity
           </Link>
+          <Link
+            :href="workspacePath('/tasks/analytics')"
+            class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+          >
+            Analytics
+          </Link>
         </div>
         <button
           class="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
