@@ -1,5 +1,6 @@
 # --- Stage 1: Composer dependencies ---
 FROM composer:2 AS composer
+ARG COMPOSER_AUTH
 WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
