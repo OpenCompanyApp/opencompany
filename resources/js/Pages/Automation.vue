@@ -269,8 +269,10 @@ import Checkbox from '@/Components/shared/Checkbox.vue'
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
 import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { useToast } from '@/composables/useToast'
 
 const { workspacePath } = useWorkspace()
+const { success, error: showError } = useToast()
 const {
   fetchAutomations,
   updateAutomation,
@@ -428,32 +430,57 @@ function handleEdit(automation: Automation) {
 }
 
 async function handleToggle(automation: Automation) {
-  await updateAutomation(automation.id, { isActive: !automation.isActive })
-  await refreshAutomations()
+  try {
+    await updateAutomation(automation.id, { isActive: !automation.isActive })
+    success(automation.isActive ? 'Automation paused' : 'Automation enabled')
+    await refreshAutomations()
+  } catch {
+    showError('Failed to update automation')
+  }
 }
 
 async function handleTrigger(automation: Automation) {
-  await triggerAutomation(automation.id)
-  await refreshAutomations()
+  try {
+    await triggerAutomation(automation.id)
+    success('Automation triggered', `"${automation.name}" is running.`)
+    await refreshAutomations()
+  } catch {
+    showError('Failed to trigger automation')
+  }
 }
 
 async function handleDelete(automation: Automation) {
   if (!confirm(`Delete "${automation.name}"? This cannot be undone.`)) return
-  await deleteAutomation(automation.id)
-  await refreshAutomations()
+  try {
+    await deleteAutomation(automation.id)
+    success('Automation deleted')
+    await refreshAutomations()
+  } catch {
+    showError('Failed to delete automation')
+  }
 }
 
 async function handleBulkDelete() {
-  await bulkDeleteAutomations(Array.from(selectedIds.value))
-  selectedIds.value.clear()
-  showBulkDeleteConfirm.value = false
-  await refreshAutomations()
+  try {
+    await bulkDeleteAutomations(Array.from(selectedIds.value))
+    success(`${selectedIds.value.size} automation(s) deleted`)
+    selectedIds.value.clear()
+    showBulkDeleteConfirm.value = false
+    await refreshAutomations()
+  } catch {
+    showError('Failed to delete automations')
+  }
 }
 
 async function handleBulkRun() {
-  await bulkTriggerAutomations(Array.from(selectedIds.value))
-  selectedIds.value.clear()
-  showBulkRunConfirm.value = false
-  await refreshAutomations()
+  try {
+    await bulkTriggerAutomations(Array.from(selectedIds.value))
+    success(`${selectedIds.value.size} automation(s) triggered`)
+    selectedIds.value.clear()
+    showBulkRunConfirm.value = false
+    await refreshAutomations()
+  } catch {
+    showError('Failed to trigger automations')
+  }
 }
 </script>

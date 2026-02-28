@@ -5,7 +5,7 @@ use Laravel\Telescope\Watchers;
 
 return [
 
-    'enabled' => env('TELESCOPE_ENABLED', true),
+    'enabled' => env('TELESCOPE_ENABLED', false),
 
     'domain' => env('TELESCOPE_DOMAIN'),
 

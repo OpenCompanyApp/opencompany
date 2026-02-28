@@ -12,6 +12,7 @@ import UserMenu from '@/Components/layout/UserMenu.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import WorkspaceIcon from '@/Components/shared/WorkspaceIcon.vue'
 import SpawnAgentModal from '@/Components/agents/SpawnAgentModal.vue'
+import AppToast from '@/Components/shared/AppToast.vue'
 import { useKeyboardShortcuts, useCommandPalette } from '@/composables/useKeyboardShortcuts'
 import { usePresence } from '@/composables/usePresence'
 import { useChannelListener } from '@/composables/useRealtime'
@@ -241,6 +242,7 @@ const isActive = (path: string): boolean => {
           @spawn="handleAgentSpawned"
         />
       </div>
+      <AppToast />
     </RealtimeProvider>
   </TooltipProvider>
 </template>
