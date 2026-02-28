@@ -289,15 +289,24 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
             // Tool steps are now saved in real-time by CheckpointToolCall listener
 
-            // Hold response if agent delegated work — wait for all results
+            // Hold response if agent delegated work — wait for all results.
+            // Check both the agent's tracking field AND the DB for active subtasks
+            // to guard against a race where the subtask completes (and clears the
+            // delegation ID) before we reach this point.
             $this->agent->refresh();
-            if (!empty($this->agent->awaiting_delegation_ids)) {
+            $hasActiveSubtasks = Task::where('parent_task_id', $task->id)
+                ->where('source', Task::SOURCE_AGENT_DELEGATION)
+                ->whereNotIn('status', [Task::STATUS_COMPLETED, Task::STATUS_FAILED, Task::STATUS_CANCELLED])
+                ->exists();
+
+            if (!empty($this->agent->awaiting_delegation_ids) || $hasActiveSubtasks) {
                 $task->addStep('Awaiting delegation results', 'action');
 
                 Log::info('Agent holding response while awaiting delegations', [
                     'agent' => $this->agent->name,
                     'task' => $task->id,
                     'awaiting' => $this->agent->awaiting_delegation_ids,
+                    'has_active_subtasks' => $hasActiveSubtasks,
                 ]);
 
                 // Task stays active, agent goes to awaiting_delegation (in finally block)

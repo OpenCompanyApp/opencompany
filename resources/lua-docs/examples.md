@@ -1,76 +1,96 @@
 # Lua Scripting Examples
 
-## 1. Daily Standup Summary (Scheduled)
+## 1. Daily Summary Report (Scheduled)
 
 ```lua
 -- Scheduled: 0 9 * * 1-5 (weekdays at 9am)
--- Gathers yesterday's completed tasks and today's active tasks
+-- Gathers data from a tracking table and posts a summary
 
-local completed = app.tasks.query({
-    status = "completed",
-    completed_after = ctx.last_run_at,
+local rows = app.tables.get_rows({
+    tableId = "project-tracker-id",
+    limit = 50,
 })
 
-local active = app.tasks.query({
-    status = { "active", "paused" },
+local completed = {}
+local in_progress = {}
+
+for _, row in ipairs(rows) do
+    if row.status == "done" then
+        table.insert(completed, row)
+    elseif row.status == "in_progress" then
+        table.insert(in_progress, row)
+    end
+end
+
+local lines = { "**Daily Summary** — " .. os.date("%Y-%m-%d") .. "\n" }
+
+table.insert(lines, "### Completed (" .. #completed .. ")")
+for _, row in ipairs(completed) do
+    table.insert(lines, "- " .. row.title .. " (" .. (row.assignee or "Unassigned") .. ")")
+end
+
+table.insert(lines, "\n### In Progress (" .. #in_progress .. ")")
+for _, row in ipairs(in_progress) do
+    table.insert(lines, "- " .. row.title .. " (" .. (row.assignee or "Unassigned") .. ")")
+end
+
+app.chat.send_channel_message({
+    channel_id = channelId,
+    content = table.concat(lines, "\n"),
 })
-
-local lines = { "**Daily Standup** — " .. os.date("%Y-%m-%d") .. "\n" }
-
-table.insert(lines, "### Completed Since Last Run (" .. #completed .. ")")
-for _, task in ipairs(completed) do
-    local agent = task.agent and task.agent.name or "Unassigned"
-    table.insert(lines, "- " .. task.title .. " (" .. agent .. ")")
-end
-
-table.insert(lines, "\n### Active Today (" .. #active .. ")")
-for _, task in ipairs(active) do
-    local agent = task.agent and task.agent.name or "Unassigned"
-    table.insert(lines, "- " .. task.title .. " (" .. agent .. ")")
-end
-
-app.chat.send(channelId, table.concat(lines, "\n"))
 ```
 
-## 2. Task Completion Notification (Event-Triggered)
+## 2. New Row Notification (Event-Triggered)
 
 ```lua
--- Trigger: task_completed
--- Notifies the task's channel when a task completes
+-- Trigger: webhook
+-- Notifies a channel when a new row is added via webhook
 
-local task = ctx.event.task
+local payload = ctx.event.body
 
--- Skip if no channel assigned
-if not task.channel_id then return end
+if not payload or not payload.title then return end
 
-local agent_name = task.agent and task.agent.name or "Someone"
-
-app.chat.send(task.channel_id,
-    "**" .. task.title .. "** completed by " .. agent_name
-)
+app.chat.send_channel_message({
+    channel_id = notifyChannelId,
+    content = "New item added: **" .. payload.title .. "** by " .. (payload.author or "Unknown"),
+})
 ```
 
-## 3. Auto-Assign Tasks by Type (Event-Triggered)
+## 3. Auto-Route Incoming Messages (Event-Triggered)
 
 ```lua
--- Trigger: task_created
--- Routes tasks to agents based on task type
+-- Trigger: external_message
+-- Routes incoming messages to different agents based on keywords
 
-local task = ctx.event.task
+local message = ctx.event.message
+local content = message.content or ""
+local lower = content:lower()
 
--- Skip if already assigned
-if task.agent_id then return end
-
-local assignment = {
-    ticket   = "agent-id-nova",
-    research = "agent-id-sage",
-    content  = "agent-id-muse",
+local routing = {
+    { keywords = {"bug", "error", "broken", "fix"}, agent = supportAgentId },
+    { keywords = {"feature", "request", "idea", "suggestion"}, agent = productAgentId },
+    { keywords = {"invoice", "payment", "billing"}, agent = financeAgentId },
 }
 
-local agent_id = assignment[task.type]
-if agent_id then
-    app.tasks.update(task.id, { agent_id = agent_id })
+for _, route in ipairs(routing) do
+    for _, keyword in ipairs(route.keywords) do
+        if lower:find(keyword) then
+            app.agents.contact({
+                agent_id = route.agent,
+                message = content,
+                channel_id = ctx.event.channel_id,
+            })
+            return
+        end
+    end
 end
+
+-- No match — route to default agent
+app.agents.contact({
+    agent_id = defaultAgentId,
+    message = content,
+    channel_id = ctx.event.channel_id,
+})
 ```
 
 ## 4. Lead Scoring (Scheduled)
@@ -106,9 +126,10 @@ if #hot > 0 then
     for _, l in ipairs(hot) do
         table.insert(names, "- **" .. l.name .. "** (score: " .. l.score .. ")")
     end
-    app.chat.send(salesChannelId,
-        #hot .. " hot leads flagged:\n" .. table.concat(names, "\n")
-    )
+    app.chat.send_channel_message({
+        channel_id = salesChannelId,
+        content = #hot .. " hot leads flagged:\n" .. table.concat(names, "\n"),
+    })
 end
 ```
 
@@ -135,37 +156,47 @@ app.tables.add_row({
 })
 
 if payload.event == "payment_received" then
-    app.chat.send(financeChannelId,
-        "Payment received: $" .. payload.amount .. " from " .. payload.customer
-    )
+    app.chat.send_channel_message({
+        channel_id = financeChannelId,
+        content = "Payment received: $" .. payload.amount .. " from " .. payload.customer,
+    })
 end
 ```
 
 ## 6. Hybrid: Lua Filters, Agent Reasons (Event-Triggered)
 
 ```lua
--- Trigger: task_created
+-- Trigger: webhook
 -- Lua does cheap filtering, only escalates to agent when reasoning is needed
 
-local task = ctx.event.task
+local payload = ctx.event.body
 
 -- Fast deterministic checks
-if task.priority == "low" then
-    app.tasks.update(task.id, { agent_id = defaultAgentId })
+if payload.priority == "low" then
+    app.tables.add_row({
+        tableId = "inbox-table-id",
+        data = { title = payload.subject, priority = "low", status = "backlog" },
+    })
     return
 end
 
-if task.type == "ticket" and task.priority == "urgent" then
-    app.tasks.update(task.id, { agent_id = novaAgentId })
-    app.chat.send(task.channel_id, "Urgent ticket routed to Nova.")
+if payload.category == "billing" and payload.priority == "urgent" then
+    app.agents.contact({
+        agent_id = financeAgentId,
+        message = "Urgent billing issue: " .. payload.subject,
+        channel_id = alertChannelId,
+    })
+    app.chat.send_channel_message({
+        channel_id = alertChannelId,
+        content = "Urgent billing issue routed to finance agent.",
+    })
     return
 end
 
 -- Complex case: need agent reasoning to decide
-app.agent.ask(triageAgentId, {
-    title = "Triage: " .. task.title,
-    description = task.description,
-    priority = task.priority,
+app.agents.contact({
+    agent_id = triageAgentId,
+    message = "Please triage: " .. payload.subject .. "\n\n" .. (payload.body or ""),
 })
 ```
 
@@ -179,10 +210,11 @@ local channels = app.chat.list_channels()
 
 for _, channel in ipairs(channels) do
     if channel.unread_count and channel.unread_count > 10 then
-        app.chat.send(alertChannelId,
-            "Channel **" .. channel.name .. "** has " ..
-            channel.unread_count .. " unread messages"
-        )
+        app.chat.send_channel_message({
+            channel_id = alertChannelId,
+            content = "Channel **" .. channel.name .. "** has " ..
+                channel.unread_count .. " unread messages",
+        })
     end
 end
 ```
@@ -199,7 +231,10 @@ local events = app.calendar.list_events({
 })
 
 if #events == 0 then
-    app.chat.send(teamChannelId, "No events scheduled for today.")
+    app.chat.send_channel_message({
+        channel_id = teamChannelId,
+        content = "No events scheduled for today.",
+    })
     return
 end
 
@@ -208,5 +243,8 @@ for _, event in ipairs(events) do
     table.insert(lines, "- " .. event.start_time .. " — " .. event.title)
 end
 
-app.chat.send(teamChannelId, table.concat(lines, "\n"))
+app.chat.send_channel_message({
+    channel_id = teamChannelId,
+    content = table.concat(lines, "\n"),
+})
 ```

@@ -566,6 +566,30 @@ class LuaApiDocGenerator
     }
 
     /**
+     * Build a map of function paths to their ordered parameter names.
+     * Used by LuaBridge to map positional arguments to named parameters.
+     *
+     * @return array<string, list<string>> path => [paramName1, paramName2, ...]
+     */
+    public function buildParameterMap(User $agent): array
+    {
+        $namespaces = $this->buildNamespaces($agent);
+        $map = [];
+
+        foreach ($namespaces as $nsName => $ns) {
+            foreach ($ns['functions'] as $fn) {
+                $paramNames = array_map(
+                    fn ($p) => $p['name'],
+                    $fn['parameters']
+                );
+                $map[$nsName . '.' . $fn['name']] = $paramNames;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
      * Get supplementary Lua docs from a ToolProvider if it implements ProvidesLuaDocs.
      * Works for integration namespaces (e.g., "integrations.clickup" → provider "clickup").
      */

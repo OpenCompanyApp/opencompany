@@ -29,10 +29,11 @@ class LuaBridgeTest extends TestCase
         ]);
     }
 
-    private function makeBridge(array $functionMap, ?ToolRegistry $registry = null): LuaBridge
+    private function makeBridge(array $functionMap, ?ToolRegistry $registry = null, array $parameterMap = []): LuaBridge
     {
         $docGenerator = Mockery::mock(LuaApiDocGenerator::class);
         $docGenerator->shouldReceive('buildFunctionMap')->andReturn($functionMap);
+        $docGenerator->shouldReceive('buildParameterMap')->andReturn($parameterMap);
 
         $registry = $registry ?? Mockery::mock(ToolRegistry::class);
 
@@ -121,6 +122,26 @@ class LuaBridgeTest extends TestCase
         $this->assertNotNull($fakeTool->lastRequest);
         $this->assertEquals('123', $fakeTool->lastRequest['channelId']);
         $this->assertEquals('hello', $fakeTool->lastRequest['content']);
+    }
+
+    public function test_maps_positional_args_to_named_params(): void
+    {
+        $fakeTool = $this->makeFakeTool('ok');
+
+        $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('instantiateToolBySlug')->andReturn($fakeTool);
+
+        $bridge = $this->makeBridge(
+            ['chat.send' => 'send_channel_message'],
+            $registry,
+            ['chat.send' => ['channelId', 'content']],
+        );
+
+        $bridge->call('chat.send', 'abc-123', 'hello world');
+
+        $this->assertNotNull($fakeTool->lastRequest);
+        $this->assertEquals('abc-123', $fakeTool->lastRequest['channelId']);
+        $this->assertEquals('hello world', $fakeTool->lastRequest['content']);
     }
 
     // ── Call logging ─────────────────────────────────────────────

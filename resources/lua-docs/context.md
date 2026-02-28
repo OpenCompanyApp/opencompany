@@ -66,7 +66,7 @@ end
 -- Event-triggered: react to task completion
 if ctx.trigger_type == "task_completed" then
     local task = ctx.event.task
-    app.chat.send(task.channel_id, "Task completed: " .. task.title)
+    app.chat.send_channel_message({ channel_id = task.channel_id, content = "Task completed: " .. task.title })
 end
 
 -- Webhook: process incoming data

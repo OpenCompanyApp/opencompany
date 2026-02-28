@@ -6,7 +6,7 @@ Lua scripts should use `pcall` (protected call) to handle errors gracefully:
 
 ```lua
 local ok, result = pcall(function()
-    return app.chat.send(channelId, "Hello!")
+    return app.chat.send_channel_message({ channel_id = channelId, content = "Hello!" })
 end)
 
 if ok then
@@ -34,7 +34,7 @@ The agent running the script doesn't have access to the requested resource:
 
 ```lua
 local ok, result = pcall(function()
-    return app.chat.send(restrictedChannelId, "Hello!")
+    return app.chat.send_channel_message({ channel_id = restrictedChannelId, content = "Hello!" })
 end)
 -- result: "Permission denied: you do not have access to this channel."
 ```
@@ -56,9 +56,9 @@ Required parameters are missing or invalid:
 
 ```lua
 local ok, result = pcall(function()
-    return app.chat.send(nil, "Hello!")  -- missing channelId
+    return app.chat.send_channel_message({ content = "Hello!" })  -- missing channel_id
 end)
--- result: "Error: 'channelId' is required."
+-- result: "Error: Channel '' not found."
 ```
 
 ### Sandbox Limits
@@ -95,6 +95,6 @@ local function with_retry(fn, max_retries)
 end
 
 local result = with_retry(function()
-    return app.http.post(ctx.webhooks.endpoint, { data = "hello" })
+    return app.tables.get_rows({ tableId = "my-table-id", limit = 10 })
 end)
 ```

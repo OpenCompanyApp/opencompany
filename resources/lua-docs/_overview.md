@@ -16,13 +16,13 @@ Available namespaces are determined by the agent's permissions. Use `lua_list_do
 
 ```lua
 -- Send a message to a channel
-app.chat.send(channelId, "Hello from Lua!")
+app.chat.send_channel_message({ channel_id = channelId, content = "Hello from Lua!" })
 
 -- Query a data table
 local rows = app.tables.get_rows({ tableId = "...", limit = 10 })
 
 -- Create a calendar event
-app.calendar.create({
+app.calendar.create_event({
     title = "Team standup",
     startTime = "2025-01-15T09:00:00",
     duration = 15,
@@ -72,7 +72,7 @@ All `app.*` functions return Lua tables (objects/arrays) on success. On failure,
 
 ```lua
 local ok, result = pcall(function()
-    return app.chat.send(channelId, "Hello!")
+    return app.chat.send_channel_message({ channel_id = channelId, content = "Hello!" })
 end)
 
 if not ok then

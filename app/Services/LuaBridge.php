@@ -4,12 +4,16 @@ namespace App\Services;
 
 use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Tools\Request;
 
 class LuaBridge
 {
     /** @var array<string, string> path => toolSlug */
     private array $functionMap;
+
+    /** @var array<string, list<string>> path => [paramName1, paramName2, ...] */
+    private array $parameterMap;
 
     /** @var list<array{path: string, durationMs: float, status: string, error?: string}> */
     private array $callLog = [];
@@ -20,6 +24,7 @@ class LuaBridge
         LuaApiDocGenerator $docGenerator,
     ) {
         $this->functionMap = $docGenerator->buildFunctionMap($agent);
+        $this->parameterMap = $docGenerator->buildParameterMap($agent);
     }
 
     /**
@@ -125,14 +130,33 @@ class LuaBridge
     }
 
     /**
-     * Map positional arguments to parameter names for simple calls like app.memory.save("content").
+     * Map positional arguments to parameter names based on the tool's schema.
+     *
+     * Allows Lua calls like app.chat.send_channel_message(channel_id, content)
+     * instead of requiring app.chat.send_channel_message({channel_id = "...", content = "..."}).
      *
      * @return array<string, mixed>
      */
     private function mapPositionalArgs(string $path, array $args): array
     {
-        // For now, return empty — callers should use named args via Lua table
-        // This is a hook for future convenience support
-        return [];
+        $paramNames = $this->parameterMap[$path] ?? [];
+
+        if (empty($paramNames)) {
+            Log::warning('LuaBridge: positional args passed but no parameter map for function', [
+                'path' => $path,
+                'arg_count' => count($args),
+            ]);
+
+            return [];
+        }
+
+        $mapped = [];
+        foreach ($args as $i => $value) {
+            if (isset($paramNames[$i])) {
+                $mapped[$paramNames[$i]] = $value;
+            }
+        }
+
+        return $mapped;
     }
 }

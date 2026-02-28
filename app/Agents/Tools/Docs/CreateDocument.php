@@ -32,6 +32,19 @@ class CreateDocument implements Tool
                 return 'Permission denied: you do not have access to the specified folder.';
             }
 
+            // Prevent duplicate folders — return existing if same name in same parent
+            if ($request['isFolder'] ?? false) {
+                $existing = Document::forWorkspace()
+                    ->where('title', $request['title'])
+                    ->where('parent_id', $parentId)
+                    ->where('is_folder', true)
+                    ->first();
+
+                if ($existing) {
+                    return "Document created: '{$existing->title}' (ID: {$existing->id})";
+                }
+            }
+
             $document = Document::create([
                 'id' => Str::uuid()->toString(),
                 'title' => $request['title'],

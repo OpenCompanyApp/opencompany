@@ -212,6 +212,7 @@
           Agents
           <span class="flex-1" />
           <ActionButton label="Resume All" :loading="actionLoading === 'resume_agents'" @click.stop="runAction('resume_agents')" />
+          <ActionButton label="Reset All" :loading="actionLoading === 'reset_agents'" variant="warning" @click.stop="confirmAction('reset_agents', 'Reset All Agents', 'This will set all agents to idle, clear any blocking state, and cancel all active/pending tasks.')" />
           <ActionButton label="Test Telegram" :loading="actionLoading === 'test_telegram'" @click.stop="runAction('test_telegram')" />
         </summary>
         <div class="pl-5.5 pb-3">

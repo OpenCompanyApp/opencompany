@@ -11,6 +11,7 @@ use App\Models\DocumentChunk;
 use App\Models\EmbeddingCache;
 use App\Models\McpServer;
 use App\Models\Automation;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\Mcp\McpClient;
 use App\Services\Memory\DocumentIndexingService;
@@ -84,7 +85,7 @@ class SettingController extends Controller
     public function dangerAction(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
-            'action' => 'required|string|in:pause_agents,reset_memory,resume_agents,retry_failed_jobs,refresh_mcp_tools,test_telegram,reindex_documents,reindex_documents_fresh,flush_failed_jobs,reset_embeddings,clear_embedding_cache,clear_conversation_summaries',
+            'action' => 'required|string|in:pause_agents,reset_memory,resume_agents,reset_agents,retry_failed_jobs,refresh_mcp_tools,test_telegram,reindex_documents,reindex_documents_fresh,flush_failed_jobs,reset_embeddings,clear_embedding_cache,clear_conversation_summaries',
         ]);
 
         $action = $request->input('action');
@@ -92,6 +93,7 @@ class SettingController extends Controller
         return match ($action) {
             'pause_agents' => $this->actionPauseAgents(),
             'resume_agents' => $this->actionResumeAgents(),
+            'reset_agents' => $this->actionResetAgents(),
             'reset_memory' => $this->actionResetMemory(),
             'retry_failed_jobs' => $this->actionRetryFailedJobs(),
             'flush_failed_jobs' => $this->actionFlushFailedJobs(),
@@ -124,6 +126,35 @@ class SettingController extends Controller
             ->update(['status' => 'idle']);
 
         return response()->json(['message' => "{$count} agent(s) resumed."]);
+    }
+
+    private function actionResetAgents(): JsonResponse
+    {
+        $agents = User::where('type', 'agent')
+            ->where('workspace_id', workspace()->id)
+            ->where('status', '!=', 'offline')
+            ->get();
+
+        foreach ($agents as $agent) {
+            $agent->update([
+                'status' => 'idle',
+                'sleeping_until' => null,
+                'sleeping_reason' => null,
+                'awaiting_approval_id' => null,
+                'awaiting_delegation_ids' => null,
+            ]);
+        }
+
+        $taskCount = Task::forWorkspace()
+            ->whereIn('agent_id', $agents->pluck('id'))
+            ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_PENDING])
+            ->get()
+            ->each->cancel()
+            ->count();
+
+        return response()->json([
+            'message' => "{$agents->count()} agent(s) reset to idle, {$taskCount} task(s) cancelled.",
+        ]);
     }
 
     private function actionResetMemory(): JsonResponse
