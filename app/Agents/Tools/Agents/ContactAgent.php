@@ -24,7 +24,7 @@ class ContactAgent implements Tool
 
     public function description(): string
     {
-        return 'Send a message, ask a question, or delegate work to another agent. Actions: "ask" (ask a question — response comes back automatically), "delegate" (hand off work — result comes back when done), "notify" (fire-and-forget FYI). Use list_agents() to discover available agents.';
+        return 'Send a message, ask a question, or delegate work to another agent. Actions: "ask" (ask a question — you will receive the response as a callback), "delegate" (hand off work — you will receive the result as a callback when done), "notify" (send an FYI — the agent processes it independently, NO callback to you). Use list_agents() to discover available agents.';
     }
 
     public function handle(Request $request): string
@@ -226,10 +226,25 @@ class ContactAgent implements Tool
 
     private function handleNotify(User $target, string $channelId, string $message, string $formattedMessage): string
     {
-        // Post notification to DM — no task created, no job dispatched
-        $this->commService->postMessage($channelId, $this->agent, $formattedMessage, 'agent_contact');
+        // Create standalone task (no parent — independent from caller's task)
+        $task = Task::create([
+            'id' => Str::uuid()->toString(),
+            'title' => Str::limit($message, 80),
+            'description' => $message,
+            'type' => Task::TYPE_CUSTOM,
+            'status' => Task::STATUS_PENDING,
+            'priority' => 'normal',
+            'source' => Task::SOURCE_AGENT_NOTIFY,
+            'agent_id' => $target->id,
+            'requester_id' => $this->agent->id,
+            'channel_id' => $channelId,
+            'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
+        ]);
 
-        return "Notification sent to {$target->name}.";
+        $triggerMessage = $this->commService->postMessage($channelId, $this->agent, $formattedMessage, 'agent_contact');
+        AgentRespondJob::dispatch($triggerMessage, $target, $channelId);
+
+        return "Notification sent to {$target->name}. They will process it independently (no callback).";
     }
 
     /** @return array<string, mixed> */
@@ -238,7 +253,7 @@ class ContactAgent implements Tool
         return [
             'action' => $schema
                 ->string()
-                ->description('Communication pattern: "ask" (ask a question — response delivered automatically), "delegate" (hand off work — result delivered when done), "notify" (fire-and-forget, no response expected).')
+                ->description('Communication pattern: "ask" (ask a question — response delivered back to you as callback), "delegate" (hand off work — result delivered back to you as callback when done), "notify" (FYI message — agent processes independently, no callback, no response to you).')
                 ->required(),
             'agentId' => $schema
                 ->string()

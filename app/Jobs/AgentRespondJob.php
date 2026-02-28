@@ -103,10 +103,10 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
         }
 
         if (!$task) {
-            // Check for a pending delegation/ask subtask for this agent on this channel
+            // Check for a pending delegation/ask/notify task for this agent on this channel
             $task = Task::where('agent_id', $this->agent->id)
                 ->where('channel_id', $this->channelId)
-                ->whereIn('source', [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK])
+                ->whereIn('source', [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK, Task::SOURCE_AGENT_NOTIFY])
                 ->where('status', Task::STATUS_PENDING)
                 ->latest('created_at')
                 ->first();
@@ -310,7 +310,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                         'icon' => 'ph:hourglass',
                         'awaiting' => $awaitingTasks->map(fn ($t) => [
                             'taskId' => $t->id,
-                            'agentName' => $t->agent?->name ?? 'Unknown',
+                            'agentName' => $t->agent->name ?? 'Unknown',
                             'source' => $t->source,
                         ])->toArray(),
                     ]
