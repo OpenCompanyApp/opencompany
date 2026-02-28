@@ -225,6 +225,7 @@ class Task extends Model
         // Cascade cancellation to active/pending subtasks
         Task::where('parent_task_id', $this->id)
             ->whereIn('status', [self::STATUS_ACTIVE, self::STATUS_PENDING])
+            ->get()
             ->each->cancel();
 
         return $this;
