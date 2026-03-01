@@ -19,6 +19,7 @@ class ListAgents implements Tool
         try {
             $agents = User::where('type', 'agent')
                 ->where('workspace_id', workspace()->id)
+                ->where('agent_type', '!=', 'system')
                 ->orderBy('name')
                 ->get();
 

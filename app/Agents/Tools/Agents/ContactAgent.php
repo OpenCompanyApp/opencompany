@@ -53,6 +53,11 @@ class ContactAgent implements Tool
                 return "Error: Agent not found. Use list_agents() to find available agents.";
             }
 
+            // Block contacting system agents
+            if ($target->agent_type === 'system') {
+                return 'Error: You cannot contact system agents.';
+            }
+
             // Check permission
             $permission = $this->permissionService->canContactAgent($this->agent, $target);
             if (!$permission['allowed']) {
