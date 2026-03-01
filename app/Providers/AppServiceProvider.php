@@ -35,6 +35,12 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\IntegrationSettingCredentialResolver::class
         );
 
+        // Agent file storage — allows vendor tool packages to save files into workspace file system
+        $this->app->singleton(
+            \OpenCompany\IntegrationCore\Contracts\AgentFileStorage::class,
+            \App\Services\AgentFileStorageService::class,
+        );
+
         // Chat integration manager (workspace-scoped Chat instances)
         $this->app->singleton(ChatManager::class);
         $this->app->singleton(ChatBridge::class);

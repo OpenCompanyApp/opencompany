@@ -168,6 +168,7 @@ const agentWorkItems = computed<NavItemType[]>(() => [
 const officeItems = computed<NavItemType[]>(() => [
   { to: workspacePath('/chat'), icon: 'ph:chat-circle', iconActive: 'ph:chat-circle-fill', label: 'Chat', badge: 15 },
   { to: workspacePath('/docs'), icon: 'ph:file-text', iconActive: 'ph:file-text-fill', label: 'Docs' },
+  { to: workspacePath('/files'), icon: 'ph:folder', iconActive: 'ph:folder-fill', label: 'Files' },
   { to: workspacePath('/tables'), icon: 'ph:table', iconActive: 'ph:table-fill', label: 'Tables' },
   { to: workspacePath('/calendar'), icon: 'ph:calendar', iconActive: 'ph:calendar-fill', label: 'Calendar' },
   { to: workspacePath('/lists'), icon: 'ph:kanban', iconActive: 'ph:kanban-fill', label: 'Lists' },

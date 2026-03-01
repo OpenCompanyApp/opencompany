@@ -107,6 +107,11 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             return Inertia::render('Docs');
         })->name('docs');
 
+        // Files
+        Route::get('/files', function () {
+            return Inertia::render('Files');
+        })->name('files');
+
         // Activity
         Route::get('/activity', function () {
             return Inertia::render('Activity');

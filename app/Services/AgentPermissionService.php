@@ -6,6 +6,7 @@ use App\Models\AgentPermission;
 use App\Models\ApprovalRequest;
 use App\Models\IntegrationSetting;
 use App\Models\User;
+use App\Models\WorkspaceFile;
 use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
@@ -242,6 +243,123 @@ class AgentPermissionService
         $requiresApproval = $this->behaviorModeRequiresApproval($caller, 'write');
 
         return ['allowed' => true, 'requires_approval' => $requiresApproval, 'can_request' => false];
+    }
+
+    /**
+     * Get the list of file folder IDs an agent has been explicitly granted access to.
+     *
+     * Returns null if wildcard (*) access is set (unrestricted).
+     * Returns empty array if no explicit grants (home folder only).
+     * Returns array of folder UUIDs if specific grants exist.
+     *
+     * @return array<int, string>|null
+     */
+    public function getAllowedFileFolderIds(User $agent): ?array
+    {
+        $perms = AgentPermission::forAgent($agent->id)
+            ->where('scope_type', 'file_folder')
+            ->allowed()
+            ->pluck('scope_key');
+
+        if ($perms->contains('*')) {
+            return null; // Unrestricted
+        }
+
+        return $perms->toArray();
+    }
+
+    /**
+     * Check if an agent can access a specific file or folder.
+     *
+     * Rules:
+     * 1. Agent always has access to their own home folder (/agents/{slug}/) and descendants
+     * 2. Explicit file_folder permissions grant access to a folder and its descendants
+     * 3. Wildcard (*) grants unrestricted access
+     * 4. Default (no permissions): home folder only
+     */
+    public function canAccessFilePath(User $agent, WorkspaceFile $file): bool
+    {
+        $allowedIds = $this->getAllowedFileFolderIds($agent);
+
+        // Wildcard: unrestricted
+        if ($allowedIds === null) {
+            return true;
+        }
+
+        // Check if the file is within the agent's home folder
+        if ($this->isInAgentHomeFolder($agent, $file)) {
+            return true;
+        }
+
+        // Check if the file is within any explicitly allowed folder
+        foreach ($allowedIds as $folderId) {
+            if ($this->isDescendantOf($file, $folderId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a file is within an agent's home folder (/agents/{slug}/).
+     */
+    private function isInAgentHomeFolder(User $agent, WorkspaceFile $file): bool
+    {
+        $slug = Str::slug($agent->name);
+        $current = $file;
+
+        // Walk up the tree looking for the agent's home folder pattern
+        while ($current) {
+            if ($current->parent_id === null) {
+                // We're at a root folder
+                return false;
+            }
+
+            $parent = WorkspaceFile::find($current->parent_id);
+            if (!$parent) {
+                return false;
+            }
+
+            // Check if parent is the "agents" folder and current is the agent's slug folder
+            if ($parent->name === 'agents' && $parent->parent_id === null && $current->name === $slug) {
+                return true;
+            }
+
+            // Check if we're inside the agent's slug folder (deeper descendant)
+            if ($current->name === $slug && $parent->name === 'agents' && $parent->parent_id === null) {
+                return true;
+            }
+
+            $current = $parent;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a file is a descendant of a given folder.
+     */
+    private function isDescendantOf(WorkspaceFile $file, string $folderId): bool
+    {
+        if ($file->id === $folderId) {
+            return true;
+        }
+
+        $current = $file;
+        $maxDepth = 20; // Prevent infinite loops
+
+        while ($current->parent_id && $maxDepth-- > 0) {
+            if ($current->parent_id === $folderId) {
+                return true;
+            }
+            $current = WorkspaceFile::find($current->parent_id);
+            if (!$current) {
+                return false;
+            }
+        }
+
+        return false;
     }
 
     /**

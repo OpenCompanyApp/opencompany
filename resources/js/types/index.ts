@@ -418,6 +418,46 @@ export interface CalendarFeed {
   createdAt: string
 }
 
+// Storage Disks
+export type DiskDriver = 'local' | 's3' | 'sftp'
+
+export interface WorkspaceDisk {
+  id: string
+  name: string
+  driver: DiskDriver
+  isDefault: boolean
+  enabled: boolean
+  fileCount?: number
+  config?: Record<string, string>
+  createdAt?: string
+}
+
+// Files
+export interface WorkspaceFile {
+  id: string
+  name: string
+  description?: string | null
+  isFolder: boolean
+  parentId: string | null
+  mimeType?: string
+  size?: number
+  owner?: Pick<User, 'id' | 'name' | 'avatar' | 'type'>
+  virtualPath: string
+  downloadUrl?: string
+  createdAt: string
+  updatedAt: string
+  childCount?: number
+  diskId?: string
+  diskName?: string
+}
+
+export interface FolderTreeNode {
+  id: string
+  name: string
+  parentId: string | null
+  children: FolderTreeNode[]
+}
+
 // Automations
 export interface Automation {
   id: string

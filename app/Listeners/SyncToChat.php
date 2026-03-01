@@ -8,7 +8,9 @@ use App\Events\MessagePinned;
 use App\Events\MessageReactionAdded;
 use App\Events\MessageSent;
 use App\Models\Message;
+use App\Models\WorkspaceFile;
 use App\Services\Chat\ChatManager;
+use App\Services\FileSystemService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Cache;
@@ -257,58 +259,86 @@ class SyncToChat implements ShouldQueue
     /**
      * Extract inline image URLs from markdown and send via adapter.
      *
-     * @return string[] File paths that were sent
+     * @return string[] URLs that were sent
      */
     private function sendInlineImages($adapter, string $threadId, string $content): array
     {
-        $sentPaths = [];
+        $sentUrls = [];
 
         if (! preg_match_all('/!\[([^\]]*)\]\(([^)]+)\)/', $content, $matches, PREG_SET_ORDER)) {
-            return $sentPaths;
+            return $sentUrls;
         }
 
         foreach ($matches as $match) {
             $alt = $match[1];
             $url = $match[2];
 
-            if (! str_starts_with($url, '/storage/')) {
-                continue;
-            }
-
-            $relativePath = str_replace('/storage/', '', $url);
-            $filePath = storage_path('app/public/'.$relativePath);
-
-            if (! file_exists($filePath)) {
-                continue;
-            }
-
             try {
-                $isDocument = str_contains($url, '/storage/mermaid/')
-                    || str_contains($url, '/storage/plantuml/')
-                    || str_contains($url, '/storage/typst/');
+                // Workspace file: /api/files/{id}/download
+                if (preg_match('#^/api/files/([^/]+)/download#', $url, $fileMatch)) {
+                    $file = WorkspaceFile::find($fileMatch[1]);
+                    if (! $file) {
+                        continue;
+                    }
 
-                $adapter->sendFile($threadId, FileUpload::fromPath(
-                    $filePath,
-                    caption: $alt ?: null,
-                    forceDocument: $isDocument,
-                ));
-                $sentPaths[] = $filePath;
+                    $bytes = app(FileSystemService::class)->readFileContents($file);
+                    if (! $bytes) {
+                        continue;
+                    }
+
+                    $tmpPath = sys_get_temp_dir() . '/' . $file->name;
+                    file_put_contents($tmpPath, $bytes);
+
+                    $isDocument = $file->mime_type === 'application/pdf'
+                        || ! str_starts_with($file->mime_type ?? '', 'image/');
+
+                    $adapter->sendFile($threadId, FileUpload::fromPath(
+                        $tmpPath,
+                        filename: $file->name,
+                        caption: $alt ?: null,
+                        forceDocument: $isDocument,
+                    ));
+                    @unlink($tmpPath);
+                    $sentUrls[] = $url;
+                    continue;
+                }
+
+                // Legacy public storage: /storage/...
+                if (str_starts_with($url, '/storage/')) {
+                    $relativePath = str_replace('/storage/', '', $url);
+                    $filePath = storage_path('app/public/' . $relativePath);
+
+                    if (! file_exists($filePath)) {
+                        continue;
+                    }
+
+                    $isDocument = str_contains($url, '/storage/mermaid/')
+                        || str_contains($url, '/storage/plantuml/')
+                        || str_contains($url, '/storage/typst/');
+
+                    $adapter->sendFile($threadId, FileUpload::fromPath(
+                        $filePath,
+                        caption: $alt ?: null,
+                        forceDocument: $isDocument,
+                    ));
+                    $sentUrls[] = $url;
+                }
             } catch (\Throwable $e) {
                 Log::error('SyncToChat: failed to send image', [
-                    'path' => $filePath, 'error' => $e->getMessage(),
+                    'url' => $url, 'error' => $e->getMessage(),
                 ]);
             }
         }
 
-        return $sentPaths;
+        return $sentUrls;
     }
 
     /**
      * Send message attachment images, skipping ones already sent inline.
      *
-     * @param  string[]  $alreadySentPaths
+     * @param  string[]  $alreadySentUrls
      */
-    private function sendAttachmentImages($adapter, string $threadId, Message $message, array $alreadySentPaths): void
+    private function sendAttachmentImages($adapter, string $threadId, Message $message, array $alreadySentUrls): void
     {
         foreach ($message->attachments as $attachment) {
             $mime = $attachment->mime_type ?? '';
@@ -317,30 +347,61 @@ class SyncToChat implements ShouldQueue
             }
 
             $url = $attachment->url ?? '';
-            if (! str_starts_with($url, '/storage/')) {
-                continue;
-            }
 
-            $relativePath = str_replace('/storage/', '', $url);
-            $filePath = storage_path('app/public/'.$relativePath);
-
-            if (in_array($filePath, $alreadySentPaths, true) || ! file_exists($filePath)) {
+            if (in_array($url, $alreadySentUrls, true)) {
                 continue;
             }
 
             try {
-                $isDocument = str_contains($url, '/storage/mermaid/')
-                    || str_contains($url, '/storage/plantuml/')
-                    || str_contains($url, '/storage/typst/');
+                // Workspace file: /api/files/{id}/download
+                if (preg_match('#^/api/files/([^/]+)/download#', $url, $fileMatch)) {
+                    $file = WorkspaceFile::find($fileMatch[1]);
+                    if (! $file) {
+                        continue;
+                    }
 
-                $adapter->sendFile($threadId, FileUpload::fromPath(
-                    $filePath,
-                    filename: $attachment->original_name,
-                    forceDocument: $isDocument,
-                ));
+                    $bytes = app(FileSystemService::class)->readFileContents($file);
+                    if (! $bytes) {
+                        continue;
+                    }
+
+                    $tmpPath = sys_get_temp_dir() . '/' . $file->name;
+                    file_put_contents($tmpPath, $bytes);
+
+                    $isDocument = $file->mime_type === 'application/pdf'
+                        || ! str_starts_with($file->mime_type ?? '', 'image/');
+
+                    $adapter->sendFile($threadId, FileUpload::fromPath(
+                        $tmpPath,
+                        filename: $file->name,
+                        forceDocument: $isDocument,
+                    ));
+                    @unlink($tmpPath);
+                    continue;
+                }
+
+                // Legacy public storage: /storage/...
+                if (str_starts_with($url, '/storage/')) {
+                    $relativePath = str_replace('/storage/', '', $url);
+                    $filePath = storage_path('app/public/' . $relativePath);
+
+                    if (! file_exists($filePath)) {
+                        continue;
+                    }
+
+                    $isDocument = str_contains($url, '/storage/mermaid/')
+                        || str_contains($url, '/storage/plantuml/')
+                        || str_contains($url, '/storage/typst/');
+
+                    $adapter->sendFile($threadId, FileUpload::fromPath(
+                        $filePath,
+                        filename: $attachment->original_name,
+                        forceDocument: $isDocument,
+                    ));
+                }
             } catch (\Throwable $e) {
                 Log::error('SyncToChat: failed to send attachment', [
-                    'path' => $filePath, 'error' => $e->getMessage(),
+                    'url' => $url, 'error' => $e->getMessage(),
                 ]);
             }
         }

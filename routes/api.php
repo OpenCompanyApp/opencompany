@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AutomationRuleController;
 use App\Http\Controllers\Api\ChannelController;
 use App\Http\Controllers\Api\DirectMessageController;
 use App\Http\Controllers\Api\DocumentAttachmentController;
+use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\DocumentCommentController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentVersionController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Api\DataTableColumnController;
 use App\Http\Controllers\Api\DataTableRowController;
 use App\Http\Controllers\Api\DataTableViewController;
 use App\Http\Controllers\Api\AgentController;
+use App\Http\Controllers\Api\WorkspaceDiskController;
 use App\Http\Controllers\Api\AgentPermissionController;
 use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\CodexAuthController;
@@ -151,6 +153,28 @@ Route::middleware('resolve.workspace')->group(function () {
     Route::delete('/automations/{id}', [AutomationController::class, 'destroy']);
     Route::get('/automations/{id}/runs', [AutomationController::class, 'runs']);
     Route::post('/automations/{id}/run', [AutomationController::class, 'triggerRun']);
+
+    // Storage Disks
+    Route::get('/disks', [WorkspaceDiskController::class, 'index']);
+    Route::post('/disks', [WorkspaceDiskController::class, 'store']);
+    Route::get('/disks/{id}', [WorkspaceDiskController::class, 'show']);
+    Route::patch('/disks/{id}', [WorkspaceDiskController::class, 'update']);
+    Route::delete('/disks/{id}', [WorkspaceDiskController::class, 'destroy']);
+    Route::post('/disks/{id}/test', [WorkspaceDiskController::class, 'test']);
+    Route::post('/disks/{id}/default', [WorkspaceDiskController::class, 'setDefault']);
+
+    // Files
+    Route::get('/files', [FileController::class, 'index']);
+    Route::get('/files/tree', [FileController::class, 'tree']);
+    Route::get('/files/search', [FileController::class, 'search']);
+    Route::post('/files', [FileController::class, 'store']);
+    Route::post('/files/folder', [FileController::class, 'createFolder']);
+    Route::get('/files/{id}', [FileController::class, 'show']);
+    Route::get('/files/{id}/children', [FileController::class, 'children']);
+    Route::get('/files/{id}/download', [FileController::class, 'download']);
+    Route::patch('/files/{id}', [FileController::class, 'update']);
+    Route::delete('/files/{id}', [FileController::class, 'destroy']);
+    Route::post('/files/{id}/copy', [FileController::class, 'copy']);
 
     // Documents
     Route::get('/documents', [DocumentController::class, 'index']);

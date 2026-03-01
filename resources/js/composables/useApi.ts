@@ -15,7 +15,10 @@ import type {
   CalendarEvent,
   CalendarFeed,
   ListStatus,
-  TokenAnalyticsResponse
+  TokenAnalyticsResponse,
+  WorkspaceDisk,
+  WorkspaceFile,
+  FolderTreeNode,
 } from '@/types'
 
 export interface PaginatedResponse<T> {
@@ -496,6 +499,52 @@ export const useApi = () => {
     api.post('/settings/danger-action', { action })
   const fetchDebugInfo = () => useFetch<Record<string, unknown>>('/settings/debug')
 
+  // Storage Disks
+  const fetchDisks = () => useFetch<{ data: WorkspaceDisk[] }>('/disks')
+  const createDisk = (data: { name: string; driver: string; config?: Record<string, string> }) =>
+    api.post<WorkspaceDisk>('/disks', data)
+  const updateDisk = (id: string, data: { name?: string; config?: Record<string, string>; enabled?: boolean }) =>
+    api.patch<WorkspaceDisk>(`/disks/${id}`, data)
+  const deleteDisk = (id: string) => api.delete(`/disks/${id}`)
+  const testDisk = (id: string) => api.post<{ success: boolean; message: string }>(`/disks/${id}/test`)
+  const setDefaultDisk = (id: string) => api.post(`/disks/${id}/default`)
+
+  // Files
+  const fetchFiles = (parentId?: string | null, search?: string, diskId?: string) => {
+    const params = new URLSearchParams()
+    if (parentId) params.append('parent_id', parentId)
+    if (search) params.append('search', search)
+    if (diskId) params.append('disk_id', diskId)
+    return useFetch<{ data: WorkspaceFile[]; parentId: string | null }>(`/files?${params.toString()}`)
+  }
+  const fetchFolderTree = () => useFetch<FolderTreeNode[]>('/files/tree')
+  const searchFiles = (query: string, mimeType?: string) => {
+    const params = new URLSearchParams({ q: query })
+    if (mimeType) params.append('mime_type', mimeType)
+    return useFetch<{ data: WorkspaceFile[] }>(`/files/search?${params.toString()}`)
+  }
+  const uploadFile = async (parentId: string | null, file: File, diskId?: string) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (parentId) formData.append('parent_id', parentId)
+    if (diskId) formData.append('disk_id', diskId)
+    return api.post<WorkspaceFile>('/files', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  }
+  const createFolder = (name: string, parentId?: string | null, diskId?: string) =>
+    api.post<WorkspaceFile>('/files/folder', { name, parent_id: parentId, disk_id: diskId })
+  const fetchFileDetails = (id: string) => useFetch<WorkspaceFile>(`/files/${id}`)
+  const fetchFolderChildren = (id: string) =>
+    useFetch<{ data: WorkspaceFile[]; parentId: string; parentName: string; parentPath: string }>(`/files/${id}/children`)
+  const renameFile = (id: string, name: string) =>
+    api.patch<WorkspaceFile>(`/files/${id}`, { name })
+  const moveFile = (id: string, parentId: string) =>
+    api.patch<WorkspaceFile>(`/files/${id}`, { parent_id: parentId })
+  const deleteFile = (id: string) => api.delete(`/files/${id}`)
+  const copyFile = (id: string, parentId: string, name?: string) =>
+    api.post<WorkspaceFile>(`/files/${id}/copy`, { parent_id: parentId, name })
+
   // Notifications
   const fetchNotifications = (userId?: string, unreadOnly?: boolean) => {
     const params = new URLSearchParams()
@@ -682,6 +731,24 @@ export const useApi = () => {
     updateSettings,
     dangerAction,
     fetchDebugInfo,
+    // Files
+    fetchDisks,
+    createDisk,
+    updateDisk,
+    deleteDisk,
+    testDisk,
+    setDefaultDisk,
+    fetchFiles,
+    fetchFolderTree,
+    searchFiles,
+    uploadFile,
+    createFolder,
+    fetchFileDetails,
+    fetchFolderChildren,
+    renameFile,
+    moveFile,
+    deleteFile,
+    copyFile,
     // Notifications
     fetchNotifications,
     markNotificationRead,

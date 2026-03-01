@@ -130,6 +130,8 @@
               @save="saveCategory"
             />
 
+            <StorageSettings v-if="activeSection === 'storage'" />
+
             <DebugSettings v-if="activeSection === 'debug'" />
 
             <DangerZoneSettings v-if="activeSection === 'danger'" />
@@ -148,6 +150,7 @@ import AgentDefaultsSettings from '@/Components/settings/AgentDefaultsSettings.v
 import PoliciesSettings from '@/Components/settings/PoliciesSettings.vue'
 import NotificationsSettings from '@/Components/settings/NotificationsSettings.vue'
 import MemorySettings from '@/Components/settings/MemorySettings.vue'
+import StorageSettings from '@/Components/settings/StorageSettings.vue'
 import DebugSettings from '@/Components/settings/DebugSettings.vue'
 import DangerZoneSettings from '@/Components/settings/DangerZoneSettings.vue'
 import { useApi } from '@/composables/useApi'
@@ -160,6 +163,7 @@ const sections = [
   { id: 'policies', name: 'Action Policies', icon: 'ph:shield-check' },
   { id: 'notifications', name: 'Notifications', icon: 'ph:bell' },
   { id: 'memory', name: 'Memory', icon: 'ph:brain' },
+  { id: 'storage', name: 'Storage', icon: 'ph:hard-drives' },
   { id: 'debug', name: 'Debug', icon: 'ph:bug' },
   { id: 'danger', name: 'Danger Zone', icon: 'ph:warning' },
 ]

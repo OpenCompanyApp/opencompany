@@ -4,6 +4,16 @@ namespace App\Agents\Tools;
 
 use App\Agents\Tools\Agents\ContactAgent;
 use App\Agents\Tools\Calendar\CreateCalendarEvent;
+use App\Agents\Tools\Files\CopyFile;
+use App\Agents\Tools\Files\CreateFolder;
+use App\Agents\Tools\Files\DeleteFile;
+use App\Agents\Tools\Files\GetFileInfo;
+use App\Agents\Tools\Files\ListDisks;
+use App\Agents\Tools\Files\ListFiles;
+use App\Agents\Tools\Files\MoveFile;
+use App\Agents\Tools\Files\ReadFile;
+use App\Agents\Tools\Files\SearchFiles;
+use App\Agents\Tools\Files\WriteFile;
 use App\Agents\Tools\Calendar\DeleteCalendarEvent;
 use App\Agents\Tools\Calendar\GetCalendarEvent;
 use App\Agents\Tools\Calendar\ListCalendarEvents;
@@ -119,6 +129,7 @@ use App\Agents\Tools\Workspace\RunAutomation;
 use App\Agents\Tools\Workspace\UpdateAgent;
 use App\Agents\Tools\Workspace\UpdateAgentIdentityFile;
 use App\Agents\Tools\Workspace\UpdateAgentChannelAccess;
+use App\Agents\Tools\Workspace\UpdateAgentFileFolderAccess;
 use App\Agents\Tools\Workspace\UpdateAgentFolderAccess;
 use App\Agents\Tools\Workspace\UpdateAgentIntegrationAccess;
 use App\Agents\Tools\Workspace\UpdateAgentToolPermissions;
@@ -176,6 +187,11 @@ class ToolRegistry
             'label' => 'list, get, tree, search, create, update, delete, comment',
             'description' => 'Document workspace',
         ],
+        'files' => [
+            'tools' => ['list_disks', 'list_files', 'read_file', 'get_file_info', 'search_files', 'write_file', 'create_folder', 'move_file', 'copy_file', 'delete_file'],
+            'label' => 'disks, list, read, info, search, write, mkdir, move, copy, delete',
+            'description' => 'Workspace file storage',
+        ],
         'tables' => [
             'tools' => ['list_tables', 'get_table', 'get_table_rows', 'search_table_rows', 'create_table', 'update_table', 'delete_table', 'add_table_column', 'update_table_column', 'delete_table_column', 'reorder_table_columns', 'add_table_row', 'update_table_row', 'delete_table_row', 'bulk_add_table_rows', 'bulk_delete_table_rows', 'list_table_views', 'create_table_view', 'update_table_view', 'delete_table_view'],
             'label' => 'list, get, search, create, update, delete, columns, rows, views',
@@ -201,7 +217,7 @@ class ToolRegistry
             'tools' => [
                 'list_members', 'get_agent_details', 'get_agent_permissions', 'list_integrations', 'get_integration_config', 'list_available_models',
                 'create_agent', 'update_agent', 'delete_agent', 'read_agent_identity_file', 'update_agent_identity_file',
-                'update_agent_tool_permissions', 'update_agent_channel_access', 'update_agent_folder_access', 'update_agent_integration_access',
+                'update_agent_tool_permissions', 'update_agent_channel_access', 'update_agent_folder_access', 'update_agent_file_folder_access', 'update_agent_integration_access',
                 'get_integration_setup', 'update_integration_config', 'test_integration_connection', 'setup_integration_webhook', 'link_external_user',
                 'list_mcp_servers', 'add_mcp_server', 'update_mcp_server', 'remove_mcp_server', 'test_mcp_server', 'discover_mcp_tools',
                 'create_channel', 'add_channel_member', 'remove_channel_member',
@@ -251,6 +267,7 @@ class ToolRegistry
         'memory' => 'ph:brain',
         'chat' => 'ph:chat-circle',
         'docs' => 'ph:file-text',
+        'files' => 'ph:folder-open',
         'tables' => 'ph:table',
         'calendar' => 'ph:calendar',
         'lists' => 'ph:kanban',
@@ -491,6 +508,77 @@ class ToolRegistry
             'name' => 'List Document Attachments',
             'description' => 'List file attachments on a document.',
             'icon' => 'ph:paperclip',
+        ],
+        // Files
+        'list_disks' => [
+            'class' => ListDisks::class,
+            'type' => 'read',
+            'name' => 'List Disks',
+            'description' => 'List available storage disks in the workspace.',
+            'icon' => 'ph:hard-drives',
+        ],
+        'list_files' => [
+            'class' => ListFiles::class,
+            'type' => 'read',
+            'name' => 'List Files',
+            'description' => 'List files and folders at a given path.',
+            'icon' => 'ph:folder-open',
+        ],
+        'read_file' => [
+            'class' => ReadFile::class,
+            'type' => 'read',
+            'name' => 'Read File',
+            'description' => 'Read the contents of a text file.',
+            'icon' => 'ph:file-text',
+        ],
+        'get_file_info' => [
+            'class' => GetFileInfo::class,
+            'type' => 'read',
+            'name' => 'Get File Info',
+            'description' => 'Get metadata about a file or folder.',
+            'icon' => 'ph:info',
+        ],
+        'search_files' => [
+            'class' => SearchFiles::class,
+            'type' => 'read',
+            'name' => 'Search Files',
+            'description' => 'Search files by name across accessible folders.',
+            'icon' => 'ph:magnifying-glass',
+        ],
+        'write_file' => [
+            'class' => WriteFile::class,
+            'type' => 'write',
+            'name' => 'Write File',
+            'description' => 'Create or overwrite a text file.',
+            'icon' => 'ph:file-plus',
+        ],
+        'create_folder' => [
+            'class' => CreateFolder::class,
+            'type' => 'write',
+            'name' => 'Create Folder',
+            'description' => 'Create a folder at the given path.',
+            'icon' => 'ph:folder-plus',
+        ],
+        'move_file' => [
+            'class' => MoveFile::class,
+            'type' => 'write',
+            'name' => 'Move File',
+            'description' => 'Move or rename a file or folder.',
+            'icon' => 'ph:arrows-left-right',
+        ],
+        'copy_file' => [
+            'class' => CopyFile::class,
+            'type' => 'write',
+            'name' => 'Copy File',
+            'description' => 'Copy a file to another location.',
+            'icon' => 'ph:copy',
+        ],
+        'delete_file' => [
+            'class' => DeleteFile::class,
+            'type' => 'write',
+            'name' => 'Delete File',
+            'description' => 'Delete a file or folder.',
+            'icon' => 'ph:trash',
         ],
         // Tables — Read
         'list_tables' => [
@@ -993,7 +1081,14 @@ class ToolRegistry
             'class' => UpdateAgentFolderAccess::class,
             'type' => 'write',
             'name' => 'Update Agent Folder Access',
-            'description' => 'Update folder access for an agent.',
+            'description' => 'Update document folder access for an agent.',
+            'icon' => 'ph:shield-check',
+        ],
+        'update_agent_file_folder_access' => [
+            'class' => UpdateAgentFileFolderAccess::class,
+            'type' => 'write',
+            'name' => 'Update Agent File Folder Access',
+            'description' => 'Update file storage folder access for an agent.',
             'icon' => 'ph:shield-check',
         ],
         'update_agent_integration_access' => [
@@ -1719,6 +1814,17 @@ class ToolRegistry
             ListDocumentVersions::class => new ListDocumentVersions($agent, $this->permissionService),
             RestoreDocumentVersion::class => new RestoreDocumentVersion($agent, $this->permissionService),
             ListDocumentAttachments::class => new ListDocumentAttachments($agent, $this->permissionService),
+            // Files tools
+            ListDisks::class => new ListDisks($agent),
+            ListFiles::class => new ListFiles($agent, $this->permissionService, app(\App\Services\FileSystemService::class)),
+            ReadFile::class => new ReadFile($agent, $this->permissionService, app(\App\Services\FileSystemService::class)),
+            GetFileInfo::class => new GetFileInfo($agent, $this->permissionService, app(\App\Services\FileSystemService::class)),
+            SearchFiles::class => new SearchFiles($agent, $this->permissionService, app(\App\Services\FileSystemService::class)),
+            WriteFile::class => new WriteFile($agent, $this->permissionService, app(\App\Services\FileSystemService::class)),
+            CreateFolder::class => new CreateFolder($agent, $this->permissionService, app(\App\Services\FileSystemService::class)),
+            MoveFile::class => new MoveFile($agent, $this->permissionService, app(\App\Services\FileSystemService::class)),
+            CopyFile::class => new CopyFile($agent, $this->permissionService, app(\App\Services\FileSystemService::class)),
+            DeleteFile::class => new DeleteFile($agent, $this->permissionService, app(\App\Services\FileSystemService::class)),
             // Tools needing only agent
             ListTables::class => new ListTables($agent),
             GetTable::class => new GetTable($agent),
@@ -1799,6 +1905,7 @@ class ToolRegistry
             UpdateAgentToolPermissions::class => new UpdateAgentToolPermissions($agent, $this->permissionService),
             UpdateAgentChannelAccess::class => new UpdateAgentChannelAccess($agent, $this->permissionService),
             UpdateAgentFolderAccess::class => new UpdateAgentFolderAccess($agent, $this->permissionService),
+            UpdateAgentFileFolderAccess::class => new UpdateAgentFileFolderAccess($agent, $this->permissionService),
             UpdateAgentIntegrationAccess::class => new UpdateAgentIntegrationAccess($agent, $this->permissionService),
             // Workspace — Integration management
             GetIntegrationSetup::class => new GetIntegrationSetup($agent),
