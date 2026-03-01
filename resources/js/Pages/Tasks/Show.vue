@@ -48,7 +48,7 @@
               class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300"
             >
               <Icon :name="sourceIcons[task.source] || 'ph:hand'" class="w-3 h-3" />
-              {{ task.source }}
+              {{ sourceLabels[task.source] || task.source }}
             </span>
             <span
               v-if="isScriptRun"
@@ -161,6 +161,35 @@
             <h3 class="text-sm font-semibold text-red-800 dark:text-red-300">Task Failed</h3>
           </div>
           <p class="text-sm text-red-700 dark:text-red-400">{{ task.result.error }}</p>
+        </div>
+
+        <!-- Automation Banner -->
+        <div
+          v-if="task.source === 'automation'"
+          class="mb-6 p-4 rounded-lg border bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800"
+        >
+          <div class="flex items-center gap-3">
+            <Icon name="ph:lightning" class="w-5 h-5 shrink-0 text-violet-600 dark:text-violet-400" />
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium text-violet-800 dark:text-violet-300">Triggered by automation</span>
+                <template v-if="task.requester">
+                  <span class="text-sm text-violet-600 dark:text-violet-400">·</span>
+                  <span class="text-sm text-violet-600 dark:text-violet-400">created by</span>
+                  <AgentAvatar :user="task.requester" size="xs" :show-status="false" />
+                  <span class="text-sm font-medium text-violet-700 dark:text-violet-300">{{ task.requester.name }}</span>
+                </template>
+              </div>
+              <button
+                v-if="ctx.automation_id"
+                class="mt-1 text-xs text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
+                @click="router.visit(workspacePath(`/automation/${ctx.automation_id}/edit`))"
+              >
+                <Icon name="ph:pencil-simple" class="w-3 h-3" />
+                Edit automation
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Delegation Banner -->
@@ -765,6 +794,15 @@ const sourceIcons: Record<string, string> = {
   agent_delegation: 'ph:users-three',
   agent_ask: 'ph:question',
   agent_notify: 'ph:megaphone',
+}
+
+const sourceLabels: Record<string, string> = {
+  chat: 'Chat',
+  manual: 'Manual',
+  automation: 'Automation',
+  agent_delegation: 'Delegated',
+  agent_ask: 'Agent Ask',
+  agent_notify: 'Notification',
 }
 
 // Computed
