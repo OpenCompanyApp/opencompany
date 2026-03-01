@@ -316,13 +316,16 @@
               :must-wait-for-approval="mustWaitForApproval"
               :channel-permissions="channelPermissions"
               :folder-permissions="folderPermissions"
+              :file-folder-permissions="fileFolderPermissions"
               :agent-channels="agentChannels"
               :document-folders="documentFolders"
+              :file-folders="fileFolders"
               @update-behavior-mode="handleBehaviorModeChange"
               @update-integrations="handleIntegrations"
               @update-tool-permissions="handleToolPermissions"
               @update-channel-permissions="handleChannelPermissions"
               @update-folder-permissions="handleFolderPermissions"
+              @update-file-folder-permissions="handleFileFolderPermissions"
               @update-must-wait-for-approval="handleMustWaitChange"
             />
           </div>
@@ -421,7 +424,7 @@ import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask } fr
 
 const { workspacePath } = useWorkspace()
 
-const { fetchAgentDetail, fetchAgentIdentityFiles, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions, updateAgentIntegrations } = useApi()
+const { fetchAgentDetail, fetchAgentIdentityFiles, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions, updateAgentFileFolderPermissions, updateAgentIntegrations } = useApi()
 
 type TabId = 'overview' | 'tasks' | 'identity' | 'capabilities' | 'activity' | 'settings'
 
@@ -447,8 +450,10 @@ const behaviorMode = ref<AgentBehaviorMode>('autonomous')
 const mustWaitForApproval = ref(false)
 const channelPermissions = ref<string[]>([])
 const folderPermissions = ref<string[]>([])
+const fileFolderPermissions = ref<string[]>([])
 const agentChannels = ref<{ id: string; name: string; type: string }[]>([])
 const documentFolders = ref<{ id: string; title: string }[]>([])
+const fileFolders = ref<any[]>([])
 const appGroups = ref<{ name: string; description: string; icon: string; logo?: string; isIntegration?: boolean }[]>([])
 const enabledIntegrations = ref<string[]>([])
 const agentManagerId = ref<string | null>(null)
@@ -567,8 +572,10 @@ const fetchData = async () => {
     mustWaitForApproval.value = (raw.mustWaitForApproval as boolean) || false
     channelPermissions.value = (raw.channelPermissions as string[]) || []
     folderPermissions.value = (raw.folderPermissions as string[]) || []
+    fileFolderPermissions.value = (raw.fileFolderPermissions as string[]) || []
     agentChannels.value = (raw.agentChannels as { id: string; name: string; type: string }[]) || []
     documentFolders.value = (raw.documentFolders as { id: string; title: string }[]) || []
+    fileFolders.value = (raw.fileFolders as any[]) || []
     appGroups.value = (raw.appGroups as typeof appGroups.value) || []
     enabledIntegrations.value = (raw.enabledIntegrations as string[]) || []
     agentManagerId.value = (raw.managerId as string) || null
@@ -687,6 +694,15 @@ const handleFolderPermissions = async (folders: string[]) => {
     folderPermissions.value = folders
   } catch (e) {
     console.error('Failed to update folder permissions:', e)
+  }
+}
+
+const handleFileFolderPermissions = async (folders: string[]) => {
+  try {
+    await updateAgentFileFolderPermissions(props.id, folders)
+    fileFolderPermissions.value = folders
+  } catch (e) {
+    console.error('Failed to update file folder permissions:', e)
   }
 }
 

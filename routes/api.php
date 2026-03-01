@@ -302,6 +302,7 @@ Route::middleware('resolve.workspace')->group(function () {
     Route::put('/agents/{id}/permissions/channels', [AgentPermissionController::class, 'updateChannels']);
     Route::put('/agents/{id}/permissions/folders', [AgentPermissionController::class, 'updateFolders']);
     Route::put('/agents/{id}/permissions/integrations', [AgentPermissionController::class, 'updateIntegrations']);
+    Route::put('/agents/{id}/permissions/file-folders', [AgentPermissionController::class, 'updateFileFolders']);
 
     // Tool catalog (developer reference)
     Route::get('/tools/catalog', [\App\Http\Controllers\Api\ToolCatalogController::class, 'index']);

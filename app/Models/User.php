@@ -238,6 +238,12 @@ class User extends Authenticatable
         return $this->agentPermissions()->where('scope_type', 'folder');
     }
 
+    /** @return HasMany<AgentPermission, $this> */
+    public function fileFolderPermissions(): HasMany
+    {
+        return $this->agentPermissions()->where('scope_type', 'file_folder');
+    }
+
     // Helper methods
     public function isAwaitingApproval(): bool
     {

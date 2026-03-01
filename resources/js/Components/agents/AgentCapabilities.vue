@@ -408,6 +408,107 @@
       </div>
     </section>
 
+    <!-- File Access -->
+    <section>
+      <div class="flex items-center justify-between mb-1">
+        <h3 class="text-sm font-medium text-neutral-900 dark:text-white">File Access</h3>
+        <button
+          type="button"
+          class="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+          @click="fileFolderSectionOpen = !fileFolderSectionOpen"
+        >
+          {{ fileFolderSectionOpen ? 'Collapse' : 'Configure' }}
+        </button>
+      </div>
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+        {{ isFileFolderUnrestricted
+          ? 'Unrestricted — agent can access all file folders'
+          : localFileFolderIds.length === 0
+            ? 'Default — agent can only access its home folder'
+            : `Access to ${localFileFolderIds.length} folder(s) + home folder` }}
+      </p>
+
+      <div v-if="fileFolderSectionOpen" class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
+        <!-- Unrestricted toggle -->
+        <div class="flex items-center justify-between mb-3 pb-3 border-b border-neutral-200 dark:border-neutral-700">
+          <div>
+            <p class="text-sm font-medium text-neutral-900 dark:text-white">Unrestricted access</p>
+            <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Allow access to all file folders</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="isFileFolderUnrestricted"
+            :class="[
+              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
+              isFileFolderUnrestricted
+                ? 'bg-green-500'
+                : 'bg-neutral-300 dark:bg-neutral-600'
+            ]"
+            @click="toggleFileFolderUnrestricted"
+          >
+            <span
+              :class="[
+                'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
+                isFileFolderUnrestricted ? 'translate-x-[18px]' : 'translate-x-[3px]'
+              ]"
+            />
+          </button>
+        </div>
+
+        <!-- Folder tree (hidden when unrestricted) -->
+        <template v-if="!isFileFolderUnrestricted">
+          <div class="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              class="text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+              @click="selectAllFileFolders"
+            >
+              Select all
+            </button>
+            <span class="text-neutral-300 dark:text-neutral-600">|</span>
+            <button
+              type="button"
+              class="text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+              @click="clearFileFolders"
+            >
+              Clear (home folder only)
+            </button>
+          </div>
+          <div class="space-y-2 max-h-60 overflow-y-auto">
+            <label
+              v-for="folder in flatFileFolders"
+              :key="folder.id"
+              class="flex items-center gap-2.5 cursor-pointer"
+              :style="{ paddingLeft: `${folder.depth * 20}px` }"
+            >
+              <input
+                type="checkbox"
+                :checked="localFileFolderIds.includes(folder.id)"
+                class="rounded border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white"
+                @change="toggleFileFolder(folder.id)"
+              />
+              <Icon name="ph:folder" class="w-4 h-4 text-neutral-400 dark:text-neutral-500" />
+              <span class="text-sm text-neutral-700 dark:text-neutral-300">{{ folder.name }}</span>
+            </label>
+            <p v-if="flatFileFolders.length === 0" class="text-xs text-neutral-400 dark:text-neutral-500">
+              No file folders found
+            </p>
+          </div>
+        </template>
+
+        <div v-if="fileFoldersDirty" class="flex justify-end mt-3">
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+            @click="saveFileFolderPermissions"
+          >
+            Save file access
+          </button>
+        </div>
+      </div>
+    </section>
+
   </div>
 </template>
 
@@ -427,6 +528,19 @@ interface FolderInfo {
   title: string
 }
 
+interface FileFolderNode {
+  id: string
+  name: string
+  parentId: string | null
+  children: FileFolderNode[]
+}
+
+interface FlatFileFolder {
+  id: string
+  name: string
+  depth: number
+}
+
 interface AppGroupInfo {
   name: string
   description: string
@@ -443,8 +557,10 @@ const props = defineProps<{
   mustWaitForApproval: boolean
   channelPermissions: string[]
   folderPermissions: string[]
+  fileFolderPermissions: string[]
   agentChannels: ChannelInfo[]
   documentFolders: FolderInfo[]
+  fileFolders: FileFolderNode[]
 }>()
 
 const emit = defineEmits<{
@@ -454,6 +570,7 @@ const emit = defineEmits<{
   updateToolPermissions: [tools: { scopeKey: string; permission: string; requiresApproval: boolean }[]]
   updateChannelPermissions: [channels: string[]]
   updateFolderPermissions: [folders: string[]]
+  updateFileFolderPermissions: [folders: string[]]
 }>()
 
 // Local state
@@ -463,14 +580,34 @@ const localTools = ref<AgentCapability[]>(props.capabilities.map(c => ({ ...c })
 const localChannelIds = ref<string[]>([...props.channelPermissions])
 const localFolderIds = ref<string[]>([...props.folderPermissions])
 const localIntegrations = ref<string[]>([...props.enabledIntegrations])
+const localFileFolderIds = ref<string[]>([...props.fileFolderPermissions])
 const channelSectionOpen = ref(false)
 const folderSectionOpen = ref(false)
+const fileFolderSectionOpen = ref(false)
 const expandedGroups = reactive<Record<string, boolean>>({})
 
 // Dirty tracking
 const toolsDirty = ref(false)
 const channelsDirty = ref(false)
 const foldersDirty = ref(false)
+const fileFoldersDirty = ref(false)
+
+// File folder helpers
+const isFileFolderUnrestricted = computed(() => localFileFolderIds.value.includes('*'))
+
+const flatFileFolders = computed<FlatFileFolder[]>(() => {
+  const result: FlatFileFolder[] = []
+  const flatten = (nodes: FileFolderNode[], depth: number) => {
+    for (const node of nodes) {
+      result.push({ id: node.id, name: node.name, depth })
+      if (node.children?.length) {
+        flatten(node.children, depth + 1)
+      }
+    }
+  }
+  flatten(props.fileFolders, 0)
+  return result
+})
 
 const isIntegrationEnabled = (name: string) => localIntegrations.value.includes(name)
 
@@ -557,6 +694,11 @@ watch(() => props.channelPermissions, (newIds) => {
 watch(() => props.folderPermissions, (newIds) => {
   localFolderIds.value = [...newIds]
   foldersDirty.value = false
+})
+
+watch(() => props.fileFolderPermissions, (newIds) => {
+  localFileFolderIds.value = [...newIds]
+  fileFoldersDirty.value = false
 })
 
 watch(() => props.behaviorMode, (newMode) => {
@@ -669,6 +811,44 @@ const clearFolders = () => {
 const saveFolderPermissions = () => {
   emit('updateFolderPermissions', [...localFolderIds.value])
   foldersDirty.value = false
+}
+
+// File folder toggles
+const toggleFileFolderUnrestricted = () => {
+  if (isFileFolderUnrestricted.value) {
+    localFileFolderIds.value = []
+  } else {
+    localFileFolderIds.value = ['*']
+  }
+  fileFoldersDirty.value = true
+}
+
+const toggleFileFolder = (folderId: string) => {
+  const idx = localFileFolderIds.value.indexOf(folderId)
+  if (idx >= 0) {
+    localFileFolderIds.value.splice(idx, 1)
+  } else {
+    // Remove wildcard if adding specific folders
+    const wildIdx = localFileFolderIds.value.indexOf('*')
+    if (wildIdx >= 0) localFileFolderIds.value.splice(wildIdx, 1)
+    localFileFolderIds.value.push(folderId)
+  }
+  fileFoldersDirty.value = true
+}
+
+const selectAllFileFolders = () => {
+  localFileFolderIds.value = flatFileFolders.value.map(f => f.id)
+  fileFoldersDirty.value = true
+}
+
+const clearFileFolders = () => {
+  localFileFolderIds.value = []
+  fileFoldersDirty.value = true
+}
+
+const saveFileFolderPermissions = () => {
+  emit('updateFileFolderPermissions', [...localFileFolderIds.value])
+  fileFoldersDirty.value = false
 }
 
 </script>

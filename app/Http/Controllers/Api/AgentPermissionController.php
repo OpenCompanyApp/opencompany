@@ -133,6 +133,41 @@ class AgentPermissionController extends Controller
     }
 
     /**
+     * Set allowed file system folders for an agent.
+     * Empty array = home folder only (default). ['*'] = unrestricted.
+     */
+    public function updateFileFolders(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
+
+        $validated = $request->validate([
+            'folders' => 'present|array',
+            'folders.*' => 'string',
+        ]);
+
+        // Delete existing file folder permissions
+        AgentPermission::forAgent($id)->where('scope_type', 'file_folder')->delete();
+
+        // Insert new ones
+        foreach ($validated['folders'] as $folderId) {
+            AgentPermission::create([
+                'id' => Str::uuid()->toString(),
+                'agent_id' => $id,
+                'scope_type' => 'file_folder',
+                'scope_key' => $folderId,
+                'permission' => 'allow',
+                'requires_approval' => false,
+            ]);
+        }
+
+        return response()->json([
+            'fileFolderIds' => AgentPermission::forAgent($id)
+                ->where('scope_type', 'file_folder')->where('permission', 'allow')
+                ->pluck('scope_key')->values(),
+        ]);
+    }
+
+    /**
      * Set allowed document folders for an agent.
      * Empty array = unrestricted (no folder permissions enforced).
      */

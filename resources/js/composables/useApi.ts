@@ -433,6 +433,8 @@ export const useApi = () => {
     api.put(`/agents/${id}/permissions/channels`, { channels })
   const updateAgentFolderPermissions = (id: string, folders: string[]) =>
     api.put(`/agents/${id}/permissions/folders`, { folders })
+  const updateAgentFileFolderPermissions = (id: string, folders: string[]) =>
+    api.put(`/agents/${id}/permissions/file-folders`, { folders })
   const updateAgentIntegrations = (id: string, integrations: string[]) =>
     api.put(`/agents/${id}/permissions/integrations`, { integrations })
 
@@ -704,6 +706,7 @@ export const useApi = () => {
     updateAgentToolPermissions,
     updateAgentChannelPermissions,
     updateAgentFolderPermissions,
+    updateAgentFileFolderPermissions,
     updateAgentIntegrations,
     // Calendar Events
     fetchCalendarEvents,

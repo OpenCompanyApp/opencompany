@@ -197,6 +197,7 @@ class AgentController extends Controller
         // Channel and folder permissions
         $channelPermissions = $agent->channelPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
         $folderPermissions = $agent->folderPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
+        $fileFolderPermissions = $agent->fileFolderPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
 
         // Agent's channel memberships (for the UI checklist)
         $agentChannels = $agent->channels()->get(['channels.id', 'channels.name', 'channels.type']);
@@ -207,6 +208,10 @@ class AgentController extends Controller
             ->whereNull('parent_id')
             ->orderBy('title')
             ->get(['id', 'title']);
+
+        // File system folder tree (for the UI checklist)
+        $fileFolders = app(\App\Services\FileSystemService::class)
+            ->getFolderTree(workspace()->id);
 
         return response()->json([
             'id' => $agent->id,
@@ -241,8 +246,10 @@ class AgentController extends Controller
             'enabledIntegrations' => app(AgentPermissionService::class)->getEnabledIntegrations($agent),
             'channelPermissions' => $channelPermissions,
             'folderPermissions' => $folderPermissions,
+            'fileFolderPermissions' => $fileFolderPermissions,
             'agentChannels' => $agentChannels,
             'documentFolders' => $documentFolders,
+            'fileFolders' => $fileFolders,
             'stats' => [
                 'tasksCompleted' => (int) ($taskStats->completed ?? 0),
                 'totalTasks' => (int) ($taskStats->total ?? 0),
