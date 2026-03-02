@@ -75,7 +75,10 @@ class SyncToChat implements ShouldQueue
             $textContent = $message->content;
             foreach ($sentImagePaths as $sentUrl) {
                 $escaped = preg_quote($sentUrl, '/');
+                // Strip markdown links wrapping the URL
                 $textContent = preg_replace('/!?\[[^\]]*\]\('.$escaped.'\)\s*/', '', $textContent);
+                // Strip bare URL occurrences
+                $textContent = preg_replace('/'.$escaped.'/', '', $textContent);
             }
 
             if (trim($textContent) !== '') {
@@ -269,18 +272,15 @@ class SyncToChat implements ShouldQueue
     {
         $sentUrls = [];
 
-        // Phase 1: Workspace files — image OR regular links to /api/files/
-        if (preg_match_all('/!?\[([^\]]*)\]\((\/api\/files\/[^)]+)\)/', $content, $matches, PREG_SET_ORDER)) {
-            foreach ($matches as $match) {
-                $alt = $match[1];
-                $url = $match[2];
+        // Phase 1: Workspace files — any /api/files/{uuid}/download URL in any format
+        if (preg_match_all('#/api/files/([0-9a-f-]+)/download#', $content, $uuidMatches)) {
+            $fileIds = array_unique($uuidMatches[1]);
+
+            foreach ($fileIds as $fileId) {
+                $url = "/api/files/{$fileId}/download";
 
                 try {
-                    if (! preg_match('#^/api/files/([^/]+)/download#', $url, $fileMatch)) {
-                        continue;
-                    }
-
-                    $file = WorkspaceFile::find($fileMatch[1]);
+                    $file = WorkspaceFile::find($fileId);
                     if (! $file) {
                         continue;
                     }
@@ -299,7 +299,6 @@ class SyncToChat implements ShouldQueue
                     $adapter->sendFile($threadId, FileUpload::fromPath(
                         $tmpPath,
                         filename: $file->name,
-                        caption: $alt ?: null,
                         forceDocument: $isDocument,
                     ));
                     @unlink($tmpPath);
