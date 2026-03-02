@@ -41,6 +41,8 @@ private function makeTool(User $agent): ContactAgent
 
     public function test_notify_sends_dm_message(): void
     {
+        Bus::fake([AgentRespondJob::class]);
+
         $caller = User::factory()->agent()->create(['status' => 'idle']);
         $target = User::factory()->agent()->create(['status' => 'idle']);
 
@@ -66,13 +68,17 @@ private function makeTool(User $agent): ContactAgent
         $this->assertNotNull($message);
         $this->assertStringContainsString('Hey, just a heads up!', $message->content);
 
-        // Notify should NOT create a task (fire-and-forget, no tracking needed)
+        // Notify creates a standalone task for the target agent
         $notifyTask = Task::where('source', Task::SOURCE_AGENT_NOTIFY)->first();
-        $this->assertNull($notifyTask);
+        $this->assertNotNull($notifyTask);
+        $this->assertEquals($target->id, $notifyTask->agent_id);
+        $this->assertNull($notifyTask->parent_task_id);
     }
 
     public function test_notify_works_for_offline_target(): void
     {
+        Bus::fake([AgentRespondJob::class]);
+
         $caller = User::factory()->agent()->create(['status' => 'idle']);
         $target = User::factory()->agent()->create(['status' => 'offline']);
 
@@ -255,8 +261,10 @@ private function makeTool(User $agent): ContactAgent
         $this->assertContains($askTask->id, $caller->awaiting_delegation_ids);
     }
 
-    public function test_notify_does_not_create_task(): void
+    public function test_notify_creates_standalone_task(): void
     {
+        Bus::fake([AgentRespondJob::class]);
+
         $caller = User::factory()->agent()->create(['status' => 'idle']);
         $target = User::factory()->agent()->create(['status' => 'idle']);
 
@@ -270,7 +278,15 @@ private function makeTool(User $agent): ContactAgent
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('Notification sent', $result);
-        $this->assertNull(Task::where('source', Task::SOURCE_AGENT_NOTIFY)->first());
+
+        // Notify creates a standalone task (no parent) for the target
+        $task = Task::where('source', Task::SOURCE_AGENT_NOTIFY)->first();
+        $this->assertNotNull($task);
+        $this->assertEquals($target->id, $task->agent_id);
+        $this->assertEquals($caller->id, $task->requester_id);
+        $this->assertNull($task->parent_task_id);
+
+        Bus::assertDispatched(AgentRespondJob::class);
     }
 
     public function test_delegate_error_for_offline_target(): void

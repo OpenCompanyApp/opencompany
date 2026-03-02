@@ -74,6 +74,7 @@ class LuaBridgeTest extends TestCase
         $fakeTool = $this->makeFakeTool('Message sent');
 
         $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['icon' => 'ph:wrench', 'name' => 'test']);
         $registry->shouldReceive('instantiateToolBySlug')
             ->with('send_channel_message', Mockery::type(User::class))
             ->andReturn($fakeTool);
@@ -97,6 +98,7 @@ class LuaBridgeTest extends TestCase
     public function test_throws_when_tool_not_available(): void
     {
         $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['icon' => 'ph:wrench', 'name' => 'test']);
         $registry->shouldReceive('instantiateToolBySlug')->andReturnNull();
 
         $bridge = $this->makeBridge(['chat.send' => 'send_channel_message'], $registry);
@@ -114,6 +116,7 @@ class LuaBridgeTest extends TestCase
         $fakeTool = $this->makeFakeTool('ok');
 
         $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['icon' => 'ph:wrench', 'name' => 'test']);
         $registry->shouldReceive('instantiateToolBySlug')->andReturn($fakeTool);
 
         $bridge = $this->makeBridge(['chat.send' => 'send_channel_message'], $registry);
@@ -129,6 +132,7 @@ class LuaBridgeTest extends TestCase
         $fakeTool = $this->makeFakeTool('ok');
 
         $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['icon' => 'ph:wrench', 'name' => 'test']);
         $registry->shouldReceive('instantiateToolBySlug')->andReturn($fakeTool);
 
         $bridge = $this->makeBridge(
@@ -149,6 +153,7 @@ class LuaBridgeTest extends TestCase
     public function test_records_successful_call_in_log(): void
     {
         $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['icon' => 'ph:wrench', 'name' => 'test']);
         $registry->shouldReceive('instantiateToolBySlug')->andReturn($this->makeFakeTool('ok'));
 
         $bridge = $this->makeBridge(['chat.send' => 'send_channel_message'], $registry);
@@ -184,6 +189,7 @@ class LuaBridgeTest extends TestCase
         };
 
         $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['icon' => 'ph:wrench', 'name' => 'test']);
         $registry->shouldReceive('instantiateToolBySlug')->andReturn($failingTool);
 
         $bridge = $this->makeBridge(['chat.send' => 'send_channel_message'], $registry);
@@ -220,6 +226,7 @@ class LuaBridgeTest extends TestCase
     public function test_multiple_calls_accumulate_in_log(): void
     {
         $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['icon' => 'ph:wrench', 'name' => 'test']);
         $registry->shouldReceive('instantiateToolBySlug')->andReturn($this->makeFakeTool('ok'));
 
         $bridge = $this->makeBridge([

@@ -125,8 +125,8 @@ class LuaApiDocGeneratorTest extends TestCase
     {
         $index = $this->generator->generateNamespaceIndex($this->agent);
 
-        // Required params without ?, optional params with ?
-        $this->assertStringContainsString('send_channel_message(channelId, content)', $index);
+        // Required params without ?, optional params with ?; wrapped in {}; snake_case
+        $this->assertStringContainsString('send_channel_message({channel_id, content})', $index);
     }
 
     // ── generateNamespaceDocs ────────────────────────────────────
@@ -136,7 +136,7 @@ class LuaApiDocGeneratorTest extends TestCase
         $docs = $this->generator->generateNamespaceDocs('calendar', $this->agent);
 
         $this->assertStringContainsString('| Parameter | Type | Required | Description |', $docs);
-        $this->assertStringContainsString('eventId', $docs);
+        $this->assertStringContainsString('event_id', $docs);
     }
 
     public function test_generate_namespace_docs_unknown_namespace(): void
@@ -169,8 +169,8 @@ class LuaApiDocGeneratorTest extends TestCase
     {
         $docs = $this->generator->generateNamespaceDocs('calendar', $this->agent);
 
-        // The eventId parameter should be listed as required on get/update/delete tools
-        $this->assertMatchesRegularExpression('/\| eventId \| string \| yes \|/', $docs);
+        // The event_id parameter should be listed as required on get/update/delete tools
+        $this->assertMatchesRegularExpression('/\| event_id \| string \| yes \|/', $docs);
     }
 
     public function test_all_function_names_are_valid_lua_identifiers(): void
