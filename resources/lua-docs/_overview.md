@@ -38,6 +38,7 @@ app.calendar.create_event({
 | Network | None (use `app.http.*` for pre-approved webhooks) |
 | File system | None |
 | OS access | None |
+| Module loading | None (`require`, `loadfile`, `dofile` are not available) |
 
 ## Built-in Globals
 

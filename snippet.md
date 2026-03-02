@@ -90,3 +90,23 @@ refresh ouath
 
 --
 
+pyodide
+--
+skills
+--
+dashboards
+--
+put the lua ai stuff in a package
+--
+TTS/STT
+--
+even improve statefullness
+--
+pyodide
+-
+
+RBAC audit, list what perms/levels are needede etc, enterprise use caes stories to map those.
+
+--
+
+agents not refreshing in sidebar when swtiching worksapce
