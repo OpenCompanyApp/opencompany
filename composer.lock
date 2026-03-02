@@ -3675,16 +3675,16 @@
         },
         {
             "name": "opencompanyapp/ai-tool-google",
-            "version": "v2.1.0",
+            "version": "v2.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/OpenCompanyApp/ai-tool-google.git",
-                "reference": "86dc20ff444216ac50e50941bd8eb8868e09d87d"
+                "reference": "d7c9529a951cc5c6cadd0aceb5a362987226fa74"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-google/zipball/86dc20ff444216ac50e50941bd8eb8868e09d87d",
-                "reference": "86dc20ff444216ac50e50941bd8eb8868e09d87d",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-google/zipball/d7c9529a951cc5c6cadd0aceb5a362987226fa74",
+                "reference": "d7c9529a951cc5c6cadd0aceb5a362987226fa74",
                 "shasum": ""
             },
             "require": {
@@ -3725,10 +3725,10 @@
                 "tools"
             ],
             "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-google/tree/v2.1.0",
+                "source": "https://github.com/OpenCompanyApp/ai-tool-google/tree/v2.2.0",
                 "issues": "https://github.com/OpenCompanyApp/ai-tool-google/issues"
             },
-            "time": "2026-02-27T23:19:56+00:00"
+            "time": "2026-03-02T19:38:03+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-mermaid",
