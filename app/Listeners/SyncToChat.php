@@ -71,8 +71,12 @@ class SyncToChat implements ShouldQueue
             $sentImagePaths = $this->sendInlineImages($adapter, $threadId, $message->content);
             $this->sendAttachmentImages($adapter, $threadId, $message, $sentImagePaths);
 
-            // Strip inline images from text content
-            $textContent = preg_replace('/!\[[^\]]*\]\([^)]+\)\s*/', '', $message->content);
+            // Strip sent file links from text content
+            $textContent = $message->content;
+            foreach ($sentImagePaths as $sentUrl) {
+                $escaped = preg_quote($sentUrl, '/');
+                $textContent = preg_replace('/!?\[[^\]]*\]\('.$escaped.'\)\s*/', '', $textContent);
+            }
 
             if (trim($textContent) !== '') {
                 $content = "**{$authorName}**\n{$textContent}";
@@ -265,17 +269,17 @@ class SyncToChat implements ShouldQueue
     {
         $sentUrls = [];
 
-        if (! preg_match_all('/!\[([^\]]*)\]\(([^)]+)\)/', $content, $matches, PREG_SET_ORDER)) {
-            return $sentUrls;
-        }
+        // Phase 1: Workspace files — image OR regular links to /api/files/
+        if (preg_match_all('/!?\[([^\]]*)\]\((\/api\/files\/[^)]+)\)/', $content, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $alt = $match[1];
+                $url = $match[2];
 
-        foreach ($matches as $match) {
-            $alt = $match[1];
-            $url = $match[2];
+                try {
+                    if (! preg_match('#^/api/files/([^/]+)/download#', $url, $fileMatch)) {
+                        continue;
+                    }
 
-            try {
-                // Workspace file: /api/files/{id}/download
-                if (preg_match('#^/api/files/([^/]+)/download#', $url, $fileMatch)) {
                     $file = WorkspaceFile::find($fileMatch[1]);
                     if (! $file) {
                         continue;
@@ -286,7 +290,7 @@ class SyncToChat implements ShouldQueue
                         continue;
                     }
 
-                    $tmpPath = sys_get_temp_dir() . '/' . $file->name;
+                    $tmpPath = sys_get_temp_dir().'/'.$file->name;
                     file_put_contents($tmpPath, $bytes);
 
                     $isDocument = $file->mime_type === 'application/pdf'
@@ -300,13 +304,23 @@ class SyncToChat implements ShouldQueue
                     ));
                     @unlink($tmpPath);
                     $sentUrls[] = $url;
-                    continue;
+                } catch (\Throwable $e) {
+                    Log::error('SyncToChat: failed to send workspace file', [
+                        'url' => $url, 'error' => $e->getMessage(),
+                    ]);
                 }
+            }
+        }
 
-                // Legacy public storage: /storage/...
-                if (str_starts_with($url, '/storage/')) {
+        // Phase 2: Legacy public storage — image embeds only
+        if (preg_match_all('/!\[([^\]]*)\]\((\/storage\/[^)]+)\)/', $content, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $alt = $match[1];
+                $url = $match[2];
+
+                try {
                     $relativePath = str_replace('/storage/', '', $url);
-                    $filePath = storage_path('app/public/' . $relativePath);
+                    $filePath = storage_path('app/public/'.$relativePath);
 
                     if (! file_exists($filePath)) {
                         continue;
@@ -322,11 +336,11 @@ class SyncToChat implements ShouldQueue
                         forceDocument: $isDocument,
                     ));
                     $sentUrls[] = $url;
+                } catch (\Throwable $e) {
+                    Log::error('SyncToChat: failed to send storage file', [
+                        'url' => $url, 'error' => $e->getMessage(),
+                    ]);
                 }
-            } catch (\Throwable $e) {
-                Log::error('SyncToChat: failed to send image', [
-                    'url' => $url, 'error' => $e->getMessage(),
-                ]);
             }
         }
 
@@ -365,7 +379,7 @@ class SyncToChat implements ShouldQueue
                         continue;
                     }
 
-                    $tmpPath = sys_get_temp_dir() . '/' . $file->name;
+                    $tmpPath = sys_get_temp_dir().'/'.$file->name;
                     file_put_contents($tmpPath, $bytes);
 
                     $isDocument = $file->mime_type === 'application/pdf'
@@ -377,13 +391,14 @@ class SyncToChat implements ShouldQueue
                         forceDocument: $isDocument,
                     ));
                     @unlink($tmpPath);
+
                     continue;
                 }
 
                 // Legacy public storage: /storage/...
                 if (str_starts_with($url, '/storage/')) {
                     $relativePath = str_replace('/storage/', '', $url);
-                    $filePath = storage_path('app/public/' . $relativePath);
+                    $filePath = storage_path('app/public/'.$relativePath);
 
                     if (! file_exists($filePath)) {
                         continue;

@@ -4,16 +4,6 @@ namespace App\Agents\Tools;
 
 use App\Agents\Tools\Agents\ContactAgent;
 use App\Agents\Tools\Calendar\CreateCalendarEvent;
-use App\Agents\Tools\Files\CopyFile;
-use App\Agents\Tools\Files\CreateFolder;
-use App\Agents\Tools\Files\DeleteFile;
-use App\Agents\Tools\Files\GetFileInfo;
-use App\Agents\Tools\Files\ListDisks;
-use App\Agents\Tools\Files\ListFiles;
-use App\Agents\Tools\Files\MoveFile;
-use App\Agents\Tools\Files\ReadFile;
-use App\Agents\Tools\Files\SearchFiles;
-use App\Agents\Tools\Files\WriteFile;
 use App\Agents\Tools\Calendar\DeleteCalendarEvent;
 use App\Agents\Tools\Calendar\GetCalendarEvent;
 use App\Agents\Tools\Calendar\ListCalendarEvents;
@@ -49,6 +39,16 @@ use App\Agents\Tools\Docs\ResolveDocumentComment;
 use App\Agents\Tools\Docs\RestoreDocumentVersion;
 use App\Agents\Tools\Docs\SearchDocuments;
 use App\Agents\Tools\Docs\UpdateDocument;
+use App\Agents\Tools\Files\CopyFile;
+use App\Agents\Tools\Files\CreateFolder;
+use App\Agents\Tools\Files\DeleteFile;
+use App\Agents\Tools\Files\GetFileInfo;
+use App\Agents\Tools\Files\ListDisks;
+use App\Agents\Tools\Files\ListFiles;
+use App\Agents\Tools\Files\MoveFile;
+use App\Agents\Tools\Files\ReadFile;
+use App\Agents\Tools\Files\SearchFiles;
+use App\Agents\Tools\Files\WriteFile;
 use App\Agents\Tools\Lists\AddListItemComment;
 use App\Agents\Tools\Lists\ConvertListItemToTask;
 use App\Agents\Tools\Lists\CreateListItem;
@@ -107,8 +107,8 @@ use App\Agents\Tools\Workspace\DeleteAutomationRule;
 use App\Agents\Tools\Workspace\DeleteItemTemplate;
 use App\Agents\Tools\Workspace\DiscoverMcpTools;
 use App\Agents\Tools\Workspace\GetAgentDetails;
-use App\Agents\Tools\Workspace\GetAutomation;
 use App\Agents\Tools\Workspace\GetAgentPermissions;
+use App\Agents\Tools\Workspace\GetAutomation;
 use App\Agents\Tools\Workspace\GetIntegrationConfig;
 use App\Agents\Tools\Workspace\GetIntegrationSetup;
 use App\Agents\Tools\Workspace\LinkExternalUser;
@@ -122,20 +122,20 @@ use App\Agents\Tools\Workspace\ListMembers;
 use App\Agents\Tools\Workspace\ReadAgentIdentityFile;
 use App\Agents\Tools\Workspace\RemoveChannelMember;
 use App\Agents\Tools\Workspace\RemoveMcpServer;
+use App\Agents\Tools\Workspace\RunAutomation;
 use App\Agents\Tools\Workspace\SetupIntegrationWebhook;
 use App\Agents\Tools\Workspace\TestIntegrationConnection;
 use App\Agents\Tools\Workspace\TestMcpServer;
-use App\Agents\Tools\Workspace\RunAutomation;
 use App\Agents\Tools\Workspace\UpdateAgent;
-use App\Agents\Tools\Workspace\UpdateAgentIdentityFile;
 use App\Agents\Tools\Workspace\UpdateAgentChannelAccess;
 use App\Agents\Tools\Workspace\UpdateAgentFileFolderAccess;
 use App\Agents\Tools\Workspace\UpdateAgentFolderAccess;
+use App\Agents\Tools\Workspace\UpdateAgentIdentityFile;
 use App\Agents\Tools\Workspace\UpdateAgentIntegrationAccess;
 use App\Agents\Tools\Workspace\UpdateAgentToolPermissions;
+use App\Agents\Tools\Workspace\UpdateAutomation;
 use App\Agents\Tools\Workspace\UpdateAutomationRule;
 use App\Agents\Tools\Workspace\UpdateIntegrationConfig;
-use App\Agents\Tools\Workspace\UpdateAutomation;
 use App\Agents\Tools\Workspace\UpdateItemTemplate;
 use App\Agents\Tools\Workspace\UpdateMcpServer;
 use App\Models\AppSetting;
@@ -180,7 +180,7 @@ class ToolRegistry
         'chat' => [
             'tools' => ['send_channel_message', 'read_recent_messages', 'read_thread', 'read_pinned_messages', 'list_channels', 'edit_message', 'delete_message', 'pin_message', 'add_message_reaction', 'remove_message_reaction', 'search_messages', 'list_external_channels', 'join_external_channel', 'leave_external_channel'],
             'label' => 'send, read, list, edit, delete, pin, react, search, external',
-            'description' => 'Channel messaging (incl. external: Telegram, Slack)',
+            'description' => 'Channel messaging (incl. external: Telegram, Slack). Files and images in messages auto-forward to external platforms.',
         ],
         'docs' => [
             'tools' => ['list_documents', 'get_document', 'get_document_tree', 'search_documents', 'create_document', 'update_document', 'delete_document', 'add_document_comment', 'list_document_comments', 'resolve_document_comment', 'delete_document_comment', 'list_document_versions', 'restore_document_version', 'list_document_attachments'],
@@ -1339,6 +1339,7 @@ class ToolRegistry
                 }
             }
         }
+
         return $this->effectiveToolMap;
     }
 
@@ -1386,6 +1387,7 @@ class ToolRegistry
                 ];
             }
         }
+
         return $this->effectiveAppGroups;
     }
 
@@ -1395,11 +1397,12 @@ class ToolRegistry
         if ($this->effectiveIntegrationApps === null) {
             $this->effectiveIntegrationApps = self::INTEGRATION_APPS;
             foreach ($this->providerRegistry->all() as $provider) {
-                if ($provider->isIntegration() && !in_array($provider->appName(), $this->effectiveIntegrationApps)) {
+                if ($provider->isIntegration() && ! in_array($provider->appName(), $this->effectiveIntegrationApps)) {
                     $this->effectiveIntegrationApps[] = $provider->appName();
                 }
             }
         }
+
         return $this->effectiveIntegrationApps;
     }
 
@@ -1413,6 +1416,7 @@ class ToolRegistry
                 $this->effectiveAppIcons[$provider->appName()] = $meta['icon'];
             }
         }
+
         return $this->effectiveAppIcons;
     }
 
@@ -1428,6 +1432,7 @@ class ToolRegistry
                 }
             }
         }
+
         return $this->effectiveIntegrationLogos;
     }
 
@@ -1447,12 +1452,12 @@ class ToolRegistry
             $app = $appLookup[$slug] ?? 'other';
 
             // Code-first: only direct tool groups are registered as AI tools
-            if (!in_array($app, self::DIRECT_TOOL_GROUPS)) {
+            if (! in_array($app, self::DIRECT_TOOL_GROUPS)) {
                 continue;
             }
 
             // Skip tools from disabled integrations
-            if (in_array($app, $this->getEffectiveIntegrationApps()) && !in_array($app, $enabledIntegrations)) {
+            if (in_array($app, $this->getEffectiveIntegrationApps()) && ! in_array($app, $enabledIntegrations)) {
                 continue;
             }
 
@@ -1460,7 +1465,7 @@ class ToolRegistry
                 $agent, $slug, $meta['type']
             );
 
-            if (!$result['allowed']) {
+            if (! $result['allowed']) {
                 continue;
             }
 
@@ -1491,11 +1496,11 @@ class ToolRegistry
             $app = $appLookup[$slug] ?? 'other';
 
             // Code-first: only direct tool groups are registered as AI tools
-            if (!in_array($app, self::DIRECT_TOOL_GROUPS)) {
+            if (! in_array($app, self::DIRECT_TOOL_GROUPS)) {
                 continue;
             }
 
-            if (in_array($app, $this->getEffectiveIntegrationApps()) && !in_array($app, $enabledIntegrations)) {
+            if (in_array($app, $this->getEffectiveIntegrationApps()) && ! in_array($app, $enabledIntegrations)) {
                 continue;
             }
 
@@ -1524,10 +1529,10 @@ class ToolRegistry
         foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             $app = $appLookup[$slug] ?? 'other';
             $isIntegration = in_array($app, $this->getEffectiveIntegrationApps());
-            $integrationEnabled = !$isIntegration || in_array($app, $enabledIntegrations);
+            $integrationEnabled = ! $isIntegration || in_array($app, $enabledIntegrations);
 
             // Skip tools from non-workspace-enabled integrations entirely
-            if ($isIntegration && !$integrationEnabled) {
+            if ($isIntegration && ! $integrationEnabled) {
                 continue;
             }
 
@@ -1609,7 +1614,7 @@ class ToolRegistry
 
             foreach ($group['tools'] as $slug) {
                 $meta = $this->getEffectiveToolMap()[$slug] ?? null;
-                if (!$meta) {
+                if (! $meta) {
                     continue;
                 }
 
@@ -1628,7 +1633,7 @@ class ToolRegistry
                     $toolData['fullDescription'] = $tool->description();
 
                     $schema = $tool->schema($factory);
-                    if (!empty($schema)) {
+                    if (! empty($schema)) {
                         // Wrap in ObjectType to get proper required array
                         $objectType = $factory->object($schema);
                         $serialized = $objectType->toArray();
@@ -1640,10 +1645,10 @@ class ToolRegistry
                                 'type' => $paramSchema['type'] ?? 'string',
                                 'required' => in_array($paramName, $requiredParams),
                             ];
-                            if (!empty($paramSchema['description'])) {
+                            if (! empty($paramSchema['description'])) {
                                 $param['description'] = $paramSchema['description'];
                             }
-                            if (!empty($paramSchema['enum'])) {
+                            if (! empty($paramSchema['enum'])) {
                                 $param['enum'] = $paramSchema['enum'];
                             }
                             if (isset($paramSchema['items'])) {
@@ -1693,7 +1698,7 @@ class ToolRegistry
      */
     public function instantiateToolBySlug(string $slug, User $agent): ?\Laravel\Ai\Contracts\Tool
     {
-        if (!isset($this->getEffectiveToolMap()[$slug])) {
+        if (! isset($this->getEffectiveToolMap()[$slug])) {
             return null;
         }
 
@@ -1715,7 +1720,7 @@ class ToolRegistry
 
         foreach (self::DIRECT_TOOL_GROUPS as $appName) {
             $group = $this->getEffectiveAppGroups()[$appName] ?? null;
-            if (!$group) {
+            if (! $group) {
                 continue;
             }
 
@@ -1724,7 +1729,7 @@ class ToolRegistry
             $hasAllowed = false;
 
             foreach ($group['tools'] as $slug) {
-                if (!isset($this->getEffectiveToolMap()[$slug])) {
+                if (! isset($this->getEffectiveToolMap()[$slug])) {
                     continue;
                 }
                 $result = $this->permissionService->resolveToolPermission(
@@ -1738,7 +1743,7 @@ class ToolRegistry
                 }
             }
 
-            if (!$hasAllowed) {
+            if (! $hasAllowed) {
                 continue;
             }
 
@@ -1757,7 +1762,6 @@ class ToolRegistry
 
         return implode("\n", $lines);
     }
-
 
     /**
      * Instantiate a tool class with the appropriate constructor arguments.
@@ -1873,7 +1877,7 @@ class ToolRegistry
             UpdateTaskStep::class => new UpdateTaskStep($agent),
             SetTaskStatus::class => new SetTaskStatus($agent),
             CreateTaskStep::class => new CreateTaskStep($agent),
-            RenderSvg::class => new RenderSvg(),
+            RenderSvg::class => new RenderSvg,
             // Lua scripting
             Lua\LuaListDocs::class => new Lua\LuaListDocs(app(\App\Services\LuaApiDocGenerator::class), $agent),
             Lua\LuaSearchDocs::class => new Lua\LuaSearchDocs(app(\App\Services\LuaApiDocGenerator::class), $agent),
@@ -1887,14 +1891,14 @@ class ToolRegistry
             WaitForApproval::class => new WaitForApproval($agent),
             Wait::class => new Wait($agent),
             // Workspace — Query
-            ListAgents::class => new ListAgents(),
-            ListMembers::class => new ListMembers(),
-            GetAgentDetails::class => new GetAgentDetails(),
+            ListAgents::class => new ListAgents,
+            ListMembers::class => new ListMembers,
+            GetAgentDetails::class => new GetAgentDetails,
             GetAgentPermissions::class => new GetAgentPermissions($this->permissionService, $this),
-            ListIntegrations::class => new ListIntegrations(),
+            ListIntegrations::class => new ListIntegrations,
             GetIntegrationConfig::class => new GetIntegrationConfig($agent),
-            ListAvailableModels::class => new ListAvailableModels(),
-            ListAutomationRules::class => new ListAutomationRules(),
+            ListAvailableModels::class => new ListAvailableModels,
+            ListAutomationRules::class => new ListAutomationRules,
             // Workspace — Agent management
             CreateAgent::class => new CreateAgent($agent, app(AgentDocumentService::class), app(AgentAvatarService::class)),
             UpdateAgent::class => new UpdateAgent($agent),
