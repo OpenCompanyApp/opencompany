@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { router } from '@inertiajs/vue3'
 import { TooltipProvider } from 'reka-ui'
@@ -35,7 +35,7 @@ const userId = (page.props.auth as any)?.user?.id || 'guest'
 // Load agents and channels
 const { fetchAgents, fetchChannels } = useApi()
 const { data: agentsData, refresh: refreshAgents } = fetchAgents()
-const { data: channelsData } = fetchChannels()
+const { data: channelsData, refresh: refreshChannels } = fetchChannels()
 
 const sidebarAgents = computed(() => (agentsData.value ?? []).filter(a => a.agentType !== 'system'))
 
@@ -59,6 +59,14 @@ useChannelListener<{ id: string; status: string }>(
     }
   }
 )
+
+// Refresh sidebar data when workspace changes (layout persists across Inertia visits)
+watch(() => workspace.value?.id, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    refreshAgents()
+    refreshChannels()
+  }
+})
 
 // Map data for command palette
 const channelsForPalette = computed(() =>
@@ -182,7 +190,12 @@ const isActive = (path: string): boolean => {
 
           <template #body>
             <div class="flex flex-col h-full -mx-6 -my-4">
-              <SidebarNav :collapsed="false" />
+              <SidebarNav
+                :collapsed="false"
+                :agents="sidebarAgents"
+                :online-agents="onlineAgentCount"
+                :total-agents="totalAgentCount"
+              />
 
               <!-- Bottom links -->
               <div class="mt-auto border-t border-neutral-200 dark:border-neutral-700 px-2 py-2 space-y-0.5">
