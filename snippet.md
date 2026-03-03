@@ -109,4 +109,6 @@ RBAC audit, list what perms/levels are needede etc, enterprise use caes stories 
 
 --
 
-agents not refreshing in sidebar when swtiching worksapce
+remove valkey from docker compose
+--
+version history

@@ -148,6 +148,41 @@ class Automation extends Model
         $this->saveQuietly();
     }
 
+    // --- Channel Management ---
+
+    /**
+     * Ensure this automation has a dedicated channel, creating one if needed.
+     * Optionally clears history based on the keep_history flag.
+     *
+     * @return string The channel ID.
+     */
+    public function ensureChannel(): string
+    {
+        if (! $this->channel_id) {
+            $channel = Channel::create([
+                'id' => \Illuminate\Support\Str::uuid()->toString(),
+                'workspace_id' => $this->workspace_id,
+                'name' => $this->name,
+                'type' => 'dm',
+                'description' => "Automation channel for: {$this->name}",
+                'creator_id' => $this->created_by_id,
+            ]);
+
+            $channel->users()->attach(array_unique(array_filter([
+                $this->created_by_id, $this->agent_id,
+            ])));
+
+            $this->updateQuietly(['channel_id' => $channel->id]);
+        }
+
+        if (! $this->keep_history && $this->channel_id) {
+            Message::where('channel_id', $this->channel_id)->delete();
+            ConversationSummary::where('channel_id', $this->channel_id)->delete();
+        }
+
+        return $this->channel_id;
+    }
+
     // --- Run Recording ---
 
     /** @param array<string, mixed> $result */

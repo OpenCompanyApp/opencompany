@@ -8,7 +8,8 @@ use App\Events\TaskUpdated;
 use App\Models\Channel;
 use App\Models\Task;
 use App\Models\User;
-use App\Models\Workspace;
+use App\Jobs\Concerns\SetsWorkspaceContext;
+use App\Support\TokenMetrics;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 class ExecuteAgentTaskJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use SetsWorkspaceContext;
 
     public int $tries = 3;
     public int $timeout = 1800;
@@ -31,13 +33,7 @@ class ExecuteAgentTaskJob implements ShouldQueue
 
     public function handle(): void
     {
-        // Set workspace context from task
-        if ($this->task->workspace_id) {
-            $workspace = Workspace::find($this->task->workspace_id);
-            if ($workspace) {
-                app()->instance('currentWorkspace', $workspace);
-            }
-        }
+        $this->setWorkspaceContext($this->task->workspace_id);
 
         $agent = User::find($this->task->agent_id);
 
@@ -77,42 +73,16 @@ class ExecuteAgentTaskJob implements ShouldQueue
             $resultStep->start();
             $resultStep->complete();
 
-            // Compute generation timing
-            $analyzeStep->refresh();
-            /** @var \Carbon\Carbon|null $stepStartedAt */
-            $stepStartedAt = $analyzeStep->started_at;
-            /** @var \Carbon\Carbon|null $stepCompletedAt */
-            $stepCompletedAt = $analyzeStep->completed_at;
-            $generationTimeMs = $stepStartedAt && $stepCompletedAt
-                ? $stepStartedAt->diffInMilliseconds($stepCompletedAt)
-                : null;
-            $completionTokens = $response->usage->completionTokens;
-            $tokensPerSecond = ($generationTimeMs && $generationTimeMs > 0 && $completionTokens > 0)
-                ? round($completionTokens / ($generationTimeMs / 1000), 1)
-                : null;
-
             // Complete the task with result
+            $analyzeStep->refresh();
+            $metrics = TokenMetrics::fromResponse($response, $analyzeStep->started_at, $analyzeStep->completed_at);
+
             $this->task->complete();
             $this->task->update([
-                'result' => [
-                    'response' => $response->text,
-                    'prompt_tokens' => $response->usage->promptTokens,
-                    'completion_tokens' => $completionTokens,
-                    'total_prompt_tokens' => $response->usage->promptTokens,
-                    'total_completion_tokens' => $completionTokens,
-                    'cache_read_tokens' => $response->usage->cacheReadInputTokens,
-                    'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
-                    'tool_calls_count' => collect($response->steps)->sum(fn ($step) => count($step->toolCalls)),
-                    'generation_time_ms' => $generationTimeMs,
-                    'tokens_per_second' => $tokensPerSecond,
-                ],
+                'result' => array_merge(['response' => $response->text], $metrics),
             ]);
 
-            try {
-                broadcast(new TaskUpdated($this->task, 'completed'));
-            } catch (\Throwable $broadcastError) {
-                Log::warning('Failed to broadcast task completion', ['error' => $broadcastError->getMessage()]);
-            }
+            safeBroadcast(new TaskUpdated($this->task, 'completed'), 'task completion');
 
             Log::info('Agent task completed', [
                 'task' => $this->task->id,
@@ -135,31 +105,11 @@ class ExecuteAgentTaskJob implements ShouldQueue
                 'result' => ['error' => $e->getMessage()],
             ]);
 
-            try {
-                broadcast(new TaskUpdated($this->task, 'failed'));
-            } catch (\Throwable $broadcastError) {
-                Log::warning('Failed to broadcast task failure', ['error' => $broadcastError->getMessage()]);
-            }
+            safeBroadcast(new TaskUpdated($this->task, 'failed'), 'task failure');
 
             throw $e;
         } finally {
-            $agent->refresh();
-
-            if ($agent->sleeping_until) {
-                $agent->update(['status' => 'sleeping']);
-            } elseif ($agent->awaiting_approval_id) {
-                $agent->update(['status' => 'awaiting_approval']);
-            } elseif (!empty($agent->awaiting_delegation_ids)) {
-                $agent->update(['status' => 'awaiting_delegation']);
-            } else {
-                $agent->update(['status' => 'idle']);
-            }
-
-            try {
-                broadcast(new AgentStatusUpdated($agent));
-            } catch (\Throwable $broadcastError) {
-                Log::warning('Failed to broadcast agent status', ['error' => $broadcastError->getMessage()]);
-            }
+            $agent->resolveIdleStatus();
         }
     }
 

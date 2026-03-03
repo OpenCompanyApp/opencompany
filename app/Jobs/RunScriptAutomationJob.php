@@ -5,13 +5,12 @@ namespace App\Jobs;
 use App\Agents\Tools\ToolRegistry;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
+use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Models\Automation;
 use App\Models\Channel;
-use App\Models\ConversationSummary;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Services\LuaApiDocGenerator;
 use App\Services\LuaBridge;
 use App\Services\LuaSandboxService;
@@ -27,6 +26,7 @@ use Illuminate\Support\Str;
 class RunScriptAutomationJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use SetsWorkspaceContext;
 
     public int $tries = 2;
 
@@ -48,13 +48,7 @@ class RunScriptAutomationJob implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
-        // Set workspace context
-        if ($this->automation->workspace_id) {
-            $workspace = Workspace::find($this->automation->workspace_id);
-            if ($workspace) {
-                app()->instance('currentWorkspace', $workspace);
-            }
-        }
+        $this->setWorkspaceContext($this->automation->workspace_id);
 
         $agent = User::find($this->automation->agent_id);
 
@@ -65,28 +59,7 @@ class RunScriptAutomationJob implements ShouldQueue, ShouldBeUnique
         }
 
         try {
-            $channelId = $this->automation->channel_id;
-
-            // Backfill: create channel if automation doesn't have one yet
-            if (! $channelId) {
-                $channel = Channel::create([
-                    'id' => Str::uuid()->toString(),
-                    'workspace_id' => $this->automation->workspace_id,
-                    'name' => $this->automation->name,
-                    'type' => 'dm',
-                    'description' => "Automation channel for: {$this->automation->name}",
-                    'creator_id' => $this->automation->created_by_id,
-                ]);
-                $channel->users()->attach(array_unique(array_filter([$this->automation->created_by_id, $this->automation->agent_id])));
-                $this->automation->updateQuietly(['channel_id' => $channel->id]);
-                $channelId = $channel->id;
-            }
-
-            // Clear channel history if keep_history is disabled
-            if ($channelId && ! $this->automation->keep_history) {
-                Message::where('channel_id', $channelId)->delete();
-                ConversationSummary::where('channel_id', $channelId)->delete();
-            }
+            $channelId = $this->automation->ensureChannel();
 
             $task = Task::create([
                 'id' => Str::uuid()->toString(),
@@ -169,11 +142,7 @@ class RunScriptAutomationJob implements ShouldQueue, ShouldBeUnique
                     ],
                 ]);
 
-                try {
-                    broadcast(new TaskUpdated($task, 'failed'));
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to broadcast script task failure', ['error' => $e->getMessage()]);
-                }
+                safeBroadcast(new TaskUpdated($task, 'failed'), 'script task failure');
 
                 $this->automation->recordFailure($result->error);
 
@@ -189,11 +158,7 @@ class RunScriptAutomationJob implements ShouldQueue, ShouldBeUnique
                 'tool_calls_count' => count($bridgeCalls),
             ]);
 
-            try {
-                broadcast(new TaskUpdated($task, 'completed'));
-            } catch (\Throwable $e) {
-                Log::warning('Failed to broadcast script task completion', ['error' => $e->getMessage()]);
-            }
+            safeBroadcast(new TaskUpdated($task, 'completed'), 'script task completion');
 
             $this->automation->recordSuccess([
                 'task_id' => $task->id,
@@ -220,11 +185,7 @@ class RunScriptAutomationJob implements ShouldQueue, ShouldBeUnique
                 $task->update([
                     'result' => ['error' => $e->getMessage()],
                 ]);
-                try {
-                    broadcast(new TaskUpdated($task, 'failed'));
-                } catch (\Throwable $broadcastError) {
-                    Log::warning('Failed to broadcast script task failure', ['error' => $broadcastError->getMessage()]);
-                }
+                safeBroadcast(new TaskUpdated($task, 'failed'), 'script task failure');
             }
 
             $this->automation->recordFailure($e->getMessage());

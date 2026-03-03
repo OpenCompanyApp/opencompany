@@ -121,7 +121,12 @@ class ExecuteAgentTaskJobTest extends TestCase
         ]);
 
         $job = new ExecuteAgentTaskJob($task);
-        $job->handle();
+
+        try {
+            $job->handle();
+        } catch (\RuntimeException) {
+            // Expected — job re-throws for queue retry
+        }
 
         $task->refresh();
         $this->assertEquals('failed', $task->status);

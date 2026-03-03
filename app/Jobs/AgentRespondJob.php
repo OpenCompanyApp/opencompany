@@ -12,13 +12,14 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\TokenMetrics;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Workspace;
+use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Services\AgentCommunicationService;
 use App\Services\AgentDocumentService;
 use App\Services\Memory\ModelContextRegistry;
@@ -31,6 +32,7 @@ use Illuminate\Support\Str;
 class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use SetsWorkspaceContext;
 
     /**
      * The number of times the job may be attempted.
@@ -80,13 +82,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
-        // Set workspace context from agent
-        if ($this->agent->workspace_id) {
-            $workspace = Workspace::find($this->agent->workspace_id);
-            if ($workspace) {
-                app()->instance('currentWorkspace', $workspace);
-            }
-        }
+        $this->setWorkspaceContext($this->agent->workspace_id);
 
         $task = null;
 
@@ -178,11 +174,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             return;
         }
 
-        try {
-            broadcast(new TaskUpdated($task, 'started'));
-        } catch (\Throwable $e) {
-            Log::warning('Failed to broadcast task started', ['error' => $e->getMessage()]);
-        }
+        safeBroadcast(new TaskUpdated($task, 'started'), 'task started');
 
         $responseDelivered = false;
 
@@ -368,32 +360,13 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             // ── Post-delivery bookkeeping ──
             // Everything below must NOT cause a job retry (response is already sent).
             try {
-                // Compute generation timing from llmStep (tightly wraps prompt() call)
                 $llmStep->refresh();
-                /** @var \Carbon\Carbon|null $llmStartedAt */
-                $llmStartedAt = $llmStep->started_at;
-                /** @var \Carbon\Carbon|null $llmCompletedAt */
-                $llmCompletedAt = $llmStep->completed_at;
-                $generationTimeMs = $llmStartedAt && $llmCompletedAt
-                    ? $llmStartedAt->diffInMilliseconds($llmCompletedAt)
-                    : null;
-                $totalCompletionTokens = $response->usage->completionTokens;
-                $tokensPerSecond = ($generationTimeMs && $generationTimeMs > 0 && $totalCompletionTokens > 0)
-                    ? round($totalCompletionTokens / ($generationTimeMs / 1000), 1)
-                    : null;
+                $metrics = TokenMetrics::fromResponse($response, $llmStep->started_at, $llmStep->completed_at);
 
-                $task->complete([
-                    'response' => $responseText,
-                    'prompt_tokens' => $lastStep?->usage->promptTokens ?? $response->usage->promptTokens,
-                    'completion_tokens' => $lastStep?->usage->completionTokens ?? $response->usage->completionTokens,
-                    'total_prompt_tokens' => $response->usage->promptTokens,
-                    'total_completion_tokens' => $totalCompletionTokens,
-                    'cache_read_tokens' => $response->usage->cacheReadInputTokens,
-                    'cache_write_tokens' => $response->usage->cacheWriteInputTokens,
-                    'tool_calls_count' => collect($response->steps)->sum(fn ($step) => count($step->toolCalls)),
-                    'generation_time_ms' => $generationTimeMs,
-                    'tokens_per_second' => $tokensPerSecond,
-                ]);
+                $task->complete(array_merge(
+                    ['response' => $responseText],
+                    $metrics,
+                ));
 
                 // Compute token breakdown from actual usage
                 $promptTokens = $response->usage->promptTokens;
@@ -461,11 +434,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 $this->handleDelegationCallback($task, $responseText);
             }
 
-            try {
-                broadcast(new TaskUpdated($task, 'completed'));
-            } catch (\Throwable $broadcastError) {
-                Log::warning('Failed to broadcast task completed', ['error' => $broadcastError->getMessage()]);
-            }
+            safeBroadcast(new TaskUpdated($task, 'completed'), 'task completed');
 
             Log::info('Agent responded', [
                 'agent' => $this->agent->name,
@@ -501,11 +470,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 $this->handleDelegationCallback($task, "Error: {$this->agent->name} failed to complete the task: {$e->getMessage()}");
             }
 
-            try {
-                broadcast(new TaskUpdated($task, 'failed'));
-            } catch (\Throwable $broadcastError) {
-                Log::warning('Failed to broadcast task failed', ['error' => $broadcastError->getMessage()]);
-            }
+            safeBroadcast(new TaskUpdated($task, 'failed'), 'task failed');
 
             // Only notify user of error on the final attempt (avoid error + retry double message)
             if ($this->attempts() >= $this->tries) {
@@ -515,20 +480,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             throw $e;
         } finally {
             $this->stopTypingIndicator();
-
-            // Refresh to pick up changes made by tools during execution
-            $this->agent->refresh();
-
-            if ($this->agent->sleeping_until) {
-                $this->agent->update(['status' => 'sleeping']);
-            } elseif ($this->agent->awaiting_approval_id) {
-                $this->agent->update(['status' => 'awaiting_approval']);
-            } elseif (!empty($this->agent->awaiting_delegation_ids)) {
-                $this->agent->update(['status' => 'awaiting_delegation']);
-            } else {
-                $this->agent->update(['status' => 'idle']);
-            }
-            broadcast(new AgentStatusUpdated($this->agent));
+            $this->agent->resolveIdleStatus();
         }
     }
 

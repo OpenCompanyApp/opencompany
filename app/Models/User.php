@@ -279,6 +279,27 @@ class User extends Authenticatable
         return !empty($this->awaiting_delegation_ids);
     }
 
+    /**
+     * Refresh from DB and set the correct idle/sleeping/awaiting status.
+     *
+     * Used in job `finally` blocks to ensure the agent's status reflects
+     * its current state after execution completes.
+     */
+    public function resolveIdleStatus(): void
+    {
+        $this->refresh();
+
+        $status = match (true) {
+            (bool) $this->sleeping_until => 'sleeping',
+            (bool) $this->awaiting_approval_id => 'awaiting_approval',
+            !empty($this->awaiting_delegation_ids) => 'awaiting_delegation',
+            default => 'idle',
+        };
+
+        $this->update(['status' => $status]);
+        safeBroadcast(new \App\Events\AgentStatusUpdated($this), 'agent status');
+    }
+
     public function isAgent(): bool
     {
         return $this->type === 'agent';
