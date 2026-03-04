@@ -22,7 +22,7 @@ class LuaExec implements Tool
 
     public function description(): string
     {
-        return 'Execute Lua code with app.* namespace access. Always use lua_read_doc first to look up function names and parameters. Use print() or dump() for output (tables are auto-serialized).';
+        return 'Execute Lua code with app.* namespace access. All app.* functions are pre-loaded — do NOT use require(). Always use lua_read_doc first to look up function names and parameters. Use print() or dump() for output (tables are auto-serialized).';
     }
 
     public function handle(Request $request): string
