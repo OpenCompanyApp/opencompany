@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fd3f30494c79c071c24fb3251069f633",
+    "content-hash": "c4eadb968696e3b30f47729118c5bd07",
     "packages": [
         {
             "name": "brick/math",
@@ -3449,11 +3449,17 @@
         },
         {
             "name": "opencompanyapp/ai-tool-celestial",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-celestial",
+            "version": "2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-celestial.git",
                 "reference": "792e0f62f084e84b23af00080647139b06225929"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-celestial/zipball/792e0f62f084e84b23af00080647139b06225929",
+                "reference": "792e0f62f084e84b23af00080647139b06225929",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3492,17 +3498,25 @@
                 "opencompany",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-celestial/tree/2.0.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-celestial/issues"
+            },
+            "time": "2026-02-22T22:21:31+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-clickup",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-clickup",
+            "version": "v2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-clickup.git",
                 "reference": "005303e0a34f317b5099e5f625c96d96bc42f61a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-clickup/zipball/005303e0a34f317b5099e5f625c96d96bc42f61a",
+                "reference": "005303e0a34f317b5099e5f625c96d96bc42f61a",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3541,17 +3555,25 @@
                 "tasks",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-clickup/tree/v2.0.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-clickup/issues"
+            },
+            "time": "2026-02-22T22:21:34+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-coingecko",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-coingecko",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-coingecko.git",
                 "reference": "21b1e114c988658ae16564458c9e7e059e7ad897"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-coingecko/zipball/21b1e114c988658ae16564458c9e7e059e7ad897",
+                "reference": "21b1e114c988658ae16564458c9e7e059e7ad897",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3590,17 +3612,25 @@
                 "opencompany",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-coingecko/tree/v1.0.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-coingecko/issues"
+            },
+            "time": "2026-02-22T22:21:36+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-exchangerate",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-exchangerate",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-exchangerate.git",
                 "reference": "b1aa74eb8c86f93a0acdd5d572cc6785debc2775"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-exchangerate/zipball/b1aa74eb8c86f93a0acdd5d572cc6785debc2775",
+                "reference": "b1aa74eb8c86f93a0acdd5d572cc6785debc2775",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3639,17 +3669,25 @@
                 "opencompany",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-exchangerate/tree/v1.0.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-exchangerate/issues"
+            },
+            "time": "2026-02-22T22:21:38+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-google",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-google",
+            "version": "v2.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-google.git",
                 "reference": "d7c9529a951cc5c6cadd0aceb5a362987226fa74"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-google/zipball/d7c9529a951cc5c6cadd0aceb5a362987226fa74",
+                "reference": "d7c9529a951cc5c6cadd0aceb5a362987226fa74",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3688,17 +3726,25 @@
                 "opencompany",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-google/tree/v2.2.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-google/issues"
+            },
+            "time": "2026-03-02T19:38:03+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-mermaid",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-mermaid",
+            "version": "1.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-mermaid.git",
                 "reference": "a446dd683a365ebc321928d745d1102e1c3a4147"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-mermaid/zipball/a446dd683a365ebc321928d745d1102e1c3a4147",
+                "reference": "a446dd683a365ebc321928d745d1102e1c3a4147",
+                "shasum": ""
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3737,17 +3783,25 @@
                 "opencompany",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-mermaid/tree/1.2.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-mermaid/issues"
+            },
+            "time": "2026-03-02T19:41:40+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-plantuml",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-plantuml",
+            "version": "1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-plantuml.git",
                 "reference": "c55ee8582dc2304082024e1ccff357fdd153da3d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-plantuml/zipball/c55ee8582dc2304082024e1ccff357fdd153da3d",
+                "reference": "c55ee8582dc2304082024e1ccff357fdd153da3d",
+                "shasum": ""
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3787,17 +3841,25 @@
                 "tools",
                 "uml"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-plantuml/tree/1.1.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-plantuml/issues"
+            },
+            "time": "2026-03-02T19:41:43+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-plausible",
-            "version": "dev-main",
+            "version": "1.3.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-plausible.git",
+                "reference": "f6a2f1f131286e496f68d5de25094549700d7047"
+            },
             "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-plausible",
-                "reference": "dc5f21eeb35f2f796beaa1c258dd83205324b4c8"
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-plausible/zipball/f6a2f1f131286e496f68d5de25094549700d7047",
+                "reference": "f6a2f1f131286e496f68d5de25094549700d7047",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3835,17 +3897,25 @@
                 "plausible",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-plausible/tree/1.3.1",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-plausible/issues"
+            },
+            "time": "2026-02-23T19:17:24+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-ticktick",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-ticktick",
+            "version": "v1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-ticktick.git",
                 "reference": "26b2dc2bf9e57667e546ecfae2b2e98107533f8f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-ticktick/zipball/26b2dc2bf9e57667e546ecfae2b2e98107533f8f",
+                "reference": "26b2dc2bf9e57667e546ecfae2b2e98107533f8f",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -3884,17 +3954,83 @@
                 "ticktick",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-ticktick/tree/v1.1.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-ticktick/issues"
+            },
+            "time": "2026-02-27T23:19:58+00:00"
+        },
+        {
+            "name": "opencompanyapp/ai-tool-trustmrr",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-trustmrr.git",
+                "reference": "a6afe7ebb6fdd842a333b7273c1e9db5d3351006"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-trustmrr/zipball/a6afe7ebb6fdd842a333b7273c1e9db5d3351006",
+                "reference": "a6afe7ebb6fdd842a333b7273c1e9db5d3351006",
+                "shasum": ""
+            },
+            "require": {
+                "laravel/ai": "^0.1",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\AiToolTrustMrr\\AiToolTrustMrrServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\AiToolTrustMrr\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "TrustMRR startup revenue data AI tool for Laravel AI SDK — browse startups, filter by revenue, MRR, growth, and asking price. Part of the OpenCompany AI tool ecosystem.",
+            "keywords": [
+                "ai",
+                "laravel",
+                "mrr",
+                "opencompany",
+                "revenue",
+                "startups",
+                "tools",
+                "trustmrr"
+            ],
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-trustmrr/tree/v1.0.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-trustmrr/issues"
+            },
+            "time": "2026-03-04T09:51:30+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-typst",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-typst",
+            "version": "1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-typst.git",
                 "reference": "ad5b5e9c869ebeba4862f88d196c09b0cef149d1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-typst/zipball/ad5b5e9c869ebeba4862f88d196c09b0cef149d1",
+                "reference": "ad5b5e9c869ebeba4862f88d196c09b0cef149d1",
+                "shasum": ""
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3934,17 +4070,25 @@
                 "tools",
                 "typst"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-typst/tree/1.1.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-typst/issues"
+            },
+            "time": "2026-03-02T19:41:52+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-vegalite",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-vegalite",
+            "version": "1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-vegalite.git",
                 "reference": "c61589649c1bab5f3f7e05f722996f3436bb60cc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-vegalite/zipball/c61589649c1bab5f3f7e05f722996f3436bb60cc",
+                "reference": "c61589649c1bab5f3f7e05f722996f3436bb60cc",
+                "shasum": ""
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -3969,17 +4113,25 @@
                 "MIT"
             ],
             "description": "Vega-Lite data visualization tool for OpenCompany AI agents",
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-vegalite/tree/1.1.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-vegalite/issues"
+            },
+            "time": "2026-03-02T19:41:53+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-worldbank",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/ai-tool-worldbank",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/ai-tool-worldbank.git",
                 "reference": "9be9c79a73633d32e5db439d0bb946ea8f1c365a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-worldbank/zipball/9be9c79a73633d32e5db439d0bb946ea8f1c365a",
+                "reference": "9be9c79a73633d32e5db439d0bb946ea8f1c365a",
+                "shasum": ""
             },
             "require": {
                 "laravel/ai": "^0.1",
@@ -4018,9 +4170,11 @@
                 "tools",
                 "worldbank"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/ai-tool-worldbank/tree/v1.0.0",
+                "issues": "https://github.com/OpenCompanyApp/ai-tool-worldbank/issues"
+            },
+            "time": "2026-02-22T22:21:43+00:00"
         },
         {
             "name": "opencompanyapp/astronomy-bundle",
@@ -4086,11 +4240,17 @@
         },
         {
             "name": "opencompanyapp/integration-core",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/integration-core",
+            "version": "2.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OpenCompanyApp/integration-core.git",
                 "reference": "160a21865050933d1bfc41ccddb70216c61ea928"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OpenCompanyApp/integration-core/zipball/160a21865050933d1bfc41ccddb70216c61ea928",
+                "reference": "160a21865050933d1bfc41ccddb70216c61ea928",
+                "shasum": ""
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
@@ -4127,9 +4287,11 @@
                 "opencompany",
                 "tools"
             ],
-            "transport-options": {
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/OpenCompanyApp/integration-core/tree/2.3.0",
+                "issues": "https://github.com/OpenCompanyApp/integration-core/issues"
+            },
+            "time": "2026-03-02T19:37:40+00:00"
         },
         {
             "name": "paragonie/sodium_compat",
@@ -11413,6 +11575,7 @@
         "opencompanyapp/ai-tool-plantuml": 20,
         "opencompanyapp/ai-tool-plausible": 20,
         "opencompanyapp/ai-tool-ticktick": 20,
+        "opencompanyapp/ai-tool-trustmrr": 20,
         "opencompanyapp/ai-tool-typst": 20,
         "opencompanyapp/ai-tool-vegalite": 20,
         "opencompanyapp/ai-tool-worldbank": 20,
