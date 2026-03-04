@@ -8,6 +8,18 @@
     "repositories": [
         {
             "type": "path",
+            "url": "tmp/ai-tool-trustmrr"
+        },
+        {
+            "type": "path",
+            "url": "tmp/chatogrator"
+        },
+        {
+            "type": "path",
+            "url": "tmp/prism-codex"
+        },
+        {
+            "type": "path",
             "url": "tmp/integration-core"
         },
         {
@@ -60,7 +72,7 @@
         },
         {
             "type": "path",
-            "url": "tmp/ai-tool-trustmrr"
+            "url": "tmp/astronomy-bundle"
         },
         {
             "type": "vcs",

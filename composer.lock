@@ -3962,16 +3962,16 @@
         },
         {
             "name": "opencompanyapp/ai-tool-trustmrr",
-            "version": "v1.0.0",
+            "version": "v1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/OpenCompanyApp/ai-tool-trustmrr.git",
-                "reference": "a6afe7ebb6fdd842a333b7273c1e9db5d3351006"
+                "reference": "5e31bf93763e9a437f09630eea91f568b7c95ebb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-trustmrr/zipball/a6afe7ebb6fdd842a333b7273c1e9db5d3351006",
-                "reference": "a6afe7ebb6fdd842a333b7273c1e9db5d3351006",
+                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-trustmrr/zipball/5e31bf93763e9a437f09630eea91f568b7c95ebb",
+                "reference": "5e31bf93763e9a437f09630eea91f568b7c95ebb",
                 "shasum": ""
             },
             "require": {
@@ -4013,10 +4013,10 @@
                 "trustmrr"
             ],
             "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-trustmrr/tree/v1.0.0",
+                "source": "https://github.com/OpenCompanyApp/ai-tool-trustmrr/tree/v1.1.0",
                 "issues": "https://github.com/OpenCompanyApp/ai-tool-trustmrr/issues"
             },
-            "time": "2026-03-04T09:51:30+00:00"
+            "time": "2026-03-04T10:11:21+00:00"
         },
         {
             "name": "opencompanyapp/ai-tool-typst",
