@@ -4,7 +4,7 @@ namespace App\Services\Mcp;
 
 use App\Models\McpServer;
 use Illuminate\Support\Str;
-use Laravel\Ai\Contracts\Tool;
+use OpenCompany\IntegrationCore\Contracts\Tool;
 use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 
 class McpToolProvider implements ToolProvider
@@ -96,6 +96,16 @@ class McpToolProvider implements ToolProvider
      *
      * @return array<string, mixed>
      */
+    public function luaDocsPath(): ?string
+    {
+        return null;
+    }
+
+    public function credentialFields(): array
+    {
+        return []; // MCP servers handle their own credentials
+    }
+
     private function findToolDef(string $mcpToolName): array
     {
         foreach ($this->server->discovered_tools ?? [] as $tool) {

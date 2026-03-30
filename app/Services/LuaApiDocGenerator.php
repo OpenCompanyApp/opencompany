@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
-use OpenCompany\IntegrationCore\Contracts\ProvidesLuaDocs;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class LuaApiDocGenerator
@@ -590,7 +589,7 @@ class LuaApiDocGenerator
     }
 
     /**
-     * Get supplementary Lua docs from a ToolProvider if it implements ProvidesLuaDocs.
+     * Get supplementary Lua docs from a ToolProvider via luaDocsPath().
      * Works for integration namespaces (e.g., "integrations.clickup" → provider "clickup").
      */
     private function getProviderLuaDocs(string $namespace): ?string
@@ -602,9 +601,9 @@ class LuaApiDocGenerator
 
         $provider = $this->providerRegistry->get($appName);
 
-        if ($provider instanceof ProvidesLuaDocs) {
+        if ($provider !== null) {
             $path = $provider->luaDocsPath();
-            if (is_file($path)) {
+            if ($path !== null && is_file($path)) {
                 $content = file_get_contents($path);
 
                 return $content !== false ? $content : null;

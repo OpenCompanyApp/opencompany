@@ -4,10 +4,12 @@ namespace App\Services\Mcp;
 
 use App\Models\McpServer;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Contracts\Tool as LaravelAiTool;
 use Laravel\Ai\Tools\Request;
+use OpenCompany\IntegrationCore\Contracts\Tool;
+use OpenCompany\IntegrationCore\Support\ToolResult;
 
-class McpProxyTool implements Tool
+class McpProxyTool implements Tool, LaravelAiTool
 {
     /** @param array<string, mixed> $mcpInputSchema */
     public function __construct(
@@ -25,6 +27,47 @@ class McpProxyTool implements Tool
     public function description(): string
     {
         return $this->mcpToolDescription;
+    }
+
+    public function parameters(): array
+    {
+        $params = [];
+        $properties = $this->mcpInputSchema['properties'] ?? [];
+        $required = $this->mcpInputSchema['required'] ?? [];
+
+        foreach ($properties as $name => $def) {
+            $param = ['type' => $def['type'] ?? 'string'];
+            if (in_array($name, $required)) {
+                $param['required'] = true;
+            }
+            if (! empty($def['description'])) {
+                $param['description'] = $def['description'];
+            }
+            if (! empty($def['enum'])) {
+                $param['enum'] = $def['enum'];
+            }
+            $params[$name] = $param;
+        }
+
+        return $params;
+    }
+
+    public function execute(array $args): ToolResult
+    {
+        try {
+            $client = McpClient::fromServer($this->server);
+            $result = $client->callTool($this->mcpToolName, $args);
+
+            if (! empty($result['isError'])) {
+                $text = $this->extractText($result['content'] ?? []);
+
+                return ToolResult::error($text ?: 'Unknown error from remote server');
+            }
+
+            return ToolResult::success($this->extractText($result['content'] ?? []));
+        } catch (\Throwable $e) {
+            return ToolResult::error("MCP tool '{$this->mcpToolName}' on {$this->server->name}: {$e->getMessage()}");
+        }
     }
 
     /** @return array<string, mixed> */

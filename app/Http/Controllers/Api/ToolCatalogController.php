@@ -60,7 +60,7 @@ class ToolCatalogController extends Controller
                 $group['luaNamespace'] = 'app.' . $nsKey;
             }
 
-            // Supplementary Lua docs from ProvidesLuaDocs providers
+            // Supplementary Lua docs from ToolProvider::luaDocsPath()
             $group['luaDocs'] = $docGenerator->getSupplementaryDocs($nsKey);
 
             // Workspace-level enabled flag for integrations

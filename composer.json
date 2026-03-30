@@ -8,7 +8,11 @@
     "repositories": [
         {
             "type": "path",
-            "url": "tmp/ai-tool-trustmrr"
+            "url": "tmp/integrations/*"
+        },
+        {
+            "type": "path",
+            "url": "tmp/astronomy-bundle-php"
         },
         {
             "type": "path",
@@ -19,124 +23,12 @@
             "url": "tmp/prism-codex"
         },
         {
-            "type": "path",
-            "url": "tmp/integration-core"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-celestial"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-plausible"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-mermaid"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-plantuml"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-typst"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-vegalite"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-ticktick"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-clickup"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-google"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-coingecko"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-worldbank"
-        },
-        {
-            "type": "path",
-            "url": "tmp/ai-tool-exchangerate"
-        },
-        {
-            "type": "path",
-            "url": "tmp/astronomy-bundle"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-trustmrr"
-        },
-        {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/chatogrator.git"
         },
         {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/prism-codex"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/integration-core"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-celestial"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-plausible"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-mermaid"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-plantuml"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-typst"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-vegalite"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-ticktick"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-clickup"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-google"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-coingecko"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-worldbank"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/ai-tool-exchangerate"
         },
         {
             "type": "vcs",
@@ -155,20 +47,20 @@
         "laravel/tinker": "^2.10.1",
         "opencompany/chatogrator": "^1.1",
         "opencompany/prism-codex": "@dev",
-        "opencompanyapp/ai-tool-celestial": "@dev",
-        "opencompanyapp/ai-tool-clickup": "@dev",
-        "opencompanyapp/ai-tool-coingecko": "@dev",
-        "opencompanyapp/ai-tool-exchangerate": "@dev",
-        "opencompanyapp/ai-tool-google": "@dev",
-        "opencompanyapp/ai-tool-mermaid": "@dev",
-        "opencompanyapp/ai-tool-plantuml": "@dev",
-        "opencompanyapp/ai-tool-plausible": "@dev",
-        "opencompanyapp/ai-tool-ticktick": "@dev",
-        "opencompanyapp/ai-tool-trustmrr": "@dev",
-        "opencompanyapp/ai-tool-typst": "@dev",
-        "opencompanyapp/ai-tool-vegalite": "@dev",
-        "opencompanyapp/ai-tool-worldbank": "@dev",
-        "opencompanyapp/astronomy-bundle": "^3.0",
+        "opencompanyapp/integration-celestial": "@dev",
+        "opencompanyapp/integration-clickup": "@dev",
+        "opencompanyapp/integration-coingecko": "@dev",
+        "opencompanyapp/integration-exchangerate": "@dev",
+        "opencompanyapp/integration-google": "@dev",
+        "opencompanyapp/integration-mermaid": "@dev",
+        "opencompanyapp/integration-plantuml": "@dev",
+        "opencompanyapp/integration-plausible": "@dev",
+        "opencompanyapp/integration-ticktick": "@dev",
+        "opencompanyapp/integration-trustmrr": "@dev",
+        "opencompanyapp/integration-typst": "@dev",
+        "opencompanyapp/integration-vegalite": "@dev",
+        "opencompanyapp/integration-worldbank": "@dev",
+        "opencompanyapp/astronomy-bundle": "@dev",
         "opencompanyapp/integration-core": "@dev",
         "pgvector/pgvector": "^0.2.2",
         "prism-php/prism": "^0.99.19",

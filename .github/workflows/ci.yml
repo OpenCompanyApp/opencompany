@@ -14,6 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Clone local packages
+        run: |
+          git clone https://github.com/OpenCompanyApp/integrations.git tmp/integrations
+          git clone https://github.com/OpenCompanyApp/astronomy-bundle-php.git tmp/astronomy-bundle-php
+          git clone https://github.com/OpenCompanyApp/chatogrator.git tmp/chatogrator
+          git clone https://github.com/OpenCompanyApp/prism-codex.git tmp/prism-codex
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:

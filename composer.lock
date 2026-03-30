@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c4eadb968696e3b30f47729118c5bd07",
+    "content-hash": "5b4af7a8235e75a625b834bb62cf4665",
     "packages": [
         {
             "name": "brick/math",
@@ -1029,16 +1029,16 @@
         },
         {
             "name": "guzzlehttp/psr7",
-            "version": "2.8.0",
+            "version": "2.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guzzle/psr7.git",
-                "reference": "21dc724a0583619cd1652f673303492272778051"
+                "reference": "7d0ed42f28e42d61352a7a79de682e5e67fec884"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/psr7/zipball/21dc724a0583619cd1652f673303492272778051",
-                "reference": "21dc724a0583619cd1652f673303492272778051",
+                "url": "https://api.github.com/repos/guzzle/psr7/zipball/7d0ed42f28e42d61352a7a79de682e5e67fec884",
+                "reference": "7d0ed42f28e42d61352a7a79de682e5e67fec884",
                 "shasum": ""
             },
             "require": {
@@ -1054,6 +1054,7 @@
             "require-dev": {
                 "bamarni/composer-bin-plugin": "^1.8.2",
                 "http-interop/http-factory-tests": "0.9.0",
+                "jshttp/mime-db": "1.54.0.1",
                 "phpunit/phpunit": "^8.5.44 || ^9.6.25"
             },
             "suggest": {
@@ -1125,7 +1126,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/psr7/issues",
-                "source": "https://github.com/guzzle/psr7/tree/2.8.0"
+                "source": "https://github.com/guzzle/psr7/tree/2.9.0"
             },
             "funding": [
                 {
@@ -1141,7 +1142,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-08-23T21:21:41+00:00"
+            "time": "2026-03-10T16:41:02+00:00"
         },
         {
             "name": "guzzlehttp/uri-template",
@@ -1455,16 +1456,16 @@
         },
         {
             "name": "laravel/framework",
-            "version": "v12.53.0",
+            "version": "v12.56.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/framework.git",
-                "reference": "f57f035c0d34503d9ff30be76159bb35a003cd1f"
+                "reference": "dac16d424b59debb2273910dde88eb7050a2a709"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/framework/zipball/f57f035c0d34503d9ff30be76159bb35a003cd1f",
-                "reference": "f57f035c0d34503d9ff30be76159bb35a003cd1f",
+                "url": "https://api.github.com/repos/laravel/framework/zipball/dac16d424b59debb2273910dde88eb7050a2a709",
+                "reference": "dac16d424b59debb2273910dde88eb7050a2a709",
                 "shasum": ""
             },
             "require": {
@@ -1485,7 +1486,7 @@
                 "guzzlehttp/uri-template": "^1.0",
                 "laravel/prompts": "^0.3.0",
                 "laravel/serializable-closure": "^1.3|^2.0",
-                "league/commonmark": "^2.7",
+                "league/commonmark": "^2.8.1",
                 "league/flysystem": "^3.25.1",
                 "league/flysystem-local": "^3.25.1",
                 "league/uri": "^7.5.1",
@@ -1580,7 +1581,7 @@
                 "orchestra/testbench-core": "^10.9.0",
                 "pda/pheanstalk": "^5.0.6|^7.0.0",
                 "php-http/discovery": "^1.15",
-                "phpstan/phpstan": "^2.0",
+                "phpstan/phpstan": "^2.1.41",
                 "phpunit/phpunit": "^10.5.35|^11.5.3|^12.0.1",
                 "predis/predis": "^2.3|^3.0",
                 "resend/resend-php": "^0.10.0|^1.0",
@@ -1673,7 +1674,7 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2026-02-24T14:35:15+00:00"
+            "time": "2026-03-26T14:51:54+00:00"
         },
         {
             "name": "laravel/octane",
@@ -1767,16 +1768,16 @@
         },
         {
             "name": "laravel/prompts",
-            "version": "v0.3.13",
+            "version": "v0.3.16",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/prompts.git",
-                "reference": "ed8c466571b37e977532fb2fd3c272c784d7050d"
+                "reference": "11e7d5f93803a2190b00e145142cb00a33d17ad2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/prompts/zipball/ed8c466571b37e977532fb2fd3c272c784d7050d",
-                "reference": "ed8c466571b37e977532fb2fd3c272c784d7050d",
+                "url": "https://api.github.com/repos/laravel/prompts/zipball/11e7d5f93803a2190b00e145142cb00a33d17ad2",
+                "reference": "11e7d5f93803a2190b00e145142cb00a33d17ad2",
                 "shasum": ""
             },
             "require": {
@@ -1820,9 +1821,9 @@
             "description": "Add beautiful and user-friendly forms to your command-line applications.",
             "support": {
                 "issues": "https://github.com/laravel/prompts/issues",
-                "source": "https://github.com/laravel/prompts/tree/v0.3.13"
+                "source": "https://github.com/laravel/prompts/tree/v0.3.16"
             },
-            "time": "2026-02-06T12:17:10+00:00"
+            "time": "2026-03-23T14:35:33+00:00"
         },
         {
             "name": "laravel/reverb",
@@ -2223,16 +2224,16 @@
         },
         {
             "name": "league/commonmark",
-            "version": "2.8.0",
+            "version": "2.8.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/commonmark.git",
-                "reference": "4efa10c1e56488e658d10adf7b7b7dcd19940bfb"
+                "reference": "59fb075d2101740c337c7216e3f32b36c204218b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/4efa10c1e56488e658d10adf7b7b7dcd19940bfb",
-                "reference": "4efa10c1e56488e658d10adf7b7b7dcd19940bfb",
+                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/59fb075d2101740c337c7216e3f32b36c204218b",
+                "reference": "59fb075d2101740c337c7216e3f32b36c204218b",
                 "shasum": ""
             },
             "require": {
@@ -2257,9 +2258,9 @@
                 "phpstan/phpstan": "^1.8.2",
                 "phpunit/phpunit": "^9.5.21 || ^10.5.9 || ^11.0.0",
                 "scrutinizer/ocular": "^1.8.1",
-                "symfony/finder": "^5.3 | ^6.0 | ^7.0",
-                "symfony/process": "^5.4 | ^6.0 | ^7.0",
-                "symfony/yaml": "^2.3 | ^3.0 | ^4.0 | ^5.0 | ^6.0 | ^7.0",
+                "symfony/finder": "^5.3 | ^6.0 | ^7.0 || ^8.0",
+                "symfony/process": "^5.4 | ^6.0 | ^7.0 || ^8.0",
+                "symfony/yaml": "^2.3 | ^3.0 | ^4.0 | ^5.0 | ^6.0 | ^7.0 || ^8.0",
                 "unleashedtech/php-coding-standard": "^3.1.1",
                 "vimeo/psalm": "^4.24.0 || ^5.0.0 || ^6.0.0"
             },
@@ -2326,7 +2327,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-11-26T21:48:24+00:00"
+            "time": "2026-03-19T13:16:38+00:00"
         },
         {
             "name": "league/config",
@@ -2412,16 +2413,16 @@
         },
         {
             "name": "league/flysystem",
-            "version": "3.32.0",
+            "version": "3.33.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/flysystem.git",
-                "reference": "254b1595b16b22dbddaaef9ed6ca9fdac4956725"
+                "reference": "570b8871e0ce693764434b29154c54b434905350"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/flysystem/zipball/254b1595b16b22dbddaaef9ed6ca9fdac4956725",
-                "reference": "254b1595b16b22dbddaaef9ed6ca9fdac4956725",
+                "url": "https://api.github.com/repos/thephpleague/flysystem/zipball/570b8871e0ce693764434b29154c54b434905350",
+                "reference": "570b8871e0ce693764434b29154c54b434905350",
                 "shasum": ""
             },
             "require": {
@@ -2489,9 +2490,9 @@
             ],
             "support": {
                 "issues": "https://github.com/thephpleague/flysystem/issues",
-                "source": "https://github.com/thephpleague/flysystem/tree/3.32.0"
+                "source": "https://github.com/thephpleague/flysystem/tree/3.33.0"
             },
-            "time": "2026-02-25T17:01:41+00:00"
+            "time": "2026-03-25T07:59:30+00:00"
         },
         {
             "name": "league/flysystem-local",
@@ -2600,20 +2601,20 @@
         },
         {
             "name": "league/uri",
-            "version": "7.8.0",
+            "version": "7.8.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/uri.git",
-                "reference": "4436c6ec8d458e4244448b069cc572d088230b76"
+                "reference": "08cf38e3924d4f56238125547b5720496fac8fd4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/uri/zipball/4436c6ec8d458e4244448b069cc572d088230b76",
-                "reference": "4436c6ec8d458e4244448b069cc572d088230b76",
+                "url": "https://api.github.com/repos/thephpleague/uri/zipball/08cf38e3924d4f56238125547b5720496fac8fd4",
+                "reference": "08cf38e3924d4f56238125547b5720496fac8fd4",
                 "shasum": ""
             },
             "require": {
-                "league/uri-interfaces": "^7.8",
+                "league/uri-interfaces": "^7.8.1",
                 "php": "^8.1",
                 "psr/http-factory": "^1"
             },
@@ -2686,7 +2687,7 @@
                 "docs": "https://uri.thephpleague.com",
                 "forum": "https://thephpleague.slack.com",
                 "issues": "https://github.com/thephpleague/uri-src/issues",
-                "source": "https://github.com/thephpleague/uri/tree/7.8.0"
+                "source": "https://github.com/thephpleague/uri/tree/7.8.1"
             },
             "funding": [
                 {
@@ -2694,20 +2695,20 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-01-14T17:24:56+00:00"
+            "time": "2026-03-15T20:22:25+00:00"
         },
         {
             "name": "league/uri-interfaces",
-            "version": "7.8.0",
+            "version": "7.8.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/uri-interfaces.git",
-                "reference": "c5c5cd056110fc8afaba29fa6b72a43ced42acd4"
+                "reference": "85d5c77c5d6d3af6c54db4a78246364908f3c928"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/uri-interfaces/zipball/c5c5cd056110fc8afaba29fa6b72a43ced42acd4",
-                "reference": "c5c5cd056110fc8afaba29fa6b72a43ced42acd4",
+                "url": "https://api.github.com/repos/thephpleague/uri-interfaces/zipball/85d5c77c5d6d3af6c54db4a78246364908f3c928",
+                "reference": "85d5c77c5d6d3af6c54db4a78246364908f3c928",
                 "shasum": ""
             },
             "require": {
@@ -2770,7 +2771,7 @@
                 "docs": "https://uri.thephpleague.com",
                 "forum": "https://thephpleague.slack.com",
                 "issues": "https://github.com/thephpleague/uri-src/issues",
-                "source": "https://github.com/thephpleague/uri-interfaces/tree/7.8.0"
+                "source": "https://github.com/thephpleague/uri-interfaces/tree/7.8.1"
             },
             "funding": [
                 {
@@ -2778,7 +2779,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-01-15T06:54:53+00:00"
+            "time": "2026-03-08T20:05:35+00:00"
         },
         {
             "name": "monolog/monolog",
@@ -2885,16 +2886,16 @@
         },
         {
             "name": "nesbot/carbon",
-            "version": "3.11.1",
+            "version": "3.11.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/CarbonPHP/carbon.git",
-                "reference": "f438fcc98f92babee98381d399c65336f3a3827f"
+                "reference": "6a7e652845bb018c668220c2a545aded8594fbbf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/CarbonPHP/carbon/zipball/f438fcc98f92babee98381d399c65336f3a3827f",
-                "reference": "f438fcc98f92babee98381d399c65336f3a3827f",
+                "url": "https://api.github.com/repos/CarbonPHP/carbon/zipball/6a7e652845bb018c668220c2a545aded8594fbbf",
+                "reference": "6a7e652845bb018c668220c2a545aded8594fbbf",
                 "shasum": ""
             },
             "require": {
@@ -2986,7 +2987,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-01-29T09:26:29+00:00"
+            "time": "2026-03-11T17:23:39+00:00"
         },
         {
             "name": "nette/schema",
@@ -3448,747 +3449,12 @@
             "time": "2026-02-09T21:47:47+00:00"
         },
         {
-            "name": "opencompanyapp/ai-tool-celestial",
-            "version": "2.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-celestial.git",
-                "reference": "792e0f62f084e84b23af00080647139b06225929"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-celestial/zipball/792e0f62f084e84b23af00080647139b06225929",
-                "reference": "792e0f62f084e84b23af00080647139b06225929",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/ai": "^0.1",
-                "opencompanyapp/astronomy-bundle": "^3.0",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolCelestial\\AiToolCelestialServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolCelestial\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "Celestial/astronomy AI tool for Laravel AI SDK — moon phases, sunrise/sunset, planet positions, eclipses, night sky reports. Part of the OpenCompany AI tool ecosystem.",
-            "keywords": [
-                "ai",
-                "astronomy",
-                "celestial",
-                "laravel",
-                "opencompany",
-                "tools"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-celestial/tree/2.0.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-celestial/issues"
-            },
-            "time": "2026-02-22T22:21:31+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-clickup",
-            "version": "v2.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-clickup.git",
-                "reference": "005303e0a34f317b5099e5f625c96d96bc42f61a"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-clickup/zipball/005303e0a34f317b5099e5f625c96d96bc42f61a",
-                "reference": "005303e0a34f317b5099e5f625c96d96bc42f61a",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolClickUp\\AiToolClickUpServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolClickUp\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "ClickUp project management AI tool for Laravel AI SDK — manage tasks, docs, time tracking, and more. Part of the OpenCompany AI tool ecosystem.",
-            "keywords": [
-                "ai",
-                "clickup",
-                "laravel",
-                "opencompany",
-                "project-management",
-                "tasks",
-                "tools"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-clickup/tree/v2.0.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-clickup/issues"
-            },
-            "time": "2026-02-22T22:21:34+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-coingecko",
-            "version": "v1.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-coingecko.git",
-                "reference": "21b1e114c988658ae16564458c9e7e059e7ad897"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-coingecko/zipball/21b1e114c988658ae16564458c9e7e059e7ad897",
-                "reference": "21b1e114c988658ae16564458c9e7e059e7ad897",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolCoinGecko\\AiToolCoinGeckoServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolCoinGecko\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "CoinGecko cryptocurrency AI tool for Laravel AI SDK — search coins, prices, market data, trending, historical charts. Part of the OpenCompany AI tool ecosystem.",
-            "keywords": [
-                "ai",
-                "bitcoin",
-                "coingecko",
-                "crypto",
-                "laravel",
-                "opencompany",
-                "tools"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-coingecko/tree/v1.0.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-coingecko/issues"
-            },
-            "time": "2026-02-22T22:21:36+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-exchangerate",
-            "version": "v1.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-exchangerate.git",
-                "reference": "b1aa74eb8c86f93a0acdd5d572cc6785debc2775"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-exchangerate/zipball/b1aa74eb8c86f93a0acdd5d572cc6785debc2775",
-                "reference": "b1aa74eb8c86f93a0acdd5d572cc6785debc2775",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolExchangeRate\\AiToolExchangeRateServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolExchangeRate\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "Currency exchange rate AI tool for Laravel AI SDK — 340 fiat, crypto, and metal conversions. Part of the OpenCompany AI tool ecosystem.",
-            "keywords": [
-                "ai",
-                "currency",
-                "exchange-rate",
-                "forex",
-                "laravel",
-                "opencompany",
-                "tools"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-exchangerate/tree/v1.0.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-exchangerate/issues"
-            },
-            "time": "2026-02-22T22:21:38+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-google",
-            "version": "v2.2.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-google.git",
-                "reference": "d7c9529a951cc5c6cadd0aceb5a362987226fa74"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-google/zipball/d7c9529a951cc5c6cadd0aceb5a362987226fa74",
-                "reference": "d7c9529a951cc5c6cadd0aceb5a362987226fa74",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolGoogle\\AiToolGoogleServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolGoogle\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "Google Calendar and Gmail AI tools for Laravel AI SDK. Part of the OpenCompany AI tool ecosystem.",
-            "keywords": [
-                "ai",
-                "calendar",
-                "gmail",
-                "google",
-                "laravel",
-                "opencompany",
-                "tools"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-google/tree/v2.2.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-google/issues"
-            },
-            "time": "2026-03-02T19:38:03+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-mermaid",
-            "version": "1.2.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-mermaid.git",
-                "reference": "a446dd683a365ebc321928d745d1102e1c3a4147"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-mermaid/zipball/a446dd683a365ebc321928d745d1102e1c3a4147",
-                "reference": "a446dd683a365ebc321928d745d1102e1c3a4147",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/support": "^11.0 || ^12.0",
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolMermaid\\AiToolMermaidServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolMermaid\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "Mermaid diagram rendering AI tool for OpenCompany — flowcharts, sequence diagrams, ER diagrams, and more as PNG images.",
-            "keywords": [
-                "ai",
-                "diagrams",
-                "laravel",
-                "mermaid",
-                "opencompany",
-                "tools"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-mermaid/tree/1.2.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-mermaid/issues"
-            },
-            "time": "2026-03-02T19:41:40+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-plantuml",
-            "version": "1.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-plantuml.git",
-                "reference": "c55ee8582dc2304082024e1ccff357fdd153da3d"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-plantuml/zipball/c55ee8582dc2304082024e1ccff357fdd153da3d",
-                "reference": "c55ee8582dc2304082024e1ccff357fdd153da3d",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/support": "^11.0 || ^12.0",
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolPlantUml\\AiToolPlantUmlServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolPlantUml\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "PlantUML diagram rendering AI tool for OpenCompany — class, sequence, activity, component, state, and more as PNG images.",
-            "keywords": [
-                "ai",
-                "diagrams",
-                "laravel",
-                "opencompany",
-                "plantuml",
-                "tools",
-                "uml"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-plantuml/tree/1.1.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-plantuml/issues"
-            },
-            "time": "2026-03-02T19:41:43+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-plausible",
-            "version": "1.3.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-plausible.git",
-                "reference": "f6a2f1f131286e496f68d5de25094549700d7047"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-plausible/zipball/f6a2f1f131286e496f68d5de25094549700d7047",
-                "reference": "f6a2f1f131286e496f68d5de25094549700d7047",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolPlausible\\AiToolPlausibleServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolPlausible\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "Plausible Analytics AI tool for Laravel AI SDK — query stats, realtime visitors, manage sites and goals. Part of the OpenCompany AI tool ecosystem.",
-            "keywords": [
-                "ai",
-                "analytics",
-                "laravel",
-                "opencompany",
-                "plausible",
-                "tools"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-plausible/tree/1.3.1",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-plausible/issues"
-            },
-            "time": "2026-02-23T19:17:24+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-ticktick",
-            "version": "v1.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-ticktick.git",
-                "reference": "26b2dc2bf9e57667e546ecfae2b2e98107533f8f"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-ticktick/zipball/26b2dc2bf9e57667e546ecfae2b2e98107533f8f",
-                "reference": "26b2dc2bf9e57667e546ecfae2b2e98107533f8f",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolTickTick\\AiToolTickTickServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolTickTick\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "TickTick task management AI tool for Laravel AI SDK — manage projects and tasks. Part of the OpenCompany AI tool ecosystem.",
-            "keywords": [
-                "ai",
-                "laravel",
-                "opencompany",
-                "productivity",
-                "tasks",
-                "ticktick",
-                "tools"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-ticktick/tree/v1.1.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-ticktick/issues"
-            },
-            "time": "2026-02-27T23:19:58+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-trustmrr",
-            "version": "v1.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-trustmrr.git",
-                "reference": "5e31bf93763e9a437f09630eea91f568b7c95ebb"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-trustmrr/zipball/5e31bf93763e9a437f09630eea91f568b7c95ebb",
-                "reference": "5e31bf93763e9a437f09630eea91f568b7c95ebb",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolTrustMrr\\AiToolTrustMrrServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolTrustMrr\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "TrustMRR startup revenue data AI tool for Laravel AI SDK — browse startups, filter by revenue, MRR, growth, and asking price. Part of the OpenCompany AI tool ecosystem.",
-            "keywords": [
-                "ai",
-                "laravel",
-                "mrr",
-                "opencompany",
-                "revenue",
-                "startups",
-                "tools",
-                "trustmrr"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-trustmrr/tree/v1.1.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-trustmrr/issues"
-            },
-            "time": "2026-03-04T10:11:21+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-typst",
-            "version": "1.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-typst.git",
-                "reference": "ad5b5e9c869ebeba4862f88d196c09b0cef149d1"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-typst/zipball/ad5b5e9c869ebeba4862f88d196c09b0cef149d1",
-                "reference": "ad5b5e9c869ebeba4862f88d196c09b0cef149d1",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/support": "^11.0 || ^12.0",
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolTypst\\AiToolTypstServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolTypst\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "Typst document rendering AI tool for OpenCompany — generate PDF reports, invoices, proposals, and formatted documents.",
-            "keywords": [
-                "ai",
-                "documents",
-                "laravel",
-                "opencompany",
-                "pdf",
-                "tools",
-                "typst"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-typst/tree/1.1.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-typst/issues"
-            },
-            "time": "2026-03-02T19:41:52+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-vegalite",
-            "version": "1.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-vegalite.git",
-                "reference": "c61589649c1bab5f3f7e05f722996f3436bb60cc"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-vegalite/zipball/c61589649c1bab5f3f7e05f722996f3436bb60cc",
-                "reference": "c61589649c1bab5f3f7e05f722996f3436bb60cc",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/support": "^11.0 || ^12.0",
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolVegaLite\\AiToolVegaLiteServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolVegaLite\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "Vega-Lite data visualization tool for OpenCompany AI agents",
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-vegalite/tree/1.1.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-vegalite/issues"
-            },
-            "time": "2026-03-02T19:41:53+00:00"
-        },
-        {
-            "name": "opencompanyapp/ai-tool-worldbank",
-            "version": "v1.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/ai-tool-worldbank.git",
-                "reference": "9be9c79a73633d32e5db439d0bb946ea8f1c365a"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/ai-tool-worldbank/zipball/9be9c79a73633d32e5db439d0bb946ea8f1c365a",
-                "reference": "9be9c79a73633d32e5db439d0bb946ea8f1c365a",
-                "shasum": ""
-            },
-            "require": {
-                "laravel/ai": "^0.1",
-                "opencompanyapp/integration-core": "^2.0 || @dev",
-                "php": "^8.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\AiToolWorldBank\\AiToolWorldBankServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\AiToolWorldBank\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "World Bank economic indicators AI tool for Laravel AI SDK — GDP, inflation, population, development data for 200+ countries. Part of the OpenCompany AI tool ecosystem.",
-            "keywords": [
-                "ai",
-                "economics",
-                "gdp",
-                "laravel",
-                "opencompany",
-                "tools",
-                "worldbank"
-            ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/ai-tool-worldbank/tree/v1.0.0",
-                "issues": "https://github.com/OpenCompanyApp/ai-tool-worldbank/issues"
-            },
-            "time": "2026-02-22T22:21:43+00:00"
-        },
-        {
             "name": "opencompanyapp/astronomy-bundle",
-            "version": "3.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php.git",
-                "reference": "7d2f0924657c52d61ca4fa576b71df8c7be72a17"
-            },
+            "version": "dev-master",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/astronomy-bundle-php/zipball/7d2f0924657c52d61ca4fa576b71df8c7be72a17",
-                "reference": "7d2f0924657c52d61ca4fa576b71df8c7be72a17",
-                "shasum": ""
+                "type": "path",
+                "url": "tmp/astronomy-bundle-php",
+                "reference": "7d2f0924657c52d61ca4fa576b71df8c7be72a17"
             },
             "require": {
                 "ext-json": "*",
@@ -4233,28 +3499,167 @@
                 "planets",
                 "sun"
             ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/astronomy-bundle-php/tree/3.1.0"
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-celestial",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/celestial",
+                "reference": "fab344d2b1985f29404ab219e22a2f2bbf80d7de"
             },
-            "time": "2026-02-09T21:47:45+00:00"
+            "require": {
+                "opencompanyapp/astronomy-bundle": "^3.0 || @dev",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-celestial": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\Celestial\\CelestialServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\Celestial\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Celestial/astronomy integration for Laravel — moon phases, sunrise/sunset, planet positions, eclipses, night sky reports.",
+            "keywords": [
+                "astronomy",
+                "celestial",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-clickup",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/clickup",
+                "reference": "df15d97daf5d043302296d6fbfc0cedfee53b9ef"
+            },
+            "require": {
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-clickup": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\ClickUp\\ClickUpServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\ClickUp\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "ClickUp integration for OpenCompany — tasks, docs, time tracking, chat, and workspace management.",
+            "keywords": [
+                "clickup",
+                "opencompany",
+                "project-management",
+                "tasks",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-coingecko",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/coingecko",
+                "reference": "bd41637c8207e85bf9083866288d6c98bddf42b0"
+            },
+            "require": {
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-coingecko": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\CoinGecko\\CoinGeckoServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\CoinGecko\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "CoinGecko cryptocurrency integration for Laravel — search coins, prices, market data, trending, historical charts.",
+            "keywords": [
+                "bitcoin",
+                "coingecko",
+                "crypto",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "opencompanyapp/integration-core",
-            "version": "2.3.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/OpenCompanyApp/integration-core.git",
-                "reference": "160a21865050933d1bfc41ccddb70216c61ea928"
-            },
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/OpenCompanyApp/integration-core/zipball/160a21865050933d1bfc41ccddb70216c61ea928",
-                "reference": "160a21865050933d1bfc41ccddb70216c61ea928",
-                "shasum": ""
+                "type": "path",
+                "url": "tmp/integrations/core",
+                "reference": "db0fbae3999b421657a53ca3707568ebfabe804d"
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0",
-                "laravel/ai": "^0.1",
                 "php": "^8.2"
             },
             "type": "library",
@@ -4279,19 +3684,497 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Core framework for OpenCompany integration packages — contracts, credential abstraction, and auto-discovery registry for Laravel.",
+            "description": "Core framework for OpenCompany integration packages — contracts, credential abstraction, and auto-discovery registry.",
             "keywords": [
                 "agents",
                 "integrations",
-                "laravel",
                 "opencompany",
                 "tools"
             ],
-            "support": {
-                "source": "https://github.com/OpenCompanyApp/integration-core/tree/2.3.0",
-                "issues": "https://github.com/OpenCompanyApp/integration-core/issues"
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-exchangerate",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/exchangerate",
+                "reference": "249dd5bc026d55919c87cdcb8cdad697c3008c5f"
             },
-            "time": "2026-03-02T19:37:40+00:00"
+            "require": {
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-exchangerate": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\ExchangeRate\\ExchangeRateServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\ExchangeRate\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Currency exchange rate integration for Laravel — 340 fiat, crypto, and metal conversions.",
+            "keywords": [
+                "currency",
+                "exchange-rate",
+                "forex",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-google",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/google",
+                "reference": "35ba0f0f6968b1158cc8cc2f8ded8d9b5cc874be"
+            },
+            "require": {
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-google": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\Google\\GoogleServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\Google\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Google Workspace integration for the OpenCompany platform — Calendar, Gmail, Drive, Sheets, Docs, Forms, Contacts, Tasks, Analytics, and Search Console.",
+            "keywords": [
+                "calendar",
+                "gmail",
+                "google",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-mermaid",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/mermaid",
+                "reference": "70ed2b9614499968f7f51b7106a3203cbcc66b03"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-mermaid": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\Mermaid\\MermaidServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\Mermaid\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Mermaid diagram rendering integration — flowcharts, sequence diagrams, ER diagrams, and more as PNG images.",
+            "keywords": [
+                "diagrams",
+                "integrations",
+                "mermaid",
+                "opencompany",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-plantuml",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/plantuml",
+                "reference": "e570060c35e911032c0e99a22a7da93dfc97f625"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-plantuml": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\PlantUml\\PlantUmlServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\PlantUml\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "PlantUML diagram rendering integration for OpenCompany — class, sequence, activity, component, state, and more as PNG images.",
+            "keywords": [
+                "diagrams",
+                "opencompany",
+                "plantuml",
+                "tools",
+                "uml"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-plausible",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/plausible",
+                "reference": "95251ca14079e2a0abcb132ce27e87d530d5d4b9"
+            },
+            "require": {
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-plausible": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\Plausible\\PlausibleServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\Plausible\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Plausible Analytics integration for Laravel — query stats, realtime visitors, manage sites and goals.",
+            "keywords": [
+                "analytics",
+                "opencompany",
+                "plausible",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-ticktick",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/ticktick",
+                "reference": "df47a42632f14836e532d3033423580496e91de6"
+            },
+            "require": {
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-ticktick": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\TickTick\\TickTickServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\TickTick\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "TickTick integration for Laravel — manage projects and tasks.",
+            "keywords": [
+                "opencompany",
+                "productivity",
+                "tasks",
+                "ticktick",
+                "tools"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-trustmrr",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/trustmrr",
+                "reference": "f1b1df1590240398d71c64ca39151f5bb55fa241"
+            },
+            "require": {
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-trustmrr": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\TrustMrr\\TrustMrrServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\TrustMrr\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "TrustMRR startup revenue data integration for Laravel — browse startups, filter by revenue, MRR, growth, and asking price.",
+            "keywords": [
+                "mrr",
+                "opencompany",
+                "revenue",
+                "startups",
+                "tools",
+                "trustmrr"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-typst",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/typst",
+                "reference": "8ce08da4f5085ca33b80c62705d7f2ed829b4eec"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-typst": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\Typst\\TypstServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\Typst\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "Typst document rendering integration for OpenCompany — generate PDF reports, invoices, proposals, and formatted documents.",
+            "keywords": [
+                "documents",
+                "opencompany",
+                "pdf",
+                "tools",
+                "typst"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-vegalite",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/vegalite",
+                "reference": "4a0566b220d25853522ee0eb1e9ce9fe4a6b5202"
+            },
+            "require": {
+                "illuminate/support": "^11.0 || ^12.0",
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-vegalite": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\VegaLite\\VegaLiteServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\VegaLite\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Vega-Lite data visualization integration for OpenCompany",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/integration-worldbank",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/integrations/worldbank",
+                "reference": "aceab01ea12a9e3fa22c0d545b5f2240d1239687"
+            },
+            "require": {
+                "opencompanyapp/integration-core": "^2.0 || @dev",
+                "php": "^8.2"
+            },
+            "replace": {
+                "opencompanyapp/ai-tool-worldbank": "self.version"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\Integrations\\WorldBank\\WorldBankServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\Integrations\\WorldBank\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "OpenCompany",
+                    "homepage": "https://github.com/OpenCompanyApp"
+                }
+            ],
+            "description": "World Bank economic indicators integration for Laravel — GDP, inflation, population, development data for 200+ countries.",
+            "keywords": [
+                "economics",
+                "gdp",
+                "opencompany",
+                "tools",
+                "worldbank"
+            ],
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "paragonie/sodium_compat",
@@ -6018,16 +5901,16 @@
         },
         {
             "name": "symfony/console",
-            "version": "v7.4.6",
+            "version": "v7.4.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/console.git",
-                "reference": "6d643a93b47398599124022eb24d97c153c12f27"
+                "reference": "e1e6770440fb9c9b0cf725f81d1361ad1835329d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/6d643a93b47398599124022eb24d97c153c12f27",
-                "reference": "6d643a93b47398599124022eb24d97c153c12f27",
+                "url": "https://api.github.com/repos/symfony/console/zipball/e1e6770440fb9c9b0cf725f81d1361ad1835329d",
+                "reference": "e1e6770440fb9c9b0cf725f81d1361ad1835329d",
                 "shasum": ""
             },
             "require": {
@@ -6092,7 +5975,7 @@
                 "terminal"
             ],
             "support": {
-                "source": "https://github.com/symfony/console/tree/v7.4.6"
+                "source": "https://github.com/symfony/console/tree/v7.4.7"
             },
             "funding": [
                 {
@@ -6112,7 +5995,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-02-25T17:02:47+00:00"
+            "time": "2026-03-06T14:06:20+00:00"
         },
         {
             "name": "symfony/css-selector",
@@ -6563,16 +6446,16 @@
         },
         {
             "name": "symfony/http-foundation",
-            "version": "v7.4.6",
+            "version": "v7.4.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/http-foundation.git",
-                "reference": "fd97d5e926e988a363cef56fbbf88c5c528e9065"
+                "reference": "f94b3e7b7dafd40e666f0c9ff2084133bae41e81"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/http-foundation/zipball/fd97d5e926e988a363cef56fbbf88c5c528e9065",
-                "reference": "fd97d5e926e988a363cef56fbbf88c5c528e9065",
+                "url": "https://api.github.com/repos/symfony/http-foundation/zipball/f94b3e7b7dafd40e666f0c9ff2084133bae41e81",
+                "reference": "f94b3e7b7dafd40e666f0c9ff2084133bae41e81",
                 "shasum": ""
             },
             "require": {
@@ -6621,7 +6504,7 @@
             "description": "Defines an object-oriented layer for the HTTP specification",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/http-foundation/tree/v7.4.6"
+                "source": "https://github.com/symfony/http-foundation/tree/v7.4.7"
             },
             "funding": [
                 {
@@ -6641,20 +6524,20 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-02-21T16:25:55+00:00"
+            "time": "2026-03-06T13:15:18+00:00"
         },
         {
             "name": "symfony/http-kernel",
-            "version": "v7.4.6",
+            "version": "v7.4.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/http-kernel.git",
-                "reference": "002ac0cf4cd972a7fd0912dcd513a95e8a81ce83"
+                "reference": "3b3fcf386c809be990c922e10e4c620d6367cab1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/http-kernel/zipball/002ac0cf4cd972a7fd0912dcd513a95e8a81ce83",
-                "reference": "002ac0cf4cd972a7fd0912dcd513a95e8a81ce83",
+                "url": "https://api.github.com/repos/symfony/http-kernel/zipball/3b3fcf386c809be990c922e10e4c620d6367cab1",
+                "reference": "3b3fcf386c809be990c922e10e4c620d6367cab1",
                 "shasum": ""
             },
             "require": {
@@ -6740,7 +6623,7 @@
             "description": "Provides a structured process for converting a Request into a Response",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/http-kernel/tree/v7.4.6"
+                "source": "https://github.com/symfony/http-kernel/tree/v7.4.7"
             },
             "funding": [
                 {
@@ -6760,7 +6643,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-02-26T08:30:57+00:00"
+            "time": "2026-03-06T16:33:18+00:00"
         },
         {
             "name": "symfony/mailer",
@@ -6848,16 +6731,16 @@
         },
         {
             "name": "symfony/mime",
-            "version": "v7.4.6",
+            "version": "v7.4.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/mime.git",
-                "reference": "9fc881d95feae4c6c48678cb6372bd8a7ba04f5f"
+                "reference": "da5ab4fde3f6c88ab06e96185b9922f48b677cd1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/mime/zipball/9fc881d95feae4c6c48678cb6372bd8a7ba04f5f",
-                "reference": "9fc881d95feae4c6c48678cb6372bd8a7ba04f5f",
+                "url": "https://api.github.com/repos/symfony/mime/zipball/da5ab4fde3f6c88ab06e96185b9922f48b677cd1",
+                "reference": "da5ab4fde3f6c88ab06e96185b9922f48b677cd1",
                 "shasum": ""
             },
             "require": {
@@ -6913,7 +6796,7 @@
                 "mime-type"
             ],
             "support": {
-                "source": "https://github.com/symfony/mime/tree/v7.4.6"
+                "source": "https://github.com/symfony/mime/tree/v7.4.7"
             },
             "funding": [
                 {
@@ -6933,7 +6816,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-02-05T15:57:06+00:00"
+            "time": "2026-03-05T15:24:09+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -11566,20 +11449,21 @@
     "minimum-stability": "stable",
     "stability-flags": {
         "opencompany/prism-codex": 20,
-        "opencompanyapp/ai-tool-celestial": 20,
-        "opencompanyapp/ai-tool-clickup": 20,
-        "opencompanyapp/ai-tool-coingecko": 20,
-        "opencompanyapp/ai-tool-exchangerate": 20,
-        "opencompanyapp/ai-tool-google": 20,
-        "opencompanyapp/ai-tool-mermaid": 20,
-        "opencompanyapp/ai-tool-plantuml": 20,
-        "opencompanyapp/ai-tool-plausible": 20,
-        "opencompanyapp/ai-tool-ticktick": 20,
-        "opencompanyapp/ai-tool-trustmrr": 20,
-        "opencompanyapp/ai-tool-typst": 20,
-        "opencompanyapp/ai-tool-vegalite": 20,
-        "opencompanyapp/ai-tool-worldbank": 20,
-        "opencompanyapp/integration-core": 20
+        "opencompanyapp/astronomy-bundle": 20,
+        "opencompanyapp/integration-celestial": 20,
+        "opencompanyapp/integration-clickup": 20,
+        "opencompanyapp/integration-coingecko": 20,
+        "opencompanyapp/integration-core": 20,
+        "opencompanyapp/integration-exchangerate": 20,
+        "opencompanyapp/integration-google": 20,
+        "opencompanyapp/integration-mermaid": 20,
+        "opencompanyapp/integration-plantuml": 20,
+        "opencompanyapp/integration-plausible": 20,
+        "opencompanyapp/integration-ticktick": 20,
+        "opencompanyapp/integration-trustmrr": 20,
+        "opencompanyapp/integration-typst": 20,
+        "opencompanyapp/integration-vegalite": 20,
+        "opencompanyapp/integration-worldbank": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

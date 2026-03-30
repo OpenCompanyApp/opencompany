@@ -6,6 +6,7 @@ use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Tools\Request;
+use OpenCompany\IntegrationCore\Contracts\Tool as IntegrationTool;
 
 class LuaBridge
 {
@@ -79,27 +80,42 @@ class LuaBridge
             $params = $this->mapPositionalArgs($path, $args);
         }
 
-        // Convert snake_case keys to camelCase (Lua convention → tool convention)
-        $params = $this->snakeToCamel($params);
-
-        $request = new Request($params);
-
         $start = microtime(true);
 
         try {
-            $result = $tool->handle($request);
-            $this->callLog[] = ['path' => $path, 'durationMs' => round((microtime(true) - $start) * 1000, 1), 'status' => 'ok', 'icon' => $toolMeta['icon'], 'name' => $toolMeta['name'], 'group' => $group];
+            if ($tool instanceof IntegrationTool) {
+                // New-style tool: parameters are snake_case, pass directly
+                $toolResult = $tool->execute($params);
 
-            // Auto-decode JSON responses → PHP arrays (sandbox converts to Lua tables)
-            if (is_string($result)) {
-                $trimmed = ltrim($result);
-                if (($trimmed[0] ?? '') === '{' || ($trimmed[0] ?? '') === '[') {
-                    $decoded = json_decode($result, true);
-                    if ($decoded !== null) {
-                        return $decoded;
+                if (! $toolResult->succeeded()) {
+                    throw new \RuntimeException($toolResult->error);
+                }
+
+                $result = $toolResult->data;
+            } else {
+                // Legacy Laravel\Ai tool: convert snake_case → camelCase, wrap in Request
+                $request = new Request($this->snakeToCamel($params));
+                $rawResult = $tool->handle($request);
+
+                // Auto-decode JSON responses → PHP arrays (sandbox converts to Lua tables)
+                if (is_string($rawResult)) {
+                    $trimmed = ltrim($rawResult);
+                    if (($trimmed[0] ?? '') === '{' || ($trimmed[0] ?? '') === '[') {
+                        $decoded = json_decode($rawResult, true);
+                        if ($decoded !== null) {
+                            $result = $decoded;
+                        } else {
+                            $result = $rawResult;
+                        }
+                    } else {
+                        $result = $rawResult;
                     }
+                } else {
+                    $result = $rawResult;
                 }
             }
+
+            $this->callLog[] = ['path' => $path, 'durationMs' => round((microtime(true) - $start) * 1000, 1), 'status' => 'ok', 'icon' => $toolMeta['icon'], 'name' => $toolMeta['name'], 'group' => $group];
 
             return $result;
         } catch (\Throwable $e) {

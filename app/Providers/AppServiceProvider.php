@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use App\Agents\Providers\CodexPrismGateway;
 use App\Agents\Providers\GlmPrismGateway;
+use App\Agents\Tools\Providers as ToolProviders;
+use App\Agents\Tools\ToolRegistry;
 use App\Models\ApprovalRequest;
 use App\Models\Document;
+use App\Services\AgentPermissionService;
 use App\Services\Mcp\McpServerRegistrar;
 use App\Services\Chat\ChatBridge;
 use App\Services\Chat\ChatManager;
@@ -66,6 +69,9 @@ class AppServiceProvider extends ServiceProvider
                 $this->app->make(\OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class)
             );
         }
+
+        // Register built-in tool providers
+        $this->registerBuiltInToolProviders();
 
         // Register enabled models with Prism Server
         if (config('prism.prism_server.enabled')) {
@@ -142,5 +148,29 @@ class AppServiceProvider extends ServiceProvider
                 );
             });
         });
+    }
+
+    /**
+     * Register all built-in tool providers with the ToolRegistry.
+     */
+    private function registerBuiltInToolProviders(): void
+    {
+        $registry = $this->app->make(ToolRegistry::class);
+        $permissions = $this->app->make(AgentPermissionService::class);
+
+        $registry->registerBuiltIn(new ToolProviders\TasksToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\SystemToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\AgentsToolProvider($permissions));
+        $registry->registerBuiltIn(new ToolProviders\MemoryToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\ChatToolProvider($permissions));
+        $registry->registerBuiltIn(new ToolProviders\DocsToolProvider($permissions));
+        $registry->registerBuiltIn(new ToolProviders\FilesToolProvider($permissions));
+        $registry->registerBuiltIn(new ToolProviders\TablesToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\CalendarToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\ListsToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\WorkspaceToolProvider($permissions));
+        $registry->registerBuiltIn(new ToolProviders\AutomationsToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\SvgToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\LuaToolProvider);
     }
 }
