@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5b4af7a8235e75a625b834bb62cf4665",
+    "content-hash": "f29a59c5bc95a3bf57a5724035d3ab86",
     "packages": [
         {
             "name": "brick/math",
@@ -4172,6 +4172,40 @@
                 "tools",
                 "worldbank"
             ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "opencompanyapp/prism-relay",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "tmp/prism-relay",
+                "reference": "b0ee49538c5d9ce13e9d6c55d0161a6e9c881ad3"
+            },
+            "require": {
+                "php": "^8.2",
+                "prism-php/prism": "^0.99 || ^1.0",
+                "psr/log": "^3.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OpenCompany\\PrismRelay\\PrismRelayServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OpenCompany\\PrismRelay\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Provider normalizer and registry for Prism PHP — custom providers, error categorization, tool call sanitization, caching strategy",
             "transport-options": {
                 "relative": true
             }
@@ -11463,7 +11497,8 @@
         "opencompanyapp/integration-trustmrr": 20,
         "opencompanyapp/integration-typst": 20,
         "opencompanyapp/integration-vegalite": 20,
-        "opencompanyapp/integration-worldbank": 20
+        "opencompanyapp/integration-worldbank": 20,
+        "opencompanyapp/prism-relay": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

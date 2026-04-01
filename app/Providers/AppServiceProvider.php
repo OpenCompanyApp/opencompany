@@ -22,8 +22,6 @@ use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\Providers\OpenAiProvider;
 use Prism\Prism\PrismManager;
-use Prism\Prism\Providers\Anthropic\Anthropic;
-use Prism\Prism\Providers\DeepSeek\DeepSeek;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(ToolRegistry::class);
+
         // Override the default config-based credential resolver with DB-backed one
         $this->app->singleton(
             \OpenCompany\IntegrationCore\Contracts\CredentialResolver::class,
@@ -80,44 +80,8 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
-        // Register GLM (Zhipu AI) as custom Prism providers
-        // GLM uses OpenAI-compatible chat/completions API (same as DeepSeek)
-        $prismManager = $this->app->make(PrismManager::class);
-        $glmPrismFactory = function ($app, array $config) {
-            return new DeepSeek(
-                apiKey: $config['api_key'] ?? '',
-                url: $config['url'] ?? 'https://api.z.ai/api/coding/paas/v4',
-            );
-        };
-        $prismManager->extend('glm', $glmPrismFactory);
-        $prismManager->extend('glm-coding', $glmPrismFactory);
-
-        // Register Kimi (Moonshot AI) as custom Prism providers (same pattern as GLM)
-        $kimiPrismFactory = function ($app, array $config) {
-            return new DeepSeek(
-                apiKey: $config['api_key'] ?? '',
-                url: $config['url'] ?? 'https://api.moonshot.ai/v1',
-            );
-        };
-        $prismManager->extend('kimi', $kimiPrismFactory);
-        $prismManager->extend('kimi-coding', $kimiPrismFactory);
-
-        // Register MiniMax Coding Plan as custom Prism providers (Anthropic-compatible API)
-        $minimaxPrismFactory = function ($app, array $config) {
-            return new Anthropic(
-                apiKey: $config['api_key'] ?? '',
-                apiVersion: '2023-06-01',
-                url: $config['url'] ?? 'https://api.minimax.io/anthropic/v1',
-            );
-        };
-        $prismManager->extend('minimax', $minimaxPrismFactory);
-        $prismManager->extend('minimax-cn', function ($app, array $config) {
-            return new Anthropic(
-                apiKey: $config['api_key'] ?? '',
-                apiVersion: '2023-06-01',
-                url: $config['url'] ?? 'https://api.minimaxi.com/anthropic/v1',
-            );
-        });
+        // Custom Prism providers (GLM, Kimi, MiniMax) are registered by
+        // PrismRelayServiceProvider via afterResolving(PrismManager::class).
 
         // Register 'glm' and 'glm-coding' as custom AI SDK drivers.
         // These use GlmPrismGateway which routes to our custom 'glm' Prism provider

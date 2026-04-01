@@ -23,6 +23,10 @@
             "url": "tmp/prism-codex"
         },
         {
+            "type": "path",
+            "url": "tmp/prism-relay"
+        },
+        {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/chatogrator.git"
         },
@@ -47,6 +51,7 @@
         "laravel/tinker": "^2.10.1",
         "opencompany/chatogrator": "^1.1",
         "opencompany/prism-codex": "@dev",
+        "opencompanyapp/prism-relay": "@dev",
         "opencompanyapp/integration-celestial": "@dev",
         "opencompanyapp/integration-clickup": "@dev",
         "opencompanyapp/integration-coingecko": "@dev",

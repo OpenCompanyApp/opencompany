@@ -5,6 +5,8 @@ namespace App\Agents\Providers;
 use App\Models\IntegrationSetting;
 use App\Models\User;
 use InvalidArgumentException;
+use OpenCompany\PrismRelay\Meta\ProviderMeta;
+use OpenCompany\PrismRelay\RelayManager;
 
 class DynamicProviderResolver
 {
@@ -74,7 +76,7 @@ class DynamicProviderResolver
      */
     private function isGlmProvider(string $providerKey): bool
     {
-        return in_array($providerKey, ['glm', 'glm-coding', 'kimi', 'kimi-coding', 'minimax', 'minimax-cn']);
+        return (new RelayManager)->isRelayProvider($providerKey);
     }
 
     /**
@@ -192,15 +194,8 @@ class DynamicProviderResolver
      */
     private function getDefaultGlmUrl(string $providerKey): string
     {
-        return match ($providerKey) {
-            'glm' => 'https://open.bigmodel.cn/api/paas/v4',
-            'glm-coding' => 'https://api.z.ai/api/coding/paas/v4',
-            'kimi' => 'https://api.moonshot.ai/v1',
-            'kimi-coding' => 'https://api.moonshot.ai/v1',
-            'minimax' => 'https://api.minimax.io/anthropic/v1',
-            'minimax-cn' => 'https://api.minimaxi.com/anthropic/v1',
-            default => throw new InvalidArgumentException("Unknown custom provider: {$providerKey}"),
-        };
+        return (new ProviderMeta)->url($providerKey)
+            ?? throw new InvalidArgumentException("Unknown custom provider: {$providerKey}");
     }
 
     /**
@@ -216,25 +211,7 @@ class DynamicProviderResolver
             return array_key_first($models);
         }
 
-        // Hardcoded fallbacks for providers without DB-stored models
-        return match ($providerKey) {
-            'glm' => 'glm-4-plus',
-            'glm-coding' => 'glm-4.7',
-            'kimi' => 'kimi-k2.5',
-            'kimi-coding' => 'kimi-k2.5',
-            'minimax' => 'MiniMax-M1',
-            'minimax-cn' => 'MiniMax-M1',
-            'codex' => 'gpt-5.3-codex',
-            'anthropic' => 'claude-sonnet-4-5-20250929',
-            'openai' => 'gpt-4o',
-            'gemini' => 'gemini-2.0-flash',
-            'groq' => 'llama-3.3-70b-versatile',
-            'xai' => 'grok-2',
-            'deepseek' => 'deepseek-chat',
-            'mistral' => 'mistral-large-latest',
-            'ollama' => 'llama3.2',
-            'openrouter' => 'anthropic/claude-sonnet-4-5-20250929',
-            default => 'default',
-        };
+        // Fall back to prism-relay's provider metadata registry
+        return (new ProviderMeta)->defaultModel($providerKey) ?? 'default';
     }
 }
