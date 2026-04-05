@@ -16,7 +16,7 @@ jobs:
 
       - name: Clone local packages
         run: |
-          git clone https://github.com/OpenCompanyApp/integrations.git tmp/integrations
+          git clone https://github.com/OpenCompanyApp/integrations.git ../integrations
           git clone https://github.com/OpenCompanyApp/astronomy-bundle-php.git tmp/astronomy-bundle-php
           git clone https://github.com/OpenCompanyApp/chatogrator.git tmp/chatogrator
           git clone https://github.com/OpenCompanyApp/prism-codex.git tmp/prism-codex
