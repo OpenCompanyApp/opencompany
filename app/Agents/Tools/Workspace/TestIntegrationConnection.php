@@ -61,7 +61,7 @@ class TestIntegrationConnection implements Tool
                 return $this->testTelegram($apiKey);
             }
 
-            // GLM-style providers
+            // OpenAI-compatible chat-completions providers
             $url = $setting->getConfigValue('url') ?? ($available[$integrationId]['default_url'] ?? '');
             $model = $setting->getConfigValue('default_model') ?? array_key_first($available[$integrationId]['models'] ?? []);
 
@@ -122,7 +122,7 @@ class TestIntegrationConnection implements Tool
         return [
             'integrationId' => $schema
                 ->string()
-                ->description('Integration ID (e.g., "telegram", "glm", "plausible"). Includes both static and dynamic package-provided integrations.')
+                ->description('Integration ID (e.g., "telegram", "z", "plausible"). Includes both static and dynamic package-provided integrations.')
                 ->required(),
         ];
     }

@@ -15,9 +15,9 @@ class OpenCompanyLuaToolInvoker implements LuaToolInvoker
         private ToolRegistry $registry,
     ) {}
 
-    public function invoke(string $toolSlug, array $args): mixed
+    public function invoke(string $toolSlug, array $args, ?string $account = null): mixed
     {
-        $tool = $this->registry->instantiateToolBySlug($toolSlug, $this->agent);
+        $tool = $this->registry->instantiateToolBySlug($toolSlug, $this->agent, $account);
 
         if ($tool === null) {
             throw new \RuntimeException("Tool not available: {$toolSlug}");

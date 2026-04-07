@@ -503,13 +503,13 @@ class ToolRegistry
     /**
      * Instantiate a specific tool by slug (for post-approval execution).
      */
-    public function instantiateToolBySlug(string $slug, User $agent): \OpenCompany\IntegrationCore\Contracts\Tool|\Laravel\Ai\Contracts\Tool|null
+    public function instantiateToolBySlug(string $slug, User $agent, ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|\Laravel\Ai\Contracts\Tool|null
     {
         if (! isset($this->getEffectiveToolMap()[$slug])) {
             return null;
         }
 
-        return $this->instantiateTool($this->getEffectiveToolMap()[$slug]['class'], $agent, $slug);
+        return $this->instantiateTool($this->getEffectiveToolMap()[$slug]['class'], $agent, $slug, $account);
     }
 
     /**
@@ -573,7 +573,7 @@ class ToolRegistry
     /**
      * Instantiate a tool class via its provider.
      */
-    private function instantiateTool(string $class, User $agent, string $slug = ''): \OpenCompany\IntegrationCore\Contracts\Tool|\Laravel\Ai\Contracts\Tool
+    private function instantiateTool(string $class, User $agent, string $slug = '', ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|\Laravel\Ai\Contracts\Tool
     {
         $context = [
             'channel_id' => $this->currentChannelId,
@@ -589,6 +589,7 @@ class ToolRegistry
                         'agent' => $agent,
                         'timezone' => AppSetting::getValue('org_timezone', 'UTC'),
                         'tool_slug' => $toolSlug,
+                        'account' => $account,
                     ]);
                 }
             }

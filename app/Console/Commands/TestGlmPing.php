@@ -7,16 +7,16 @@ use Prism\Prism\Facades\Prism;
 
 class TestGlmPing extends Command
 {
-    protected $signature = 'glm:ping {--prompt= : Custom prompt to send}';
-    protected $description = 'Test GLM 4.7 API connection';
+    protected $signature = 'z:ping {--prompt= : Custom prompt to send}';
+    protected $description = 'Test Z.AI API connection';
 
     public function handle(): int
     {
-        $this->info('Testing GLM 4.7 API connection...');
+        $this->info('Testing Z.AI API connection...');
         $this->newLine();
 
-        $url = config('prism.providers.glm.url');
-        $apiKey = config('prism.providers.glm.api_key');
+        $url = config('prism.providers.z.url');
+        $apiKey = config('prism.providers.z.api_key');
 
         $this->line('Endpoint: ' . $url);
         $this->line('API Key: ' . substr($apiKey, 0, 10) . '...');
@@ -26,7 +26,7 @@ class TestGlmPing extends Command
 
         try {
             $response = Prism::text()
-                ->using('glm', 'glm-4.7')
+                ->using('z', 'glm-5.1')
                 ->withPrompt($prompt)
                 ->asText();
 
@@ -45,11 +45,11 @@ class TestGlmPing extends Command
             );
 
             $this->newLine();
-            $this->info('GLM 4.7 connection successful!');
+            $this->info('Z.AI connection successful!');
 
             return Command::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('Failed to connect to GLM 4.7:');
+            $this->error('Failed to connect to Z.AI:');
             $this->error($e->getMessage());
 
             if ($this->output->isVerbose()) {

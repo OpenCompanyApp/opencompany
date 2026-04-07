@@ -61,11 +61,17 @@ return [
                 'x_title' => env('OPENROUTER_SITE_X_TITLE', null),
             ],
         ],
-        // GLM 4.7 (Zhipu AI) - OpenAI-compatible API
-        // Coding plan uses dedicated endpoint
-        'glm' => [
-            'api_key' => env('GLM_API_KEY', ''),
-            'url' => env('GLM_URL', 'https://api.z.ai/api/coding/paas/v4'),
+        'perplexity' => [
+            'api_key' => env('PERPLEXITY_API_KEY', ''),
+            'url' => env('PERPLEXITY_URL', 'https://api.perplexity.ai'),
+        ],
+        'z' => [
+            'api_key' => env('ZAI_API_KEY', ''),
+            'url' => env('Z_URL', 'https://api.z.ai/api/coding/paas/v4'),
+        ],
+        'z-api' => [
+            'api_key' => env('ZAI_API_KEY', ''),
+            'url' => env('Z_API_URL', 'https://open.bigmodel.cn/api/paas/v4'),
         ],
     ],
 ];

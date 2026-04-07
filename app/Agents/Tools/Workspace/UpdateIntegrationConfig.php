@@ -175,7 +175,7 @@ class UpdateIntegrationConfig implements Tool
         return [
             'integrationId' => $schema
                 ->string()
-                ->description('Integration ID (e.g., "telegram", "glm", "plausible"). Includes both static and dynamic package-provided integrations.')
+                ->description('Integration ID (e.g., "telegram", "z", "plausible"). Includes both static and dynamic package-provided integrations.')
                 ->required(),
             'apiKey' => $schema
                 ->string()

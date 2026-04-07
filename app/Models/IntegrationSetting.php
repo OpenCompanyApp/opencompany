@@ -10,6 +10,8 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property array<string, mixed> $config
  * @property bool $enabled
  * @property string $integration_id
+ * @property string $account_alias
+ * @property bool $is_default
  */
 class IntegrationSetting extends Model
 {
@@ -23,8 +25,10 @@ class IntegrationSetting extends Model
         'id',
         'workspace_id',
         'integration_id',
+        'account_alias',
         'config',
         'enabled',
+        'is_default',
     ];
 
     protected function casts(): array
@@ -32,7 +36,55 @@ class IntegrationSetting extends Model
         return [
             'config' => 'encrypted:array',
             'enabled' => 'boolean',
+            'is_default' => 'boolean',
         ];
+    }
+
+    /**
+     * Scope to a specific account alias.
+     *
+     * Null or empty string targets the default (un-aliased) account.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<self>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<self>
+     */
+    public function scopeForAccount($query, ?string $account): self
+    {
+        $alias = ($account === null || $account === '') ? '' : $account;
+
+        return $query->where('account_alias', $alias);
+    }
+
+    /**
+     * Scope to the default account (is_default = true or the un-aliased row).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<self>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<self>
+     */
+    public function scopeDefault($query): self
+    {
+        return $query->where(function ($q) {
+            $q->where('is_default', true)->orWhere('account_alias', '');
+        });
+    }
+
+    /**
+     * Get all non-default account aliases for an integration in the current workspace.
+     *
+     * @return list<string>
+     */
+    public static function getAccountsFor(string $integrationId): array
+    {
+        $query = app()->bound('currentWorkspace')
+            ? static::forWorkspace()
+            : static::query();
+
+        return $query
+            ->where('integration_id', $integrationId)
+            ->where('account_alias', '!=', '')
+            ->pluck('account_alias')
+            ->values()
+            ->all();
     }
 
     /**

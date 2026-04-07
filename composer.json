@@ -8,7 +8,11 @@
     "repositories": [
         {
             "type": "path",
-            "url": "../integrations/*"
+            "url": "../integrations/core"
+        },
+        {
+            "type": "path",
+            "url": "../integrations/packages/*"
         },
         {
             "type": "path",

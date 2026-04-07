@@ -1,1093 +1,375 @@
-# OpenCompany Feature Test Map
+# Feature Test Map — Full Project Audit
 
-Complete checklist of all features, buttons, and functionality to test.
-
----
-
-## 1. AUTHENTICATION PAGES
-
-### Login (`/login`)
-- [ ] Email input field
-- [ ] Password input field
-- [ ] "Remember me" checkbox
-- [ ] Login button (submit)
-- [ ] "Forgot password" link
-- [ ] Register link
-- [ ] Error states for invalid credentials
-- [ ] Loading state on submit
-
-### Register (`/register`)
-- [ ] Name input field
-- [ ] Email input field
-- [ ] Password input field
-- [ ] Confirm password input field
-- [ ] Register button (submit)
-- [ ] Login link
-- [ ] Validation errors display
-- [ ] Loading state on submit
-
-### Forgot Password (`/forgot-password`)
-- [ ] Email input field
-- [ ] Send reset link button
-- [ ] Success message display
-- [ ] Back to login link
-
-### Reset Password (`/reset-password/{token}`)
-- [ ] Password input field
-- [ ] Confirm password input field
-- [ ] Reset password button
-- [ ] Validation errors
-
-### Verify Email (`/verify-email`)
-- [ ] Resend verification email button
-- [ ] Success message display
+Detailed test cases for all changes in the current git tree. Check off each item as you verify.
 
 ---
 
-## 2. DASHBOARD (`/` or `/dashboard`)
+## 1. Integration Ecosystem Refactor
 
-### Header
-- [ ] Page title displays
-- [ ] Subtitle displays
+**Commits:** `4cffd75`, `24e2cc8`, `df74cb3`
 
-### Stats Overview
-- [ ] Agents Online stat card
-- [ ] Pending Tasks stat card
-- [ ] Unread Messages stat card
-- [ ] Each stat shows correct number
+### Composer & Autoloading
 
-### Pending Approvals Section (if any)
-- [ ] Approval cards display
-- [ ] Approve button per item
-- [ ] Reject button per item
-- [ ] Amount display
-- [ ] Requester info display
-- [ ] View all link
+- [ ] `../integrations/` directory exists as a sibling to the project root
+- [ ] `../integrations/core/` exists (integration-core package)
+- [ ] `../integrations/packages/` exists with all integration subdirectories
+- [ ] `composer install` completes without errors
+- [ ] `composer show | grep opencompanyapp` lists all integration packages + integration-core + prism-relay
+- [ ] `php artisan tinker` boots without class-not-found errors
+- [ ] `ToolRegistry` resolves as singleton
+- [ ] `ToolProviderRegistry` resolves
 
-### Activity Feed
-- [ ] Activity items load
-- [ ] Activity type icons display
-- [ ] Timestamps display
-- [ ] User/agent avatars display
-- [ ] Activity descriptions
-- [ ] Load more (if > 20 items)
+### BuiltInToolProviders (15 providers)
 
-### Quick Actions
-- [ ] "Spawn Agent" button → opens modal
-- [ ] "New Channel" button → opens modal
-- [ ] "Create Task" button → opens modal
-- [ ] "New Document" button → navigates
+- [ ] **AgentsToolProvider** — `list_agents`, `contact_agent` work
+- [ ] **AutomationsToolProvider** — list, get, create, update, delete, run
+- [ ] **CalendarToolProvider** — calendar tools available
+- [ ] **ChatToolProvider** — `send_channel_message`, `get_channel`, `list_channels`
+- [ ] **DocsToolProvider** — `query_documents`, `index_document`
+- [ ] **FilesToolProvider** — `list_files`, `read_file`, `write_file`, `search_files`
+- [ ] **ListsToolProvider** — list CRUD tools
+- [ ] **LuaToolProvider** — `lua_exec`, `lua_read_doc`, `lua_search_docs`
+- [ ] **MemoryToolProvider** — `save_memory`, `recall_memories`
+- [ ] **SvgToolProvider** — SVG generation
+- [ ] **SystemToolProvider** — system info
+- [ ] **TablesToolProvider** — table query/management
+- [ ] **TasksToolProvider** — task tools
+- [ ] **WorkspaceToolProvider** — workspace management
 
-### Working Agents Sidebar
-- [ ] Agent cards display
-- [ ] Agent status indicators (working/idle)
-- [ ] Current task display
-- [ ] Click agent → navigate to profile
+### Direct vs Lua-only Tools
 
-### Spawn Agent Modal
-- [ ] Agent type selection (6 types: writer, analyst, researcher, creative, coder, coordinator)
-- [ ] Agent name input
-- [ ] Initial task textarea (optional)
-- [ ] Behavior mode select (autonomous/supervised/strict)
-- [ ] Ephemeral agent toggle
-- [ ] Estimated cost display
-- [ ] Cancel button
-- [ ] Spawn Agent button
-- [ ] Loading state on spawn
+Only `DIRECT_TOOL_GROUPS` (tasks, system, agents, memory, lua) are direct AI tools. Everything else via `lua_exec`.
+
+- [ ] Agent uses `tasks` tools directly
+- [ ] Agent uses `memory` tools directly
+- [ ] Agent accesses `chat` tools via `lua_exec`
+- [ ] Agent accesses `files` tools via `lua_exec`
+- [ ] Agent accesses `tables` tools via `lua_exec`
+- [ ] MCP tools still register and work via Lua
+
+### Integration Packages
+
+**No-auth (test first):**
+- [ ] **CoinGecko** — `app.integrations.coingecko.*` returns data
+- [ ] **ExchangeRate** — `app.integrations.exchangerate.*` returns data
+- [ ] **Celestial** — `app.integrations.celestial.*` returns data
+- [ ] **WorldBank** — `app.integrations.worldbank.*` returns data
+
+**Auth-required:**
+- [ ] **ClickUp** — configure API key → returns data
+- [ ] **Google** — configure OAuth → returns data
+- [ ] **Plausible** — configure API key → returns data
+- [ ] **TickTick** — configure credentials → returns data
+
+**ConfigurableIntegration:**
+- [ ] Config UI renders on Integrations settings page
+- [ ] "Test Connection" button returns success/failure
+- [ ] Invalid credentials caught and shown as error
+
+### Lua Doc Generation
+
+- [ ] `lua_read_doc("overview")` — full namespace index
+- [ ] `lua_read_doc("chat")` — detailed docs with parameter tables
+- [ ] `lua_read_doc("integrations.clickup")` — includes supplementary Lua docs
+- [ ] `lua_search_docs("send message")` — scored results
+- [ ] `lua_read_doc("nonexistent")` — helpful error with available namespaces
+- [ ] Namespaces sorted: internal → integrations → mcp
+
+### LuaBridge Call Routing
+
+- [ ] Table args: `app.chat.send_channel_message({channel_id = "x", content = "hello"})` works
+- [ ] Positional args: `app.chat.send_channel_message("x", "hello")` maps to params
+- [ ] Invalid function: `app.chat.nonexistent()` returns error with suggestions
+- [ ] New-style integration tool executes via `Tool::execute()`
+- [ ] Legacy tool executes via `handle(Request)` with snake_case→camelCase
+- [ ] JSON auto-decoding: legacy JSON string → Lua table
+- [ ] Call log records path, duration, status, icon, name, group
+- [ ] Failed calls in call log with error message
+
+### PrismRelay (Custom LLM Providers)
+
+- [ ] GLM — agent generates response
+- [ ] GLM Coding — agent generates response
+- [ ] Kimi — agent generates response
+- [ ] Kimi Coding — agent generates response
+- [ ] MiniMax — agent generates response
+- [ ] MiniMax CN — agent generates response
+- [ ] No stored models → falls back to `ProviderMeta::defaultModel()`
+- [ ] No custom URL → falls back to `ProviderMeta::url()`
+- [ ] Unknown provider key → `InvalidArgumentException`
+
+### Monorepo Path & CI
+
+- [ ] `composer.json` path repo points to `../integrations/*`
+- [ ] `.github/workflows/ci.yml` clones to `../integrations`
+- [ ] `.claude/commands/create-integration.md` references `../integrations/`
+- [ ] CI monorepo clone + `composer install` succeeds
+- [ ] `php artisan test` passes
 
 ---
 
-## 3. CHAT (`/chat`)
+## 2. File Management System
 
-### Channel List Sidebar
-- [ ] Channel items display
-- [ ] Unread count badges
-- [ ] Channel type icons (public/private/agent/dm/external)
-- [ ] Selected channel highlight
-- [ ] "New Channel" button
-- [ ] Search channels (if available)
+### Migrations & Models
 
-### Create Channel Modal
-- [ ] Channel type selection (public/private/agent/dm/external)
-- [ ] Channel name input (validation: lowercase, hyphens)
-- [ ] Description textarea
-- [ ] Member search input
-- [ ] Available members list
-- [ ] Selected members chips with X buttons
-- [ ] Cancel button
-- [ ] Create button
-- [ ] Loading state
+- [ ] `workspace_files` and `workspace_disks` tables exist
+- [ ] Default "Local" disk auto-seeded per workspace
+- [ ] `WorkspaceDisk.config` is encrypted at rest
 
-### Chat Area
-- [ ] Channel header with name
-- [ ] Member count display
-- [ ] Pinned messages button with count
-- [ ] Members info button
-- [ ] Messages load correctly
-- [ ] Message grouping by author
-- [ ] Date separators display
-- [ ] Avatar display per message
-- [ ] Timestamp per message
-- [ ] Scroll to bottom on new messages
-- [ ] Load more old messages (scroll up)
+### File Browser UI (`/files`)
 
-### Message Features
-- [ ] Hover actions appear on messages
-- [ ] React to message (emoji picker)
-- [ ] Reply to message (thread)
-- [ ] Pin message button
-- [ ] Edit own message
-- [ ] Delete own message
-- [ ] Message reactions display
-- [ ] Reaction counts
+- [ ] Page loads with grid view and file/folder icons
+- [ ] Switch between grid and list view
+- [ ] Create new folder (Cmd+Shift+N or toolbar)
+- [ ] Upload file via drag-and-drop
+- [ ] Upload file via toolbar button
+- [ ] Inline rename (click name or press Enter)
+- [ ] Move file to different folder
+- [ ] Copy file
+- [ ] Delete file (Delete key or context menu)
+- [ ] Preview file (Space or click) — slideover opens
+- [ ] Search files — results update as you type
+- [ ] Select all (Cmd+A)
+- [ ] Breadcrumb navigation
+- [ ] Sidebar: disk list and folder tree
+
+### Storage Disks
+
+- [ ] Settings → Storage section visible
+- [ ] Add new disk (S3 or SFTP) — config modal
+- [ ] Test connection button returns success/failure
+- [ ] Switch default disk
+- [ ] Secrets masked in API responses (contain `****`)
+
+### Agent File Tools (10 tools)
+
+- [ ] `list_disks` — returns available disks
+- [ ] `list_files` — files in folder
+- [ ] `read_file` — file contents (text) or metadata+download URL (binary)
+- [ ] `write_file` — creates/overwrites, auto-creates parent folders
+- [ ] `create_folder` — creates with auto-intermediate
+- [ ] `move_file` — moves between folders
+- [ ] `copy_file` — copies file (not folders)
+- [ ] `delete_file` — deletes file/folder (recursive for non-empty)
+- [ ] `search_files` — by name/description, MIME filter
+- [ ] `get_file_info` — metadata
+
+### Agent Permissions
+
+- [ ] Agent with no file_folder permissions can only access `/agents/{slug}/` home folder
+- [ ] Grant folder access → agent can read/write that folder
+- [ ] Revoke folder access → agent denied
+- [ ] Wildcard `*` grants unrestricted access
+- [ ] Behavior modes: `autonomous` (no approval), `supervised` (write needs approval), `strict` (all needs approval)
+- [ ] Agent capabilities page shows file folder access section
+
+### Edge Cases
+
+- [ ] Overwrite: `write_file` to same path silently overwrites
+- [ ] Copy folder: returns error (only files can be copied)
+- [ ] Recursive delete without `recursive=true` on non-empty folder → error
+- [ ] Agent name change: old slug folder still exists but doesn't match new home folder path
+- [ ] Disk update with masked `****` values → preserves original secrets
+
+---
+
+## 3. Automation / Script System
+
+### Create Automation
+
+- [ ] Navigate to Automation → Create
+- [ ] Toggle Prompt/Script mode — UI switches (agent selector ↔ Monaco editor)
+- [ ] Script mode shows "Luau" badge and API Reference link
+- [ ] Create prompt automation — agent, schedule, enable
+- [ ] Create script automation with `--!strict` header — schedule, enable
+- [ ] Script without `--!strict` header → validation error
+
+### Run Automation
+
+- [ ] Prompt automation runs at scheduled time → task created, agent responds
+- [ ] Script automation runs at scheduled time → task created, Luau executes, output posted to channel
+- [ ] `ctx` table populated: `ctx.automation_id`, `ctx.run_number`, `ctx.last_run_at`, `ctx.schedule`
+- [ ] Script calls `app.*` API: workspace tools work
+- [ ] Script with syntax error → task shows failure status, error captured
+- [ ] Auto-disable: trigger 5 consecutive failures → automation sets `is_active = false`
+
+### Run History & Edit
+
+- [ ] Edit page shows run history with status dots
+- [ ] "Run" button triggers manual execution
+- [ ] Run detail modal: status, duration, output
+- [ ] Link to task from run details
+
+### Task Source Labels
+
+- [ ] Chat message → "Chat" label
+- [ ] Manual run → "Manual" label
+- [ ] Prompt automation → "Automation" label
+- [ ] Script automation → "Automation" + "Luau Script" badge
+- [ ] Delegated task → "Delegated" label
+
+### Edge Cases
+
+- [ ] `keep_history = false`: channel messages cleared before each run (destructive — verify intended)
+- [ ] Script runs synchronously within `RunAutomationJob` — verify timeout handling
+- [ ] Retry guard: on `attempts() > 1`, skips if recent message exists in last 30 min
+- [ ] Channel auto-creation: no `channel_id` → creates DM with creator + agent
+
+---
+
+## 4. Chat UI
+
+### Channel List
+
+- [ ] Filter chips work: All, Unread, DMs, Channels, External
+- [ ] Search bar expands/collapses
+- [ ] Pinned channels section
+- [ ] Compose dropdown: New Message, New Channel, Connect External
+
+### Messages
+
+- [ ] Telegram-style bubbles with grouped border-radius
+- [ ] Consecutive same-sender messages visually grouped (5-min window)
+- [ ] Inline timestamps on hover
+- [ ] Code blocks with syntax highlighting
+- [ ] Image messages inline with lightbox (zoom, pan, drag)
+- [ ] Approval cards render correctly
+- [ ] Reactions display and can be toggled
+- [ ] Thread previews expandable
+- [ ] Hover actions: emoji, reply, thread, more
 
 ### Message Input
-- [ ] Textarea for typing
-- [ ] Auto-resize on multi-line
-- [ ] Attach file button (+)
-- [ ] Emoji picker button
-- [ ] Mention button (@)
-- [ ] Send button
-- [ ] Enter to send (Shift+Enter for newline)
-- [ ] Character counter (if enabled)
-- [ ] Format toolbar (bold, italic, code, etc.)
-- [ ] @mention autocomplete popup
-- [ ] Slash commands popup (/)
-- [ ] Attachment preview with upload progress
-- [ ] Reply-to banner (when replying)
-- [ ] Cancel reply button
-- [ ] Edit mode banner
-- [ ] Cancel edit button
 
-### Channel Info Panel
-- [ ] Toggle open/close
-- [ ] Channel description
-- [ ] Member list with avatars
-- [ ] Member roles/types
-- [ ] Add member button
+- [ ] Drag-and-drop file upload
+- [ ] @mentions popup with fuzzy search (keyboard nav: up/down/enter/escape)
+- [ ] /commands popup
+- [ ] Formatting toolbar: bold, italic, strikethrough, code, codeblock, quote, link
+- [ ] Emoji picker opens and inserts
+- [ ] Attachment preview grid with progress
+- [ ] Character count for long messages
 
-### Add Member Modal
-- [ ] Search users input
-- [ ] User list with selection checkboxes
-- [ ] Selected count display
-- [ ] Cancel button
-- [ ] Add Members button
+### Channel Info
 
-### Pinned Messages Panel
-- [ ] Toggle open/close
-- [ ] Pinned messages list
-- [ ] Click to jump to message
-- [ ] Unpin button
-
-### Typing Indicator
-- [ ] Shows when others typing
-- [ ] Multiple users typing text
+- [ ] Collapsible sections: About, Pinned, Shared Media, Shared Files, Members
+- [ ] Members filter: All / Humans / Agents / Online
+- [ ] Notification settings (all/mentions/none)
 
 ---
 
-## 4. DIRECT MESSAGES
+## 5. Telegram / File Forwarding
 
-> **Note:** `/messages` now redirects to `/chat`. DMs are part of the unified chat interface and appear as `dm` type channels in the channel list.
-
-### DM Conversations (via `/chat`)
-- [ ] DM channels appear in channel list
-- [ ] DM channel type icon distinct from other types
-- [ ] "New Message" button
-- [ ] Search conversations input
-- [ ] Avatar per conversation
-- [ ] Last message preview
-- [ ] Time ago display
-- [ ] Unread count badges
-- [ ] Click to open conversation
-- [ ] Loading skeleton state
-- [ ] Empty state if no conversations
-
-### New Message Modal
-- [ ] Recipient select dropdown
-- [ ] User/agent list with type labels
-- [ ] Cancel button
-- [ ] Start Chat button
-
-### Conversation View (`/messages/{id}`)
-- [ ] Floating header with back button
-- [ ] User/agent avatar and name
-- [ ] User type label
-- [ ] Status indicator (for agents)
-- [ ] Settings/gear button (for agents)
-- [ ] Profile link button
-- [ ] Messages display
-- [ ] Own messages right-aligned (dark bubble)
-- [ ] Other messages left-aligned (light bubble)
-- [ ] Avatar grouping (hide repeated)
-- [ ] Timestamps per message
-- [ ] Markdown rendering (bold, italic, code, links, lists)
-- [ ] Code blocks with syntax highlighting
-- [ ] Typing indicator
-- [ ] Message input textarea
-- [ ] Auto-resize input
-- [ ] Send button
-- [ ] Loading state on send
-- [ ] Empty state for new conversations
+- [ ] Agent sends inline workspace file URL → forwarded as Telegram document
+- [ ] Agent sends PDF attachment → forwarded as Telegram document (not dropped)
+- [ ] Agent sends image attachment → forwarded as Telegram photo
+- [ ] File URLs detected in: markdown link, bare URL, image embed formats
+- [ ] No echo loop: external messages not re-forwarded to external
+- [ ] Content stripping: image URLs removed from text after sending as attachment
 
 ---
 
-## 5. TASKS (`/tasks`)
+## 6. LLM Providers & Token Metrics
 
-### Header
-- [ ] Page title "Tasks"
-- [ ] Filter tabs by status (All/Active/Pending/Completed/Failed)
-- [ ] Filter by agent
-- [ ] Filter by priority
-- [ ] Filter by type
-- [ ] "Create Task" button
+### Token Metrics
 
-### Task List
-- [ ] Task rows display
-- [ ] Task title
-- [ ] Type badge (ticket/request/analysis/content/research/custom)
-- [ ] Status badge with color (pending/active/paused/completed/failed/cancelled)
-- [ ] Priority badge (low/medium/high/urgent)
-- [ ] Assigned agent with avatar
-- [ ] Due date display
-- [ ] Click to open task detail
+- [ ] Chat task → token counts recorded (prompt, completion, cache read/write)
+- [ ] Automation task → same metrics
+- [ ] Tool call count recorded
+- [ ] Generation time and tokens/second computed
 
-### Create Task Modal
-- [ ] Title input (required)
-- [ ] Description textarea
-- [ ] Type select (ticket/request/analysis/content/research/custom)
-- [ ] Priority select (low/medium/high/urgent)
-- [ ] Agent assignment select
-- [ ] Due date input
-- [ ] Cancel button
-- [ ] Create button
-- [ ] Loading state
+### Analytics Dashboard
 
-### Task Detail View (`/tasks/{id}`)
-- [ ] Task title display
-- [ ] Type badge
-- [ ] Status badge with color
-- [ ] Priority badge
-- [ ] Description display
-- [ ] Assigned agent with avatar
-- [ ] Requester info
-- [ ] Channel link (if linked)
-- [ ] Due date
-- [ ] Created/started/completed timestamps
-- [ ] Lifecycle action buttons:
-  - [ ] Start button (pending → active)
-  - [ ] Pause button (active → paused)
-  - [ ] Resume button (paused → active)
-  - [ ] Complete button (active → completed)
-  - [ ] Fail button (active → failed)
-  - [ ] Cancel button (any → cancelled)
+- [ ] Charts load on analytics page
+- [ ] Breakdown by agent — correct
+- [ ] Breakdown by model — correct
+- [ ] Breakdown by source — correct
+- [ ] Icons render (regression check)
 
-### Task Steps
-- [ ] Steps list display
-- [ ] Step description
-- [ ] Step type badge (action/decision/approval/sub_task/message)
-- [ ] Step status indicator (pending/in_progress/completed/skipped)
-- [ ] Step timestamps
-- [ ] Step metadata display
+### Workspace Context
 
-### Sub-Tasks
-- [ ] Sub-task list (if parent task)
-- [ ] Sub-task status indicators
-- [ ] Click to open sub-task
+- [ ] Task in Workspace A → belongs to Workspace A
+- [ ] Task in Workspace B → belongs to Workspace B
+- [ ] No context leak between queued jobs
 
 ---
 
-## 6. LISTS (`/lists`)
+## 7. Security
 
-### Header
-- [ ] Page title "Lists"
-- [ ] View mode tabs (Board/List)
-- [ ] Filter dropdown
-- [ ] "Create Item" button
+### Workspace Scoping
 
-### Board View (Kanban)
-- [ ] Backlog column with count
-- [ ] In Progress column with count
-- [ ] Done column with count
-- [ ] Item cards in each column
-- [ ] Drag and drop between columns
-- [ ] Item card: title, priority badge, assignee avatar, cost
+- [ ] Agent in Workspace A cannot access Workspace B data
+- [ ] API returns 403 for cross-workspace resource access
+- [ ] File API workspace-scoped
 
-### List View
-- [ ] Item rows in table format
-- [ ] Sortable columns
-- [ ] Item details visible
+### IDOR Prevention
 
-### Create Item Modal
-- [ ] Title input (required)
-- [ ] Description textarea
-- [ ] Status select (backlog/in_progress/done)
-- [ ] Priority select (low/medium/high/urgent)
-- [ ] Assignee select (grouped: agents/humans)
-- [ ] Estimated cost input
-- [ ] Channel select (optional)
-- [ ] Cancel button
-- [ ] Create button
-- [ ] Loading state
+- [ ] User cannot update another user's profile
+- [ ] User cannot update another user's presence
 
-### Item Detail Slideover
-- [ ] Item title display
-- [ ] Edit button → edit mode
-- [ ] Close (X) button
-- [ ] Status badge with color
-- [ ] Priority badge with color
-- [ ] Description display
-- [ ] Assignee with avatar
-- [ ] Cost display
-- [ ] Created date
-- [ ] Completed date (if done)
-- [ ] Mark Complete button
-- [ ] Reopen button (if done)
-- [ ] Delete button
-- [ ] Collaborators section
-- [ ] Comments section
-- [ ] Add comment input
-- [ ] Comment list
-- [ ] Delete comment (hover reveal)
-- [ ] Edit mode: editable title
-- [ ] Edit mode: editable description
-- [ ] Edit mode: status select
-- [ ] Edit mode: priority select
-- [ ] Edit mode: cost input
-- [ ] Save/Cancel buttons in edit mode
+### XSS Prevention
+
+- [ ] Message with `<script>alert('xss')</script>` renders as text, doesn't execute
+- [ ] Agent name with HTML entities renders safely
+- [ ] File names with special characters render safely
+- [ ] Markdown output sanitized via DOMPurify (verify `<iframe>`, `<script>` stripped)
+
+### Agent Permissions
+
+- [ ] System Automation agent hidden from inter-agent communication
+- [ ] Agent cannot use tools it lacks permission for
+- [ ] Approval flow: `strict` mode → all tools create approval request
+- [ ] Approval execution binds workspace context correctly
+
+### Job Status Resolution
+
+- [ ] Agent sleeping + awaiting approval → sleeping wins
+- [ ] Agent awaiting approval + awaiting delegation → approval wins
+- [ ] Agent idle → status is `idle`
+- [ ] `finally` block in jobs resolves status correctly on both success and failure
 
 ---
 
-## 7. DOCUMENTS (`/docs`)
+## 8. Uncommitted Changes
 
-### Document List Sidebar
-- [ ] Search documents input
-- [ ] Document tree/list display
-- [ ] Document icons
-- [ ] Selected document highlight
-- [ ] "New Document" button
-- [ ] Folder structure (if any)
+### Multi-Account Integration Settings
 
-### Document Viewer/Editor
-- [ ] Document title display
-- [ ] Edit button
-- [ ] Version history button
-- [ ] Comments toggle button
-- [ ] Attachments button
-- [ ] Document content display
-- [ ] Markdown rendering
-- [ ] Code blocks with highlighting
-- [ ] Edit mode: textarea/editor
-- [ ] Save button in edit mode
-- [ ] Cancel edit button
+- [ ] Migration `2026_04_05` runs successfully
+- [ ] Integration settings support multiple accounts per integration
+- [ ] Existing integration settings migrated correctly
 
-### Version History Panel
-- [ ] Version list display
-- [ ] Version timestamps
-- [ ] Version author
-- [ ] Change description
-- [ ] View diff button per version
-- [ ] Restore version button
-- [ ] Current version indicator
+### Provider & MCP Updates
 
-### Diff Viewer Modal
-- [ ] Side-by-side diff view
-- [ ] Additions highlighted (green)
-- [ ] Deletions highlighted (red)
-- [ ] Version labels
-- [ ] Close button
-
-### Comments Panel
-- [ ] Comments list
-- [ ] Comment author avatars
-- [ ] Comment timestamps
-- [ ] Reply to comment
-- [ ] Resolve comment button
-- [ ] Resolved comments section
-- [ ] Add comment input
-- [ ] Submit comment button
-
-### Attachments Panel
-- [ ] Attachments list
-- [ ] File icons
-- [ ] File names
-- [ ] Download button per file
-- [ ] Delete button per file
-- [ ] Upload attachment button
+- [ ] `DynamicProviderResolver` resolves all providers correctly
+- [ ] `GlmPrismGateway` generates responses
+- [ ] MCP server registration works (`McpServerRegistrar`)
+- [ ] MCP tool provider lists tools correctly
+- [ ] `AgentChatService` sends messages
+- [ ] `IntegrationController` CRUD works
+- [ ] `AgentController` endpoints work
+- [ ] `IntegrationSettingCredentialResolver` resolves credentials
 
 ---
 
-## 8. ACTIVITY (`/activity`)
+## Cross-Cutting Integration Tests
 
-### Header
-- [ ] Page title
-- [ ] Filter options
-
-### Filter Panel
-- [ ] Activity type filters (messages/tasks/approvals/agents/errors)
-- [ ] User filter dropdown
-- [ ] Date range filters (today/week/month/all)
-
-### Activity Timeline
-- [ ] Activity items display
-- [ ] Type icons per activity
-- [ ] User/agent avatars
-- [ ] Timestamps
-- [ ] Activity descriptions
-- [ ] Metadata (task titles, amounts, channels)
-- [ ] Load more button
-- [ ] Empty state if no activities
+- [ ] **Automation + Files:** Script automation writes file via `app.files.write_file(...)` → file appears in browser
+- [ ] **Automation + Chat:** Script calls `app.chat.send_channel_message(...)` → message appears + forwards to Telegram
+- [ ] **Integration + Lua docs:** `lua_read_doc("integrations.clickup")` → docs with supplementary content
+- [ ] **Files + Telegram:** Agent shares workspace file in Telegram channel → forwarded as document
+- [ ] **Provider + Lua:** Switch to Kimi provider, execute Lua script calling integration → full pipeline works
+- [ ] **Permissions + Automation:** Agent with restricted file access runs automation → permission enforced
+- [ ] **Security + Chat:** Send XSS in chat → sanitized, forwarded to Telegram safely
 
 ---
 
-## 9. APPROVALS (`/approvals`)
-
-### Header
-- [ ] Page title
-- [ ] Filter tabs with counts
-
-### Filter Tabs
-- [ ] All tab
-- [ ] Pending tab (with count)
-- [ ] Approved tab
-- [ ] Rejected tab
-
-### Approval List
-- [ ] Approval cards display
-- [ ] Request title
-- [ ] Description
-- [ ] Amount display
-- [ ] Requester info with avatar
-- [ ] Status badge
-- [ ] Approve button (pending only)
-- [ ] Reject button (pending only)
-- [ ] Responder info (approved/rejected)
-- [ ] Response timestamp
-- [ ] Loading state
-- [ ] Empty state per filter
-
----
-
-## 10. AUTOMATION (`/automation`)
-
-### Header
-- [ ] Page title
-- [ ] Tab navigation
-
-### Task Templates Tab
-- [ ] Templates list display
-- [ ] "New Template" button
-- [ ] Template cards with:
-  - [ ] Template name
-  - [ ] Default title
-  - [ ] Priority badge
-  - [ ] Default assignee
-  - [ ] Estimated cost
-  - [ ] Tags display
-  - [ ] Edit button
-  - [ ] Delete button
-  - [ ] Use template button
-
-### Template Modal (Create/Edit)
-- [ ] Template name input
-- [ ] Default title input
-- [ ] Default priority select
-- [ ] Default assignee select
-- [ ] Estimated cost input
-- [ ] Tags input
-- [ ] Cancel button
-- [ ] Save button
-
-### Automation Rules Tab
-- [ ] Rules list display
-- [ ] "New Rule" button
-- [ ] Rule cards with:
-  - [ ] Rule name
-  - [ ] Trigger type
-  - [ ] Action type
-  - [ ] Template association
-  - [ ] Enabled/disabled toggle
-  - [ ] Trigger count
-  - [ ] Edit button
-  - [ ] Delete button
-
-### Rule Modal (Create/Edit)
-- [ ] Rule name input
-- [ ] Trigger type select (task created/completed/assigned/approval)
-- [ ] Action type select (create task/assign/notify/spawn agent)
-- [ ] Template select (if action = create task)
-- [ ] Enabled toggle
-- [ ] Cancel button
-- [ ] Save button
-
----
-
-## 11. ORGANIZATION (`/org`)
-
-### Header
-- [ ] Page title
-- [ ] Subtitle
-
-### View Mode Toggle
-- [ ] Tree View button
-- [ ] Chart View button
-- [ ] Active state on selected
-
-### Tree View
-- [ ] Tree structure displays
-- [ ] Node cards with avatars
-- [ ] Agent type badges
-- [ ] Status indicators (working/idle)
-- [ ] Current task display
-- [ ] Email for humans
-- [ ] Ephemeral badge if applicable
-- [ ] Expand/collapse children
-- [ ] Expand indicator with count
-- [ ] Click to expand/collapse
-- [ ] Keyboard navigation (Tab, Enter, Space)
-- [ ] Focus ring on keyboard focus
-- [ ] Profile link per node
-
-### Chart View
-- [ ] Horizontal org chart displays
-- [ ] Node cards with avatars
-- [ ] Connector lines between nodes
-- [ ] Root node highlighted
-- [ ] Agent/human icons
-- [ ] Ephemeral badge
-- [ ] Focus indicator on cards
-- [ ] Profile link per node
-
-### Stats Section
-- [ ] Total Members stat card
-- [ ] Humans stat card
-- [ ] Agents stat card
-- [ ] Active Agents stat card
-- [ ] Correct counts displayed
-
----
-
-## 12. WORKLOAD (`/workload`)
-
-### Summary Cards
-- [ ] Active Agents card
-- [ ] Current Tasks card
-- [ ] Completed Today card
-- [ ] Average Efficiency card
-
-### Agent Workload Cards
-- [ ] Agent cards display
-- [ ] Agent avatar with status
-- [ ] Agent name and type
-- [ ] Workload score bar
-- [ ] Efficiency percentage
-- [ ] Tasks in progress count
-- [ ] Tasks pending count
-- [ ] Tasks completed count
-- [ ] Total cost display
-- [ ] Status badge
-
-### Auto-refresh
-- [ ] Data refreshes every 30 seconds
-- [ ] Loading indicator on refresh
-
----
-
-## 13. CALENDAR (`/calendar`)
-
-### Sidebar
-- [ ] Mini calendar display
-- [ ] Date selection
-- [ ] Today highlight
-- [ ] Month navigation
-
-### View Mode Buttons
-- [ ] Month view button
-- [ ] Week view button
-- [ ] Day view button
-
-### Calendar Grid
-- [ ] Month view: full month grid
-- [ ] Week view: 7 days with hours
-- [ ] Day view: single day with hours
-- [ ] Events display on dates
-- [ ] Click date to create event
-- [ ] Click event to view/edit
-
-### Navigation
-- [ ] Previous period button
-- [ ] Next period button
-- [ ] Today button
-- [ ] Period label (dynamic)
-
-### Event Modal
-- [ ] Event title input
-- [ ] Date/time inputs
-- [ ] Description textarea
-- [ ] Cancel button
-- [ ] Save button
-- [ ] Delete button (edit mode)
-
----
-
-## 14. SETTINGS (`/settings`)
-
-### Organization Settings
-- [ ] Organization name input
-- [ ] Organization email input
-- [ ] Timezone select
-- [ ] Save button
-
-### Agent Defaults
-- [ ] Default behavior mode select
-- [ ] Cost limit input
-- [ ] Auto-spawn toggle
-- [ ] Save button
-
-### Action Policies
-- [ ] Policies list
-- [ ] "Add Policy" button
-- [ ] Policy card: pattern, threshold, approval level
-- [ ] Edit policy button
-- [ ] Delete policy button
-
-### Policy Modal
-- [ ] Pattern input
-- [ ] Cost threshold input
-- [ ] Approval level select
-- [ ] Cancel button
-- [ ] Save button
-
-### Notifications
-- [ ] Email notifications toggle
-- [ ] Slack notifications toggle
-- [ ] Daily summary toggle
-- [ ] Save button
-
-### Danger Zone
-- [ ] Pause all agents button
-- [ ] Reset agent memory button
-- [ ] Delete organization button
-- [ ] Confirmation dialogs for each
-
----
-
-## 15. INTEGRATIONS (`/integrations`)
-
-### Webhooks Section
-- [ ] Webhooks list
-- [ ] "Create Webhook" button
-- [ ] Webhook cards:
-  - [ ] URL display
-  - [ ] Target/events display
-  - [ ] Enabled/disabled toggle
-  - [ ] Last triggered date
-  - [ ] Call count
-  - [ ] Edit button
-  - [ ] Delete button
-
-### Webhook Modal
-- [ ] URL input
-- [ ] Target selection
-- [ ] Events multiselect
-- [ ] Cancel button
-- [ ] Save button
-
-### API Keys Section
-- [ ] API keys list
-- [ ] "Generate Key" button
-- [ ] Key cards:
-  - [ ] Key name
-  - [ ] Masked key value
-  - [ ] Copy button
-  - [ ] Revoke button
-  - [ ] Created date
-
-### Connected Services
-- [ ] Services list/grid
-- [ ] Service icons
-- [ ] Service names
-- [ ] Connection status
-- [ ] Connect/Disconnect buttons
-
----
-
-## 16. TABLES (`/tables`)
-
-### Header
-- [ ] Page title
-- [ ] "New Table" button
-
-### Tables Grid
-- [ ] Table cards display
-- [ ] Table icons
-- [ ] Table names
-- [ ] Descriptions
-- [ ] Row counts
-- [ ] Column counts
-- [ ] Click to open table
-- [ ] Delete button per table
-
-### Create Table Modal
-- [ ] Table name input
-- [ ] Description textarea
-- [ ] Icon selection (optional)
-- [ ] Cancel button
-- [ ] Create button
-
-### Empty State
-- [ ] Empty state message
-- [ ] Create table button
-
----
-
-## 17. TABLE VIEW (`/tables/{id}`)
-
-### Header
-- [ ] Back button
-- [ ] Table icon
-- [ ] Table name
-- [ ] Table description
-- [ ] "Add Column" button
-- [ ] "Add Row" button
-
-### Toolbar
-- [ ] Search rows input
-- [ ] Selected count display
-- [ ] Bulk delete button (when selected)
-- [ ] Row count display
-
-### Table Grid
-- [ ] Column headers
-- [ ] Column type indicators
-- [ ] Column menu button (hover)
-- [ ] Row selection checkboxes
-- [ ] Cell data display per type:
-  - [ ] Text: inline edit
-  - [ ] Number: inline edit
-  - [ ] Date: date picker
-  - [ ] Checkbox: toggle
-  - [ ] Select: dropdown
-  - [ ] Multiselect: tags with add/remove
-  - [ ] URL: link display, edit button
-  - [ ] Email: mailto link, edit button
-- [ ] Row actions menu (hover)
-- [ ] Delete row button
-
-### Column Menu
-- [ ] Edit column option
-- [ ] Delete column option
-
-### Add Column Modal
-- [ ] Column name input
-- [ ] Column type selection grid
-- [ ] Type descriptions
-- [ ] Options input (for select/multiselect)
-- [ ] Required toggle
-- [ ] Cancel button
-- [ ] Add Column button
-
-### Edit Column Modal
-- [ ] Pre-filled column name
-- [ ] Type change warning
-- [ ] Options editing
-- [ ] Cancel button
-- [ ] Save Changes button
-
-### Bulk Delete Confirmation
-- [ ] Confirmation message with count
-- [ ] Cancel button
-- [ ] Delete Rows button
-
----
-
-## 18. AGENT PROFILE (`/agent/{id}`)
-
-### Header
-- [ ] Agent avatar with status
-- [ ] Agent name
-- [ ] Agent type badge
-- [ ] Status badge (working/idle/paused)
-- [ ] Emoji display
-- [ ] Current task display
-- [ ] Message button
-- [ ] Pause/Resume button
-
-### Tabs
-- [ ] Overview tab
-- [ ] Personality tab
-- [ ] Instructions tab
-- [ ] Capabilities tab
-- [ ] Memory tab
-- [ ] Activity tab
-- [ ] Settings tab
-
-### Overview Tab
-- [ ] Agent summary
-- [ ] Recent activity
-- [ ] Quick stats
-
-### Personality Tab
-- [ ] Personality editor textarea
-- [ ] Save button
-
-### Instructions Tab
-- [ ] Instructions editor textarea
-- [ ] Save button
-
-### Capabilities Tab
-- [ ] Capabilities list
-- [ ] Capability enabled/disabled status
-- [ ] Approval tracking per capability
-
-### Memory Tab
-- [ ] Memory entries list
-- [ ] Add memory button
-- [ ] Clear memory button
-
-### Activity Tab
-- [ ] Activity log
-- [ ] Activity type icons
-- [ ] Timestamps
-- [ ] Load more
-
-### Settings Tab
-- [ ] Agent-specific settings
-- [ ] Session management
-- [ ] Save button
-
----
-
-## 19. USER PROFILE (`/profile/{id}`)
-
-### Header
-- [ ] User avatar
-- [ ] User name
-- [ ] User type badge (human/agent)
-- [ ] Email display
-- [ ] Ephemeral indicator (if agent)
-- [ ] Status display
-- [ ] Current task (if agent)
-- [ ] Message button
-- [ ] Manage Agent button (if agent)
-
-### Tabs
-- [ ] Activity tab
-- [ ] Tasks tab
-
-### Activity Tab
-- [ ] Activity steps list
-- [ ] Status indicators
-- [ ] Timestamps
-
-### Tasks Tab
-- [ ] Assigned tasks list
-- [ ] Task status badges
-- [ ] Click to open task
-
----
-
-## 20. PROFILE EDIT (`/profile`)
-
-### Update Profile Form
-- [ ] Name input
-- [ ] Email input
-- [ ] Save button
-- [ ] Success message
-
-### Update Password Form
-- [ ] Current password input
-- [ ] New password input
-- [ ] Confirm password input
-- [ ] Save button
-- [ ] Validation errors
-
-### Delete Account Section
-- [ ] Delete account button
-- [ ] Confirmation modal
-- [ ] Password confirmation input
-- [ ] Confirm delete button
-
----
-
-## 21. GLOBAL FEATURES
-
-### Sidebar Navigation
-- [ ] All navigation links work
-- [ ] Active state on current page
-- [ ] Badge counts (Chat, Approvals)
-- [ ] Collapse/expand (if available)
-
-### User Menu
-- [ ] User avatar click
-- [ ] Username display
-- [ ] Role display
-- [ ] Profile link
-- [ ] Settings link
-- [ ] Logout button
-
-### Command Palette (Cmd/Ctrl+K)
-- [ ] Opens on shortcut
-- [ ] Search input autofocus
-- [ ] Mode tabs (Commands/Files/Channels/Agents)
-- [ ] Recent searches display
-- [ ] Command groups
-- [ ] Arrow key navigation
-- [ ] Enter to execute
-- [ ] Escape to close
-- [ ] Prefix searches (#channels, @agents)
-
-### Keyboard Shortcuts
-- [ ] Cmd/Ctrl+K: Command palette
-- [ ] Escape: Close modals/palettes
-- [ ] g+h: Go to Dashboard
-- [ ] g+c: Go to Chat
-- [ ] g+t: Go to Tasks
-- [ ] g+d: Go to Docs
-- [ ] g+a: Go to Approvals
-- [ ] g+o: Go to Organization
-- [ ] g+s: Go to Settings
-
-### Dark Mode
-- [ ] Toggle dark mode
-- [ ] All pages render correctly
-- [ ] All components have dark variants
-- [ ] System preference detection
-
-### Real-Time Updates
-- [ ] WebSocket connection establishes
-- [ ] New messages appear instantly
-- [ ] Typing indicators work
-- [ ] Activity feed updates
-- [ ] Presence updates
-
-### Loading States
-- [ ] Skeleton loaders display
-- [ ] Spinner indicators
-- [ ] Button loading states
-- [ ] Page transition loading
-
-### Error States
-- [ ] Error messages display
-- [ ] Retry buttons work
-- [ ] Form validation errors
-- [ ] API error handling
-
-### Empty States
-- [ ] Empty state messages
-- [ ] Call-to-action buttons
-- [ ] Helpful descriptions
-
-### Responsive Design
-- [ ] Mobile layout (if supported)
-- [ ] Tablet layout
-- [ ] Desktop layout
-- [ ] Sidebar behavior on resize
-
----
-
-## 22. SHARED COMPONENTS TO TEST
-
-### Button
-- [ ] Primary variant
-- [ ] Secondary variant
-- [ ] Ghost variant
-- [ ] Danger variant
-- [ ] Link variant
-- [ ] Outline variant
-- [ ] Success variant
-- [ ] All sizes (xs/sm/md/lg/xl)
-- [ ] Loading state
-- [ ] Disabled state
-- [ ] With icons (left/right)
-- [ ] Icon-only mode
-- [ ] Tooltip display
-
-### Input
-- [ ] All types (text/email/password/number/etc)
-- [ ] All sizes
-- [ ] With label
-- [ ] With error message
-- [ ] With success indicator
-- [ ] Clearable (X button)
-- [ ] Copyable (copy button)
-- [ ] Password toggle
-- [ ] Character counter
-- [ ] Disabled state
-- [ ] Readonly state
-
-### Select
-- [ ] Dropdown opens/closes
-- [ ] Item selection
-- [ ] Placeholder display
-- [ ] Icon display
-- [ ] Disabled state
-
-### Checkbox
-- [ ] Check/uncheck toggle
-- [ ] Label display
-- [ ] Description display
-- [ ] Disabled state
-
-### Modal
-- [ ] Opens/closes
-- [ ] Escape key closes
-- [ ] Click outside closes (if enabled)
-- [ ] Header/content/footer slots
-- [ ] All sizes
-
-### Confirm Dialog
-- [ ] Opens on trigger
-- [ ] Confirm button works
-- [ ] Cancel button works
-- [ ] Input validation (if required)
-- [ ] Checkbox state
-- [ ] All variants
-
-### Badge
-- [ ] All variants
-- [ ] All styles (soft/solid/outline)
-- [ ] With count
-- [ ] Removable
-- [ ] With icon
-- [ ] With avatar
-
-### Avatar
-- [ ] Image display
-- [ ] Fallback initials
-- [ ] Agent icon fallback
-- [ ] Status dot indicator
-- [ ] All sizes
-- [ ] All shapes
-- [ ] Tooltip display
-
-### Tooltip
-- [ ] Hover display
-- [ ] All positions
-- [ ] Delay works
-- [ ] Disabled state
-
-### Dropdown Menu
-- [ ] Opens/closes
-- [ ] Item click works
-- [ ] Submenu opens
-- [ ] Keyboard navigation
-- [ ] Disabled items
-
-### Skeleton
-- [ ] All presets display correctly
-- [ ] Animation works
-
-### Stat Card
-- [ ] Value display
-- [ ] Label display
-- [ ] Icon display
-- [ ] Trend indicator
-- [ ] Sparkline chart
-- [ ] Progress bar
-- [ ] Click interaction
-
----
-
-## Total Test Items: ~750+
-
-Use this checklist to systematically test every feature in the application.
+## Post-Deploy Verification
+
+- [ ] `../integrations/` cloned and up to date on server
+- [ ] `php artisan migrate --force` succeeds
+- [ ] `composer install --no-dev --optimize-autoloader` succeeds
+- [ ] `php artisan config:cache` succeeds
+- [ ] `php artisan route:cache` succeeds
+- [ ] Queue workers restart: `php artisan queue:restart`
+- [ ] `storage/logs/laravel.log` — no class-not-found or provider-not-found errors
+- [ ] Trigger agent task — completes with tools working
+- [ ] At least one integration returns live data
+- [ ] Scheduled automations visible: `php artisan schedule:list`

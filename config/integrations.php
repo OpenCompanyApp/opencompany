@@ -109,6 +109,16 @@ return [
         'api_key_url' => 'https://openrouter.ai/keys',
     ],
 
+    'perplexity' => [
+        'category' => 'ai-models',
+        'name' => 'Perplexity',
+        'description' => 'Search-native reasoning models',
+        'icon' => 'ph:compass',
+        'default_url' => 'https://api.perplexity.ai',
+        'api_format' => 'openai_compat',
+        'api_key_url' => 'https://www.perplexity.ai/settings/api',
+    ],
+
     'minimax' => [
         'category' => 'ai-models',
         'name' => 'MiniMax Coding Plan',
@@ -149,20 +159,20 @@ return [
         'api_key_url' => 'https://platform.moonshot.ai/console',
     ],
 
-    'glm' => [
+    'z-api' => [
         'category' => 'ai-models',
-        'name' => 'GLM (Zhipu AI)',
-        'description' => 'General-purpose Chinese LLM',
+        'name' => 'Z.AI API',
+        'description' => 'Zhipu AI standard API endpoint',
         'icon' => 'ph:brain',
         'default_url' => \OpenCompany\PrismRelay\Providers\Glm::URL,
         'api_format' => 'openai_compat',
         'api_key_url' => 'https://open.bigmodel.cn/',
     ],
 
-    'glm-coding' => [
+    'z' => [
         'category' => 'ai-models',
-        'name' => 'GLM Coding Plan',
-        'description' => 'Specialized coding LLM via Zhipu Coding Plan',
+        'name' => 'Z.AI Coding Plan',
+        'description' => 'Zhipu AI coding-plan endpoint',
         'icon' => 'ph:code',
         'default_url' => \OpenCompany\PrismRelay\Providers\GlmCoding::URL,
         'api_format' => 'openai_compat',

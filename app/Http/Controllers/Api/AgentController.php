@@ -66,14 +66,14 @@ class AgentController extends Controller
         // Validate brain format (provider:model)
         if (!str_contains($validated['brain'], ':')) {
             return response()->json([
-                'error' => 'Invalid brain format. Expected "provider:model" (e.g., "glm:glm-4.7")',
+                'error' => 'Invalid brain format. Expected "provider:model" (e.g., "z:glm-5.1")',
             ], 422);
         }
 
         [$provider] = explode(':', $validated['brain'], 2);
 
         // Standard providers use .env keys; only check IntegrationSetting for custom providers
-        $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama'];
+        $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama', 'perplexity'];
 
         if (!in_array($provider, $standardProviders)) {
             $integration = IntegrationSetting::forWorkspace()

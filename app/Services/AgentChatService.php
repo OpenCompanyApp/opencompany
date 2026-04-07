@@ -16,11 +16,11 @@ class AgentChatService
 
     public function respond(User $agent, string $channelId, string $userMessage): string
     {
-        // Parse agent's brain setting (e.g., 'glm-coding:glm-4.7')
-        $brain = $agent->brain ?? 'glm-coding:glm-4.7';
+        // Parse agent's brain setting (e.g., 'z:glm-5.1')
+        $brain = $agent->brain ?? 'z:glm-5.1';
         $parts = explode(':', $brain, 2);
         $provider = $parts[0];
-        $model = $parts[1] ?? 'glm-4.7';
+        $model = $parts[1] ?? 'glm-5.1';
 
         // Verify integration is enabled and get config
         $integration = IntegrationSetting::where('workspace_id', $agent->workspace_id)
@@ -60,15 +60,15 @@ class AgentChatService
         $systemPrompt = $this->buildSystemPrompt($agent);
 
         // Call the configured AI model via HTTP
-        return $this->callGlmApi($apiKey, $baseUrl, $model, $systemPrompt, $messages);
+        return $this->callChatCompletionApi($apiKey, $baseUrl, $model, $systemPrompt, $messages);
     }
 
     /**
-     * Call GLM/Zhipu AI API directly
+     * Call an OpenAI-compatible chat completions API directly.
      *
      * @param  array<int, array<string, string>>  $messages
      */
-    private function callGlmApi(string $apiKey, string $baseUrl, string $model, string $systemPrompt, array $messages): string
+    private function callChatCompletionApi(string $apiKey, string $baseUrl, string $model, string $systemPrompt, array $messages): string
     {
         // Prepend system message
         $apiMessages = [
@@ -99,8 +99,8 @@ class AgentChatService
     private function getDefaultUrl(string $provider): string
     {
         return match ($provider) {
-            'glm' => 'https://open.bigmodel.cn/api/paas/v4',
-            'glm-coding' => 'https://api.z.ai/api/coding/paas/v4',
+            'z-api' => 'https://open.bigmodel.cn/api/paas/v4',
+            'z' => 'https://api.z.ai/api/coding/paas/v4',
             default => throw new \Exception("Unknown provider: {$provider}"),
         };
     }
