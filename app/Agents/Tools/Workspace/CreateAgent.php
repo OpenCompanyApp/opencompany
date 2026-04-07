@@ -162,7 +162,7 @@ class CreateAgent implements Tool
                 ->description('Whether agent is ephemeral (temporary). Default: false.'),
             'identity' => $schema
                 ->object()
-                ->description('Identity file contents, e.g. {"IDENTITY":"...","SOUL":"..."}.'),
+                ->description('Identity file contents, e.g. {"IDENTITY":"...","INSTRUCTIONS":"...","MEMORY":"..."}.'),
         ];
     }
 }

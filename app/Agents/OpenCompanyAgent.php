@@ -108,7 +108,6 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
     private function buildSections(): array
     {
         $identityFiles = $this->docService->getIdentityFiles($this->agent);
-
         $sections = [];
 
         if ($identityFiles->isEmpty()) {
@@ -131,23 +130,29 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             $header .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
             $sections[] = ['label' => 'Header', 'content' => $header];
 
-            $order = ['IDENTITY', 'SOUL', 'USER', 'AGENTS', 'TOOLS', 'MEMORY', 'HEARTBEAT', 'BOOTSTRAP'];
-
-            $channel = Channel::find($this->channelId);
-            $privateChannel = $channel && in_array($channel->type, ['dm', 'agent', 'external']);
-
-            foreach ($order as $type) {
-                if ($type === 'MEMORY' && !$privateChannel) {
-                    continue;
-                }
-
+            // Identity files: IDENTITY + INSTRUCTIONS (always loaded)
+            foreach (['IDENTITY', 'INSTRUCTIONS'] as $type) {
                 $file = $identityFiles->firstWhere('title', "{$type}.md");
                 if ($file && !empty(trim($file->content))) {
                     $sections[] = ['label' => "{$type}.md", 'content' => "## {$type}.md\n\n{$file->content}\n\n"];
                 }
             }
 
-            if ($privateChannel) {
+            // MEMORY.md + peer cards + memory system — only in private channels
+            $channel = Channel::with('users')->find($this->channelId);
+            $isPrivateChannel = $channel && in_array($channel->type, ['dm', 'agent', 'external']);
+
+            if ($isPrivateChannel) {
+                // MEMORY.md (core knowledge + index)
+                $memoryFile = $identityFiles->firstWhere('title', 'MEMORY.md');
+                if ($memoryFile && !empty(trim($memoryFile->content))) {
+                    $sections[] = ['label' => 'MEMORY.md', 'content' => "## MEMORY.md\n\n{$memoryFile->content}\n\n"];
+                }
+
+                // Inject peer cards for channel participants
+                $this->injectPeerCards($sections, $channel);
+
+                // Memory system instructions
                 $sections[] = ['label' => 'Memory System', 'content' => $this->buildMemoryPrompt()];
             }
         }
@@ -176,6 +181,40 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         $sections[] = ['label' => 'Apps', 'content' => $apps];
 
         return $sections;
+    }
+
+    /**
+     * Inject peer memory cards for channel participants.
+     *
+     * User peer cards are only loaded when that user is in the channel (privacy).
+     * Agent peer cards are only loaded when that agent is in the channel.
+     */
+    private function injectPeerCards(array &$sections, Channel $channel): void
+    {
+        $participants = $channel->users;
+        $humans = $participants->where('type', '!=', 'agent');
+        $otherAgents = $participants->where('type', 'agent')
+            ->where('id', '!=', $this->agent->id);
+
+        // Load peer cards for human participants
+        if ($humans->isNotEmpty()) {
+            $userPeers = $this->docService->getPeerMemoriesForUsers(
+                $this->agent, $humans->pluck('id')
+            );
+            if ($userPeers) {
+                $sections[] = ['label' => 'User Context', 'content' => $userPeers];
+            }
+        }
+
+        // Load peer cards for other agent participants
+        if ($otherAgents->isNotEmpty()) {
+            $agentPeers = $this->docService->getPeerMemoriesForAgents(
+                $this->agent, $otherAgents->pluck('id')
+            );
+            if ($agentPeers) {
+                $sections[] = ['label' => 'Agent Context', 'content' => $agentPeers];
+            }
+        }
     }
 
     /**
@@ -371,60 +410,61 @@ are automatically summarized when the context window fills up. **You don't manag
 the system handles it for you.
 
 ### Long-Term Memory (LTM)
-Durable memories that persist across all conversations. You manage LTM explicitly:
+Durable memories that persist across all conversations. You manage LTM explicitly via four tools:
 
-- **MEMORY.md** (core memory) — Already loaded in your system prompt above. Contains
-  curated, high-value facts. You can add to it via `save_memory` with `target: "core"`.
-- **Daily logs** — Timestamped entries searchable via `recall_memory`. Written via
-  `save_memory` with `target: "log"` (default).
+| Tool | Action |
+|------|--------|
+| `save_memory` | Create new memories |
+| `recall_memory` | Search and load memories |
+| `edit_memory` | Update existing topic or peer memories |
+| `forget_memory` | Delete outdated topic or peer memories |
 
-### save_memory
+### Memory targets
 
-Persist information to your long-term memory. Two targets:
+When saving, choose the right target:
 
 | Target | Storage | Loaded | Best for |
 |--------|---------|--------|----------|
-| `"core"` | MEMORY.md | Always (system prompt) | User preferences, key decisions, organizational knowledge, durable facts |
-| `"log"` (default) | Daily log | On demand via `recall_memory` | Running context, timestamped observations, session learnings |
+| `"core"` | MEMORY.md | Always (in system prompt) | High-value facts: org knowledge, key decisions, critical context |
+| `"topic"` | topics/{slug}.md | On demand via `recall_memory(topic: ...)` | Curated knowledge: migration guides, debugging checklists, architecture docs |
+| `"log"` (default) | logs/YYYY-MM-DD.md | On demand via `recall_memory(date: ...)` | Timestamped observations, session learnings, running context |
+| `"peer"` | peers/{type}s/{id}.md | Auto-loaded when that person is in the conversation | Personal notes: preferences, birthdays, communication style, working patterns |
 
-Guidelines:
-- Be specific: include who, what, why, and when
-- Prefer `"core"` only for truly durable facts that should always be in context
-- Prefer `"log"` for most saves — keeps MEMORY.md focused and manageable
-- If someone says "remember this" — save it immediately (do not rely on conversation context)
-- Use categories: preference, decision, learning, fact, general
+### save_memory usage
 
-### recall_memory
+```
+save_memory(content: "Prefers async bullet summaries", target: "core")
+save_memory(content: "Step-by-step deploy checklist...", target: "topic", topic: "deploy-checklist")
+save_memory(content: "Discovered cron fails silently on bad env", target: "log")
+save_memory(content: "Birthday March 15, prefers email over Slack", target: "peer", peer_id: "...", peer_type: "user")
+```
 
-Search or browse your daily logs. Two modes:
+### recall_memory usage
 
-**Semantic search** (default): `recall_memory(query: "deployment process")`
-- Searches across all daily logs for relevant entries
-- Use before answering questions about prior work, decisions, or preferences
-- Use at the start of complex tasks to gather relevant history
-- Use when a user references something from a previous conversation
+```
+recall_memory(query: "deployment process")     → semantic search across topics, peers, logs
+recall_memory(topic: "deploy-checklist")       → load a specific topic file
+recall_memory(date: "2026-04-07")              → browse a specific day's log
+recall_memory(peer: "user-id-here")            → load peer notes for a specific person
+```
 
-**Date browse**: `recall_memory(date: "2026-02-14")`
-- Returns the raw log for a specific day
-- If the log is too large, you'll get a size warning — re-call with `max_chars` to truncate
-- Example: `recall_memory(date: "2026-02-14", max_chars: 3000)`
+### Guidelines
 
-If recall_memory returns nothing relevant, tell the user you checked but found no prior context.
+**When to save:**
+- User expresses a preference or working style → `peer` or `core`
+- An important decision is made (with reasoning) → `core` or `topic`
+- Key facts about a project or organization → `core`
+- Learnings or insights from the current conversation → `log`
+- The user explicitly asks you to remember something → appropriate target
+- Notes about a specific person's habits or preferences → `peer`
 
-### When to save vs when not to
-
-**Save:**
-- User expresses a preference or working style
-- An important decision is made (with reasoning)
-- Key facts about a project, person, or the organization
-- Learnings or insights from the current conversation
-- Anything the user explicitly asks you to remember
-
-**Don't save:**
+**When NOT to save:**
 - Transient, obvious, or trivial information
 - Information already in MEMORY.md
 - Raw conversation snippets without context
-- Temporary task state that won't matter later
+
+**Privacy:** Peer memories for users are only loaded when that user is present in the conversation.
+Use `peer` target for anything personal or user-specific.
 
 PROMPT;
     }

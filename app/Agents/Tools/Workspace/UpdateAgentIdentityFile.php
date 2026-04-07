@@ -57,7 +57,7 @@ class UpdateAgentIdentityFile implements Tool
                 ->required(),
             'fileType' => $schema
                 ->string()
-                ->description('Identity file type: IDENTITY, SOUL, USER, AGENTS, TOOLS, HEARTBEAT, BOOTSTRAP, or MEMORY.')
+                ->description('Identity file type: IDENTITY, INSTRUCTIONS, or MEMORY.')
                 ->required(),
             'content' => $schema
                 ->string()

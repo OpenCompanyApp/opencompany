@@ -24,8 +24,8 @@ class OpenCompanyAgentTest extends TestCase
         // Create identity document structure
         $docService = app(AgentDocumentService::class);
         $folder = $docService->createAgentDocumentStructure($agent, [
-            'IDENTITY' => "# Agent Identity\n\n- **Name**: TestBot\n- **Type**: Coder",
-            'SOUL' => "# Core Values\n\nBe helpful and accurate.",
+            'IDENTITY' => "# Identity\n\n- **Name**: TestBot\n- **Type**: Coder",
+            'INSTRUCTIONS' => "# Operating Instructions\n\nBe helpful and accurate.",
         ]);
         $agent->update(['docs_folder_id' => $folder->id]);
 
@@ -35,7 +35,7 @@ class OpenCompanyAgentTest extends TestCase
 
         $this->assertStringContainsString('IDENTITY.md', $instructions);
         $this->assertStringContainsString('TestBot', $instructions);
-        $this->assertStringContainsString('SOUL.md', $instructions);
+        $this->assertStringContainsString('INSTRUCTIONS.md', $instructions);
         $this->assertStringContainsString('Be helpful and accurate', $instructions);
         $this->assertStringContainsString('Available Tools', $instructions);
     }

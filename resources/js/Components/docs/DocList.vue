@@ -227,12 +227,7 @@ const filteredDocuments = computed(() => {
 // Icon map for identity files
 const identityFileIcons: Record<string, string> = {
   'IDENTITY.md': 'ph:identification-card-fill',
-  'SOUL.md': 'ph:sparkle-fill',
-  'USER.md': 'ph:user-fill',
-  'AGENTS.md': 'ph:robot-fill',
-  'TOOLS.md': 'ph:wrench-fill',
-  'HEARTBEAT.md': 'ph:heartbeat-fill',
-  'BOOTSTRAP.md': 'ph:rocket-launch-fill',
+  'INSTRUCTIONS.md': 'ph:book-open-text-fill',
   'MEMORY.md': 'ph:brain-fill',
 }
 

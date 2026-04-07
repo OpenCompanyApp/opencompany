@@ -268,14 +268,12 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
             $llmStep->complete();
 
-            // Clear bootstrap file after first successful interaction
+            // Mark agent as bootstrapped after first successful interaction
             if (!$this->agent->bootstrapped_at) {
                 try {
-                    $docService = app(AgentDocumentService::class);
-                    $docService->updateIdentityFile($this->agent, 'BOOTSTRAP', '');
                     $this->agent->update(['bootstrapped_at' => now()]);
                 } catch (\Throwable $e) {
-                    Log::warning('Failed to clear bootstrap', ['error' => $e->getMessage()]);
+                    Log::warning('Failed to set bootstrapped_at', ['error' => $e->getMessage()]);
                 }
             }
 

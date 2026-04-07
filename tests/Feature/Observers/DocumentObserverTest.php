@@ -387,4 +387,96 @@ class DocumentObserverTest extends TestCase
 
         Bus::assertDispatched(IndexDocumentJob::class);
     }
+
+    public function test_observer_resolves_topic_collection(): void
+    {
+        Bus::fake([IndexDocumentJob::class]);
+
+        $memoryFolder = Document::create([
+            'id' => Str::uuid()->toString(),
+            'title' => 'memory',
+            'is_folder' => true,
+            'content' => '',
+            'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
+        ]);
+
+        $topicsFolder = Document::create([
+            'id' => Str::uuid()->toString(),
+            'title' => 'topics',
+            'parent_id' => $memoryFolder->id,
+            'is_folder' => true,
+            'content' => '',
+            'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
+        ]);
+
+        Document::create([
+            'id' => Str::uuid()->toString(),
+            'title' => 'vue3-migration.md',
+            'parent_id' => $topicsFolder->id,
+            'content' => 'Vue 3 migration guide',
+            'is_folder' => false,
+            'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
+        ]);
+
+        Bus::assertDispatched(IndexDocumentJob::class, function ($job) {
+            $reflection = new \ReflectionClass($job);
+            $prop = $reflection->getProperty('collection');
+
+            return $prop->getValue($job) === 'topic';
+        });
+    }
+
+    public function test_observer_resolves_peer_collection(): void
+    {
+        Bus::fake([IndexDocumentJob::class]);
+
+        $memoryFolder = Document::create([
+            'id' => Str::uuid()->toString(),
+            'title' => 'memory',
+            'is_folder' => true,
+            'content' => '',
+            'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
+        ]);
+
+        $peersFolder = Document::create([
+            'id' => Str::uuid()->toString(),
+            'title' => 'peers',
+            'parent_id' => $memoryFolder->id,
+            'is_folder' => true,
+            'content' => '',
+            'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
+        ]);
+
+        $usersFolder = Document::create([
+            'id' => Str::uuid()->toString(),
+            'title' => 'users',
+            'parent_id' => $peersFolder->id,
+            'is_folder' => true,
+            'content' => '',
+            'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
+        ]);
+
+        Document::create([
+            'id' => Str::uuid()->toString(),
+            'title' => 'user-123.md',
+            'parent_id' => $usersFolder->id,
+            'content' => 'Peer notes about a user',
+            'is_folder' => false,
+            'author_id' => $this->user->id,
+            'workspace_id' => $this->workspace->id,
+        ]);
+
+        Bus::assertDispatched(IndexDocumentJob::class, function ($job) {
+            $reflection = new \ReflectionClass($job);
+            $prop = $reflection->getProperty('collection');
+
+            return $prop->getValue($job) === 'peer';
+        });
+    }
 }

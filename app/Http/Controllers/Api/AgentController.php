@@ -54,12 +54,7 @@ class AgentController extends Controller
             'managerId' => 'nullable|string|exists:users,id',
             'identity' => 'nullable|array',
             'identity.IDENTITY' => 'nullable|string',
-            'identity.SOUL' => 'nullable|string',
-            'identity.USER' => 'nullable|string',
-            'identity.AGENTS' => 'nullable|string',
-            'identity.TOOLS' => 'nullable|string',
-            'identity.HEARTBEAT' => 'nullable|string',
-            'identity.BOOTSTRAP' => 'nullable|string',
+            'identity.INSTRUCTIONS' => 'nullable|string',
             'identity.MEMORY' => 'nullable|string',
         ]);
 
@@ -405,9 +400,18 @@ class AgentController extends Controller
             'content' => 'required|string',
         ]);
 
+        $allowedTypes = app(AgentDocumentService::class)->getIdentityFileTypes();
+        $normalizedType = strtoupper($fileType);
+
+        if (!in_array($normalizedType, $allowedTypes)) {
+            return response()->json([
+                'error' => "Invalid file type '{$fileType}'. Allowed: " . implode(', ', $allowedTypes),
+            ], 422);
+        }
+
         $file = $this->agentDocumentService->updateIdentityFile(
             $agent,
-            $fileType,
+            $normalizedType,
             $validated['content']
         );
 

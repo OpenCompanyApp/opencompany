@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppSetting;
+use App\Models\Channel;
 use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Models\Message;
@@ -57,7 +58,7 @@ class AgentChatService
         }
 
         // Build system prompt from identity files
-        $systemPrompt = $this->buildSystemPrompt($agent);
+        $systemPrompt = $this->buildSystemPrompt($agent, $channelId);
 
         // Call the configured AI model via HTTP
         return $this->callGlmApi($apiKey, $baseUrl, $model, $systemPrompt, $messages);
@@ -108,7 +109,7 @@ class AgentChatService
     /**
      * Build the system prompt from the agent's identity files
      */
-    private function buildSystemPrompt(User $agent): string
+    private function buildSystemPrompt(User $agent, string $channelId): string
     {
         $identityFiles = $this->agentDocumentService->getIdentityFiles($agent);
 
@@ -134,12 +135,23 @@ class AgentChatService
         $prompt .= $selfSection;
 
         // Add identity files in a specific order for coherence
-        $order = ['IDENTITY', 'SOUL', 'USER', 'AGENTS', 'TOOLS', 'MEMORY', 'HEARTBEAT', 'BOOTSTRAP'];
+        $order = ['IDENTITY', 'INSTRUCTIONS'];
 
         foreach ($order as $type) {
             $file = $identityFiles->firstWhere('title', "{$type}.md");
             if ($file && !empty(trim($file->content))) {
                 $prompt .= "## {$type}.md\n\n{$file->content}\n\n";
+            }
+        }
+
+        // MEMORY.md — only in private channels (privacy scoping)
+        $channel = Channel::find($channelId);
+        $isPrivateChannel = $channel && in_array($channel->type, ['dm', 'agent', 'external']);
+
+        if ($isPrivateChannel) {
+            $memoryFile = $identityFiles->firstWhere('title', 'MEMORY.md');
+            if ($memoryFile && !empty(trim($memoryFile->content))) {
+                $prompt .= "## MEMORY.md\n\n{$memoryFile->content}\n\n";
             }
         }
 

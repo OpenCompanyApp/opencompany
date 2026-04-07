@@ -34,24 +34,46 @@ class DocumentObserver
 
     /**
      * Resolve collection type based on document's folder hierarchy.
-     * - agents/{slug}/memory/* → 'memory'
      * - agents/{slug}/identity/* → 'identity'
+     * - agents/{slug}/memory/topics/* → 'topic'
+     * - agents/{slug}/memory/logs/* → 'memory'
+     * - agents/{slug}/memory/peers/* → 'peer'
+     * - agents/{slug}/memory/MEMORY.md → 'memory'
      * - everything else → 'general'
      */
     private function resolveCollection(Document $document): string
     {
         $parent = $document->parent;
+        $ancestry = [];
 
         while ($parent) {
             if ($parent->is_folder) {
-                if ($parent->title === 'memory') {
-                    return 'memory';
-                }
-                if ($parent->title === 'identity') {
-                    return 'identity';
-                }
+                $ancestry[] = $parent->title;
             }
             $parent = $parent->parent;
+        }
+
+        // Direct child of identity/ folder
+        if (in_array('identity', $ancestry)) {
+            return 'identity';
+        }
+
+        // Check memory sub-folders
+        if (in_array('topics', $ancestry)) {
+            return 'topic';
+        }
+
+        if (in_array('logs', $ancestry)) {
+            return 'memory';
+        }
+
+        if (in_array('peers', $ancestry)) {
+            return 'peer';
+        }
+
+        // Direct child of memory/ folder (e.g., MEMORY.md or legacy logs)
+        if (in_array('memory', $ancestry)) {
+            return 'memory';
         }
 
         return 'general';

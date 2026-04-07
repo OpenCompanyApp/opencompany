@@ -25,7 +25,7 @@ class RecallMemory implements Tool
 
     public function description(): string
     {
-        return 'Search your long-term memory by query, or browse a specific day\'s log by date.';
+        return 'Search your long-term memory by query, load a topic or peer file, or browse a specific day\'s log by date.';
     }
 
     public function handle(Request $request): string
@@ -36,21 +36,61 @@ class RecallMemory implements Tool
 
         $query = $request['query'] ?? null;
         $date = $request['date'] ?? null;
+        $topic = $request['topic'] ?? null;
+        $peer = $request['peer'] ?? null;
         $maxChars = $request['max_chars'] ?? null;
 
-        if (!$query && !$date) {
-            return 'Error: Provide either "query" for semantic search or "date" (YYYY-MM-DD) to browse a specific day\'s log.';
+        // Direct loads first
+        if ($topic) {
+            return $this->loadTopic($topic);
         }
 
-        if ($date && !$this->isValidDate($date)) {
-            return 'Error: Invalid date format. Use YYYY-MM-DD (e.g., "2026-02-14").';
+        if ($peer) {
+            return $this->loadPeer($peer);
         }
 
         if ($date) {
+            if (!$this->isValidDate($date)) {
+                return 'Error: Invalid date format. Use YYYY-MM-DD (e.g., "2026-02-14").';
+            }
+
             return $this->browseByDate($date, $maxChars);
         }
 
-        return $this->searchByQuery($query, $request['limit'] ?? 6, $maxChars);
+        if ($query) {
+            return $this->searchByQuery($query, $request['limit'] ?? 6, $maxChars);
+        }
+
+        return 'Error: Provide "query" for semantic search, "topic" to load a topic file, "peer" to load peer notes, or "date" (YYYY-MM-DD) to browse a log.';
+    }
+
+    private function loadTopic(string $slug): string
+    {
+        $doc = $this->docService->getMemoryTopicFile($this->agent, $slug);
+
+        if (!$doc) {
+            return "Topic '{$slug}' not found. Check MEMORY.md index for available topics.";
+        }
+
+        return "[Topic: {$slug}.md]\n\n{$doc->content}";
+    }
+
+    private function loadPeer(string $peerId): string
+    {
+        // Try user first, then agent
+        $doc = $this->docService->getPeerMemory($this->agent, $peerId, 'user')
+            ?? $this->docService->getPeerMemory($this->agent, $peerId, 'agent');
+
+        if (!$doc) {
+            $peer = User::find($peerId);
+            $name = $peer?->name ?? $peerId;
+            return "No peer memory found for '{$name}'. Save one with save_memory(target: \"peer\", peer_id: \"{$peerId}\", peer_type: \"user\"|\"agent\").";
+        }
+
+        $peer = User::find($peerId);
+        $name = $peer?->name ?? $peerId;
+
+        return "[Peer memory: {$name}]\n\n{$doc->content}";
     }
 
     private function browseByDate(string $date, ?int $maxChars): string
@@ -87,13 +127,22 @@ class RecallMemory implements Tool
 
     private function searchByQuery(string $query, int $limit, ?int $maxChars): string
     {
-        $results = $this->indexer->search(
-            query: $query,
-            collection: 'memory',
-            agentId: $this->agent->id,
-            limit: $limit,
-            minSimilarity: config('memory.search.min_similarity', 0.5),
-        );
+        // Search across topic, peer, and memory collections
+        $results = collect();
+
+        foreach (['topic', 'peer', 'memory'] as $collection) {
+            $collectionResults = $this->indexer->search(
+                query: $query,
+                collection: $collection,
+                agentId: $this->agent->id,
+                limit: $limit,
+                minSimilarity: config('memory.search.min_similarity', 0.5),
+            );
+            $results = $results->merge($collectionResults);
+        }
+
+        // Sort by similarity descending and take top results
+        $results = $results->sortByDesc('similarity')->take($limit);
 
         if ($results->isEmpty()) {
             return "No memories found matching '{$query}'.";
@@ -108,8 +157,9 @@ class RecallMemory implements Tool
             $snippet = Str::limit($chunk->content, $maxSnippet);
             $meta = is_array($chunk->metadata) ? $chunk->metadata : [];
             $date = $meta['updated_at'] ?? 'unknown date';
+            $collection = $chunk->collection ?? 'unknown';
             $similarity = isset($chunk->similarity) ? round($chunk->similarity * 100) : 0;
-            $entry = "**{$date}** ({$similarity}% match)\n{$snippet}";
+            $entry = "**{$date}** [{$collection}] ({$similarity}% match)\n{$snippet}";
 
             if ($totalChars + strlen($entry) > $maxTotal) {
                 break;
@@ -138,10 +188,16 @@ class RecallMemory implements Tool
         return [
             'query' => $schema
                 ->string()
-                ->description('Semantic search query. Required unless date is provided.'),
+                ->description('Semantic search query. Searches across topics, peer notes, and daily logs.'),
             'date' => $schema
                 ->string()
-                ->description('Browse a specific day\'s log (YYYY-MM-DD format). Returns raw content instead of semantic search.'),
+                ->description('Browse a specific day\'s log (YYYY-MM-DD format). Returns raw content.'),
+            'topic' => $schema
+                ->string()
+                ->description('Load a specific topic file by slug (e.g., "vue3-migration"). Fast direct load.'),
+            'peer' => $schema
+                ->string()
+                ->description('Load peer notes for a specific user or agent ID.'),
             'limit' => $schema
                 ->integer()
                 ->description('Maximum number of results for search mode. Default: 6.'),

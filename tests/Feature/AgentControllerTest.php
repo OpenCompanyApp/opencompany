@@ -31,10 +31,8 @@ class AgentControllerTest extends TestCase
         // Create identity documents
         $docService = app(AgentDocumentService::class);
         $folder = $docService->createAgentDocumentStructure($this->agent, [
-            'IDENTITY' => "# Agent Identity\n\n- **Name**: TestAgent\n- **Type**: Coder\n- **Emoji**: 🧪\n- **Vibe**: Test-driven and precise",
-            'SOUL' => "# Core Values\n\nBe accurate and thorough.",
-            'AGENTS' => "# Agent Network\n\nWork with other agents cooperatively.",
-            'TOOLS' => "# Available Tools\n\nPrefer automated testing.",
+            'IDENTITY' => "# Identity\n\n- **Name**: TestAgent\n- **Type**: Coder\n- **Emoji**: 🧪\n- **Vibe**: Test-driven and precise",
+            'INSTRUCTIONS' => "# Operating Instructions\n\nBe accurate and thorough.",
         ]);
         $this->agent->update(['docs_folder_id' => $folder->id]);
     }
@@ -113,20 +111,21 @@ class AgentControllerTest extends TestCase
         $response->assertOk();
         $files = $response->json();
 
-        $this->assertCount(8, $files); // 8 identity file types
+        // 2 identity files (IDENTITY + INSTRUCTIONS) + MEMORY.md = 3
+        $this->assertCount(3, $files);
 
         $types = collect($files)->pluck('type')->sort()->values()->toArray();
         $this->assertEquals(
-            ['AGENTS', 'BOOTSTRAP', 'HEARTBEAT', 'IDENTITY', 'MEMORY', 'SOUL', 'TOOLS', 'USER'],
+            ['IDENTITY', 'INSTRUCTIONS', 'MEMORY'],
             $types
         );
     }
 
     public function test_update_identity_file(): void
     {
-        $newContent = "# Updated Soul\n\nBe creative and bold.";
+        $newContent = "# Updated Instructions\n\nBe creative and bold.";
 
-        $response = $this->actingAs($this->user)->putJson("/api/agents/{$this->agent->id}/identity/SOUL", [
+        $response = $this->actingAs($this->user)->putJson("/api/agents/{$this->agent->id}/identity/INSTRUCTIONS", [
             'content' => $newContent,
         ]);
 
@@ -135,8 +134,8 @@ class AgentControllerTest extends TestCase
 
         // Verify persistence via identity endpoint
         $verifyResponse = $this->actingAs($this->user)->getJson("/api/agents/{$this->agent->id}/identity");
-        $soulFile = collect($verifyResponse->json())->firstWhere('type', 'SOUL');
-        $this->assertStringContainsString('creative and bold', $soulFile['content']);
+        $instructionsFile = collect($verifyResponse->json())->firstWhere('type', 'INSTRUCTIONS');
+        $this->assertStringContainsString('creative and bold', $instructionsFile['content']);
     }
 
     public function test_update_agent_status(): void

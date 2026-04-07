@@ -197,7 +197,7 @@
             Identity Files
           </label>
           <p class="text-xs text-neutral-500 dark:text-neutral-400">
-            Configure the agent's personality, behavior, and context. IDENTITY and SOUL are required.
+            Configure the agent's personality, behavior, and context. IDENTITY is required.
           </p>
         </div>
 
@@ -343,24 +343,14 @@ const availableBrains = ref<Array<{
 // Identity Files
 const identityFileTypes = [
   { type: 'IDENTITY', required: true },
-  { type: 'SOUL', required: true },
-  { type: 'USER', required: false },
-  { type: 'AGENTS', required: false },
-  { type: 'TOOLS', required: false },
-  { type: 'HEARTBEAT', required: false },
-  { type: 'BOOTSTRAP', required: false },
+  { type: 'INSTRUCTIONS', required: false },
   { type: 'MEMORY', required: false },
 ]
 
 const activeIdentityFile = ref('IDENTITY')
 const identityContent = ref<Record<string, string>>({
   IDENTITY: '',
-  SOUL: '',
-  USER: '',
-  AGENTS: '',
-  TOOLS: '',
-  HEARTBEAT: '',
-  BOOTSTRAP: '',
+  INSTRUCTIONS: '',
   MEMORY: '',
 })
 
@@ -396,12 +386,7 @@ watch(isOpen, (open) => {
     activeIdentityFile.value = 'IDENTITY'
     identityContent.value = {
       IDENTITY: '',
-      SOUL: '',
-      USER: '',
-      AGENTS: '',
-      TOOLS: '',
-      HEARTBEAT: '',
-      BOOTSTRAP: '',
+      INSTRUCTIONS: '',
       MEMORY: '',
     }
   } else {
@@ -457,8 +442,7 @@ const canSpawn = computed(() => {
   return (
     agentName.value.trim() &&
     selectedBrain.value &&
-    identityContent.value.IDENTITY?.trim() &&
-    identityContent.value.SOUL?.trim()
+    identityContent.value.IDENTITY?.trim()
   )
 })
 
@@ -475,83 +459,62 @@ const fillWithTemplate = (type: string) => {
 
 const getFileDescription = (type: string): string => {
   const descriptions: Record<string, string> = {
-    IDENTITY: 'Basic info about the agent: name, emoji, theme, and vibe',
-    SOUL: 'Core persona, values, behavior guidelines, and communication style',
-    USER: 'Information about users this agent works with and their preferences',
-    AGENTS: 'Knowledge of other agents in the system and how to collaborate',
-    TOOLS: 'Available tools, APIs, and how to use them effectively',
-    HEARTBEAT: 'Periodic check-in and status update instructions',
-    BOOTSTRAP: 'Initialization sequence and startup tasks',
-    MEMORY: 'Long-term memory, learnings, and context across conversations',
+    IDENTITY: 'Personality, tone, values, and communication style',
+    INSTRUCTIONS: 'Operating manual, user context, agent network, tool guidelines',
+    MEMORY: 'Core knowledge (always in prompt) + index to topic/peer files',
   }
   return descriptions[type] || ''
 }
 
 const getFilePlaceholder = (type: string): string => {
   const placeholders: Record<string, string> = {
-    IDENTITY: `# Agent Identity
+    IDENTITY: `# Identity
 
 - **Name**: ${agentName.value || 'Agent Name'}
-- **Template**: ${selectedTemplate.value}
+- **Type**: ${selectedTemplate.value}
 - **Emoji**: 🤖
-- **Theme**: Professional assistant
-- **Vibe**: Helpful and efficient`,
-    SOUL: `# Core Values
+
+## Personality
+
+Helpful, focused, and efficient.
+
+## Core Values
 
 - Be helpful and accurate
 - Communicate clearly
 - Respect user privacy
 - Admit uncertainty when unsure
 
-# Behavior Guidelines
+## Communication Style
 
-- Respond promptly and thoroughly
-- Ask clarifying questions when needed
-- Stay focused on the task at hand`,
-    USER: `# User Context
+- Use clear, professional language
+- Be direct without being curt`,
+    INSTRUCTIONS: `# Operating Instructions
 
-## Preferences
-(Document user preferences as they are discovered)
+## User Context
 
-## Working Style
-(Note how users prefer to interact)`,
-    AGENTS: `# Agent Network
+Information about users you work with.
 
-## Known Agents
-(Document other agents and their specialties)
+## Agent Network
 
-## Collaboration Notes
-(How to work effectively with other agents)`,
-    TOOLS: `# Available Tools
+Other agents in the workspace and how to collaborate.
 
-## Internal Tools
-(Company systems and APIs)
+## Tool Guidelines
 
-## External Integrations
-(Third-party services)`,
-    HEARTBEAT: `# Heartbeat Configuration
+Best practices for available tools and integrations.`,
+    MEMORY: `# Memory
 
-## Check Interval
-Every 15 minutes when active
+## Core Knowledge
 
-## Status Checks
-- Verify pending tasks
-- Check for new messages
-- Update availability status`,
-    BOOTSTRAP: `# Bootstrap Sequence
+(Important persistent facts you should always remember)
 
-## Startup Tasks
-1. Load identity configuration
-2. Review pending tasks
-3. Check message queue
-4. Update status to online`,
-    MEMORY: `# Long-term Memory
+## People
 
-## Key Learnings
-(Auto-updated based on interactions)
+(Notes about users and other agents you interact with)
 
-## User Preferences
-(Discovered preferences and working styles)`,
+## Topics
+
+(References to detailed knowledge files)`,
   }
   return placeholders[type] || ''
 }

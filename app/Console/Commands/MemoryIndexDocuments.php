@@ -63,17 +63,33 @@ class MemoryIndexDocuments extends Command
     private function resolveCollection(Document $document): string
     {
         $parent = $document->parent;
+        $ancestry = [];
 
         while ($parent) {
             if ($parent->is_folder) {
-                if ($parent->title === 'memory') {
-                    return 'memory';
-                }
-                if ($parent->title === 'identity') {
-                    return 'identity';
-                }
+                $ancestry[] = $parent->title;
             }
             $parent = $parent->parent;
+        }
+
+        if (in_array('identity', $ancestry)) {
+            return 'identity';
+        }
+
+        if (in_array('topics', $ancestry)) {
+            return 'topic';
+        }
+
+        if (in_array('logs', $ancestry)) {
+            return 'memory';
+        }
+
+        if (in_array('peers', $ancestry)) {
+            return 'peer';
+        }
+
+        if (in_array('memory', $ancestry)) {
+            return 'memory';
         }
 
         return 'general';

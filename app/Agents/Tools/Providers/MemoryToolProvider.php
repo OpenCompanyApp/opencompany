@@ -2,6 +2,8 @@
 
 namespace App\Agents\Tools\Providers;
 
+use App\Agents\Tools\Memory\EditMemory;
+use App\Agents\Tools\Memory\ForgetMemory;
 use App\Agents\Tools\Memory\RecallMemory;
 use App\Agents\Tools\Memory\SaveMemory;
 use App\Models\User;
@@ -19,7 +21,7 @@ class MemoryToolProvider implements BuiltInToolProvider
     public function groupMeta(): array
     {
         return [
-            'label' => 'save, recall',
+            'label' => 'save, recall, edit, forget',
             'description' => 'Long-term agent memory',
         ];
     }
@@ -46,6 +48,20 @@ class MemoryToolProvider implements BuiltInToolProvider
                 'description' => 'Search long-term memory for past information and learnings.',
                 'icon' => 'ph:brain',
             ],
+            'edit_memory' => [
+                'class' => EditMemory::class,
+                'type' => 'write',
+                'name' => 'Edit Memory',
+                'description' => 'Edit an existing memory file (topic or peer).',
+                'icon' => 'ph:brain',
+            ],
+            'forget_memory' => [
+                'class' => ForgetMemory::class,
+                'type' => 'write',
+                'name' => 'Forget Memory',
+                'description' => 'Delete a memory file (topic or peer).',
+                'icon' => 'ph:brain',
+            ],
         ];
     }
 
@@ -54,6 +70,8 @@ class MemoryToolProvider implements BuiltInToolProvider
         return match ($class) {
             SaveMemory::class => new SaveMemory($agent, app(AgentDocumentService::class), app(DocumentIndexingService::class), app(MemoryScopeGuard::class), $context['channel_id'] ?? null),
             RecallMemory::class => new RecallMemory($agent, app(DocumentIndexingService::class), app(AgentDocumentService::class), app(MemoryScopeGuard::class), $context['channel_id'] ?? null),
+            EditMemory::class => new EditMemory($agent, app(AgentDocumentService::class), app(DocumentIndexingService::class), app(MemoryScopeGuard::class), $context['channel_id'] ?? null),
+            ForgetMemory::class => new ForgetMemory($agent, app(AgentDocumentService::class), app(DocumentIndexingService::class), app(MemoryScopeGuard::class), $context['channel_id'] ?? null),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),
         };
     }

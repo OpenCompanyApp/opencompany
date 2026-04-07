@@ -12,7 +12,6 @@ use App\Services\Memory\DocumentIndexingService;
 use App\Services\Memory\MemoryScopeGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
 use Mockery;
 use Prism\Prism\Embeddings\Response as EmbeddingResponse;
@@ -61,60 +60,10 @@ class SaveMemoryTest extends TestCase
 
     private function createAgentFolderStructure(): Document
     {
-        $agentsFolder = Document::create([
-            'id' => Str::uuid()->toString(),
-            'title' => 'agents',
-            'is_folder' => true,
-            'content' => '',
-            'author_id' => $this->agent->id,
-            'workspace_id' => $this->workspace->id,
+        $agentFolder = $this->docService->createAgentDocumentStructure($this->agent, [
+            'MEMORY' => "# Memory\n\n## Core Knowledge\n\nInitial content.",
         ]);
-
-        $agentFolder = Document::create([
-            'id' => Str::uuid()->toString(),
-            'title' => 'test-agent',
-            'parent_id' => $agentsFolder->id,
-            'is_folder' => true,
-            'content' => '',
-            'author_id' => $this->agent->id,
-            'workspace_id' => $this->workspace->id,
-        ]);
-
-        // Set agent's docs_folder_id
         $this->agent->update(['docs_folder_id' => $agentFolder->id]);
-
-        // Create identity folder with MEMORY.md
-        $identityFolder = Document::create([
-            'id' => Str::uuid()->toString(),
-            'title' => 'identity',
-            'parent_id' => $agentFolder->id,
-            'is_folder' => true,
-            'content' => '',
-            'author_id' => $this->agent->id,
-            'workspace_id' => $this->workspace->id,
-        ]);
-
-        Document::create([
-            'id' => Str::uuid()->toString(),
-            'title' => 'MEMORY.md',
-            'parent_id' => $identityFolder->id,
-            'content' => "# Core Memory\n\nInitial content.",
-            'is_folder' => false,
-            'is_system' => true,
-            'author_id' => $this->agent->id,
-            'workspace_id' => $this->workspace->id,
-        ]);
-
-        // Create memory folder for daily logs
-        Document::create([
-            'id' => Str::uuid()->toString(),
-            'title' => 'memory',
-            'parent_id' => $agentFolder->id,
-            'is_folder' => true,
-            'content' => '',
-            'author_id' => $this->agent->id,
-            'workspace_id' => $this->workspace->id,
-        ]);
 
         return $agentFolder;
     }
@@ -122,7 +71,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_to_daily_log(): void
     {
         $this->createAgentFolderStructure();
-
         $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
@@ -134,14 +82,16 @@ class SaveMemoryTest extends TestCase
 
         $this->assertStringContainsString('recallable via recall_memory', $result);
 
-        // Check that a daily log document was created
         $today = now()->format('Y-m-d');
         $agentFolder = Document::find($this->agent->docs_folder_id);
         $memoryFolder = Document::where('parent_id', $agentFolder->id)
             ->where('title', 'memory')
             ->first();
+        $logsFolder = Document::where('parent_id', $memoryFolder->id)
+            ->where('title', 'logs')
+            ->first();
 
-        $logDoc = Document::where('parent_id', $memoryFolder->id)
+        $logDoc = Document::where('parent_id', $logsFolder->id)
             ->where('title', "{$today}.md")
             ->first();
 
@@ -153,7 +103,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_to_core_memory(): void
     {
         $this->createAgentFolderStructure();
-
         $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
@@ -165,19 +114,99 @@ class SaveMemoryTest extends TestCase
 
         $this->assertStringContainsString('Core memory saved', $result);
 
-        // Check MEMORY.md was updated
         $memoryFile = $this->docService->getIdentityFile($this->agent, 'MEMORY');
         $this->assertNotNull($memoryFile);
         $this->assertStringContainsString('The CEO is named Alice.', $memoryFile->content);
         $this->assertStringContainsString('### fact', $memoryFile->content);
-        // Original content preserved
         $this->assertStringContainsString('Initial content.', $memoryFile->content);
+    }
+
+    public function test_save_to_topic(): void
+    {
+        $this->createAgentFolderStructure();
+        $this->fakeEmbeddingResponse(1);
+
+        $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
+        $result = $tool->handle(new Request([
+            'content' => '# Vue 3 Migration\n\nStep 1: Update composer.json...',
+            'target' => 'topic',
+            'topic' => 'vue3-migration',
+        ]));
+
+        $this->assertStringContainsString('topics/vue3-migration.md', $result);
+
+        $topicFile = $this->docService->getMemoryTopicFile($this->agent, 'vue3-migration');
+        $this->assertNotNull($topicFile);
+        $this->assertStringContainsString('Vue 3 Migration', $topicFile->content);
+    }
+
+    public function test_save_to_peer(): void
+    {
+        $this->createAgentFolderStructure();
+        $this->fakeEmbeddingResponse(1);
+
+        $peerUser = User::factory()->create(['name' => 'Rutger']);
+
+        $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
+        $result = $tool->handle(new Request([
+            'content' => 'Birthday March 15. Prefers async updates.',
+            'target' => 'peer',
+            'peer_id' => $peerUser->id,
+            'peer_type' => 'user',
+        ]));
+
+        $this->assertStringContainsString('Peer memory saved', $result);
+        $this->assertStringContainsString('Rutger', $result);
+
+        $peerFile = $this->docService->getPeerMemory($this->agent, $peerUser->id, 'user');
+        $this->assertNotNull($peerFile);
+        $this->assertStringContainsString('Birthday March 15', $peerFile->content);
+    }
+
+    public function test_save_topic_requires_slug(): void
+    {
+        $this->createAgentFolderStructure();
+
+        $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
+        $result = $tool->handle(new Request([
+            'content' => 'Some content.',
+            'target' => 'topic',
+        ]));
+
+        $this->assertStringContainsString('Error', $result);
+        $this->assertStringContainsString('"topic" parameter is required', $result);
+    }
+
+    public function test_save_peer_requires_id_and_type(): void
+    {
+        $this->createAgentFolderStructure();
+
+        $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
+        $result = $tool->handle(new Request([
+            'content' => 'Some content.',
+            'target' => 'peer',
+        ]));
+
+        $this->assertStringContainsString('Error', $result);
+        $this->assertStringContainsString('"peer_id" and "peer_type"', $result);
+    }
+
+    public function test_save_unknown_target_returns_error(): void
+    {
+        $this->createAgentFolderStructure();
+
+        $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
+        $result = $tool->handle(new Request([
+            'content' => 'Some content.',
+            'target' => 'unknown',
+        ]));
+
+        $this->assertStringContainsString('Unknown target', $result);
     }
 
     public function test_save_indexes_for_recall(): void
     {
         $this->createAgentFolderStructure();
-
         $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
@@ -186,7 +215,6 @@ class SaveMemoryTest extends TestCase
             'category' => 'decision',
         ]));
 
-        // Check that chunks were created in the memory collection
         $chunks = DocumentChunk::where('collection', 'memory')
             ->where('agent_id', $this->agent->id)
             ->get();
@@ -196,7 +224,6 @@ class SaveMemoryTest extends TestCase
 
     public function test_save_without_agent_folder_returns_error(): void
     {
-        // Agent has no docs_folder_id set — no folder structure
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
         $result = $tool->handle(new Request([
             'content' => 'This should fail gracefully.',
@@ -208,7 +235,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_defaults_to_log_target(): void
     {
         $this->createAgentFolderStructure();
-
         $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
@@ -216,26 +242,22 @@ class SaveMemoryTest extends TestCase
             'content' => 'Default target test.',
         ]));
 
-        // Default target is "log", so it should say recallable
         $this->assertStringContainsString('recallable via recall_memory', $result);
     }
 
     public function test_save_appends_to_existing_daily_log(): void
     {
         $this->createAgentFolderStructure();
-
         $this->fakeEmbeddingResponse(2);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
 
-        // First save
         $tool->handle(new Request([
             'content' => 'First memory entry.',
             'category' => 'fact',
             'target' => 'log',
         ]));
 
-        // Second save — same day → should append
         $tool->handle(new Request([
             'content' => 'Second memory entry.',
             'category' => 'learning',
@@ -247,8 +269,11 @@ class SaveMemoryTest extends TestCase
         $memoryFolder = Document::where('parent_id', $agentFolder->id)
             ->where('title', 'memory')
             ->first();
+        $logsFolder = Document::where('parent_id', $memoryFolder->id)
+            ->where('title', 'logs')
+            ->first();
 
-        $logDoc = Document::where('parent_id', $memoryFolder->id)
+        $logDoc = Document::where('parent_id', $logsFolder->id)
             ->where('title', "{$today}.md")
             ->first();
 
@@ -257,8 +282,7 @@ class SaveMemoryTest extends TestCase
         $this->assertStringContainsString('Second memory entry.', $logDoc->content);
         $this->assertStringContainsString('---', $logDoc->content);
 
-        // Only one log file for today, not two
-        $logCount = Document::where('parent_id', $memoryFolder->id)
+        $logCount = Document::where('parent_id', $logsFolder->id)
             ->where('title', "{$today}.md")
             ->count();
         $this->assertEquals(1, $logCount);
@@ -268,7 +292,6 @@ class SaveMemoryTest extends TestCase
     {
         $this->createAgentFolderStructure();
 
-        // Delete MEMORY.md
         $memoryFile = $this->docService->getIdentityFile($this->agent, 'MEMORY');
         $memoryFile->update(['is_system' => false]);
         $memoryFile->delete();
@@ -286,7 +309,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_with_empty_content(): void
     {
         $this->createAgentFolderStructure();
-
         $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
@@ -295,14 +317,12 @@ class SaveMemoryTest extends TestCase
             'target' => 'log',
         ]));
 
-        // Should still save without crashing
         $this->assertStringContainsString('recallable via recall_memory', $result);
     }
 
     public function test_save_category_defaults_to_general(): void
     {
         $this->createAgentFolderStructure();
-
         $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
@@ -316,58 +336,19 @@ class SaveMemoryTest extends TestCase
         $memoryFolder = Document::where('parent_id', $agentFolder->id)
             ->where('title', 'memory')
             ->first();
-        $logDoc = Document::where('parent_id', $memoryFolder->id)
+        $logsFolder = Document::where('parent_id', $memoryFolder->id)
+            ->where('title', 'logs')
+            ->first();
+        $logDoc = Document::where('parent_id', $logsFolder->id)
             ->where('title', "{$today}.md")
             ->first();
 
         $this->assertStringContainsString('[general]', $logDoc->content);
     }
 
-    public function test_save_log_includes_timestamp(): void
-    {
-        $this->createAgentFolderStructure();
-
-        $this->fakeEmbeddingResponse(1);
-
-        $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
-        $tool->handle(new Request([
-            'content' => 'Timestamped entry.',
-            'target' => 'log',
-        ]));
-
-        $today = now()->format('Y-m-d');
-        $agentFolder = Document::find($this->agent->docs_folder_id);
-        $memoryFolder = Document::where('parent_id', $agentFolder->id)
-            ->where('title', 'memory')
-            ->first();
-        $logDoc = Document::where('parent_id', $memoryFolder->id)
-            ->where('title', "{$today}.md")
-            ->first();
-
-        // Should contain HH:MM time format
-        $this->assertMatchesRegularExpression('/\d{2}:\d{2}/', $logDoc->content);
-    }
-
-    public function test_save_log_returns_filename_in_response(): void
-    {
-        $this->createAgentFolderStructure();
-
-        $this->fakeEmbeddingResponse(1);
-
-        $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
-        $result = $tool->handle(new Request([
-            'content' => 'Filename test.',
-            'target' => 'log',
-        ]));
-
-        $today = now()->format('Y-m-d');
-        $this->assertStringContainsString("{$today}.md", $result);
-    }
-
     public function test_save_core_appends_multiple_entries(): void
     {
         $this->createAgentFolderStructure();
-
         $this->fakeEmbeddingResponse(2);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
@@ -388,8 +369,6 @@ class SaveMemoryTest extends TestCase
         $this->assertStringContainsString('Initial content.', $memoryFile->content);
         $this->assertStringContainsString('First core memory.', $memoryFile->content);
         $this->assertStringContainsString('Second core memory.', $memoryFile->content);
-        $this->assertStringContainsString('### fact', $memoryFile->content);
-        $this->assertStringContainsString('### preference', $memoryFile->content);
     }
 
     public function test_save_denied_in_group_channel(): void

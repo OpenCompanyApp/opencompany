@@ -17,7 +17,7 @@ class ReadAgentIdentityFile implements Tool
 
     public function description(): string
     {
-        return 'Read an identity file (IDENTITY, SOUL, USER, AGENTS, TOOLS, HEARTBEAT, BOOTSTRAP, or MEMORY) for a specific agent.';
+        return 'Read an identity file (IDENTITY, INSTRUCTIONS, or MEMORY) for a specific agent.';
     }
 
     public function handle(Request $request): string
@@ -27,7 +27,7 @@ class ReadAgentIdentityFile implements Tool
             $fileType = $request['fileType'] ?? null;
 
             if (!$agentId || !$fileType) {
-                return 'Required: agentId, fileType (e.g., IDENTITY, SOUL, USER, AGENTS, TOOLS, HEARTBEAT, BOOTSTRAP, MEMORY).';
+                return 'Required: agentId, fileType (IDENTITY, INSTRUCTIONS, or MEMORY).';
             }
 
             $target = User::where('type', 'agent')->where('workspace_id', $this->agent->workspace_id)->find($agentId);
@@ -56,7 +56,7 @@ class ReadAgentIdentityFile implements Tool
                 ->required(),
             'fileType' => $schema
                 ->string()
-                ->description('Identity file type: IDENTITY, SOUL, USER, AGENTS, TOOLS, HEARTBEAT, BOOTSTRAP, or MEMORY.')
+                ->description('Identity file type: IDENTITY, INSTRUCTIONS, or MEMORY.')
                 ->required(),
         ];
     }

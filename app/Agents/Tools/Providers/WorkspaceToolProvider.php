@@ -132,7 +132,7 @@ class WorkspaceToolProvider implements BuiltInToolProvider
                 'class' => ReadAgentIdentityFile::class,
                 'type' => 'read',
                 'name' => 'Read Agent Identity File',
-                'description' => 'Read an agent\'s identity file (IDENTITY, SOUL, TOOLS, etc.).',
+                'description' => 'Read an agent\'s identity file (IDENTITY, INSTRUCTIONS, or MEMORY).',
                 'icon' => 'ph:file-text',
             ],
             'update_agent_identity_file' => [

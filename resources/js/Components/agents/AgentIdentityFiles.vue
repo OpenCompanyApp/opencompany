@@ -162,55 +162,25 @@ const emit = defineEmits<{
 const FILE_META: Record<string, { label: string; description: string; icon: string; placeholder?: string }> = {
   IDENTITY: {
     label: 'Identity',
-    description: 'Name, type, emoji, and appearance',
+    description: 'Personality, tone, values, and communication style',
     icon: 'ph:identification-card',
-    placeholder: '# Agent Identity\n\n- **Name**: ...\n- **Type**: ...\n- **Emoji**: ...\n- **Vibe**: ...',
+    placeholder: '# Identity\n\n- **Name**: ...\n- **Type**: ...\n- **Emoji**: ...\n\n## Personality\n\nHelpful, focused, and efficient.\n\n## Core Values\n\n- Be helpful and accurate\n- Communicate clearly\n\n## Communication Style\n\n- Use clear, professional language',
   },
-  SOUL: {
-    label: 'Personality',
-    description: 'Values, behavior guidelines, communication style',
-    icon: 'ph:heart',
-    placeholder: '# Core Values\n\n- Be helpful and accurate\n- Communicate clearly\n\n# Communication Style\n\n- Use clear, professional language',
-  },
-  USER: {
-    label: 'User Context',
-    description: 'Preferences and working style of the user',
-    icon: 'ph:user',
-    placeholder: '# User Context\n\n## Preferences\n(Document user preferences)\n\n## Working Style\n(Note how users prefer to interact)',
-  },
-  AGENTS: {
+  INSTRUCTIONS: {
     label: 'Instructions',
-    description: 'Operating manual, task guidelines, domain knowledge',
+    description: 'Operating manual, tools, user context, domain knowledge',
     icon: 'ph:book-open-text',
-    placeholder: '# Instructions\n\n## Primary Responsibilities\n- ...\n\n## Workflow\n1. Understand the task\n2. Execute carefully\n3. Report results',
-  },
-  TOOLS: {
-    label: 'Tool Notes',
-    description: 'Configuration and usage notes for tools',
-    icon: 'ph:wrench',
-    placeholder: '# Available Tools\n\n## Usage Guidelines\n(Best practices for tool usage)',
+    placeholder: '# Operating Instructions\n\n## User Context\n\n## Agent Network\n\n## Tool Guidelines\n',
   },
   MEMORY: {
-    label: 'Long-term Memory',
-    description: 'Persistent learnings and context',
+    label: 'Memory',
+    description: 'Core knowledge (always in prompt) + index to topic/peer files',
     icon: 'ph:brain',
-    placeholder: '# Long-term Memory\n\n## Key Learnings\n(Auto-updated based on interactions)\n\n## Important Context\n(Critical information to remember)',
-  },
-  HEARTBEAT: {
-    label: 'Heartbeat',
-    description: 'Periodic check-in and status update rules',
-    icon: 'ph:heartbeat',
-    placeholder: '# Heartbeat Configuration\n\n## Status Checks\n- Verify pending tasks\n- Check for new messages\n- Update availability status',
-  },
-  BOOTSTRAP: {
-    label: 'Bootstrap',
-    description: 'Initialization sequence and startup tasks',
-    icon: 'ph:rocket-launch',
-    placeholder: '# Bootstrap Sequence\n\n## Startup Tasks\n1. Load identity configuration\n2. Review pending tasks\n3. Update status to online',
+    placeholder: '# Memory\n\n## Core Knowledge\n\n(Important persistent facts)\n\n## People\n\n(References to peer memory files)\n\n## Topics\n\n(References to knowledge files)',
   },
 }
 
-const FILE_ORDER = ['IDENTITY', 'SOUL', 'USER', 'AGENTS', 'TOOLS', 'MEMORY', 'HEARTBEAT', 'BOOTSTRAP']
+const FILE_ORDER = ['IDENTITY', 'INSTRUCTIONS', 'MEMORY']
 
 const activeFile = ref<string | null>(null)
 const showPreview = ref(false)
