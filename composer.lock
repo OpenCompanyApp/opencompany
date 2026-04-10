@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5ae411008f59c8b4bd43daa3ca679e65",
+    "content-hash": "fa3ced4b89db8bac75102974fa2e74c0",
     "packages": [
         {
             "name": "brick/math",
@@ -3508,7 +3508,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/celestial",
+                "url": "../integrations/packages/celestial",
                 "reference": "fab344d2b1985f29404ab219e22a2f2bbf80d7de"
             },
             "require": {
@@ -3557,7 +3557,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/clickup",
+                "url": "../integrations/packages/clickup",
                 "reference": "df15d97daf5d043302296d6fbfc0cedfee53b9ef"
             },
             "require": {
@@ -3606,7 +3606,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/coingecko",
+                "url": "../integrations/packages/coingecko",
                 "reference": "bd41637c8207e85bf9083866288d6c98bddf42b0"
             },
             "require": {
@@ -3655,11 +3655,11 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/core",
-                "reference": "db0fbae3999b421657a53ca3707568ebfabe804d"
+                "url": "../integrations/core",
+                "reference": "b47a39158521ee333af52d484bfbdd6ad70bc250"
             },
             "require": {
-                "illuminate/support": "^11.0 || ^12.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
                 "php": "^8.2"
             },
             "type": "library",
@@ -3700,7 +3700,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/exchangerate",
+                "url": "../integrations/packages/exchangerate",
                 "reference": "249dd5bc026d55919c87cdcb8cdad697c3008c5f"
             },
             "require": {
@@ -3749,7 +3749,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/google",
+                "url": "../integrations/packages/google",
                 "reference": "35ba0f0f6968b1158cc8cc2f8ded8d9b5cc874be"
             },
             "require": {
@@ -3798,7 +3798,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/mermaid",
+                "url": "../integrations/packages/mermaid",
                 "reference": "70ed2b9614499968f7f51b7106a3203cbcc66b03"
             },
             "require": {
@@ -3848,7 +3848,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/plantuml",
+                "url": "../integrations/packages/plantuml",
                 "reference": "e570060c35e911032c0e99a22a7da93dfc97f625"
             },
             "require": {
@@ -3898,7 +3898,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/plausible",
+                "url": "../integrations/packages/plausible",
                 "reference": "95251ca14079e2a0abcb132ce27e87d530d5d4b9"
             },
             "require": {
@@ -3946,7 +3946,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/ticktick",
+                "url": "../integrations/packages/ticktick",
                 "reference": "df47a42632f14836e532d3033423580496e91de6"
             },
             "require": {
@@ -3995,7 +3995,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/trustmrr",
+                "url": "../integrations/packages/trustmrr",
                 "reference": "f1b1df1590240398d71c64ca39151f5bb55fa241"
             },
             "require": {
@@ -4045,7 +4045,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/typst",
+                "url": "../integrations/packages/typst",
                 "reference": "8ce08da4f5085ca33b80c62705d7f2ed829b4eec"
             },
             "require": {
@@ -4095,7 +4095,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/vegalite",
+                "url": "../integrations/packages/vegalite",
                 "reference": "4a0566b220d25853522ee0eb1e9ce9fe4a6b5202"
             },
             "require": {
@@ -4132,7 +4132,7 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "tmp/integrations/worldbank",
+                "url": "../integrations/packages/worldbank",
                 "reference": "aceab01ea12a9e3fa22c0d545b5f2240d1239687"
             },
             "require": {
@@ -4182,11 +4182,11 @@
             "dist": {
                 "type": "path",
                 "url": "tmp/prism-relay",
-                "reference": "0126bda0e558679c90cba4455bce300837839ea8"
+                "reference": "9c3e22d6eaac5f5f13aebd7e7207ced54036f1e6"
             },
             "require": {
                 "php": "^8.2",
-                "prism-php/prism": "^0.99 || ^1.0",
+                "prism-php/prism": "^0.99 || ^0.100 || ^1.0",
                 "psr/log": "^3.0"
             },
             "type": "library",
@@ -4201,6 +4201,11 @@
                 "psr-4": {
                     "OpenCompany\\PrismRelay\\": "src/"
                 }
+            },
+            "scripts": {
+                "sync-registry": [
+                    "node scripts/sync-registry.mjs"
+                ]
             },
             "license": [
                 "MIT"
