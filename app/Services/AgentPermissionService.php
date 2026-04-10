@@ -8,7 +8,6 @@ use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Models\WorkspaceFile;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class AgentPermissionService
 {
@@ -28,9 +27,7 @@ class AgentPermissionService
         'contact_agent',
     ];
 
-    public function __construct(
-        private ToolProviderRegistry $providerRegistry,
-    ) {}
+    public function __construct() {}
     /**
      * Resolve the final permission for a tool, combining DB permissions with behavior mode.
      *
@@ -156,7 +153,7 @@ class AgentPermissionService
 
         // Build full list of all integration app names
         $allApps = \App\Agents\Tools\ToolRegistry::INTEGRATION_APPS;
-        foreach ($this->providerRegistry->all() as $provider) {
+        foreach ($this->integrationProviders() as $provider) {
             if ($provider->isIntegration() && !in_array($provider->appName(), $allApps)) {
                 $allApps[] = $provider->appName();
             }
@@ -401,5 +398,19 @@ class AgentPermissionService
             'supervised' => $toolType === 'write',
             default => false,
         };
+    }
+
+    /**
+     * @return array<int, object>
+     */
+    private function integrationProviders(): array
+    {
+        $registryClass = \OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class;
+
+        if (! class_exists($registryClass) || ! app()->bound($registryClass)) {
+            return [];
+        }
+
+        return app($registryClass)->all();
     }
 }

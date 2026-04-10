@@ -3,17 +3,15 @@
 namespace App\Services\Memory;
 
 use App\Agents\OpenCompanyAgent;
-use App\Agents\Providers\DynamicProviderResolver;
 use App\Models\ConversationSummary;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use OpenCompany\PrismRelay\Bridge\SystemPromptBag;
 
 class MemoryFlushService
 {
     public function __construct(
-        private ConversationCompactionService $compactionService,
-        private ModelContextRegistry $contextRegistry,
-        private DynamicProviderResolver $providerResolver,
+        private ContextBudget $contextBudget,
     ) {}
 
     /**
@@ -41,40 +39,13 @@ class MemoryFlushService
             return false;
         }
 
-        // Resolve model context window
         try {
-            $resolved = $this->providerResolver->resolve($agent);
-            $contextWindow = $this->contextRegistry->getContextWindow($resolved['model']);
+            $budget = $this->contextBudget->snapshotForAgent($agent, $messages, $systemPrompt);
         } catch (\Throwable) {
             return false;
         }
 
-        // Calculate available context (same logic as compaction)
-        $systemTokens = $systemPrompt
-            ? $this->compactionService->estimateTokenCount($systemPrompt)
-            : config('memory.compaction.system_prompt_fallback_reserve', 10_000);
-        $outputReserve = config('memory.compaction.output_reserve', 4_096);
-        $available = $contextWindow - $systemTokens - $outputReserve;
-
-        if ($available <= 0) {
-            return false;
-        }
-
-        // Estimate message tokens with safety margin
-        $messageTokens = 0;
-        foreach ($messages as $msg) {
-            $content = $msg->content ?? '';
-            $messageTokens += $this->compactionService->estimateTokenCount($content);
-        }
-
-        $safetyMargin = config('memory.compaction.safety_margin', 1.2);
-        $adjustedTokens = (int) ($messageTokens * $safetyMargin);
-        $compactionThreshold = (int) ($available * config('memory.compaction.threshold_ratio', 0.75));
-        $softThresholdTokens = config('memory.memory_flush.soft_threshold_tokens', 4000);
-        $softZoneStart = $compactionThreshold - $softThresholdTokens;
-
-        // Flush when context is within the soft zone (approaching compaction but not yet exceeding it)
-        return $adjustedTokens > $softZoneStart && $adjustedTokens <= $compactionThreshold;
+        return (bool) $budget['is_above_flush'] && ! (bool) $budget['is_above_compaction'];
     }
 
     /**
@@ -87,6 +58,9 @@ class MemoryFlushService
     public function flush(string $channelId, User $agent): void
     {
         $agentInstance = OpenCompanyAgent::for($agent, $channelId);
+        app()->instance(SystemPromptBag::class, new SystemPromptBag(
+            $agentInstance->systemPrompts()
+        ));
         $agentInstance->prompt($this->buildFlushPrompt());
 
         // Increment flush count (create summary record if needed)

@@ -16,6 +16,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use OpenCompany\PrismRelay\Bridge\SystemPromptBag;
 
 class ExecuteAgentTaskJob implements ShouldQueue
 {
@@ -64,6 +65,9 @@ class ExecuteAgentTaskJob implements ShouldQueue
 
             $agentInstance = OpenCompanyAgent::for($agent, $channelId, $this->task->id);
             $analyzeStep->start();
+            app()->instance(SystemPromptBag::class, new SystemPromptBag(
+                $agentInstance->systemPrompts()
+            ));
             $response = $agentInstance->prompt($prompt);
             $analyzeStep->complete();
 

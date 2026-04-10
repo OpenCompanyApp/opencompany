@@ -5,18 +5,16 @@ namespace App\Agents\Providers;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
-use Laravel\Ai\Gateway\Prism\PrismGateway;
 use Laravel\Ai\Gateway\TextGenerationOptions;
 use Laravel\Ai\Providers\Provider;
+use OpenCompany\PrismRelay\Bridge\CachingPrismGateway;
 
 /**
- * Custom PrismGateway that routes Codex requests to the registered 'codex' Prism provider.
+ * Custom gateway that routes Codex requests to the registered 'codex' Prism provider.
  *
- * The Codex provider extends OpenAI and uses the same Responses API format, but routes
- * requests through chatgpt.com/backend-api/codex/ using OAuth tokens from a ChatGPT
- * Pro/Plus subscription — $0 token costs.
+ * Extends CachingPrismGateway for prompt cache support.
  */
-class CodexPrismGateway extends PrismGateway
+class CodexPrismGateway extends CachingPrismGateway
 {
     public function __construct(Dispatcher $events)
     {

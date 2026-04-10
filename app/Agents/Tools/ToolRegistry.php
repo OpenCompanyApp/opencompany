@@ -7,7 +7,6 @@ use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\AgentPermissionService;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class ToolRegistry
 {
@@ -47,7 +46,6 @@ class ToolRegistry
 
     public function __construct(
         private AgentPermissionService $permissionService,
-        private ToolProviderRegistry $providerRegistry,
     ) {}
 
     /**
@@ -94,7 +92,7 @@ class ToolRegistry
             }
 
             // External integration providers
-            foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($this->integrationProviders() as $provider) {
                 foreach ($provider->tools() as $slug => $meta) {
                     $this->effectiveToolMap[$slug] = $meta;
                 }
@@ -121,7 +119,7 @@ class ToolRegistry
             }
 
             // External integration providers
-            foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($this->integrationProviders() as $provider) {
                 $meta = $provider->appMeta();
                 $this->effectiveAppGroups[$provider->appName()] = [
                     'tools' => array_keys($provider->tools()),
@@ -139,7 +137,7 @@ class ToolRegistry
     {
         if ($this->effectiveIntegrationApps === null) {
             $this->effectiveIntegrationApps = self::INTEGRATION_APPS;
-            foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($this->integrationProviders() as $provider) {
                 if ($provider->isIntegration() && ! in_array($provider->appName(), $this->effectiveIntegrationApps)) {
                     $this->effectiveIntegrationApps[] = $provider->appName();
                 }
@@ -161,7 +159,7 @@ class ToolRegistry
             }
 
             // External integration providers
-            foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($this->integrationProviders() as $provider) {
                 $meta = $provider->appMeta();
                 $this->effectiveAppIcons[$provider->appName()] = $meta['icon'];
             }
@@ -175,7 +173,7 @@ class ToolRegistry
     {
         if ($this->effectiveIntegrationLogos === null) {
             $this->effectiveIntegrationLogos = [];
-            foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($this->integrationProviders() as $provider) {
                 $meta = $provider->appMeta();
                 if (isset($meta['logo'])) {
                     $this->effectiveIntegrationLogos[$provider->appName()] = $meta['logo'];
@@ -216,6 +214,11 @@ class ToolRegistry
             'icon' => $meta['icon'] ?? 'ph:wrench',
             'name' => $meta['name'] ?? $slug,
         ];
+    }
+
+    public function getToolTypeBySlug(string $slug): ?string
+    {
+        return $this->getEffectiveToolMap()[$slug]['type'] ?? null;
     }
 
     // ─── Tool filtering and instantiation ──────────────────────────────────
@@ -582,7 +585,7 @@ class ToolRegistry
         ];
 
         // Check external integration providers first
-        foreach ($this->providerRegistry->all() as $provider) {
+        foreach ($this->integrationProviders() as $provider) {
             foreach ($provider->tools() as $toolSlug => $meta) {
                 if ($meta['class'] === $class && ($slug === '' || $toolSlug === $slug)) {
                     return $provider->createTool($class, [
@@ -630,5 +633,19 @@ class ToolRegistry
         }
 
         return $lookup;
+    }
+
+    /**
+     * @return array<int, object>
+     */
+    private function integrationProviders(): array
+    {
+        $registryClass = \OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class;
+
+        if (! class_exists($registryClass) || ! app()->bound($registryClass)) {
+            return [];
+        }
+
+        return app($registryClass)->all();
     }
 }

@@ -22,11 +22,13 @@ use Illuminate\Queue\SerializesModels;
 use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Services\AgentCommunicationService;
 use App\Services\AgentDocumentService;
+use App\Services\Memory\ContextBudget;
 use App\Services\Memory\ModelContextRegistry;
 use App\Services\TelegramService;
 use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\Data\FinishReason;
 use Illuminate\Support\Facades\Log;
+use OpenCompany\PrismRelay\Bridge\SystemPromptBag;
 use Illuminate\Support\Str;
 
 class AgentRespondJob implements ShouldQueue, ShouldBeUnique
@@ -197,13 +199,24 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 $agentInstance->resumeFrom($task->id);
             }
 
+            $currentMessages = [];
+
             // Capture LLM context before prompting (for observability)
             try {
                 $toolRegistry = app(\App\Agents\Tools\ToolRegistry::class);
+                $promptFrame = $agentInstance->promptFrame();
+                $currentMessages = $agentInstance->messages();
+                $contextBudget = app(ContextBudget::class)->snapshotForAgent(
+                    $this->agent,
+                    $currentMessages,
+                    $agentInstance->fullInstructions(),
+                );
                 $task->update([
                     'context' => [
                         'system_prompt' => $agentInstance->instructions(),
-                        'messages' => collect($agentInstance->messages()) /** @phpstan-ignore argument.templateType */
+                        'full_system_prompt' => $agentInstance->fullInstructions(),
+                        'volatile_prompt_context' => $agentInstance->volatilePromptContext(),
+                        'messages' => collect($currentMessages) /** @phpstan-ignore argument.templateType */
                             ->map(fn ($m) => [
                                 'role' => $m->role->value,
                                 'content' => Str::limit($m->content ?? '', 2000),
@@ -211,9 +224,11 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                         'tools' => $toolRegistry->getToolSlugsForAgent($this->agent),
                         'model' => $agentInstance->model(),
                         'provider' => $agentInstance->provider(),
-                        'prompt_sections' => $agentInstance->instructionsBreakdown(),
+                        'prompt_sections' => $promptFrame['stable_breakdown'],
+                        'volatile_prompt_sections' => $promptFrame['volatile_breakdown'],
                         'context_window' => app(ModelContextRegistry::class)
-                            ->getContextWindow($agentInstance->model()),
+                            ->getContextWindow($agentInstance->model(), $agentInstance->provider()),
+                        'context_budget' => $contextBudget,
                     ],
                 ]);
             } catch (\Throwable $e) {
@@ -223,8 +238,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             // Memory flush: save important context to LTM before compaction
             try {
                 $flushService = app(\App\Services\Memory\MemoryFlushService::class);
-                $currentMessages = $agentInstance->messages();
-                if ($flushService->shouldFlush($this->channelId, $this->agent, $currentMessages, $agentInstance->instructions())) {
+                if ($flushService->shouldFlush($this->channelId, $this->agent, $currentMessages, $agentInstance->fullInstructions())) {
                     $flushStep = $task->addStep('Flushing memories before compaction', 'action');
                     $flushStep->start();
                     $flushService->flush($this->channelId, $this->agent);
@@ -235,7 +249,12 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             }
 
             $llmStep->start();
-            $response = $agentInstance->prompt($this->buildPromptWithThreadContext($this->userMessage));
+            app()->instance(SystemPromptBag::class, new SystemPromptBag(
+                $agentInstance->systemPrompts()
+            ));
+            $response = $agentInstance->prompt(
+                $this->buildPromptWithThreadContext($this->userMessage)
+            );
 
             $lastStep = $response->steps->last();
 
@@ -375,17 +394,20 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 $outputReserve = (int) config('memory.compaction.output_reserve', 4_096);
 
                 $systemChars = mb_strlen($task->context['system_prompt'] ?? '');
+                $volatileChars = mb_strlen($task->context['volatile_prompt_context'] ?? '');
                 $messageChars = array_sum(array_map(
                     fn ($m) => mb_strlen($m['content'] ?? ''),
                     $task->context['messages'] ?? [],
                 ));
-                $totalChars = $systemChars + $messageChars;
+                $totalChars = $systemChars + $volatileChars + $messageChars;
                 $systemRatio = $totalChars > 0 ? $systemChars / $totalChars : 0.5;
+                $volatileRatio = $totalChars > 0 ? $volatileChars / $totalChars : 0.0;
 
                 $systemTokens = (int) round($lastStepPromptTokens * $systemRatio);
-                $messageTokens = $lastStepPromptTokens - $systemTokens;
+                $volatileTokens = (int) round($lastStepPromptTokens * $volatileRatio);
+                $messageTokens = max(0, $lastStepPromptTokens - $systemTokens - $volatileTokens);
 
-                $available = max(0, $contextWindow - $systemTokens - $outputReserve);
+                $available = max(0, $contextWindow - $systemTokens - $volatileTokens - $outputReserve);
                 $thresholdRatio = (float) config('memory.compaction.threshold_ratio', 0.75);
                 $safetyMargin = (float) config('memory.compaction.safety_margin', 1.2);
                 $compactionThreshold = (int) ($available * $thresholdRatio);
@@ -403,6 +425,10 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                         'total' => $systemTokens,
                         'sections' => $context['prompt_sections'] ?? [],
                     ],
+                    'volatile_prompt_context' => [
+                        'total' => $volatileTokens,
+                        'sections' => $context['volatile_prompt_sections'] ?? [],
+                    ],
                     'messages' => [
                         'total' => $messageTokens,
                         'count' => count($context['messages'] ?? []),
@@ -418,7 +444,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                     'last_step_prompt_tokens' => $lastStepPromptTokens,
                     'finish_reason' => $lastStep?->finishReason->value ?? 'unknown',
                 ];
-                unset($context['prompt_sections'], $context['context_window']);
+                unset($context['prompt_sections'], $context['volatile_prompt_sections'], $context['context_window']);
                 $task->update(['context' => $context]);
             } catch (\Throwable $e) {
                 Log::warning('Post-delivery bookkeeping failed', ['error' => $e->getMessage(), 'task' => $task->id]);

@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Agents\OpenCompanyAgent;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Memory\OutputTruncator;
 use App\Support\LuaMetaParser;
 use Laravel\Ai\Events\ToolInvoked;
 use App\Agents\Tools\ToolRegistry;
@@ -49,10 +50,9 @@ class CheckpointToolCall
             $luaMeta = $extracted['meta'];
             $result = $extracted['result'];
 
-            // Truncate large string results to prevent DB bloat
-            if (is_string($result) && strlen($result) > 2000) {
-                $result = mb_strcut($result, 0, 2000, 'UTF-8') . '... [truncated]';
-            }
+            // Truncate large results before checkpoint persistence to keep
+            // retry context lean while preserving the full payload durably.
+            $result = app(OutputTruncator::class)->truncate($result, $event->toolInvocationId);
 
             // Sanitize to valid UTF-8 to prevent JSON encoding failures
             if (is_string($result)) {

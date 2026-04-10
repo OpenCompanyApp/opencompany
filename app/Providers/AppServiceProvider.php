@@ -20,7 +20,18 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
+use Laravel\Ai\Providers\AnthropicProvider;
+use Laravel\Ai\Providers\AzureOpenAiProvider;
+use Laravel\Ai\Providers\DeepSeekProvider;
+use Laravel\Ai\Providers\GeminiProvider;
+use Laravel\Ai\Providers\GroqProvider;
+use Laravel\Ai\Providers\MistralProvider;
+use Laravel\Ai\Providers\OllamaProvider;
 use Laravel\Ai\Providers\OpenAiProvider;
+use Laravel\Ai\Providers\OpenRouterProvider;
+use Laravel\Ai\Providers\VoyageAiProvider;
+use Laravel\Ai\Providers\XaiProvider;
+use OpenCompany\PrismRelay\Bridge\CachingPrismGateway;
 use Prism\Prism\PrismManager;
 
 class AppServiceProvider extends ServiceProvider
@@ -83,18 +94,40 @@ class AppServiceProvider extends ServiceProvider
         // Custom Prism providers (Z.AI, Kimi, MiniMax) are registered by
         // PrismRelayServiceProvider via afterResolving(PrismManager::class).
 
-        // Register custom AI SDK drivers.
-        // These use GlmPrismGateway which routes to the matching Prism provider
-        // (chat/completions) instead of the default OpenAI provider (/responses).
+        // Override all AI SDK drivers to use CachingPrismGateway for provider-aware
+        // prompt caching (Anthropic ephemeral, Gemini dedicated, OpenAI auto).
         // Use afterResolving because AiManager is scoped (recreated per job in queue workers).
         $this->app->afterResolving(AiManager::class, function (AiManager $aiManager, $app) {
-            $createGlmDriver = function ($app, array $config) {
-                return new OpenAiProvider(
-                    new GlmPrismGateway($app['events']),
-                    $config,
-                    $app->make(Dispatcher::class)
-                );
-            };
+            $gateway = new CachingPrismGateway($app['events']);
+            $dispatcher = $app->make(Dispatcher::class);
+
+            // Standard drivers — replace PrismGateway with CachingPrismGateway
+            $standardDrivers = [
+                'anthropic' => AnthropicProvider::class,
+                'azure' => AzureOpenAiProvider::class,
+                'deepseek' => DeepSeekProvider::class,
+                'gemini' => GeminiProvider::class,
+                'groq' => GroqProvider::class,
+                'mistral' => MistralProvider::class,
+                'ollama' => OllamaProvider::class,
+                'openai' => OpenAiProvider::class,
+                'openrouter' => OpenRouterProvider::class,
+                'voyageai' => VoyageAiProvider::class,
+                'xai' => XaiProvider::class,
+            ];
+
+            foreach ($standardDrivers as $driver => $providerClass) {
+                $aiManager->extend($driver, fn ($app, array $config) => new $providerClass(
+                    $gateway, $config, $dispatcher,
+                ));
+            }
+
+            // Custom relay-backed drivers — use GlmPrismGateway (extends
+            // CachingPrismGateway) so non-native Prism providers still work.
+            $glmGateway = new GlmPrismGateway($app['events']);
+            $createGlmDriver = fn ($app, array $config) => new OpenAiProvider(
+                $glmGateway, $config, $dispatcher,
+            );
 
             $aiManager->extend('z', $createGlmDriver);
             $aiManager->extend('z-api', $createGlmDriver);
@@ -103,14 +136,10 @@ class AppServiceProvider extends ServiceProvider
             $aiManager->extend('minimax', $createGlmDriver);
             $aiManager->extend('minimax-cn', $createGlmDriver);
 
-            // Register Codex driver (ChatGPT subscription via OAuth)
-            $aiManager->extend('codex', function ($app, array $config) {
-                return new OpenAiProvider(
-                    new CodexPrismGateway($app['events']),
-                    $config,
-                    $app->make(Dispatcher::class)
-                );
-            });
+            // Codex driver (ChatGPT subscription via OAuth)
+            $aiManager->extend('codex', fn ($app, array $config) => new OpenAiProvider(
+                new CodexPrismGateway($app['events']), $config, $dispatcher,
+            ));
         });
     }
 
