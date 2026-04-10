@@ -31,7 +31,7 @@ class IntegrationController extends Controller
 
         $integrations = [];
 
-        // Static integrations (GLM, Telegram, Codex — no ToolProvider package)
+        // Static integrations (Z.AI, Telegram, Codex — no ToolProvider package)
         foreach ($available as $id => $info) {
             // Codex uses OAuth tokens, not API keys
             if ($id === 'codex') {
@@ -199,7 +199,7 @@ class IntegrationController extends Controller
             ]);
         }
 
-        // Static integrations (GLM, Telegram, chat platforms)
+        // Static integrations (Z.AI, Telegram, chat platforms)
         $available = IntegrationSetting::getAvailableIntegrations();
         if (!isset($available[$id])) {
             return response()->json(['error' => 'Integration not found'], 404);
@@ -233,7 +233,7 @@ class IntegrationController extends Controller
             ]);
         }
 
-        // AI model integrations (GLM etc.)
+        // AI model integrations (Z.AI, Perplexity, etc.)
         $config = [
             'apiKey' => $setting?->getMaskedApiKey(),
             'url' => $setting?->getConfigValue('url') ?? ($available[$id]['default_url'] ?? ''),
@@ -331,7 +331,7 @@ class IntegrationController extends Controller
             ]);
         }
 
-        // Static integrations (GLM, chat platforms)
+        // Static integrations (Z.AI, chat platforms)
         $available = IntegrationSetting::getAvailableIntegrations();
         if (!isset($available[$id])) {
             return response()->json(['error' => 'Integration not found'], 404);
@@ -377,7 +377,7 @@ class IntegrationController extends Controller
             ]);
         }
 
-        // AI model integrations (GLM etc.)
+        // AI model integrations (Z.AI, Perplexity, etc.)
         $request->validate([
             'apiKey' => 'nullable|string',
             'url' => 'nullable|string|url',
@@ -564,10 +564,10 @@ class IntegrationController extends Controller
     }
 
     /**
-     * Test GLM/Zhipu AI connection
+     * Test OpenAI-compatible AI provider connection.
      */
     /**
-     * Test connection for OpenAI-compatible providers (OpenAI, DeepSeek, Groq, Mistral, xAI, OpenRouter, GLM, Ollama).
+     * Test connection for OpenAI-compatible providers (OpenAI, DeepSeek, Groq, Mistral, xAI, OpenRouter, Z.AI, Ollama, Perplexity).
      */
     private function testOpenAiCompatConnection(?string $apiKey, string $url, ?string $model): \Illuminate\Http\JsonResponse
     {
@@ -923,7 +923,7 @@ class IntegrationController extends Controller
     /**
      * Get all available AI providers with their models for settings dropdowns.
      *
-     * Returns both integration-based providers (GLM, Codex) and prism-config
+     * Returns both integration-based providers (Z.AI, Codex) and prism-config
      * providers (Anthropic, OpenAI, etc.) with configuration status.
      */
     public function allProviders(): \Illuminate\Http\JsonResponse
@@ -1417,7 +1417,7 @@ class IntegrationController extends Controller
 
     /**
      * Fetch models from an OpenAI-compatible /models endpoint.
-     * Works for: OpenAI, DeepSeek, Groq, Mistral, xAI, OpenRouter, GLM.
+     * Works for: OpenAI, DeepSeek, Groq, Mistral, xAI, OpenRouter, Z.AI, Perplexity.
      *
      * @return array<string, string>
      */
@@ -1448,8 +1448,8 @@ class IntegrationController extends Controller
             $models[$modelId] = $this->formatModelName($modelId);
         }
 
-        // GLM: probe flash/plus variants not listed by /models
-        if ($id === 'glm' || $id === 'glm-coding') {
+        // Z.AI: probe flash/plus variants not listed by /models
+        if ($id === 'z' || $id === 'z-api') {
             $models = $this->probeGlmVariants($models, $apiKey, $baseUrl);
         }
 
@@ -1593,7 +1593,7 @@ class IntegrationController extends Controller
     }
 
     /**
-     * GLM-specific: probe flash/plus variants not listed by /models.
+     * Z.AI-specific: probe flash/plus variants not listed by /models.
      *
      * @param  array<string, string>  $models
      * @return array<string, string>
@@ -1767,5 +1767,150 @@ class IntegrationController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    // ─── Multi-Account Endpoints ────────────────────────────────
+
+    /**
+     * List all accounts for an integration.
+     */
+    public function listAccounts(string $id): \Illuminate\Http\JsonResponse
+    {
+        $settings = IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->get();
+
+        $accounts = $settings->map(fn (IntegrationSetting $s) => [
+            'alias' => $s->account_alias,
+            'is_default' => $s->is_default,
+            'enabled' => $s->enabled,
+            'configured' => $s->hasValidConfig(),
+        ]);
+
+        return response()->json(['accounts' => $accounts]);
+    }
+
+    /**
+     * Create a new account for an integration.
+     */
+    public function createAccount(Request $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'alias' => ['required', 'string', 'max:32', 'regex:/^[a-z0-9_]+$/'],
+            'config' => ['required', 'array'],
+        ]);
+
+        $alias = $request->input('alias');
+
+        $exists = IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->where('account_alias', $alias)
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['error' => "Account '{$alias}' already exists."], 422);
+        }
+
+        $hasOthers = IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->exists();
+
+        $setting = IntegrationSetting::create([
+            'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
+            'integration_id' => $id,
+            'account_alias' => $alias,
+            'config' => $request->input('config'),
+            'enabled' => true,
+            'is_default' => ! $hasOthers,
+        ]);
+
+        return response()->json([
+            'alias' => $setting->account_alias,
+            'is_default' => $setting->is_default,
+        ], 201);
+    }
+
+    /**
+     * Update an account's config.
+     */
+    public function updateAccount(Request $request, string $id, string $alias): \Illuminate\Http\JsonResponse
+    {
+        $setting = IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->where('account_alias', $alias)
+            ->first();
+
+        if (! $setting) {
+            return response()->json(['error' => 'Account not found.'], 404);
+        }
+
+        $config = $setting->config ?? [];
+        foreach ($request->input('config', []) as $key => $value) {
+            if (is_string($value) && str_contains($value, '*')) {
+                continue; // Skip masked values
+            }
+            $config[$key] = $value;
+        }
+        $setting->config = $config;
+        $setting->save();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Delete an account.
+     */
+    public function deleteAccount(string $id, string $alias): \Illuminate\Http\JsonResponse
+    {
+        if ($alias === '') {
+            return response()->json(['error' => 'Cannot delete the default account.'], 422);
+        }
+
+        $setting = IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->where('account_alias', $alias)
+            ->first();
+
+        if (! $setting) {
+            return response()->json(['error' => 'Account not found.'], 404);
+        }
+
+        $wasDefault = $setting->is_default;
+        $setting->delete();
+
+        // If we deleted the default, promote the remaining default (empty alias) row
+        if ($wasDefault) {
+            IntegrationSetting::forWorkspace()
+                ->where('integration_id', $id)
+                ->where('account_alias', '')
+                ->update(['is_default' => true]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Set an account as the default.
+     */
+    public function setDefaultAccount(string $id, string $alias): \Illuminate\Http\JsonResponse
+    {
+        $setting = IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->where('account_alias', $alias)
+            ->first();
+
+        if (! $setting) {
+            return response()->json(['error' => 'Account not found.'], 404);
+        }
+
+        // Clear is_default on all accounts for this integration
+        IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->update(['is_default' => false]);
+
+        $setting->update(['is_default' => true]);
+
+        return response()->json(['success' => true]);
     }
 }

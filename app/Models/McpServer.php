@@ -19,6 +19,7 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property string|null $description
  * @property string $name
  * @property string $slug
+ * @property string $account_alias
  * @property \Carbon\Carbon|null $tools_discovered_at
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
@@ -36,6 +37,7 @@ class McpServer extends Model
         'workspace_id',
         'name',
         'slug',
+        'account_alias',
         'url',
         'auth_type',
         'auth_config',
@@ -60,6 +62,25 @@ class McpServer extends Model
             'server_info' => 'array',
             'tools_discovered_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Get all non-default account aliases for an MCP server slug in the current workspace.
+     *
+     * @return list<string>
+     */
+    public static function getAccountsFor(string $slug): array
+    {
+        try {
+            return static::forWorkspace()
+                ->where('slug', $slug)
+                ->where('account_alias', '!=', '')
+                ->pluck('account_alias')
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**

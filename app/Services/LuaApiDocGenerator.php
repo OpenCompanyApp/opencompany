@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Agents\Tools\ToolRegistry;
+use App\Models\McpServer;
 use App\Models\User;
+use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
 use OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder;
 use OpenCompany\IntegrationCore\Lua\LuaDocRenderer;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
@@ -68,8 +70,33 @@ class LuaApiDocGenerator
             return $this->cachedNamespaces;
         }
 
+        $catalog = $this->registry->getToolCatalog($agent);
+
+        // Inject account aliases for multi-account integrations and MCP servers
+        $credentialResolver = app(CredentialResolver::class);
+        foreach ($catalog as &$app) {
+            $appName = $app['name'] ?? '';
+            if (empty($appName) || empty($app['isIntegration'])) {
+                continue;
+            }
+
+            if (str_starts_with($appName, 'mcp_')) {
+                // MCP server — look up accounts by slug
+                $mcpSlug = substr($appName, 4);
+                $accounts = McpServer::getAccountsFor($mcpSlug);
+            } else {
+                // Regular integration — look up accounts via credential resolver
+                $accounts = $credentialResolver->getAccounts($appName);
+            }
+
+            if ($accounts !== []) {
+                $app['accounts'] = $accounts;
+            }
+        }
+        unset($app);
+
         $this->cachedNamespaces = $this->catalogBuilder->buildNamespaces(
-            $this->registry->getToolCatalog($agent),
+            $catalog,
             ['tasks', 'system', 'lua'],
         );
         $this->cachedAgent = $agent;
@@ -94,6 +121,14 @@ class LuaApiDocGenerator
     }
 
     /**
+     * @return array<string, string> path => accountAlias (only for multi-account function paths)
+     */
+    public function buildAccountMap(User $agent): array
+    {
+        return $this->catalogBuilder->buildAccountMap($this->buildNamespaces($agent));
+    }
+
+    /**
      * @return list<string>
      */
     public function getAvailablePages(User $agent): array
@@ -113,6 +148,11 @@ class LuaApiDocGenerator
         $appName = str_starts_with($namespace, 'integrations.')
             ? substr($namespace, strlen('integrations.'))
             : $namespace;
+
+        // Strip account segment for multi-account namespaces (e.g., "clickup.work" → "clickup")
+        if ($this->providerRegistry->get($appName) === null && str_contains($appName, '.')) {
+            $appName = explode('.', $appName, 2)[0];
+        }
 
         $provider = $this->providerRegistry->get($appName);
         if ($provider === null) {

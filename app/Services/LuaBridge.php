@@ -19,6 +19,7 @@ class LuaBridge
             $docGenerator->buildFunctionMap($agent),
             $docGenerator->buildParameterMap($agent),
             new OpenCompanyLuaToolInvoker($agent, $registry),
+            $docGenerator->buildAccountMap($agent),
         );
     }
 

@@ -47,11 +47,11 @@ class DynamicProviderResolverTest extends TestCase
         $this->assertEquals('gpt-4o', $result['model']);
     }
 
-    public function test_resolves_glm_provider_with_integration(): void
+    public function test_resolves_z_provider_with_integration(): void
     {
         IntegrationSetting::create([
             'id' => 'int-1',
-            'integration_id' => 'glm-coding',
+            'integration_id' => 'z',
             'enabled' => true,
             'workspace_id' => $this->workspace->id,
             'config' => [
@@ -62,28 +62,28 @@ class DynamicProviderResolverTest extends TestCase
 
         $agent = User::factory()->create([
             'type' => 'agent',
-            'brain' => 'glm-coding:glm-4.7',
+            'brain' => 'z:glm-5.1',
         ]);
 
         $result = $this->resolver->resolve($agent);
 
-        $this->assertEquals('glm-coding', $result['provider']);
-        $this->assertEquals('glm-4.7', $result['model']);
+        $this->assertEquals('z', $result['provider']);
+        $this->assertEquals('glm-5.1', $result['model']);
 
         // Verify Prism config was registered on the provider variant key
-        $this->assertNotNull(config('prism.providers.glm-coding'));
-        $this->assertEquals('test-api-key', config('prism.providers.glm-coding.api_key'));
+        $this->assertNotNull(config('prism.providers.z'));
+        $this->assertEquals('test-api-key', config('prism.providers.z.api_key'));
 
         // Verify AI SDK config was registered with custom driver
-        $this->assertNotNull(config('ai.providers.glm-coding'));
-        $this->assertEquals('glm-coding', config('ai.providers.glm-coding.driver'));
+        $this->assertNotNull(config('ai.providers.z'));
+        $this->assertEquals('z', config('ai.providers.z.driver'));
     }
 
-    public function test_throws_for_unconfigured_glm_provider(): void
+    public function test_throws_for_unconfigured_z_provider(): void
     {
         $agent = User::factory()->create([
             'type' => 'agent',
-            'brain' => 'glm:glm-4-plus',
+            'brain' => 'z-api:glm-5.1',
         ]);
 
         $this->expectException(InvalidArgumentException::class);
@@ -105,11 +105,11 @@ class DynamicProviderResolverTest extends TestCase
         $this->resolver->resolve($agent);
     }
 
-    public function test_defaults_to_glm_coding_when_no_brain(): void
+    public function test_defaults_to_z_when_no_brain(): void
     {
         IntegrationSetting::create([
             'id' => 'int-1',
-            'integration_id' => 'glm-coding',
+            'integration_id' => 'z',
             'enabled' => true,
             'workspace_id' => $this->workspace->id,
             'config' => [
@@ -125,7 +125,7 @@ class DynamicProviderResolverTest extends TestCase
 
         $result = $this->resolver->resolve($agent);
 
-        $this->assertEquals('glm-coding', $result['provider']);
-        $this->assertEquals('glm-4.7', $result['model']);
+        $this->assertEquals('z', $result['provider']);
+        $this->assertEquals('glm-5.1', $result['model']);
     }
 }

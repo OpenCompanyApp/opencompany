@@ -80,11 +80,11 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
-        // Custom Prism providers (GLM, Kimi, MiniMax) are registered by
+        // Custom Prism providers (Z.AI, Kimi, MiniMax) are registered by
         // PrismRelayServiceProvider via afterResolving(PrismManager::class).
 
-        // Register 'glm' and 'glm-coding' as custom AI SDK drivers.
-        // These use GlmPrismGateway which routes to our custom 'glm' Prism provider
+        // Register custom AI SDK drivers.
+        // These use GlmPrismGateway which routes to the matching Prism provider
         // (chat/completions) instead of the default OpenAI provider (/responses).
         // Use afterResolving because AiManager is scoped (recreated per job in queue workers).
         $this->app->afterResolving(AiManager::class, function (AiManager $aiManager, $app) {
@@ -96,8 +96,8 @@ class AppServiceProvider extends ServiceProvider
                 );
             };
 
-            $aiManager->extend('glm', $createGlmDriver);
-            $aiManager->extend('glm-coding', $createGlmDriver);
+            $aiManager->extend('z', $createGlmDriver);
+            $aiManager->extend('z-api', $createGlmDriver);
             $aiManager->extend('kimi', $createGlmDriver);
             $aiManager->extend('kimi-coding', $createGlmDriver);
             $aiManager->extend('minimax', $createGlmDriver);

@@ -26,7 +26,7 @@ class DynamicProviderResolver
     /**
      * Parse a User's brain field and resolve to SDK provider + model.
      *
-     * Brain format: "provider:model" (e.g. "glm-coding:glm-4.7", "anthropic:claude-sonnet-4-5-20250929")
+     * Brain format: "provider:model" (e.g. "z:glm-5.1", "anthropic:claude-sonnet-4-5-20250929")
      *
      * @return array{provider: string, model: string}
      */
@@ -34,7 +34,7 @@ class DynamicProviderResolver
     {
         $this->workspaceId = $agent->workspace_id;
 
-        $brain = $agent->brain ?? 'glm-coding:glm-4.7';
+        $brain = $agent->brain ?? 'z:glm-5.1';
         $parts = explode(':', $brain, 2);
         $providerKey = $parts[0];
         $model = $parts[1] ?? $this->getDefaultModel($providerKey);
@@ -55,7 +55,7 @@ class DynamicProviderResolver
             return ['provider' => 'codex', 'model' => $model];
         }
 
-        // GLM providers use IntegrationSetting for API keys
+        // Custom providers use IntegrationSetting for API keys
         if ($this->isGlmProvider($providerKey)) {
             $this->registerGlmProvider($providerKey);
             return ['provider' => $providerKey, 'model' => $model];
@@ -72,7 +72,7 @@ class DynamicProviderResolver
     }
 
     /**
-     * Check if a provider key is a GLM variant.
+     * Check if a provider key is managed by Prism Relay.
      */
     private function isGlmProvider(string $providerKey): bool
     {
@@ -80,10 +80,7 @@ class DynamicProviderResolver
     }
 
     /**
-     * Dynamically register a GLM provider in the Prism config.
-     *
-     * GLM uses an OpenAI-compatible API, so we register it as an OpenAI provider
-     * with a custom URL and API key from IntegrationSetting.
+     * Dynamically register a custom provider in the Prism config.
      */
     private function registerGlmProvider(string $providerKey): void
     {
@@ -107,7 +104,7 @@ class DynamicProviderResolver
         $apiKey = $integration->getConfigValue('api_key');
         $url = $integration->getConfigValue('url') ?? $this->getDefaultGlmUrl($providerKey);
 
-        // Set Prism config for the GLM provider variant (registered via PrismManager::extend)
+        // Set Prism config for the provider variant (registered via PrismManager::extend)
         config([
             "prism.providers.{$providerKey}" => [
                 'api_key' => $apiKey,
@@ -116,10 +113,10 @@ class DynamicProviderResolver
         ]);
 
         // Register in AI SDK config using our custom driver (registered via AiManager::extend)
-        // This routes through GlmPrismGateway → Prism 'glm' provider → chat/completions
+        // This routes through GlmPrismGateway to the matching Prism provider.
         config([
             "ai.providers.{$providerKey}" => [
-                'driver' => $providerKey, // 'glm' or 'glm-coding' — custom drivers
+                'driver' => $providerKey,
                 'key' => $apiKey,
             ],
         ]);
@@ -154,6 +151,7 @@ class DynamicProviderResolver
             'deepseek' => 'deepseek',
             'mistral' => 'mistral',
             'ollama' => 'ollama',
+            'perplexity' => 'perplexity',
         ];
 
         return $map[$providerKey] ?? null;
@@ -190,7 +188,7 @@ class DynamicProviderResolver
     }
 
     /**
-     * Get default URL for a GLM provider.
+     * Get default URL for a known provider.
      */
     private function getDefaultGlmUrl(string $providerKey): string
     {

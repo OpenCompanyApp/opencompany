@@ -9,9 +9,20 @@ use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 
 class McpToolProvider implements ToolProvider
 {
+    /** @var array<string, McpServer>  account_alias => server */
+    private array $accountServers = [];
+
     public function __construct(
         private McpServer $server,
     ) {}
+
+    /**
+     * Register an additional account server for this provider.
+     */
+    public function addAccountServer(string $account, McpServer $server): void
+    {
+        $this->accountServers[$account] = $server;
+    }
 
     public function appName(): string
     {
@@ -57,29 +68,48 @@ class McpToolProvider implements ToolProvider
     /** @param  array<string, mixed>  $context */
     public function createTool(string $class, array $context = []): Tool
     {
+        $account = $context['account'] ?? null;
+        $server = $this->resolveServer($account);
+
         $toolSlug = $context['tool_slug'] ?? '';
         $mcpToolName = $this->mcpToolNameFromSlug($toolSlug);
-        $mcpToolDef = $this->findToolDef($mcpToolName);
+        $mcpToolDef = $this->findToolDef($mcpToolName, $server);
 
         return new McpProxyTool(
-            server: $this->server,
+            server: $server,
             mcpToolName: $mcpToolName,
             mcpToolDescription: $mcpToolDef['description'] ?? '',
             mcpInputSchema: $mcpToolDef['inputSchema'] ?? [],
         );
     }
 
+    public function luaDocsPath(): ?string
+    {
+        return null;
+    }
+
+    public function credentialFields(): array
+    {
+        return [];
+    }
+
     /**
-     * Build tool slug: mcp_{server_slug}__{tool_name_snake}
+     * Resolve the server for the given account alias.
      */
+    private function resolveServer(?string $account): McpServer
+    {
+        if ($account !== null && $account !== '' && isset($this->accountServers[$account])) {
+            return $this->accountServers[$account];
+        }
+
+        return $this->server;
+    }
+
     private function toolSlug(string $mcpToolName): string
     {
         return 'mcp_' . $this->server->slug . '__' . Str::snake($mcpToolName);
     }
 
-    /**
-     * Extract MCP tool name from slug.
-     */
     private function mcpToolNameFromSlug(string $slug): string
     {
         $prefix = 'mcp_' . $this->server->slug . '__';
@@ -92,23 +122,13 @@ class McpToolProvider implements ToolProvider
     }
 
     /**
-     * Find a tool definition by MCP tool name from cached discovered_tools.
-     *
      * @return array<string, mixed>
      */
-    public function luaDocsPath(): ?string
+    private function findToolDef(string $mcpToolName, ?McpServer $server = null): array
     {
-        return null;
-    }
+        $tools = ($server ?? $this->server)->discovered_tools ?? [];
 
-    public function credentialFields(): array
-    {
-        return []; // MCP servers handle their own credentials
-    }
-
-    private function findToolDef(string $mcpToolName): array
-    {
-        foreach ($this->server->discovered_tools ?? [] as $tool) {
+        foreach ($tools as $tool) {
             if (Str::snake($tool['name']) === $mcpToolName || $tool['name'] === $mcpToolName) {
                 return $tool;
             }

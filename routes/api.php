@@ -347,6 +347,11 @@ Route::middleware('resolve.workspace')->group(function () {
         Route::post('/integrations/{id}/disconnect', [IntegrationController::class, 'disconnect']);
         Route::post('/integrations/{id}/fetch-models', [IntegrationController::class, 'fetchModels']);
         Route::post('/integrations/{id}/setup-webhook', [IntegrationController::class, 'setupWebhook']);
+        Route::get('/integrations/{id}/accounts', [IntegrationController::class, 'listAccounts']);
+        Route::post('/integrations/{id}/accounts', [IntegrationController::class, 'createAccount']);
+        Route::put('/integrations/{id}/accounts/{alias}', [IntegrationController::class, 'updateAccount']);
+        Route::delete('/integrations/{id}/accounts/{alias}', [IntegrationController::class, 'deleteAccount']);
+        Route::post('/integrations/{id}/accounts/{alias}/default', [IntegrationController::class, 'setDefaultAccount']);
         Route::get('/integrations/external-identities', [IntegrationController::class, 'externalIdentities']);
         Route::post('/integrations/link-user', [IntegrationController::class, 'linkExternalUser']);
         Route::delete('/integrations/link-user/{identityId}', [IntegrationController::class, 'unlinkExternalUser']);

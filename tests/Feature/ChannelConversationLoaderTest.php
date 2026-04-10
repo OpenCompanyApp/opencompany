@@ -28,7 +28,7 @@ class ChannelConversationLoaderTest extends TestCase
     public function test_loads_messages_as_sdk_objects(): void
     {
         $human = User::factory()->create(['name' => 'Alice', 'type' => 'human']);
-        $agent = User::factory()->create(['name' => 'Logic', 'type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
+        $agent = User::factory()->create(['name' => 'Logic', 'type' => 'agent', 'brain' => 'z:glm-5.1']);
         $channel = Channel::factory()->create();
 
         Message::create([
@@ -69,7 +69,7 @@ class ChannelConversationLoaderTest extends TestCase
     public function test_skips_empty_messages(): void
     {
         $human = User::factory()->create(['type' => 'human']);
-        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'z:glm-5.1']);
         $channel = Channel::factory()->create();
 
         Message::create([
@@ -96,7 +96,7 @@ class ChannelConversationLoaderTest extends TestCase
     public function test_loads_recent_messages(): void
     {
         $human = User::factory()->create(['type' => 'human']);
-        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'z:glm-5.1']);
         $channel = Channel::factory()->create();
 
         for ($i = 0; $i < 10; $i++) {
@@ -116,7 +116,7 @@ class ChannelConversationLoaderTest extends TestCase
 
     public function test_returns_empty_for_no_messages(): void
     {
-        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'z:glm-5.1']);
         $channel = Channel::factory()->create();
 
         $messages = $this->loader->load($channel->id, $agent);
@@ -126,7 +126,7 @@ class ChannelConversationLoaderTest extends TestCase
 
     public function test_returns_empty_when_agent_cannot_access_channel(): void
     {
-        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'z:glm-5.1']);
         $allowedChannel = Channel::factory()->create();
         $restrictedChannel = Channel::factory()->create();
 
@@ -156,7 +156,7 @@ class ChannelConversationLoaderTest extends TestCase
     public function test_loads_messages_when_agent_has_no_channel_restrictions(): void
     {
         // Agent with no channel permissions → unrestricted (backward compatible)
-        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'glm-coding:glm-4.7']);
+        $agent = User::factory()->create(['type' => 'agent', 'brain' => 'z:glm-5.1']);
         $channel = Channel::factory()->create();
         $human = User::factory()->create(['type' => 'human']);
 

@@ -11,7 +11,7 @@ use Laravel\Ai\Providers\Provider;
 
 /**
  * Custom PrismGateway that routes requests to custom Prism providers
- * registered via PrismManager::extend() (GLM, Kimi, MiniMax, etc.).
+ * registered via PrismManager::extend() (Z.AI, Kimi, MiniMax, etc.).
  *
  * The base PrismGateway maps driver names to PrismProvider enums, which only
  * works for native Prism providers. Custom providers need their string key
