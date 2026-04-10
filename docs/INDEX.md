@@ -15,16 +15,17 @@
 | [observability.md](architecture/observability.md) | Monitoring, metrics, logging, error tracking, health checks, alerting | Building admin/ops features |
 | [ai-tool-packages.md](architecture/ai-tool-packages.md) | AI tool package ecosystem — ToolProvider contract, credential abstraction, hybrid ToolRegistry, building new tool packages | Creating or modifying AI tool packages, understanding the plugin architecture |
 | [interagent-comms.md](architecture/interagent-comms.md) | Inter-agent communication protocol — ContactAgent tool with ask/delegate/notify patterns, DM channels, delegation tracking | Building or debugging agent-to-agent communication |
+| [kosmokrator-reuse-audit.md](architecture/kosmokrator-reuse-audit.md) | Full audit of what OpenCompany should reuse, adapt, or skip from KosmoKrator | Planning cross-repo reuse, agent runtime work, metadata consolidation |
+| [runtime-alignment-implementation-audit.md](architecture/runtime-alignment-implementation-audit.md) | Post-implementation audit — findings now tracked as Plane issues (OC-1 through OC-6) | Reviewing audit results and fix status |
 | [ai-tool-strategy.md](strategy/ai-tool-strategy.md) | AI tool ecosystem strategy — package publishing, MCP export, missing tool analysis, Fair Code growth | Planning tool ecosystem, evaluating new tool integrations |
 
 ## Planning & Implementation
 
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
-| [implementation-todo.md](planning/implementation-todo.md) | Complete task breakdown across 8+ phases with dependencies, priority order, and file manifests | Starting implementation work, tracking progress |
-| [memory-implementation.md](planning/memory-implementation.md) | Memory system design — 6 phases: pgvector, chunking, embedding, hybrid search, compaction, flush **(Status: Complete)** | Understanding the memory architecture |
+| [memory-implementation.md](planning/memory-implementation.md) | Memory system architecture reference — STM/LTM model, phase summary **(Status: Complete)** | Understanding the memory architecture |
+| [kosmokrator-runtime-alignment-checklist.md](planning/kosmokrator-runtime-alignment-checklist.md) | Checklist for aligning with KosmoKrator/prism-relay — completed work + pointers to open Plane issues | Reviewing runtime-alignment status |
 | [external-channel-sync.md](external-channel-sync.md) | Bidirectional sync design for Telegram/Discord — message tracking, edit/pin/react sync, channel discovery **(Telegram: Done, Discord: Not started)** | Working on external platform integration |
-| [todo.md](todo.md) | Feature TODO list — Docs (starring, search, publish controls), Agent system (budget approval) | Quick check of remaining feature work |
 | [discord.md](discord.md) | Discord integration documentation — architecture, sidecar, configuration | Setting up or debugging Discord integration |
 | [codex-subscription-auth.md](planning/codex-subscription-auth.md) | Codex subscription authentication planning | Working on Codex integration |
 
@@ -49,7 +50,6 @@
 
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
-| [feature-test-map.md](testing/feature-test-map.md) | Checklist of every feature, button, and interaction to test (~500 items) | Manual QA testing |
 | [qa-strategy.md](testing/qa-strategy.md) | Testing pyramid, CI/CD pipeline, coverage targets, test data management | Setting up automated test infrastructure |
 
 ## Tools & Features

@@ -5,19 +5,17 @@ namespace App\Agents\Providers;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
-use Laravel\Ai\Gateway\Prism\PrismGateway;
 use Laravel\Ai\Gateway\TextGenerationOptions;
 use Laravel\Ai\Providers\Provider;
+use OpenCompany\PrismRelay\Bridge\CachingPrismGateway;
 
 /**
- * Custom PrismGateway that routes requests to custom Prism providers
+ * Custom gateway that routes requests to custom Prism providers
  * registered via PrismManager::extend() (GLM, Kimi, MiniMax, etc.).
  *
- * The base PrismGateway maps driver names to PrismProvider enums, which only
- * works for native Prism providers. Custom providers need their string key
- * passed directly to Prism's using() method.
+ * Extends CachingPrismGateway for prompt cache support on all providers.
  */
-class GlmPrismGateway extends PrismGateway
+class GlmPrismGateway extends CachingPrismGateway
 {
     public function __construct(Dispatcher $events)
     {

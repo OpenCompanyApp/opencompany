@@ -11,6 +11,9 @@ use App\Models\Task;
 use App\Models\TaskStep;
 use App\Models\User;
 use App\Services\AgentDocumentService;
+use App\Services\Memory\ContextPruner;
+use App\Services\Memory\PromptFrameBuilder;
+use App\Services\Memory\ToolResultDeduplicator;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
@@ -21,11 +24,17 @@ use Laravel\Ai\Promptable;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
 use Illuminate\Support\Str;
+use OpenCompany\PrismRelay\Contracts\HasSystemPrompts;
 
 #[MaxTokens(16_384)]
-class OpenCompanyAgent implements Agent, HasTools, Conversational
+class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemPrompts
 {
     use Promptable;
+
+    /**
+     * @var array<string, mixed>|null
+     */
+    private ?array $promptFrameCache = null;
 
     /** @var array<string, mixed> */
     private array $resolvedProvider;
@@ -39,6 +48,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         private ChannelConversationLoader $conversationLoader,
         private DynamicProviderResolver $providerResolver,
         private ToolRegistry $toolRegistry,
+        private PromptFrameBuilder $promptFrameBuilder,
+        private ToolResultDeduplicator $toolResultDeduplicator,
+        private ContextPruner $contextPruner,
         private ?string $taskId = null,
     ) {
         $this->resolvedProvider = $this->providerResolver->resolve($this->agent);
@@ -79,11 +91,51 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
     /**
      * Get the instructions (system prompt) for this agent.
      *
-     * Assembles from identity files in the same order as AgentChatService.
+     * Returns the full concatenated prompt (stable + volatile). When a
+     * SystemPromptBag is bound, CachingPrismGateway uses the split prompts
+     * from the bag instead for cache-friendly framing.
      */
     public function instructions(): string
     {
-        return implode('', array_column($this->buildSections(), 'content'));
+        return $this->promptFrame()['full_prompt'];
+    }
+
+    /**
+     * Get the full instruction set before stable/volatile splitting.
+     */
+    public function fullInstructions(): string
+    {
+        return $this->promptFrame()['full_prompt'];
+    }
+
+    /**
+     * Get the volatile runtime context that should travel with the user prompt.
+     */
+    public function volatilePromptContext(): string
+    {
+        return $this->promptFrame()['volatile_prompt'];
+    }
+
+    /**
+     * Runtime context now travels as additional system prompts via the gateway,
+     * so the user prompt should remain unchanged.
+     */
+    public function preparePrompt(string $prompt): string
+    {
+        return $prompt;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function systemPrompts(): array
+    {
+        $frame = $this->promptFrame();
+
+        return array_values(array_filter([
+            trim($frame['stable_prompt']),
+            trim($frame['volatile_prompt']),
+        ], fn (string $prompt) => $prompt !== ''));
     }
 
     /**
@@ -94,10 +146,27 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
      */
     public function instructionsBreakdown(): array
     {
-        return array_values(array_map(
-            fn (array $s) => ['label' => $s['label'], 'chars' => mb_strlen($s['content'])],
-            $this->buildSections(),
-        ));
+        return $this->promptFrame()['stable_breakdown'];
+    }
+
+    /**
+     * @return array<int, array{label: string, chars: int}>
+     */
+    public function volatileInstructionsBreakdown(): array
+    {
+        return $this->promptFrame()['volatile_breakdown'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function promptFrame(): array
+    {
+        if ($this->promptFrameCache !== null) {
+            return $this->promptFrameCache;
+        }
+
+        return $this->promptFrameCache = $this->promptFrameBuilder->splitSections($this->buildSections());
     }
 
     /**
@@ -228,7 +297,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
      */
     public function messages(): iterable
     {
-        $messages = $this->conversationLoader->load($this->channelId, $this->agent, $this->instructions());
+        $messages = $this->conversationLoader->load($this->channelId, $this->agent, $this->fullInstructions());
 
         if ($this->resumeFromTaskId) {
             $messages = $this->injectCheckpointedSteps($messages);
@@ -289,7 +358,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             );
         }
 
-        return $messages;
+        $deduplicated = $this->toolResultDeduplicator->deduplicate($messages)['messages'];
+
+        return $this->contextPruner->prune($deduplicated)['messages'];
     }
 
     /**

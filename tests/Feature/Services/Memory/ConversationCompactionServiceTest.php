@@ -10,7 +10,6 @@ use App\Models\ConversationSummary;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\Memory\ConversationCompactionService;
-use App\Services\Memory\ModelContextRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Messages\UserMessage;
@@ -34,6 +33,7 @@ class ConversationCompactionServiceTest extends TestCase
         parent::setUp();
 
         Bus::fake([IndexDocumentJob::class]);
+        config(['memory.compaction.memory_extraction.enabled' => false]);
 
         $this->agent = User::factory()->agent()->create([
             'name' => 'compact-agent',
@@ -50,11 +50,11 @@ class ConversationCompactionServiceTest extends TestCase
             ->andReturn(['provider' => 'openai', 'model' => 'gpt-4o']);
         $resolver->shouldReceive('resolveFromParts')
             ->andReturn(['provider' => 'openai', 'model' => 'gpt-4o']);
+        $resolver->shouldReceive('setWorkspaceId')
+            ->andReturnSelf();
 
-        $this->service = new ConversationCompactionService(
-            app(ModelContextRegistry::class),
-            $resolver,
-        );
+        $this->app->instance(DynamicProviderResolver::class, $resolver);
+        $this->service = app(ConversationCompactionService::class);
     }
 
     private function createMessages(int $count, ?string $channelId = null, ?string $authorId = null): void
@@ -257,5 +257,27 @@ class ConversationCompactionServiceTest extends TestCase
         $second = $this->service->compact($this->channel->id, $this->agent);
         $this->assertNotNull($second, 'Second compaction should find messages after the compaction point');
         $this->assertEquals(2, $second->compaction_count);
+    }
+
+    public function test_needs_compaction_returns_false_when_circuit_is_open(): void
+    {
+        ConversationSummary::create([
+            'channel_id' => $this->channel->id,
+            'agent_id' => $this->agent->id,
+            'summary' => 'Previous summary.',
+            'workspace_id' => $this->workspace->id,
+            'compaction_circuit_open_until' => now()->addMinutes(10),
+        ]);
+
+        $messages = [new UserMessage(str_repeat('Word ', 2000))];
+
+        $result = $this->service->needsCompaction(
+            $this->channel->id,
+            $this->agent,
+            $messages,
+            'Short system prompt.',
+        );
+
+        $this->assertFalse($result);
     }
 }

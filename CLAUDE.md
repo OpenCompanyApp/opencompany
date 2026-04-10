@@ -29,3 +29,11 @@
 - Shared components are in `resources/js/Components/shared/`
 - Use the wrapper components (Button, Modal, Badge, etc.) instead of native elements for consistency
 - Dark mode is supported via the `useColorMode` composable
+
+## CLI Tools
+
+### mcp-cli
+- Installed at `~/.local/bin/mcp-cli` — a lightweight CLI for testing and calling MCP servers
+- Config: `~/.config/mcp/mcp_servers.json`
+- Usage: `mcp-cli` (list all), `mcp-cli info <server>` (details), `mcp-cli call <server> <tool> '<json>'` (call a tool)
+- Connected servers: `founder-mode`, `notion`, `vibe_kanban`, `plane`

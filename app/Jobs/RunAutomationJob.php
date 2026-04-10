@@ -21,6 +21,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use OpenCompany\PrismRelay\Bridge\SystemPromptBag;
 
 class RunAutomationJob implements ShouldQueue, ShouldBeUnique
 {
@@ -127,12 +128,17 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
             // Capture LLM context for observability
             try {
                 $toolRegistry = app(\App\Agents\Tools\ToolRegistry::class);
+                $promptFrame = $agentInstance->promptFrame();
                 $task->update([
                     'context' => array_merge($task->context ?? [], [
+                        'system_prompt' => $agentInstance->instructions(),
+                        'full_system_prompt' => $agentInstance->fullInstructions(),
+                        'volatile_prompt_context' => $agentInstance->volatilePromptContext(),
                         'tools' => $toolRegistry->getToolSlugsForAgent($agent),
                         'model' => $agentInstance->model(),
                         'provider' => $agentInstance->provider(),
-                        'prompt_sections' => $agentInstance->instructionsBreakdown(),
+                        'prompt_sections' => $promptFrame['stable_breakdown'],
+                        'volatile_prompt_sections' => $promptFrame['volatile_breakdown'],
                     ]),
                 ]);
             } catch (\Throwable $e) {
@@ -141,6 +147,9 @@ class RunAutomationJob implements ShouldQueue, ShouldBeUnique
 
             $prompt = $this->buildScheduledPrompt();
             $generationStartedAt = now();
+            app()->instance(SystemPromptBag::class, new SystemPromptBag(
+                $agentInstance->systemPrompts()
+            ));
             $response = $agentInstance->prompt($prompt);
             $generationCompletedAt = now();
 

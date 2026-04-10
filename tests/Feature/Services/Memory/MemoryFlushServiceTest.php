@@ -8,8 +8,8 @@ use App\Models\Channel;
 use App\Models\ConversationSummary;
 use App\Models\User;
 use App\Services\Memory\ConversationCompactionService;
+use App\Services\Memory\ContextBudget;
 use App\Services\Memory\MemoryFlushService;
-use App\Services\Memory\ModelContextRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Messages\UserMessage;
@@ -35,6 +35,7 @@ class MemoryFlushServiceTest extends TestCase
         parent::setUp();
 
         Bus::fake([IndexDocumentJob::class]);
+        config(['memory.compaction.memory_extraction.enabled' => false]);
 
         $this->agent = User::factory()->agent()->create([
             'name' => 'flush-agent',
@@ -50,17 +51,12 @@ class MemoryFlushServiceTest extends TestCase
             ->andReturn(['provider' => 'openai', 'model' => 'gpt-4o']);
         $resolver->shouldReceive('resolveFromParts')
             ->andReturn(['provider' => 'openai', 'model' => 'gpt-4o']);
+        $resolver->shouldReceive('setWorkspaceId')
+            ->andReturnSelf();
 
-        $this->compactionService = new ConversationCompactionService(
-            app(ModelContextRegistry::class),
-            $resolver,
-        );
-
-        $this->service = new MemoryFlushService(
-            $this->compactionService,
-            app(ModelContextRegistry::class),
-            $resolver,
-        );
+        $this->app->instance(DynamicProviderResolver::class, $resolver);
+        $this->compactionService = app(ConversationCompactionService::class);
+        $this->service = app(MemoryFlushService::class);
     }
 
     /**
