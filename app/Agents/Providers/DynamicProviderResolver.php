@@ -55,17 +55,17 @@ class DynamicProviderResolver
             return ['provider' => 'codex', 'model' => $model];
         }
 
-        // Custom providers use IntegrationSetting for API keys
-        if ($this->isGlmProvider($providerKey)) {
-            $this->registerGlmProvider($providerKey);
-            return ['provider' => $providerKey, 'model' => $model];
-        }
-
         // Standard providers — check DB for API key, fall back to .env
         $sdkProvider = $this->mapToSdkProvider($providerKey);
         if ($sdkProvider) {
             $this->applyIntegrationConfig($providerKey);
             return ['provider' => $sdkProvider, 'model' => $model];
+        }
+
+        // Custom providers use IntegrationSetting for API keys
+        if ($this->isRelayBackedProvider($providerKey)) {
+            $this->registerGlmProvider($providerKey);
+            return ['provider' => $providerKey, 'model' => $model];
         }
 
         throw new InvalidArgumentException("Unknown provider: {$providerKey}");
@@ -74,9 +74,10 @@ class DynamicProviderResolver
     /**
      * Check if a provider key is managed by Prism Relay.
      */
-    private function isGlmProvider(string $providerKey): bool
+    private function isRelayBackedProvider(string $providerKey): bool
     {
-        return (new RelayManager)->isRelayProvider($providerKey);
+        return ! $this->mapToSdkProvider($providerKey)
+            && (new RelayManager)->isRelayProvider($providerKey);
     }
 
     /**

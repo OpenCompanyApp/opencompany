@@ -3,9 +3,9 @@
 namespace Tests\Unit;
 
 use Illuminate\Support\Collection;
-use Laravel\Ai\Gateway\Prism\PrismMessages;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\ToolResultMessage;
+use OpenCompany\PrismRelay\Bridge\ToolAwarePrismMessages;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage as PrismAssistantMessage;
@@ -16,7 +16,7 @@ class PrismMessagesTest extends TestCase
 {
     public function test_from_laravel_messages_preserves_assistant_tool_calls_and_tool_results(): void
     {
-        $messages = PrismMessages::fromLaravelMessages(new Collection([
+        $messages = ToolAwarePrismMessages::fromLaravelMessages(new Collection([
             new AssistantMessage(
                 '',
                 toolCalls: collect([
