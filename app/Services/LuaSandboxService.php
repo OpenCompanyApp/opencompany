@@ -11,8 +11,6 @@ class LuaSandboxService
      * Execute Lua code in a sandboxed environment.
      *
      * @param  array{memoryLimit?: int, cpuLimit?: float}  $options
-     */
-    /**
      * @param  array<string, mixed>  $globals  Named globals to inject as Lua tables (e.g., ['ctx' => [...]])
      */
     public function execute(string $code, array $options = [], ?LuaBridge $bridge = null, array $globals = []): LuaResult
@@ -32,17 +30,21 @@ class LuaSandboxService
             $this->setupAppNamespace($sandbox, $bridge);
         }
 
-        foreach ($globals as $name => $value) {
-            $sandbox->load("{$name} = " . $this->phpToLua($value))->call();
-        }
-
         $this->registerJsonGlobals($sandbox);
+        $this->rejectProtectedBridgeAssignments($code);
+
+        foreach ($globals as $name => $value) {
+            if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) || str_starts_with($name, '__')) {
+                throw new \InvalidArgumentException("Invalid Lua global name: {$name}");
+            }
+
+            $this->runChunk($sandbox, "{$name} = ".$this->phpToLua($value));
+        }
 
         $start = microtime(true);
 
         try {
-            $fn = $sandbox->load($code);
-            $result = $fn();
+            $result = $this->runLoadedChunk($sandbox->load($code));
             $elapsed = round((microtime(true) - $start) * 1000, 1);
 
             return new LuaResult(
@@ -79,10 +81,12 @@ class LuaSandboxService
         $sandbox->register('__php', [
             'capture' => function ($line) use (&$output) {
                 $output[] = (string) $line;
+
+                return [];
             },
         ]);
 
-        $sandbox->load('
+        $this->runChunk($sandbox, '
             local _tostring = tostring
 
             local function __serialize(val, indent, seen)
@@ -133,15 +137,9 @@ class LuaSandboxService
                 __php.capture(s)
                 return val
             end
-        ')->call();
+        ');
     }
 
-    /**
-     * Register the app.* namespace using metatables to route calls to PHP via LuaBridge.
-     *
-     * Creates an infinitely nested proxy table where any app.X.Y.Z(args) call
-     * is intercepted and routed to __app.call("X.Y.Z", args).
-     */
     /**
      * Serialize a PHP value to a Lua literal.
      */
@@ -160,7 +158,7 @@ class LuaSandboxService
         }
 
         if (is_string($value)) {
-            return '"' . addcslashes($value, "\"\\\n\r\t") . '"';
+            return '"'.addcslashes($value, "\"\\\n\r\t").'"';
         }
 
         if (is_array($value)) {
@@ -175,15 +173,15 @@ class LuaSandboxService
                 if ($isSequential) {
                     $parts[] = $this->phpToLua($v);
                 } else {
-                    $key = is_int($k) ? "[{$k}]" : $k;
-                    $parts[] = "{$key} = " . $this->phpToLua($v);
+                    $key = is_int($k) ? "[{$k}]" : '['.$this->phpToLua((string) $k).']';
+                    $parts[] = "{$key} = ".$this->phpToLua($v);
                 }
             }
 
-            return '{' . implode(', ', $parts) . '}';
+            return '{'.implode(', ', $parts).'}';
         }
 
-        return '"' . addcslashes((string) $value, "\"\\\n\r\t") . '"';
+        return '"'.addcslashes((string) $value, "\"\\\n\r\t").'"';
     }
 
     /**
@@ -205,7 +203,7 @@ class LuaSandboxService
             },
         ]);
 
-        $sandbox->load('
+        $this->runChunk($sandbox, '
             local function make_namespace(path)
                 return setmetatable({}, {
                     __index = function(self, key)
@@ -224,7 +222,7 @@ class LuaSandboxService
                 })
             end
             app = make_namespace("")
-        ')->call();
+        ');
     }
 
     /**
@@ -247,7 +245,15 @@ class LuaSandboxService
 
         $sandbox->register('__regex', [
             'match' => function (string $subject, string $pattern, int $flags = 0): mixed {
-                if (preg_match($pattern, $subject, $matches, $flags) === 1) {
+                $pregFlags = match ($flags) {
+                    0,
+                    PREG_OFFSET_CAPTURE,
+                    PREG_UNMATCHED_AS_NULL,
+                    PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL => $flags,
+                    default => 0,
+                };
+
+                if (preg_match($pattern, $subject, $matches, $pregFlags) === 1) {
                     return $matches;
                 }
 
@@ -265,7 +271,7 @@ class LuaSandboxService
             },
         ]);
 
-        $sandbox->load('
+        $this->runChunk($sandbox, '
             json = {
                 decode = function(s)
                     if type(s) ~= "string" then
@@ -310,6 +316,35 @@ class LuaSandboxService
                     return __regex.gsub(subject, pattern, replacement, limit or -1)
                 end,
             }
-        ')->call();
+        ');
+    }
+
+    private function rejectProtectedBridgeAssignments(string $code): void
+    {
+        if (preg_match('/(?:^|[;\r\n])\s*__[A-Za-z0-9_]*\s*=/', $code) === 1) {
+            throw new \InvalidArgumentException('Lua code may not assign __-prefixed bridge globals.');
+        }
+    }
+
+    private function runChunk(Sandbox $sandbox, string $code): mixed
+    {
+        return $this->runLoadedChunk($sandbox->load($code));
+    }
+
+    private function runLoadedChunk(mixed $chunk): mixed
+    {
+        if ($chunk instanceof \Closure) {
+            return $chunk();
+        }
+
+        if (is_object($chunk) && method_exists($chunk, 'call')) {
+            return $chunk->call();
+        }
+
+        if (is_callable($chunk)) {
+            return $chunk();
+        }
+
+        throw new \RuntimeException('Lua chunk is not callable.');
     }
 }
