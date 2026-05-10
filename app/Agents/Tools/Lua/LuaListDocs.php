@@ -17,7 +17,7 @@ class LuaListDocs implements Tool
 
     public function description(): string
     {
-        return 'List available Lua API namespaces and functions. Each namespace maps to a workspace app (chat, docs, tables, etc.). Shows function signatures with parameter names.';
+        return 'List available Lua API namespaces for discovery. Use lua_read_doc for the actual function list, parameters, and detailed reference before calling anything.';
     }
 
     public function handle(Request $request): string

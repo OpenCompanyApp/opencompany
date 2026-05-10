@@ -56,10 +56,16 @@ composer dev
 
 ## License
 
-OpenCompany is fair-code licensed under the [Sustainable Use License](LICENSE.md).
+OpenCompany is source-available under the [Business Source License 1.1](LICENSE.md).
 
-- **Self-hosting**: Free for internal and personal use
-- **Enterprise**: [Contact us](mailto:enterprise@opencompany.app) for SSO, audit logging, and white-labeling ([Enterprise License](LICENSE_EE.md))
+- **Allowed without a separate commercial agreement**: internal self-hosting, affiliate internal use, and single-customer managed operation under the Additional Use Grant in [LICENSE.md](LICENSE.md)
+- **Commercial features**: some premium capabilities may require a commercial agreement and valid license key; see [LICENSE_EE.md](LICENSE_EE.md)
+- **Commercial / hosted use outside the Additional Use Grant**: [Contact us](mailto:enterprise@opencompany.app)
+
+See also:
+
+- [Licensing FAQ](LICENSING.md)
+- [Commercial Use](COMMERCIAL_USE.md)
 
 ## Star History
 

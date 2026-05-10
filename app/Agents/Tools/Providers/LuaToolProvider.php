@@ -6,6 +6,7 @@ use App\Agents\Tools\Lua\LuaExec;
 use App\Agents\Tools\Lua\LuaListDocs;
 use App\Agents\Tools\Lua\LuaReadDoc;
 use App\Agents\Tools\Lua\LuaSearchDocs;
+use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
 use App\Services\LuaApiDocGenerator;
 use App\Services\LuaSandboxService;
@@ -37,7 +38,7 @@ class LuaToolProvider implements BuiltInToolProvider
                 'class' => LuaListDocs::class,
                 'type' => 'read',
                 'name' => 'List Lua API Docs',
-                'description' => 'List available Lua scripting API namespaces and functions.',
+                'description' => 'List available Lua scripting API namespaces for discovery. Use lua_read_doc for function details.',
                 'icon' => 'ph:list-bullets',
             ],
             'lua_search_docs' => [
@@ -58,7 +59,7 @@ class LuaToolProvider implements BuiltInToolProvider
                 'class' => LuaExec::class,
                 'type' => 'write',
                 'name' => 'Execute Lua Code',
-                'description' => 'Execute Lua code in a sandboxed environment and return the output.',
+                'description' => 'Execute Lua code in a sandboxed environment after discovering the relevant API with lua_read_doc.',
                 'icon' => 'ph:play',
             ],
         ];
@@ -66,11 +67,15 @@ class LuaToolProvider implements BuiltInToolProvider
 
     public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
     {
+        $toolRegistry = array_key_exists('tool_registry', $context) && $context['tool_registry'] instanceof ToolRegistry
+            ? $context['tool_registry']
+            : app(ToolRegistry::class);
+
         return match ($class) {
             LuaListDocs::class => new LuaListDocs(app(LuaApiDocGenerator::class), $agent),
             LuaSearchDocs::class => new LuaSearchDocs(app(LuaApiDocGenerator::class), $agent),
             LuaReadDoc::class => new LuaReadDoc(app(LuaApiDocGenerator::class), $agent),
-            LuaExec::class => new LuaExec(app(LuaSandboxService::class), $context['tool_registry'], app(LuaApiDocGenerator::class), $agent),
+            LuaExec::class => new LuaExec(app(LuaSandboxService::class), $toolRegistry, app(LuaApiDocGenerator::class), $agent),
             default => throw new \RuntimeException("Unknown tool class: {$class}"),
         };
     }

@@ -121,12 +121,129 @@ class LuaApiDocGeneratorTest extends TestCase
         $this->assertStringContainsString("Namespace 'nonexistent' not found", $index);
     }
 
-    public function test_generate_namespace_index_shows_param_signatures(): void
+    public function test_generate_namespace_index_points_to_lua_read_doc_for_details(): void
     {
         $index = $this->generator->generateNamespaceIndex($this->agent);
 
-        // Required params without ?, optional params with ?; wrapped in {}; snake_case
-        $this->assertStringContainsString('send_channel_message({channel_id, content})', $index);
+        $this->assertStringContainsString('Use `lua_read_doc` to inspect a namespace before calling its functions.', $index);
+        $this->assertStringContainsString('lua_read_doc(page: "integrations.coingecko")', $index);
+    }
+
+    public function test_generate_namespace_index_hides_redundant_default_aliases(): void
+    {
+        $this->primeNamespaceCache([
+            'integrations.coingecko' => [
+                'description' => 'Cryptocurrency market data',
+                'functions' => [
+                    [
+                        'name' => 'search',
+                        'description' => 'Search coins',
+                        'fullDescription' => 'Search coins',
+                        'parameters' => [],
+                        'sourceToolSlug' => 'coingecko_search',
+                    ],
+                ],
+            ],
+            'integrations.coingecko.default' => [
+                'description' => 'Cryptocurrency market data',
+                'functions' => [
+                    [
+                        'name' => 'search',
+                        'description' => 'Search coins',
+                        'fullDescription' => 'Search coins',
+                        'parameters' => [],
+                        'sourceToolSlug' => 'coingecko_search',
+                    ],
+                ],
+            ],
+            'integrations.coingecko.work' => [
+                'description' => 'Cryptocurrency market data',
+                'functions' => [
+                    [
+                        'name' => 'search',
+                        'description' => 'Search coins',
+                        'fullDescription' => 'Search coins',
+                        'parameters' => [],
+                        'sourceToolSlug' => 'coingecko_search',
+                    ],
+                ],
+            ],
+        ]);
+
+        $index = $this->generator->generateNamespaceIndex($this->agent);
+
+        $this->assertStringContainsString('**app.integrations.coingecko** — Cryptocurrency market data', $index);
+        $this->assertStringContainsString('**app.integrations.coingecko.work** — Cryptocurrency market data', $index);
+        $this->assertStringNotContainsString('app.integrations.coingecko.default.search({})', $index);
+    }
+
+    public function test_generate_namespace_index_with_root_filter_hides_default_alias(): void
+    {
+        $this->primeNamespaceCache([
+            'integrations.coingecko' => [
+                'description' => 'Cryptocurrency market data',
+                'functions' => [
+                    [
+                        'name' => 'search',
+                        'description' => 'Search coins',
+                        'fullDescription' => 'Search coins',
+                        'parameters' => [],
+                        'sourceToolSlug' => 'coingecko_search',
+                    ],
+                ],
+            ],
+            'integrations.coingecko.default' => [
+                'description' => 'Cryptocurrency market data',
+                'functions' => [
+                    [
+                        'name' => 'search',
+                        'description' => 'Search coins',
+                        'fullDescription' => 'Search coins',
+                        'parameters' => [],
+                        'sourceToolSlug' => 'coingecko_search',
+                    ],
+                ],
+            ],
+        ]);
+
+        $index = $this->generator->generateNamespaceIndex($this->agent, 'integrations.coingecko');
+
+        $this->assertStringContainsString('**app.integrations.coingecko** — Cryptocurrency market data', $index);
+        $this->assertStringNotContainsString('app.integrations.coingecko.default.search({})', $index);
+    }
+
+    public function test_generate_namespace_index_with_default_filter_keeps_default_alias(): void
+    {
+        $this->primeNamespaceCache([
+            'integrations.coingecko' => [
+                'description' => 'Cryptocurrency market data',
+                'functions' => [
+                    [
+                        'name' => 'search',
+                        'description' => 'Search coins',
+                        'fullDescription' => 'Search coins',
+                        'parameters' => [],
+                        'sourceToolSlug' => 'coingecko_search',
+                    ],
+                ],
+            ],
+            'integrations.coingecko.default' => [
+                'description' => 'Cryptocurrency market data',
+                'functions' => [
+                    [
+                        'name' => 'search',
+                        'description' => 'Search coins',
+                        'fullDescription' => 'Search coins',
+                        'parameters' => [],
+                        'sourceToolSlug' => 'coingecko_search',
+                    ],
+                ],
+            ],
+        ]);
+
+        $index = $this->generator->generateNamespaceIndex($this->agent, 'integrations.coingecko.default');
+
+        $this->assertStringContainsString('**app.integrations.coingecko.default** — Cryptocurrency market data', $index);
     }
 
     // ── generateNamespaceDocs ────────────────────────────────────
@@ -213,5 +330,21 @@ class LuaApiDocGeneratorTest extends TestCase
         $result = $method->invoke($this->generator, $toolName, $appName);
 
         $this->assertEquals($expected, $result, "deriveFunctionName('{$toolName}', '{$appName}') should be '{$expected}', got '{$result}'");
+    }
+
+    /**
+     * @param  array<string, array{description: string, functions: array<int, array{name: string, description: string, fullDescription: string, parameters: array, sourceToolSlug: string}>}>  $namespaces
+     */
+    private function primeNamespaceCache(array $namespaces): void
+    {
+        $generator = new \ReflectionObject($this->generator);
+
+        $cachedNamespaces = $generator->getProperty('cachedNamespaces');
+        $cachedNamespaces->setAccessible(true);
+        $cachedNamespaces->setValue($this->generator, $namespaces);
+
+        $cachedAgent = $generator->getProperty('cachedAgent');
+        $cachedAgent->setAccessible(true);
+        $cachedAgent->setValue($this->generator, $this->agent);
     }
 }

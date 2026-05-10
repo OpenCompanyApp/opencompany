@@ -1,94 +1,37 @@
-# OpenCompany Enterprise License
+# OpenCompany Commercial Features and License Keys
 
-Version 1.0, January 2025
+This repository's source code is licensed under the [Business Source License 1.1](LICENSE.md), including the Additional Use Grant described there.
 
-## Overview
+Certain premium or commercially licensed capabilities may also require:
 
-This license applies to all source code files that contain ".ee." in their filename or ".ee" in their directory path within the OpenCompany software. These files contain enterprise features that require a valid commercial license agreement with Ginger Media BV.
+- a separate commercial agreement with Ginger Media BV
+- a valid license key
+- plan-based entitlement checks at runtime
 
-## Scope
+This file is a commercial-feature notice. It does **not** change the source-code license for the repository unless a specific file or package is explicitly marked otherwise in the future.
 
-The following are examples of files covered by this Enterprise License:
+## What this means
 
-- Files with `.ee.` in the filename (e.g., `auth.ee.ts`, `audit.ee.vue`)
-- Files in directories with `.ee` in the path (e.g., `/features/ee/sso/`, `/modules/ee/`)
+- The repository source is available under `BSL 1.1`.
+- Internal self-hosting and single-customer managed operation are allowed under the Additional Use Grant in [LICENSE.md](LICENSE.md).
+- Hosted resale, white-label use, OEM/embed commercialization, and other uses outside the Additional Use Grant require a separate commercial agreement.
+- A paid feature may be visible in the source tree but still require a license key or commercial plan to activate lawfully in production.
 
-All other files in the OpenCompany software are licensed under the OpenCompany Sustainable Use License.
+## Typical commercially controlled areas
 
-## Enterprise Features
+Examples may include:
 
-The enterprise-licensed portions of the software include, but are not limited to:
+- SSO / SAML / SCIM
+- advanced audit and compliance features
+- enterprise governance controls
+- white-labeling
+- premium analytics
+- other plan-gated features
 
-### Authentication & Compliance
-- Single Sign-On (SSO) / SAML integration
-- Audit logging and compliance reporting
-- Advanced Role-Based Access Control (RBAC)
-- Security compliance features
-
-### Scale Features
-- Advanced analytics and reporting dashboard
-- Unlimited agent configurations
-- Priority execution queues
-- Custom rate limiting and quotas
-
-### Premium Features
-- White-labeling and custom branding
-- Removal of OpenCompany branding
-- Dedicated support integration
-- Custom enterprise integrations
-
-## License Grant
-
-Subject to a valid commercial license agreement with Ginger Media BV:
-
-1. You are granted a non-exclusive, non-transferable license to use the enterprise features within your organization.
-
-2. The scope, term, and conditions of your license are defined in your commercial agreement.
-
-3. You may not sublicense, distribute, or make the enterprise features available to third parties without explicit written permission.
-
-## Without a Commercial License
-
-If you do not have a valid commercial license agreement:
-
-1. You may not use, copy, modify, or distribute the enterprise-licensed portions of the software.
-
-2. You may view the source code for reference purposes only.
-
-3. Any use of enterprise features constitutes acceptance of the obligation to obtain a commercial license.
-
-## Termination
-
-Your right to use the enterprise features terminates automatically if:
-
-1. Your commercial license agreement expires or is terminated.
-2. You breach any terms of your commercial license agreement.
-3. You use the enterprise features without a valid commercial license.
-
-## No Warranty
-
-THE ENTERPRISE FEATURES ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. THE LICENSOR DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-
-## Limitation of Liability
-
-IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR USE OF THE ENTERPRISE FEATURES.
-
-## Definitions
-
-The **licensor** is Ginger Media BV, a company registered in Belgium (VAT: BE0774897861).
-
-**Enterprise features** refers to the source code files and functionality covered by this Enterprise License.
-
-**Commercial license agreement** refers to a separate written agreement between you and Ginger Media BV governing your use of the enterprise features.
-
-## Governing Law
-
-This license is governed by the laws of Belgium.
+The existence or visibility of source code does not itself grant production rights beyond those granted in [LICENSE.md](LICENSE.md) or a separate commercial agreement.
 
 ## Contact
 
-For commercial licensing inquiries, please visit the OpenCompany project website or contact Ginger Media BV.
+For commercial licensing, hosted offerings, OEM, embedded use, or plan-gated features, contact:
 
----
-
-Copyright (c) 2025 Ginger Media BV. All rights reserved.
+- enterprise@opencompany.app

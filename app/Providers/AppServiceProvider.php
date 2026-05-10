@@ -8,13 +8,13 @@ use App\Agents\Tools\Providers as ToolProviders;
 use App\Agents\Tools\ToolRegistry;
 use App\Models\ApprovalRequest;
 use App\Models\Document;
-use App\Services\AgentPermissionService;
-use App\Services\Mcp\McpServerRegistrar;
-use App\Services\Chat\ChatBridge;
-use App\Services\Chat\ChatManager;
-use App\Services\PrismServerService;
 use App\Observers\ApprovalRequestObserver;
 use App\Observers\DocumentObserver;
+use App\Services\AgentPermissionService;
+use App\Services\Chat\ChatBridge;
+use App\Services\Chat\ChatManager;
+use App\Services\Mcp\McpServerRegistrar;
+use App\Services\PrismServerService;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Vite;
@@ -42,6 +42,14 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(ToolRegistry::class);
+
+        if (class_exists(\OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder::class)) {
+            $this->app->singleton(\OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder::class);
+        }
+
+        if (class_exists(\OpenCompany\IntegrationCore\Lua\LuaDocRenderer::class)) {
+            $this->app->singleton(\OpenCompany\IntegrationCore\Lua\LuaDocRenderer::class);
+        }
 
         // Override the default config-based credential resolver with DB-backed one
         $this->app->singleton(

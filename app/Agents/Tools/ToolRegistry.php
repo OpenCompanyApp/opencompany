@@ -567,6 +567,8 @@ class ToolRegistry
         $lines[] = '';
         $lines[] = 'All data operations and integrations are available through lua_exec.';
         $lines[] = 'Always call lua_read_doc(namespace) before writing code to look up function names and parameters.';
+        $lines[] = 'Do not assume raw upstream API response shapes; integrations may normalize names and structure.';
+        $lines[] = 'If docs do not make the return shape clear, inspect with a minimal lua_exec call before writing multi-step logic.';
         $lines[] = '';
         $lines[] = app(\App\Services\LuaApiDocGenerator::class)->getNamespaceSummary($agent);
 
@@ -636,7 +638,7 @@ class ToolRegistry
     }
 
     /**
-     * @return array<int, object>
+     * @return array<string, \OpenCompany\IntegrationCore\Contracts\ToolProvider>
      */
     private function integrationProviders(): array
     {
