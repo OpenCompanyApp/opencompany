@@ -13,6 +13,30 @@ use Illuminate\Support\Str;
 
 class AgentCommunicationService
 {
+    private static int $depth = 0;
+
+    public static function incrementDepth(): int
+    {
+        return ++self::$depth;
+    }
+
+    public static function decrementDepth(): int
+    {
+        self::$depth = max(0, self::$depth - 1);
+
+        return self::$depth;
+    }
+
+    public static function currentDepth(): int
+    {
+        return self::$depth;
+    }
+
+    public static function resetDepth(): void
+    {
+        self::$depth = 0;
+    }
+
     /**
      * Get or create a DM channel between two agents.
      * Returns the channel_id string.

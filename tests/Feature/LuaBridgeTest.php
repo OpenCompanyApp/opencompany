@@ -34,6 +34,7 @@ class LuaBridgeTest extends TestCase
         $docGenerator = Mockery::mock(LuaApiDocGenerator::class);
         $docGenerator->shouldReceive('buildFunctionMap')->andReturn($functionMap);
         $docGenerator->shouldReceive('buildParameterMap')->andReturn($parameterMap);
+        $docGenerator->shouldReceive('buildAccountMap')->andReturn([]);
 
         $registry = $registry ?? Mockery::mock(ToolRegistry::class);
 
@@ -76,7 +77,7 @@ class LuaBridgeTest extends TestCase
         $registry = Mockery::mock(ToolRegistry::class);
         $registry->shouldReceive('getToolMetaBySlug')->andReturn(['icon' => 'ph:wrench', 'name' => 'test']);
         $registry->shouldReceive('instantiateToolBySlug')
-            ->with('send_channel_message', Mockery::type(User::class))
+            ->with('send_channel_message', Mockery::type(User::class), null)
             ->andReturn($fakeTool);
 
         $bridge = $this->makeBridge(['chat.send' => 'send_channel_message'], $registry);

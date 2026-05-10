@@ -511,6 +511,31 @@
               </button>
             </div>
           </template>
+
+          <div
+            v-if="showCatalogControls"
+            class="mt-6 mb-2 flex flex-col items-center gap-2 text-center"
+          >
+            <p v-if="catalogAvailable === false" class="text-xs text-neutral-500 dark:text-neutral-400">
+              Catalog file is not available in this environment.
+            </p>
+            <p v-else-if="catalogError" class="text-xs text-red-600 dark:text-red-400">
+              {{ catalogError }}
+            </p>
+            <button
+              v-if="catalogMeta.hasMore"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              :disabled="catalogLoading"
+              @click="loadMoreCatalog"
+            >
+              <Icon :name="catalogLoading ? 'ph:circle-notch' : 'ph:plus'" class="w-3.5 h-3.5" />
+              {{ catalogLoading ? 'Loading catalog' : 'Load more catalog integrations' }}
+            </button>
+            <p v-else-if="catalogLoading" class="text-xs text-neutral-500 dark:text-neutral-400">
+              Loading catalog...
+            </p>
+          </div>
         </main>
       </div>
     </div>
@@ -611,7 +636,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import axios from 'axios'
 import Icon from '@/Components/shared/Icon.vue'
@@ -630,6 +655,17 @@ const { workspacePath } = useWorkspace()
 // Sidebar state
 const activeCategory = ref<string>('all')
 const searchQuery = ref('')
+const catalogLoading = ref(false)
+const catalogError = ref<string | null>(null)
+const catalogAvailable = ref<boolean | null>(null)
+const catalogMeta = reactive({
+  page: 0,
+  perPage: 50,
+  total: 0,
+  hasMore: false,
+  search: '',
+  category: '',
+})
 
 // Interfaces
 interface Webhook {
@@ -701,8 +737,124 @@ const configurableIntegrations = ref<Record<string, any>>({})
 
 // Load integration status from backend
 onMounted(async () => {
-  await Promise.all([loadIntegrationStatus(), loadApiKeys()])
+  await Promise.all([loadCatalogThenStatus(), loadApiKeys()])
 })
+
+const loadCatalogThenStatus = async () => {
+  await loadIntegrationStatus()
+  await loadIntegrationCatalog({ reset: true })
+}
+
+const categoryLabels: Record<string, { name: string; icon: string }> = {
+  analytics: { name: 'Analytics', icon: 'ph:chart-line-up' },
+  data: { name: 'Data & APIs', icon: 'ph:database' },
+  productivity: { name: 'Productivity', icon: 'ph:briefcase' },
+  rendering: { name: 'Rendering', icon: 'ph:paint-brush' },
+}
+
+const categoryFor = (id: string, icon = 'ph:puzzle-piece'): IntegrationCategory => {
+  let category = integrationCategories.value.find(c => c.id === id)
+  if (!category) {
+    const label = categoryLabels[id] || {
+      name: id.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase()),
+      icon,
+    }
+    category = { id, name: label.name, icon: label.icon, integrations: [] }
+    integrationCategories.value.push(category)
+  }
+  return category
+}
+
+const mergeIntegrationCard = (incoming: Integration) => {
+  const category = categoryFor(incoming.category || 'data', incoming.icon)
+  const existing = integrationCategories.value
+    .flatMap(c => c.integrations)
+    .find(i => i.id === incoming.id)
+
+  if (existing) {
+    Object.assign(existing, {
+      ...incoming,
+      installed: incoming.installed ?? existing.installed,
+      enabled: incoming.enabled ?? existing.enabled,
+      configured: incoming.configured ?? existing.configured,
+      runnable: incoming.runnable ?? existing.runnable,
+      packageInstalled: incoming.packageInstalled ?? existing.packageInstalled,
+      configurable: incoming.configurable ?? existing.configurable,
+      badge: incoming.badge || existing.badge,
+      catalog: existing.catalog || incoming.catalog,
+    })
+    return existing
+  }
+
+  category.integrations.push(incoming)
+  return incoming
+}
+
+const loadIntegrationCatalog = async (options: { reset?: boolean; search?: string; category?: string } = {}) => {
+  if (catalogLoading.value) return
+
+  const search = options.search ?? catalogMeta.search
+  const category = options.category ?? catalogMeta.category
+  const page = options.reset ? 1 : catalogMeta.page + 1
+
+  catalogLoading.value = true
+  catalogError.value = null
+
+  try {
+    const response = await axios.get('/api/integrations/catalog', {
+      params: {
+        page,
+        perPage: catalogMeta.perPage,
+        search: search || undefined,
+        category: category || undefined,
+      },
+    })
+
+    catalogAvailable.value = response.data.available ?? null
+    catalogMeta.page = response.data.meta?.page || page
+    catalogMeta.perPage = response.data.meta?.perPage || catalogMeta.perPage
+    catalogMeta.total = response.data.meta?.total || 0
+    catalogMeta.hasMore = Boolean(response.data.meta?.hasMore)
+    catalogMeta.search = search
+    catalogMeta.category = category
+
+    for (const item of response.data.data || []) {
+      mergeIntegrationCard({
+        id: item.id,
+        name: item.name,
+        icon: item.icon || 'ph:puzzle-piece',
+        description: item.description,
+        category: item.category || 'data',
+        installed: item.enabled || false,
+        enabled: item.enabled || false,
+        configured: item.configured || false,
+        runnable: item.runnable || false,
+        configurable: item.configurable || false,
+        badge: item.badge || undefined,
+        catalog: true,
+        packageInstalled: item.packageInstalled,
+        toolCount: item.toolCount,
+        docsUrl: item.docsUrl || null,
+      })
+    }
+  } catch (error) {
+    console.error('Failed to load integration catalog:', error)
+    catalogError.value = 'Catalog unavailable'
+  } finally {
+    catalogLoading.value = false
+  }
+}
+
+const loadMoreCatalog = () => {
+  const category = activeCategory.value !== 'all' && activeCategory.value !== 'installed' && activeCategory.value !== 'mcp-servers'
+    ? activeCategory.value
+    : ''
+
+  loadIntegrationCatalog({
+    search: searchQuery.value.trim(),
+    category: searchQuery.value.trim() ? '' : category,
+  })
+}
 
 const loadApiKeys = async () => {
   try {
@@ -748,20 +900,26 @@ const loadIntegrationStatus = async () => {
           configurableIntegrations.value[integration.id] = integration
         }
 
-        // Update existing category entries
-        let found = false
-        for (const category of integrationCategories.value) {
-          const entry = category.integrations.find(i => i.id === integration.id)
-          if (entry) {
-            entry.installed = integration.enabled
-            entry.configurable = integration.configurable
-            found = true
-            break
-          }
-        }
+        mergeIntegrationCard({
+          id: integration.id,
+          name: integration.name,
+          icon: integration.icon || 'ph:puzzle-piece',
+          description: integration.description,
+          category: integration.type === 'mcp' ? 'mcp-servers' : (integration.category || 'other'),
+          installed: integration.enabled,
+          enabled: integration.enabled,
+          configured: integration.configured,
+          runnable: true,
+          badge: integration.badge || undefined,
+          configurable: integration.configurable ?? false,
+          packageInstalled: true,
+          type: integration.type || 'native',
+          mcpServerId: integration.mcpServerId,
+          toolCount: integration.toolCount,
+        })
 
         // For MCP integrations, try to match against suggested entries by URL
-        if (!found && integration.type === 'mcp') {
+        if (integration.type === 'mcp') {
           const mcpCat = integrationCategories.value.find(c => c.id === 'mcp-servers')
           if (mcpCat) {
             const suggested = mcpCat.integrations.find(
@@ -771,55 +929,7 @@ const loadIntegrationStatus = async () => {
               suggested.installed = true
               suggested.mcpServerId = integration.mcpServerId
               suggested.toolCount = integration.toolCount
-              found = true
             }
-          }
-        }
-
-        // Add backend-driven AI provider integrations to AI Models category
-        if (!found && integration.category === 'ai-models') {
-          const aiCat = integrationCategories.value.find(c => c.id === 'ai-models')
-          if (aiCat && !aiCat.integrations.find(i => i.id === integration.id)) {
-            aiCat.integrations.push({
-              id: integration.id,
-              name: integration.name,
-              icon: integration.icon,
-              description: integration.description,
-              category: integration.category,
-              installed: integration.enabled,
-              badge: integration.badge || undefined,
-            })
-          }
-          found = true
-        }
-
-        // Add dynamic integrations not in static categories
-        if (!found) {
-          const categoryId = integration.type === 'mcp' ? 'mcp-servers' : (integration.category || 'other')
-          let category = integrationCategories.value.find(c => c.id === categoryId)
-          if (!category) {
-            category = {
-              id: categoryId,
-              name: categoryId.charAt(0).toUpperCase() + categoryId.slice(1),
-              icon: integration.icon || 'ph:puzzle-piece',
-              integrations: [],
-            }
-            integrationCategories.value.push(category)
-          }
-          // Avoid duplicates
-          if (!category.integrations.find(i => i.id === integration.id)) {
-            category.integrations.push({
-              id: integration.id,
-              name: integration.name,
-              icon: integration.icon,
-              description: integration.description,
-              installed: integration.enabled,
-              badge: integration.badge || undefined,
-              configurable: integration.configurable ?? false,
-              type: integration.type || 'native',
-              mcpServerId: integration.mcpServerId,
-              toolCount: integration.toolCount,
-            })
           }
         }
       }
@@ -828,6 +938,26 @@ const loadIntegrationStatus = async () => {
     console.error('Failed to load integration status:', error)
   }
 }
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(searchQuery, (query) => {
+  if (searchTimer) {
+    clearTimeout(searchTimer)
+  }
+
+  searchTimer = setTimeout(() => {
+    loadIntegrationCatalog({ reset: true, search: query.trim(), category: '' })
+  }, 250)
+})
+
+watch(activeCategory, (category) => {
+  if (category === 'all' || category === 'installed' || category === 'mcp-servers') {
+    return
+  }
+
+  loadIntegrationCatalog({ reset: true, search: '', category })
+})
 
 // Mock data - Webhooks
 const webhooks = ref<Webhook[]>([
@@ -889,9 +1019,7 @@ const integrationCategories = ref<IntegrationCategory[]>([
     id: 'developer',
     name: 'Developer Tools',
     icon: 'ph:code',
-    integrations: [
-      { id: 'github', name: 'GitHub', icon: 'ph:github-logo', description: 'Repos, issues, PRs, actions', installed: true },
-    ],
+    integrations: [],
   },
   {
     id: 'productivity',
@@ -906,11 +1034,7 @@ const integrationCategories = ref<IntegrationCategory[]>([
     id: 'data',
     name: 'Data & APIs',
     icon: 'ph:database',
-    integrations: [
-      { id: 'webhooks', name: 'Webhooks', icon: 'ph:webhooks-logo', description: 'Custom HTTP webhooks', installed: true, badge: 'built-in' },
-      { id: 'email', name: 'Email (SMTP)', icon: 'ph:envelope', description: 'Send and receive emails', installed: false, badge: 'built-in' },
-      { id: 'rest-api', name: 'REST API', icon: 'ph:plug', description: 'Generic API connector', installed: false, badge: 'built-in' },
-    ],
+    integrations: [],
   },
   {
     id: 'built-in-tools',
@@ -1062,6 +1186,17 @@ const searchResults = computed(() => {
   return results
 })
 
+const showCatalogControls = computed(() => {
+  if (activeCategory.value === 'installed' || activeCategory.value === 'mcp-servers') {
+    return false
+  }
+
+  return catalogLoading.value
+    || Boolean(catalogError.value)
+    || catalogAvailable.value === false
+    || catalogMeta.hasMore
+})
+
 // Webhook handlers
 const editWebhook = (webhook: Webhook) => {
   webhookForm.name = webhook.name
@@ -1104,20 +1239,41 @@ const revokeApiKey = async (id: string) => {
   }
 }
 
-// Open the dynamic config modal for a configurable integration
-const openDynamicModal = (integrationId: string) => {
-  const data = configurableIntegrations.value[integrationId]
-  if (!data) return
-  dynamicIntegrationId.value = integrationId
-  dynamicConfigSchema.value = data.configSchema || []
-  dynamicIntegrationMeta.value = {
-    name: data.name,
-    description: data.description,
-    icon: data.icon,
-    logo: data.logo,
-    docs_url: data.docsUrl,
+// Open the dynamic config modal for a configurable integration.
+// Fetch by id so catalog cards do not depend on the large /api/integrations cache.
+const openDynamicModal = async (integrationOrId: Integration | string) => {
+  const integrationId = typeof integrationOrId === 'string' ? integrationOrId : integrationOrId.id
+  const fallback = typeof integrationOrId === 'string'
+    ? configurableIntegrations.value[integrationId]
+    : integrationOrId
+
+  try {
+    const { data } = await axios.get(`/api/integrations/${integrationId}/config`)
+    const schema = data.configSchema || fallback?.configSchema || []
+    const merged = {
+      ...fallback,
+      ...data,
+      id: integrationId,
+      configSchema: schema,
+      docsUrl: data.docsUrl || fallback?.docsUrl,
+      icon: data.icon || fallback?.icon || 'ph:gear',
+    }
+
+    configurableIntegrations.value[integrationId] = merged
+    dynamicIntegrationId.value = integrationId
+    dynamicConfigSchema.value = schema
+    dynamicIntegrationMeta.value = {
+      name: merged.name || fallback?.name || integrationId,
+      description: merged.description || fallback?.description || '',
+      icon: merged.icon,
+      logo: merged.logo,
+      docs_url: merged.docsUrl,
+    }
+    showDynamicConfigModal.value = true
+  } catch (error) {
+    console.error(`Failed to load config for ${integrationId}:`, error)
+    alert(`Failed to load ${fallback?.name || integrationId} configuration.`)
   }
-  showDynamicConfigModal.value = true
 }
 
 // Quick install for suggested MCP servers (one-click)
@@ -1154,6 +1310,16 @@ const handleQuickInstallMcp = async (integration: Integration) => {
 
 // Integration handlers
 const handleInstall = async (integration: Integration) => {
+  if (integration.catalog && integration.packageInstalled === false) {
+    if (integration.docsUrl) {
+      window.open(integration.docsUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    alert(`${integration.name} is present in the integrations catalog, but its runtime package is not installed in this OpenCompany app yet.`)
+    return
+  }
+
   // Suggested MCP server — one-click install
   if (integration.suggestedMcpConfig && !integration.mcpServerId) {
     handleQuickInstallMcp(integration)
@@ -1180,8 +1346,8 @@ const handleInstall = async (integration: Integration) => {
   }
 
   // Check if this is a configurable integration (chat platforms, package-provided, etc.)
-  if (configurableIntegrations.value[integration.id]) {
-    openDynamicModal(integration.id)
+  if (integration.configurable || configurableIntegrations.value[integration.id]) {
+    await openDynamicModal(integration)
     return
   }
 
@@ -1205,6 +1371,8 @@ const handleProviderSaved = (result: { enabled: boolean; configured: boolean }) 
     const found = category.integrations.find(i => i.id === activeProviderId.value)
     if (found) {
       found.installed = result.enabled
+      found.enabled = result.enabled
+      found.configured = result.configured
       break
     }
   }
@@ -1220,7 +1388,7 @@ const handleCodexSaved = (result: { enabled: boolean; configured: boolean }) => 
   }
 }
 
-const handleConfigure = (integration: Integration) => {
+const handleConfigure = async (integration: Integration) => {
   if (integration.type === 'mcp' && integration.mcpServerId) {
     activeMcpServerId.value = integration.mcpServerId
     showMcpConfigModal.value = true
@@ -1229,8 +1397,8 @@ const handleConfigure = (integration: Integration) => {
     showProviderConfigModal.value = true
   } else if (integration.id === 'codex') {
     showCodexConfigModal.value = true
-  } else if (configurableIntegrations.value[integration.id]) {
-    openDynamicModal(integration.id)
+  } else if (integration.configurable || configurableIntegrations.value[integration.id]) {
+    await openDynamicModal(integration)
   }
 }
 

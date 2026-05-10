@@ -309,15 +309,14 @@ class SaveMemoryTest extends TestCase
     public function test_save_with_empty_content(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(1);
-
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
         $result = $tool->handle(new Request([
             'content' => '',
             'target' => 'log',
         ]));
 
-        $this->assertStringContainsString('recallable via recall_memory', $result);
+        $this->assertStringContainsString('Error', $result);
+        $this->assertStringContainsString('"content" is required', $result);
     }
 
     public function test_save_category_defaults_to_general(): void

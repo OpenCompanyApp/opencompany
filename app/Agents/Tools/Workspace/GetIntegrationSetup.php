@@ -3,6 +3,7 @@
 namespace App\Agents\Tools\Workspace;
 
 use App\Models\User;
+use App\Services\Integrations\ConfigSchemaNormalizer;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
@@ -34,7 +35,7 @@ class GetIntegrationSetup implements Tool
             }
 
             $meta = $provider->integrationMeta();
-            $configSchema = $provider->configSchema();
+            $configSchema = ConfigSchemaNormalizer::normalize($provider->configSchema());
 
             return json_encode([
                 'id' => $integrationId,

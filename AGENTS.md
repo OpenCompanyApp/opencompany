@@ -46,6 +46,8 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 
 - Prefer `rg` and `rg --files` for search.
 - Keep edits targeted. Do not revert unrelated user changes.
+- Never commit automatically. Only create commits when the user explicitly asks for a commit.
+- Run only the tests that directly matter for the change during local work; CI/CD is responsible for full suite coverage unless the user explicitly asks for a full local run.
 - Put audits and investigations into `docs/`.
 - MCP CLI: `~/.local/bin/mcp-cli`
 - MCP config: `~/.config/mcp/mcp_servers.json`

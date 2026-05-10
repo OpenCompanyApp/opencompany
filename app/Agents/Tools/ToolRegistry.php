@@ -7,6 +7,8 @@ use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\AgentPermissionService;
+use App\Services\Integrations\IntegrationCatalog;
+use Illuminate\Support\Str;
 
 class ToolRegistry
 {
@@ -39,6 +41,12 @@ class ToolRegistry
 
     /** @var array<string, string>|null Cached merged integration logos */
     private ?array $effectiveIntegrationLogos = null;
+
+    /** @var array<string, array<string, mixed>>|null Cached package catalog tools */
+    private ?array $catalogTools = null;
+
+    /** @var array<string, array<string, mixed>>|null Shared package catalog tool index */
+    private static ?array $sharedCatalogTools = null;
 
     private ?string $currentChannelId = null;
 
@@ -87,14 +95,20 @@ class ToolRegistry
             // Built-in providers
             foreach ($this->builtInProviders as $provider) {
                 foreach ($provider->tools() as $slug => $meta) {
-                    $this->effectiveToolMap[$slug] = $meta;
+                    $normalized = $this->normalizeToolMeta($slug, $meta);
+                    if ($normalized !== null) {
+                        $this->effectiveToolMap[$slug] = $normalized;
+                    }
                 }
             }
 
             // External integration providers
             foreach ($this->integrationProviders() as $provider) {
                 foreach ($provider->tools() as $slug => $meta) {
-                    $this->effectiveToolMap[$slug] = $meta;
+                    $normalized = $this->normalizeToolMeta($slug, $meta);
+                    if ($normalized !== null) {
+                        $this->effectiveToolMap[$slug] = $normalized;
+                    }
                 }
             }
         }
@@ -123,8 +137,8 @@ class ToolRegistry
                 $meta = $provider->appMeta();
                 $this->effectiveAppGroups[$provider->appName()] = [
                     'tools' => array_keys($provider->tools()),
-                    'label' => $meta['label'],
-                    'description' => $meta['description'],
+                    'label' => $meta['label'] ?? Str::headline($provider->appName()),
+                    'description' => $meta['description'] ?? '',
                 ];
             }
         }
@@ -161,7 +175,7 @@ class ToolRegistry
             // External integration providers
             foreach ($this->integrationProviders() as $provider) {
                 $meta = $provider->appMeta();
-                $this->effectiveAppIcons[$provider->appName()] = $meta['icon'];
+                $this->effectiveAppIcons[$provider->appName()] = $meta['icon'] ?? 'ph:puzzle-piece';
             }
         }
 
@@ -413,6 +427,15 @@ class ToolRegistry
                     'parameters' => [],
                 ];
 
+                $catalogTool = $isIntegration ? $this->catalogToolDefinition($slug) : null;
+                if ($catalogTool !== null) {
+                    $toolData['fullDescription'] = (string) ($catalogTool['description'] ?? $meta['description']);
+                    $toolData['parameters'] = $this->normalizeCatalogParameters($catalogTool['parameters'] ?? []);
+                    $tools[] = $toolData;
+
+                    continue;
+                }
+
                 // Extract schema by instantiating the tool
                 try {
                     $tool = $this->instantiateTool($meta['class'], $agent, $slug);
@@ -586,10 +609,23 @@ class ToolRegistry
             'tool_registry' => $this,
         ];
 
-        // Check external integration providers first
+        // Resolve built-in slugs directly before scanning the large integration registry.
+        $appLookup = $this->buildAppLookup();
+        $appName = $appLookup[$slug] ?? null;
+
+        if ($appName !== null && isset($this->builtInProviders[$appName])) {
+            return $this->builtInProviders[$appName]->createTool($class, $agent, $context);
+        }
+
+        // Check external integration providers
         foreach ($this->integrationProviders() as $provider) {
             foreach ($provider->tools() as $toolSlug => $meta) {
-                if ($meta['class'] === $class && ($slug === '' || $toolSlug === $slug)) {
+                $normalized = $this->normalizeToolMeta($toolSlug, $meta);
+                if ($normalized === null) {
+                    continue;
+                }
+
+                if ($normalized['class'] === $class && ($slug === '' || $toolSlug === $slug)) {
                     return $provider->createTool($class, [
                         'agent' => $agent,
                         'timezone' => AppSetting::getValue('org_timezone', 'UTC'),
@@ -600,24 +636,121 @@ class ToolRegistry
             }
         }
 
-        // Check built-in providers
-        $appLookup = $this->buildAppLookup();
-        $appName = $appLookup[$slug] ?? null;
-
-        if ($appName !== null && isset($this->builtInProviders[$appName])) {
-            return $this->builtInProviders[$appName]->createTool($class, $agent, $context);
-        }
-
         // Fallback: search all built-in providers by class
         foreach ($this->builtInProviders as $provider) {
             foreach ($provider->tools() as $toolSlug => $meta) {
-                if ($meta['class'] === $class) {
+                $normalized = $this->normalizeToolMeta($toolSlug, $meta);
+                if ($normalized !== null && $normalized['class'] === $class) {
                     return $provider->createTool($class, $agent, $context);
                 }
             }
         }
 
         throw new \RuntimeException("Unknown tool class: {$class}");
+    }
+
+    /**
+     * @param  mixed  $slug
+     * @param  mixed  $meta
+     * @return array{class: string, name: string, description: string, type: string, icon: string}|null
+     */
+    private function normalizeToolMeta(mixed $slug, mixed $meta): ?array
+    {
+        $slug = (string) $slug;
+
+        if (is_string($meta)) {
+            $meta = ['class' => $meta];
+        }
+
+        if (! is_array($meta) || ! is_string($meta['class'] ?? null) || $meta['class'] === '') {
+            return null;
+        }
+
+        $catalogTool = $this->catalogToolDefinition($slug);
+
+        return array_merge($meta, [
+            'class' => $meta['class'],
+            'name' => (string) ($meta['name'] ?? $catalogTool['name'] ?? Str::headline(str_replace('_', ' ', $slug))),
+            'description' => (string) ($meta['description'] ?? $catalogTool['description'] ?? ''),
+            'type' => (string) ($meta['type'] ?? $catalogTool['type'] ?? 'action'),
+            'icon' => (string) ($meta['icon'] ?? $catalogTool['icon'] ?? 'ph:wrench'),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function catalogToolDefinition(string $slug): ?array
+    {
+        return $this->catalogTools()[$slug] ?? null;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function catalogTools(): array
+    {
+        if ($this->catalogTools !== null) {
+            return $this->catalogTools;
+        }
+
+        if (self::$sharedCatalogTools !== null) {
+            return $this->catalogTools = self::$sharedCatalogTools;
+        }
+
+        self::$sharedCatalogTools = [];
+
+        foreach (app(IntegrationCatalog::class)->all() as $integration) {
+            foreach (($integration['tools'] ?? []) as $tool) {
+                if (! is_array($tool)) {
+                    continue;
+                }
+
+                $toolSlug = $tool['slug'] ?? $tool['function_name'] ?? null;
+
+                if (is_string($toolSlug) && $toolSlug !== '') {
+                    self::$sharedCatalogTools[$toolSlug] = $tool;
+                }
+            }
+        }
+
+        return $this->catalogTools = self::$sharedCatalogTools;
+    }
+
+    /**
+     * @param  mixed  $parameters
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeCatalogParameters(mixed $parameters): array
+    {
+        if (! is_array($parameters)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($parameters as $name => $definition) {
+            if (! is_array($definition)) {
+                continue;
+            }
+
+            if (array_is_list($parameters)) {
+                $parameterName = $definition['name'] ?? $definition['key'] ?? null;
+            } else {
+                $parameterName = $definition['name'] ?? $name;
+            }
+
+            if (! is_string($parameterName) || $parameterName === '') {
+                continue;
+            }
+
+            $definition['name'] = $parameterName;
+            $definition['type'] = $definition['type'] ?? 'string';
+            $definition['required'] = (bool) ($definition['required'] ?? false);
+            $normalized[] = $definition;
+        }
+
+        return $normalized;
     }
 
     /**

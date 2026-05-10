@@ -10,6 +10,7 @@ use App\Models\McpServer;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\UserExternalIdentity;
+use App\Services\Integrations\ConfigSchemaNormalizer;
 use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use OpenCompany\PrismCodex\CodexTokenStore;
@@ -25,7 +26,7 @@ class IntegrationController extends Controller
      */
     public function index(): \Illuminate\Http\JsonResponse
     {
-        $settings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
+        $settings = IntegrationSetting::forWorkspace()->default()->get()->keyBy('integration_id');
         $available = IntegrationSetting::getAvailableIntegrations();
         $registry = app(ToolProviderRegistry::class);
 
@@ -89,7 +90,7 @@ class IntegrationController extends Controller
                 'enabled' => $setting ? $setting->enabled : false,
                 'configured' => $setting ? $setting->hasValidConfig() : false,
                 'configurable' => true,
-                'configSchema' => $provider->configSchema(),
+                'configSchema' => ConfigSchemaNormalizer::normalize($provider->configSchema()),
             ];
         }
 
@@ -143,13 +144,15 @@ class IntegrationController extends Controller
     /**
      * Get configuration for a specific integration (masked API key)
      */
-    public function showConfig(string $id): \Illuminate\Http\JsonResponse
+    public function showConfig(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
+        $account = $this->accountFromRequest($request);
+
         // Check dynamic providers first
         $provider = $this->findConfigurableProvider($id);
         if ($provider) {
-            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
-            $schema = $provider->configSchema();
+            $setting = $this->findIntegrationSetting($id, $account);
+            $schema = ConfigSchemaNormalizer::normalize($provider->configSchema());
             $meta = $provider->integrationMeta();
 
             $config = [];
@@ -165,10 +168,7 @@ class IntegrationController extends Controller
             }
 
             // Pre-populate shared Google Cloud credentials from sibling integrations
-            $googleIntegrations = [
-                'google_calendar', 'gmail', 'google_drive',
-                'google_contacts', 'google_sheets', 'google_search_console', 'google_tasks', 'google_analytics', 'google_docs', 'google_forms',
-            ];
+            $googleIntegrations = $this->googleIntegrationIds();
             if (in_array($id, $googleIntegrations, true)) {
                 foreach (['client_id', 'client_secret'] as $sharedKey) {
                     if (empty($config[$sharedKey])) {
@@ -176,7 +176,7 @@ class IntegrationController extends Controller
                             if ($sibling === $id) {
                                 continue;
                             }
-                            $siblingSetting = IntegrationSetting::forWorkspace()->where('integration_id', $sibling)->first();
+                            $siblingSetting = $this->findIntegrationSetting($sibling, $account);
                             $siblingVal = $siblingSetting?->getConfigValue($sharedKey);
                             if (! empty($siblingVal) && is_string($siblingVal)) {
                                 $config[$sharedKey] = $sharedKey === 'client_secret'
@@ -193,6 +193,10 @@ class IntegrationController extends Controller
                 'id' => $id,
                 'name' => $meta['name'],
                 'description' => $meta['description'],
+                'icon' => $meta['icon'] ?? 'ph:gear',
+                'logo' => $meta['logo'] ?? null,
+                'category' => $meta['category'] ?? null,
+                'docsUrl' => $meta['docs_url'] ?? null,
                 'enabled' => $setting ? $setting->enabled : false,
                 'config' => $config,
                 'configSchema' => $schema,
@@ -205,7 +209,7 @@ class IntegrationController extends Controller
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
-        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
+        $setting = $this->findIntegrationSetting($id, $account);
 
         // Chat platform integrations with config_fields → use generic schema-based config
         $configFields = $available[$id]['config_fields'] ?? null;
@@ -259,6 +263,8 @@ class IntegrationController extends Controller
      */
     public function updateConfig(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
+        $account = $this->accountFromRequest($request);
+
         // Check dynamic providers first
         $provider = $this->findConfigurableProvider($id);
         if ($provider) {
@@ -267,15 +273,11 @@ class IntegrationController extends Controller
                 ['enabled' => 'nullable|boolean'],
             ));
 
-            $setting = IntegrationSetting::forWorkspace()->firstOrNew(['integration_id' => $id]);
-            if (!$setting->exists) {
-                $setting->id = Str::uuid()->toString();
-                $setting->workspace_id = workspace()->id;
-            }
+            $setting = $this->findOrNewIntegrationSetting($id, $account);
 
             $config = $setting->config ?? [];
             /** @var array{key: string, type: string, label: string, default?: mixed} $field */
-            foreach ($provider->configSchema() as $field) {
+            foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                 $key = $field['key'];
                 if (!$request->has($key)) {
                     continue;
@@ -298,10 +300,7 @@ class IntegrationController extends Controller
             }
 
             // Copy shared Google credentials from sibling integrations
-            $googleIntegrations = [
-                'google_calendar', 'gmail', 'google_drive',
-                'google_contacts', 'google_sheets', 'google_search_console', 'google_tasks', 'google_analytics', 'google_docs', 'google_forms',
-            ];
+            $googleIntegrations = $this->googleIntegrationIds();
             if (in_array($id, $googleIntegrations, true)) {
                 foreach (['client_id', 'client_secret'] as $sharedKey) {
                     if (empty($config[$sharedKey])) {
@@ -309,8 +308,7 @@ class IntegrationController extends Controller
                             if ($sibling === $id) {
                                 continue;
                             }
-                            $siblingVal = IntegrationSetting::forWorkspace()->where('integration_id', $sibling)
-                                ->first()?->getConfigValue($sharedKey);
+                            $siblingVal = $this->findIntegrationSetting($sibling, $account)?->getConfigValue($sharedKey);
                             if (! empty($siblingVal) && is_string($siblingVal)) {
                                 $config[$sharedKey] = $siblingVal;
                                 break;
@@ -337,11 +335,7 @@ class IntegrationController extends Controller
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
-        $setting = IntegrationSetting::forWorkspace()->firstOrNew(['integration_id' => $id]);
-        if (!$setting->exists) {
-            $setting->id = Str::uuid()->toString();
-            $setting->workspace_id = workspace()->id;
-        }
+        $setting = $this->findOrNewIntegrationSetting($id, $account);
 
         $config = $setting->config ?? [];
 
@@ -431,9 +425,7 @@ class IntegrationController extends Controller
     {
         $request->validate(['enabled' => 'required|boolean']);
 
-        $setting = IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
-            ->first();
+        $setting = $this->findIntegrationSetting($id);
 
         if ($setting) {
             $setting->update(['enabled' => $request->boolean('enabled')]);
@@ -442,8 +434,10 @@ class IntegrationController extends Controller
                 'id' => Str::uuid()->toString(),
                 'workspace_id' => workspace()->id,
                 'integration_id' => $id,
+                'account_alias' => '',
                 'config' => [],
                 'enabled' => $request->boolean('enabled'),
+                'is_default' => true,
             ]);
         }
 
@@ -463,8 +457,8 @@ class IntegrationController extends Controller
             $config = $request->all();
 
             // Substitute masked secret fields with stored values
-            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
-            foreach ($provider->configSchema() as $field) {
+            $setting = $this->findIntegrationSetting($id, $this->accountFromRequest($request));
+            foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                 if ($field['type'] === 'secret' || $field['type'] === 'oauth_connect') {
                     $key = $field['key'];
                     $value = $config[$key] ?? '';
@@ -501,7 +495,7 @@ class IntegrationController extends Controller
 
         $apiKey = $request->input('apiKey');
         if (!$apiKey || str_contains($apiKey, '*')) {
-            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
+            $setting = $this->findIntegrationSetting($id, $this->accountFromRequest($request));
             $apiKey = $setting?->getConfigValue('api_key');
         }
 
@@ -540,17 +534,17 @@ class IntegrationController extends Controller
     /**
      * Disconnect an OAuth-based integration (clear stored tokens).
      */
-    public function disconnect(string $id): \Illuminate\Http\JsonResponse
+    public function disconnect(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $provider = $this->findConfigurableProvider($id);
         if (!$provider) {
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
-        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
+        $setting = $this->findIntegrationSetting($id, $this->accountFromRequest($request));
         if ($setting) {
             $config = $setting->config ?? [];
-            foreach ($provider->configSchema() as $field) {
+            foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                 if ($field['type'] === 'oauth_connect') {
                     unset($config[$field['key']]);
                 }
@@ -677,7 +671,7 @@ class IntegrationController extends Controller
             $result = $data['result'];
 
             // Persist bot username in config
-            $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
+            $setting = $this->findIntegrationSetting('telegram');
             if ($setting) {
                 $setting->setConfigValue('bot_username', $result['username'] ?? '');
                 $setting->save();
@@ -705,7 +699,7 @@ class IntegrationController extends Controller
             return response()->json(['error' => 'Webhooks not supported for this integration'], 400);
         }
 
-        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
+        $setting = $this->findIntegrationSetting('telegram');
         $apiKey = $request->input('apiKey');
 
         if (!$apiKey || str_contains($apiKey, '*')) {
@@ -874,7 +868,7 @@ class IntegrationController extends Controller
      */
     public function enabledModels(): \Illuminate\Http\JsonResponse
     {
-        $settings = IntegrationSetting::forWorkspace()->where('enabled', true)->get();
+        $settings = IntegrationSetting::forWorkspace()->default()->where('enabled', true)->get();
         $available = IntegrationSetting::getAvailableIntegrations();
 
         $models = [];
@@ -930,7 +924,7 @@ class IntegrationController extends Controller
     {
         $providers = [];
         $available = IntegrationSetting::getAvailableIntegrations();
-        $settings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
+        $settings = IntegrationSetting::forWorkspace()->default()->get()->keyBy('integration_id');
 
         // AI providers from config/integrations.php (those with api_format set)
         foreach ($available as $id => $info) {
@@ -1025,7 +1019,7 @@ class IntegrationController extends Controller
         ];
 
         $result = [];
-        $integrationSettings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
+        $integrationSettings = IntegrationSetting::forWorkspace()->default()->get()->keyBy('integration_id');
 
         // Cloud providers
         foreach ($embeddingProviders as $providerId => $provider) {
@@ -1207,7 +1201,7 @@ class IntegrationController extends Controller
         // LLM providers (any configured AI chat model can do pointwise reranking)
         $skipProviders = ['ollama', 'cohere', 'jina']; // Already listed above
         $available = IntegrationSetting::getAvailableIntegrations();
-        $integrationSettings = IntegrationSetting::forWorkspace()->get()->keyBy('integration_id');
+        $integrationSettings = IntegrationSetting::forWorkspace()->default()->get()->keyBy('integration_id');
 
         foreach ($available as $id => $info) {
             if (! isset($info['api_format']) || in_array($id, $skipProviders)) {
@@ -1373,7 +1367,7 @@ class IntegrationController extends Controller
             }
 
             // Store in integration settings
-            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
+            $setting = $this->findIntegrationSetting($id);
             if ($setting) {
                 $setting->setConfigValue('models', $models);
                 $setting->save();
@@ -1547,7 +1541,7 @@ class IntegrationController extends Controller
      */
     private function fetchOllamaModels(string $id): array
     {
-        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
+        $setting = $this->findIntegrationSetting($id);
         $available = config('integrations', []);
         $baseUrl = $setting?->getConfigValue('url') ?: ($available[$id]['default_url'] ?? 'http://localhost:11434/v1');
 
@@ -1580,7 +1574,7 @@ class IntegrationController extends Controller
      */
     private function getProviderCredentials(string $id): array
     {
-        $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
+        $setting = $this->findIntegrationSetting($id);
         $available = config('integrations', []);
 
         $apiKey = $setting?->getConfigValue('api_key')
@@ -1683,6 +1677,69 @@ class IntegrationController extends Controller
         return $models;
     }
 
+    private function accountFromRequest(Request $request): ?string
+    {
+        $account = $request->input('account', $request->query('account'));
+        if ($account === null) {
+            $account = $request->input('accountAlias', $request->query('accountAlias'));
+        }
+
+        if ($account === null) {
+            return null;
+        }
+
+        return trim((string) $account);
+    }
+
+    private function findIntegrationSetting(string $id, ?string $account = null): ?IntegrationSetting
+    {
+        return IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->forAccount($account)
+            ->first();
+    }
+
+    private function findOrNewIntegrationSetting(string $id, ?string $account = null): IntegrationSetting
+    {
+        $setting = $this->findIntegrationSetting($id, $account);
+        if ($setting) {
+            return $setting;
+        }
+
+        $hasOthers = IntegrationSetting::forWorkspace()
+            ->where('integration_id', $id)
+            ->exists();
+
+        $setting = new IntegrationSetting;
+        $setting->id = Str::uuid()->toString();
+        $setting->workspace_id = workspace()->id;
+        $setting->integration_id = $id;
+        $setting->account_alias = $account ?? '';
+        $setting->is_default = ! $hasOthers;
+        $setting->enabled = true;
+
+        return $setting;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function googleIntegrationIds(): array
+    {
+        return [
+            'google-calendar',
+            'gmail',
+            'google-drive',
+            'google-contacts',
+            'google-sheets',
+            'google-search-console',
+            'google-tasks',
+            'google-analytics',
+            'google-docs',
+            'google-forms',
+        ];
+    }
+
     /**
      * Find a ToolProvider that implements ConfigurableIntegration for the given ID.
      */
@@ -1732,7 +1789,7 @@ class IntegrationController extends Controller
             // Build config from request, substituting masked values with stored ones
             $available = IntegrationSetting::getAvailableIntegrations();
             $configFields = $available[$id]['config_fields'] ?? [];
-            $setting = IntegrationSetting::forWorkspace()->where('integration_id', $id)->first();
+            $setting = $this->findIntegrationSetting($id, $this->accountFromRequest($request));
 
             $config = [];
             foreach ($configFields as $key => $field) {
@@ -1778,6 +1835,8 @@ class IntegrationController extends Controller
     {
         $settings = IntegrationSetting::forWorkspace()
             ->where('integration_id', $id)
+            ->orderByDesc('is_default')
+            ->orderBy('account_alias')
             ->get();
 
         $accounts = $settings->map(fn (IntegrationSetting $s) => [
@@ -1797,7 +1856,7 @@ class IntegrationController extends Controller
     {
         $request->validate([
             'alias' => ['required', 'string', 'max:32', 'regex:/^[a-z0-9_]+$/'],
-            'config' => ['required', 'array'],
+            'config' => ['nullable', 'array'],
         ]);
 
         $alias = $request->input('alias');
@@ -1820,7 +1879,7 @@ class IntegrationController extends Controller
             'workspace_id' => workspace()->id,
             'integration_id' => $id,
             'account_alias' => $alias,
-            'config' => $request->input('config'),
+            'config' => $request->input('config', []),
             'enabled' => true,
             'is_default' => ! $hasOthers,
         ]);
@@ -1879,12 +1938,18 @@ class IntegrationController extends Controller
         $wasDefault = $setting->is_default;
         $setting->delete();
 
-        // If we deleted the default, promote the remaining default (empty alias) row
+        // If we deleted the default, promote the legacy row first, otherwise any remaining account.
         if ($wasDefault) {
-            IntegrationSetting::forWorkspace()
+            $replacement = IntegrationSetting::forWorkspace()
                 ->where('integration_id', $id)
                 ->where('account_alias', '')
-                ->update(['is_default' => true]);
+                ->first()
+                ?: IntegrationSetting::forWorkspace()
+                    ->where('integration_id', $id)
+                    ->orderBy('account_alias')
+                    ->first();
+
+            $replacement?->update(['is_default' => true]);
         }
 
         return response()->json(['success' => true]);

@@ -2,16 +2,19 @@
 
 namespace App\Agents\Tools\Workspace;
 
+use App\Agents\Tools\ToolRegistry;
 use App\Models\IntegrationSetting;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Http;
-use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Contracts\Tool as AiTool;
 use Laravel\Ai\Tools\Request;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
+use OpenCompany\IntegrationCore\Contracts\Tool as IntegrationTool;
+use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
-class TestIntegrationConnection implements Tool
+class TestIntegrationConnection implements AiTool
 {
     public function __construct(
         private User $agent,
@@ -42,6 +45,11 @@ class TestIntegrationConnection implements Tool
                 return $result['success']
                     ? ($result['message'] ?? 'Connection OK.')
                     : 'Connection failed: ' . ($result['error'] ?? 'unknown error');
+            }
+
+            $packageProvider = app(ToolProviderRegistry::class)->get($integrationId);
+            if ($packageProvider?->isIntegration()) {
+                return $this->testPackageIntegration($packageProvider, $integrationId);
             }
 
             // Static providers
@@ -80,6 +88,45 @@ class TestIntegrationConnection implements Tool
         $provider = app(ToolProviderRegistry::class)->get($id);
 
         return $provider instanceof ConfigurableIntegration ? $provider : null;
+    }
+
+    private function testPackageIntegration(ToolProvider $provider, string $integrationId): string
+    {
+        if ($provider->credentialFields() !== []) {
+            return "Integration {$integrationId} is registered. Configure its credentials before testing a live connection.";
+        }
+
+        foreach ($provider->tools() as $slug => $meta) {
+            if (($meta['type'] ?? 'read') !== 'read') {
+                continue;
+            }
+
+            $tool = app(ToolRegistry::class)->instantiateToolBySlug($slug, $this->agent);
+            if (! $tool instanceof IntegrationTool || $this->hasRequiredParameters($tool->parameters())) {
+                continue;
+            }
+
+            $result = $tool->execute([]);
+            $name = (string) ($meta['name'] ?? $slug);
+
+            return $result->succeeded()
+                ? "Connection OK. {$integrationId} requires no API key; {$name} responded."
+                : 'Connection failed: ' . ($result->error ?? 'unknown error');
+        }
+
+        return "Connection OK. {$integrationId} is registered and requires no API key.";
+    }
+
+    /** @param  array<string, mixed>  $parameters */
+    private function hasRequiredParameters(array $parameters): bool
+    {
+        foreach ($parameters as $parameter) {
+            if (is_array($parameter) && ($parameter['required'] ?? false)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function testTelegram(string $apiKey): string

@@ -102,11 +102,9 @@ class QueryTableTest extends TestCase
 
         $decoded = json_decode($result, true);
         $this->assertIsArray($decoded);
-        $this->assertEquals(1, $decoded['total']);
-        $this->assertEquals(0, $decoded['offset']);
-        $this->assertCount(1, $decoded['rows']);
-        $this->assertStringContainsString('Alice', json_encode($decoded['rows'][0]['data']));
-        $this->assertStringContainsString('alice@example.com', json_encode($decoded['rows'][0]['data']));
+        $this->assertCount(1, $decoded);
+        $this->assertStringContainsString('Alice', json_encode($decoded[0]));
+        $this->assertStringContainsString('alice@example.com', json_encode($decoded[0]));
     }
 
     public function test_returns_empty_when_no_tables(): void

@@ -285,7 +285,8 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('Test', 'Content that will fail to embed.');
 
-        // Don't fake Prism — let it try to call the real API without a key
+        Prism::fake([]);
+
         $this->expectException(\Throwable::class);
 
         $this->service->index($doc);

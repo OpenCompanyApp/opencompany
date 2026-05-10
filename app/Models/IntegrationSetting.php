@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Services\Integrations\ConfigSchemaNormalizer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\BelongsToWorkspace;
+use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 /**
  * @property array<string, mixed> $config
@@ -43,14 +46,21 @@ class IntegrationSetting extends Model
     /**
      * Scope to a specific account alias.
      *
-     * Null or empty string targets the default (un-aliased) account.
+     * Null targets the default account. Empty string targets the legacy
+     * un-aliased account explicitly.
      *
      * @param  \Illuminate\Database\Eloquent\Builder<self>  $query
      * @return \Illuminate\Database\Eloquent\Builder<self>
      */
-    public function scopeForAccount($query, ?string $account): self
+    public function scopeForAccount($query, ?string $account)
     {
-        $alias = ($account === null || $account === '') ? '' : $account;
+        if ($account === null) {
+            return $query->where(function ($q) {
+                $q->where('is_default', true)->orWhere('account_alias', '');
+            })->orderByDesc('is_default');
+        }
+
+        $alias = $account === '' ? '' : $account;
 
         return $query->where('account_alias', $alias);
     }
@@ -61,11 +71,11 @@ class IntegrationSetting extends Model
      * @param  \Illuminate\Database\Eloquent\Builder<self>  $query
      * @return \Illuminate\Database\Eloquent\Builder<self>
      */
-    public function scopeDefault($query): self
+    public function scopeDefault($query)
     {
         return $query->where(function ($q) {
             $q->where('is_default', true)->orWhere('account_alias', '');
-        });
+        })->orderBy('is_default');
     }
 
     /**
@@ -136,7 +146,89 @@ class IntegrationSetting extends Model
      */
     public function hasValidConfig(): bool
     {
-        return !empty($this->getConfigValue('api_key'));
+        $requiredKeys = $this->requiredCredentialKeys();
+
+        if ($requiredKeys === []) {
+            $requiredKeys = [
+                'api_key',
+                'api_token',
+                'access_token',
+                'refresh_token',
+                'token',
+                'bearer_token',
+                'client_secret',
+                'password',
+            ];
+
+            foreach ($requiredKeys as $key) {
+                if ($this->filledConfigValue($key)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        foreach ($requiredKeys as $key) {
+            if (! $this->filledConfigValue($key)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function requiredCredentialKeys(): array
+    {
+        try {
+            if (! app()->bound(ToolProviderRegistry::class)) {
+                return [];
+            }
+
+            $provider = app(ToolProviderRegistry::class)->get($this->integration_id);
+            if ($provider === null) {
+                return [];
+            }
+
+            $credentialFields = ConfigSchemaNormalizer::normalize($provider->credentialFields());
+            $required = [];
+
+            foreach ($credentialFields as $field) {
+                if (($field['required'] ?? false) && isset($field['key'])) {
+                    $required[] = (string) $field['key'];
+                }
+            }
+
+            if ($required !== []) {
+                return array_values(array_unique($required));
+            }
+
+            if ($provider instanceof ConfigurableIntegration) {
+                foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
+                    if (($field['required'] ?? false) && isset($field['key'])) {
+                        $required[] = (string) $field['key'];
+                    }
+                }
+            }
+
+            return array_values(array_unique($required));
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private function filledConfigValue(string $key): bool
+    {
+        $value = $this->getConfigValue($key);
+
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        return ! empty($value);
     }
 
     /**
@@ -148,7 +240,7 @@ class IntegrationSetting extends Model
         $base = array_merge(config('integrations', []), config('chat_integrations', []));
 
         try {
-            $settings = (app()->bound('currentWorkspace') ? static::forWorkspace()->get() : static::all())->keyBy('integration_id');
+            $settings = (app()->bound('currentWorkspace') ? static::forWorkspace()->default()->get() : static::query()->default()->get())->keyBy('integration_id');
         } catch (\Throwable) {
             return $base;
         }

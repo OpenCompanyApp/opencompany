@@ -3,12 +3,14 @@
 namespace Tests\Feature\Tools;
 
 use App\Agents\Tools\Memory\ForgetMemory;
+use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use App\Models\User;
 use App\Services\AgentDocumentService;
 use App\Services\Memory\DocumentIndexingService;
 use App\Services\Memory\MemoryScopeGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Tools\Request;
 use Mockery;
 use Tests\TestCase;
@@ -22,6 +24,9 @@ class ForgetMemoryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Bus::fake([IndexDocumentJob::class]);
+
         $this->agent = User::factory()->agent()->create(['name' => 'test-agent']);
     }
 

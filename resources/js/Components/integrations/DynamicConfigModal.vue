@@ -7,6 +7,59 @@
     size="md"
   >
     <form class="space-y-5" @submit.prevent="handleSave">
+      <div class="space-y-2">
+        <div class="flex items-center justify-between gap-3">
+          <label class="block text-sm font-medium text-neutral-900 dark:text-white">
+            Account
+          </label>
+          <span
+            v-if="selectedAccountInfo?.is_default"
+            class="text-[11px] px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+          >
+            Default
+          </span>
+        </div>
+        <div class="flex gap-2">
+          <select
+            v-model="selectedAccount"
+            class="flex-1 min-w-0 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
+            @change="loadConfig"
+          >
+            <option value="">Default account</option>
+            <option v-for="account in namedAccounts" :key="account.alias" :value="account.alias">
+              {{ account.alias }}{{ account.is_default ? ' (default)' : '' }}
+            </option>
+          </select>
+          <Button
+            v-if="selectedAccount"
+            type="button"
+            variant="secondary"
+            size="sm"
+            @click="setDefaultAccount"
+          >
+            Make Default
+          </Button>
+        </div>
+        <div class="flex gap-2">
+          <input
+            v-model="newAccountAlias"
+            type="text"
+            placeholder="new_account"
+            class="flex-1 min-w-0 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm font-mono"
+            @keydown.enter.prevent="createAccount"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            :disabled="!newAccountAlias.trim()"
+            @click="createAccount"
+          >
+            Add
+          </Button>
+        </div>
+      </div>
+
       <!-- Dynamic Fields -->
       <div v-for="field in schema" :key="field.key" v-show="isFieldVisible(field)" class="space-y-2">
         <label class="block text-sm font-medium text-neutral-900 dark:text-white">
@@ -263,6 +316,13 @@ interface IntegrationMeta {
   docs_url?: string
 }
 
+interface Account {
+  alias: string
+  is_default: boolean
+  enabled: boolean
+  configured: boolean
+}
+
 const props = defineProps<{
   integrationId: string
   schema: ConfigField[]
@@ -279,6 +339,9 @@ const emit = defineEmits<{
 const formValues = reactive<Record<string, any>>({})
 const listInputs = reactive<Record<string, string>>({})
 const showSecrets = reactive<Record<string, boolean>>({})
+const accounts = ref<Account[]>([])
+const selectedAccount = ref('')
+const newAccountAlias = ref('')
 
 // UI state
 const isTesting = ref(false)
@@ -288,6 +351,17 @@ const resultMessage = ref<{ success: boolean; message: string } | null>(null)
 // OAuth helpers
 const origin = window.location.origin
 const copied = ref<string | null>(null)
+
+const namedAccounts = computed(() => accounts.value.filter(account => account.alias))
+const selectedAccountInfo = computed(() => {
+  return accounts.value.find(account => account.alias === selectedAccount.value)
+    || accounts.value.find(account => account.is_default)
+    || null
+})
+
+const accountQuery = () => {
+  return selectedAccount.value ? `?account=${encodeURIComponent(selectedAccount.value)}` : ''
+}
 
 const copyToClipboard = async (text: string, key: string) => {
   try {
@@ -317,6 +391,16 @@ const fullRedirectUri = (field: ConfigField): string => {
   return origin + (field.redirect_uri || '')
 }
 
+const oauthAuthorizeUrl = (field: ConfigField): string => {
+  const authorizeUrl = field.authorize_url || ''
+  if (!selectedAccount.value) {
+    return authorizeUrl
+  }
+
+  const separator = authorizeUrl.includes('?') ? '&' : '?'
+  return `${authorizeUrl}${separator}account=${encodeURIComponent(selectedAccount.value)}`
+}
+
 const connectOAuth = async (field: ConfigField) => {
   isSaving.value = true
   try {
@@ -328,10 +412,10 @@ const connectOAuth = async (field: ConfigField) => {
     const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
     })
     if (response.ok) {
-      window.location.href = field.authorize_url || ''
+      window.location.href = oauthAuthorizeUrl(field)
     } else {
       const error = await response.json()
       resultMessage.value = { success: false, message: error.error || 'Failed to save before connecting' }
@@ -345,7 +429,7 @@ const connectOAuth = async (field: ConfigField) => {
 
 const disconnectOAuth = async (field: ConfigField) => {
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/disconnect`, { method: 'POST' })
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/disconnect${accountQuery()}`, { method: 'POST' })
     if (response.ok) {
       formValues[field.key] = ''
     }
@@ -376,10 +460,18 @@ const hasRequiredFields = computed(() => {
 
 // Initialize form values from schema defaults
 const initForm = () => {
+  for (const key of Object.keys(formValues)) {
+    delete formValues[key]
+  }
+  for (const key of Object.keys(showSecrets)) {
+    delete showSecrets[key]
+  }
+  for (const key of Object.keys(listInputs)) {
+    delete listInputs[key]
+  }
+
   for (const field of props.schema) {
-    if (!(field.key in formValues)) {
-      formValues[field.key] = field.default ?? (field.type === 'string_list' ? [] : '')
-    }
+    formValues[field.key] = field.default ?? (field.type === 'string_list' ? [] : '')
     if (field.type === 'secret') {
       showSecrets[field.key] = false
     }
@@ -394,13 +486,28 @@ watch(isOpen, async (open) => {
   if (open) {
     resultMessage.value = null
     initForm()
+    await loadAccounts()
     await loadConfig()
   }
 }, { immediate: true })
 
+const loadAccounts = async () => {
+  try {
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/accounts`)
+    if (!response.ok) return
+
+    const data = await response.json()
+    accounts.value = data.accounts || []
+    const defaultAccount = accounts.value.find(account => account.is_default)
+    selectedAccount.value = defaultAccount?.alias || ''
+  } catch (error) {
+    console.error('Failed to load accounts:', error)
+  }
+}
+
 const loadConfig = async () => {
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`)
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/config${accountQuery()}`)
     if (response.ok) {
       const data = await response.json()
       for (const field of props.schema) {
@@ -411,6 +518,50 @@ const loadConfig = async () => {
     }
   } catch (error) {
     console.error('Failed to load config:', error)
+  }
+}
+
+const createAccount = async () => {
+  const alias = newAccountAlias.value.trim().toLowerCase()
+  if (!alias) return
+
+  try {
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias, config: {} }),
+    })
+
+    const data = await response.json()
+    if (!response.ok) {
+      resultMessage.value = { success: false, message: data.error || 'Failed to create account' }
+      return
+    }
+
+    newAccountAlias.value = ''
+    selectedAccount.value = data.alias || alias
+    await loadAccounts()
+    selectedAccount.value = data.alias || alias
+    await loadConfig()
+  } catch (error) {
+    resultMessage.value = { success: false, message: 'Failed to create account.' }
+  }
+}
+
+const setDefaultAccount = async () => {
+  if (!selectedAccount.value) return
+
+  try {
+    const response = await apiFetch(`/api/integrations/${props.integrationId}/accounts/${encodeURIComponent(selectedAccount.value)}/default`, {
+      method: 'POST',
+    })
+
+    if (response.ok) {
+      await loadAccounts()
+      selectedAccount.value = selectedAccountInfo.value?.alias || selectedAccount.value
+    }
+  } catch (error) {
+    resultMessage.value = { success: false, message: 'Failed to update default account.' }
   }
 }
 
@@ -444,7 +595,7 @@ const testConnection = async () => {
     const response = await apiFetch(`/api/integrations/${props.integrationId}/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
     })
 
     const data = await response.json()
@@ -475,7 +626,7 @@ const handleSave = async () => {
     const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
     })
 
     if (response.ok) {

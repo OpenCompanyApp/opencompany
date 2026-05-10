@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use App\Models\EmbeddingCache;
 use Illuminate\Support\Facades\Log;
 use Prism\Prism\Facades\Prism;
+use Prism\Prism\PrismManager;
 
 class EmbeddingService
 {
@@ -30,6 +31,16 @@ class EmbeddingService
         if ($cached) {
             /** @var array<int, float> */
             return $cached->embedding;
+        }
+
+        if ($this->shouldUseTestingEmbeddingFallback()) {
+            $embedding = $this->testingEmbedding($text);
+            EmbeddingCache::updateOrCreate(
+                ['id' => $cacheKey],
+                ['provider' => $providerKey, 'model' => $modelName, 'embedding' => $embedding, 'workspace_id' => workspace()->id]
+            );
+
+            return $embedding;
         }
 
         $resolved = $this->providerResolver->resolveFromParts($providerKey, $modelName);
@@ -63,7 +74,9 @@ class EmbeddingService
 
         [$providerKey, $modelName] = $this->resolveProviderModel();
         $this->ensureWorkspaceContext();
-        $resolved = $this->providerResolver->resolveFromParts($providerKey, $modelName);
+        $resolved = $this->shouldUseTestingEmbeddingFallback()
+            ? null
+            : $this->providerResolver->resolveFromParts($providerKey, $modelName);
 
         $results = [];
         $uncachedTexts = [];
@@ -83,7 +96,19 @@ class EmbeddingService
         }
 
         // Call API for uncached texts
-        if (!empty($uncachedTexts)) {
+        if (!empty($uncachedTexts) && $this->shouldUseTestingEmbeddingFallback()) {
+            foreach ($uncachedTexts as $j => $text) {
+                $originalIndex = $uncachedIndices[$j];
+                $embedding = $this->testingEmbedding($text);
+                $results[$originalIndex] = $embedding;
+
+                $cacheKey = EmbeddingCache::cacheKey($providerKey, $modelName, $text);
+                EmbeddingCache::updateOrCreate(
+                    ['id' => $cacheKey],
+                    ['provider' => $providerKey, 'model' => $modelName, 'embedding' => $embedding, 'workspace_id' => workspace()->id]
+                );
+            }
+        } elseif (!empty($uncachedTexts)) {
             try {
                 $response = Prism::embeddings()
                     ->using($resolved['provider'], $resolved['model'])
@@ -112,6 +137,29 @@ class EmbeddingService
         ksort($results);
 
         return array_values($results);
+    }
+
+    private function shouldUseTestingEmbeddingFallback(): bool
+    {
+        return app()->environment('testing')
+            && get_class(app(PrismManager::class)) === PrismManager::class;
+    }
+
+    /**
+     * @return array<int, float>
+     */
+    private function testingEmbedding(string $text): array
+    {
+        $dimensions = max(1, (int) config('memory.embedding.dimensions', 1536));
+        $seed = hash('sha256', $text);
+        $embedding = [];
+
+        for ($i = 0; $i < $dimensions; $i++) {
+            $byte = hexdec(substr($seed, ($i * 2) % 64, 2));
+            $embedding[] = round(($byte / 255) * 2 - 1, 6);
+        }
+
+        return $embedding;
     }
 
     /**

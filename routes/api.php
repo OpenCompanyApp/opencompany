@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\WorkspaceDiskController;
 use App\Http\Controllers\Api\AgentPermissionController;
 use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\CodexAuthController;
+use App\Http\Controllers\Api\IntegrationCatalogController;
 use App\Http\Controllers\Api\IntegrationController;
 use App\Http\Controllers\Api\AutomationController;
 use App\Http\Controllers\Api\McpServerController;
@@ -312,6 +313,8 @@ Route::middleware('resolve.workspace')->group(function () {
 
     // Integrations (read-only for all members)
     Route::get('/integrations', [IntegrationController::class, 'index']);
+    Route::get('/integrations/catalog', [IntegrationCatalogController::class, 'index']);
+    Route::get('/integrations/catalog/{slug}', [IntegrationCatalogController::class, 'show']);
     Route::get('/integrations/models', [IntegrationController::class, 'enabledModels']);
     Route::get('/integrations/all-providers', [IntegrationController::class, 'allProviders']);
     Route::get('/integrations/embedding-models', [IntegrationController::class, 'embeddingModels']);

@@ -3,6 +3,7 @@
 namespace App\Agents\Tools\Workspace;
 
 use App\Models\IntegrationSetting;
+use App\Services\Integrations\ConfigSchemaNormalizer;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
@@ -77,7 +78,7 @@ class GetIntegrationConfig implements Tool
     private function getDynamicIntegrationConfig(string $integrationId, ConfigurableIntegration $provider): string
     {
         $meta = $provider->integrationMeta();
-        $schema = $provider->configSchema();
+        $schema = ConfigSchemaNormalizer::normalize($provider->configSchema());
         /** @var \App\Models\IntegrationSetting|null $setting */
         $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
         $config = $setting ? $setting->config : [];

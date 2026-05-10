@@ -20,7 +20,7 @@ class RerankingServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new RerankingService;
+        $this->service = app(RerankingService::class);
     }
 
     public function test_disabled_returns_passthrough_in_original_order(): void

@@ -8,6 +8,14 @@
     "repositories": [
         {
             "type": "path",
+            "url": "../integrations/catalog"
+        },
+        {
+            "type": "path",
+            "url": "../integrations/bundle"
+        },
+        {
+            "type": "path",
             "url": "../integrations/core"
         },
         {
@@ -56,6 +64,9 @@
         "opencompany/chatogrator": "^1.1",
         "opencompany/prism-codex": "@dev",
         "opencompanyapp/astronomy-bundle": "@dev",
+        "opencompanyapp/integration-aircall": "dev-main",
+        "opencompanyapp/integration-bundle": "dev-main",
+        "opencompanyapp/integration-catalog": "dev-main",
         "opencompanyapp/integration-celestial": "@dev",
         "opencompanyapp/integration-clickup": "@dev",
         "opencompanyapp/integration-coingecko": "@dev",
@@ -157,6 +168,6 @@
             "php-http/discovery": true
         }
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "prefer-stable": true
 }

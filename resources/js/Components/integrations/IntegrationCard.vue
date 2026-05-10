@@ -50,8 +50,20 @@
             <Icon name="ph:plugs-connected" class="w-3 h-3" />
             MCP
           </span>
+          <span
+            v-else-if="integration.catalog"
+            class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"
+            title="Catalog integration"
+          >
+            Catalog
+          </span>
         </div>
         <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">{{ integration.description }}</p>
+        <p v-if="integration.catalog" class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-1">
+          <span v-if="integration.toolCount">{{ integration.toolCount }} tool{{ integration.toolCount === 1 ? '' : 's' }}</span>
+          <span v-if="integration.toolCount && integration.packageInstalled === false"> · </span>
+          <span v-if="integration.packageInstalled === false">package not installed</span>
+        </p>
       </div>
     </div>
 
@@ -62,7 +74,7 @@
           class="w-full py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors"
           @click.stop="$emit('install', integration)"
         >
-          Install
+          {{ actionLabel }}
         </button>
       </template>
       <template v-else>
@@ -71,6 +83,7 @@
           Installed
         </span>
         <button
+          v-if="canConfigure"
           type="button"
           class="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
           title="Configure"
@@ -92,6 +105,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 
 export interface Integration {
@@ -101,7 +115,13 @@ export interface Integration {
   description: string
   category?: string
   installed: boolean
-  badge?: 'built-in' | 'verified' | 'mcp'
+  badge?: string
+  catalog?: boolean
+  packageInstalled?: boolean
+  configured?: boolean
+  enabled?: boolean
+  runnable?: boolean
+  docsUrl?: string | null
   configurable?: boolean
   type?: 'native' | 'mcp'
   mcpServerId?: string
@@ -114,7 +134,7 @@ export interface Integration {
   }
 }
 
-defineProps<{
+const props = defineProps<{
   integration: Integration
 }>()
 
@@ -126,6 +146,41 @@ const emit = defineEmits<{
 }>()
 
 const handleClick = () => {
-  // Could open a detail modal in the future
+  if (!props.integration.installed) {
+    emit('install', props.integration)
+    return
+  }
+
+  if (canConfigure.value) {
+    emit('configure', props.integration)
+    return
+  }
+
+  emit('click', props.integration)
 }
+
+const canConfigure = computed(() => {
+  const integration = props.integration
+
+  return Boolean(
+    integration.configurable
+      || integration.type === 'mcp'
+      || integration.category === 'ai-models'
+      || integration.id === 'codex',
+  )
+})
+
+const actionLabel = computed(() => {
+  const integration = props.integration
+
+  if (integration.catalog && integration.packageInstalled === false) {
+    return integration.docsUrl ? 'Docs' : 'Catalog'
+  }
+
+  if (integration.configurable || integration.category === 'ai-models' || integration.id === 'codex') {
+    return 'Configure'
+  }
+
+  return 'Install'
+})
 </script>

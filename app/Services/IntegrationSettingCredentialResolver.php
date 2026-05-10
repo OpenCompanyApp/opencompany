@@ -16,7 +16,7 @@ class IntegrationSettingCredentialResolver implements CredentialResolver
 
     public function isConfigured(string $integration, ?string $account = null): bool
     {
-        return ! empty($this->get($integration, 'api_key', null, $account));
+        return (bool) $this->findSetting($integration, $account)?->hasValidConfig();
     }
 
     public function getAccounts(string $integration): array

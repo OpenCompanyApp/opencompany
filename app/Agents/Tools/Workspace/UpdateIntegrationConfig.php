@@ -4,6 +4,7 @@ namespace App\Agents\Tools\Workspace;
 
 use App\Models\IntegrationSetting;
 use App\Models\User;
+use App\Services\Integrations\ConfigSchemaNormalizer;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -54,7 +55,7 @@ class UpdateIntegrationConfig implements Tool
 
             if ($provider) {
                 // Dynamic provider — iterate config schema
-                foreach ($provider->configSchema() as $field) {
+                foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                     $key = $field['key'];
                     $value = $request[$key] ?? null;
 
@@ -131,7 +132,7 @@ class UpdateIntegrationConfig implements Tool
 
             if ($provider) {
                 // Show stored fields from schema (mask secrets)
-                foreach ($provider->configSchema() as $field) {
+                foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                     $stored = $config[$field['key']] ?? null;
                     if ($stored === null || $stored === '' || $stored === []) {
                         continue;

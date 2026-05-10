@@ -293,7 +293,7 @@ class LuaApiDocGenerator
     public function getNamespaceSummary(User $agent): string
     {
         $renderer = $this->docRenderer();
-        $namespaces = $this->buildVisibleNamespaces($agent);
+        $namespaces = $this->buildVisibleNamespaceSummary();
 
         if ($renderer === null) {
             $namespaces = array_keys($namespaces);
@@ -306,6 +306,43 @@ class LuaApiDocGenerator
         }
 
         return $renderer->getNamespaceSummary($namespaces);
+    }
+
+    /**
+     * Build namespace names for prompt summaries without instantiating every
+     * integration tool. Full docs still use buildNamespaces().
+     *
+     * @return array<string, array{description: string, functions: array<int, array{name: string, description: string, fullDescription: string, parameters: array<int, array<string, mixed>>, sourceToolSlug: string}>}>
+     */
+    private function buildVisibleNamespaceSummary(): array
+    {
+        $namespaces = [];
+
+        foreach ($this->registry->getAppGroupsMeta() as $app) {
+            $appName = (string) ($app['name'] ?? '');
+
+            if ($appName === '' || in_array($appName, ['tasks', 'system', 'lua'], true)) {
+                continue;
+            }
+
+            $namespace = ! empty($app['isIntegration'])
+                ? "integrations.{$appName}"
+                : $appName;
+
+            $namespaces[$namespace] = [
+                'description' => (string) ($app['description'] ?? ''),
+                'functions' => [],
+            ];
+        }
+
+        uksort($namespaces, function (string $a, string $b): int {
+            $aWeight = str_starts_with($a, 'mcp.') ? 2 : (str_starts_with($a, 'integrations.') ? 1 : 0);
+            $bWeight = str_starts_with($b, 'mcp.') ? 2 : (str_starts_with($b, 'integrations.') ? 1 : 0);
+
+            return $aWeight <=> $bWeight ?: strcmp($a, $b);
+        });
+
+        return $namespaces;
     }
 
     /**
