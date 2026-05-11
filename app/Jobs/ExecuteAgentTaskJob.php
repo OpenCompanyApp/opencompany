@@ -16,7 +16,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use OpenCompany\PrismRelay\Bridge\SystemPromptBag;
+use App\Ai\Prompting\SystemPromptBag;
 
 class ExecuteAgentTaskJob implements ShouldQueue
 {

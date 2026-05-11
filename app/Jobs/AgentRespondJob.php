@@ -28,7 +28,7 @@ use App\Services\TelegramService;
 use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\Data\FinishReason;
 use Illuminate\Support\Facades\Log;
-use OpenCompany\PrismRelay\Bridge\SystemPromptBag;
+use App\Ai\Prompting\SystemPromptBag;
 use Illuminate\Support\Str;
 
 class AgentRespondJob implements ShouldQueue, ShouldBeUnique
@@ -258,8 +258,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
             $lastStep = $response->steps->last();
 
-            // If any step was truncated (Length), concatenate text from all steps
-            // (the Prism handler auto-continues, but toResponse() only returns the last step's text)
+            // If any step was truncated (Length), concatenate text from all steps.
             $wasTruncated = $response->steps->contains(
                 fn ($step) => $step->finishReason === FinishReason::Length
             );

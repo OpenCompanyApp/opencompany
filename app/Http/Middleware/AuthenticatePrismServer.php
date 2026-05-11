@@ -27,6 +27,10 @@ class AuthenticatePrismServer
             return $this->unauthorized('API key has expired.');
         }
 
+        if ($key->workspace) {
+            app()->instance('currentWorkspace', $key->workspace);
+        }
+
         // Touch last_used_at without triggering updated_at
         $key->timestamps = false;
         $key->update(['last_used_at' => now()]);

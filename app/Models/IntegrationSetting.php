@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\BelongsToWorkspace;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 /**
  * @property array<string, mixed> $config
@@ -237,7 +238,11 @@ class IntegrationSetting extends Model
     /** @return array<string, mixed> */
     public static function getAvailableIntegrations(): array
     {
-        $base = array_merge(config('integrations', []), config('chat_integrations', []));
+        $base = array_merge(
+            self::relayAiIntegrations(),
+            config('integrations', []),
+            config('chat_integrations', []),
+        );
 
         try {
             $settings = (app()->bound('currentWorkspace') ? static::forWorkspace()->default()->get() : static::query()->default()->get())->keyBy('integration_id');
@@ -255,5 +260,88 @@ class IntegrationSetting extends Model
         }
 
         return $base;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private static function relayAiIntegrations(): array
+    {
+        try {
+            if (! class_exists(RelayRegistry::class)) {
+                return [];
+            }
+
+            $registry = app(RelayRegistry::class);
+            $providers = [];
+
+            foreach ($registry->canonicalProviders() as $id) {
+                if ($id === 'codex') {
+                    continue;
+                }
+
+                $definition = $registry->provider($id) ?? [];
+                $driver = $registry->driver($id);
+
+                if (! self::supportsLaravelAiRuntime($driver, $registry->url($id))) {
+                    continue;
+                }
+
+                $models = [];
+
+                foreach ($definition['models'] ?? [] as $modelId => $model) {
+                    if (! is_array($model)) {
+                        continue;
+                    }
+
+                    $models[(string) $modelId] = (string) ($model['display_name'] ?? $model['name'] ?? $modelId);
+                }
+
+                $providers[$id] = [
+                    'category' => 'ai-models',
+                    'name' => (string) ($definition['label'] ?? $definition['name'] ?? str($id)->replace(['-', '_'], ' ')->title()),
+                    'description' => self::relayProviderDescription($id, $driver),
+                    'icon' => 'ph:cpu',
+                    'default_url' => $registry->url($id) ?: null,
+                    'api_format' => self::relayApiFormat($driver),
+                    'api_key_url' => $definition['doc'] ?? null,
+                    'models' => $models,
+                    'relay_driver' => $driver,
+                    'auth' => $registry->authMode($id),
+                ];
+            }
+
+            return $providers;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private static function relayProviderDescription(string $id, string $driver): string
+    {
+        return "AI model provider '{$id}' via {$driver} transport.";
+    }
+
+    private static function supportsLaravelAiRuntime(string $driver, string $url): bool
+    {
+        if (in_array($driver, ['unsupported', 'external-process', 'google-vertex', 'amazon-bedrock'], true)) {
+            return false;
+        }
+
+        if ($driver === 'openai-compatible' && trim($url) === '') {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static function relayApiFormat(string $driver): string
+    {
+        return match ($driver) {
+            'anthropic', 'anthropic-compatible', 'minimax', 'minimax-cn' => 'anthropic',
+            'gemini' => 'gemini',
+            'ollama' => 'ollama',
+            default => 'openai_compat',
+        };
     }
 }

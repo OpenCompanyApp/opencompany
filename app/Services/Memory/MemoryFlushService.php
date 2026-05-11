@@ -6,7 +6,7 @@ use App\Agents\OpenCompanyAgent;
 use App\Models\ConversationSummary;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
-use OpenCompany\PrismRelay\Bridge\SystemPromptBag;
+use App\Ai\Prompting\SystemPromptBag;
 
 class MemoryFlushService
 {

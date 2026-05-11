@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Models\IntegrationSetting;
-use App\Models\Workspace;
 use Illuminate\Support\Facades\Log;
 use Prism\Prism\Facades\PrismServer;
 use Prism\Prism\Facades\Prism;
@@ -21,30 +20,25 @@ class PrismServerService
     public function registerModels(): void
     {
         try {
-            $setting = IntegrationSetting::where('integration_id', 'prism-server')
+            $settings = IntegrationSetting::where('integration_id', 'prism-server')
                 ->where('enabled', true)
-                ->first();
+                ->get();
         } catch (\Throwable) {
             // Table may not exist yet (fresh install, tests)
             return;
         }
 
-        if (! $setting) {
+        if ($settings->isEmpty()) {
             return;
         }
 
-        // Set workspace context from the integration setting for API key resolution
-        if ($setting->workspace_id) {
-            $workspace = Workspace::find($setting->workspace_id);
-            if ($workspace) {
-                app()->instance('currentWorkspace', $workspace);
-                $this->resolver->setWorkspaceId($workspace->id);
-            }
-        }
+        $enabledModels = $settings
+            ->flatMap(fn (IntegrationSetting $setting): array => $setting->getConfigValue('enabled_models', []))
+            ->filter(fn (mixed $model): bool => is_string($model) && str_contains($model, ':'))
+            ->unique()
+            ->values();
 
-        $enabledModels = $setting->getConfigValue('enabled_models', []);
-
-        if (empty($enabledModels)) {
+        if ($enabledModels->isEmpty()) {
             return;
         }
 
@@ -57,17 +51,23 @@ class PrismServerService
 
             [$providerKey, $model] = $parts;
 
-            try {
-                $resolved = $this->resolver->resolveFromParts($providerKey, $model);
+            PrismServer::register(
+                $modelId,
+                function () use ($providerKey, $model) {
+                    try {
+                        $workspace = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
+                        $this->resolver->setWorkspaceId($workspace?->id);
+                        $resolved = $this->resolver->resolveFromParts($providerKey, $model);
 
-                PrismServer::register(
-                    $modelId,
-                    fn () => Prism::text()
-                        ->using($resolved['provider'], $resolved['model'])
-                );
-            } catch (\Throwable $e) {
-                Log::warning("Failed to register PrismServer model '{$modelId}': {$e->getMessage()}");
-            }
+                        return Prism::text()
+                            ->using($resolved['provider'], $resolved['model']);
+                    } catch (\Throwable $e) {
+                        Log::warning("Failed to resolve PrismServer model '{$providerKey}:{$model}': {$e->getMessage()}");
+
+                        throw $e;
+                    }
+                }
+            );
         }
     }
 }

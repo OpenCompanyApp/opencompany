@@ -2,6 +2,7 @@
 
 namespace App\Services\Memory;
 
+use App\Ai\Agents\OneShotTextAgent;
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Models\AppSetting;
 use App\Models\ConversationSummary;
@@ -12,7 +13,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\UserMessage;
-use Prism\Prism\Facades\Prism;
 
 class ConversationCompactionService
 {
@@ -63,7 +63,7 @@ class ConversationCompactionService
             Log::warning('Skipping compaction while circuit is open', [
                 'channel_id' => $channelId,
                 'agent' => $agent->name,
-                'open_until' => $existing->compaction_circuit_open_until?->toIso8601String(),
+                'open_until' => $existing->compaction_circuit_open_until->toIso8601String(),
             ]);
 
             return null;
@@ -195,17 +195,16 @@ class ConversationCompactionService
         );
 
         try {
-            $workspace = app('currentWorkspace');
-            if ($workspace) {
+            $workspace = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
+            if ($workspace !== null) {
                 $this->providerResolver->setWorkspaceId($workspace->id);
             }
             $resolved = $this->providerResolver->resolveFromParts($provider, $model);
 
-            $response = Prism::text()
-                ->using($resolved['provider'], $resolved['model'])
-                ->withMaxTokens(config('memory.compaction.summary_max_tokens', 2_000))
-                ->withPrompt($prompt)
-                ->asText();
+            $response = (new OneShotTextAgent(
+                instructions: 'You summarize OpenCompany conversation history for durable recall.',
+                maxTokens: (int) config('memory.compaction.summary_max_tokens', 2_000),
+            ))->prompt($prompt, provider: $resolved['provider'], model: $resolved['model']);
 
             return $response->text;
         } catch (\Throwable $e) {
@@ -262,7 +261,7 @@ class ConversationCompactionService
 
     private function recordFailure(string $channelId, User $agent, ?ConversationSummary $existing, \Throwable $error): void
     {
-        $failureCount = ($existing?->compaction_failure_count ?? 0) + 1;
+        $failureCount = ($existing !== null ? $existing->compaction_failure_count : 0) + 1;
         $tripAfter = (int) config('memory.compaction.circuit_breaker.after_failures', 3);
         $cooldownMinutes = (int) config('memory.compaction.circuit_breaker.cooldown_minutes', 30);
 

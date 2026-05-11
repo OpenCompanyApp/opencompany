@@ -24,7 +24,7 @@ use Laravel\Ai\Promptable;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
 use Illuminate\Support\Str;
-use OpenCompany\PrismRelay\Contracts\HasSystemPrompts;
+use App\Ai\Contracts\HasSystemPrompts;
 
 #[MaxTokens(16_384)]
 class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemPrompts
@@ -92,8 +92,8 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
      * Get the instructions (system prompt) for this agent.
      *
      * Returns the full concatenated prompt (stable + volatile). When a
-     * SystemPromptBag is bound, prism-relay uses the split prompts from the bag
-     * instead for cache-friendly framing.
+     * SystemPromptBag is bound, the Laravel AI gateway decorator uses the split
+     * prompts from the bag for cache-friendly framing.
      */
     public function instructions(): string
     {

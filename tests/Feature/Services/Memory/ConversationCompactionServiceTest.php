@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services\Memory;
 
+use App\Ai\Agents\OneShotTextAgent;
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Jobs\IndexDocumentJob;
 use App\Models\AppSetting;
@@ -14,8 +15,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Messages\UserMessage;
 use Mockery;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\Testing\TextResponseFake;
 use Tests\TestCase;
 
 class ConversationCompactionServiceTest extends TestCase
@@ -51,7 +50,7 @@ class ConversationCompactionServiceTest extends TestCase
         $resolver->shouldReceive('resolveFromParts')
             ->andReturn(['provider' => 'openai', 'model' => 'gpt-4o']);
         $resolver->shouldReceive('setWorkspaceId')
-            ->andReturnSelf();
+            ->andReturn($resolver);
 
         $this->app->instance(DynamicProviderResolver::class, $resolver);
         $this->service = app(ConversationCompactionService::class);
@@ -67,20 +66,6 @@ class ConversationCompactionServiceTest extends TestCase
                 'channel_id' => $channelId,
                 'author_id' => $authorId,
                 'content' => "Test message number {$i} with some content to estimate tokens.",
-            ]);
-        }
-    }
-
-    private function createLongMessages(int $count, ?string $channelId = null): void
-    {
-        $channelId = $channelId ?? $this->channel->id;
-        $authorId = User::factory()->create()->id;
-
-        for ($i = 0; $i < $count; $i++) {
-            Message::factory()->create([
-                'channel_id' => $channelId,
-                'author_id' => $authorId,
-                'content' => str_repeat("This is a long message number {$i} with detailed content. ", 100),
             ]);
         }
     }
@@ -189,9 +174,7 @@ class ConversationCompactionServiceTest extends TestCase
         // Each message is ~13 tokens. Set budget to ~40 tokens → keeps ~3 recent messages
         config(['memory.compaction.keep_recent_tokens' => 40]);
 
-        Prism::fake([
-            TextResponseFake::make()->withText('Summary of the conversation so far.'),
-        ]);
+        OneShotTextAgent::fake(['Summary of the conversation so far.']);
 
         $summary = $this->service->compact($this->channel->id, $this->agent);
 
@@ -219,9 +202,7 @@ class ConversationCompactionServiceTest extends TestCase
         $this->createMessages(10, authorId: $user->id);
         config(['memory.compaction.keep_recent_tokens' => 40]);
 
-        Prism::fake([
-            TextResponseFake::make()->withText('Conversation summary text.'),
-        ]);
+        OneShotTextAgent::fake(['Conversation summary text.']);
 
         $this->assertEquals(0, ConversationSummary::count());
 
@@ -240,9 +221,9 @@ class ConversationCompactionServiceTest extends TestCase
         $this->createMessages(10, authorId: $user->id);
         config(['memory.compaction.keep_recent_tokens' => 40]);
 
-        Prism::fake([
-            TextResponseFake::make()->withText('First summary.'),
-            TextResponseFake::make()->withText('Second summary.'),
+        OneShotTextAgent::fake([
+            'First summary.',
+            'Second summary.',
         ]);
 
         $first = $this->service->compact($this->channel->id, $this->agent);

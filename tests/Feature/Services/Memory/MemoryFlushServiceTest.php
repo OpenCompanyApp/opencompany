@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services\Memory;
 
+use App\Ai\Agents\OneShotTextAgent;
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Agents\OpenCompanyAgent;
 use App\Jobs\IndexDocumentJob;
@@ -15,8 +16,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Messages\UserMessage;
 use Mockery;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\Testing\TextResponseFake;
 use Tests\TestCase;
 
 class MemoryFlushServiceTest extends TestCase
@@ -276,9 +275,7 @@ class MemoryFlushServiceTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        Prism::fake([
-            TextResponseFake::make()->withText('New compacted summary.'),
-        ]);
+        OneShotTextAgent::fake(['New compacted summary.']);
 
         $summary = $this->compactionService->compact($this->channel->id, $this->agent);
 

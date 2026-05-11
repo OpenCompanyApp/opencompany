@@ -2,13 +2,13 @@
 
 namespace App\Services\Memory;
 
+use App\Ai\Agents\OneShotTextAgent;
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Reranking;
 use Laravel\Ai\Responses\Data\RankedDocument;
-use Prism\Prism\Facades\Prism;
 
 class RerankingService
 {
@@ -61,7 +61,7 @@ class RerankingService
             ])->all();
         }
 
-        // All other providers: LLM-based reranking via Prism chat
+        // All other providers: LLM-based reranking through Laravel AI.
         return $this->rerankWithLlm($query, $documents, $provider, $model, $topK);
     }
 
@@ -129,10 +129,10 @@ class RerankingService
     }
 
     /**
-     * Rerank using any LLM provider via Prism's chat API.
+     * Rerank using any LLM provider via Laravel AI.
      *
      * Uses the same pointwise relevance prompt as rerankWithOllama(),
-     * but routes through Prism + DynamicProviderResolver so any configured
+     * but routes through DynamicProviderResolver so any configured
      * AI provider (OpenAI, Anthropic, OpenRouter, etc.) can be used.
      *
      * @param  array<int, string>  $documents
@@ -143,8 +143,8 @@ class RerankingService
         $systemPrompt = 'Judge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".';
 
         try {
-            $workspace = app('currentWorkspace');
-            if ($workspace) {
+            $workspace = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
+            if ($workspace !== null) {
                 $this->providerResolver->setWorkspaceId($workspace->id);
             }
             $resolved = $this->providerResolver->resolveFromParts($provider, $model);
@@ -161,13 +161,11 @@ class RerankingService
             $userMessage = "<Instruct>: Given a web search query, retrieve relevant passages that answer the query\n<Query>: {$query}\n<Document>: {$doc}";
 
             try {
-                $response = Prism::text()
-                    ->using($resolved['provider'], $resolved['model'])
-                    ->withSystemPrompt($systemPrompt)
-                    ->withPrompt($userMessage)
-                    ->withMaxTokens(2)
-                    ->usingTemperature(0)
-                    ->asText();
+                $response = (new OneShotTextAgent(
+                    instructions: $systemPrompt,
+                    maxTokens: 2,
+                    temperature: 0,
+                ))->prompt($userMessage, provider: $resolved['provider'], model: $resolved['model']);
 
                 $answer = strtolower(trim($response->text));
                 $score = str_starts_with($answer, 'yes') ? 1.0 : (str_starts_with($answer, 'no') ? 0.0 : 0.5);

@@ -2,8 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\IntegrationSetting;
 use Illuminate\Console\Command;
-use Prism\Prism\Facades\Prism;
+use Laravel\Ai\AnonymousAgent;
 
 class TestGlmPing extends Command
 {
@@ -15,20 +16,38 @@ class TestGlmPing extends Command
         $this->info('Testing Z.AI API connection...');
         $this->newLine();
 
-        $url = config('prism.providers.z.url');
-        $apiKey = config('prism.providers.z.api_key');
+        $setting = IntegrationSetting::query()
+            ->where('integration_id', 'z')
+            ->where('enabled', true)
+            ->first();
+
+        $url = $setting?->getConfigValue('url') ?? config('ai.providers.z.url') ?? 'https://api.z.ai/api/coding/paas/v4';
+        $apiKey = $setting?->getConfigValue('api_key') ?? config('ai.providers.z.key');
+
+        if (! $apiKey) {
+            $this->error('No enabled Z.AI integration or ai.providers.z key is configured.');
+
+            return Command::FAILURE;
+        }
+
+        config(['ai.providers.z' => array_merge(config('ai.providers.z', []), [
+            'driver' => 'z',
+            'key' => $apiKey,
+            'url' => $url,
+        ])]);
 
         $this->line('Endpoint: ' . $url);
-        $this->line('API Key: ' . substr($apiKey, 0, 10) . '...');
+        $this->line('API Key: configured');
         $this->newLine();
 
         $prompt = $this->option('prompt') ?? 'What is your model name? Reply with just the model identifier.';
 
         try {
-            $response = Prism::text()
-                ->using('z', 'glm-5.1')
-                ->withPrompt($prompt)
-                ->asText();
+            $response = (new AnonymousAgent(
+                instructions: 'You are a concise API healthcheck assistant.',
+                messages: [],
+                tools: [],
+            ))->prompt($prompt, provider: 'z', model: 'glm-5.1', timeout: 60);
 
             $this->info('Response:');
             $this->newLine();

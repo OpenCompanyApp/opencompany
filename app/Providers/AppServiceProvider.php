@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Ai\Providers\RelayAiProviderFactory;
+use App\Ai\Providers\RelayAiProviderRegistrar;
 use App\Agents\Tools\Providers as ToolProviders;
 use App\Agents\Tools\ToolRegistry;
 use App\Models\ApprovalRequest;
@@ -13,15 +15,10 @@ use App\Services\Chat\ChatBridge;
 use App\Services\Chat\ChatManager;
 use App\Services\Mcp\McpServerRegistrar;
 use App\Services\PrismServerService;
-use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
-use Laravel\Ai\Providers\OpenRouterProvider;
-use OpenCompany\PrismRelay\Bridge\LaravelAi\RelayTextGateway;
-use OpenCompany\PrismRelay\Relay;
-use Prism\Prism\PrismManager;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -55,6 +52,9 @@ class AppServiceProvider extends ServiceProvider
         // Chat integration manager (workspace-scoped Chat instances)
         $this->app->singleton(ChatManager::class);
         $this->app->singleton(ChatBridge::class);
+
+        $this->app->singleton(RelayAiProviderFactory::class);
+        $this->app->singleton(RelayAiProviderRegistrar::class);
     }
 
     /**
@@ -88,30 +88,11 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
-        // Custom Prism providers (Z.AI, Kimi, MiniMax) are registered by
-        // PrismRelayServiceProvider via afterResolving(PrismManager::class).
-
-        // Laravel AI 0.6 has native gateways for standard providers. Keep those
-        // intact, and register relay-backed drivers only for custom providers
-        // where prism-relay owns prompt caching and provider/runtime quirks.
+        // Register all relay registry providers with Laravel AI. OpenCompany
+        // resolves LLM calls through Laravel AI gateways; prism-relay remains a
+        // metadata registry here, not the agent execution path.
         $this->app->afterResolving(AiManager::class, function (AiManager $aiManager, $app) {
-            $dispatcher = $app->make(Dispatcher::class);
-
-            $createRelayDriver = function ($app, array $config) use ($dispatcher) {
-                $config['name'] ??= $config['driver'] ?? 'relay';
-                $config['key'] ??= '';
-
-                return (new OpenRouterProvider($config, $dispatcher))->useTextGateway(
-                    new RelayTextGateway(
-                        relay: $app->bound(Relay::class) ? $app->make(Relay::class) : null,
-                        forcedProvider: $config['driver'] ?? null,
-                    ),
-                );
-            };
-
-            foreach (['z', 'z-api', 'kimi', 'kimi-coding', 'minimax', 'minimax-cn', 'codex'] as $driver) {
-                $aiManager->extend($driver, $createRelayDriver);
-            }
+            $app->make(RelayAiProviderRegistrar::class)->register($aiManager);
         });
     }
 

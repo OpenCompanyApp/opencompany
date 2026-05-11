@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services\Memory;
 
+use App\Ai\Agents\OneShotTextAgent;
 use App\Models\AppSetting;
 use App\Services\Memory\RerankingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -145,6 +146,22 @@ class RerankingServiceTest extends TestCase
 
         // Should have called the API (not pass-through) because AppSetting overrides
         $this->assertEquals(0.9, $results[0]['score']);
+    }
+
+    public function test_llm_reranking_uses_laravel_ai_agent(): void
+    {
+        AppSetting::setValue('memory_reranking_enabled', true, 'memory');
+        AppSetting::setValue('memory_reranking_model', 'openai:gpt-4o-mini', 'memory');
+
+        OneShotTextAgent::fake(['no', 'yes']);
+
+        $results = $this->service->rerank('query', ['less relevant', 'more relevant']);
+
+        $this->assertCount(2, $results);
+        $this->assertEquals(1, $results[0]['index']);
+        $this->assertEquals(1.0, $results[0]['score']);
+        OneShotTextAgent::assertPrompted(fn ($prompt) => str_contains($prompt->prompt, '<Document>: less relevant'));
+        OneShotTextAgent::assertPrompted(fn ($prompt) => str_contains($prompt->prompt, '<Document>: more relevant'));
     }
 
     // --- Ollama-specific tests ---

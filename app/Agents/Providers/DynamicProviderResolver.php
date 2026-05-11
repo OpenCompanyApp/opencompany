@@ -5,12 +5,16 @@ namespace App\Agents\Providers;
 use App\Models\IntegrationSetting;
 use App\Models\User;
 use InvalidArgumentException;
-use OpenCompany\PrismRelay\Meta\ProviderMeta;
-use OpenCompany\PrismRelay\RelayManager;
+use Laravel\Ai\AiManager;
+use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 class DynamicProviderResolver
 {
     private ?string $workspaceId = null;
+
+    public function __construct(
+        private ?RelayRegistry $registry = null,
+    ) {}
 
     /**
      * Set the workspace ID for scoping IntegrationSetting queries.
@@ -49,78 +53,59 @@ class DynamicProviderResolver
      */
     public function resolveFromParts(string $providerKey, string $model): array
     {
-        // Codex uses ChatGPT subscription OAuth — no API key needed
-        if ($providerKey === 'codex') {
+        $providerKey = $this->registry()->canonicalProvider($providerKey) ?? $providerKey;
+
+        if (! $this->registry()->hasProvider($providerKey)) {
+            throw new InvalidArgumentException("Unknown provider: {$providerKey}");
+        }
+
+        // Codex uses ChatGPT subscription OAuth, not workspace API keys.
+        if ($this->registry()->authMode($providerKey) === 'oauth') {
             $this->registerCodexProvider();
-            return ['provider' => 'codex', 'model' => $model];
-        }
-
-        // Standard providers — check DB for API key, fall back to .env
-        $sdkProvider = $this->mapToSdkProvider($providerKey);
-        if ($sdkProvider) {
-            $this->applyIntegrationConfig($providerKey);
-            return ['provider' => $sdkProvider, 'model' => $model];
-        }
-
-        // Custom providers use IntegrationSetting for API keys
-        if ($this->isRelayBackedProvider($providerKey)) {
-            $this->registerGlmProvider($providerKey);
             return ['provider' => $providerKey, 'model' => $model];
         }
 
-        throw new InvalidArgumentException("Unknown provider: {$providerKey}");
+        $this->applyProviderConfig($providerKey);
+
+        return ['provider' => $providerKey, 'model' => $model];
     }
 
     /**
-     * Check if a provider key is managed by Prism Relay.
+     * Dynamically register a workspace-configured provider in Laravel AI config.
      */
-    private function isRelayBackedProvider(string $providerKey): bool
-    {
-        return ! $this->mapToSdkProvider($providerKey)
-            && (new RelayManager)->isRelayProvider($providerKey);
-    }
-
-    /**
-     * Dynamically register a custom provider in the Prism config.
-     */
-    private function registerGlmProvider(string $providerKey): void
+    private function applyProviderConfig(string $providerKey): void
     {
         $integration = IntegrationSetting::where('workspace_id', $this->workspaceId)
             ->where('integration_id', $providerKey)
             ->where('enabled', true)
             ->first();
 
-        if (!$integration) {
+        if (! $integration || ! $integration->hasValidConfig()) {
+            if ($this->canUseConfiguredProvider($providerKey)) {
+                $this->registerAiProviderConfig($providerKey, []);
+                $this->registerPrismProviderConfig($providerKey, []);
+                $this->purgeAiProvider($providerKey);
+
+                return;
+            }
+
             throw new InvalidArgumentException(
                 "AI provider '{$providerKey}' is not configured. Please enable it in Integrations settings."
             );
         }
 
-        if (!$integration->hasValidConfig()) {
-            throw new InvalidArgumentException(
-                "AI provider '{$providerKey}' is not properly configured. Please check the API settings."
-            );
-        }
-
         $apiKey = $integration->getConfigValue('api_key');
-        $url = $integration->getConfigValue('url') ?? $this->getDefaultGlmUrl($providerKey);
+        $url = $integration->getConfigValue('url') ?? $this->getDefaultUrl($providerKey);
 
-        // Set Prism config for the provider variant (registered via PrismManager::extend)
-        config([
-            "prism.providers.{$providerKey}" => [
-                'api_key' => $apiKey,
-                'url' => $url,
-            ],
-        ]);
-
-        // Register in AI SDK config using our custom driver (registered via AiManager::extend).
-        // This routes through prism-relay's Laravel AI TextGateway adapter.
-        config([
-            "ai.providers.{$providerKey}" => [
-                'driver' => $providerKey,
-                'key' => $apiKey,
-            ],
-        ]);
+        $this->registerAiProviderConfig($providerKey, array_filter([
+            'key' => $apiKey,
+            'url' => $url,
+        ], static fn (mixed $value): bool => $value !== null && $value !== ''));
+        $this->registerPrismProviderConfig($providerKey, array_filter([
+            'api_key' => $apiKey,
+            'url' => $url,
+        ], static fn (mixed $value): bool => $value !== null && $value !== ''));
+        $this->purgeAiProvider($providerKey);
     }
 
     /**
@@ -135,79 +120,91 @@ class DynamicProviderResolver
                 'key' => 'codex-oauth',
             ],
         ]);
+
+        $this->purgeAiProvider('codex');
     }
 
     /**
-     * Map a brain provider key to an AI SDK provider name.
+     * Check whether .env/config already provides this provider.
      */
-    private function mapToSdkProvider(string $providerKey): ?string
+    private function canUseConfiguredProvider(string $providerKey): bool
     {
-        $map = [
-            'anthropic' => 'anthropic',
-            'openai' => 'openai',
-            'gemini' => 'gemini',
-            'groq' => 'groq',
-            'xai' => 'xai',
-            'openrouter' => 'openrouter',
-            'deepseek' => 'deepseek',
-            'mistral' => 'mistral',
-            'ollama' => 'ollama',
-            'perplexity' => 'perplexity',
-        ];
+        $configured = config("ai.providers.{$providerKey}");
 
-        return $map[$providerKey] ?? null;
+        if (is_array($configured) && array_key_exists('key', $configured) && filled($configured['key'])) {
+            return true;
+        }
+
+        if (filled(config("prism.providers.{$providerKey}.api_key"))) {
+            return true;
+        }
+
+        if ($providerKey === 'ollama' && filled(config('prism.providers.ollama.url'))) {
+            return true;
+        }
+
+        return in_array($providerKey, [
+            'anthropic',
+            'openai',
+            'gemini',
+            'groq',
+            'xai',
+            'openrouter',
+            'deepseek',
+            'mistral',
+            'ollama',
+            'perplexity',
+        ], true);
     }
 
     /**
-     * If a provider has an IntegrationSetting with API key, override prism/ai config.
-     * Falls back to .env config silently if no IntegrationSetting exists.
+     * @param  array<string, mixed>  $overrides
      */
-    private function applyIntegrationConfig(string $providerKey): void
+    private function registerAiProviderConfig(string $providerKey, array $overrides): void
     {
-        $integration = IntegrationSetting::where('workspace_id', $this->workspaceId)
-            ->where('integration_id', $providerKey)
-            ->where('enabled', true)
-            ->first();
+        $fallbackKey = config("ai.providers.{$providerKey}.key")
+            ?: config("prism.providers.{$providerKey}.api_key");
 
-        if (!$integration || !$integration->hasValidConfig()) {
-            return; // Fall back to .env config
-        }
-
-        $apiKey = $integration->getConfigValue('api_key');
-        $url = $integration->getConfigValue('url');
-
-        $config = ['api_key' => $apiKey];
-        if ($url) {
-            $config['url'] = $url;
-        }
-
-        // Merge into existing prism config (preserves .env values for unset fields)
-        config(["prism.providers.{$providerKey}" => array_merge(
-            config("prism.providers.{$providerKey}", []),
-            $config,
-        )]);
-
-        $sdkProvider = $this->mapToSdkProvider($providerKey) ?? $providerKey;
-        $aiConfig = ['driver' => $sdkProvider, 'key' => $apiKey];
-        if ($url) {
-            $aiConfig['url'] = $url;
-        }
-
-        // Laravel AI native 0.6 gateways read from ai.providers.*, while
-        // prism-relay and KosmoKrator-facing code still read prism.providers.*.
         config(["ai.providers.{$providerKey}" => array_merge(
             config("ai.providers.{$providerKey}", []),
-            $aiConfig,
+            array_filter([
+                'driver' => $providerKey,
+                'key' => $fallbackKey,
+                'url' => $this->getDefaultUrl($providerKey),
+            ], static fn (mixed $value): bool => $value !== null && $value !== ''),
+            $overrides,
         )]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function registerPrismProviderConfig(string $providerKey, array $overrides): void
+    {
+        config(["prism.providers.{$providerKey}" => array_merge(
+            config("prism.providers.{$providerKey}", []),
+            array_filter([
+                'api_key' => config("prism.providers.{$providerKey}.api_key")
+                    ?: config("ai.providers.{$providerKey}.key"),
+                'url' => $this->getDefaultUrl($providerKey),
+            ], static fn (mixed $value): bool => $value !== null && $value !== ''),
+            $overrides,
+        )]);
+    }
+
+    private function purgeAiProvider(string $providerKey): void
+    {
+        if (app()->bound(AiManager::class)) {
+            app(AiManager::class)->purge($providerKey);
+        }
     }
 
     /**
      * Get default URL for a known provider.
      */
-    private function getDefaultGlmUrl(string $providerKey): string
+    private function getDefaultUrl(string $providerKey): ?string
     {
-        return (new ProviderMeta)->url($providerKey)
-            ?? throw new InvalidArgumentException("Unknown custom provider: {$providerKey}");
+        return $this->registry()->url($providerKey) ?: null;
     }
 
     /**
@@ -223,7 +220,11 @@ class DynamicProviderResolver
             return array_key_first($models);
         }
 
-        // Fall back to prism-relay's provider metadata registry
-        return (new ProviderMeta)->defaultModel($providerKey) ?? 'default';
+        return (string) ($this->registry()->provider($providerKey)['default_model'] ?? 'default');
+    }
+
+    private function registry(): RelayRegistry
+    {
+        return $this->registry ??= app(RelayRegistry::class);
     }
 }
