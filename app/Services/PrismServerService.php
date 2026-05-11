@@ -43,7 +43,7 @@ class PrismServerService
         }
 
         foreach ($enabledModels as $modelId) {
-            // Model ID format: "provider:model" (e.g. "codex:gpt-5.3-codex")
+            // Model ID format: "provider:model".
             $parts = explode(':', $modelId, 2);
             if (count($parts) !== 2) {
                 continue;

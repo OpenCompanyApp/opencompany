@@ -30,7 +30,7 @@ class DynamicProviderResolver
     /**
      * Parse a User's brain field and resolve to SDK provider + model.
      *
-     * Brain format: "provider:model" (e.g. "z:glm-5.1", "anthropic:claude-sonnet-4-5-20250929")
+     * Brain format: "provider:model".
      *
      * @return array{provider: string, model: string}
      */
@@ -38,7 +38,7 @@ class DynamicProviderResolver
     {
         $this->workspaceId = $agent->workspace_id;
 
-        $brain = $agent->brain ?? 'z:glm-5.1';
+        $brain = $agent->brain ?? (string) config('ai.default_for_agents', config('ai.default'));
         $parts = explode(':', $brain, 2);
         $providerKey = $parts[0];
         $model = $parts[1] ?? $this->getDefaultModel($providerKey);
@@ -139,22 +139,12 @@ class DynamicProviderResolver
             return true;
         }
 
-        if ($providerKey === 'ollama' && filled(config('prism.providers.ollama.url'))) {
+        if (! $this->registry()->requiresApiKey($providerKey)
+            && filled(config("prism.providers.{$providerKey}.url") ?: config("ai.providers.{$providerKey}.url") ?: $this->getDefaultUrl($providerKey))) {
             return true;
         }
 
-        return in_array($providerKey, [
-            'anthropic',
-            'openai',
-            'gemini',
-            'groq',
-            'xai',
-            'openrouter',
-            'deepseek',
-            'mistral',
-            'ollama',
-            'perplexity',
-        ], true);
+        return ! $this->registry()->requiresApiKey($providerKey);
     }
 
     /**

@@ -37,8 +37,9 @@ class RelayAiProviderFactory
     {
         $canonical = $this->registry->canonicalProvider($name) ?? $name;
         $providerDefinition = $this->registry->provider($canonical) ?? [];
-        $driver = $this->registry->driver($canonical);
-        $driver = $canonical === 'cohere' ? 'cohere' : $driver;
+        $url = $this->filledString($config['url'] ?? null)
+            ?? $this->filledString($providerDefinition['url'] ?? null);
+        $driver = $this->registry->laravelAiDriver($canonical, $url);
 
         return $this->createAnonymous($canonical, $driver, $providerDefinition, array_merge($config, [
             'name' => $config['name'] ?? $name,
@@ -51,14 +52,14 @@ class RelayAiProviderFactory
      */
     public function createAnonymous(
         string $providerName,
-        string $driver,
+        ?string $driver,
         array $providerDefinition,
         array $config,
     ): TextProvider {
         $config = $this->normalizeConfig($providerName, $driver, $providerDefinition, $config);
 
         $provider = match ($driver) {
-            'anthropic', 'anthropic-compatible', 'minimax', 'minimax-cn' => new AnthropicProvider(
+            'anthropic' => new AnthropicProvider(
                 new AnthropicGateway($this->events),
                 $config,
                 $this->events,
@@ -87,10 +88,10 @@ class RelayAiProviderFactory
             'model-router' => (new OpenRouterProvider($config, $this->events))->useTextGateway(
                 new ModelRouterTextGateway($this, $providerName, $providerDefinition, $config),
             ),
-            'unsupported', 'external-process', 'google-vertex', 'amazon-bedrock' => (new OpenRouterProvider($config, $this->events))->useTextGateway(
-                new UnsupportedTextGateway($providerName, $driver),
+            'deepseek' => new DeepSeekProvider($config, $this->events),
+            default => (new OpenRouterProvider($config, $this->events))->useTextGateway(
+                new UnsupportedTextGateway($providerName, $this->registry->driver($providerName)),
             ),
-            default => new DeepSeekProvider($config, $this->events),
         };
 
         return $this->wrap($provider);
@@ -112,7 +113,7 @@ class RelayAiProviderFactory
      */
     private function normalizeConfig(
         string $providerName,
-        string $driver,
+        ?string $driver,
         array $providerDefinition,
         array $config,
     ): array {
@@ -124,7 +125,7 @@ class RelayAiProviderFactory
             'driver' => $providerName,
             'key' => $config['key'] ?? $config['api_key'] ?? '',
             'url' => $url,
-            'relay_driver' => $driver,
+            'relay_driver' => $this->registry->driver($providerName),
         ]);
 
         if (isset($providerDefinition['version']) && ! isset($normalized['version'])) {

@@ -67,11 +67,11 @@ return [
         ],
         'z' => [
             'api_key' => env('ZAI_API_KEY', ''),
-            'url' => env('Z_URL', 'https://api.z.ai/api/coding/paas/v4'),
+            'url' => env('Z_URL', \OpenCompany\PrismRelay\Providers\GlmCoding::URL),
         ],
         'z-api' => [
             'api_key' => env('ZAI_API_KEY', ''),
-            'url' => env('Z_API_URL', 'https://open.bigmodel.cn/api/paas/v4'),
+            'url' => env('Z_API_URL', \OpenCompany\PrismRelay\Providers\Glm::URL),
         ],
     ],
 ];

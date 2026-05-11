@@ -1199,12 +1199,15 @@ class IntegrationController extends Controller
         }
 
         // LLM providers (any configured AI chat model can do pointwise reranking)
-        $skipProviders = ['ollama', 'cohere', 'jina']; // Already listed above
+        $listedProviders = array_merge(
+            ['ollama'],
+            array_keys($cloudProviders),
+        );
         $available = IntegrationSetting::getAvailableIntegrations();
         $integrationSettings = IntegrationSetting::forWorkspace()->default()->get()->keyBy('integration_id');
 
         foreach ($available as $id => $info) {
-            if (! isset($info['api_format']) || in_array($id, $skipProviders)) {
+            if (! isset($info['api_format']) || in_array($id, $listedProviders, true)) {
                 continue;
             }
 

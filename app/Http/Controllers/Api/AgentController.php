@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Agents\Tools\ToolRegistry;
+use App\Agents\Providers\AgentBrainValidator;
 use App\Http\Controllers\Controller;
 use App\Models\Channel;
 use App\Models\ChannelMember;
 use App\Models\DirectMessage;
-use App\Models\IntegrationSetting;
 use App\Models\Task;
 use App\Models\User;
-use OpenCompany\PrismCodex\CodexTokenStore;
 use App\Services\AgentAvatarService;
 use App\Services\AgentDocumentService;
 use App\Services\AgentPermissionService;
@@ -18,12 +17,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class AgentController extends Controller
 {
     public function __construct(
         private AgentDocumentService $agentDocumentService,
         private AgentAvatarService $agentAvatarService,
+        private AgentBrainValidator $brainValidator,
     ) {}
 
     /**
@@ -58,29 +59,13 @@ class AgentController extends Controller
             'identity.MEMORY' => 'nullable|string',
         ]);
 
-        // Validate brain format (provider:model)
-        if (!str_contains($validated['brain'], ':')) {
+        try {
+            $this->brainValidator->validate($validated['brain'], workspace()->id);
+        } catch (InvalidArgumentException $e) {
             return response()->json([
-                'error' => 'Invalid brain format. Expected "provider:model" (e.g., "z:glm-5.1")',
+                'error' => $e->getMessage(),
+                'example' => $this->brainValidator->example(),
             ], 422);
-        }
-
-        [$provider] = explode(':', $validated['brain'], 2);
-
-        // Standard providers use .env keys; only check IntegrationSetting for custom providers
-        $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama', 'perplexity'];
-
-        if (!in_array($provider, $standardProviders)) {
-            $integration = IntegrationSetting::forWorkspace()
-                ->where('integration_id', $provider)
-                ->where('enabled', true)
-                ->first();
-
-            if (!$integration) {
-                return response()->json([
-                    'error' => "AI model provider '{$provider}' is not configured or enabled. Please configure it in Integrations.",
-                ], 422);
-            }
         }
 
         // Create the agent user
@@ -315,31 +300,13 @@ class AgentController extends Controller
 
         // If updating brain, validate the format and integration
         if (isset($validated['brain'])) {
-            if (!str_contains($validated['brain'], ':')) {
+            try {
+                $this->brainValidator->validate($validated['brain'], workspace()->id);
+            } catch (InvalidArgumentException $e) {
                 return response()->json([
-                    'error' => 'Invalid brain format. Expected "provider:model"',
+                    'error' => $e->getMessage(),
+                    'example' => $this->brainValidator->example(),
                 ], 422);
-            }
-
-            [$provider] = explode(':', $validated['brain'], 2);
-            $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama'];
-
-            if (!in_array($provider, $standardProviders)) {
-                $integration = IntegrationSetting::forWorkspace()
-                    ->where('integration_id', $provider)
-                    ->where('enabled', true)
-                    ->first();
-
-                // Codex uses OAuth tokens, not IntegrationSetting
-                if (!$integration && $provider === 'codex') {
-                    $integration = CodexTokenStore::current() !== null;
-                }
-
-                if (!$integration) {
-                    return response()->json([
-                        'error' => "AI model provider '{$provider}' is not configured or enabled.",
-                    ], 422);
-                }
             }
         }
 

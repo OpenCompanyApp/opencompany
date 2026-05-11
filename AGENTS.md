@@ -41,6 +41,7 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 - `../integrations/packages/*`
 - Do not patch `vendor/` for durable fixes.
 - If a fix stays app-local, note why it is OpenCompany-specific.
+- Avoid hardcoding provider IDs, model IDs, API formats, URLs, capabilities, auth modes, or runtime support lists in app code. Prefer package registry/catalog metadata (`tmp/prism-relay`, `../integrations`) or config, and add package-level metadata first when missing.
 
 ## Working Notes
 

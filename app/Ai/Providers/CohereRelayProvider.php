@@ -23,7 +23,10 @@ class CohereRelayProvider extends CohereProvider implements TextProvider
 
     public function defaultTextModel(): string
     {
-        return $this->config['models']['text']['default'] ?? $this->config['default_model'] ?? 'command-a-03-2025';
+        return $this->config['models']['text']['default']
+            ?? $this->config['default_model']
+            ?? array_key_first($this->config['models'] ?? [])
+            ?? 'default';
     }
 
     public function cheapestTextModel(): string

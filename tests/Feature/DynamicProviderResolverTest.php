@@ -33,6 +33,8 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_resolves_standard_provider(): void
     {
+        config(['prism.providers.anthropic.api_key' => 'test-key']);
+
         $agent = User::factory()->create([
             'type' => 'agent',
             'brain' => 'anthropic:claude-sonnet-4-5-20250929',
@@ -46,6 +48,8 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_resolves_openai_provider(): void
     {
+        config(['prism.providers.openai.api_key' => 'test-key']);
+
         $agent = User::factory()->create([
             'type' => 'agent',
             'brain' => 'openai:gpt-4o',
@@ -65,34 +69,39 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_resolves_z_provider_with_integration(): void
     {
+        $registry = app(RelayRegistry::class);
+        $providerName = 'z';
+        $model = (string) ($registry->provider($providerName)['default_model'] ?? 'default');
+        $url = $registry->url($providerName);
+
         IntegrationSetting::create([
             'id' => 'int-1',
-            'integration_id' => 'z',
+            'integration_id' => $providerName,
             'enabled' => true,
             'workspace_id' => $this->workspace->id,
             'config' => [
                 'api_key' => 'test-api-key',
-                'url' => 'https://api.z.ai/api/coding/paas/v4',
+                'url' => $url,
             ],
         ]);
 
         $agent = User::factory()->create([
             'type' => 'agent',
-            'brain' => 'z:glm-5.1',
+            'brain' => "{$providerName}:{$model}",
         ]);
 
         $result = $this->resolver->resolve($agent);
 
-        $this->assertEquals('z', $result['provider']);
-        $this->assertEquals('glm-5.1', $result['model']);
+        $this->assertEquals($providerName, $result['provider']);
+        $this->assertEquals($model, $result['model']);
 
-        $this->assertNotNull(config('ai.providers.z'));
-        $this->assertEquals('z', config('ai.providers.z.driver'));
-        $this->assertEquals('test-api-key', config('ai.providers.z.key'));
-        $this->assertEquals('test-api-key', config('prism.providers.z.api_key'));
-        $this->assertEquals('https://api.z.ai/api/coding/paas/v4', config('prism.providers.z.url'));
+        $this->assertNotNull(config("ai.providers.{$providerName}"));
+        $this->assertEquals($providerName, config("ai.providers.{$providerName}.driver"));
+        $this->assertEquals('test-api-key', config("ai.providers.{$providerName}.key"));
+        $this->assertEquals('test-api-key', config("prism.providers.{$providerName}.api_key"));
+        $this->assertEquals($url, config("prism.providers.{$providerName}.url"));
 
-        $provider = app(AiManager::class)->textProvider('z');
+        $provider = app(AiManager::class)->textProvider($providerName);
 
         $this->assertInstanceOf(DeepSeekProvider::class, $provider);
         $this->assertInstanceOf(CachingTextGateway::class, $provider->textGateway());
@@ -101,9 +110,13 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_throws_for_unconfigured_z_provider(): void
     {
+        $registry = app(RelayRegistry::class);
+        $providerName = 'z-api';
+        $model = (string) ($registry->provider($providerName)['default_model'] ?? 'default');
+
         $agent = User::factory()->create([
             'type' => 'agent',
-            'brain' => 'z-api:glm-5.1',
+            'brain' => "{$providerName}:{$model}",
         ]);
 
         $this->expectException(InvalidArgumentException::class);
@@ -127,14 +140,18 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_defaults_to_z_when_no_brain(): void
     {
+        $registry = app(RelayRegistry::class);
+        $defaultProvider = (string) config('ai.default_for_agents');
+        $defaultModel = (string) ($registry->provider($defaultProvider)['default_model'] ?? 'default');
+
         IntegrationSetting::create([
             'id' => 'int-1',
-            'integration_id' => 'z',
+            'integration_id' => $defaultProvider,
             'enabled' => true,
             'workspace_id' => $this->workspace->id,
             'config' => [
                 'api_key' => 'test-key',
-                'url' => 'https://api.z.ai/api/coding/paas/v4',
+                'url' => $registry->url($defaultProvider),
             ],
         ]);
 
@@ -145,8 +162,8 @@ class DynamicProviderResolverTest extends TestCase
 
         $result = $this->resolver->resolve($agent);
 
-        $this->assertEquals('z', $result['provider']);
-        $this->assertEquals('glm-5.1', $result['model']);
+        $this->assertEquals($defaultProvider, $result['provider']);
+        $this->assertEquals($defaultModel, $result['model']);
     }
 
     public function test_all_relay_registry_providers_are_registered_with_laravel_ai(): void
@@ -170,8 +187,7 @@ class DynamicProviderResolverTest extends TestCase
             $driver = $registry->driver($providerName);
             $url = $registry->url($providerName);
 
-            if (in_array($driver, ['unsupported', 'external-process', 'google-vertex', 'amazon-bedrock'], true)
-                || ($driver === 'openai-compatible' && trim($url) === '')) {
+            if (! $registry->laravelAiRuntimeSupported($providerName, $url)) {
                 $this->assertArrayNotHasKey($providerName, $available, "Unsupported provider [{$providerName}] should not be enableable.");
 
                 continue;
@@ -192,13 +208,16 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_generated_openai_compatible_provider_uses_laravel_ai_gateway(): void
     {
+        $registry = app(RelayRegistry::class);
+        $providerName = 'mimo';
+
         config(['ai.providers.mimo' => [
-            'driver' => 'mimo',
+            'driver' => $providerName,
             'key' => 'test-key',
-            'url' => 'https://token-plan-sgp.xiaomimimo.com/v1',
+            'url' => $registry->url($providerName),
         ]]);
 
-        $provider = app(AiManager::class)->textProvider('mimo');
+        $provider = app(AiManager::class)->textProvider($providerName);
 
         $this->assertInstanceOf(DeepSeekProvider::class, $provider);
         $this->assertInstanceOf(CachingTextGateway::class, $provider->textGateway());

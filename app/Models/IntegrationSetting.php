@@ -12,6 +12,7 @@ use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 /**
  * @property array<string, mixed> $config
+ * @property string $workspace_id
  * @property bool $enabled
  * @property string $integration_id
  * @property string $account_alias
@@ -276,14 +277,14 @@ class IntegrationSetting extends Model
             $providers = [];
 
             foreach ($registry->canonicalProviders() as $id) {
-                if ($id === 'codex') {
+                if ($registry->authMode($id) === 'oauth') {
                     continue;
                 }
 
                 $definition = $registry->provider($id) ?? [];
                 $driver = $registry->driver($id);
 
-                if (! self::supportsLaravelAiRuntime($driver, $registry->url($id))) {
+                if (! $registry->laravelAiRuntimeSupported($id)) {
                     continue;
                 }
 
@@ -303,7 +304,7 @@ class IntegrationSetting extends Model
                     'description' => self::relayProviderDescription($id, $driver),
                     'icon' => 'ph:cpu',
                     'default_url' => $registry->url($id) ?: null,
-                    'api_format' => self::relayApiFormat($driver),
+                    'api_format' => $registry->apiFormat($id),
                     'api_key_url' => $definition['doc'] ?? null,
                     'models' => $models,
                     'relay_driver' => $driver,
@@ -322,26 +323,4 @@ class IntegrationSetting extends Model
         return "AI model provider '{$id}' via {$driver} transport.";
     }
 
-    private static function supportsLaravelAiRuntime(string $driver, string $url): bool
-    {
-        if (in_array($driver, ['unsupported', 'external-process', 'google-vertex', 'amazon-bedrock'], true)) {
-            return false;
-        }
-
-        if ($driver === 'openai-compatible' && trim($url) === '') {
-            return false;
-        }
-
-        return true;
-    }
-
-    private static function relayApiFormat(string $driver): string
-    {
-        return match ($driver) {
-            'anthropic', 'anthropic-compatible', 'minimax', 'minimax-cn' => 'anthropic',
-            'gemini' => 'gemini',
-            'ollama' => 'ollama',
-            default => 'openai_compat',
-        };
-    }
 }

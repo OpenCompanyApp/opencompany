@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\IntegrationSetting;
+use App\Agents\Providers\DynamicProviderResolver;
 use Illuminate\Console\Command;
 use Laravel\Ai\AnonymousAgent;
+use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 class TestGlmPing extends Command
 {
@@ -21,20 +23,32 @@ class TestGlmPing extends Command
             ->where('enabled', true)
             ->first();
 
-        $url = $setting?->getConfigValue('url') ?? config('ai.providers.z.url') ?? 'https://api.z.ai/api/coding/paas/v4';
-        $apiKey = $setting?->getConfigValue('api_key') ?? config('ai.providers.z.key');
+        $registry = app(RelayRegistry::class);
+        $provider = 'z';
+        $model = $registry->provider($provider)['default_model'] ?? null;
+
+        if (! is_string($model) || $model === '') {
+            $this->error('Z.AI default model is not available in the relay registry.');
+
+            return Command::FAILURE;
+        }
+        $url = $setting?->getConfigValue('url')
+            ?? config("ai.providers.{$provider}.url")
+            ?? config("prism.providers.{$provider}.url")
+            ?? $registry->url($provider);
+        $apiKey = $setting?->getConfigValue('api_key')
+            ?? config("ai.providers.{$provider}.key")
+            ?? config("prism.providers.{$provider}.api_key");
 
         if (! $apiKey) {
-            $this->error('No enabled Z.AI integration or ai.providers.z key is configured.');
+            $this->error('No enabled Z.AI integration or configured provider key is available.');
 
             return Command::FAILURE;
         }
 
-        config(['ai.providers.z' => array_merge(config('ai.providers.z', []), [
-            'driver' => 'z',
-            'key' => $apiKey,
-            'url' => $url,
-        ])]);
+        app(DynamicProviderResolver::class)
+            ->setWorkspaceId($setting?->workspace_id)
+            ->resolveFromParts($provider, (string) $model);
 
         $this->line('Endpoint: ' . $url);
         $this->line('API Key: configured');
@@ -47,7 +61,7 @@ class TestGlmPing extends Command
                 instructions: 'You are a concise API healthcheck assistant.',
                 messages: [],
                 tools: [],
-            ))->prompt($prompt, provider: 'z', model: 'glm-5.1', timeout: 60);
+            ))->prompt($prompt, provider: $provider, model: (string) $model, timeout: 60);
 
             $this->info('Response:');
             $this->newLine();

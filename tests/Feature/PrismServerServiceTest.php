@@ -7,6 +7,7 @@ use App\Models\Workspace;
 use App\Services\PrismServerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use OpenCompany\PrismRelay\Registry\RelayRegistry;
 use Prism\Prism\Facades\PrismServer;
 use Tests\TestCase;
 
@@ -24,29 +25,35 @@ class PrismServerServiceTest extends TestCase
 
     public function test_prism_server_model_resolution_uses_request_workspace_context(): void
     {
+        $registry = app(RelayRegistry::class);
+        $providerName = 'z';
+        $model = (string) ($registry->provider($providerName)['default_model'] ?? 'default');
+        $brain = "{$providerName}:{$model}";
+        $url = $registry->url($providerName);
+
         $otherWorkspace = Workspace::create([
             'name' => 'Other Workspace',
             'slug' => 'other',
         ]);
 
-        $this->createIntegration($this->workspace, 'z', [
+        $this->createIntegration($this->workspace, $providerName, [
             'api_key' => 'workspace-one-key',
-            'url' => 'https://api.z.ai/api/coding/paas/v4',
+            'url' => $url,
         ]);
-        $this->createIntegration($otherWorkspace, 'z', [
+        $this->createIntegration($otherWorkspace, $providerName, [
             'api_key' => 'workspace-two-key',
-            'url' => 'https://api.z.ai/api/coding/paas/v4',
+            'url' => $url,
         ]);
         $this->createIntegration($this->workspace, 'prism-server', [
-            'enabled_models' => ['z:glm-5.1'],
+            'enabled_models' => [$brain],
         ]);
         $this->createIntegration($otherWorkspace, 'prism-server', [
-            'enabled_models' => ['z:glm-5.1'],
+            'enabled_models' => [$brain],
         ]);
 
         app(PrismServerService::class)->registerModels();
 
-        $entry = PrismServer::prisms()->sole('name', 'z:glm-5.1');
+        $entry = PrismServer::prisms()->sole('name', $brain);
 
         app()->instance('currentWorkspace', $otherWorkspace);
         $entry['prism']();

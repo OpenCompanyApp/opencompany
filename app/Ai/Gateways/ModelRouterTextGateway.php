@@ -9,6 +9,7 @@ use Laravel\Ai\Contracts\Gateway\TextGateway;
 use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Gateway\TextGenerationOptions;
 use Laravel\Ai\Responses\TextResponse;
+use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 class ModelRouterTextGateway implements TextGateway
 {
@@ -25,6 +26,7 @@ class ModelRouterTextGateway implements TextGateway
         private readonly string $providerName,
         private readonly array $providerDefinition,
         private readonly array $baseConfig,
+        private readonly ?RelayRegistry $registry = null,
     ) {
         $this->invokingToolCallback = fn () => true;
         $this->toolInvokedCallback = fn () => true;
@@ -84,7 +86,9 @@ class ModelRouterTextGateway implements TextGateway
                 if (is_string($pattern) && str_starts_with($model, $pattern)) {
                     return $this->factory->createAnonymous(
                         providerName: $this->providerName,
-                        driver: (string) ($route['driver'] ?? 'openai-compatible'),
+                        driver: $this->registry()->laravelAiDriverForTransport(
+                            (string) ($route['driver'] ?? $this->registry()->defaultTransport())
+                        ),
                         providerDefinition: $this->providerDefinition,
                         config: array_merge($this->baseConfig, is_array($route['config'] ?? null) ? $route['config'] : []),
                     );
@@ -94,9 +98,16 @@ class ModelRouterTextGateway implements TextGateway
 
         return $this->factory->createAnonymous(
             providerName: $this->providerName,
-            driver: (string) ($this->providerDefinition['fallback_driver'] ?? 'openai-compatible'),
+            driver: $this->registry()->laravelAiDriverForTransport(
+                (string) ($this->providerDefinition['fallback_driver'] ?? $this->registry()->defaultTransport())
+            ),
             providerDefinition: $this->providerDefinition,
             config: $this->baseConfig,
         );
+    }
+
+    private function registry(): RelayRegistry
+    {
+        return $this->registry ?? app(RelayRegistry::class);
     }
 }
