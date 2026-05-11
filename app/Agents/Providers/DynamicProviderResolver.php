@@ -113,8 +113,8 @@ class DynamicProviderResolver
             ],
         ]);
 
-        // Register in AI SDK config using our custom driver (registered via AiManager::extend)
-        // This routes through GlmPrismGateway to the matching Prism provider.
+        // Register in AI SDK config using our custom driver (registered via AiManager::extend).
+        // This routes through prism-relay's Laravel AI TextGateway adapter.
         config([
             "ai.providers.{$providerKey}" => [
                 'driver' => $providerKey,
@@ -185,6 +185,19 @@ class DynamicProviderResolver
         config(["prism.providers.{$providerKey}" => array_merge(
             config("prism.providers.{$providerKey}", []),
             $config,
+        )]);
+
+        $sdkProvider = $this->mapToSdkProvider($providerKey) ?? $providerKey;
+        $aiConfig = ['driver' => $sdkProvider, 'key' => $apiKey];
+        if ($url) {
+            $aiConfig['url'] = $url;
+        }
+
+        // Laravel AI native 0.6 gateways read from ai.providers.*, while
+        // prism-relay and KosmoKrator-facing code still read prism.providers.*.
+        config(["ai.providers.{$providerKey}" => array_merge(
+            config("ai.providers.{$providerKey}", []),
+            $aiConfig,
         )]);
     }
 

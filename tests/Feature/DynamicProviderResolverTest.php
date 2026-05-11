@@ -7,6 +7,11 @@ use App\Models\IntegrationSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
+use Laravel\Ai\AiManager;
+use Laravel\Ai\Gateway\OpenAi\OpenAiGateway;
+use Laravel\Ai\Providers\OpenAiProvider;
+use Laravel\Ai\Providers\OpenRouterProvider;
+use OpenCompany\PrismRelay\Bridge\LaravelAi\RelayTextGateway;
 use Tests\TestCase;
 
 class DynamicProviderResolverTest extends TestCase
@@ -45,6 +50,11 @@ class DynamicProviderResolverTest extends TestCase
 
         $this->assertEquals('openai', $result['provider']);
         $this->assertEquals('gpt-4o', $result['model']);
+
+        $provider = app(AiManager::class)->textProvider('openai');
+
+        $this->assertInstanceOf(OpenAiProvider::class, $provider);
+        $this->assertInstanceOf(OpenAiGateway::class, $provider->textGateway());
     }
 
     public function test_resolves_z_provider_with_integration(): void
@@ -77,6 +87,11 @@ class DynamicProviderResolverTest extends TestCase
         // Verify AI SDK config was registered with custom driver
         $this->assertNotNull(config('ai.providers.z'));
         $this->assertEquals('z', config('ai.providers.z.driver'));
+
+        $provider = app(AiManager::class)->textProvider('z');
+
+        $this->assertInstanceOf(OpenRouterProvider::class, $provider);
+        $this->assertInstanceOf(RelayTextGateway::class, $provider->textGateway());
     }
 
     public function test_throws_for_unconfigured_z_provider(): void

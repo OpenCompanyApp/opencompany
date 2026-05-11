@@ -41,13 +41,13 @@ composer setup
 composer dev
 ```
 
-> Requires PHP 8.2+, Node.js 20+, and PostgreSQL with [pgvector](https://github.com/pgvector/pgvector).
+> Requires PHP 8.4+, Node.js 20+, and PostgreSQL with [pgvector](https://github.com/pgvector/pgvector).
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Laravel 12, PHP 8.2+ |
+| Backend | Laravel 12, PHP 8.4+ |
 | Frontend | Vue 3, Inertia.js, Tailwind CSS v4 |
 | AI | Laravel AI SDK, Prism (multi-provider) |
 | Real-time | Laravel Reverb (WebSockets) |

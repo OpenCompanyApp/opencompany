@@ -52,9 +52,9 @@
         }
     ],
     "require": {
-        "php": "^8.2",
+        "php": "^8.4",
         "inertiajs/inertia-laravel": "^2.0",
-        "laravel/ai": "^0.1.2",
+        "laravel/ai": "^0.6.7",
         "laravel/framework": "^12.0",
         "laravel/octane": "^2.13",
         "laravel/reverb": "^1.7",
@@ -83,7 +83,7 @@
         "opencompanyapp/integration-worldbank": "@dev",
         "opencompanyapp/prism-relay": "@dev",
         "pgvector/pgvector": "^0.2.2",
-        "prism-php/prism": "^0.99.22",
+        "prism-php/prism": "^0.100.1",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Services\Memory;
 
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Agents\OpenCompanyAgent;
 use App\Jobs\IndexDocumentJob;
 use App\Models\Channel;
 use App\Models\ConversationSummary;
@@ -52,7 +53,7 @@ class MemoryFlushServiceTest extends TestCase
         $resolver->shouldReceive('resolveFromParts')
             ->andReturn(['provider' => 'openai', 'model' => 'gpt-4o']);
         $resolver->shouldReceive('setWorkspaceId')
-            ->andReturnSelf();
+            ->andReturn($resolver);
 
         $this->app->instance(DynamicProviderResolver::class, $resolver);
         $this->compactionService = app(ConversationCompactionService::class);
@@ -62,6 +63,9 @@ class MemoryFlushServiceTest extends TestCase
     /**
      * Helper: create messages that produce a specific approximate token count.
      * Each word ≈ 1.3 tokens.
+     */
+    /**
+     * @return array<int, UserMessage>
      */
     private function makeMessagesWithTokens(int $targetTokens): array
     {
@@ -218,10 +222,8 @@ class MemoryFlushServiceTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        // Fake the LLM call that flush() makes
-        Prism::fake([
-            TextResponseFake::make()->withText('[FLUSH_COMPLETE]'),
-        ]);
+        // Fake the agent prompt that flush() makes.
+        OpenCompanyAgent::fake(['[FLUSH_COMPLETE]']);
 
         $this->service->flush($this->channel->id, $this->agent);
 
@@ -236,9 +238,7 @@ class MemoryFlushServiceTest extends TestCase
     {
         $this->assertEquals(0, ConversationSummary::count());
 
-        Prism::fake([
-            TextResponseFake::make()->withText('[FLUSH_COMPLETE]'),
-        ]);
+        OpenCompanyAgent::fake(['[FLUSH_COMPLETE]']);
 
         $this->service->flush($this->channel->id, $this->agent);
 

@@ -92,8 +92,8 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
      * Get the instructions (system prompt) for this agent.
      *
      * Returns the full concatenated prompt (stable + volatile). When a
-     * SystemPromptBag is bound, CachingPrismGateway uses the split prompts
-     * from the bag instead for cache-friendly framing.
+     * SystemPromptBag is bound, prism-relay uses the split prompts from the bag
+     * instead for cache-friendly framing.
      */
     public function instructions(): string
     {
