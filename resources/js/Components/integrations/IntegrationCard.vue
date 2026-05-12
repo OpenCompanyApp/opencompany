@@ -134,6 +134,9 @@ export interface Integration {
   }
 }
 
+// IntegrationCard is intentionally action-oriented: installed, configurable,
+// catalog-only, and MCP entries all share the same card shell but emit different
+// page-level actions.
 const props = defineProps<{
   integration: Integration
 }>()
@@ -146,6 +149,8 @@ const emit = defineEmits<{
 }>()
 
 const handleClick = () => {
+  // Clicking an uninstalled card starts setup directly; installed cards prefer
+  // configure when there is meaningful configuration to edit.
   if (!props.integration.installed) {
     emit('install', props.integration)
     return
@@ -162,6 +167,8 @@ const handleClick = () => {
 const canConfigure = computed(() => {
   const integration = props.integration
 
+  // AI providers and Codex have dynamic config screens even when the catalog
+  // metadata does not mark them configurable.
   return Boolean(
     integration.configurable
       || integration.type === 'mcp'
@@ -173,6 +180,8 @@ const canConfigure = computed(() => {
 const actionLabel = computed(() => {
   const integration = props.integration
 
+  // Catalog entries without installed packages cannot be installed from inside
+  // OpenCompany; route users to docs/catalog instead.
   if (integration.catalog && integration.packageInstalled === false) {
     return integration.docsUrl ? 'Docs' : 'Catalog'
   }

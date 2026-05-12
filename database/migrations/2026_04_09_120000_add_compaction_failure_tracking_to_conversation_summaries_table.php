@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Failure counters and circuit timing keep repeated compaction errors
+        // from hammering the model provider on every prompt.
         Schema::table('conversation_summaries', function (Blueprint $table) {
             $table->integer('compaction_failure_count')->default(0)->after('flush_count');
             $table->timestamp('last_compaction_failed_at')->nullable()->after('compaction_failure_count');

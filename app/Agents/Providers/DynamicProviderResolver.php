@@ -10,6 +10,14 @@ use App\Services\Ai\ProviderConfigResolver;
 use InvalidArgumentException;
 use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
+/**
+ * Resolves an agent brain setting into the provider/model pair used by Laravel AI.
+ *
+ * OpenCompany stores user-editable brains as compact strings, while the runtime
+ * needs canonical provider IDs, current model aliases, workspace-scoped
+ * credentials, and provider registration. This resolver keeps that translation
+ * out of the agent class so provider catalog behavior can be tested directly.
+ */
 class DynamicProviderResolver
 {
     private ?string $workspaceId = null;
@@ -74,6 +82,9 @@ class DynamicProviderResolver
     private function normalizeLegacyBrain(string $providerKey, string $model): array
     {
         return match ($providerKey) {
+            // Older Atlas brains used a synthetic provider key for GLM coding.
+            // Keep them working, but route through the current Z.ai provider and
+            // upgrade obsolete GLM 4.x defaults to the supported GLM 5.1 model.
             'glm-coding' => ['z', str_starts_with($model, 'glm-4.') ? 'glm-5.1' : $model],
             default => [$providerKey, $model],
         };
@@ -84,7 +95,8 @@ class DynamicProviderResolver
      */
     private function getDefaultModel(string $providerKey): string
     {
-        // Try DB-stored models first
+        // Workspace settings win over package defaults because teams can expose
+        // a restricted model list or custom aliases from the integrations UI.
         $setting = IntegrationSetting::where('workspace_id', $this->workspaceId)
             ->where('integration_id', $providerKey)->first();
         $models = $setting?->getConfigValue('models', []);

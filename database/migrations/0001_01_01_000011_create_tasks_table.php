@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Initial task schema for human/agent work tracking. Later migrations
+        // expand statuses and add workspace/runtime fields.
         Schema::create('tasks', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('title');

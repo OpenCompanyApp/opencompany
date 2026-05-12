@@ -2,16 +2,26 @@
 
 namespace App\Models;
 
+use Database\Factories\MessageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Chat message stored in an OpenCompany channel.
+ *
+ * Messages can originate from humans, agents, automations, delegation callbacks,
+ * or external chat adapters. The source and external_message_id fields are used
+ * by bridge/listener code to prevent echo loops and to sync edits/deletes.
+ */
 class Message extends Model
 {
-    /** @use HasFactory<\Database\Factories\MessageFactory> */
+    /** @use HasFactory<MessageFactory> */
     use HasFactory;
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -93,9 +103,11 @@ class Message extends Model
      */
     public static function resolveByShortId(string $id): ?self
     {
+        // Agent tools often refer to message IDs in shortened msg:abc123 form.
+        // Prefer exact UUID lookup, then fall back to prefix matching.
         $id = preg_replace('/^msg:/', '', $id);
 
         return static::find($id)
-            ?? static::where('id', 'LIKE', $id . '%')->first();
+            ?? static::where('id', 'LIKE', $id.'%')->first();
     }
 }

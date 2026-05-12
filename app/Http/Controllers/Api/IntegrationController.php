@@ -24,6 +24,14 @@ use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * API surface for integration, provider, and model configuration.
+ *
+ * This controller delegates most behavior to catalog/config services. Keep it as
+ * request orchestration: account aliases, masked-secret handling, OAuth link
+ * management, and model-list refreshes are app concerns, while package schemas
+ * remain package-owned.
+ */
 class IntegrationController extends Controller
 {
     /**
@@ -64,6 +72,8 @@ class IntegrationController extends Controller
 
         if ($status === 200 && ($payload['configured'] ?? false)) {
             try {
+                // First successful configuration can populate provider models.
+                // Failure is non-fatal because the user can refresh models later.
                 $setting = $this->findIntegrationSetting($id, app(IntegrationAccountResolver::class)->accountFromRequest($request));
                 $existingModels = $setting?->getConfigValue('models');
                 if ($setting && empty($existingModels) && ($models = app(ModelRuntimeCatalog::class)->fetchProviderModels($id)) !== []) {
@@ -90,6 +100,8 @@ class IntegrationController extends Controller
         if ($setting) {
             $setting->update(['enabled' => $request->boolean('enabled')]);
         } else {
+            // No-config integrations still need a setting row so workspace-level
+            // enablement can be evaluated by AgentPermissionService.
             $setting = IntegrationSetting::create([
                 'id' => Str::uuid()->toString(),
                 'workspace_id' => workspace()->id,
@@ -131,6 +143,8 @@ class IntegrationController extends Controller
             $config = $setting->config ?? [];
             foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                 if ($field['type'] === 'oauth_connect') {
+                    // Only clear OAuth token fields. API keys or unrelated
+                    // static config should survive a provider disconnect.
                     unset($config[$field['key']]);
                 }
             }
@@ -155,6 +169,8 @@ class IntegrationController extends Controller
         $apiKey = $request->input('apiKey');
 
         if (! $apiKey || str_contains($apiKey, '*')) {
+            // A masked token from the UI means "reuse the stored Telegram token"
+            // and must never overwrite the encrypted setting.
             $apiKey = $setting?->getConfigValue('api_key');
         }
 
@@ -162,7 +178,8 @@ class IntegrationController extends Controller
             return response()->json(['success' => false, 'error' => 'No bot token configured'], 400);
         }
 
-        // Ensure setting exists and save the API key
+        // Ensure the setting exists before generating the webhook secret so the
+        // secret and token are stored atomically on the same integration row.
         if (! $setting) {
             $setting = IntegrationSetting::create([
                 'id' => Str::uuid()->toString(),
@@ -176,7 +193,8 @@ class IntegrationController extends Controller
             $setting->save();
         }
 
-        // Generate webhook secret if not set
+        // Telegram sends this secret back in the webhook header. Generate once
+        // and reuse it so existing webhook registrations remain valid.
         $webhookSecret = $setting->getConfigValue('webhook_secret');
         if (! $webhookSecret) {
             $webhookSecret = Str::random(64);
@@ -197,7 +215,8 @@ class IntegrationController extends Controller
             $data = $response->json();
 
             if ($response->successful() && ($data['ok'] ?? false)) {
-                // Persist webhook status in config
+                // Persist webhook status for UI diagnostics only. Telegram is
+                // still the source of truth for actual webhook registration.
                 $setting->setConfigValue('webhook_active', true);
                 $setting->save();
 
@@ -233,7 +252,8 @@ class IntegrationController extends Controller
 
         $user = User::findOrFail($request->input('userId'));
 
-        // Check if this external identity is already linked to another user
+        // External provider IDs are globally unique per provider. Prevent one
+        // Telegram/Slack user from being linked to multiple local users.
         $existing = UserExternalIdentity::where('provider', $request->input('provider'))
             ->where('external_id', $request->input('externalId'))
             ->first();
@@ -247,7 +267,8 @@ class IntegrationController extends Controller
             ], 409);
         }
 
-        // Create or update the identity link
+        // updateOrCreate allows relinking the same provider identity to the
+        // selected user after conflict checks pass.
         $identity = UserExternalIdentity::updateOrCreate(
             [
                 'provider' => $request->input('provider'),
@@ -260,7 +281,9 @@ class IntegrationController extends Controller
             ]
         );
 
-        // Clean up shadow user if one exists for this provider/external ID
+        // Telegram inbound messages can create an ephemeral shadow user before
+        // the admin links the real account. Merge that history into the chosen
+        // user so old messages/approvals stay attached after linking.
         if ($request->input('provider') === 'telegram') {
             $shadowEmail = "telegram-{$request->input('externalId')}@external.opencompany";
             $shadow = User::where('email', $shadowEmail)
@@ -268,13 +291,14 @@ class IntegrationController extends Controller
                 ->first();
 
             if ($shadow) {
-                // Deduplicate channel memberships before reassigning
+                // Delete duplicate memberships first to avoid unique-key
+                // conflicts when moving the shadow user's remaining rows.
                 $existingChannelIds = ChannelMember::where('user_id', $user->id)->pluck('channel_id');
                 ChannelMember::where('user_id', $shadow->id)
                     ->whereIn('channel_id', $existingChannelIds)
                     ->delete();
 
-                // Reassign remaining memberships, messages, and approvals
+                // Reassign durable history before deleting the shadow identity.
                 ChannelMember::where('user_id', $shadow->id)->update(['user_id' => $user->id]);
                 Message::where('author_id', $shadow->id)->update(['author_id' => $user->id]);
                 ApprovalRequest::where('responded_by_id', $shadow->id)
@@ -384,7 +408,9 @@ class IntegrationController extends Controller
                 ], 400);
             }
 
-            // Store in integration settings
+            // Persist fetched model names as a workspace override so dropdowns
+            // can show the provider's current model set without refetching on
+            // every page load.
             $setting = $this->findIntegrationSetting($id);
             if ($setting) {
                 $setting->setConfigValue('models', $models);
@@ -508,6 +534,8 @@ class IntegrationController extends Controller
         $config = $setting->config ?? [];
         foreach ($request->input('config', []) as $key => $value) {
             if (is_string($value) && str_contains($value, '*')) {
+                // Masked secrets from the account modal mean "leave existing
+                // encrypted value unchanged."
                 continue; // Skip masked values
             }
             $config[$key] = $value;
@@ -539,7 +567,8 @@ class IntegrationController extends Controller
         $wasDefault = $setting->is_default;
         $setting->delete();
 
-        // If we deleted the default, promote the legacy row first, otherwise any remaining account.
+        // If the default account is deleted, prefer the legacy unaliased account
+        // as replacement so existing tools without account aliases keep working.
         if ($wasDefault) {
             $replacement = IntegrationSetting::forWorkspace()
                 ->where('integration_id', $id)
@@ -570,7 +599,7 @@ class IntegrationController extends Controller
             return response()->json(['error' => 'Account not found.'], 404);
         }
 
-        // Clear is_default on all accounts for this integration
+        // Exactly one default account is allowed per integration/workspace.
         IntegrationSetting::forWorkspace()
             ->where('integration_id', $id)
             ->update(['is_default' => false]);

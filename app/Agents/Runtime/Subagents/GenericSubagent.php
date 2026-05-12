@@ -13,6 +13,13 @@ use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
 use Stringable;
 
+/**
+ * Wraps a workspace agent so Laravel AI can expose it as a callable subagent.
+ *
+ * The wrapper gives each peer agent its own instructions and tool set while
+ * deliberately withholding the parent conversation. Parent agents must pass the
+ * necessary task context explicitly when delegating.
+ */
 class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
 {
     use Promptable;
@@ -35,6 +42,8 @@ class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
     {
         $id = str($this->agent->id)->replace('-', '_')->toString();
 
+        // Include the database ID so two agents with the same display name do
+        // not collide in the Laravel AI tool registry.
         return 'subagent_'.str($this->agent->name)->slug('_')->toString().'_'.$id;
     }
 
@@ -57,6 +66,9 @@ class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
 
     public function messages(): iterable
     {
+        // Keep delegated runs isolated. Pulling parent channel history here
+        // would make subagent behavior harder to audit and could leak context
+        // the parent did not intentionally include in the task.
         return [];
     }
 

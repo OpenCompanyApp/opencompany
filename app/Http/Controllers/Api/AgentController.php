@@ -2,23 +2,32 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Agents\Tools\ToolRegistry;
 use App\Agents\Providers\AgentBrainValidator;
+use App\Agents\Tools\ToolRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\Channel;
 use App\Models\ChannelMember;
 use App\Models\DirectMessage;
+use App\Models\Document;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentAvatarService;
 use App\Services\AgentDocumentService;
 use App\Services\AgentPermissionService;
+use App\Services\FileSystemService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
+/**
+ * API surface for creating and managing workspace agents.
+ *
+ * Agent records are runtime identities, not just profile rows. Creating one also
+ * creates its identity document tree, avatar, default DM channel, and initial
+ * channel membership, so this controller keeps those side effects together.
+ */
 class AgentController extends Controller
 {
     public function __construct(
@@ -60,6 +69,8 @@ class AgentController extends Controller
         ]);
 
         try {
+            // Brain validation happens before any side effects so a bad provider
+            // or model never leaves behind a half-created agent/document tree.
             $this->brainValidator->validate($validated['brain'], workspace()->id);
         } catch (InvalidArgumentException $e) {
             return response()->json([
@@ -68,7 +79,8 @@ class AgentController extends Controller
             ], 422);
         }
 
-        // Create the agent user
+        // Agents belong directly to the current workspace. The manager defaults
+        // to the creator so interagent permissions have an initial hierarchy.
         $agent = User::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => workspace()->id,
@@ -83,7 +95,8 @@ class AgentController extends Controller
             'manager_id' => $validated['managerId'] ?? $request->user()->id,
         ]);
 
-        // Create the document structure for this agent
+        // Identity and memory documents are system documents used by prompt
+        // assembly. They are created immediately so the agent is runnable.
         $identityContent = $validated['identity'] ?? [];
         $agentFolder = $this->agentDocumentService->createAgentDocumentStructure($agent, $identityContent);
 
@@ -93,13 +106,14 @@ class AgentController extends Controller
         // Generate procedural avatar
         $this->agentAvatarService->generate($agent);
 
-        // Create DM channel between creator and agent
+        // Create the default DM thread that the response pipeline expects for
+        // first contact and onboarding messages.
         $creatorId = $request->user()->id;
         $creator = User::find($creatorId);
         $dmChannel = Channel::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => workspace()->id,
-            'name' => 'DM: ' . ($creator->name ?? 'User') . ' ↔ ' . $agent->name,
+            'name' => 'DM: '.($creator->name ?? 'User').' ↔ '.$agent->name,
             'type' => 'dm',
             'is_ephemeral' => false,
         ]);
@@ -121,7 +135,8 @@ class AgentController extends Controller
             'channel_id' => $dmChannel->id,
         ]);
 
-        // Add agent to #general channel by default
+        // General-channel membership is convenience only. Private memory context
+        // still stays out of public channels in OpenCompanyAgent.
         $generalChannel = Channel::forWorkspace()->where('name', 'general')->first();
         if ($generalChannel) {
             ChannelMember::create([
@@ -138,9 +153,12 @@ class AgentController extends Controller
      */
     public function show(string $id): JsonResponse
     {
+        // All detail endpoints scope by workspace first; an agent UUID from
+        // another workspace should look like a missing record.
         $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
-        // Load identity files and map by type
+        // The UI edits identity files by logical type rather than document ID,
+        // so map IDENTITY.md, INSTRUCTIONS.md, and MEMORY.md into a stable shape.
         $identityFiles = $this->agentDocumentService->getIdentityFiles($agent);
         $filesByType = [];
         foreach ($identityFiles as $file) {
@@ -170,7 +188,8 @@ class AgentController extends Controller
             ->limit(10)
             ->get();
 
-        // Capabilities from ToolRegistry (permission-aware)
+        // ToolRegistry returns permission-aware capabilities for this agent.
+        // Do not build tool lists directly here or package/MCP tools drift.
         $toolRegistry = app(ToolRegistry::class);
         $capabilities = $toolRegistry->getAllToolsMeta($agent);
 
@@ -183,14 +202,15 @@ class AgentController extends Controller
         $agentChannels = $agent->channels()->get(['channels.id', 'channels.name', 'channels.type']);
 
         // Document folders (for the UI checklist)
-        $documentFolders = \App\Models\Document::forWorkspace()
+        $documentFolders = Document::forWorkspace()
             ->where('is_folder', true)
             ->whereNull('parent_id')
             ->orderBy('title')
             ->get(['id', 'title']);
 
-        // File system folder tree (for the UI checklist)
-        $fileFolders = app(\App\Services\FileSystemService::class)
+        // File folder permissions use WorkspaceFile IDs, so the checklist needs
+        // the virtual folder tree rather than document folders.
+        $fileFolders = app(FileSystemService::class)
             ->getFolderTree(workspace()->id);
 
         return response()->json([
@@ -256,13 +276,15 @@ class AgentController extends Controller
             'description' => '',
         ];
 
-        if (!$content) {
+        if (! $content) {
             return $identity;
         }
 
         foreach (explode("\n", $content) as $line) {
             $line = trim($line);
-            // Match "- **Key**: Value" or "Key: Value"
+            // Keep parsing permissive because humans and agents both edit this
+            // Markdown file. Only a few keys are structured; everything else
+            // remains free-form prompt content.
             if (preg_match('/^(?:-\s*\*\*|\*\*|#+\s*)?(\w+)(?:\*\*)?\s*:\s*(.+)$/i', $line, $matches)) {
                 $key = strtolower(trim($matches[1]));
                 $value = trim($matches[2]);
@@ -298,7 +320,8 @@ class AgentController extends Controller
             'sleepingReason' => 'sometimes|nullable|string|max:500',
         ]);
 
-        // If updating brain, validate the format and integration
+        // Brain changes affect live provider/model routing, so validate before
+        // persisting the new value.
         if (isset($validated['brain'])) {
             try {
                 $this->brainValidator->validate($validated['brain'], workspace()->id);
@@ -370,9 +393,11 @@ class AgentController extends Controller
         $allowedTypes = app(AgentDocumentService::class)->getIdentityFileTypes();
         $normalizedType = strtoupper($fileType);
 
-        if (!in_array($normalizedType, $allowedTypes)) {
+        if (! in_array($normalizedType, $allowedTypes)) {
+            // Restrict writes to known prompt document types. Arbitrary file
+            // creation belongs in the document APIs, not the identity endpoint.
             return response()->json([
-                'error' => "Invalid file type '{$fileType}'. Allowed: " . implode(', ', $allowedTypes),
+                'error' => "Invalid file type '{$fileType}'. Allowed: ".implode(', ', $allowedTypes),
             ], 422);
         }
 
@@ -382,7 +407,7 @@ class AgentController extends Controller
             $validated['content']
         );
 
-        if (!$file) {
+        if (! $file) {
             return response()->json(['error' => 'Identity file not found'], 404);
         }
 

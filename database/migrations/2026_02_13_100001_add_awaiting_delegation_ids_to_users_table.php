@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Parent agents track delegated subagent task IDs while waiting for all
+        // dependencies to complete.
         Schema::table('users', function (Blueprint $table) {
             $table->json('awaiting_delegation_ids')->nullable()->after('awaiting_approval_id');
         });

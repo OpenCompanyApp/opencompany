@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Workspace icon/color are presentation metadata for switchers and setup
+        // flows, with defaults matching WorkspaceController.
         Schema::table('workspaces', function (Blueprint $table) {
             $table->string('icon')->default('ph:buildings')->after('slug');
             $table->string('color')->default('neutral')->after('icon');

@@ -8,6 +8,14 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Maintains searchable vector/full-text chunks for workspace documents.
+ *
+ * Indexing is intentionally all-or-nothing per document: new embeddings are
+ * generated before old chunks are deleted so a provider failure does not erase
+ * the previous searchable copy. Search methods must preserve workspace and
+ * agent scoping because chunks can contain private identity or memory content.
+ */
 class DocumentIndexingService
 {
     public function __construct(
@@ -21,12 +29,13 @@ class DocumentIndexingService
     private function extractText(string $content, string $format): string
     {
         if ($format === 'html') {
-            // Restore paragraph/block breaks before stripping
+            // Restore paragraph/block breaks before stripping tags; otherwise
+            // headings, list items, and paragraphs collapse into misleading
+            // sentences before chunking.
             $text = preg_replace('/<\/(p|div|h[1-6]|li|tr|blockquote)>/i', "\n\n", $content);
             $text = preg_replace('/<br\s*\/?>/i', "\n", $text);
             $text = strip_tags($text);
             $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            // Collapse excessive whitespace
             $text = preg_replace('/\n{3,}/', "\n\n", $text);
 
             return trim($text);
@@ -55,7 +64,8 @@ class DocumentIndexingService
             return;
         }
 
-        // Embed first — only delete old chunks after this succeeds
+        // Embed first and delete old chunks only after this succeeds. That
+        // preserves the last good index if the embedding provider is down.
         $embeddings = $this->embedder->embedBatch($chunks);
 
         DocumentChunk::where('document_id', $document->id)->delete();
@@ -84,7 +94,8 @@ class DocumentIndexingService
             'chunks' => count($chunks),
         ]);
 
-        // Ensure vector index exists for fast similarity search
+        // Ensure vector index exists after we know the embedding dimensions.
+        // The dimension can vary by model and pgvector needs it to build HNSW.
         $this->ensureVectorIndex(count($embeddings[0] ?? []));
     }
 
@@ -109,7 +120,8 @@ class DocumentIndexingService
         }
 
         if ($workspaceId) {
-            // Per-workspace reset: delete only this workspace's data
+            // Per-workspace reset is the safe path for model changes in one
+            // workspace. Do not drop global indexes or other tenants' chunks.
             DB::table('document_chunks')->where('workspace_id', $workspaceId)->delete();
             DB::table('embedding_cache')->where('workspace_id', $workspaceId)->delete();
 
@@ -118,12 +130,14 @@ class DocumentIndexingService
             return;
         }
 
-        // Full reset: truncate all data and drop index
+        // Full reset is intentionally broad and should only be used for a
+        // system-wide embedding model migration.
         DB::statement('DROP INDEX IF EXISTS document_chunks_embedding_idx');
         DB::table('document_chunks')->truncate();
         DB::table('embedding_cache')->truncate();
 
-        // Restore unconstrained vector type (in case it was constrained)
+        // Restore unconstrained vector types so a future embedding model with a
+        // different dimension can re-index without a stale column constraint.
         $dc = DB::selectOne(
             "SELECT atttypmod FROM pg_attribute
              WHERE attrelid = 'document_chunks'::regclass AND attname = 'embedding'"
@@ -152,7 +166,7 @@ class DocumentIndexingService
      * using Reciprocal Rank Fusion (RRF). Gracefully falls back to a single
      * source when the other is unavailable.
      *
-     * @return Collection<int, DocumentChunk>  Ordered by relevance (highest first)
+     * @return Collection<int, DocumentChunk> Ordered by relevance (highest first)
      */
     public function search(
         string $query,
@@ -197,7 +211,7 @@ class DocumentIndexingService
             return collect();
         }
 
-        $vectorString = '[' . implode(',', $queryEmbedding) . ']';
+        $vectorString = '['.implode(',', $queryEmbedding).']';
 
         $builder = DocumentChunk::query()
             ->selectRaw('*, 1 - (embedding <=> ?) as similarity', [$vectorString])
@@ -205,7 +219,9 @@ class DocumentIndexingService
             ->orderByDesc('similarity')
             ->limit($limit);
 
-        // Add workspace scope if workspace context is available
+        // Search results must stay inside the current workspace when this runs
+        // from HTTP/agent context. CLI maintenance commands may run without a
+        // bound workspace and then rely on explicit collection/agent filters.
         $workspace = app('currentWorkspace');
         if ($workspace) {
             $builder->where('workspace_id', $workspace->id);
@@ -254,7 +270,8 @@ class DocumentIndexingService
                 ->orderByDesc('similarity')
                 ->limit($limit);
 
-            // Add workspace scope if workspace context is available
+            // Mirror vectorSearch scoping so hybrid results cannot mix chunks
+            // from different workspaces or agent-private collections.
             $workspace = app('currentWorkspace');
             if ($workspace) {
                 $builder->where('workspace_id', $workspace->id);
@@ -326,7 +343,8 @@ class DocumentIndexingService
             return $chunk;
         });
 
-        // Normalize to 0–1 so callers can display as percentages
+        // Normalize to 0-1 after fusion. Raw RRF scores are only meaningful for
+        // sorting and are not stable enough to expose directly in UI.
         $maxScore = $scored->max('similarity');
         if ($maxScore > 0) {
             $scored = $scored->map(function (DocumentChunk $chunk) use ($maxScore) {

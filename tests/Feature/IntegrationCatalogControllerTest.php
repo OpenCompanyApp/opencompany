@@ -2,13 +2,16 @@
 
 namespace Tests\Feature;
 
-use App\Services\Integrations\ConfigSchemaNormalizer;
 use App\Models\User;
+use App\Services\Integrations\ConfigSchemaNormalizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 use Tests\TestCase;
 
+/**
+ * Covers generated integration catalog normalization and runtime state metadata.
+ */
 class IntegrationCatalogControllerTest extends TestCase
 {
     use RefreshDatabase;
@@ -103,6 +106,7 @@ class IntegrationCatalogControllerTest extends TestCase
             foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                 if (empty($field['key']) || empty($field['label']) || empty($field['type'])) {
                     $failures[] = "{$provider->appName()} has an incomplete field schema";
+
                     continue;
                 }
 

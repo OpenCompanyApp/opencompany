@@ -19,7 +19,14 @@ use App\Agents\Tools\Docs\UpdateDocument;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 use App\Services\Memory\DocumentIndexingService;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers document workspace tools.
+ *
+ * Document actions share folder/document permissions, while semantic search has
+ * an extra dependency on the indexing service to query embedded chunks.
+ */
 class DocsToolProvider implements BuiltInToolProvider
 {
     public function __construct(
@@ -148,12 +155,17 @@ class DocsToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
         if ($class === SearchDocuments::class) {
+            // SearchDocuments can fall back to keyword search, but the indexing
+            // service is still passed so semantic search is available when the
+            // workspace has embeddings.
             return new SearchDocuments($agent, $this->permissionService, app(DocumentIndexingService::class));
         }
 
+        // Other document tools only need the acting agent and permission layer;
+        // model-level workspace scopes protect the actual records.
         return new $class($agent, $this->permissionService);
     }
 }

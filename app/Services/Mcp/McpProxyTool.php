@@ -11,6 +11,14 @@ use Laravel\Ai\Tools\Request;
 use OpenCompany\IntegrationCore\Contracts\Tool;
 use OpenCompany\IntegrationCore\Support\ToolResult;
 
+/**
+ * Laravel AI and integration-core adapter around one discovered MCP tool.
+ *
+ * The proxy can be executed from two paths: Laravel AI tool calls (`handle`) and
+ * integration-core connection tests (`execute`). When an agent is present, calls
+ * must go through McpRuntime so workspace permission checks are enforced before
+ * the remote server is contacted.
+ */
 class McpProxyTool implements LaravelAiTool, Tool
 {
     /** @param array<string, mixed> $mcpInputSchema */
@@ -24,6 +32,9 @@ class McpProxyTool implements LaravelAiTool, Tool
 
     public function name(): string
     {
+        // This name is the local permission/catalog slug. The remote MCP name is
+        // kept separately in $mcpToolName so JSON-RPC calls can preserve case,
+        // hyphens, and any server-specific naming convention.
         return 'mcp_'.$this->server->slug.'__'.Str::snake(str_replace('-', '_', $this->mcpToolName));
     }
 
@@ -59,6 +70,8 @@ class McpProxyTool implements LaravelAiTool, Tool
     {
         try {
             if ($this->agent !== null) {
+                // Agent-aware execution must use McpRuntime; direct client calls
+                // would skip OpenCompany workspace and tool permission checks.
                 $result = app(McpRuntime::class)->call($this->agent, $this->server, $this->mcpToolName, $args);
 
                 return ($result['success'] ?? false)
@@ -90,6 +103,8 @@ class McpProxyTool implements LaravelAiTool, Tool
     {
         try {
             if ($this->agent !== null) {
+                // Same permission rule as execute(): model-triggered calls are
+                // never allowed to contact MCP servers outside runtime checks.
                 $result = app(McpRuntime::class)->call($this->agent, $this->server, $this->mcpToolName, $request->toArray());
 
                 return ($result['success'] ?? false)

@@ -16,6 +16,8 @@ const form = useForm({
   password_confirmation: '',
 })
 
+// Token/email are server-provided and must remain in the form; only clear the
+// sensitive password fields after the request completes.
 const submit = () => {
   form.post(route('password.store'), {
     onFinish: () => {

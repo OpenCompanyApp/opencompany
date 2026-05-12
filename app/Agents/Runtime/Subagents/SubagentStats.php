@@ -2,6 +2,12 @@
 
 namespace App\Agents\Runtime\Subagents;
 
+/**
+ * Runtime telemetry collected while a subagent is executing.
+ *
+ * These fields are mutable on purpose: orchestrators can update progress,
+ * token usage, tool status, and final output without replacing the object.
+ */
 class SubagentStats
 {
     public function __construct(

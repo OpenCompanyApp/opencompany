@@ -5,6 +5,12 @@ namespace App\Services\Memory;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
+/**
+ * Stores oversized tool outputs and returns a bounded preview.
+ *
+ * This service protects model context and database records from very large
+ * strings while preserving the full result in storage for later inspection.
+ */
 class OutputTruncator
 {
     public function __construct(
@@ -32,6 +38,8 @@ class OutputTruncator
             return $result;
         }
 
+        // Store first so even byte-trimmed UTF-8 output has a complete original
+        // artifact available to humans or debugging tools.
         $storagePath = $this->storeFullOutput($result, $toolCallId);
         $truncated = $result;
 
@@ -49,6 +57,8 @@ class OutputTruncator
     private function storeFullOutput(string $result, string $toolCallId): string
     {
         $datePath = now()->format('Y/m/d');
+        // Tool call IDs may come from providers and are not guaranteed to be
+        // filesystem-safe. Keep enough entropy while removing path characters.
         $safeId = trim(preg_replace('/[^a-zA-Z0-9_-]/', '_', $toolCallId) ?? '', '_');
         $safeId = $safeId !== '' ? $safeId : Str::random(12);
         $path = "{$this->pathPrefix}/{$datePath}/tool_{$safeId}.txt";

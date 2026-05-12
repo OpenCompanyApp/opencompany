@@ -3,11 +3,18 @@
 namespace App\Services\Memory;
 
 use App\Agents\OpenCompanyAgent;
+use App\Ai\Prompting\SystemPromptBag;
 use App\Models\ConversationSummary;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
-use App\Ai\Prompting\SystemPromptBag;
 
+/**
+ * Gives an agent one chance to save durable memories before compaction.
+ *
+ * A flush is a silent model call whose text output is ignored; only memory tool
+ * calls matter. Keep this separate from compaction so useful facts can be saved
+ * before older transcript details are summarized away.
+ */
 class MemoryFlushService
 {
     public function __construct(
@@ -29,7 +36,9 @@ class MemoryFlushService
             return false;
         }
 
-        // Check if we've already flushed this cycle
+        // Limit flushes per compaction cycle. Without this guard, a long-running
+        // conversation hovering near the threshold could repeatedly spend model
+        // calls trying to save the same memories.
         $summary = ConversationSummary::where('channel_id', $channelId)
             ->where('agent_id', $agent->id)
             ->first();
@@ -58,12 +67,18 @@ class MemoryFlushService
     public function flush(string $channelId, User $agent): void
     {
         $agentInstance = OpenCompanyAgent::for($agent, $channelId);
+
+        // The flush prompt is still an agent run and needs the same split
+        // system prompts as a normal response, but it intentionally avoids
+        // creating a chat message for the model's textual answer.
         app()->instance(SystemPromptBag::class, new SystemPromptBag(
             $agentInstance->systemPrompts()
         ));
         $agentInstance->prompt($this->buildFlushPrompt());
 
-        // Increment flush count (create summary record if needed)
+        // Increment flush count on the summary record because compaction resets
+        // this counter. That makes the "once per cycle" rule durable across
+        // queue retries and worker restarts.
         $summary = ConversationSummary::firstOrCreate(
             ['channel_id' => $channelId, 'agent_id' => $agent->id],
             ['summary' => '', 'workspace_id' => $agent->workspace_id ?? workspace()->id]

@@ -5,6 +5,13 @@ namespace App\Services;
 use Lua\Exception as LuaException;
 use Lua\Sandbox;
 
+/**
+ * Executes user/agent Lua scripts inside the configured Lua sandbox.
+ *
+ * The sandbox exposes only selected bridge globals. Keep resource limits,
+ * protected global names, and app.* routing explicit because Lua scripts are a
+ * model-facing extension point that can call back into OpenCompany tools.
+ */
 class LuaSandboxService
 {
     /**
@@ -27,6 +34,9 @@ class LuaSandboxService
         $this->setupPrintCapture($sandbox, $output);
 
         if ($bridge !== null) {
+            // app.* is available only when a caller supplies a LuaBridge. Plain
+            // sandbox execution remains useful for syntax/tests without opening
+            // access to OpenCompany tools.
             $this->setupAppNamespace($sandbox, $bridge);
         }
 
@@ -34,6 +44,8 @@ class LuaSandboxService
         $this->rejectProtectedBridgeAssignments($code);
 
         foreach ($globals as $name => $value) {
+            // Globals become Lua identifiers. Reject dunder-style bridge names
+            // so user code cannot shadow __app, __json, __regex, or __php.
             if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) || str_starts_with($name, '__')) {
                 throw new \InvalidArgumentException("Invalid Lua global name: {$name}");
             }
@@ -197,7 +209,8 @@ class LuaSandboxService
                 try {
                     return $bridge->call($path, ...$args);
                 } catch (\Throwable $e) {
-                    // Return error as table — Lua side converts to error()
+                    // Return a sentinel table so the Lua wrapper can raise the
+                    // error at the script callsite instead of inside PHP glue.
                     return ['__error' => $e->getMessage()];
                 }
             },
@@ -321,6 +334,9 @@ class LuaSandboxService
 
     private function rejectProtectedBridgeAssignments(string $code): void
     {
+        // This is intentionally a simple preflight guard, not a full Lua parser.
+        // The goal is to stop obvious assignments to reserved PHP bridge globals
+        // before code runs in the sandbox.
         if (preg_match('/(?:^|[;\r\n])\s*__[A-Za-z0-9_]*\s*=/', $code) === 1) {
             throw new \InvalidArgumentException('Lua code may not assign __-prefixed bridge globals.');
         }
@@ -333,6 +349,9 @@ class LuaSandboxService
 
     private function runLoadedChunk(mixed $chunk): mixed
     {
+        // Different lua extension builds return loaded chunks in slightly
+        // different callable shapes. Normalize them here so the rest of the
+        // sandbox code does not care which extension variant is installed.
         if ($chunk instanceof \Closure) {
             return $chunk();
         }

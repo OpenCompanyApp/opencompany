@@ -1,4 +1,5 @@
 <template>
+  <!-- Shared settings field wrapper: label/description/errors stay consistent across integration and model settings. -->
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-4">
       <div>
@@ -49,6 +50,8 @@
 <script setup lang="ts">
 import Icon from '@/Components/shared/Icon.vue'
 
+// The control itself is provided through the default slot so inputs, selects,
+// toggles, and custom pickers can share one validation shell.
 withDefaults(defineProps<{
   label: string
   description?: string

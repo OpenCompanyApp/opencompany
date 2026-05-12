@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Activities are the early append-only timeline for user and agent
+        // events before richer task/message-specific feeds.
         Schema::create('activities', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->enum('type', ['message', 'task_completed', 'task_started', 'agent_spawned', 'approval_needed', 'approval_granted', 'error']);

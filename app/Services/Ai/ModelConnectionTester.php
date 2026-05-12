@@ -5,6 +5,13 @@ namespace App\Services\Ai;
 use App\Services\Integrations\Data\IntegrationConnectionTestResult;
 use Illuminate\Support\Facades\Http;
 
+/**
+ * Performs direct provider probes for model/API-key configuration screens.
+ *
+ * These calls are intentionally small and deterministic: they verify endpoint,
+ * credential, and model reachability without sending user workspace data to the
+ * provider. Do not reuse this for normal agent generation.
+ */
 class ModelConnectionTester
 {
     public function test(string $provider, ?string $apiKey, string $url, ?string $model, ?string $format = null): IntegrationConnectionTestResult
@@ -45,6 +52,9 @@ class ModelConnectionTester
             $headers['Authorization'] = 'Bearer '.$apiKey;
         }
 
+        // OpenAI-compatible providers are tested with the chat completions
+        // surface because that is what the relay/Laravel AI gateway ultimately
+        // needs for agent text generation.
         $response = Http::withHeaders($headers)
             ->timeout(30)
             ->post($url.'/chat/completions', [
@@ -87,6 +97,8 @@ class ModelConnectionTester
     private function httpResult(bool $ok, int $httpStatus, string $error, string $provider, ?string $model, ?string $format): IntegrationConnectionTestResult
     {
         if ($ok) {
+            // Meta is safe to return to the browser: it contains reachability
+            // details only, never the submitted API key.
             return new IntegrationConnectionTestResult(true, 'Connection successful', status: 200, meta: [
                 'provider' => $provider,
                 'model' => $model,

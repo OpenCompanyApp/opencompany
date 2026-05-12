@@ -9,6 +9,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
+/**
+ * API for workspace storage backends.
+ *
+ * Disk config can contain credentials, so responses must use WorkspaceDisk's
+ * safe serialization. FileSystemService is responsible for actually building
+ * disks from these settings when files are read or written.
+ */
 class WorkspaceDiskController extends Controller
 {
     public function index(): JsonResponse
@@ -38,7 +45,9 @@ class WorkspaceDiskController extends Controller
 
         $this->validateDriverConfig($request->input('driver'), $request->input('config', []));
 
-        $isFirst = !WorkspaceDisk::forWorkspace()->exists();
+        // The first disk becomes default so file operations always have a
+        // storage target immediately after workspace setup.
+        $isFirst = ! WorkspaceDisk::forWorkspace()->exists();
 
         $disk = WorkspaceDisk::create([
             'id' => Str::uuid()->toString(),
@@ -82,7 +91,8 @@ class WorkspaceDiskController extends Controller
             $newConfig = $request->input('config', []);
             $existingConfig = $disk->config ?? [];
 
-            // Merge: skip masked values (containing ****) to preserve existing secrets
+            // Merge config while preserving masked secrets from the settings UI.
+            // A mask means "keep encrypted value", not "save literal asterisks".
             foreach ($newConfig as $key => $value) {
                 if (is_string($value) && str_contains($value, '****')) {
                     continue; // Keep existing value
@@ -94,7 +104,7 @@ class WorkspaceDiskController extends Controller
         }
 
         if ($request->has('enabled')) {
-            if (!$request->input('enabled') && $disk->is_default) {
+            if (! $request->input('enabled') && $disk->is_default) {
                 return response()->json(['error' => 'Cannot disable the default disk.'], 422);
             }
             $disk->enabled = $request->input('enabled');
@@ -115,6 +125,8 @@ class WorkspaceDiskController extends Controller
 
         $fileCount = $disk->files()->count();
         if ($fileCount > 0) {
+            // Disk deletion is blocked while metadata still references it; the
+            // app does not attempt cross-disk file migration here.
             return response()->json([
                 'error' => "Cannot delete disk '{$disk->name}' — it still has {$fileCount} files. Move or delete them first.",
             ], 422);
@@ -150,11 +162,11 @@ class WorkspaceDiskController extends Controller
         $disk = WorkspaceDisk::forWorkspace()->findOrFail($id);
         $workspaceId = workspace()->id;
 
-        if (!$disk->enabled) {
+        if (! $disk->enabled) {
             return response()->json(['error' => 'Cannot set a disabled disk as default.'], 422);
         }
 
-        // Unset current default
+        // Keep exactly one default disk per workspace.
         WorkspaceDisk::where('workspace_id', $workspaceId)
             ->where('is_default', true)
             ->update(['is_default' => false]);
@@ -167,6 +179,8 @@ class WorkspaceDiskController extends Controller
     private function validateDriverConfig(string $driver, array $config): void
     {
         if ($driver === 's3') {
+            // Validate only the fields needed to construct the Laravel disk.
+            // Secret masking on updates is handled separately.
             $required = ['key', 'secret', 'region', 'bucket'];
             $missing = array_diff($required, array_keys(array_filter($config)));
             if ($missing) {
@@ -175,6 +189,9 @@ class WorkspaceDiskController extends Controller
         }
 
         if ($driver === 'sftp') {
+            // Password/private-key specifics are optional because different SFTP
+            // setups authenticate differently, but host and username are always
+            // needed to build the disk.
             $required = ['host', 'username'];
             $missing = array_diff($required, array_keys(array_filter($config)));
             if ($missing) {

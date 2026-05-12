@@ -7,6 +7,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Verifies multi-account integration settings, defaults, and masked config updates.
+ */
 class IntegrationMultiAccountControllerTest extends TestCase
 {
     use RefreshDatabase;

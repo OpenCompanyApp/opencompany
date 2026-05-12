@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Single-row aggregate used by the early credit dashboard. It remains
+        // intentionally tiny so historical installs can still migrate cleanly.
         Schema::create('stats', function (Blueprint $table) {
             $table->string('id')->primary()->default('main');
             $table->decimal('credits_used', 12, 2)->default(0);

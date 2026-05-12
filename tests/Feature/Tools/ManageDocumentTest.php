@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers document create/update/delete tool behavior and system-document guards.
+ */
 class ManageDocumentTest extends TestCase
 {
     use RefreshDatabase;

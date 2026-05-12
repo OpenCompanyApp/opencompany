@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Event;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers agent message sending and channel permission checks.
+ */
 class SendChannelMessageTest extends TestCase
 {
     use RefreshDatabase;

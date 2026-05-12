@@ -2,15 +2,23 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use App\Services\Integrations\ConfigSchemaNormalizer;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Concerns\BelongsToWorkspace;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 /**
+ * Workspace integration configuration, including encrypted provider secrets.
+ *
+ * One integration can have multiple account aliases. The default/unaliased row
+ * is used by ordinary runtime calls, while named accounts can be selected by
+ * Lua/package tools. Never expose raw config values from this model to clients.
+ *
  * @property array<string, mixed> $config
  * @property string $workspace_id
  * @property bool $enabled
@@ -20,10 +28,11 @@ use OpenCompany\PrismRelay\Registry\RelayRegistry;
  */
 class IntegrationSetting extends Model
 {
-    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
-    use HasFactory, BelongsToWorkspace;
+    /** @use HasFactory<Factory<self>> */
+    use BelongsToWorkspace, HasFactory;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -51,8 +60,8 @@ class IntegrationSetting extends Model
      * Null targets the default account. Empty string targets the legacy
      * un-aliased account explicitly.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<self>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<self>
+     * @param  Builder<self>  $query
+     * @return Builder<self>
      */
     public function scopeForAccount($query, ?string $account)
     {
@@ -70,8 +79,8 @@ class IntegrationSetting extends Model
     /**
      * Scope to the default account (is_default = true or the un-aliased row).
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<self>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<self>
+     * @param  Builder<self>  $query
+     * @return Builder<self>
      */
     public function scopeDefault($query)
     {
@@ -131,7 +140,7 @@ class IntegrationSetting extends Model
     public function getMaskedValue(string $key): ?string
     {
         $value = $this->getConfigValue($key);
-        if (!$value || !is_string($value)) {
+        if (! $value || ! is_string($value)) {
             return null;
         }
 
@@ -140,7 +149,7 @@ class IntegrationSetting extends Model
             return str_repeat('*', $length);
         }
 
-        return substr($value, 0, 4) . str_repeat('*', $length - 8) . substr($value, -4);
+        return substr($value, 0, 4).str_repeat('*', $length - 8).substr($value, -4);
     }
 
     /**
@@ -151,6 +160,8 @@ class IntegrationSetting extends Model
         $requiredKeys = $this->requiredCredentialKeys();
 
         if ($requiredKeys === []) {
+            // Legacy/static integrations do not expose a package credential
+            // schema, so treat any common secret field as enough configuration.
             $requiredKeys = [
                 'api_key',
                 'api_token',
@@ -198,6 +209,8 @@ class IntegrationSetting extends Model
             $credentialFields = ConfigSchemaNormalizer::normalize($provider->credentialFields());
             $required = [];
 
+            // Package credential metadata is preferred because it is owned by
+            // the integration package and can differ per provider.
             foreach ($credentialFields as $field) {
                 if (($field['required'] ?? false) && isset($field['key'])) {
                     $required[] = (string) $field['key'];
@@ -255,7 +268,9 @@ class IntegrationSetting extends Model
             /** @var self|null $setting */
             $setting = $settings->get($id);
             $models = $setting?->getConfigValue('models');
-            if (is_array($models) && !empty($models)) {
+            if (is_array($models) && ! empty($models)) {
+                // Workspace-configured model lists override registry defaults
+                // so admins can expose custom aliases or restrict choices.
                 $info['models'] = $models;
             }
         }
@@ -278,6 +293,8 @@ class IntegrationSetting extends Model
 
             foreach ($registry->canonicalProviders() as $id) {
                 if ($registry->authMode($id) === 'oauth') {
+                    // OAuth providers are surfaced through dedicated auth flows,
+                    // not generic API-key integration cards.
                     continue;
                 }
 
@@ -322,5 +339,4 @@ class IntegrationSetting extends Model
     {
         return "AI model provider '{$id}' via {$driver} transport.";
     }
-
 }

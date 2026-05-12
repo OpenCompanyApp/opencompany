@@ -10,7 +10,14 @@ use App\Models\User;
 use App\Services\AgentDocumentService;
 use App\Services\Memory\DocumentIndexingService;
 use App\Services\Memory\MemoryScopeGuard;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers long-term memory tools.
+ *
+ * Memory files are stored as documents and indexed for recall, but MemoryScopeGuard
+ * decides whether a call should touch topic memory or channel/peer-scoped memory.
+ */
 class MemoryToolProvider implements BuiltInToolProvider
 {
     public function groupName(): string
@@ -65,8 +72,10 @@ class MemoryToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // Pass channel context through to the guard-aware tools so memories can
+        // be attached to the right conversation scope when appropriate.
         return match ($class) {
             SaveMemory::class => new SaveMemory($agent, app(AgentDocumentService::class), app(DocumentIndexingService::class), app(MemoryScopeGuard::class), $context['channel_id'] ?? null),
             RecallMemory::class => new RecallMemory($agent, app(DocumentIndexingService::class), app(AgentDocumentService::class), app(MemoryScopeGuard::class), $context['channel_id'] ?? null),

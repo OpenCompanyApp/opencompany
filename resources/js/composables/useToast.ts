@@ -10,6 +10,8 @@ export interface Toast {
 
 const toasts = ref<Toast[]>([])
 
+// Counter is module-scoped so IDs remain unique across all components using the
+// shared toast composable.
 let counter = 0
 
 function addToast(toast: Omit<Toast, 'id'>) {
@@ -18,6 +20,7 @@ function addToast(toast: Omit<Toast, 'id'>) {
 }
 
 function dismiss(id: string) {
+  // Reassign the array to trigger Vue updates for all mounted ToastProviders.
   toasts.value = toasts.value.filter(t => t.id !== id)
 }
 

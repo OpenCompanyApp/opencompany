@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // source distinguishes first-party app messages from external-provider
+        // messages such as Telegram.
         Schema::table('messages', function (Blueprint $table) {
             $table->string('source')->nullable()->after('timestamp');
         });

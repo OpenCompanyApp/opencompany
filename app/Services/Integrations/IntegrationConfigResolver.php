@@ -7,6 +7,14 @@ use Illuminate\Http\Request;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
+/**
+ * Reads and writes workspace integration configuration.
+ *
+ * This service is the app boundary around integration settings. Package
+ * providers own their schema and validation rules; OpenCompany owns masking,
+ * account aliases, persisted enablement, and compatibility with legacy static
+ * provider entries.
+ */
 class IntegrationConfigResolver
 {
     public function __construct(
@@ -92,6 +100,10 @@ class IntegrationConfigResolver
         $schema = ConfigSchemaNormalizer::normalize($provider->configSchema());
         $meta = $provider->integrationMeta();
         $config = $this->readConfig($schema, $setting);
+
+        // OAuth providers in the same vendor family often share client
+        // credentials. Fill masked/read-only display values from sibling
+        // settings so users do not have to duplicate secrets in every panel.
         $this->fillSharedCredentials($id, $account, $config);
 
         return [
@@ -159,6 +171,9 @@ class IntegrationConfigResolver
         foreach ($schema as $field) {
             $key = $field['key'];
             if ($field['type'] === 'secret' || $field['type'] === 'oauth_connect') {
+                // Never return raw secrets to the browser. The masked value is
+                // only a placeholder that lets update/test flows know an
+                // existing secret may be reused.
                 $config[$key] = $setting?->getMaskedValue($key);
             } else {
                 $config[$key] = $setting?->getConfigValue($key, $field['default'] ?? null)
@@ -211,6 +226,9 @@ class IntegrationConfigResolver
         $id = $provider->appName();
         $setting = $this->accounts->findOrNewSetting($id, $account);
         $config = $this->writeSchemaConfig($request, ConfigSchemaNormalizer::normalize($provider->configSchema()), $setting->config ?? []);
+
+        // Shared credential copying happens after request parsing so explicit
+        // request values always win over sibling defaults.
         $this->copySharedCredentials($id, $account, $config);
 
         $setting->config = $config;
@@ -295,6 +313,8 @@ class IntegrationConfigResolver
             if ($field['type'] === 'secret') {
                 $value = $request->input($key);
                 if (! $value || str_contains($value, '*')) {
+                    // Masked/blank secrets mean "keep the stored value." This
+                    // avoids overwriting working credentials with UI masks.
                     continue;
                 }
             }

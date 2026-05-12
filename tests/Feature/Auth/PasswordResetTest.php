@@ -8,6 +8,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
+/**
+ * Covers password reset link requests and token-based password replacement.
+ */
 class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;

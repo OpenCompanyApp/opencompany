@@ -5,7 +5,14 @@ namespace App\Agents\Tools\Providers;
 use App\Agents\Tools\System\Wait;
 use App\Agents\Tools\System\WaitForApproval;
 use App\Models\User;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers execution-control tools used by the agent loop itself.
+ *
+ * These tools change runtime flow rather than workspace content: agents can
+ * wait for time to pass or pause until a human approval is decided.
+ */
 class SystemToolProvider implements BuiltInToolProvider
 {
     public function groupName(): string
@@ -46,8 +53,9 @@ class SystemToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // System tools need the agent record so they can persist waiting state.
         return new $class($agent);
     }
 }

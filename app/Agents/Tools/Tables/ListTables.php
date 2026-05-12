@@ -8,6 +8,12 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Lists workspace tables with lightweight size metadata.
+ *
+ * Counts are included so agents can choose between schema inspection, row
+ * listing, or targeted search before pulling table content.
+ */
 class ListTables implements Tool
 {
     public function __construct(
@@ -27,6 +33,8 @@ class ListTables implements Tool
     public function handle(Request $request): string
     {
         try {
+            // Count rows and columns in the query rather than loading the full
+            // relationships, which can be large for operational tables.
             $tables = DataTable::forWorkspace()->with('creator')
                 ->withCount(['rows as rowsCount', 'columns as columnsCount'])
                 ->get();

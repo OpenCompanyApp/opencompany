@@ -6,6 +6,13 @@ use App\Agents\Runtime\Permissions\PermissionDecision;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 
+/**
+ * Adapts persisted agent tool permissions into runtime permission decisions.
+ *
+ * AgentPermissionService owns the stored policy shape. Runtime code only needs
+ * the resulting allow/deny/approval decision plus enough metadata to explain an
+ * approval request to the user.
+ */
 class ToolPermissionCheck
 {
     public function __construct(private AgentPermissionService $permissions) {}

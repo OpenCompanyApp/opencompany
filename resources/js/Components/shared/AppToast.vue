@@ -12,6 +12,8 @@ import { useToast } from '@/composables/useToast'
 
 const { toasts, dismiss } = useToast()
 
+// Toast type maps are kept in code rather than props so every caller gets the
+// same icon/color semantics from useToast().
 const iconMap = {
   success: 'ph:check-circle-fill',
   error: 'ph:x-circle-fill',
@@ -26,6 +28,7 @@ const colorMap = {
 </script>
 
 <template>
+  <!-- Reka owns keyboard/focus behavior; this component owns OpenCompany visual styling and store binding. -->
   <ToastProvider :duration="4000" swipe-direction="right">
     <ToastRoot
       v-for="toast in toasts"

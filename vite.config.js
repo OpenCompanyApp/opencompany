@@ -23,6 +23,8 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
+                    // Monaco is large and editor-specific, so keep it out of
+                    // the main app chunk for non-editor pages.
                     'monaco-editor': ['monaco-editor'],
                 },
             },

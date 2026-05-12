@@ -8,9 +8,17 @@ use App\Models\ChannelMember;
 use App\Models\DirectMessage;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * Creates internal agent-to-agent communication channels and message envelopes.
+ *
+ * This service handles durable chat records only. Queueing the recipient agent,
+ * depth guards around nested delegation, and task lifecycle are owned by the
+ * tools/jobs that call it.
+ */
 class AgentCommunicationService
 {
     private static int $depth = 0;
@@ -43,7 +51,8 @@ class AgentCommunicationService
      */
     public function getOrCreateDmChannel(User $agentA, User $agentB): string
     {
-        // Check for existing DM in either user order (backwards compatible)
+        // DirectMessage historically stored user pairs in either order. Check
+        // both directions so older DMs are reused instead of duplicating threads.
         $existingDm = DirectMessage::where(function ($query) use ($agentA, $agentB) {
             $query->where('user1_id', $agentA->id)->where('user2_id', $agentB->id);
         })->orWhere(function ($query) use ($agentA, $agentB) {
@@ -79,8 +88,9 @@ class AgentCommunicationService
             ]);
 
             return $channel->id;
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Race condition: another worker created the DM first
+        } catch (QueryException $e) {
+            // Race condition: another worker created the DM first. Re-read the
+            // pair before surfacing the database error.
             $dm = DirectMessage::where(function ($query) use ($agentA, $agentB) {
                 $query->where('user1_id', $agentA->id)->where('user2_id', $agentB->id);
             })->orWhere(function ($query) use ($agentA, $agentB) {
@@ -100,6 +110,8 @@ class AgentCommunicationService
      */
     public function postMessage(string $channelId, User $author, string $content, string $source = 'agent_contact'): Message
     {
+        // Source marks protocol messages so external sync and conversation
+        // loaders can distinguish delegation chatter from ordinary user input.
         $message = Message::create([
             'id' => Str::uuid()->toString(),
             'content' => $content,
@@ -135,6 +147,9 @@ class AgentCommunicationService
         ?string $priority = null,
         ?string $taskId = null,
     ): string {
+        // The header is intentionally parseable by humans and agents. Keep the
+        // field names stable because downstream prompts/tests rely on this
+        // interagent-comms protocol shape.
         $header = "[Agent Request from {$sender->name} | Pattern: {$action}";
 
         if ($priority && in_array($action, ['delegate', 'ask'])) {
@@ -168,5 +183,4 @@ class AgentCommunicationService
     {
         return "[Delegation Result from {$agent->name} | {$subtaskId}]\n{$result}";
     }
-
 }

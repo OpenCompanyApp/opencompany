@@ -5,13 +5,16 @@ namespace Tests\Unit;
 use Illuminate\Support\Collection;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\ToolResultMessage;
-use OpenCompany\PrismRelay\Bridge\ToolAwarePrismMessages;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
+use OpenCompany\PrismRelay\Bridge\ToolAwarePrismMessages;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage as PrismAssistantMessage;
 use Prism\Prism\ValueObjects\Messages\ToolResultMessage as PrismToolResultMessage;
 use Tests\TestCase;
 
+/**
+ * Covers conversion of OpenCompany chat messages into Prism-compatible messages.
+ */
 class PrismMessagesTest extends TestCase
 {
     public function test_from_laravel_messages_preserves_assistant_tool_calls_and_tool_results(): void

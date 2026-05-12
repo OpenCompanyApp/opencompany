@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Document permissions are per-user sharing hints inside the broader
+        // workspace boundary.
         Schema::create('document_permissions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('document_id');

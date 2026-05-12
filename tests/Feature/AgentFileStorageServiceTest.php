@@ -9,6 +9,9 @@ use App\Services\FileSystemService;
 use Mockery;
 use Tests\TestCase;
 
+/**
+ * Verifies agent file writes stay inside safe virtual paths.
+ */
 class AgentFileStorageServiceTest extends TestCase
 {
     public function test_rejects_path_like_filenames(): void

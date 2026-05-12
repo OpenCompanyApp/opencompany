@@ -6,6 +6,9 @@ use App\Services\Memory\OutputTruncator;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
+/**
+ * Covers large tool-output storage and preview truncation.
+ */
 class OutputTruncatorTest extends TestCase
 {
     public function test_truncates_large_output_and_persists_full_payload(): void

@@ -15,7 +15,14 @@ use App\Agents\Tools\Files\WriteFile;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 use App\Services\FileSystemService;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers workspace file-storage tools.
+ *
+ * File tools operate on virtual WorkspaceFile metadata and delegate physical
+ * storage details to FileSystemService, keeping disk credentials out of tools.
+ */
 class FilesToolProvider implements BuiltInToolProvider
 {
     public function __construct(
@@ -116,12 +123,16 @@ class FilesToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
         if ($class === ListDisks::class) {
+            // Listing disks is metadata-only and does not require folder-level
+            // file permissions or filesystem access.
             return new ListDisks($agent);
         }
 
+        // Read/write file tools need both permission evaluation and the storage
+        // service that resolves the workspace disk and virtual path.
         return new $class($agent, $this->permissionService, app(FileSystemService::class));
     }
 }

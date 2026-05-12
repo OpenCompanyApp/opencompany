@@ -11,6 +11,13 @@ use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Gateway\TextGenerationOptions;
 use Laravel\Ai\Responses\TextResponse;
 
+/**
+ * Text gateway decorator that injects prompt-cache metadata.
+ *
+ * Laravel AI still performs the actual provider call through the inner gateway;
+ * this wrapper rewrites instructions/options so OpenCompany can apply provider
+ * cache hints without forking every provider gateway.
+ */
 class CachingTextGateway implements TextGateway
 {
     public function __construct(
@@ -82,6 +89,8 @@ class CachingTextGateway implements TextGateway
             return $fallback;
         }
 
+        // SystemPromptBag can split stable and volatile prompt sections. When it
+        // is absent, preserve the SDK-provided instruction string unchanged.
         return app(SystemPromptBag::class)->toInstructions($fallback);
     }
 
@@ -94,6 +103,8 @@ class CachingTextGateway implements TextGateway
             return $options;
         }
 
+        // Merge provider-specific options instead of replacing call-level
+        // options, so temperature/max-token choices survive cache decoration.
         return new MergedTextGenerationOptions($options, [
             $providerKey => $providerOptions,
         ]);
@@ -101,6 +112,8 @@ class CachingTextGateway implements TextGateway
 
     private function providerKey(TextProvider $provider): string
     {
+        // Prefer provider-reported IDs because option bags are keyed by Laravel
+        // AI provider name, not necessarily PHP class name.
         if (method_exists($provider, 'driver')) {
             return (string) $provider->driver();
         }

@@ -12,6 +12,13 @@ use OpenCompany\Chatogrator\Adapters\Teams\TeamsAdapter;
 use OpenCompany\Chatogrator\Adapters\Telegram\TelegramAdapter;
 use OpenCompany\Chatogrator\Contracts\Adapter;
 
+/**
+ * Converts persisted integration settings into Chatogrator adapters.
+ *
+ * Keep this as a thin mapping layer. Validation, masking, and UI schema live in
+ * integration services; Chatogrator owns the concrete adapter behavior once the
+ * relevant credentials have been pulled from IntegrationSetting.
+ */
 class ChatAdapterFactory
 {
     public static function create(IntegrationSetting $setting): ?Adapter

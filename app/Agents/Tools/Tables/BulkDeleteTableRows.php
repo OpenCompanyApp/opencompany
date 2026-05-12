@@ -9,6 +9,12 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Deletes a bounded set of rows from a workspace-scoped table.
+ *
+ * The row IDs are filtered through the table relation so a mixed input list
+ * cannot delete rows from another table or workspace.
+ */
 class BulkDeleteTableRows implements Tool
 {
     public function __construct(
@@ -44,6 +50,8 @@ class BulkDeleteTableRows implements Tool
                 return 'Error: rowIds is required.';
             }
 
+            // Scope the delete by table_id before applying row IDs; this makes
+            // partial deletes safe when agents pass stale or unrelated row IDs.
             $deleted = DataTableRow::where('table_id', $table->id)
                 ->whereIn('id', $rowIds)
                 ->delete();

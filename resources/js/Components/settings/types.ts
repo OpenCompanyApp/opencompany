@@ -1,3 +1,4 @@
+// Shared settings payload types used by settings pages and API response mappers.
 export interface ActionPolicy {
   id: string
   name: string
@@ -7,6 +8,8 @@ export interface ActionPolicy {
 }
 
 export interface ProviderInfo {
+  // source distinguishes static relay providers from providers enabled through
+  // integration settings or OAuth-backed accounts.
   id: string
   name: string
   icon: string
@@ -63,6 +66,8 @@ export interface RerankCloudProviderGroup {
 }
 
 export interface MemorySettingsData {
+  // Model IDs are stored as provider:model strings so backend validation can
+  // resolve them through the same provider catalog as agents.
   memory_embedding_model: string
   memory_summary_model: string
   memory_compaction_enabled: boolean

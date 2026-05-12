@@ -17,6 +17,15 @@ use Laravel\Ai\Contracts\Tool;
 use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
+/**
+ * Builds the agent-visible tool catalog from built-ins, packages, and MCP.
+ *
+ * The registry is the boundary between model-visible tool names and the PHP
+ * classes that execute them. It also applies OpenCompany permission wrapping,
+ * so comments in this file should preserve which metadata is for display,
+ * which metadata is for permission checks, and which metadata comes from
+ * package-owned providers.
+ */
 class ToolRegistry
 {
     /**
@@ -99,7 +108,8 @@ class ToolRegistry
         if ($this->effectiveToolMap === null) {
             $this->effectiveToolMap = [];
 
-            // Built-in providers
+            // Built-in providers are app-owned and may expose direct Laravel AI
+            // tools or Lua-only tools depending on DIRECT_TOOL_GROUPS.
             foreach ($this->builtInProviders as $provider) {
                 foreach ($provider->tools() as $slug => $meta) {
                     $normalized = $this->normalizeToolMeta($slug, $meta);
@@ -109,7 +119,9 @@ class ToolRegistry
                 }
             }
 
-            // External integration providers
+            // Package/MCP providers own their tool schemas. OpenCompany only
+            // normalizes enough metadata to display, permission, and instantiate
+            // them consistently with built-in tools.
             foreach ($this->integrationProviders() as $provider) {
                 foreach ($provider->tools() as $slug => $meta) {
                     $normalized = $this->normalizeToolMeta($slug, $meta);

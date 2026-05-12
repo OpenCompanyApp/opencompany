@@ -30,6 +30,14 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Responses\AgentResponse;
 
+/**
+ * Queue job that turns a user chat message into one durable agent response.
+ *
+ * This job owns task lifecycle, delivery idempotency, runtime-event persistence,
+ * Telegram typing indicators, and post-delivery bookkeeping. The actual LLM
+ * turn is delegated to AgentRun so live-test commands and queued chat responses
+ * share the same runtime path.
+ */
 class AgentRespondJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -87,7 +95,9 @@ class AgentRespondJob implements ShouldBeUnique, ShouldQueue
 
         $task = null;
 
-        // Resume or start an existing task (pending from dispatch, or delegation callback)
+        // Resume or start an existing task from dispatch or a delegation
+        // callback. Reusing the task preserves history across queue retries and
+        // keeps subagent responses attached to the parent workflow.
         if ($this->taskId) {
             $task = Task::find($this->taskId);
             if ($task) {
@@ -100,7 +110,9 @@ class AgentRespondJob implements ShouldBeUnique, ShouldQueue
         }
 
         if (! $task) {
-            // Check for a pending delegation/ask/notify task for this agent on this channel
+            // Delegation tasks are created before the target agent is queued.
+            // Prefer them over creating a fresh chat task so callback routing
+            // and parent-task accounting remain intact.
             $task = Task::where('agent_id', $this->agent->id)
                 ->where('channel_id', $this->channelId)
                 ->whereIn('source', [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK, Task::SOURCE_AGENT_NOTIFY])
@@ -111,7 +123,9 @@ class AgentRespondJob implements ShouldBeUnique, ShouldQueue
             if ($task) {
                 $task->start();
             } else {
-                // Check for an existing task from the same message (crash recovery / retry)
+                // If the worker crashed after creating the task but before
+                // delivery, retries must continue that task rather than create
+                // a duplicate timeline entry for the same user message.
                 $task = Task::where('agent_id', $this->agent->id)
                     ->where('trigger_message_id', $this->userMessage->id)
                     ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_FAILED])
@@ -146,7 +160,9 @@ class AgentRespondJob implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        // Guard: skip retry if a response was already delivered for this task
+        // Delivery is the irreversible side effect. Once a message is visible
+        // to the user, retries should repair bookkeeping only and must not send
+        // a second answer.
         $hasDeliveredResponse = $task->steps()
             ->where('description', 'Response delivered')
             ->where('status', TaskStep::STATUS_COMPLETED)
@@ -201,7 +217,9 @@ class AgentRespondJob implements ShouldBeUnique, ShouldQueue
 
             $currentMessages = [];
 
-            // Capture LLM context before prompting (for observability)
+            // Capture LLM context before prompting. This snapshot is diagnostic
+            // evidence: it lets us explain a bad answer without replaying the
+            // run or reassembling prompts from mutable database state later.
             try {
                 $currentMessages = $agentInstance->messages();
                 $task->update(['context' => $agentRun->snapshot()]);
@@ -417,6 +435,9 @@ class AgentRespondJob implements ShouldBeUnique, ShouldQueue
             ]);
         } catch (\Throwable $e) {
             if ($e instanceof AgentRunFailed) {
+                // AgentRunFailed carries runtime events and the context snapshot
+                // captured before the provider error. Persist those details so
+                // provider outages are diagnosable from the failed task record.
                 $context = $task->context ?? [];
                 $context['runtime_events'] = array_map(fn ($event) => $event->toArray(), $e->events);
                 $task->update(['context' => array_merge($context, $e->contextSnapshot)]);

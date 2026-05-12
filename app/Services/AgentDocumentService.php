@@ -7,6 +7,13 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
+/**
+ * Owns the system document tree that defines an agent's identity and memory.
+ *
+ * Identity and memory documents are normal Document rows but marked as system
+ * content. This service centralizes the folder layout so prompt assembly,
+ * memory tools, and deletion flows agree on where durable agent context lives.
+ */
 class AgentDocumentService
 {
     /**
@@ -21,7 +28,8 @@ class AgentDocumentService
      */
     public function createAgentDocumentStructure(User $agent, array $identityContent = []): Document
     {
-        // 1. Find or create root "agents" folder
+        // The root agents folder is shared within the workspace. Each agent gets
+        // a slug-named child folder that becomes its docs_folder_id.
         $agentsFolder = Document::firstOrCreate(
             ['title' => 'agents', 'parent_id' => null, 'is_folder' => true, 'workspace_id' => $agent->workspace_id],
             [
@@ -32,7 +40,8 @@ class AgentDocumentService
             ]
         );
 
-        // 2. Create agent's folder
+        // The agent folder owns all identity and memory documents for this
+        // agent. It is system-marked so normal document deletion guards apply.
         $agentFolder = Document::create([
             'id' => Str::uuid()->toString(),
             'title' => Str::slug($agent->name),
@@ -44,7 +53,8 @@ class AgentDocumentService
             'workspace_id' => $agent->workspace_id,
         ]);
 
-        // 3. Create identity/ subfolder
+        // identity/ contains stable prompt documents that define who the agent
+        // is and how it should behave.
         $identityFolder = Document::create([
             'id' => Str::uuid()->toString(),
             'title' => 'identity',
@@ -56,7 +66,8 @@ class AgentDocumentService
             'workspace_id' => $agent->workspace_id,
         ]);
 
-        // 4. Create identity files (IDENTITY + INSTRUCTIONS)
+        // Create required identity files with defaults so a new agent can run
+        // immediately even before a human edits its profile.
         foreach (self::IDENTITY_FILES as $type) {
             Document::create([
                 'id' => Str::uuid()->toString(),
@@ -70,7 +81,8 @@ class AgentDocumentService
             ]);
         }
 
-        // 5. Create memory/ folder tree
+        // memory/ contains model-editable durable context. It is separate from
+        // identity/ so runtime memory can evolve without rewriting core identity.
         $memoryFolder = Document::create([
             'id' => Str::uuid()->toString(),
             'title' => 'memory',
@@ -82,7 +94,8 @@ class AgentDocumentService
             'workspace_id' => $agent->workspace_id,
         ]);
 
-        // MEMORY.md in memory/ folder (not identity/)
+        // MEMORY.md is the index/core memory file loaded into private-channel
+        // prompts. Legacy code may still look in identity/, so reads handle both.
         Document::create([
             'id' => Str::uuid()->toString(),
             'title' => 'MEMORY.md',
@@ -94,7 +107,8 @@ class AgentDocumentService
             'workspace_id' => $agent->workspace_id,
         ]);
 
-        // memory sub-folders
+        // topics, logs, and peers are separate to keep model-authored memory
+        // easier to inspect and selectively retrieve.
         foreach (['topics', 'logs', 'peers'] as $subFolder) {
             $sub = Document::create([
                 'id' => Str::uuid()->toString(),
@@ -140,16 +154,17 @@ class AgentDocumentService
      */
     public function deleteAgentDocumentStructure(User $agent): void
     {
-        if (!$agent->docs_folder_id) {
+        if (! $agent->docs_folder_id) {
             return;
         }
 
         $agentFolder = Document::find($agent->docs_folder_id);
-        if (!$agentFolder) {
+        if (! $agentFolder) {
             return;
         }
 
-        // Recursively unset is_system on all descendants, then the folder itself
+        // Deletion must first unset is_system recursively because document model
+        // guards intentionally protect system files from normal delete paths.
         $this->recursivelyUnsetSystemFlag($agentFolder);
 
         // Delete — cascade handles children
@@ -166,13 +181,14 @@ class AgentDocumentService
     public function getIdentityFiles(User $agent): Collection
     {
         $agentFolder = $this->getAgentFolder($agent);
-        if (!$agentFolder) {
+        if (! $agentFolder) {
             return collect();
         }
 
         $files = collect();
 
-        // Identity folder files
+        // Identity files are stable prompt sections and are always candidates
+        // for OpenCompanyAgent system prompt assembly.
         $identityFolder = Document::where('parent_id', $agentFolder->id)
             ->where('title', 'identity')
             ->where('is_folder', true)
@@ -186,7 +202,7 @@ class AgentDocumentService
             );
         }
 
-        // MEMORY.md from memory/ folder
+        // Prefer the current memory/MEMORY.md location.
         $memoryFolder = Document::where('parent_id', $agentFolder->id)
             ->where('title', 'memory')
             ->where('is_folder', true)
@@ -203,8 +219,9 @@ class AgentDocumentService
             }
         }
 
-        // Also check for MEMORY.md in identity/ folder (legacy migration path)
-        if ($identityFolder && !$files->contains('title', 'MEMORY.md')) {
+        // Legacy migration path: older agents may still have MEMORY.md under
+        // identity/. Include it only if the new memory file is absent.
+        if ($identityFolder && ! $files->contains('title', 'MEMORY.md')) {
             $legacyMemory = Document::where('parent_id', $identityFolder->id)
                 ->where('title', 'MEMORY.md')
                 ->where('is_folder', false)
@@ -226,7 +243,7 @@ class AgentDocumentService
     public function getIdentityFile(User $agent, string $fileType): ?Document
     {
         return $this->getIdentityFiles($agent)
-            ->firstWhere('title', strtoupper($fileType) . '.md');
+            ->firstWhere('title', strtoupper($fileType).'.md');
     }
 
     /**
@@ -237,15 +254,17 @@ class AgentDocumentService
         $file = $this->getIdentityFile($agent, $fileType);
         if ($file) {
             $file->update(['content' => $content]);
+
             return $file;
         }
 
-        // File doesn't exist — find or create the appropriate folder
+        // Missing files are created lazily so old agents can adopt newly added
+        // identity/memory file types without a migration.
         $upperType = strtoupper($fileType);
 
         if ($upperType === 'MEMORY') {
             $memoryFolder = $this->getOrCreateMemoryFolder($agent);
-            if (!$memoryFolder) {
+            if (! $memoryFolder) {
                 return null;
             }
 
@@ -263,7 +282,7 @@ class AgentDocumentService
 
         // Regular identity file
         $identityFolder = $this->findOrCreateIdentityFolder($agent);
-        if (!$identityFolder) {
+        if (! $identityFolder) {
             return null;
         }
 
@@ -289,7 +308,7 @@ class AgentDocumentService
     public function getMemoryTopicFile(User $agent, string $slug): ?Document
     {
         $folder = $this->getSubFolder($agent, 'topics');
-        if (!$folder) {
+        if (! $folder) {
             return null;
         }
 
@@ -304,7 +323,7 @@ class AgentDocumentService
     public function saveMemoryTopic(User $agent, string $slug, string $content): ?Document
     {
         $folder = $this->getOrCreateSubFolder($agent, 'topics');
-        if (!$folder) {
+        if (! $folder) {
             return null;
         }
 
@@ -314,6 +333,7 @@ class AgentDocumentService
 
         if ($existing) {
             $existing->update(['content' => $content]);
+
             return $existing;
         }
 
@@ -347,7 +367,7 @@ class AgentDocumentService
     public function listMemoryTopics(User $agent): Collection
     {
         $folder = $this->getSubFolder($agent, 'topics');
-        if (!$folder) {
+        if (! $folder) {
             return collect();
         }
 
@@ -366,7 +386,7 @@ class AgentDocumentService
     public function createMemoryLog(User $agent, string $content): ?Document
     {
         $folder = $this->getOrCreateSubFolder($agent, 'logs');
-        if (!$folder) {
+        if (! $folder) {
             return null;
         }
 
@@ -377,8 +397,9 @@ class AgentDocumentService
 
         if ($existingLog) {
             $existingLog->update([
-                'content' => $existingLog->content . "\n\n---\n\n" . $content,
+                'content' => $existingLog->content."\n\n---\n\n".$content,
             ]);
+
             return $existingLog;
         }
 
@@ -386,7 +407,7 @@ class AgentDocumentService
             'id' => Str::uuid()->toString(),
             'title' => "{$today}.md",
             'parent_id' => $folder->id,
-            'content' => "# Memory Log - {$today}\n\n" . $content,
+            'content' => "# Memory Log - {$today}\n\n".$content,
             'author_id' => $agent->id,
             'is_folder' => false,
             'workspace_id' => $agent->workspace_id,
@@ -401,11 +422,11 @@ class AgentDocumentService
         $folder = $this->getSubFolder($agent, 'logs');
 
         // Fallback: check legacy location (memory/ root) if new logs/ folder doesn't exist
-        if (!$folder) {
+        if (! $folder) {
             $folder = $this->getMemoryFolder($agent);
         }
 
-        if (!$folder) {
+        if (! $folder) {
             return null;
         }
 
@@ -424,7 +445,7 @@ class AgentDocumentService
     public function getPeerMemory(User $agent, string $peerId, string $peerType): ?Document
     {
         $folder = $this->getPeersSubFolder($agent, $peerType);
-        if (!$folder) {
+        if (! $folder) {
             return null;
         }
 
@@ -439,7 +460,7 @@ class AgentDocumentService
     public function savePeerMemory(User $agent, string $peerId, string $peerType, string $content): ?Document
     {
         $folder = $this->getOrCreatePeersSubFolder($agent, $peerType);
-        if (!$folder) {
+        if (! $folder) {
             return null;
         }
 
@@ -449,6 +470,7 @@ class AgentDocumentService
 
         if ($existing) {
             $existing->update(['content' => $content]);
+
             return $existing;
         }
 
@@ -480,7 +502,7 @@ class AgentDocumentService
     public function getPeerMemoriesForUsers(User $agent, iterable $userIds): string
     {
         $folder = $this->getPeersSubFolder($agent, 'user');
-        if (!$folder) {
+        if (! $folder) {
             return '';
         }
 
@@ -510,7 +532,7 @@ class AgentDocumentService
     public function getPeerMemoriesForAgents(User $agent, iterable $agentIds): string
     {
         $folder = $this->getPeersSubFolder($agent, 'agent');
-        if (!$folder) {
+        if (! $folder) {
             return '';
         }
 
@@ -541,14 +563,14 @@ class AgentDocumentService
     /**
      * Add or update an entry in a MEMORY.md index section.
      *
-     * @param string $section Section heading (e.g., "Topics", "People")
-     * @param string $entry   One-liner entry text
-     * @param string|null $fileRef Optional file reference like "topics/vue3-migration.md"
+     * @param  string  $section  Section heading (e.g., "Topics", "People")
+     * @param  string  $entry  One-liner entry text
+     * @param  string|null  $fileRef  Optional file reference like "topics/vue3-migration.md"
      */
     public function updateMemoryIndex(User $agent, string $section, string $entry, ?string $fileRef = null): void
     {
         $memoryFile = $this->getIdentityFile($agent, 'MEMORY');
-        if (!$memoryFile) {
+        if (! $memoryFile) {
             return;
         }
 
@@ -561,9 +583,9 @@ class AgentDocumentService
             : "- {$entry}";
 
         // Check if the section exists
-        if (!preg_match("/^## {$sectionEscaped}$/m", $content)) {
+        if (! preg_match("/^## {$sectionEscaped}$/m", $content)) {
             // Add the section at the end
-            $content = rtrim($content) . "\n\n## {$section}\n\n{$line}\n";
+            $content = rtrim($content)."\n\n## {$section}\n\n{$line}\n";
         } else {
             // Section exists — extract lines and find section boundaries
             $lines = explode("\n", $content);
@@ -585,7 +607,7 @@ class AgentDocumentService
                 // Check if this entry already exists within the section
                 $sectionContent = implode("\n", array_slice($lines, $sectionStart, $sectionEnd - $sectionStart));
                 $searchTerm = $fileRef ?? $entry;
-                if (preg_match('/' . preg_quote($searchTerm, '/') . '/m', $sectionContent)) {
+                if (preg_match('/'.preg_quote($searchTerm, '/').'/m', $sectionContent)) {
                     return; // Already exists
                 }
 
@@ -595,7 +617,7 @@ class AgentDocumentService
                     $byteOffset += strlen($lines[$i]) + 1; // +1 for \n
                 }
 
-                $content = substr($content, 0, $byteOffset) . "{$line}\n" . substr($content, $byteOffset);
+                $content = substr($content, 0, $byteOffset)."{$line}\n".substr($content, $byteOffset);
             }
         }
 
@@ -608,7 +630,7 @@ class AgentDocumentService
     public function removeMemoryIndexEntry(User $agent, string $section, string $entry): void
     {
         $memoryFile = $this->getIdentityFile($agent, 'MEMORY');
-        if (!$memoryFile) {
+        if (! $memoryFile) {
             return;
         }
 
@@ -701,7 +723,7 @@ class AgentDocumentService
             ->where('is_folder', true)
             ->first();
 
-        if (!$agentsFolder) {
+        if (! $agentsFolder) {
             return null;
         }
 
@@ -717,7 +739,7 @@ class AgentDocumentService
     private function getMemoryFolder(User $agent): ?Document
     {
         $agentFolder = $this->getAgentFolder($agent);
-        if (!$agentFolder) {
+        if (! $agentFolder) {
             return null;
         }
 
@@ -738,7 +760,7 @@ class AgentDocumentService
         }
 
         $agentFolder = $this->getAgentFolder($agent);
-        if (!$agentFolder) {
+        if (! $agentFolder) {
             return null;
         }
 
@@ -760,7 +782,7 @@ class AgentDocumentService
     private function getSubFolder(User $agent, string $name): ?Document
     {
         $memoryFolder = $this->getMemoryFolder($agent);
-        if (!$memoryFolder) {
+        if (! $memoryFolder) {
             return null;
         }
 
@@ -782,7 +804,7 @@ class AgentDocumentService
 
         $memoryFolder = $this->getOrCreateMemoryFolder($agent);
 
-        if (!$memoryFolder) {
+        if (! $memoryFolder) {
             return null;
         }
 
@@ -804,7 +826,7 @@ class AgentDocumentService
     private function getPeersSubFolder(User $agent, string $peerType): ?Document
     {
         $peersFolder = $this->getSubFolder($agent, 'peers');
-        if (!$peersFolder) {
+        if (! $peersFolder) {
             return null;
         }
 
@@ -825,7 +847,7 @@ class AgentDocumentService
         }
 
         $peersFolder = $this->getOrCreateSubFolder($agent, 'peers');
-        if (!$peersFolder) {
+        if (! $peersFolder) {
             return null;
         }
 
@@ -924,7 +946,7 @@ MD;
 
     private function getInstructionsTemplate(): string
     {
-        return <<<MD
+        return <<<'MD'
 # Operating Instructions
 
 ## User Context
@@ -943,7 +965,7 @@ MD;
 
     private function getMemoryTemplate(): string
     {
-        return <<<MD
+        return <<<'MD'
 # Memory
 
 ## Core Knowledge

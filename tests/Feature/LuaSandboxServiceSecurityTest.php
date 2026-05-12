@@ -5,6 +5,9 @@ namespace Tests\Feature;
 use App\Services\LuaSandboxService;
 use Tests\TestCase;
 
+/**
+ * Guards Lua sandbox global injection and protected bridge names.
+ */
 class LuaSandboxServiceSecurityTest extends TestCase
 {
     public function test_rejects_user_assignment_to_bridge_globals(): void

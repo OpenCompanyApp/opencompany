@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Workspace files can carry user/agent notes separate from their storage
+        // path and filename.
         Schema::table('workspace_files', function (Blueprint $table) {
             $table->text('description')->nullable()->after('name');
         });

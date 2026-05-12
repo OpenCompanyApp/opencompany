@@ -2,17 +2,27 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Concerns\BelongsToWorkspace;
 
+/**
+ * Workspace document or folder.
+ *
+ * Documents serve both user-authored knowledge and system-owned agent identity
+ * files. System documents are guarded from ordinary deletion because deleting
+ * an agent's identity/memory tree can break prompt assembly.
+ */
 class Document extends Model
 {
-    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<static>> */
-    use HasFactory, BelongsToWorkspace;
+    /** @use HasFactory<Factory<static>> */
+    use BelongsToWorkspace, HasFactory;
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -41,6 +51,9 @@ class Document extends Model
     {
         static::deleting(function (Document $doc) {
             if ($doc->is_system) {
+                // AgentDocumentService intentionally unsets is_system before
+                // deleting an agent tree; ordinary UI/controller deletes should
+                // fail here instead of removing prompt-critical files.
                 throw new \LogicException('System documents cannot be deleted.');
             }
         });

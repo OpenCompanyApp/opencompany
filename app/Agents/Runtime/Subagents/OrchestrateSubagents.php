@@ -7,6 +7,13 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Agent-callable orchestration tool for delegating work to peer agents.
+ *
+ * Individual peer agents are also exposed as direct SDK subagents. This tool is
+ * for the heavier case where the current agent needs an ordered plan with
+ * explicit run IDs and dependencies that can be inspected after execution.
+ */
 class OrchestrateSubagents implements Tool
 {
     public function __construct(
@@ -52,6 +59,9 @@ class OrchestrateSubagents implements Tool
                 return "Error: run {$index} cannot target the current agent.";
             }
 
+            // Delegation is workspace-local and excludes system agents. System
+            // agents may own automation/runtime responsibilities that should not
+            // be reachable from model-generated delegation plans.
             $target = User::query()
                 ->where('id', $agentId)
                 ->where('workspace_id', $this->agent->workspace_id)
@@ -68,6 +78,9 @@ class OrchestrateSubagents implements Tool
                 return "Error: dependsOn for run {$index} must be an array.";
             }
 
+            // Run IDs are model-supplied on purpose: they make dependsOn edges
+            // stable and readable in task context instead of relying on array
+            // offsets that change when the model edits the plan.
             $definitions[] = [
                 'id' => $id,
                 'agent' => $target,
@@ -78,6 +91,9 @@ class OrchestrateSubagents implements Tool
 
         $stats = $this->orchestrator->runSequential($definitions, $this->channelId, $this->taskId);
 
+        // Return structured JSON rather than prose so the calling model can
+        // inspect which subagent failed or produced output before deciding how
+        // to continue the parent task.
         return json_encode(collect($stats)->map(fn (SubagentStats $stat) => [
             'status' => $stat->status,
             'output' => $stat->output,

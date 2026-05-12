@@ -7,6 +7,14 @@ use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Contracts\Tool;
 use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 
+/**
+ * Presents one configured MCP server as an OpenCompany integration provider.
+ *
+ * MCP tool names come from remote servers, while OpenCompany permissions use
+ * stable local slugs. This class owns that translation and must preserve both
+ * names: the local slug for catalogs/permissions and the original remote name
+ * for the eventual JSON-RPC tool call.
+ */
 class McpToolProvider implements ToolProvider
 {
     /** @var array<string, McpServer>  account_alias => server */
@@ -47,6 +55,9 @@ class McpToolProvider implements ToolProvider
     {
         $tools = [];
         foreach ($this->server->discovered_tools ?? [] as $mcpTool) {
+            // Catalog keys are permission slugs, not remote MCP names. Keep the
+            // original name in metadata so createTool can recover the exact
+            // server-side identifier even when hyphens/case were normalized.
             $slug = $this->toolSlug($mcpTool['name']);
             $tools[$slug] = [
                 'class' => McpProxyTool::class,
@@ -74,6 +85,10 @@ class McpToolProvider implements ToolProvider
         $toolSlug = $context['tool_slug'] ?? '';
         $mcpToolName = $this->mcpToolNameFromSlug($toolSlug);
         $mcpToolDef = $this->findToolDef($mcpToolName, $server);
+
+        // The proxy must call the remote MCP name, not the normalized local
+        // slug. Falling back to the slug keeps manually supplied contexts
+        // debuggable, but discovered tools should always resolve here.
         $remoteToolName = (string) ($mcpToolDef['name'] ?? $mcpToolName);
 
         return new McpProxyTool(
@@ -109,6 +124,9 @@ class McpToolProvider implements ToolProvider
 
     private function toolSlug(string $mcpToolName): string
     {
+        // Match McpServer::getToolSlugs and McpPermissionEvaluator. If this
+        // normalization changes, update all three places together or existing
+        // workspace permissions will stop matching discovered tools.
         return 'mcp_'.$this->server->slug.'__'.Str::snake(str_replace('-', '_', $mcpToolName));
     }
 

@@ -5,6 +5,13 @@ namespace App\Agents\Runtime\Subagents;
 use App\Models\User;
 use Illuminate\Support\Str;
 
+/**
+ * Executes a dependency-ordered subagent plan one run at a time.
+ *
+ * This orchestrator is intentionally sequential for now. Sequential execution
+ * makes parent task history deterministic and gives each dependent run a clear
+ * predecessor, even though future versions may add safe parallel branches.
+ */
 class SubagentOrchestrator
 {
     /** @var array<string, SubagentStats> */
@@ -33,6 +40,10 @@ class SubagentOrchestrator
             try {
                 /** @var User $agent */
                 $agent = $agents[$run->id];
+
+                // GenericSubagent runs through the same Laravel AI prompt path
+                // as other agents, but with isolated messages. The delegated
+                // task must therefore include all context the subagent needs.
                 $response = GenericSubagent::for($agent, $channelId, $taskId)->prompt($run->task);
                 $stats->status = 'completed';
                 $stats->output = $response->text;

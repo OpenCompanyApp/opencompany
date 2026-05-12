@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // One summary per channel/agent pair stores compacted conversation
+        // context and token accounting for future prompts.
         Schema::create('conversation_summaries', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('channel_id');

@@ -2,6 +2,14 @@
 
 namespace App\Services\Memory;
 
+/**
+ * Splits agent prompt sections into stable and volatile system prompt frames.
+ *
+ * Stable sections can benefit from provider-side prompt caching. Volatile
+ * sections carry run-specific context such as time, channel state, and current
+ * task details, so they must stay separate even though callers can still ask
+ * for the concatenated prompt for diagnostics.
+ */
 class PromptFrameBuilder
 {
     /**
@@ -34,6 +42,9 @@ class PromptFrameBuilder
         $volatile = [];
 
         foreach ($sections as $section) {
+            // Labels are the section contract. If OpenCompanyAgent adds a new
+            // runtime-only section, it should be added to volatile labels rather
+            // than inferred from text content.
             if (in_array($section['label'], $volatileLabels, true)) {
                 $volatile[] = $section;
             } else {

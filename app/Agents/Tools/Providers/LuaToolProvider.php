@@ -10,7 +10,15 @@ use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
 use App\Services\LuaApiDocGenerator;
 use App\Services\LuaSandboxService;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers the Lua discovery and execution tools.
+ *
+ * Agents are expected to inspect generated Lua docs before running scripts; the
+ * execution tool receives the active ToolRegistry so LuaBridge calls obey the
+ * same tool catalog and permissions as normal agent calls.
+ */
 class LuaToolProvider implements BuiltInToolProvider
 {
     public function groupName(): string
@@ -65,8 +73,10 @@ class LuaToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // Runtime callers can pass the already-built registry to avoid a second
+        // catalog construction and to keep Lua execution aligned with the run.
         $toolRegistry = array_key_exists('tool_registry', $context) && $context['tool_registry'] instanceof ToolRegistry
             ? $context['tool_registry']
             : app(ToolRegistry::class);

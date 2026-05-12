@@ -7,6 +7,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
+/**
+ * Covers authenticated password changes and current-password validation.
+ */
 class PasswordUpdateTest extends TestCase
 {
     use RefreshDatabase;

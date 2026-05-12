@@ -6,6 +6,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Covers the login/logout flow and invalid-password rejection.
+ */
 class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;

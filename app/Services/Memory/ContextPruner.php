@@ -6,6 +6,13 @@ use App\Agents\Tools\ToolRegistry;
 use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Responses\Data\ToolResult;
 
+/**
+ * Removes bulky read-only tool results from retry prompts.
+ *
+ * This runs only on checkpoint/resume context. It must never prune write-tool
+ * results because those are the durable evidence that a side effect already
+ * happened and should not be repeated by the model on retry.
+ */
 class ContextPruner
 {
     public function __construct(
@@ -39,6 +46,8 @@ class ContextPruner
             $eligible = true;
 
             foreach ($message->toolResults as $toolResult) {
+                // Only read tools are replaceable. A write result may contain
+                // the only record that the model has already mutated data.
                 $toolType = $this->toolRegistry->getToolTypeBySlug($toolResult->name);
 
                 if ($toolType !== 'read') {
@@ -99,6 +108,9 @@ class ContextPruner
             /** @var ToolResultMessage $toolResultMessage */
             $toolResultMessage = $candidate['message'];
 
+            // Preserve tool call IDs, arguments, and result IDs so the retry
+            // transcript remains structurally valid for the provider. Only the
+            // bulky textual result is replaced with a model-readable pointer.
             $messages[$candidate['index']] = new ToolResultMessage(
                 $toolResultMessage->toolResults->map(function (ToolResult $toolResult) use (&$prunedResults) {
                     $prunedResults++;

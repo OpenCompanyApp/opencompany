@@ -6,13 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\AgentPermission;
 use App\Models\McpServer;
 use App\Services\Mcp\McpClient;
-use App\Services\Mcp\McpServerRegistrar;
 use App\Services\Mcp\McpToolProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
+/**
+ * Workspace MCP server management API.
+ *
+ * MCP servers are remote tool providers configured by users. This controller
+ * owns workspace-scoped CRUD, secret masking, discovery refreshes, and cleanup
+ * of OpenCompany permission rows that reference local MCP slugs.
+ */
 class McpServerController extends Controller
 {
     /**
@@ -60,11 +66,12 @@ class McpServerController extends Controller
 
         $slug = Str::slug($request->input('name'), '_');
 
-        // Ensure unique slug
+        // Slugs become part of local tool names and permission keys. Keep them
+        // stable and unique within the workspace.
         $baseSlug = $slug;
         $counter = 1;
         while (McpServer::forWorkspace()->where('slug', $slug)->exists()) {
-            $slug = $baseSlug . '_' . $counter++;
+            $slug = $baseSlug.'_'.$counter++;
         }
 
         $server = McpServer::create([
@@ -81,7 +88,8 @@ class McpServerController extends Controller
             'enabled' => false,
         ]);
 
-        // Auto-discover tools
+        // Auto-discovery is best-effort. A server can be saved even when the
+        // remote endpoint is temporarily unavailable so users can fix config.
         try {
             $client = McpClient::fromServer($server);
             $serverInfo = $client->initialize();
@@ -94,14 +102,16 @@ class McpServerController extends Controller
                 'enabled' => true,
             ]);
 
-            // Register the new provider in the registry
+            // Register immediately for this request lifecycle. Future requests
+            // rebuild providers from the persisted MCP server records.
             $registry = app(ToolProviderRegistry::class);
             $registry->register(new McpToolProvider($server));
         } catch (\Throwable $e) {
-            // Server created but discovery failed -- user can retry via discover endpoint
+            // Server created but discovery failed; the user can retry via the
+            // discover endpoint after fixing URL/auth/timeout.
             return response()->json([
                 'server' => $this->formatServer($server),
-                'warning' => 'Server created but tool discovery failed: ' . $e->getMessage(),
+                'warning' => 'Server created but tool discovery failed: '.$e->getMessage(),
             ], 201);
         }
 
@@ -142,7 +152,7 @@ class McpServerController extends Controller
             'name', 'url', 'auth_type', 'auth_config', 'timeout', 'icon', 'description', 'enabled',
         ]), fn ($v) => $v !== null);
 
-        // Skip masked auth values
+        // Preserve encrypted secrets when the UI submits masked placeholders.
         if (isset($updates['auth_config'])) {
             foreach ($updates['auth_config'] as $key => $value) {
                 if (is_string($value) && str_contains($value, '*')) {
@@ -163,16 +173,18 @@ class McpServerController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $server = McpServer::forWorkspace()->findOrFail($id);
-        $appName = 'mcp_' . $server->slug;
+        $appName = 'mcp_'.$server->slug;
 
-        // Clean up agent permissions for this MCP server
+        // Remove integration-level permissions first so agents no longer see
+        // the MCP app after the server row disappears.
         AgentPermission::where('scope_type', 'integration')
             ->where('scope_key', $appName)
             ->delete();
 
-        // Clean up tool-level permissions
+        // Tool-level permissions store generated slugs. Clean them explicitly
+        // or deleted MCP tools can leave dead permission rows behind.
         $toolSlugs = $server->getToolSlugs();
-        if (!empty($toolSlugs)) {
+        if (! empty($toolSlugs)) {
             AgentPermission::where('scope_type', 'tool')
                 ->whereIn('scope_key', $toolSlugs)
                 ->delete();
@@ -190,13 +202,15 @@ class McpServerController extends Controller
     {
         $server = McpServer::forWorkspace()->findOrFail($id);
 
-        // Allow overriding URL/auth for testing before saving
+        // Allow testing unsaved URL/auth changes without mutating the encrypted
+        // server record. This powers setup modals safely.
         $url = $request->input('url', $server->url);
         $authType = $request->input('auth_type', $server->auth_type);
         $authConfig = $request->input('auth_config', $server->auth_config);
         $timeout = $request->input('timeout', $server->timeout);
 
-        // Build a temporary server for testing
+        // Build a temporary model instance for McpClient. It is intentionally
+        // not saved and therefore cannot change runtime tool availability.
         $testServer = new McpServer([
             'url' => $url,
             'auth_type' => $authType,
@@ -231,6 +245,9 @@ class McpServerController extends Controller
             $client = McpClient::fromServer($server);
             $tools = $client->listTools();
 
+            // Discovery updates cached metadata only. Permission slugs derive
+            // from this cache, so users may need to review permissions after a
+            // remote server changes its tool list.
             $server->update([
                 'discovered_tools' => $tools,
                 'tools_discovered_at' => now(),

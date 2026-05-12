@@ -8,7 +8,14 @@ use App\Agents\Tools\Tasks\SetTaskStatus;
 use App\Agents\Tools\Tasks\UpdateTask;
 use App\Agents\Tools\Tasks\UpdateTaskStep;
 use App\Models\User;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers task-progress tools.
+ *
+ * These tools are the agent-facing surface for updating the task created around
+ * an agent run, including step logging and final status changes.
+ */
 class TasksToolProvider implements BuiltInToolProvider
 {
     public function groupName(): string
@@ -70,8 +77,10 @@ class TasksToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // Task tools use the agent as the actor and resolve the current task
+        // from tool arguments or runtime context inside each concrete class.
         return new $class($agent);
     }
 }

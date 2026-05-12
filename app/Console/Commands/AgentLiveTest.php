@@ -14,6 +14,12 @@ use App\Services\Integrations\IntegrationRuntime;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
+/**
+ * Runs an end-to-end local smoke test against the real agent runtime.
+ *
+ * This command intentionally performs real LLM and optional WorldBank calls, so
+ * it is used for operator validation rather than unit-test coverage.
+ */
 class AgentLiveTest extends Command
 {
     protected $signature = 'agent:live-test
@@ -42,6 +48,8 @@ class AgentLiveTest extends Command
             return Command::FAILURE;
         }
 
+        // Bind workspace manually because this command does not run through the
+        // HTTP ResolveWorkspace middleware.
         app()->instance('currentWorkspace', $workspace);
 
         $channel = $this->resolveChannel($agent, $workspace);
@@ -58,6 +66,8 @@ class AgentLiveTest extends Command
 
         if (! $this->option('skip-worldbank')) {
             $this->line('Probing WorldBank integration via IntegrationRuntime...');
+            // WorldBank is intentionally keyless, making it a stable live probe
+            // for the integration runtime without depending on user secrets.
             $worldbank = $integrations->call($agent, 'worldbank_country_info', ['code' => 'US']);
             $this->line('WorldBank evidence: '.json_encode(array_slice((array) $worldbank, 0, 1)));
         }
@@ -77,6 +87,8 @@ class AgentLiveTest extends Command
             iterator_to_array($run->agent()->tools()),
             fn ($tool) => $tool instanceof GenericSubagent,
         );
+        // Surface subagent exposure in the command output because regressions
+        // here often come from tool catalog/permission wiring, not model calls.
         $this->line('Generic subagent tools exposed: '.count($subagentTools));
 
         $this->line('Calling LLM through AgentRunBuilder...');
@@ -142,6 +154,8 @@ class AgentLiveTest extends Command
             'is_ephemeral' => true,
         ]);
 
+        // Ensure the selected agent can see the smoke-test channel even if the
+        // channel was created by a previous run.
         ChannelMember::firstOrCreate([
             'channel_id' => $channel->id,
             'user_id' => $agent->id,

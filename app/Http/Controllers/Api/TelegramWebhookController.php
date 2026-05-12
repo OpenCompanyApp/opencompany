@@ -5,14 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Jobs\AgentRespondJob;
+use App\Jobs\CompactConversationJob;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\ChannelMember;
+use App\Models\ConversationSummary;
 use App\Models\IntegrationSetting;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\UserExternalIdentity;
+use App\Models\Workspace;
 use App\Services\ApprovalExecutionService;
 use App\Services\TelegramService;
 use App\Services\WorkspaceStatusService;
@@ -22,11 +25,21 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * Legacy Telegram webhook handler.
+ *
+ * New chat adapters can flow through ChatWebhookController/Chatogrator, but this
+ * controller still owns the direct Telegram path. It resolves workspace by
+ * webhook secret, creates external channels/messages, handles approval buttons,
+ * and queues agent replies without relying on normal web middleware.
+ */
 class TelegramWebhookController extends Controller
 {
     public function handle(Request $request): Response
     {
-        // Find the telegram integration across all workspaces by matching the webhook secret
+        // Webhooks do not include a workspace ID. Match the Telegram secret
+        // across enabled settings, then bind that workspace for the rest of the
+        // request. The secret is encrypted, so this comparison happens in PHP.
         $secretToken = $request->header('X-Telegram-Bot-Api-Secret-Token');
 
         $setting = IntegrationSetting::where('integration_id', 'telegram')
@@ -36,13 +49,14 @@ class TelegramWebhookController extends Controller
                 return $s->getConfigValue('webhook_secret') === $secretToken;
             });
 
-        if (!$setting || !$secretToken) {
+        if (! $setting || ! $secretToken) {
             abort(403);
         }
 
-        // Set workspace context from the integration's workspace
+        // Set workspace context from the integration's workspace because this
+        // route bypasses ResolveWorkspace.
         if ($setting->workspace_id) {
-            $workspace = \App\Models\Workspace::find($setting->workspace_id);
+            $workspace = Workspace::find($setting->workspace_id);
             if ($workspace) {
                 app()->instance('currentWorkspace', $workspace);
             }
@@ -78,62 +92,72 @@ class TelegramWebhookController extends Controller
         $from = $message['from'] ?? [];
         $telegramMessageId = $message['message_id'] ?? null;
 
-        if (!$chatId || !$text) {
+        if (! $chatId || ! $text) {
             return;
         }
 
-        // Deduplication: atomic lock prevents race condition when Telegram retries
+        // Deduplicate Telegram retries. Telegram can resend the same update if
+        // the webhook response is slow, and we must not create duplicate chat
+        // messages or duplicate agent jobs.
         if ($telegramMessageId) {
             $lockKey = "telegram_msg:{$chatId}:{$telegramMessageId}";
             $lock = Cache::lock($lockKey, 300); // 5 min TTL
-            if (!$lock->get()) {
+            if (! $lock->get()) {
                 Log::info('Telegram dedup: skipping duplicate', ['message_id' => $telegramMessageId]);
+
                 return;
             }
             Log::info('Telegram: processing message', ['message_id' => $telegramMessageId]);
         }
 
-        // Handle /start command — always allowed, returns user ID
+        // /start is always allowed so users can discover the provider-native ID
+        // an admin needs for allowlisting/linking.
         if ($text === '/start') {
             $telegram = app(TelegramService::class);
             $userId = $from['id'] ?? 'unknown';
             $telegram->sendMessage($chatId,
                 "Welcome to OpenCompany!\n\n"
-                . "Your Telegram User ID is: <code>{$userId}</code>\n\n"
-                . "Share this with your administrator to get access."
+                ."Your Telegram User ID is: <code>{$userId}</code>\n\n"
+                .'Share this with your administrator to get access.'
             );
+
             return;
         }
 
         // Handle /compact command — compact conversation memory
         if (str_starts_with($text, '/compact')) {
             $this->handleCompactCommand($chatId, $setting);
+
             return;
         }
 
         // Handle /status command — show workspace overview
         if ($text === '/status') {
             $this->handleStatusCommand($chatId, $setting);
+
             return;
         }
 
-        // Check allowed users whitelist
+        // Enforce allowlist before creating channel/message records for the
+        // sender. Unauthorized users should not populate workspace history.
         $allowedUsers = $setting->getConfigValue('allowed_telegram_users', []);
-        if (!empty($allowedUsers)) {
+        if (! empty($allowedUsers)) {
             $telegramUserId = (string) ($from['id'] ?? 0);
-            if (!in_array($telegramUserId, $allowedUsers)) {
+            if (! in_array($telegramUserId, $allowedUsers)) {
                 $telegram = app(TelegramService::class);
                 $telegram->sendMessage($chatId, 'You are not authorized to use this bot. Contact your administrator.');
+
                 return;
             }
         }
 
-        // Find or create the external channel for this chat (workspace-scoped)
+        // External channel identity is workspace-scoped because the same
+        // Telegram chat ID can theoretically appear in different workspaces.
         $channel = Channel::firstOrCreate(
             ['external_provider' => 'telegram', 'external_id' => $chatId, 'workspace_id' => $setting->workspace_id],
             [
                 'id' => Str::uuid()->toString(),
-                'name' => 'Telegram: ' . ($from['first_name'] ?? 'Unknown'),
+                'name' => 'Telegram: '.($from['first_name'] ?? 'Unknown'),
                 'type' => 'external',
                 'workspace_id' => $setting->workspace_id,
                 'external_config' => [
@@ -144,7 +168,8 @@ class TelegramWebhookController extends Controller
             ]
         );
 
-        // Resolve the real system user or create an ephemeral shadow
+        // Resolve the real system user or create an ephemeral shadow that can be
+        // merged later via IntegrationController::linkExternalUser.
         $user = $this->resolveTelegramUser($from);
 
         // Ensure the user is a channel member
@@ -157,8 +182,9 @@ class TelegramWebhookController extends Controller
         $defaultAgentId = $setting->getConfigValue('default_agent_id');
         $agent = $defaultAgentId ? User::find($defaultAgentId) : null;
 
-        if (!$agent) {
-            // Fallback: find first available agent
+        if (! $agent) {
+            // Fallback should ideally be workspace-scoped. Preserve existing
+            // behavior for now, but keep this visible for a future tightening.
             $agent = User::where('type', 'agent')->first();
         }
 
@@ -169,7 +195,8 @@ class TelegramWebhookController extends Controller
             );
         }
 
-        // Resolve reply threading from Telegram's reply_to_message
+        // Reply threading is best effort. If the referenced Telegram message
+        // was never stored locally, the inbound message is still accepted.
         $replyToId = null;
         if (isset($message['reply_to_message']['message_id'])) {
             $replyToId = Message::where('external_message_id', (string) $message['reply_to_message']['message_id'])
@@ -192,7 +219,8 @@ class TelegramWebhookController extends Controller
         broadcast(new MessageSent($internalMessage));
         $channel->update(['last_message_at' => now()]);
 
-        // Show typing indicator and dispatch agent response
+        // Queue the agent response after storing and broadcasting the inbound
+        // message so retries can find a durable trigger message/task.
         if ($agent) {
             $telegram = app(TelegramService::class);
             try {
@@ -220,28 +248,31 @@ class TelegramWebhookController extends Controller
             ->where('external_id', $chatId)
             ->first();
 
-        if (!$channel) {
+        if (! $channel) {
             $telegram->sendMessage($chatId, 'No conversation history in this channel yet.');
+
             return;
         }
 
-        // Resolve the agent for this channel
+        // Compact the most relevant agent for this external channel: prefer the
+        // configured default, otherwise an agent member already in the channel.
         $defaultAgentId = $setting->getConfigValue('default_agent_id');
         $agent = $defaultAgentId ? User::find($defaultAgentId) : null;
 
-        if (!$agent || $agent->type !== 'agent') {
+        if (! $agent || $agent->type !== 'agent') {
             $agentIds = ChannelMember::where('channel_id', $channel->id)->pluck('user_id');
             $agent = User::where('type', 'agent')->whereIn('id', $agentIds)->first();
         }
 
-        if (!$agent) {
+        if (! $agent) {
             $telegram->sendMessage($chatId, 'No agent found in this channel.');
+
             return;
         }
 
         $telegram->sendMessage($chatId, '🧠 Compacting conversation memory…');
 
-        \App\Jobs\CompactConversationJob::dispatch($channel->id, $agent, $chatId);
+        CompactConversationJob::dispatch($channel->id, $agent, $chatId);
     }
 
     /**
@@ -256,7 +287,7 @@ class TelegramWebhookController extends Controller
 
             $lines = ["<b>Workspace Status</b>\n"];
 
-            // Agents
+            // Status output is rendered as Telegram HTML, not Markdown.
             $lines[] = "🤖 <b>Agents</b>: {$status['agents_online']}/{$status['agents_total']} online";
             foreach ($status['agents'] as $a) {
                 $icon = match ($a['status']) {
@@ -266,7 +297,7 @@ class TelegramWebhookController extends Controller
                 };
                 $line = "   {$icon} {$a['name']} — {$a['status']}";
                 if ($a['current_task']) {
-                    $line .= " · " . Str::limit($a['current_task'], 30);
+                    $line .= ' · '.Str::limit($a['current_task'], 30);
                 }
                 $lines[] = $line;
             }
@@ -282,29 +313,30 @@ class TelegramWebhookController extends Controller
             $lines[] = "   Today: {$status['messages_today']}";
             $lines[] = "   Total: {$status['messages_total']}";
 
-            // Conversation context for this chat
+            // Include this conversation's compaction state when the chat has
+            // already been bridged into an OpenCompany channel.
             $channel = Channel::where('external_provider', 'telegram')
                 ->where('external_id', $chatId)
                 ->first();
 
             if ($channel) {
-                $summary = \App\Models\ConversationSummary::where('channel_id', $channel->id)
+                $summary = ConversationSummary::where('channel_id', $channel->id)
                     ->latest()
                     ->first();
 
                 if ($summary) {
                     $lines[] = "\n🧠 <b>This conversation</b>";
                     $lines[] = "   Compactions: {$summary->compaction_count}";
-                    $lines[] = "   Context tokens: ~" . number_format($summary->tokens_after);
+                    $lines[] = '   Context tokens: ~'.number_format($summary->tokens_after);
                 }
             }
 
-            $lines[] = "\n🕐 " . now()->utc()->format('Y-m-d H:i') . ' UTC';
+            $lines[] = "\n🕐 ".now()->utc()->format('Y-m-d H:i').' UTC';
 
             $telegram->sendMessage($chatId, implode("\n", $lines));
         } catch (\Throwable $e) {
             Log::error('Telegram /status failed', ['error' => $e->getMessage()]);
-            $telegram->sendMessage($chatId, "Failed to get status: " . Str::limit($e->getMessage(), 100));
+            $telegram->sendMessage($chatId, 'Failed to get status: '.Str::limit($e->getMessage(), 100));
         }
     }
 
@@ -320,15 +352,19 @@ class TelegramWebhookController extends Controller
         $messageId = $callbackQuery['message']['message_id'] ?? null;
         $callbackQueryId = $callbackQuery['id'] ?? null;
 
-        if (!$callbackQueryId) {
+        if (! $callbackQueryId) {
             return;
         }
 
         $telegram = app(TelegramService::class);
 
-        // Parse: "approve:{uuid}" or "reject:{uuid}"
-        if (!preg_match('/^(approve|reject):(.+)$/', $data, $matches)) {
-            try { $telegram->answerCallbackQuery($callbackQueryId, 'Unknown action.'); } catch (\Throwable) {}
+        // Parse approval action IDs generated by approval message buttons.
+        if (! preg_match('/^(approve|reject):(.+)$/', $data, $matches)) {
+            try {
+                $telegram->answerCallbackQuery($callbackQueryId, 'Unknown action.');
+            } catch (\Throwable) {
+            }
+
             return;
         }
 
@@ -337,12 +373,17 @@ class TelegramWebhookController extends Controller
         $status = $action === 'approve' ? 'approved' : 'rejected';
 
         $approval = ApprovalRequest::find($approvalId);
-        if (!$approval || $approval->status !== 'pending') {
-            try { $telegram->answerCallbackQuery($callbackQueryId, 'This approval has already been decided.'); } catch (\Throwable) {}
+        if (! $approval || $approval->status !== 'pending') {
+            try {
+                $telegram->answerCallbackQuery($callbackQueryId, 'This approval has already been decided.');
+            } catch (\Throwable) {
+            }
+
             return;
         }
 
-        // Resolve responder — linked system user or ephemeral shadow
+        // Resolve responder to a local user so ApprovalRequest keeps an audit
+        // trail even when the Telegram sender is not yet linked to a real user.
         $from = $callbackQuery['from'] ?? [];
         $responder = $this->resolveTelegramUser($from);
         $responderId = $responder->id;
@@ -354,8 +395,9 @@ class TelegramWebhookController extends Controller
             'responded_at' => now(),
         ]);
 
-        // Execute the post-approval logic
-        /** @var \App\Models\User|null $agent */
+        // Execute the approved tool/access flow after persisting the human
+        // decision so failures still leave an auditable approval outcome.
+        /** @var User|null $agent */
         $agent = $approval->requester;
         $agentIsWaiting = $agent
             && $agent->type === 'agent'
@@ -369,10 +411,14 @@ class TelegramWebhookController extends Controller
             $approvalService->handleRejectedTool($approval);
         }
 
-        // Acknowledge the button press (may fail for expired callbacks)
-        try { $telegram->answerCallbackQuery($callbackQueryId, ucfirst($status) . '!'); } catch (\Throwable) {}
+        // Acknowledge the button press, but ignore expired callback failures.
+        try {
+            $telegram->answerCallbackQuery($callbackQueryId, ucfirst($status).'!');
+        } catch (\Throwable) {
+        }
 
-        // Update the message to show result and remove buttons
+        // Edit the original approval message to show the final decision and
+        // remove actionable buttons from the Telegram thread.
         if ($chatId && $messageId) {
             $responderName = $from['first_name'] ?? 'User';
             $statusEmoji = $status === 'approved' ? '✅' : '❌';
@@ -381,9 +427,9 @@ class TelegramWebhookController extends Controller
                 $telegram->editMessageText(
                     $chatId,
                     $messageId,
-                    "{$statusEmoji} <b>" . ucfirst($status) . "</b>\n\n"
-                    . "<b>{$approval->title}</b>\n"
-                    . "By: {$responderName}"
+                    "{$statusEmoji} <b>".ucfirst($status)."</b>\n\n"
+                    ."<b>{$approval->title}</b>\n"
+                    ."By: {$responderName}"
                 );
             } catch (\Throwable $e) {
                 Log::warning('Failed to edit Telegram approval message', [
@@ -405,13 +451,15 @@ class TelegramWebhookController extends Controller
         $telegramUserId = (string) ($from['id'] ?? 0);
         $firstName = $from['first_name'] ?? 'User';
 
-        // Try to find a real user linked via external identity
+        // Try to find a real user linked via external identity first; this keeps
+        // messages authored by the actual OpenCompany user after linking.
         $linkedUser = UserExternalIdentity::resolveUser('telegram', $telegramUserId);
         if ($linkedUser) {
             return $linkedUser;
         }
 
-        // Fall back to ephemeral shadow user
+        // Shadow users preserve message history until an admin links the
+        // provider identity to a real user.
         return User::firstOrCreate(
             ['email' => "telegram-{$telegramUserId}@external.opencompany"],
             [

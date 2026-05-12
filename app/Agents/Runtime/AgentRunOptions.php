@@ -2,6 +2,13 @@
 
 namespace App\Agents\Runtime;
 
+/**
+ * Immutable runtime switches for a single agent invocation.
+ *
+ * These values are deliberately separate from the persisted agent record so CLI
+ * tests, retries, and orchestrated subagent calls can override one run without
+ * mutating the agent's long-lived configuration.
+ */
 class AgentRunOptions
 {
     public function __construct(

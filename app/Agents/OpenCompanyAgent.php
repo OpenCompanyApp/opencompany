@@ -28,6 +28,14 @@ use Laravel\Ai\Promptable;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
 
+/**
+ * Main runtime implementation for an OpenCompany workspace agent.
+ *
+ * This class assembles model-visible identity, channel context, memory context,
+ * provider/model resolution, and available tools for one agent. Keep durable
+ * identity content in identity documents and runtime-specific behavior in the
+ * helper services injected here; avoid turning this into a static prompt blob.
+ */
 #[MaxTokens(16_384)]
 class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTools
 {
@@ -168,6 +176,9 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
             return $this->promptFrameCache;
         }
 
+        // Prompt frames are immutable for a single agent instance. Cache them so
+        // instructions(), volatilePromptContext(), and diagnostics all describe
+        // the same model-visible sections for this run.
         return $this->promptFrameCache = $this->promptFrameBuilder->splitSections($this->buildSections());
     }
 
@@ -201,7 +212,9 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
             $header .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
             $sections[] = ['label' => 'Header', 'content' => $header];
 
-            // Identity files: IDENTITY + INSTRUCTIONS (always loaded)
+            // IDENTITY and INSTRUCTIONS are stable agent-authored documents and
+            // should always be included when present, independent of channel
+            // privacy. They define who the agent is, not conversation memory.
             foreach (['IDENTITY', 'INSTRUCTIONS'] as $type) {
                 $file = $identityFiles->firstWhere('title', "{$type}.md");
                 if ($file && ! empty(trim($file->content))) {
@@ -214,16 +227,16 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
             $isPrivateChannel = $channel && in_array($channel->type, ['dm', 'agent', 'external']);
 
             if ($isPrivateChannel) {
-                // MEMORY.md (core knowledge + index)
+                // MEMORY.md and peer cards can contain private operational
+                // context. Keep them out of public channels unless the channel
+                // semantics explicitly indicate a private agent/user context.
                 $memoryFile = $identityFiles->firstWhere('title', 'MEMORY.md');
                 if ($memoryFile && ! empty(trim($memoryFile->content))) {
                     $sections[] = ['label' => 'MEMORY.md', 'content' => "## MEMORY.md\n\n{$memoryFile->content}\n\n"];
                 }
 
-                // Inject peer cards for channel participants
                 $this->injectPeerCards($sections, $channel);
 
-                // Memory system instructions
                 $sections[] = ['label' => 'Memory System', 'content' => $this->buildMemoryPrompt()];
             }
         }

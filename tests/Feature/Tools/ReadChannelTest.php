@@ -13,6 +13,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers channel/message read tools and workspace channel visibility.
+ */
 class ReadChannelTest extends TestCase
 {
     use RefreshDatabase;

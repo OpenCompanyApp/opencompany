@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Versions snapshot full document content when the editor explicitly
+        // saves history; autosaves do not write here.
         Schema::create('document_versions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('document_id');

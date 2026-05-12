@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers document comment creation, listing, resolution, and deletion tools.
+ */
 class CommentOnDocumentTest extends TestCase
 {
     use RefreshDatabase;

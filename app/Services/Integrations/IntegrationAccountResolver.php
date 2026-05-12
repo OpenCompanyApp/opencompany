@@ -6,6 +6,13 @@ use App\Models\IntegrationSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * Resolves integration account aliases and workspace-scoped settings.
+ *
+ * OpenCompany supports multiple accounts for the same integration. Keep alias
+ * parsing and default-setting creation here so controllers and runtime services
+ * do not accidentally mix default and named credentials.
+ */
 class IntegrationAccountResolver
 {
     public function accountFromRequest(Request $request): ?string
@@ -41,6 +48,9 @@ class IntegrationAccountResolver
             ->where('integration_id', $id)
             ->exists();
 
+        // The first account for an integration becomes the default account.
+        // Later named accounts are opt-in and must not steal default runtime
+        // behavior from existing agents.
         $setting = new IntegrationSetting;
         $setting->id = Str::uuid()->toString();
         $setting->workspace_id = workspace()->id;
@@ -57,6 +67,9 @@ class IntegrationAccountResolver
      */
     public function sharedCredentialSiblings(string $id): array
     {
+        // Google integrations share one OAuth client in practice, but keep the
+        // list app-local until package metadata can describe shared credential
+        // groups without coupling OpenCompany to vendor-specific IDs.
         $google = [
             'google-calendar',
             'gmail',

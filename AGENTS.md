@@ -23,6 +23,15 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 - Main runtime agent class: `app/Agents/OpenCompanyAgent.php`
 - Identity/system-prompt content is assembled from identity files and agent config, not from a static hardcoded prompt.
 
+## Commenting Style
+
+- Prefer extensive comments that explain intent, contracts, invariants, ownership, and side effects; avoid comments that merely restate syntax.
+- Add class-level docblocks for services, jobs, agents, tools, controllers, policies, runtime components, and other important models. State what the code owns, what it does not own, and any workspace/security/package boundary.
+- Add method docblocks for non-trivial public methods and complex private methods. Cover input shape, return meaning, failure behavior, network/LLM/tool side effects, workspace scope, and secret-handling expectations where relevant.
+- Place short invariant comments before rules that must not be reordered or bypassed, especially permission order, workspace scoping, approvals, provider/model resolution, MCP normalization, queue failure handling, and external mutations.
+- Leave agent-oriented breadcrumbs when code is intentionally app-local instead of package-owned, or when a future coding agent might otherwise “simplify” away an important boundary.
+- In tests, comment the scenario/regression being protected rather than each assertion.
+
 ## UI
 
 - Shared UI components live in `resources/js/Components/shared/`.

@@ -22,6 +22,14 @@ use OpenCompany\Chatogrator\Messages\Message as ChatMessage;
 use OpenCompany\Chatogrator\Messages\PostableMessage;
 use OpenCompany\Chatogrator\Threads\Thread;
 
+/**
+ * Bridges inbound Chatogrator events into OpenCompany channels, users, and jobs.
+ *
+ * This service is the trust boundary for external chat messages. It maps vendor
+ * thread/user IDs into workspace records, enforces per-integration allowlists,
+ * and starts agent response jobs only after the inbound message is represented
+ * as a normal OpenCompany message.
+ */
 class ChatBridge
 {
     public function handleInbound(Thread $thread, ChatMessage $chatMessage, string $workspaceId): void
@@ -29,18 +37,23 @@ class ChatBridge
         $adapter = $thread->adapter;
         $adapterName = $adapter->name();
 
-        // Check allowed-users whitelist
+        // The allowlist check happens before creating channels/messages so an
+        // unauthorized external user cannot populate workspace history.
         if (! $this->isUserAllowed($adapterName, $chatMessage->author->userId, $workspaceId)) {
             $thread->post(PostableMessage::text('You are not authorized to use this bot. Contact your administrator.'));
 
             return;
         }
 
-        // Extract external channel ID from thread
+        // Decode the provider thread into a stable external ID. The raw thread
+        // ID stays in external_config because adapters may need the full value
+        // for replies even when the channel identity is simpler.
         $decoded = $adapter->decodeThreadId($thread->id);
         $externalId = $this->resolveExternalId($adapterName, $decoded);
 
-        // Find or create the external channel
+        // External channels are workspace-scoped. Provider/channel pairs must
+        // never resolve globally because the same Telegram/Slack ID can be
+        // configured in different workspaces.
         $channel = Channel::firstOrCreate(
             ['external_provider' => $adapterName, 'external_id' => $externalId, 'workspace_id' => $workspaceId],
             [
@@ -72,7 +85,9 @@ class ChatBridge
             );
         }
 
-        // Resolve reply threading
+        // Reply threading is best-effort. If the external platform references a
+        // message we have not seen, keep the inbound message instead of failing
+        // the bridge.
         $replyToId = null;
         $replyToMessageId = $chatMessage->metadata['replyToMessageId'] ?? null;
         if ($replyToMessageId) {
@@ -96,10 +111,12 @@ class ChatBridge
         broadcast(new MessageSent($internalMessage));
         $channel->update(['last_message_at' => now()]);
 
-        // Subscribe thread for future messages
+        // Subscribing makes subsequent non-mention messages eligible for the
+        // same inbound path, subject to the adapter's own subscription rules.
         $thread->subscribe();
 
-        // Dispatch agent response
+        // Agent responses run through the normal queue/task path so external
+        // chat behaves like in-app chat for memory, approvals, and retries.
         if ($agent) {
             try {
                 $thread->startTyping();
@@ -275,7 +292,8 @@ class ChatBridge
             return;
         }
 
-        // Resolve responder
+        // Resolve the external approver into an OpenCompany user so the approval
+        // audit trail points at a durable local identity.
         $user = $event->user ?? null;
         $userId = $user ? ($user->userId ?? null) : null;
         $adapterName = $event->adapter->name();
@@ -290,7 +308,9 @@ class ChatBridge
             'responded_at' => now(),
         ]);
 
-        // Execute post-approval logic
+        // Execute the approved tool only after the ApprovalRequest has been
+        // marked. If execution fails later, the approval decision is still
+        // auditable and can be inspected separately.
         $agent = $approval->requester;
         $agentIsWaiting = $agent
             && $agent->type === 'agent'
@@ -388,7 +408,8 @@ class ChatBridge
             return $agent;
         }
 
-        // Fallback to first available agent in workspace
+        // Fallback keeps simple setups usable, but it stays workspace-scoped so
+        // an external integration never routes work to another tenant's agent.
         return User::where('type', 'agent')
             ->where('workspace_id', $workspaceId)
             ->first();
@@ -411,6 +432,9 @@ class ChatBridge
             return true;
         }
 
+        // The allowlist stores provider-native user IDs as strings. Do not map
+        // through local users here; unlinked users still need to be rejected
+        // before local identity creation.
         return in_array($userId, $allowed);
     }
 }

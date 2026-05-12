@@ -2,18 +2,27 @@
 
 namespace App\Services\Memory;
 
-use App\Ai\Agents\OneShotTextAgent;
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Ai\Agents\OneShotTextAgent;
 use App\Models\AppSetting;
 use App\Models\ConversationSummary;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\AgentDocumentService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\UserMessage;
 
+/**
+ * Summarizes older channel history when an agent approaches its context limit.
+ *
+ * Compaction is a model-visible data-loss boundary: older messages stop being
+ * carried verbatim and are replaced by a summary plus optional durable memory
+ * log entries. Comments here should make split rules, circuit breakers, and
+ * provider calls clear enough that future agents do not silently over-prune.
+ */
 class ConversationCompactionService
 {
     public function __construct(
@@ -27,13 +36,13 @@ class ConversationCompactionService
     /**
      * Check if compaction is needed for a channel/agent pair.
      *
-     * @param iterable<mixed> $messages
+     * @param  iterable<mixed>  $messages
      */
     public function needsCompaction(string $channelId, User $agent, iterable $messages, ?string $systemPrompt = null): bool
     {
         $enabled = AppSetting::getValue('memory_compaction_enabled')
             ?? config('memory.compaction.enabled', true);
-        if (!$enabled) {
+        if (! $enabled) {
             return false;
         }
 
@@ -69,7 +78,9 @@ class ConversationCompactionService
             return null;
         }
 
-        // Only load messages after the previous compaction point
+        // Only load messages after the previous compaction point. The existing
+        // summary already represents older history, so summarizing it again
+        // would compound abstraction loss and inflate token accounting.
         $query = Message::where('channel_id', $channelId)
             ->orderBy('created_at', 'asc');
 
@@ -93,7 +104,9 @@ class ConversationCompactionService
 
         $previousSummary = $existing->summary ?? '';
 
-        // Build SDK messages for summarization
+        // Build SDK messages for summarization with author names on user turns.
+        // Those names are often the only durable clue about who made a decision
+        // once individual messages are no longer sent verbatim.
         $sdkMessages = [];
         foreach ($plan->messagesToSummarize as $msg) {
             if (empty($msg->content)) {
@@ -159,7 +172,7 @@ class ConversationCompactionService
     /**
      * Summarize messages using an LLM call.
      *
-     * @param array<int, AssistantMessage|UserMessage> $messages
+     * @param  array<int, AssistantMessage|UserMessage>  $messages
      */
     private function summarize(array $messages, string $previousSummary, CompactionPlan $plan): string
     {
@@ -213,15 +226,18 @@ class ConversationCompactionService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Message>  $messages
+     * @param  Collection<int, Message>  $messages
      */
-    private function buildPlan(\Illuminate\Support\Collection $messages): ?CompactionPlan
+    private function buildPlan(Collection $messages): ?CompactionPlan
     {
         $keepRecentTokens = (int) config('memory.compaction.keep_recent_tokens', 20_000);
         $minKeep = (int) config('memory.compaction.min_keep_messages', 3);
         $keptTokens = 0;
         $splitIndex = 0;
 
+        // Walk backward so the most recent context remains verbatim. The model
+        // needs exact recent tool outputs and user instructions more than it
+        // needs exact wording from older turns.
         for ($i = $messages->count() - 1; $i >= 0; $i--) {
             $msgTokens = $this->estimateTokenCount((string) ($messages[$i]->content ?? ''));
 
@@ -265,6 +281,9 @@ class ConversationCompactionService
         $tripAfter = (int) config('memory.compaction.circuit_breaker.after_failures', 3);
         $cooldownMinutes = (int) config('memory.compaction.circuit_breaker.cooldown_minutes', 30);
 
+        // Compaction depends on an LLM call. If that call repeatedly fails,
+        // open a per-channel/agent circuit so every future message does not pay
+        // another slow failing summary attempt before the agent can respond.
         ConversationSummary::updateOrCreate(
             ['channel_id' => $channelId, 'agent_id' => $agent->id],
             [
@@ -302,7 +321,10 @@ class ConversationCompactionService
             return;
         }
 
-        $entry = "### [compaction] " . now()->format('H:i') . "\n\n";
+        // Durable memories are intentionally capped and written to the agent's
+        // memory log, not injected directly into the core identity prompt. Human
+        // review or later promotion can decide what belongs in permanent core.
+        $entry = '### [compaction] '.now()->format('H:i')."\n\n";
         $entry .= implode("\n", array_map(
             fn (string $item): string => "- {$item}",
             $items,
@@ -325,7 +347,7 @@ class ConversationCompactionService
     /**
      * Estimate token count for a collection of SDK messages.
      *
-     * @param iterable<mixed> $messages
+     * @param  iterable<mixed>  $messages
      */
     private function estimateMessagesTokens(iterable $messages): int
     {
@@ -334,6 +356,7 @@ class ConversationCompactionService
             $content = $msg->content ?? '';
             $total += $this->estimateTokenCount($content);
         }
+
         return $total;
     }
 

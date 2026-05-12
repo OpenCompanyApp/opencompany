@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Documents and version snapshots need the same format flag so restores
+        // can preserve markdown/html/plain-text intent.
         Schema::table('documents', function (Blueprint $table) {
             $table->string('content_format', 10)->default('markdown')->after('content');
         });

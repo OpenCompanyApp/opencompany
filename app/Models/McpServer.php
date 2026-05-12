@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 /**
+ * Workspace-configured remote MCP server and its discovered tool cache.
+ *
+ * The URL and auth_config are encrypted because they can contain internal
+ * endpoints or bearer tokens. discovered_tools is treated as cached metadata
+ * used to build local OpenCompany tool slugs and permission entries.
+ *
  * @property array<int, array<string, mixed>>|null $discovered_tools
  * @property array<string, mixed>|null $auth_config
  * @property array<string, string>|null $headers
@@ -93,6 +99,8 @@ class McpServer extends Model
     {
         $slugs = [];
         foreach ($this->discovered_tools ?? [] as $tool) {
+            // Keep this normalization aligned with McpToolProvider and
+            // McpPermissionEvaluator or stored permissions will stop matching.
             $slugs[] = 'mcp_'.$this->slug.'__'.Str::snake(str_replace('-', '_', $tool['name']));
         }
 

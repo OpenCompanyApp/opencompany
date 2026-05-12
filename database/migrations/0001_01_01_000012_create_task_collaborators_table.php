@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Collaborators are a many-to-many task participant list with a unique
+        // pair to avoid duplicate assignments.
         Schema::create('task_collaborators', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('task_id');

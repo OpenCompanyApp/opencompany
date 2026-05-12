@@ -11,6 +11,13 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
+/**
+ * Workspace-aware file metadata and storage operations.
+ *
+ * WorkspaceFile records are the source of truth for hierarchy, permissions, and
+ * ownership; the configured WorkspaceDisk owns physical bytes. Keep both sides
+ * in sync and always scope lookups by workspace before touching storage.
+ */
 class FileSystemService
 {
     /**
@@ -19,6 +26,8 @@ class FileSystemService
     public function resolveWorkspaceDisk(string $workspaceId, ?string $diskId = null): WorkspaceDisk
     {
         if ($diskId) {
+            // Explicit disk selection is workspace-scoped so callers cannot use
+            // another workspace's disk ID as a storage escape hatch.
             return WorkspaceDisk::where('workspace_id', $workspaceId)
                 ->where('id', $diskId)
                 ->where('enabled', true)
@@ -68,7 +77,8 @@ class FileSystemService
             }
         }
 
-        // Legacy fallback: use storage_disk string directly
+        // Legacy fallback for files created before workspace_disk_id existed.
+        // New writes should always store the WorkspaceDisk relationship.
         return Storage::disk($file->storage_disk ?? 'local');
     }
 
@@ -79,7 +89,7 @@ class FileSystemService
     {
         $path = trim($virtualPath, '/');
         if ($path === '') {
-            return null; // Root
+            return null; // Root has no WorkspaceFile record.
         }
 
         $segments = explode('/', $path);
@@ -91,7 +101,7 @@ class FileSystemService
                 ->where('name', $segment)
                 ->first();
 
-            if (!$file) {
+            if (! $file) {
                 return null;
             }
 
@@ -170,7 +180,8 @@ class FileSystemService
         $extension = pathinfo($name, PATHINFO_EXTENSION) ?: 'txt';
         $mimeType ??= $this->guessMimeType($extension);
 
-        // Check if file already exists — overwrite
+        // Text writes are upserts by folder/name. Existing metadata stays stable
+        // while the physical bytes and MIME/size are updated in place.
         $existing = WorkspaceFile::where('workspace_id', $workspaceId)
             ->where('parent_id', $parentId)
             ->where('name', $name)
@@ -227,7 +238,8 @@ class FileSystemService
     {
         $this->validateParentFolder($workspaceId, $parentId);
 
-        // Return existing folder if it already exists
+        // Folder creation is idempotent for tools and UI flows that ensure a
+        // path before writing several files into it.
         $existing = WorkspaceFile::where('workspace_id', $workspaceId)
             ->where('parent_id', $parentId)
             ->where('name', $name)
@@ -262,6 +274,8 @@ class FileSystemService
 
         $folder = null;
         foreach ($segments as $segment) {
+            // Reuse createFolder's idempotency for each segment so concurrent
+            // callers converge on the same folder tree.
             $folder = $this->createFolder($workspaceId, $parentId, $segment, $ownerId, $diskId);
             $parentId = $folder->id;
         }
@@ -275,12 +289,12 @@ class FileSystemService
     public function deleteFile(WorkspaceFile $file): bool
     {
         if ($file->is_folder) {
-            // Recursively delete children
+            // Delete metadata and storage recursively so folders cannot leave
+            // unreachable physical files behind.
             foreach ($file->children as $child) {
                 $this->deleteFile($child);
             }
         } else {
-            // Delete physical file
             if ($file->storage_path) {
                 $this->getDiskForFile($file)->delete($file->storage_path);
             }
@@ -406,7 +420,7 @@ class FileSystemService
      */
     public function getDownloadUrl(WorkspaceFile $file): ?string
     {
-        if ($file->is_folder || !$file->storage_path) {
+        if ($file->is_folder || ! $file->storage_path) {
             return null;
         }
 
@@ -416,11 +430,13 @@ class FileSystemService
             try {
                 return $disk->temporaryUrl($file->storage_path, now()->addMinutes(30));
             } catch (\RuntimeException) {
-                // Disk doesn't support temporary URLs, fall through
+                // Some adapters expose temporaryUrl but throw when unsigned
+                // local/private URLs are unsupported. Fall back to the API path.
             }
         }
 
-        // For local disk, use the API download endpoint
+        // For local/private disks, controllers serve downloads after normal app
+        // authorization checks rather than exposing a storage URL here.
         return null;
     }
 
@@ -440,12 +456,14 @@ class FileSystemService
             return;
         }
 
+        // Parent validation is both a shape check and a workspace boundary. File
+        // tools should fail here before creating metadata under an invalid tree.
         $parent = WorkspaceFile::where('workspace_id', $workspaceId)
             ->where('id', $parentId)
             ->where('is_folder', true)
             ->first();
 
-        if (!$parent) {
+        if (! $parent) {
             throw new \InvalidArgumentException('Parent folder not found.');
         }
     }

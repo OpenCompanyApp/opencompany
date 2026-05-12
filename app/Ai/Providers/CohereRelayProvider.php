@@ -10,6 +10,12 @@ use Laravel\Ai\Providers\Concerns\GeneratesText;
 use Laravel\Ai\Providers\Concerns\HasTextGateway;
 use Laravel\Ai\Providers\Concerns\StreamsText;
 
+/**
+ * Relay-backed Cohere-compatible provider for Laravel AI.
+ *
+ * The relay exposes an OpenAI/DeepSeek-style text endpoint for this provider, so
+ * this adapter reuses DeepSeekGateway while preserving CohereProvider identity.
+ */
 class CohereRelayProvider extends CohereProvider implements TextProvider
 {
     use GeneratesText;
@@ -18,6 +24,8 @@ class CohereRelayProvider extends CohereProvider implements TextProvider
 
     public function textGateway(): TextGateway
     {
+        // Prism Relay routes this provider through a DeepSeek-compatible API
+        // shape; swapping only the gateway avoids a custom provider fork.
         return $this->textGateway ??= new DeepSeekGateway($this->events);
     }
 

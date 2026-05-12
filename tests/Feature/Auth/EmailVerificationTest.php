@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
+/**
+ * Covers email verification screens, signed links, and resend behavior.
+ */
 class EmailVerificationTest extends TestCase
 {
     use RefreshDatabase;

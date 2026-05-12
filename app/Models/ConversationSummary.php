@@ -2,14 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Concerns\BelongsToWorkspace;
 
+/**
+ * Compacted memory state for one agent in one channel.
+ *
+ * The summary replaces older verbatim messages in prompts. Failure/circuit
+ * fields prevent repeated failing compaction attempts from blocking normal
+ * agent responses.
+ */
 class ConversationSummary extends Model
 {
-    use HasUuids, BelongsToWorkspace;
+    use BelongsToWorkspace, HasUuids;
 
     protected $fillable = [
         'id',

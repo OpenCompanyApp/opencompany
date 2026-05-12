@@ -9,6 +9,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Generic Chatogrator webhook entrypoint.
+ *
+ * Webhooks arrive before normal workspace middleware can know the tenant, so
+ * this controller authenticates the adapter payload/header first, resolves the
+ * workspace from integration settings, binds currentWorkspace, then hands off to
+ * Chatogrator's adapter-specific verification and dispatch.
+ */
 class ChatWebhookController
 {
     public function __invoke(Request $request, string $adapter): Response
@@ -16,6 +24,8 @@ class ChatWebhookController
         $workspace = $this->resolveWorkspace($adapter, $request);
 
         if (! $workspace) {
+            // Do not reveal which adapter or secret failed. External providers
+            // only need a non-success response for unauthorized payloads.
             return new Response('Unauthorized', 401);
         }
 
@@ -31,6 +41,8 @@ class ChatWebhookController
                 'workspace' => $workspace->id,
             ]);
 
+            // Return 200 after logging so providers do not retry indefinitely on
+            // app-side processing errors that are already recorded locally.
             return new Response('', 200);
         }
     }
@@ -58,6 +70,8 @@ class ChatWebhookController
             return null;
         }
 
+        // Secrets are encrypted inside config, so compare after loading enabled
+        // settings rather than querying the raw encrypted column.
         $setting = IntegrationSetting::where('integration_id', 'telegram')
             ->where('enabled', true)
             ->get()
@@ -74,7 +88,8 @@ class ChatWebhookController
         $body = json_decode($request->getContent(), true);
         $teamId = $body['team_id'] ?? null;
 
-        // Form-encoded interactive payloads
+        // Slack interactive callbacks can arrive as form-encoded payload JSON
+        // instead of raw JSON.
         if (! $teamId) {
             $payloadStr = $request->input('payload');
             if ($payloadStr) {
@@ -147,6 +162,8 @@ class ChatWebhookController
             return null;
         }
 
+        // Generic adapters use a shared webhook_secret convention until a
+        // provider needs stronger first-class signature verification.
         $setting = IntegrationSetting::where('integration_id', $adapter)
             ->where('enabled', true)
             ->get()

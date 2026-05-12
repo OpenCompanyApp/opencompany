@@ -20,6 +20,8 @@ import Icon from '@/Components/shared/Icon.vue'
 import type { CalendarEvent } from '@/types'
 import { getCalendarColorClasses } from './calendar-colors'
 
+// Compact event pill used in dense month/week calendar grids. It intentionally
+// emits only click so parent views own modals, drag/drop, and selection state.
 const props = withDefaults(defineProps<{
   event: CalendarEvent
   size?: 'sm' | 'md'
@@ -35,6 +37,8 @@ defineEmits<{
 
 const colorClasses = computed(() => getCalendarColorClasses(props.event.color))
 
+// Use browser locale formatting here because calendar views already pass a
+// concrete event start timestamp from the backend.
 const formattedTime = computed(() => {
   const date = new Date(props.event.startAt)
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })

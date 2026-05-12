@@ -9,6 +9,14 @@ use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 use OpenCompany\PrismCodex\CodexTokenStore;
 
+/**
+ * Produces the workspace integration directory consumed by settings and tools.
+ *
+ * This class intentionally merges three sources: legacy static app metadata,
+ * package-provided configurable integrations, and enabled MCP servers. It should
+ * describe OpenCompany availability/configuration state without copying package
+ * tool schemas or hardcoding provider behavior that belongs in sibling packages.
+ */
 class IntegrationDirectory
 {
     public function __construct(
@@ -25,10 +33,15 @@ class IntegrationDirectory
 
         $integrations = [];
 
+        // Static entries are the legacy OpenCompany catalog. Keep them until
+        // each provider has moved to package metadata, but do not add new
+        // provider-specific behavior here unless it is app-specific.
         foreach ($available as $id => $info) {
             $integrations[] = $this->staticDescriptor($id, $info, $settings->get($id))->toArray();
         }
 
+        // Configurable package integrations expose their own settings schema.
+        // OpenCompany only overlays workspace enablement/configuration state.
         foreach ($this->registry->all() as $provider) {
             if (! $provider instanceof ConfigurableIntegration) {
                 continue;
@@ -40,6 +53,9 @@ class IntegrationDirectory
             )->toArray();
         }
 
+        // Some packages are integration-like tool bundles with no user config
+        // schema. They still need directory entries so agents and settings can
+        // reason about availability.
         foreach ($this->registry->all() as $provider) {
             if ($provider instanceof ConfigurableIntegration || ! $provider->isIntegration()) {
                 continue;
@@ -62,6 +78,9 @@ class IntegrationDirectory
             ]))->toArray();
         }
 
+        // MCP servers are workspace records, not package providers. Model/tool
+        // access still flows through the same integration-style catalog because
+        // permissions are managed at the app/tool slug layer.
         foreach (McpServer::forWorkspace()->where('enabled', true)->get() as $server) {
             $integrations[] = (new IntegrationDescriptor([
                 'id' => 'mcp_'.$server->slug,

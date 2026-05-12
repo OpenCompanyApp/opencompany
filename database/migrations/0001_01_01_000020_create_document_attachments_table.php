@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Document attachments mirror message attachment metadata but are scoped
+        // to a document revision/workspace document.
         Schema::create('document_attachments', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('document_id');

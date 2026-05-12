@@ -7,6 +7,13 @@ use App\Models\Workspace;
 use OpenCompany\Chatogrator\Chat;
 use OpenCompany\Chatogrator\State\CacheStateAdapter;
 
+/**
+ * Builds a Chatogrator runtime for one OpenCompany workspace.
+ *
+ * Chat runtime instances are cached per workspace because adapter registration
+ * and callback wiring are relatively expensive. Call forget() after integration
+ * settings change so the next inbound/outbound message sees fresh credentials.
+ */
 class ChatManager
 {
     /** @var array<string, Chat> */
@@ -24,7 +31,8 @@ class ChatManager
             ->state(new CacheStateAdapter("chatogrator:{$workspaceId}"))
             ->logger('single');
 
-        // Load enabled chat integrations for this workspace
+        // Only enabled workspace settings become live adapters. This prevents a
+        // configured-but-disabled external bot from receiving outbound syncs.
         $chatIntegrationIds = array_keys(config('chat_integrations', []));
 
         $settings = IntegrationSetting::where('workspace_id', $workspaceId)
@@ -37,8 +45,10 @@ class ChatManager
             if ($adapter) {
                 $chat->adapter($setting->integration_id, $adapter);
 
-                // Also register by adapter's canonical name if different
-                // (e.g., 'github_chat' vs 'github') so SyncToChat can find it
+                // Some settings use OpenCompany IDs such as github_chat while
+                // Chatogrator reports canonical adapter names such as github.
+                // Register both so inbound and outbound paths resolve the same
+                // adapter instance regardless of which name they start with.
                 if ($adapter->name() !== $setting->integration_id) {
                     $chat->adapter($adapter->name(), $adapter);
                 }

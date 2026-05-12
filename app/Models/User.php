@@ -2,30 +2,40 @@
 
 namespace App\Models;
 
+use App\Events\AgentStatusUpdated;
+use Carbon\Carbon;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
+ * Human or agent identity inside OpenCompany.
+ *
+ * Humans join workspaces through workspace_members. Agents belong directly to a
+ * workspace and carry runtime fields such as brain, behavior mode, status,
+ * manager hierarchy, identity-document folder, and waiting state for approvals
+ * or delegated subtasks.
+ *
  * @property string|null $status
  * @property string|null $type
  * @property string|null $workspace_id
  * @property array<string>|null $awaiting_delegation_ids
- * @property \Carbon\Carbon|null $sleeping_until
- * @property \Carbon\Carbon|null $bootstrapped_at
- * @property \Carbon\Carbon|null $last_seen_at
- * @property \Carbon\Carbon|null $email_verified_at
+ * @property Carbon|null $sleeping_until
+ * @property Carbon|null $bootstrapped_at
+ * @property Carbon|null $last_seen_at
+ * @property Carbon|null $email_verified_at
  */
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -59,6 +69,11 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    /**
+     * Runtime fields are cast here because queue workers and agent tools mutate
+     * them frequently. Keep awaiting_delegation_ids as an array so add/remove
+     * helpers remain idempotent across retries.
+     */
     protected function casts(): array
     {
         return [
@@ -82,7 +97,8 @@ class User extends Authenticatable
     {
         $array = parent::toArray();
 
-        // Add camelCase versions of snake_case fields
+        // Frontend pages still consume camelCase fields. Preserve these aliases
+        // while backend code continues to use Laravel's snake_case attributes.
         $array['agentType'] = $this->agent_type;
         $array['brain'] = $this->brain;
         $array['docsFolderId'] = $this->docs_folder_id;
@@ -257,6 +273,8 @@ class User extends Authenticatable
 
     public function clearAwaitingApproval(): void
     {
+        // Clearing approval puts the agent back to idle unless another finalizer
+        // later resolves sleeping/delegation state via resolveIdleStatus().
         $this->update(['awaiting_approval_id' => null, 'status' => 'idle']);
     }
 
@@ -264,6 +282,9 @@ class User extends Authenticatable
     {
         $ids = $this->awaiting_delegation_ids ?? [];
         $ids[] = $taskId;
+
+        // Store unique task IDs so repeated tool calls or queue retries do not
+        // leave duplicate waits that would keep the agent stuck.
         $this->update(['awaiting_delegation_ids' => array_unique($ids)]);
     }
 
@@ -276,7 +297,7 @@ class User extends Authenticatable
 
     public function isAwaitingDelegation(): bool
     {
-        return !empty($this->awaiting_delegation_ids);
+        return ! empty($this->awaiting_delegation_ids);
     }
 
     /**
@@ -292,12 +313,12 @@ class User extends Authenticatable
         $status = match (true) {
             (bool) $this->sleeping_until => 'sleeping',
             (bool) $this->awaiting_approval_id => 'awaiting_approval',
-            !empty($this->awaiting_delegation_ids) => 'awaiting_delegation',
+            ! empty($this->awaiting_delegation_ids) => 'awaiting_delegation',
             default => 'idle',
         };
 
         $this->update(['status' => $status]);
-        safeBroadcast(new \App\Events\AgentStatusUpdated($this), 'agent status');
+        safeBroadcast(new AgentStatusUpdated($this), 'agent status');
     }
 
     public function isAgent(): bool

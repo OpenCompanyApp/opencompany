@@ -19,6 +19,9 @@ use Laravel\Ai\Providers\Provider;
 use OpenCompany\PrismRelay\Registry\RelayRegistry;
 use Tests\TestCase;
 
+/**
+ * Verifies provider/model resolution across relay registry and workspace config.
+ */
 class DynamicProviderResolverTest extends TestCase
 {
     use RefreshDatabase;

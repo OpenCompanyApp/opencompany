@@ -8,6 +8,9 @@ use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Responses\Data\ToolResult;
 use Tests\TestCase;
 
+/**
+ * Covers duplicate tool-result collapse before model context assembly.
+ */
 class ToolResultDeduplicatorTest extends TestCase
 {
     public function test_supersedes_exact_duplicate_results(): void

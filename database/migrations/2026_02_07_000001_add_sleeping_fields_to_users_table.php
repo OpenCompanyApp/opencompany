@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Sleeping agents need both a wake time and human-readable reason for
+        // status displays and scheduler resume decisions.
         Schema::table('users', function (Blueprint $table) {
             $table->timestamp('sleeping_until')->nullable();
             $table->string('sleeping_reason')->nullable();

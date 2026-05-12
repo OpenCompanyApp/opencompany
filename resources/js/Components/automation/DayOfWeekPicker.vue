@@ -50,6 +50,8 @@ const days = [
   { value: 0, label: 'Sun' },
 ]
 
+// JavaScript date APIs use 0 for Sunday. Keep that value so persisted schedules
+// map cleanly to backend recurrence logic.
 const weekdays = [1, 2, 3, 4, 5]
 
 const allWeekdaysSelected = computed(() =>
@@ -69,11 +71,13 @@ function toggle(day: number) {
 
 function toggleWeekdays() {
   if (allWeekdaysSelected.value) {
+    // Remove only weekdays and preserve any weekend choices the user selected.
     emit(
       'update:modelValue',
       props.modelValue.filter((d) => !weekdays.includes(d)),
     )
   } else {
+    // Set keeps the existing ordering stable enough while avoiding duplicates.
     const merged = new Set([...props.modelValue, ...weekdays])
     emit('update:modelValue', [...merged])
   }

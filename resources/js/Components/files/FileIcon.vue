@@ -12,6 +12,8 @@ const props = defineProps<{
   class?: string
 }>()
 
+// Prefer MIME type over filename extension because workspace files may be
+// renamed without changing their stored content type.
 const iconName = computed(() => {
   if (props.isFolder) return 'ph:folder-fill'
 

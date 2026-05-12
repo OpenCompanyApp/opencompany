@@ -41,6 +41,8 @@ watch(() => props.editing, (val) => {
         el.focus()
         const dotIndex = props.modelValue.lastIndexOf('.')
         if (dotIndex > 0) {
+          // Select the basename but preserve extension by default, matching
+          // native file manager rename behavior.
           el.setSelectionRange(0, dotIndex)
         } else {
           el.select()

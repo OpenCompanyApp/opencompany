@@ -2,13 +2,23 @@
 
 namespace App\Services;
 
+use App\Agents\Tools\ToolRegistry;
 use App\Models\AgentPermission;
 use App\Models\ApprovalRequest;
 use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Models\WorkspaceFile;
 use Illuminate\Support\Str;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
+/**
+ * Resolves agent permissions from stored scope records and behavior mode.
+ *
+ * This service is the compatibility layer between old "unrestricted by default"
+ * agent behavior and newer explicit scopes for tools, channels, integrations,
+ * agents, and file folders. Keep deny rules and workspace-enabled filtering
+ * visible because runtime evaluators depend on this shape.
+ */
 class AgentPermissionService
 {
     /**
@@ -28,6 +38,7 @@ class AgentPermissionService
     ];
 
     public function __construct() {}
+
     /**
      * Resolve the final permission for a tool, combining DB permissions with behavior mode.
      *
@@ -42,17 +53,20 @@ class AgentPermissionService
             ->where('scope_key', $toolSlug)
             ->first();
 
-        // If explicit deny record exists, tool is not allowed
+        // Deny records always win. A later approval or behavior-mode default
+        // must not accidentally re-enable a tool explicitly blocked by an admin.
         if ($permission && $permission->permission === 'deny') {
             return ['allowed' => false, 'requires_approval' => false];
         }
 
-        // System/control-flow tools never require approval
+        // System/control-flow tools never require approval because some are the
+        // mechanism used to wait for or record approval decisions.
         if (in_array($toolSlug, self::APPROVAL_EXEMPT_TOOLS)) {
             return ['allowed' => true, 'requires_approval' => false];
         }
 
-        // Explicit DB record overrides behavior mode
+        // Explicit allow records can still require approval. That lets admins
+        // permit a tool but keep human review on specific high-risk actions.
         if ($permission) {
             return [
                 'allowed' => true,
@@ -60,7 +74,8 @@ class AgentPermissionService
             ];
         }
 
-        // No explicit record — fall back to behavior mode defaults
+        // No explicit record means the agent's behavior mode supplies the
+        // default approval posture for read/write tools.
         return [
             'allowed' => true,
             'requires_approval' => $this->behaviorModeRequiresApproval($agent, $toolType),
@@ -151,16 +166,18 @@ class AgentPermissionService
             ->where('scope_type', 'integration')
             ->get();
 
-        // Build full list of all integration app names
-        $allApps = \App\Agents\Tools\ToolRegistry::INTEGRATION_APPS;
+        // Start from static app integrations, then include package/MCP providers
+        // discovered at runtime. This avoids manual permission updates whenever
+        // a new package integration is installed.
+        $allApps = ToolRegistry::INTEGRATION_APPS;
         foreach ($this->integrationProviders() as $provider) {
-            if ($provider->isIntegration() && !in_array($provider->appName(), $allApps)) {
+            if ($provider->isIntegration() && ! in_array($provider->appName(), $allApps)) {
                 $allApps[] = $provider->appName();
             }
         }
 
-        // Filter by workspace-level enablement.
-        // MCP servers (mcp_ prefix) are passthrough — they self-register only when enabled.
+        // Filter by workspace-level enablement before agent-level denies. MCP
+        // servers are passthrough because only enabled servers self-register.
         if (app()->bound('currentWorkspace')) {
             $workspaceEnabledIds = IntegrationSetting::forWorkspace()
                 ->where('enabled', true)
@@ -172,20 +189,21 @@ class AgentPermissionService
             }));
         }
 
-        // No agent-level records = all workspace-enabled integrations allowed
+        // Backward compatibility: agents with no integration records inherit all
+        // workspace-enabled integrations.
         if ($integrationPerms->isEmpty()) {
             return $allApps;
         }
 
-        // When records exist: explicitly denied integrations are blocked,
-        // explicitly allowed and new (unrecorded) integrations are enabled.
-        // This ensures newly installed packages work without manual permission updates.
+        // When records exist, denies block specific integrations while new
+        // unrecorded integrations remain enabled. This matches package install
+        // behavior and avoids a hidden "default deny forever" trap.
         $denied = $integrationPerms
             ->where('permission', 'deny')
             ->pluck('scope_key')
             ->toArray();
 
-        return array_values(array_filter($allApps, fn ($app) => !in_array($app, $denied)));
+        return array_values(array_filter($allApps, fn ($app) => ! in_array($app, $denied)));
     }
 
     /**
@@ -203,7 +221,9 @@ class AgentPermissionService
      */
     public function canContactAgent(User $caller, User $target): array
     {
-        // Manager hierarchy bypass — always allow without approval
+        // Manager hierarchy is a structural trust relationship. Keep it above
+        // explicit agent permissions so manager/subordinate coordination cannot
+        // be accidentally blocked by missing records.
         if ($target->id === $caller->manager_id || $caller->id === $target->manager_id) {
             return ['allowed' => true, 'requires_approval' => false, 'can_request' => false];
         }
@@ -222,7 +242,8 @@ class AgentPermissionService
             return ['allowed' => true, 'requires_approval' => $explicit->requires_approval, 'can_request' => false];
         }
 
-        // Check wildcard agent permission
+        // Wildcard agent permission applies after explicit target records. That
+        // lets admins deny one sensitive peer while allowing general contact.
         $wildcard = AgentPermission::forAgent($caller->id)
             ->where('scope_type', 'agent')
             ->where('scope_key', '*')
@@ -236,7 +257,8 @@ class AgentPermissionService
             return ['allowed' => true, 'requires_approval' => $wildcard->requires_approval, 'can_request' => false];
         }
 
-        // Default: allow, layer behavior mode
+        // Default contact is allowed, with behavior mode deciding whether a
+        // write-like interagent request requires approval.
         $requiresApproval = $this->behaviorModeRequiresApproval($caller, 'write');
 
         return ['allowed' => true, 'requires_approval' => $requiresApproval, 'can_request' => false];
@@ -278,12 +300,13 @@ class AgentPermissionService
     {
         $allowedIds = $this->getAllowedFileFolderIds($agent);
 
-        // Wildcard: unrestricted
+        // Wildcard grants unrestricted file-folder access inside the workspace.
         if ($allowedIds === null) {
             return true;
         }
 
-        // Check if the file is within the agent's home folder
+        // Agents always keep their own generated home folder even when no
+        // broader file-folder permissions have been granted.
         if ($this->isInAgentHomeFolder($agent, $file)) {
             return true;
         }
@@ -314,7 +337,7 @@ class AgentPermissionService
             }
 
             $parent = WorkspaceFile::find($current->parent_id);
-            if (!$parent) {
+            if (! $parent) {
                 return false;
             }
 
@@ -344,14 +367,15 @@ class AgentPermissionService
         }
 
         $current = $file;
-        $maxDepth = 20; // Prevent infinite loops
+        // Guard against corrupted parent chains creating infinite loops.
+        $maxDepth = 20;
 
         while ($current->parent_id && $maxDepth-- > 0) {
             if ($current->parent_id === $folderId) {
                 return true;
             }
             $current = WorkspaceFile::find($current->parent_id);
-            if (!$current) {
+            if (! $current) {
                 return false;
             }
         }
@@ -405,7 +429,7 @@ class AgentPermissionService
      */
     private function integrationProviders(): array
     {
-        $registryClass = \OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class;
+        $registryClass = ToolProviderRegistry::class;
 
         if (! class_exists($registryClass) || ! app()->bound($registryClass)) {
             return [];

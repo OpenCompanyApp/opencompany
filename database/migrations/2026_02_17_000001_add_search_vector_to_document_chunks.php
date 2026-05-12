@@ -11,10 +11,13 @@ return new class extends Migration
             return;
         }
 
+        // Add PostgreSQL full-text search alongside embeddings so document
+        // recall has a lexical fallback.
         DB::statement('ALTER TABLE document_chunks ADD COLUMN search_vector tsvector');
 
         DB::statement('CREATE INDEX document_chunks_search_vector_idx ON document_chunks USING GIN (search_vector)');
 
+        // Keep search_vector current as chunk content changes.
         DB::statement("
             CREATE OR REPLACE FUNCTION document_chunks_search_vector_update() RETURNS trigger AS $$
             BEGIN
@@ -24,11 +27,11 @@ return new class extends Migration
             $$ LANGUAGE plpgsql;
         ");
 
-        DB::statement("
+        DB::statement('
             CREATE TRIGGER document_chunks_search_vector_trigger
             BEFORE INSERT OR UPDATE OF content ON document_chunks
             FOR EACH ROW EXECUTE FUNCTION document_chunks_search_vector_update();
-        ");
+        ');
 
         DB::statement("UPDATE document_chunks SET search_vector = to_tsvector('english', COALESCE(content, ''))");
     }

@@ -10,6 +10,12 @@ use Laravel\Ai\Gateway\TextGenerationOptions;
 use Laravel\Ai\Responses\TextResponse;
 use RuntimeException;
 
+/**
+ * Gateway placeholder for relay providers that cannot execute through Laravel AI.
+ *
+ * Registration still exposes the provider for catalog/config purposes, but any
+ * runtime text call fails loudly with a transport-specific error.
+ */
 class UnsupportedTextGateway implements TextGateway
 {
     public function __construct(
@@ -46,6 +52,8 @@ class UnsupportedTextGateway implements TextGateway
 
     public function onToolInvocation(Closure $invoking, Closure $invoked): self
     {
+        // No inner gateway exists, but returning $this keeps the TextGateway
+        // contract chainable for callers that attach tool hooks unconditionally.
         return $this;
     }
 

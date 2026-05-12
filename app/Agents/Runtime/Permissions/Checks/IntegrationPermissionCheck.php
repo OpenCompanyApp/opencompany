@@ -6,6 +6,13 @@ use App\Agents\Runtime\Permissions\PermissionDecision;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 
+/**
+ * Ensures an agent may use an integration before a tool call reaches runtime.
+ *
+ * This check accepts both legacy string IDs and newer descriptor arrays because
+ * AgentPermissionService has returned both shapes over time. Do not narrow that
+ * parsing unless all persisted permission config has been migrated.
+ */
 class IntegrationPermissionCheck
 {
     public function __construct(private AgentPermissionService $permissions) {}

@@ -2,20 +2,29 @@
 
 namespace App\Models;
 
+use Database\Factories\ApprovalRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
+ * Human approval record for tool execution or access expansion.
+ *
+ * tool_execution_context stores the exact tool/scope parameters that may be
+ * executed after approval. Treat it as sensitive runtime data: it explains what
+ * the human approved and lets ApprovalExecutionService resume the waiting agent.
+ *
  * @property array<string, mixed>|null $tool_execution_context
  * @property-read User|null $requester
  * @property-read User|null $respondedBy
  */
 class ApprovalRequest extends Model
 {
-    /** @use HasFactory<\Database\Factories\ApprovalRequestFactory> */
+    /** @use HasFactory<ApprovalRequestFactory> */
     use HasFactory;
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [

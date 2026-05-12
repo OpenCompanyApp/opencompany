@@ -6,6 +6,14 @@ use App\Agents\OpenCompanyAgent;
 use App\Models\IntegrationSetting;
 use Laravel\Ai\AiManager;
 
+/**
+ * Materializes workspace provider settings into Laravel AI and Prism config.
+ *
+ * The provider catalog answers what exists; this resolver answers whether a
+ * provider is usable for the current workspace and mutates runtime config only
+ * after that check. Keep credential lookup and manager purging here so model
+ * execution paths do not duplicate provider-specific setup.
+ */
 class ProviderConfigResolver
 {
     public function __construct(private ProviderCatalog $catalog) {}
@@ -24,6 +32,9 @@ class ProviderConfigResolver
         $provider = $this->catalog->provider($providerKey, $workspaceId) ?? [];
 
         if (($provider['auth_mode'] ?? null) === 'oauth') {
+            // Codex/OpenCode style providers do not use a static API key from
+            // workspace integration settings. Register the SDK driver with a
+            // sentinel key so the OAuth-backed gateway can own authentication.
             $this->registerCodexProvider();
 
             return ['provider' => $providerKey, 'model' => $model];
@@ -32,6 +43,9 @@ class ProviderConfigResolver
         if (app()->environment('testing')
             && class_exists(OpenCompanyAgent::class)
             && OpenCompanyAgent::isFaked()) {
+            // Fake-agent tests assert orchestration without registering real
+            // provider credentials. Do not force integration setup when the
+            // agent class has explicitly opted out of network calls.
             return ['provider' => $providerKey, 'model' => $model];
         }
 
@@ -60,6 +74,9 @@ class ProviderConfigResolver
         $apiKey = $setting?->getConfigValue('api_key') ?: config("prism.providers.{$providerKey}.api_key") ?: config("ai.providers.{$providerKey}.key");
         $url = $setting?->getConfigValue('url') ?: ($provider['url'] ?? null);
 
+        // Laravel AI and Prism read provider config from separate namespaces in
+        // this app. Keep both synchronized until all provider execution has
+        // moved fully behind the Laravel AI SDK.
         config(["ai.providers.{$providerKey}" => array_merge(
             config("ai.providers.{$providerKey}", []),
             array_filter([
@@ -78,6 +95,8 @@ class ProviderConfigResolver
         )]);
 
         if (app()->bound(AiManager::class)) {
+            // AiManager caches provider instances. Purge after changing config
+            // or a queue worker can keep using stale keys/URLs for later runs.
             app(AiManager::class)->purge($providerKey);
         }
     }
@@ -106,6 +125,8 @@ class ProviderConfigResolver
         if ($workspaceId !== null) {
             $query->where('workspace_id', $workspaceId);
         } elseif (app()->bound('currentWorkspace')) {
+            // HTTP requests usually rely on ResolveWorkspace. CLI/live-test
+            // callers can pass an explicit workspace ID instead.
             $query->forWorkspace();
         }
 

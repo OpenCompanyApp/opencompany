@@ -16,6 +16,8 @@ const form = useForm({
   remember: false,
 })
 
+// Only clear the password on completion; keeping email/remember avoids forcing
+// users to retype them after a validation error.
 const submit = () => {
   form.post(route('login'), {
     onFinish: () => {

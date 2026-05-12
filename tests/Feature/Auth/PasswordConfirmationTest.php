@@ -6,6 +6,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Covers password confirmation before protected account actions.
+ */
 class PasswordConfirmationTest extends TestCase
 {
     use RefreshDatabase;

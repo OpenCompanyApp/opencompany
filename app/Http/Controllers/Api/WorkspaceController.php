@@ -12,6 +12,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * Workspace setup and profile API.
+ *
+ * Creating a workspace establishes the initial tenant boundary: owner
+ * membership, system automation agent, and the default general channel are
+ * created together so subsequent middleware can bind currentWorkspace.
+ */
 class WorkspaceController extends Controller
 {
     /**
@@ -36,14 +43,16 @@ class WorkspaceController extends Controller
             'owner_id' => $user->id,
         ]);
 
-        // Add creator as admin
+        // The creator becomes admin immediately so they can configure agents,
+        // disks, and integrations in the new workspace.
         WorkspaceMember::create([
             'workspace_id' => $workspace->id,
             'user_id' => $user->id,
             'role' => 'admin',
         ]);
 
-        // Create system user for this workspace
+        // System agents own automation/runtime tasks and are filtered out of
+        // normal subagent delegation.
         $systemUser = User::create([
             'id' => 'sys-'.Str::random(8),
             'name' => 'Automation',
@@ -54,7 +63,8 @@ class WorkspaceController extends Controller
             'workspace_id' => $workspace->id,
         ]);
 
-        // Create #general channel
+        // #general is the default public workspace channel. Agent private memory
+        // is still kept out of public-channel prompts elsewhere.
         $general = Channel::create([
             'id' => Str::uuid()->toString(),
             'name' => 'general',
@@ -72,7 +82,8 @@ class WorkspaceController extends Controller
             'joined_at' => now(),
         ]);
 
-        // Store workspace in session
+        // Store the new workspace in session so the next request binds it via
+        // ResolveWorkspace without requiring manual workspace switching.
         session(['current_workspace_id' => $workspace->id]);
 
         return response()->json([

@@ -12,6 +12,15 @@ use OpenCompany\IntegrationCore\Contracts\Tool as IntegrationTool;
 use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
+/**
+ * Runs connection checks for both legacy app integrations and package providers.
+ *
+ * The controller layer collects request data; this service owns the safety
+ * contract for testing it. In particular, masked secrets must be resolved from
+ * stored settings, no-key integrations should use safe read-only probes, and
+ * credentialed package integrations must not pretend to be fully live-tested
+ * without usable credentials.
+ */
 class IntegrationConnectionTester
 {
     public function __construct(
@@ -27,6 +36,9 @@ class IntegrationConnectionTester
             $config = $request->all();
             $setting = $this->accounts->findSetting($id, $this->accounts->accountFromRequest($request));
 
+            // The UI sends masked values for existing secrets. Replace only
+            // masked/blank secret fields from persisted config so connection
+            // tests can run without exposing raw tokens back to the browser.
             foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                 if ($field['type'] === 'secret' || $field['type'] === 'oauth_connect') {
                     $key = $field['key'];
@@ -52,6 +64,8 @@ class IntegrationConnectionTester
             }
         }
 
+        // Package integrations are owned by ../integrations. OpenCompany only
+        // decides how to prove they are registered/configured for this runtime.
         $packageProvider = app(ToolProviderRegistry::class)->get($id);
         if ($packageProvider?->isIntegration()) {
             return $this->testPackageIntegration($packageProvider, $id);
@@ -68,6 +82,8 @@ class IntegrationConnectionTester
 
         $apiKey = $request->input('apiKey');
         if (! $apiKey || str_contains((string) $apiKey, '*')) {
+            // Preserve the same masked-secret behavior for older static entries
+            // until every provider has moved behind package metadata.
             $setting = $this->accounts->findSetting($id, $this->accounts->accountFromRequest($request));
             $apiKey = $setting?->getConfigValue('api_key');
         }
@@ -129,6 +145,9 @@ class IntegrationConnectionTester
     {
         try {
             if ($provider->credentialFields() !== []) {
+                // Without credentials we can only verify package registration.
+                // Returning success keeps setup flows unblocked while the
+                // message stays explicit that no live vendor call happened.
                 return new IntegrationConnectionTestResult(
                     success: true,
                     message: "Integration {$id} is registered. Configure its credentials before testing a live connection.",
@@ -140,6 +159,10 @@ class IntegrationConnectionTester
                     continue;
                 }
 
+                // For no-key packages such as WorldBank, prefer a harmless
+                // read-only tool with no required input. That exercises the real
+                // package code and remote API without needing stored secrets or
+                // inventing synthetic parameters.
                 $tool = $provider->createTool($meta['class'], [
                     'tool_slug' => (string) $slug,
                 ]);

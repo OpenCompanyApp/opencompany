@@ -6,6 +6,13 @@ use App\Models\IntegrationSetting;
 use OpenCompany\PrismCodex\CodexTokenStore;
 use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
+/**
+ * Workspace-aware view over the prism-relay provider registry.
+ *
+ * The sibling package owns provider definitions and aliases. OpenCompany adds
+ * workspace configuration status, configured URLs, and OAuth token checks so UI
+ * and runtime code can ask one catalog what is available right now.
+ */
 class ProviderCatalog
 {
     public function __construct(private RelayRegistry $registry) {}
@@ -33,6 +40,10 @@ class ProviderCatalog
         $definition = $this->registry->provider($canonical) ?? [];
         $setting = $this->setting($canonical, $workspaceId);
 
+        // Registry metadata is the source of truth, but workspace settings can
+        // override credentials and URLs. Keep the merged descriptor explicit so
+        // callers can tell whether a value came from settings, config, or the
+        // package registry.
         return array_merge($definition, [
             'id' => $canonical,
             'canonical' => $canonical,
@@ -67,6 +78,9 @@ class ProviderCatalog
 
         if ($this->registry->authMode($canonical) === 'oauth') {
             if ($canonical === 'codex') {
+                // Codex uses a token store instead of IntegrationSetting API
+                // keys. Treat expired tokens as unconfigured so the UI prompts
+                // for reconnect before a runtime call fails.
                 $token = CodexTokenStore::current();
 
                 return $token !== null && ! $token->isExpired();

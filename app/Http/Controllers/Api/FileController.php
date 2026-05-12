@@ -7,9 +7,15 @@ use App\Models\WorkspaceFile;
 use App\Services\FileSystemService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * Workspace file-manager API.
+ *
+ * File metadata is always workspace-scoped before storage bytes are read or
+ * written. The FileSystemService owns disk resolution and parent validation; the
+ * controller owns request validation and API response shape.
+ */
 class FileController extends Controller
 {
     public function __construct(
@@ -27,6 +33,8 @@ class FileController extends Controller
 
         $diskId = $request->query('disk_id');
 
+        // Listing uses metadata only; physical storage is touched only for
+        // upload/download/copy/delete operations.
         $items = $this->fileSystemService->listDirectory($workspaceId, $parentId, $search, $diskId);
 
         return response()->json([
@@ -54,6 +62,7 @@ class FileController extends Controller
         $mimeType = $request->query('mime_type');
 
         if (strlen($query) < 2) {
+            // Avoid broad workspace scans for one-character searches.
             return response()->json(['data' => []]);
         }
 
@@ -151,6 +160,8 @@ class FileController extends Controller
 
         $contents = $this->fileSystemService->readFileContents($file);
         if ($contents === null) {
+            // Metadata exists but storage bytes do not. Treat this as a storage
+            // miss rather than leaking disk details to the client.
             return response()->json(['error' => 'File not found on storage.'], 404);
         }
 
@@ -179,6 +190,8 @@ class FileController extends Controller
             $file->update(['description' => $request->input('description')]);
         }
 
+        // Move/rename is metadata-only. The physical storage path does not need
+        // to change because WorkspaceFile represents the virtual tree.
         $newParentId = $request->has('parent_id') ? $request->input('parent_id') : $file->parent_id;
         $newName = $request->input('name');
 
@@ -247,9 +260,11 @@ class FileController extends Controller
             ];
         }
 
-        if (!$file->is_folder) {
+        if (! $file->is_folder) {
             $data['mimeType'] = $file->mime_type;
             $data['size'] = $file->size;
+            // Downloads go through the API so app authorization can run before
+            // bytes are streamed from private/local disks.
             $data['downloadUrl'] = "/api/files/{$file->id}/download";
         } else {
             $data['childCount'] = $file->children()->count();

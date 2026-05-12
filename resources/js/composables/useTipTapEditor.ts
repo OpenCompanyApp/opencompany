@@ -24,6 +24,8 @@ const lowlight = createLowlight(common)
 function convertMarkdownToHtml(markdown: string): string {
   if (!markdown) return ''
   try {
+    // Existing documents may still be stored as markdown; TipTap edits HTML, so
+    // convert once at editor creation and let updates emit HTML.
     return marked.parse(markdown, { async: false }) as string
   } catch {
     return markdown
@@ -41,6 +43,8 @@ export interface TipTapEditorOptions {
 export function useTipTapEditor(options: TipTapEditorOptions): {
   editor: ShallowRef<Editor | undefined>
 } {
+  // Preserve raw HTML documents, but convert markdown documents before mounting
+  // the editor so extension commands operate on ProseMirror nodes.
   const resolvedContent = options.contentFormat === 'markdown' && options.content
     ? convertMarkdownToHtml(options.content)
     : options.content || ''
@@ -50,6 +54,8 @@ export function useTipTapEditor(options: TipTapEditorOptions): {
     editable: options.editable ?? true,
     extensions: [
       StarterKit.configure({
+        // Code blocks are provided by lowlight below so syntax highlighting can
+        // be configured centrally.
         codeBlock: false,
       }),
       Underline,
@@ -84,6 +90,8 @@ export function useTipTapEditor(options: TipTapEditorOptions): {
       SlashCommands,
     ],
     onUpdate: ({ editor }) => {
+      // The caller owns debouncing/autosave; this composable only emits the
+      // latest HTML representation.
       options.onUpdate?.(editor.getHTML())
     },
   })

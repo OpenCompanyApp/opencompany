@@ -6,14 +6,21 @@ use App\Agents\Tools\Tables\AddTableColumn;
 use App\Agents\Tools\Tables\CreateTable;
 use App\Agents\Tools\Tables\DeleteTable;
 use App\Agents\Tools\Tables\DeleteTableColumn;
+use App\Agents\Tools\Tables\DeleteTableView;
 use App\Agents\Tools\Tables\UpdateTable;
+use App\Agents\Tools\Tables\UpdateTableView;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
+use App\Models\DataTableView;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers table schema mutations and saved-view workspace boundaries.
+ */
 class ManageTableTest extends TestCase
 {
     use RefreshDatabase;
@@ -138,6 +145,61 @@ class ManageTableTest extends TestCase
         $this->assertStringContainsString('Column deleted', $result);
         $this->assertDatabaseMissing('data_table_columns', [
             'id' => $column->id,
+        ]);
+    }
+
+    public function test_table_view_updates_are_workspace_scoped(): void
+    {
+        $agent = User::factory()->create(['type' => 'agent']);
+        $otherWorkspace = Workspace::create(['name' => 'Other Workspace', 'slug' => 'other']);
+
+        $otherTable = DataTable::create([
+            'name' => 'Other Table',
+            'created_by' => $agent->id,
+            'workspace_id' => $otherWorkspace->id,
+        ]);
+        $view = DataTableView::create([
+            'table_id' => $otherTable->id,
+            'name' => 'Other View',
+            'type' => 'grid',
+        ]);
+
+        $result = (new UpdateTableView($agent))->handle(new Request([
+            'viewId' => $view->id,
+            'name' => 'Changed',
+        ]));
+
+        $this->assertStringContainsString('Error updating view', $result);
+        $this->assertDatabaseHas('data_table_views', [
+            'id' => $view->id,
+            'name' => 'Other View',
+        ]);
+    }
+
+    public function test_table_view_deletes_are_workspace_scoped(): void
+    {
+        $agent = User::factory()->create(['type' => 'agent']);
+        $otherWorkspace = Workspace::create(['name' => 'Other Workspace', 'slug' => 'other']);
+
+        $otherTable = DataTable::create([
+            'name' => 'Other Table',
+            'created_by' => $agent->id,
+            'workspace_id' => $otherWorkspace->id,
+        ]);
+        $view = DataTableView::create([
+            'table_id' => $otherTable->id,
+            'name' => 'Other View',
+            'type' => 'grid',
+        ]);
+
+        $result = (new DeleteTableView($agent))->handle(new Request([
+            'viewId' => $view->id,
+        ]));
+
+        $this->assertStringContainsString('Error deleting view', $result);
+        $this->assertDatabaseHas('data_table_views', [
+            'id' => $view->id,
+            'name' => 'Other View',
         ]);
     }
 

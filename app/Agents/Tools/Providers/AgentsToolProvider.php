@@ -7,7 +7,14 @@ use App\Agents\Tools\Workspace\ListAgents;
 use App\Models\User;
 use App\Services\AgentCommunicationService;
 use App\Services\AgentPermissionService;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers tools that let agents discover and contact other agents.
+ *
+ * ContactAgent needs permission checks and task context because it can create
+ * delegated work, while ListAgents remains a simple read-only workspace view.
+ */
 class AgentsToolProvider implements BuiltInToolProvider
 {
     public function __construct(
@@ -52,8 +59,10 @@ class AgentsToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // Keep ContactAgent explicit so delegation keeps its task linkage and
+        // permission evaluator instead of falling through to a generic ctor.
         return match ($class) {
             ContactAgent::class => new ContactAgent($agent, $this->permissionService, app(AgentCommunicationService::class), $context['task_id'] ?? null),
             ListAgents::class => new ListAgents,

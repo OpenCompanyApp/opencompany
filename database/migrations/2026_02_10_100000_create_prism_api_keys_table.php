@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Prism-compatible API keys are stored by hash/prefix only so plaintext
+        // keys are never persisted after creation.
         Schema::create('prism_api_keys', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name');

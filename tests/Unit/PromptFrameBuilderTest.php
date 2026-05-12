@@ -5,6 +5,9 @@ namespace Tests\Unit;
 use App\Services\Memory\PromptFrameBuilder;
 use Tests\TestCase;
 
+/**
+ * Covers prompt frame assembly and section budgeting.
+ */
 class PromptFrameBuilderTest extends TestCase
 {
     public function test_splits_stable_and_volatile_sections(): void

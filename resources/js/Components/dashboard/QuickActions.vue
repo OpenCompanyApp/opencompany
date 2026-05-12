@@ -24,6 +24,8 @@ interface QuickAction {
   icon: string
 }
 
+// Dashboard actions are event-only shortcuts; routing/modal ownership stays in
+// the dashboard page so this widget remains reusable.
 const actions: QuickAction[] = [
   { id: 'new-channel', label: 'New channel', icon: 'ph:hash' },
   { id: 'spawn-agent', label: 'Spawn agent', icon: 'ph:robot' },

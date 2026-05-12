@@ -4,7 +4,6 @@ namespace Tests\Feature\Tools;
 
 use App\Agents\Tools\Memory\ForgetMemory;
 use App\Jobs\IndexDocumentJob;
-use App\Models\Document;
 use App\Models\User;
 use App\Services\AgentDocumentService;
 use App\Services\Memory\DocumentIndexingService;
@@ -15,6 +14,9 @@ use Laravel\Ai\Tools\Request;
 use Mockery;
 use Tests\TestCase;
 
+/**
+ * Covers memory deletion and index cleanup behavior.
+ */
 class ForgetMemoryTest extends TestCase
 {
     use RefreshDatabase;
@@ -53,7 +55,7 @@ class ForgetMemoryTest extends TestCase
             'topic' => 'vue3-migration',
         ]));
 
-        $this->assertStringContainsString("forgotten", $result);
+        $this->assertStringContainsString('forgotten', $result);
         $this->assertNull($docService->getMemoryTopicFile($this->agent, 'vue3-migration'));
     }
 

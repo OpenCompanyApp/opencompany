@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Store enough context to resume an approved tool call and reply in the
+        // channel where approval was requested.
         Schema::table('approval_requests', function (Blueprint $table) {
             $table->jsonb('tool_execution_context')->nullable()->after('responded_at');
             $table->string('channel_id')->nullable()->after('tool_execution_context');

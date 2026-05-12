@@ -13,6 +13,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers table listing, schema reads, and row retrieval tools.
+ */
 class QueryTableTest extends TestCase
 {
     use RefreshDatabase;

@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // App settings hold typed JSON values grouped by category for admin
+        // configuration that is not tenant-specific.
         Schema::create('app_settings', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('key')->unique();

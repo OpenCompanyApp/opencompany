@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Direct message pairs point at an underlying channel so the chat stack
+        // can treat DMs and channels uniformly after lookup.
         Schema::create('direct_messages', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('user1_id');

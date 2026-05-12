@@ -2,15 +2,22 @@
 
 namespace App\Console\Commands;
 
-use App\Models\IntegrationSetting;
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Models\IntegrationSetting;
 use Illuminate\Console\Command;
 use Laravel\Ai\AnonymousAgent;
 use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
+/**
+ * Operator smoke test for the configured Z.AI/GLM relay provider.
+ *
+ * This performs a real model call after resolving the workspace integration
+ * overlay, so it validates both stored credentials and Laravel AI provider wiring.
+ */
 class TestGlmPing extends Command
 {
     protected $signature = 'z:ping {--prompt= : Custom prompt to send}';
+
     protected $description = 'Test Z.AI API connection';
 
     public function handle(): int
@@ -25,6 +32,8 @@ class TestGlmPing extends Command
 
         $registry = app(RelayRegistry::class);
         $provider = 'z';
+        // Use the relay registry default so the command follows provider
+        // upgrades such as GLM 5.1 without hardcoded model drift.
         $model = $registry->provider($provider)['default_model'] ?? null;
 
         if (! is_string($model) || $model === '') {
@@ -46,11 +55,13 @@ class TestGlmPing extends Command
             return Command::FAILURE;
         }
 
+        // Push the workspace-specific provider config into Laravel AI before
+        // the AnonymousAgent call resolves its provider instance.
         app(DynamicProviderResolver::class)
             ->setWorkspaceId($setting?->workspace_id)
             ->resolveFromParts($provider, (string) $model);
 
-        $this->line('Endpoint: ' . $url);
+        $this->line('Endpoint: '.$url);
         $this->line('API Key: configured');
         $this->newLine();
 

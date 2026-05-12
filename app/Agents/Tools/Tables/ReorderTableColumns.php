@@ -9,6 +9,12 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Updates display order for columns in a workspace table.
+ *
+ * The tool accepts partial order updates and ignores malformed entries so an
+ * agent can recover from stale schema snapshots without failing the whole call.
+ */
 class ReorderTableColumns implements Tool
 {
     public function __construct(
@@ -52,6 +58,8 @@ class ReorderTableColumns implements Tool
                     continue;
                 }
 
+                // Scope each update to the table before touching the column so
+                // unrelated column IDs in the payload are harmless no-ops.
                 DataTableColumn::where('id', $columnId)
                     ->where('table_id', $table->id)
                     ->update(['order' => $order]);

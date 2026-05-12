@@ -2,17 +2,22 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
+use Carbon\Carbon;
+use Database\Factories\TaskFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Concerns\BelongsToWorkspace;
+use Illuminate\Support\Str;
 
 /**
- * Task - Discrete work items that agents work on (like cases)
+ * Durable unit of work for agent execution and human-visible task history.
  *
- * Examples: support tickets, content requests, research tasks, analysis jobs
- * For kanban board items, see the ListItem model instead.
+ * Tasks are not kanban list cards; ListItem owns that product surface. Runtime
+ * jobs use Task to track chat requests, automation runs, delegation subtasks,
+ * status transitions, runtime context snapshots, and token/accounting metadata.
  *
  * @property array<string, mixed>|null $result
  * @property array<string, mixed>|null $context
@@ -20,45 +25,65 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property string|null $agent_id
  * @property string|null $channel_id
  * @property string|null $parent_task_id
- * @property \Carbon\Carbon|null $started_at
- * @property \Carbon\Carbon|null $completed_at
- * @property \Carbon\Carbon|null $due_at
- * @property \Carbon\Carbon|null $created_at
- * @property \Carbon\Carbon|null $updated_at
+ * @property Carbon|null $started_at
+ * @property Carbon|null $completed_at
+ * @property Carbon|null $due_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Task extends Model
 {
-    /** @use HasFactory<\Database\Factories\TaskFactory> */
-    use HasFactory, BelongsToWorkspace;
+    /** @use HasFactory<TaskFactory> */
+    use BelongsToWorkspace, HasFactory;
 
     protected $table = 'tasks';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     public const TYPE_TICKET = 'ticket';
+
     public const TYPE_REQUEST = 'request';
+
     public const TYPE_ANALYSIS = 'analysis';
+
     public const TYPE_CONTENT = 'content';
+
     public const TYPE_RESEARCH = 'research';
+
     public const TYPE_CUSTOM = 'custom';
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_PAUSED = 'paused';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_FAILED = 'failed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const PRIORITY_LOW = 'low';
+
     public const PRIORITY_NORMAL = 'normal';
+
     public const PRIORITY_HIGH = 'high';
+
     public const PRIORITY_URGENT = 'urgent';
 
     public const SOURCE_MANUAL = 'manual';
+
     public const SOURCE_CHAT = 'chat';
+
     public const SOURCE_AUTOMATION = 'automation';
+
     public const SOURCE_AGENT_DELEGATION = 'agent_delegation';
+
     public const SOURCE_AGENT_ASK = 'agent_ask';
+
     public const SOURCE_AGENT_NOTIFY = 'agent_notify';
 
     protected $fillable = [
@@ -183,12 +208,14 @@ class Task extends Model
     public function pause(): self
     {
         $this->update(['status' => self::STATUS_PAUSED]);
+
         return $this;
     }
 
     public function resume(): self
     {
         $this->update(['status' => self::STATUS_ACTIVE]);
+
         return $this;
     }
 
@@ -222,7 +249,8 @@ class Task extends Model
             'completed_at' => now(),
         ]);
 
-        // Cascade cancellation to active/pending subtasks
+        // Cascade only work that has not reached a terminal state. Completed or
+        // failed subtasks remain as historical evidence for the parent task.
         Task::where('parent_task_id', $this->id)
             ->whereIn('status', [self::STATUS_ACTIVE, self::STATUS_PENDING])
             ->get()
@@ -234,46 +262,46 @@ class Task extends Model
     // Query Scopes
 
     /**
-     * @param \Illuminate\Database\Eloquent\Builder<static> $query
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
-    public function scopePending(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopePending(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_PENDING);
     }
 
     /**
-     * @param \Illuminate\Database\Eloquent\Builder<static> $query
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
-    public function scopeActive(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_ACTIVE);
     }
 
     /**
-     * @param \Illuminate\Database\Eloquent\Builder<static> $query
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
-    public function scopeCompleted(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopeCompleted(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_COMPLETED);
     }
 
     /**
-     * @param \Illuminate\Database\Eloquent\Builder<static> $query
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
-    public function scopeForAgent(\Illuminate\Database\Eloquent\Builder $query, string $agentId): \Illuminate\Database\Eloquent\Builder
+    public function scopeForAgent(Builder $query, string $agentId): Builder
     {
         return $query->where('agent_id', $agentId);
     }
 
     /**
-     * @param \Illuminate\Database\Eloquent\Builder<static> $query
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
-    public function scopeForRequester(\Illuminate\Database\Eloquent\Builder $query, string $requesterId): \Illuminate\Database\Eloquent\Builder
+    public function scopeForRequester(Builder $query, string $requesterId): Builder
     {
         return $query->where('requester_id', $requesterId);
     }
@@ -285,10 +313,12 @@ class Task extends Model
      */
     public static function createPending(Message $message, User $agent, string $channelId, string $source = self::SOURCE_CHAT): self
     {
+        // AgentRespondJob starts pending tasks. Creating the row before dispatch
+        // gives retries, delegation callbacks, and UI progress a stable ID.
         return self::create([
-            'id' => \Illuminate\Support\Str::uuid()->toString(),
+            'id' => Str::uuid()->toString(),
             'workspace_id' => $agent->workspace_id,
-            'title' => \Illuminate\Support\Str::limit($message->content, 80),
+            'title' => Str::limit($message->content, 80),
             'description' => $message->content,
             'status' => self::STATUS_PENDING,
             'source' => $source,
@@ -333,9 +363,11 @@ class Task extends Model
     /** @param array<string, mixed> $metadata */
     public function addStep(string $description, string $type = 'action', array $metadata = []): TaskStep
     {
+        // Steps are append-only progress records for humans and agents. Keep
+        // metadata structured so runtime events can be inspected later.
         /** @var TaskStep */
         return $this->steps()->create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'description' => $description,
             'step_type' => $type,
             'status' => TaskStep::STATUS_PENDING,

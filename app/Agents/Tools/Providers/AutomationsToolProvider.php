@@ -9,7 +9,15 @@ use App\Agents\Tools\Workspace\ListAutomations;
 use App\Agents\Tools\Workspace\RunAutomation;
 use App\Agents\Tools\Workspace\UpdateAutomation;
 use App\Models\User;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers workspace automation tools.
+ *
+ * Automations are grouped separately from general workspace management because
+ * they are executable runtime assets: an agent can create, edit, and trigger
+ * scheduled prompt or Lua-script workflows.
+ */
 class AutomationsToolProvider implements BuiltInToolProvider
 {
     public function groupName(): string
@@ -78,8 +86,10 @@ class AutomationsToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // Automation tools share the same constructor shape: current agent is
+        // the actor and the tool class owns the specific query/update behavior.
         return new $class($agent);
     }
 }

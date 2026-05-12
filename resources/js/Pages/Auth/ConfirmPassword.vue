@@ -8,6 +8,8 @@ const form = useForm({
   password: '',
 })
 
+// Reset the password field after confirmation so a failed/successful navigation
+// does not leave sensitive input in component state.
 const submit = () => {
   form.post(route('password.confirm'), {
     onFinish: () => {

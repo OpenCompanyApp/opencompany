@@ -8,6 +8,9 @@ use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Responses\Data\ToolResult;
 use Tests\TestCase;
 
+/**
+ * Covers prompt/message pruning behavior around model context budgets.
+ */
 class ContextPrunerTest extends TestCase
 {
     public function test_prunes_older_large_read_results_and_keeps_recent_one(): void
