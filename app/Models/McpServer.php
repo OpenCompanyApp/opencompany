@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Models\Concerns\BelongsToWorkspace;
 
 /**
  * @property array<int, array<string, mixed>>|null $discovered_tools
@@ -20,9 +21,9 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property string $name
  * @property string $slug
  * @property string $account_alias
- * @property \Carbon\Carbon|null $tools_discovered_at
- * @property \Carbon\Carbon|null $created_at
- * @property \Carbon\Carbon|null $updated_at
+ * @property Carbon|null $tools_discovered_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class McpServer extends Model
 {
@@ -92,7 +93,7 @@ class McpServer extends Model
     {
         $slugs = [];
         foreach ($this->discovered_tools ?? [] as $tool) {
-            $slugs[] = 'mcp_' . $this->slug . '__' . Str::snake($tool['name']);
+            $slugs[] = 'mcp_'.$this->slug.'__'.Str::snake(str_replace('-', '_', $tool['name']));
         }
 
         return $slugs;
@@ -103,7 +104,7 @@ class McpServer extends Model
      */
     public function isToolDiscoveryStale(): bool
     {
-        if (!$this->tools_discovered_at) {
+        if (! $this->tools_discovered_at) {
             return true;
         }
 
@@ -120,7 +121,7 @@ class McpServer extends Model
         $config = $this->auth_config ?? [];
 
         return match ($this->auth_type) {
-            'bearer' => ['Authorization' => 'Bearer ' . ($config['token'] ?? '')],
+            'bearer' => ['Authorization' => 'Bearer '.($config['token'] ?? '')],
             'header' => [($config['header_name'] ?? 'Authorization') => ($config['header_value'] ?? '')],
             default => [],
         };
@@ -138,10 +139,10 @@ class McpServer extends Model
             default => null,
         };
 
-        if (!$value || strlen($value) < 8) {
+        if (! $value || strlen($value) < 8) {
             return $value ? '****' : null;
         }
 
-        return substr($value, 0, 4) . '***' . substr($value, -4);
+        return substr($value, 0, 4).'***'.substr($value, -4);
     }
 }

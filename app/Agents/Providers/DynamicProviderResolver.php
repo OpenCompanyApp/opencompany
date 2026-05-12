@@ -4,8 +4,10 @@ namespace App\Agents\Providers;
 
 use App\Models\IntegrationSetting;
 use App\Models\User;
+use App\Services\Ai\ModelCatalog;
+use App\Services\Ai\ProviderCatalog;
+use App\Services\Ai\ProviderConfigResolver;
 use InvalidArgumentException;
-use Laravel\Ai\AiManager;
 use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 class DynamicProviderResolver
@@ -14,6 +16,9 @@ class DynamicProviderResolver
 
     public function __construct(
         private ?RelayRegistry $registry = null,
+        private ?ProviderCatalog $providerCatalog = null,
+        private ?ModelCatalog $modelCatalog = null,
+        private ?ProviderConfigResolver $configResolver = null,
     ) {}
 
     /**
@@ -53,148 +58,25 @@ class DynamicProviderResolver
      */
     public function resolveFromParts(string $providerKey, string $model): array
     {
-        $providerKey = $this->registry()->canonicalProvider($providerKey) ?? $providerKey;
+        [$providerKey, $model] = $this->normalizeLegacyBrain($providerKey, $model);
+        $providerKey = $this->providers()->canonicalProvider($providerKey) ?? $providerKey;
 
-        if (! $this->registry()->hasProvider($providerKey)) {
+        if (! $this->providers()->hasProvider($providerKey)) {
             throw new InvalidArgumentException("Unknown provider: {$providerKey}");
         }
 
-        // Codex uses ChatGPT subscription OAuth, not workspace API keys.
-        if ($this->registry()->authMode($providerKey) === 'oauth') {
-            $this->registerCodexProvider();
-            return ['provider' => $providerKey, 'model' => $model];
-        }
-
-        $this->applyProviderConfig($providerKey);
-
-        return ['provider' => $providerKey, 'model' => $model];
+        return $this->config()->resolve($providerKey, $model, $this->workspaceId);
     }
 
     /**
-     * Dynamically register a workspace-configured provider in Laravel AI config.
+     * @return array{0: string, 1: string}
      */
-    private function applyProviderConfig(string $providerKey): void
+    private function normalizeLegacyBrain(string $providerKey, string $model): array
     {
-        $integration = IntegrationSetting::where('workspace_id', $this->workspaceId)
-            ->where('integration_id', $providerKey)
-            ->where('enabled', true)
-            ->first();
-
-        if (! $integration || ! $integration->hasValidConfig()) {
-            if ($this->canUseConfiguredProvider($providerKey)) {
-                $this->registerAiProviderConfig($providerKey, []);
-                $this->registerPrismProviderConfig($providerKey, []);
-                $this->purgeAiProvider($providerKey);
-
-                return;
-            }
-
-            throw new InvalidArgumentException(
-                "AI provider '{$providerKey}' is not configured. Please enable it in Integrations settings."
-            );
-        }
-
-        $apiKey = $integration->getConfigValue('api_key');
-        $url = $integration->getConfigValue('url') ?? $this->getDefaultUrl($providerKey);
-
-        $this->registerAiProviderConfig($providerKey, array_filter([
-            'key' => $apiKey,
-            'url' => $url,
-        ], static fn (mixed $value): bool => $value !== null && $value !== ''));
-        $this->registerPrismProviderConfig($providerKey, array_filter([
-            'api_key' => $apiKey,
-            'url' => $url,
-        ], static fn (mixed $value): bool => $value !== null && $value !== ''));
-        $this->purgeAiProvider($providerKey);
-    }
-
-    /**
-     * Register the Codex provider in AI SDK config.
-     * Codex uses OAuth tokens managed by the prism-codex package.
-     */
-    private function registerCodexProvider(): void
-    {
-        config([
-            'ai.providers.codex' => [
-                'driver' => 'codex',
-                'key' => 'codex-oauth',
-            ],
-        ]);
-
-        $this->purgeAiProvider('codex');
-    }
-
-    /**
-     * Check whether .env/config already provides this provider.
-     */
-    private function canUseConfiguredProvider(string $providerKey): bool
-    {
-        $configured = config("ai.providers.{$providerKey}");
-
-        if (is_array($configured) && array_key_exists('key', $configured) && filled($configured['key'])) {
-            return true;
-        }
-
-        if (filled(config("prism.providers.{$providerKey}.api_key"))) {
-            return true;
-        }
-
-        if (! $this->registry()->requiresApiKey($providerKey)
-            && filled(config("prism.providers.{$providerKey}.url") ?: config("ai.providers.{$providerKey}.url") ?: $this->getDefaultUrl($providerKey))) {
-            return true;
-        }
-
-        return ! $this->registry()->requiresApiKey($providerKey);
-    }
-
-    /**
-     * @param  array<string, mixed>  $overrides
-     */
-    private function registerAiProviderConfig(string $providerKey, array $overrides): void
-    {
-        $fallbackKey = config("ai.providers.{$providerKey}.key")
-            ?: config("prism.providers.{$providerKey}.api_key");
-
-        config(["ai.providers.{$providerKey}" => array_merge(
-            config("ai.providers.{$providerKey}", []),
-            array_filter([
-                'driver' => $providerKey,
-                'key' => $fallbackKey,
-                'url' => $this->getDefaultUrl($providerKey),
-            ], static fn (mixed $value): bool => $value !== null && $value !== ''),
-            $overrides,
-        )]);
-    }
-
-    /**
-     * @param  array<string, mixed>  $overrides
-     */
-    private function registerPrismProviderConfig(string $providerKey, array $overrides): void
-    {
-        config(["prism.providers.{$providerKey}" => array_merge(
-            config("prism.providers.{$providerKey}", []),
-            array_filter([
-                'api_key' => config("prism.providers.{$providerKey}.api_key")
-                    ?: config("ai.providers.{$providerKey}.key"),
-                'url' => $this->getDefaultUrl($providerKey),
-            ], static fn (mixed $value): bool => $value !== null && $value !== ''),
-            $overrides,
-        )]);
-    }
-
-    private function purgeAiProvider(string $providerKey): void
-    {
-        if (app()->bound(AiManager::class)) {
-            app(AiManager::class)->purge($providerKey);
-        }
-    }
-
-    /**
-     * Get default URL for a known provider.
-     */
-    private function getDefaultUrl(string $providerKey): ?string
-    {
-        return $this->registry()->url($providerKey) ?: null;
+        return match ($providerKey) {
+            'glm-coding' => ['z', str_starts_with($model, 'glm-4.') ? 'glm-5.1' : $model],
+            default => [$providerKey, $model],
+        };
     }
 
     /**
@@ -206,15 +88,30 @@ class DynamicProviderResolver
         $setting = IntegrationSetting::where('workspace_id', $this->workspaceId)
             ->where('integration_id', $providerKey)->first();
         $models = $setting?->getConfigValue('models', []);
-        if (is_array($models) && !empty($models)) {
+        if (is_array($models) && ! empty($models)) {
             return array_key_first($models);
         }
 
-        return (string) ($this->registry()->provider($providerKey)['default_model'] ?? 'default');
+        return $this->models()->defaultModel($providerKey, $this->workspaceId);
     }
 
     private function registry(): RelayRegistry
     {
         return $this->registry ??= app(RelayRegistry::class);
+    }
+
+    private function providers(): ProviderCatalog
+    {
+        return $this->providerCatalog ??= app(ProviderCatalog::class);
+    }
+
+    private function models(): ModelCatalog
+    {
+        return $this->modelCatalog ??= app(ModelCatalog::class);
+    }
+
+    private function config(): ProviderConfigResolver
+    {
+        return $this->configResolver ??= app(ProviderConfigResolver::class);
     }
 }

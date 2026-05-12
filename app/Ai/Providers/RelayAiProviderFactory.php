@@ -40,6 +40,9 @@ class RelayAiProviderFactory
         $url = $this->filledString($config['url'] ?? null)
             ?? $this->filledString($providerDefinition['url'] ?? null);
         $driver = $this->registry->laravelAiDriver($canonical, $url);
+        if ($canonical === 'cohere') {
+            $driver = 'cohere';
+        }
 
         return $this->createAnonymous($canonical, $driver, $providerDefinition, array_merge($config, [
             'name' => $config['name'] ?? $name,

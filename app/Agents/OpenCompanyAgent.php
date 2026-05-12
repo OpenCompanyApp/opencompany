@@ -4,7 +4,10 @@ namespace App\Agents;
 
 use App\Agents\Conversations\ChannelConversationLoader;
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Agents\Runtime\Subagents\GenericSubagent;
+use App\Agents\Runtime\Subagents\OrchestrateSubagents;
 use App\Agents\Tools\ToolRegistry;
+use App\Ai\Contracts\HasSystemPrompts;
 use App\Models\AppSetting;
 use App\Models\Channel;
 use App\Models\Task;
@@ -14,20 +17,19 @@ use App\Services\AgentDocumentService;
 use App\Services\Memory\ContextPruner;
 use App\Services\Memory\PromptFrameBuilder;
 use App\Services\Memory\ToolResultDeduplicator;
+use Illuminate\Support\Str;
+use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
-use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Promptable;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
-use Illuminate\Support\Str;
-use App\Ai\Contracts\HasSystemPrompts;
 
 #[MaxTokens(16_384)]
-class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemPrompts
+class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTools
 {
     use Promptable;
 
@@ -202,7 +204,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
             // Identity files: IDENTITY + INSTRUCTIONS (always loaded)
             foreach (['IDENTITY', 'INSTRUCTIONS'] as $type) {
                 $file = $identityFiles->firstWhere('title', "{$type}.md");
-                if ($file && !empty(trim($file->content))) {
+                if ($file && ! empty(trim($file->content))) {
                     $sections[] = ['label' => "{$type}.md", 'content' => "## {$type}.md\n\n{$file->content}\n\n"];
                 }
             }
@@ -214,7 +216,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
             if ($isPrivateChannel) {
                 // MEMORY.md (core knowledge + index)
                 $memoryFile = $identityFiles->firstWhere('title', 'MEMORY.md');
-                if ($memoryFile && !empty(trim($memoryFile->content))) {
+                if ($memoryFile && ! empty(trim($memoryFile->content))) {
                     $sections[] = ['label' => 'MEMORY.md', 'content' => "## MEMORY.md\n\n{$memoryFile->content}\n\n"];
                 }
 
@@ -242,9 +244,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
             $sections[] = ['label' => 'Current Task', 'content' => $taskContext];
         }
 
-        $apps = $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
+        $apps = $this->toolRegistry->getAppCatalog($this->agent)."\n\n";
         $apps .= "To generate images/PDFs: use lua_exec with app.svg, app.integrations.mermaid, app.integrations.plantuml, app.integrations.vegalite, or app.integrations.typst. NEVER fabricate image/document URLs.\n";
-        if (!$identityFiles->isEmpty()) {
+        if (! $identityFiles->isEmpty()) {
             $apps .= "Tools marked with * require approval.\n";
         }
         $sections[] = ['label' => 'Apps', 'content' => $apps];
@@ -371,7 +373,30 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
         $this->toolRegistry->setChannelContext($this->channelId);
         $this->toolRegistry->setTaskContext($this->taskId);
 
-        return $this->toolRegistry->getToolsForAgent($this->agent);
+        return [
+            ...$this->toolRegistry->getToolsForAgent($this->agent),
+            OrchestrateSubagents::for($this->agent, $this->channelId, $this->taskId),
+            ...$this->genericSubagents(),
+        ];
+    }
+
+    /**
+     * @return list<GenericSubagent>
+     */
+    private function genericSubagents(): array
+    {
+        return User::query()
+            ->where('workspace_id', $this->agent->workspace_id)
+            ->where('type', 'agent')
+            ->where(fn ($query) => $query->whereNull('agent_type')->orWhere('agent_type', '!=', 'system'))
+            ->where('id', '!=', $this->agent->id)
+            ->orderBy('name')
+            ->orderBy('id')
+            ->limit((int) config('agents.subagents.max_tools', 8))
+            ->get()
+            ->map(fn (User $agent) => GenericSubagent::for($agent, $this->channelId, $this->taskId))
+            ->values()
+            ->all();
     }
 
     /**
@@ -404,7 +429,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
     private function buildChannelContext(): string
     {
         $channel = Channel::with('users')->find($this->channelId);
-        if (!$channel) {
+        if (! $channel) {
             return '';
         }
 
@@ -418,8 +443,8 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
 
         // List channel members
         $members = $channel->users->pluck('name')->toArray();
-        if (!empty($members)) {
-            $prompt .= "Channel members: " . implode(', ', $members) . "\n";
+        if (! empty($members)) {
+            $prompt .= 'Channel members: '.implode(', ', $members)."\n";
         }
 
         $prompt .= "\nYour response text is sent directly to this channel — you do NOT need to use send_channel_message or read_recent_messages for the current conversation. Use those tools only to interact with OTHER channels.\n\n";
@@ -432,12 +457,12 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
      */
     private function buildTaskContext(): string
     {
-        if (!$this->taskId) {
+        if (! $this->taskId) {
             return '';
         }
 
         $task = Task::with('steps')->find($this->taskId);
-        if (!$task) {
+        if (! $task) {
             return '';
         }
 
@@ -452,7 +477,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational, HasSystemProm
         if ($task->steps->isNotEmpty()) {
             $prompt .= "\nSteps:\n";
             foreach ($task->steps as $step) {
-                /** @var \App\Models\TaskStep $step */
+                /** @var TaskStep $step */
                 $prompt .= "- [{$step->status}] {$step->description}\n";
             }
         }

@@ -2,16 +2,23 @@
 
 namespace App\Jobs;
 
-use App\Agents\OpenCompanyAgent;
+use App\Agents\Runtime\AgentRunBuilder;
+use App\Agents\Runtime\AgentRunFailed;
+use App\Agents\Runtime\AgentRunOptions;
 use App\Events\AgentStatusUpdated;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
+use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Models\Channel;
 use App\Models\DirectMessage;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\Task;
+use App\Models\TaskStep;
 use App\Models\User;
+use App\Services\AgentCommunicationService;
+use App\Services\Memory\MemoryFlushService;
+use App\Services\TelegramService;
 use App\Support\TokenMetrics;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -19,19 +26,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use App\Jobs\Concerns\SetsWorkspaceContext;
-use App\Services\AgentCommunicationService;
-use App\Services\AgentDocumentService;
-use App\Services\Memory\ContextBudget;
-use App\Services\Memory\ModelContextRegistry;
-use App\Services\TelegramService;
-use Laravel\Ai\Responses\AgentResponse;
-use Laravel\Ai\Responses\Data\FinishReason;
 use Illuminate\Support\Facades\Log;
-use App\Ai\Prompting\SystemPromptBag;
 use Illuminate\Support\Str;
+use Laravel\Ai\Responses\AgentResponse;
 
-class AgentRespondJob implements ShouldQueue, ShouldBeUnique
+class AgentRespondJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     use SetsWorkspaceContext;
@@ -69,7 +68,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return $this->userMessage->id . ':' . $this->agent->id;
+        return $this->userMessage->id.':'.$this->agent->id;
     }
 
     public function failed(\Throwable $exception): void
@@ -100,7 +99,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             }
         }
 
-        if (!$task) {
+        if (! $task) {
             // Check for a pending delegation/ask/notify task for this agent on this channel
             $task = Task::where('agent_id', $this->agent->id)
                 ->where('channel_id', $this->channelId)
@@ -150,7 +149,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
         // Guard: skip retry if a response was already delivered for this task
         $hasDeliveredResponse = $task->steps()
             ->where('description', 'Response delivered')
-            ->where('status', \App\Models\TaskStep::STATUS_COMPLETED)
+            ->where('status', TaskStep::STATUS_COMPLETED)
             ->exists();
 
         // Also check for an existing agent message (covers edge case where
@@ -170,9 +169,10 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 'agent' => $this->agent->name,
                 'attempt' => $this->attempts(),
             ]);
-            if (!$task->isTerminal()) {
+            if (! $task->isTerminal()) {
                 $task->complete(['response' => '(completed on previous attempt)']);
             }
+
             return;
         }
 
@@ -191,53 +191,27 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             // Step 1: Generate response
             $llmStep = $task->addStep('Generating response', 'action');
 
-            // Create the agent and get a response (task context is in system prompt)
-            $agentInstance = OpenCompanyAgent::for($this->agent, $this->channelId, $task->id);
-
-            // On retry: inject checkpointed tool calls so the LLM continues from where it left off
-            if ($this->attempts() > 1) {
-                $agentInstance->resumeFrom($task->id);
-            }
+            $agentRun = app(AgentRunBuilder::class)->build(
+                $this->agent,
+                $this->channelId,
+                $task->id,
+                new AgentRunOptions(resumeFromTask: $this->attempts() > 1),
+            );
+            $agentInstance = $agentRun->agent();
 
             $currentMessages = [];
 
             // Capture LLM context before prompting (for observability)
             try {
-                $toolRegistry = app(\App\Agents\Tools\ToolRegistry::class);
-                $promptFrame = $agentInstance->promptFrame();
                 $currentMessages = $agentInstance->messages();
-                $contextBudget = app(ContextBudget::class)->snapshotForAgent(
-                    $this->agent,
-                    $currentMessages,
-                    $agentInstance->fullInstructions(),
-                );
-                $task->update([
-                    'context' => [
-                        'system_prompt' => $agentInstance->instructions(),
-                        'full_system_prompt' => $agentInstance->fullInstructions(),
-                        'volatile_prompt_context' => $agentInstance->volatilePromptContext(),
-                        'messages' => collect($currentMessages) /** @phpstan-ignore argument.templateType */
-                            ->map(fn ($m) => [
-                                'role' => $m->role->value,
-                                'content' => Str::limit($m->content ?? '', 2000),
-                            ])->values()->toArray(),
-                        'tools' => $toolRegistry->getToolSlugsForAgent($this->agent),
-                        'model' => $agentInstance->model(),
-                        'provider' => $agentInstance->provider(),
-                        'prompt_sections' => $promptFrame['stable_breakdown'],
-                        'volatile_prompt_sections' => $promptFrame['volatile_breakdown'],
-                        'context_window' => app(ModelContextRegistry::class)
-                            ->getContextWindow($agentInstance->model(), $agentInstance->provider()),
-                        'context_budget' => $contextBudget,
-                    ],
-                ]);
+                $task->update(['context' => $agentRun->snapshot()]);
             } catch (\Throwable $e) {
                 Log::warning('Failed to capture LLM context', ['error' => $e->getMessage()]);
             }
 
             // Memory flush: save important context to LTM before compaction
             try {
-                $flushService = app(\App\Services\Memory\MemoryFlushService::class);
+                $flushService = app(MemoryFlushService::class);
                 if ($flushService->shouldFlush($this->channelId, $this->agent, $currentMessages, $agentInstance->fullInstructions())) {
                     $flushStep = $task->addStep('Flushing memories before compaction', 'action');
                     $flushStep->start();
@@ -249,45 +223,21 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
             }
 
             $llmStep->start();
-            app()->instance(SystemPromptBag::class, new SystemPromptBag(
-                $agentInstance->systemPrompts()
-            ));
-            $response = $agentInstance->prompt(
+            $runResult = $agentRun->run(
                 $this->buildPromptWithThreadContext($this->userMessage)
             );
+            $response = $runResult->response;
+            $responseText = $runResult->text;
+            $context = $task->context ?? [];
+            $context['runtime_events'] = array_map(fn ($event) => $event->toArray(), $runResult->events);
+            $task->update(['context' => $context]);
 
             $lastStep = $response->steps->last();
-
-            // If any step was truncated (Length), concatenate text from all steps.
-            $wasTruncated = $response->steps->contains(
-                fn ($step) => $step->finishReason === FinishReason::Length
-            );
-
-            if ($wasTruncated) {
-                $responseText = $response->steps
-                    ->filter(fn ($step) => !empty($step->text))
-                    ->pluck('text')
-                    ->join('');
-
-                Log::info('Agent response auto-continued after truncation', [
-                    'agent' => $this->agent->name,
-                    'channel' => $this->channelId,
-                    'continuation_steps' => $response->steps->filter(
-                        fn ($step) => $step->finishReason === FinishReason::Length
-                    )->count(),
-                ]);
-            } else {
-                $responseText = $response->text;
-            }
-
-            if (empty($responseText)) {
-                $responseText = "I processed your request but didn't generate a text response.";
-            }
 
             $llmStep->complete();
 
             // Mark agent as bootstrapped after first successful interaction
-            if (!$this->agent->bootstrapped_at) {
+            if (! $this->agent->bootstrapped_at) {
                 try {
                     $this->agent->update(['bootstrapped_at' => now()]);
                 } catch (\Throwable $e) {
@@ -307,7 +257,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 ->whereNotIn('status', [Task::STATUS_COMPLETED, Task::STATUS_FAILED, Task::STATUS_CANCELLED])
                 ->exists();
 
-            if (!empty($this->agent->awaiting_delegation_ids) || $hasActiveSubtasks) {
+            if (! empty($this->agent->awaiting_delegation_ids) || $hasActiveSubtasks) {
                 $awaitingIds = $this->agent->awaiting_delegation_ids ?? [];
                 $awaitingTasks = Task::whereIn('id', $awaitingIds)->with('agent')->get();
                 $agentNames = $awaitingTasks->pluck('agent.name')->filter()->unique()->join(', ') ?: 'agents';
@@ -447,7 +397,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 $task->update(['context' => $context]);
             } catch (\Throwable $e) {
                 Log::warning('Post-delivery bookkeeping failed', ['error' => $e->getMessage(), 'task' => $task->id]);
-                if (!$task->isTerminal()) {
+                if (! $task->isTerminal()) {
                     $task->complete(['response' => $responseText]);
                 }
             }
@@ -466,6 +416,12 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                 'tokens' => ($response->usage->promptTokens ?? 0) + ($response->usage->completionTokens ?? 0),
             ]);
         } catch (\Throwable $e) {
+            if ($e instanceof AgentRunFailed) {
+                $context = $task->context ?? [];
+                $context['runtime_events'] = array_map(fn ($event) => $event->toArray(), $e->events);
+                $task->update(['context' => array_merge($context, $e->contextSnapshot)]);
+            }
+
             // If response was already delivered to the user, don't retry —
             // only post-delivery bookkeeping failed, which is non-critical.
             if ($responseDelivered) {
@@ -515,14 +471,14 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
         try {
             foreach ($response->steps as $step) {
                 foreach ($step->toolResults as $toolResult) {
-                    if (!in_array($toolResult->name, ['RenderSvg', 'RenderMermaid', 'RenderPlantUml', 'RenderTypst', 'RenderVegaLite'])) {
+                    if (! in_array($toolResult->name, ['RenderSvg', 'RenderMermaid', 'RenderPlantUml', 'RenderTypst', 'RenderVegaLite'])) {
                         continue;
                     }
 
                     $result = $toolResult->result ?? '';
                     if (preg_match('#(/storage/(?:svg|mermaid|plantuml|vegalite)/[a-f0-9-]+\.png|/storage/typst/[a-f0-9-]+\.pdf)#', $result, $m)) {
                         $url = $m[1];
-                        $filePath = storage_path('app/public/' . str_replace('/storage/', '', $url));
+                        $filePath = storage_path('app/public/'.str_replace('/storage/', '', $url));
 
                         MessageAttachment::create([
                             'id' => Str::uuid()->toString(),
@@ -553,12 +509,12 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
     {
         try {
             $channel = Channel::find($this->channelId);
-            if ($channel?->type !== 'external' || $channel->external_provider !== 'telegram' || !$channel->external_id) {
+            if ($channel?->type !== 'external' || $channel->external_provider !== 'telegram' || ! $channel->external_id) {
                 return;
             }
 
             $telegram = app(TelegramService::class);
-            if (!$telegram->isConfigured()) {
+            if (! $telegram->isConfigured()) {
                 return;
             }
 
@@ -584,11 +540,12 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
     {
         try {
             $parentTask = $subtask->parentTask;
-            if (!$parentTask) {
+            if (! $parentTask) {
                 Log::warning('Delegation callback: parent task not found', [
                     'subtask' => $subtask->id,
                     'parent_task_id' => $subtask->parent_task_id,
                 ]);
+
                 return;
             }
 
@@ -601,15 +558,17 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                     'parent_task_id' => $parentTask->id,
                     'parent_status' => $parentTask->status,
                 ]);
+
                 return;
             }
 
             $parentAgent = User::find($parentTask->agent_id);
-            if (!$parentAgent) {
+            if (! $parentAgent) {
                 Log::warning('Delegation callback: parent agent not found', [
                     'subtask' => $subtask->id,
                     'parent_agent_id' => $parentTask->agent_id,
                 ]);
+
                 return;
             }
 
@@ -640,6 +599,7 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
                     $agent = User::find($st->agent_id);
                     $agentName = ($agent ? $agent->name : 'Unknown');
                     $response = $st->result['response'] ?? ($st->result['error'] ?? 'Completed.');
+
                     return "--- {$agentName}'s response ---\n{$response}";
                 })->join("\n\n");
 
@@ -691,12 +651,12 @@ class AgentRespondJob implements ShouldQueue, ShouldBeUnique
     {
         $prompt = $message->content;
 
-        if (!$message->reply_to_id) {
+        if (! $message->reply_to_id) {
             return $prompt;
         }
 
         $parent = $message->replyTo()->with('author')->first();
-        if (!$parent) {
+        if (! $parent) {
             return $prompt;
         }
 

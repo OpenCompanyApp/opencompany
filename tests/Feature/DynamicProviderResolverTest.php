@@ -28,7 +28,7 @@ class DynamicProviderResolverTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->resolver = new DynamicProviderResolver();
+        $this->resolver = new DynamicProviderResolver;
     }
 
     public function test_resolves_standard_provider(): void
@@ -108,6 +108,33 @@ class DynamicProviderResolverTest extends TestCase
         $this->assertInstanceOf(DeepSeekGateway::class, $provider->textGateway()->inner());
     }
 
+    public function test_legacy_glm_coding_brain_resolves_to_current_glm_provider(): void
+    {
+        $registry = app(RelayRegistry::class);
+
+        IntegrationSetting::create([
+            'id' => 'int-1',
+            'integration_id' => 'z',
+            'enabled' => true,
+            'workspace_id' => $this->workspace->id,
+            'config' => [
+                'api_key' => 'test-api-key',
+                'url' => $registry->url('z'),
+            ],
+        ]);
+
+        $agent = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'glm-coding:glm-4.7',
+            'workspace_id' => $this->workspace->id,
+        ]);
+
+        $result = $this->resolver->resolve($agent);
+
+        $this->assertSame('z', $result['provider']);
+        $this->assertSame('glm-5.1', $result['model']);
+    }
+
     public function test_throws_for_unconfigured_z_provider(): void
     {
         $registry = app(RelayRegistry::class);
@@ -120,7 +147,7 @@ class DynamicProviderResolverTest extends TestCase
         ]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("not configured");
+        $this->expectExceptionMessage('not configured');
 
         $this->resolver->resolve($agent);
     }
@@ -133,7 +160,7 @@ class DynamicProviderResolverTest extends TestCase
         ]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("Unknown provider");
+        $this->expectExceptionMessage('Unknown provider');
 
         $this->resolver->resolve($agent);
     }

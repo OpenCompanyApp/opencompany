@@ -6,422 +6,82 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovalRequest;
 use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
-use App\Models\McpServer;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\UserExternalIdentity;
+use App\Services\Ai\ModelCatalog;
+use App\Services\Ai\ModelRuntimeCatalog;
 use App\Services\Integrations\ConfigSchemaNormalizer;
-use App\Services\TelegramService;
+use App\Services\Integrations\IntegrationAccountResolver;
+use App\Services\Integrations\IntegrationConfigResolver;
+use App\Services\Integrations\IntegrationConnectionTester;
+use App\Services\Integrations\IntegrationDirectory;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use OpenCompany\PrismCodex\CodexTokenStore;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IntegrationController extends Controller
 {
     /**
      * Get all integrations with their status
      */
-    public function index(): \Illuminate\Http\JsonResponse
+    public function index(): JsonResponse
     {
-        $settings = IntegrationSetting::forWorkspace()->default()->get()->keyBy('integration_id');
-        $available = IntegrationSetting::getAvailableIntegrations();
-        $registry = app(ToolProviderRegistry::class);
-
-        $integrations = [];
-
-        // Static integrations (Z.AI, Telegram, Codex — no ToolProvider package)
-        foreach ($available as $id => $info) {
-            // Codex uses OAuth tokens, not API keys
-            if ($id === 'codex') {
-                $codexToken = CodexTokenStore::current();
-                $integrations[] = [
-                    'id' => $id,
-                    'name' => $info['name'],
-                    'description' => $info['description'],
-                    'icon' => $info['icon'],
-                    'category' => $info['category'] ?? null,
-                    'models' => $info['models'] ?? null,
-                    'enabled' => $codexToken !== null && !$codexToken->isExpired(),
-                    'configured' => $codexToken !== null,
-                    'configurable' => false,
-                    'authType' => 'oauth',
-                ];
-                continue;
-            }
-
-            /** @var IntegrationSetting|null $setting */
-            $setting = $settings->get($id);
-            $configFields = $info['config_fields'] ?? null;
-            $integrations[] = [
-                'id' => $id,
-                'name' => $info['name'],
-                'description' => $info['description'],
-                'icon' => $info['icon'],
-                'category' => $info['category'] ?? null,
-                'models' => $info['models'] ?? null,
-                'defaultUrl' => $info['default_url'] ?? null,
-                'enabled' => $setting ? $setting->enabled : false,
-                'configured' => $setting ? $setting->hasValidConfig() : false,
-                'configurable' => $configFields !== null,
-                'configSchema' => $configFields ? $this->buildConfigSchema($configFields) : null,
-            ];
-        }
-
-        // Dynamic integrations from ToolProviderRegistry
-        foreach ($registry->all() as $provider) {
-            if (!($provider instanceof ConfigurableIntegration)) {
-                continue;
-            }
-            $meta = $provider->integrationMeta();
-            /** @var IntegrationSetting|null $setting */
-            $setting = $settings->get($provider->appName());
-            $integrations[] = [
-                'id' => $provider->appName(),
-                'name' => $meta['name'],
-                'description' => $meta['description'],
-                'icon' => $meta['icon'],
-                'logo' => $meta['logo'] ?? null,
-                'category' => $meta['category'],
-                'badge' => $meta['badge'] ?? null,
-                'docsUrl' => $meta['docs_url'] ?? null,
-                'enabled' => $setting ? $setting->enabled : false,
-                'configured' => $setting ? $setting->hasValidConfig() : false,
-                'configurable' => true,
-                'configSchema' => ConfigSchemaNormalizer::normalize($provider->configSchema()),
-            ];
-        }
-
-        // Non-configurable integration ToolProviders (built-in rendering tools, etc.)
-        foreach ($registry->all() as $provider) {
-            if ($provider instanceof ConfigurableIntegration) {
-                continue; // Already handled above
-            }
-            if (!$provider->isIntegration()) {
-                continue;
-            }
-            $meta = $provider->appMeta();
-            /** @var IntegrationSetting|null $setting */
-            $setting = $settings->get($provider->appName());
-            $integrations[] = [
-                'id' => $provider->appName(),
-                'name' => $meta['description'] ?? $provider->appName(),
-                'description' => $meta['label'] ?? '',
-                'icon' => $meta['icon'] ?? 'ph:puzzle-piece',
-                'logo' => $meta['logo'] ?? null,
-                'category' => 'built-in-tools',
-                'badge' => 'built-in',
-                'enabled' => $setting?->enabled ?? false,
-                'configured' => true,
-                'configurable' => false,
-            ];
-        }
-
-        // MCP servers (remote tool providers)
-        $mcpServers = McpServer::forWorkspace()->where('enabled', true)->get();
-        foreach ($mcpServers as $server) {
-            $integrations[] = [
-                'id' => 'mcp_' . $server->slug,
-                'name' => $server->name,
-                'description' => $server->description ?? 'Remote MCP server',
-                'icon' => $server->icon,
-                'enabled' => true,
-                'configured' => true,
-                'configurable' => false,
-                'type' => 'mcp',
-                'badge' => 'mcp',
-                'mcpServerId' => $server->id,
-                'toolCount' => count($server->discovered_tools ?? []),
-                'url' => $server->url,
-            ];
-        }
-
-        return response()->json($integrations);
+        return response()->json(app(IntegrationDirectory::class)->all());
     }
 
     /**
      * Get configuration for a specific integration (masked API key)
      */
-    public function showConfig(Request $request, string $id): \Illuminate\Http\JsonResponse
+    public function showConfig(Request $request, string $id): JsonResponse
     {
-        $account = $this->accountFromRequest($request);
+        $config = app(IntegrationConfigResolver::class)->show(
+            $id,
+            app(IntegrationAccountResolver::class)->accountFromRequest($request),
+        );
 
-        // Check dynamic providers first
-        $provider = $this->findConfigurableProvider($id);
-        if ($provider) {
-            $setting = $this->findIntegrationSetting($id, $account);
-            $schema = ConfigSchemaNormalizer::normalize($provider->configSchema());
-            $meta = $provider->integrationMeta();
-
-            $config = [];
-            /** @var array{key: string, type: string, label: string, default?: mixed} $field */
-            foreach ($schema as $field) {
-                $key = $field['key'];
-                if ($field['type'] === 'secret' || $field['type'] === 'oauth_connect') {
-                    $config[$key] = $setting?->getMaskedValue($key);
-                } else {
-                    $config[$key] = $setting?->getConfigValue($key, $field['default'] ?? null)
-                        ?? ($field['default'] ?? null);
-                }
-            }
-
-            // Pre-populate shared Google Cloud credentials from sibling integrations
-            $googleIntegrations = $this->googleIntegrationIds();
-            if (in_array($id, $googleIntegrations, true)) {
-                foreach (['client_id', 'client_secret'] as $sharedKey) {
-                    if (empty($config[$sharedKey])) {
-                        foreach ($googleIntegrations as $sibling) {
-                            if ($sibling === $id) {
-                                continue;
-                            }
-                            $siblingSetting = $this->findIntegrationSetting($sibling, $account);
-                            $siblingVal = $siblingSetting?->getConfigValue($sharedKey);
-                            if (! empty($siblingVal) && is_string($siblingVal)) {
-                                $config[$sharedKey] = $sharedKey === 'client_secret'
-                                    ? $siblingSetting->getMaskedValue($sharedKey)
-                                    : $siblingVal;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return response()->json([
-                'id' => $id,
-                'name' => $meta['name'],
-                'description' => $meta['description'],
-                'icon' => $meta['icon'] ?? 'ph:gear',
-                'logo' => $meta['logo'] ?? null,
-                'category' => $meta['category'] ?? null,
-                'docsUrl' => $meta['docs_url'] ?? null,
-                'enabled' => $setting ? $setting->enabled : false,
-                'config' => $config,
-                'configSchema' => $schema,
-            ]);
-        }
-
-        // Static integrations (Z.AI, Telegram, chat platforms)
-        $available = IntegrationSetting::getAvailableIntegrations();
-        if (!isset($available[$id])) {
+        if ($config === null) {
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
-        $setting = $this->findIntegrationSetting($id, $account);
-
-        // Chat platform integrations with config_fields → use generic schema-based config
-        $configFields = $available[$id]['config_fields'] ?? null;
-        if ($configFields) {
-            $schema = $this->buildConfigSchema($configFields);
-            $config = [];
-            foreach ($schema as $field) {
-                $key = $field['key'];
-                if ($field['type'] === 'secret') {
-                    $config[$key] = $setting?->getMaskedValue($key);
-                } else {
-                    $config[$key] = $setting?->getConfigValue($key, $field['default'] ?? null)
-                        ?? ($field['default'] ?? null);
-                }
-            }
-
-            return response()->json([
-                'id' => $id,
-                'name' => $available[$id]['name'],
-                'description' => $available[$id]['description'],
-                'icon' => $available[$id]['icon'] ?? 'ph:gear',
-                'enabled' => $setting ? $setting->enabled : false,
-                'config' => $config,
-                'configSchema' => $schema,
-            ]);
-        }
-
-        // AI model integrations (Z.AI, Perplexity, etc.)
-        $config = [
-            'apiKey' => $setting?->getMaskedApiKey(),
-            'url' => $setting?->getConfigValue('url') ?? ($available[$id]['default_url'] ?? ''),
-            'defaultModel' => $setting?->getConfigValue('default_model') ?? array_key_first($available[$id]['models'] ?? []),
-        ];
-
-        return response()->json([
-            'id' => $id,
-            'name' => $available[$id]['name'],
-            'description' => $available[$id]['description'],
-            'icon' => $available[$id]['icon'] ?? 'ph:gear',
-            'models' => $available[$id]['models'] ?? null,
-            'defaultUrl' => $available[$id]['default_url'] ?? null,
-            'apiFormat' => $available[$id]['api_format'] ?? null,
-            'apiKeyUrl' => $available[$id]['api_key_url'] ?? null,
-            'enabled' => $setting ? $setting->enabled : false,
-            'config' => $config,
-        ]);
+        return response()->json($config);
     }
 
     /**
      * Save configuration for an integration
      */
-    public function updateConfig(Request $request, string $id): \Illuminate\Http\JsonResponse
+    public function updateConfig(Request $request, string $id): JsonResponse
     {
-        $account = $this->accountFromRequest($request);
+        [$payload, $status] = app(IntegrationConfigResolver::class)->update(
+            $request,
+            $id,
+            app(IntegrationAccountResolver::class)->accountFromRequest($request),
+        );
 
-        // Check dynamic providers first
-        $provider = $this->findConfigurableProvider($id);
-        if ($provider) {
-            $request->validate(array_merge(
-                $provider->validationRules(),
-                ['enabled' => 'nullable|boolean'],
-            ));
-
-            $setting = $this->findOrNewIntegrationSetting($id, $account);
-
-            $config = $setting->config ?? [];
-            /** @var array{key: string, type: string, label: string, default?: mixed} $field */
-            foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
-                $key = $field['key'];
-                if (!$request->has($key)) {
-                    continue;
-                }
-
-                // Skip OAuth-managed fields (set by OAuth callback, not user input)
-                if ($field['type'] === 'oauth_connect') {
-                    continue;
-                }
-
-                // Skip masked secret values (user didn't change them)
-                if ($field['type'] === 'secret') {
-                    $value = $request->input($key);
-                    if (!$value || str_contains($value, '*')) {
-                        continue;
-                    }
-                }
-
-                $config[$key] = $request->input($key, $field['default'] ?? null);
-            }
-
-            // Copy shared Google credentials from sibling integrations
-            $googleIntegrations = $this->googleIntegrationIds();
-            if (in_array($id, $googleIntegrations, true)) {
-                foreach (['client_id', 'client_secret'] as $sharedKey) {
-                    if (empty($config[$sharedKey])) {
-                        foreach ($googleIntegrations as $sibling) {
-                            if ($sibling === $id) {
-                                continue;
-                            }
-                            $siblingVal = $this->findIntegrationSetting($sibling, $account)?->getConfigValue($sharedKey);
-                            if (! empty($siblingVal) && is_string($siblingVal)) {
-                                $config[$sharedKey] = $siblingVal;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            $setting->config = $config;
-            $setting->enabled = $request->input('enabled', true);
-            $setting->save();
-
-            return response()->json([
-                'success' => true,
-                'enabled' => $setting->enabled,
-                'configured' => $setting->hasValidConfig(),
-            ]);
-        }
-
-        // Static integrations (Z.AI, chat platforms)
-        $available = IntegrationSetting::getAvailableIntegrations();
-        if (!isset($available[$id])) {
-            return response()->json(['error' => 'Integration not found'], 404);
-        }
-
-        $setting = $this->findOrNewIntegrationSetting($id, $account);
-
-        $config = $setting->config ?? [];
-
-        // Chat platform integrations with config_fields → use generic schema-based save
-        $configFields = $available[$id]['config_fields'] ?? null;
-        if ($configFields) {
-            $schema = $this->buildConfigSchema($configFields);
-            foreach ($schema as $field) {
-                $key = $field['key'];
-                if (!$request->has($key)) {
-                    continue;
-                }
-
-                // Skip masked secret values (user didn't change them)
-                if ($field['type'] === 'secret') {
-                    $value = $request->input($key);
-                    if (!$value || str_contains($value, '*')) {
-                        continue;
-                    }
-                }
-
-                $config[$key] = $request->input($key, $field['default'] ?? null);
-            }
-
-            $setting->config = $config;
-            $setting->enabled = $request->input('enabled', true);
-            $setting->save();
-
-            return response()->json([
-                'success' => true,
-                'enabled' => $setting->enabled,
-                'configured' => $setting->hasValidConfig(),
-            ]);
-        }
-
-        // AI model integrations (Z.AI, Perplexity, etc.)
-        $request->validate([
-            'apiKey' => 'nullable|string',
-            'url' => 'nullable|string|url',
-            'defaultModel' => 'nullable|string',
-            'enabled' => 'nullable|boolean',
-        ]);
-
-        if ($request->has('apiKey') && $request->input('apiKey') && !str_contains($request->input('apiKey'), '*')) {
-            $config['api_key'] = $request->input('apiKey');
-        }
-        if ($request->has('url')) {
-            $config['url'] = $request->input('url') ?: ($available[$id]['default_url'] ?? '');
-        }
-        if ($request->has('defaultModel')) {
-            $config['default_model'] = $request->input('defaultModel');
-        }
-
-        $setting->config = $config;
-
-        if ($request->has('enabled')) {
-            $setting->enabled = $request->input('enabled');
-        }
-
-        $setting->save();
-
-        // Auto-fetch models if this integration has a valid API key and no models yet
-        $existingModels = $setting->getConfigValue('models');
-        if ($setting->hasValidConfig() && empty($existingModels)) {
+        if ($status === 200 && ($payload['configured'] ?? false)) {
             try {
-                $models = $this->fetchModelsFromProvider($id);
-                if (!empty($models)) {
+                $setting = $this->findIntegrationSetting($id, app(IntegrationAccountResolver::class)->accountFromRequest($request));
+                $existingModels = $setting?->getConfigValue('models');
+                if ($setting && empty($existingModels) && ($models = app(ModelRuntimeCatalog::class)->fetchProviderModels($id)) !== []) {
                     $setting->setConfigValue('models', $models);
                     $setting->save();
                 }
             } catch (\Throwable) {
-                // Silently ignore — user can manually fetch later
+                //
             }
         }
 
-        return response()->json([
-            'success' => true,
-            'enabled' => $setting->enabled,
-            'configured' => $setting->hasValidConfig(),
-        ]);
+        return response()->json($payload, $status);
     }
 
     /**
      * Toggle an integration on or off (for integrations that don't need config).
      */
-    public function toggle(Request $request, string $id): \Illuminate\Http\JsonResponse
+    public function toggle(Request $request, string $id): JsonResponse
     {
         $request->validate(['enabled' => 'required|boolean']);
 
@@ -449,99 +109,24 @@ class IntegrationController extends Controller
     /**
      * Test connection for an integration
      */
-    public function testConnection(Request $request, string $id): \Illuminate\Http\JsonResponse
+    public function testConnection(Request $request, string $id): JsonResponse
     {
-        // Check dynamic providers first
-        $provider = $this->findConfigurableProvider($id);
-        if ($provider) {
-            $config = $request->all();
+        $result = app(IntegrationConnectionTester::class)->test($request, $id);
 
-            // Substitute masked secret fields with stored values
-            $setting = $this->findIntegrationSetting($id, $this->accountFromRequest($request));
-            foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
-                if ($field['type'] === 'secret' || $field['type'] === 'oauth_connect') {
-                    $key = $field['key'];
-                    $value = $config[$key] ?? '';
-                    if (!$value || str_contains($value, '*')) {
-                        $config[$key] = $setting?->getConfigValue($key);
-                    }
-                }
-            }
-
-            try {
-                $result = $provider->testConnection($config);
-                $status = $result['success'] ? 200 : 400;
-
-                return response()->json($result, $status);
-            } catch (\Exception $e) {
-                return response()->json([
-                    'success' => false,
-                    'error' => $e->getMessage(),
-                ], 500);
-            }
-        }
-
-        // Static integrations
-        $available = IntegrationSetting::getAvailableIntegrations();
-        if (!isset($available[$id])) {
-            return response()->json(['error' => 'Integration not found'], 404);
-        }
-
-        // Chat platform integrations — test via adapter
-        $configFields = $available[$id]['config_fields'] ?? null;
-        if ($configFields) {
-            return $this->testChatIntegrationConnection($id, $request);
-        }
-
-        $apiKey = $request->input('apiKey');
-        if (!$apiKey || str_contains($apiKey, '*')) {
-            $setting = $this->findIntegrationSetting($id, $this->accountFromRequest($request));
-            $apiKey = $setting?->getConfigValue('api_key');
-        }
-
-        $format = $available[$id]['api_format'] ?? null;
-
-        // Ollama doesn't need an API key
-        if (!$apiKey && $format !== 'ollama') {
-            return response()->json([
-                'success' => false,
-                'error' => 'No API key provided',
-            ], 400);
-        }
-
-        try {
-            $url = $request->input('url') ?: ($available[$id]['default_url'] ?? '');
-            $model = $request->input('defaultModel') ?: array_key_first($available[$id]['models'] ?? []);
-
-            return match ($format) {
-                'anthropic' => $this->testAnthropicConnection($apiKey, $url, $model),
-                'gemini' => $this->testGeminiConnection($apiKey, $url, $model),
-                'ollama' => $this->testOpenAiCompatConnection(null, $url, $model),
-                'openai', 'openai_compat' => $this->testOpenAiCompatConnection($apiKey, $url, $model),
-                default => response()->json([
-                    'success' => false,
-                    'error' => 'Test not implemented for this integration',
-                ], 501),
-            };
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+        return response()->json($result->toArray(), $result->status);
     }
 
     /**
      * Disconnect an OAuth-based integration (clear stored tokens).
      */
-    public function disconnect(Request $request, string $id): \Illuminate\Http\JsonResponse
+    public function disconnect(Request $request, string $id): JsonResponse
     {
         $provider = $this->findConfigurableProvider($id);
-        if (!$provider) {
+        if (! $provider) {
             return response()->json(['error' => 'Integration not found'], 404);
         }
 
-        $setting = $this->findIntegrationSetting($id, $this->accountFromRequest($request));
+        $setting = $this->findIntegrationSetting($id, app(IntegrationAccountResolver::class)->accountFromRequest($request));
         if ($setting) {
             $config = $setting->config ?? [];
             foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
@@ -558,142 +143,9 @@ class IntegrationController extends Controller
     }
 
     /**
-     * Test OpenAI-compatible AI provider connection.
-     */
-    /**
-     * Test connection for OpenAI-compatible providers (OpenAI, DeepSeek, Groq, Mistral, xAI, OpenRouter, Z.AI, Ollama, Perplexity).
-     */
-    private function testOpenAiCompatConnection(?string $apiKey, string $url, ?string $model): \Illuminate\Http\JsonResponse
-    {
-        $headers = ['Content-Type' => 'application/json'];
-        if ($apiKey) {
-            $headers['Authorization'] = 'Bearer ' . $apiKey;
-        }
-
-        $response = Http::withHeaders($headers)
-            ->timeout(30)
-            ->post($url . '/chat/completions', [
-                'model' => $model ?? 'default',
-                'messages' => [
-                    ['role' => 'user', 'content' => 'Respond with "ok".'],
-                ],
-                'max_tokens' => 10,
-            ]);
-
-        if ($response->successful()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Connection successful',
-                'model' => $model,
-            ]);
-        }
-
-        $error = $response->json('error.message') ?? $response->body();
-        return response()->json([
-            'success' => false,
-            'error' => 'API returned error: ' . $error,
-        ], 400);
-    }
-
-    /**
-     * Test connection for Anthropic (Claude).
-     */
-    private function testAnthropicConnection(string $apiKey, string $url, ?string $model): \Illuminate\Http\JsonResponse
-    {
-        $response = Http::withHeaders([
-            'x-api-key' => $apiKey,
-            'anthropic-version' => '2023-06-01',
-            'Content-Type' => 'application/json',
-        ])->timeout(30)->post($url . '/messages', [
-            'model' => $model ?? 'claude-sonnet-4-5-20250929',
-            'max_tokens' => 10,
-            'messages' => [
-                ['role' => 'user', 'content' => 'Respond with "ok".'],
-            ],
-        ]);
-
-        if ($response->successful()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Connection successful',
-                'model' => $model,
-            ]);
-        }
-
-        $error = $response->json('error.message') ?? $response->body();
-        return response()->json([
-            'success' => false,
-            'error' => 'API returned error: ' . $error,
-        ], 400);
-    }
-
-    /**
-     * Test connection for Google Gemini.
-     */
-    private function testGeminiConnection(string $apiKey, string $url, ?string $model): \Illuminate\Http\JsonResponse
-    {
-        $model = $model ?? 'gemini-2.0-flash';
-
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-        ])->timeout(30)->post($url . '/models/' . $model . ':generateContent?key=' . $apiKey, [
-            'contents' => [
-                ['parts' => [['text' => 'Respond with "ok".']]],
-            ],
-            'generationConfig' => ['maxOutputTokens' => 10],
-        ]);
-
-        if ($response->successful()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Connection successful',
-                'model' => $model,
-            ]);
-        }
-
-        $error = $response->json('error.message') ?? $response->body();
-        return response()->json([
-            'success' => false,
-            'error' => 'API returned error: ' . $error,
-        ], 400);
-    }
-
-    /**
-     * Test Telegram bot connection
-     */
-    private function testTelegramConnection(string $apiKey): \Illuminate\Http\JsonResponse
-    {
-        $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/getMe");
-
-        $data = $response->json();
-
-        if ($response->successful() && ($data['ok'] ?? false)) {
-            $result = $data['result'];
-
-            // Persist bot username in config
-            $setting = $this->findIntegrationSetting('telegram');
-            if ($setting) {
-                $setting->setConfigValue('bot_username', $result['username'] ?? '');
-                $setting->save();
-            }
-
-            return response()->json([
-                'success' => true,
-                'botName' => $result['first_name'] ?? 'Unknown',
-                'username' => $result['username'] ?? 'Unknown',
-            ]);
-        }
-
-        return response()->json([
-            'success' => false,
-            'error' => $data['description'] ?? 'Failed to connect to Telegram',
-        ], 400);
-    }
-
-    /**
      * Set up webhook for an integration (currently Telegram only)
      */
-    public function setupWebhook(Request $request, string $id): \Illuminate\Http\JsonResponse
+    public function setupWebhook(Request $request, string $id): JsonResponse
     {
         if ($id !== 'telegram') {
             return response()->json(['error' => 'Webhooks not supported for this integration'], 400);
@@ -702,16 +154,16 @@ class IntegrationController extends Controller
         $setting = $this->findIntegrationSetting('telegram');
         $apiKey = $request->input('apiKey');
 
-        if (!$apiKey || str_contains($apiKey, '*')) {
+        if (! $apiKey || str_contains($apiKey, '*')) {
             $apiKey = $setting?->getConfigValue('api_key');
         }
 
-        if (!$apiKey) {
+        if (! $apiKey) {
             return response()->json(['success' => false, 'error' => 'No bot token configured'], 400);
         }
 
         // Ensure setting exists and save the API key
-        if (!$setting) {
+        if (! $setting) {
             $setting = IntegrationSetting::create([
                 'id' => Str::uuid()->toString(),
                 'workspace_id' => workspace()->id,
@@ -719,21 +171,21 @@ class IntegrationController extends Controller
                 'config' => ['api_key' => $apiKey],
                 'enabled' => true,
             ]);
-        } elseif (!$setting->getConfigValue('api_key')) {
+        } elseif (! $setting->getConfigValue('api_key')) {
             $setting->setConfigValue('api_key', $apiKey);
             $setting->save();
         }
 
         // Generate webhook secret if not set
         $webhookSecret = $setting->getConfigValue('webhook_secret');
-        if (!$webhookSecret) {
+        if (! $webhookSecret) {
             $webhookSecret = Str::random(64);
             $setting->setConfigValue('webhook_secret', $webhookSecret);
             $setting->save();
         }
 
         $appUrl = config('app.url');
-        $webhookUrl = rtrim($appUrl, '/') . '/api/webhooks/chat/telegram';
+        $webhookUrl = rtrim($appUrl, '/').'/api/webhooks/chat/telegram';
 
         try {
             $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/setWebhook", [
@@ -770,7 +222,7 @@ class IntegrationController extends Controller
     /**
      * Link an external identity to a system user.
      */
-    public function linkExternalUser(Request $request): \Illuminate\Http\JsonResponse
+    public function linkExternalUser(Request $request): JsonResponse
     {
         $request->validate([
             'userId' => 'required|string|exists:users,id',
@@ -787,8 +239,9 @@ class IntegrationController extends Controller
             ->first();
 
         if ($existing && $existing->user_id !== $user->id) {
-            /** @var \App\Models\User $existingUser */
+            /** @var User $existingUser */
             $existingUser = $existing->user;
+
             return response()->json([
                 'error' => "This {$request->input('provider')} ID is already linked to user: {$existingUser->name}",
             ], 409);
@@ -841,7 +294,7 @@ class IntegrationController extends Controller
     /**
      * Unlink an external identity from a user.
      */
-    public function unlinkExternalUser(string $identityId): \Illuminate\Http\JsonResponse
+    public function unlinkExternalUser(string $identityId): JsonResponse
     {
         $identity = UserExternalIdentity::findOrFail($identityId);
         $identity->delete();
@@ -852,7 +305,7 @@ class IntegrationController extends Controller
     /**
      * Get all external identity links (optionally filtered by provider).
      */
-    public function externalIdentities(Request $request): \Illuminate\Http\JsonResponse
+    public function externalIdentities(Request $request): JsonResponse
     {
         $query = UserExternalIdentity::with('user');
 
@@ -866,52 +319,9 @@ class IntegrationController extends Controller
     /**
      * Get enabled AI models for agent brain selection
      */
-    public function enabledModels(): \Illuminate\Http\JsonResponse
+    public function enabledModels(): JsonResponse
     {
-        $settings = IntegrationSetting::forWorkspace()->default()->where('enabled', true)->get();
-        $available = IntegrationSetting::getAvailableIntegrations();
-
-        $models = [];
-        foreach ($settings as $setting) {
-            if (!isset($available[$setting->integration_id])) {
-                continue;
-            }
-
-            $info = $available[$setting->integration_id];
-            if (empty($info['models'])) {
-                continue;
-            }
-            foreach ($info['models'] as $modelId => $modelName) {
-                $models[] = [
-                    'id' => $setting->integration_id . ':' . $modelId,
-                    'provider' => $setting->integration_id,
-                    'providerName' => $info['name'],
-                    'model' => $modelId,
-                    'name' => $modelName,
-                    'icon' => $info['icon'],
-                ];
-            }
-        }
-
-        // Codex uses OAuth, not IntegrationSetting — check separately
-        $codexToken = CodexTokenStore::current();
-        if ($codexToken && !$codexToken->isExpired()) {
-            $codexInfo = $available['codex'] ?? null;
-            if ($codexInfo && !empty($codexInfo['models'])) {
-                foreach ($codexInfo['models'] as $modelId => $modelName) {
-                    $models[] = [
-                        'id' => 'codex:' . $modelId,
-                        'provider' => 'codex',
-                        'providerName' => $codexInfo['name'],
-                        'model' => $modelId,
-                        'name' => $modelName,
-                        'icon' => $codexInfo['icon'],
-                    ];
-                }
-            }
-        }
-
-        return response()->json($models);
+        return response()->json(app(ModelCatalog::class)->enabledModels(workspace()->id));
     }
 
     /**
@@ -920,447 +330,52 @@ class IntegrationController extends Controller
      * Returns both integration-based providers (Z.AI, Codex) and prism-config
      * providers (Anthropic, OpenAI, etc.) with configuration status.
      */
-    public function allProviders(): \Illuminate\Http\JsonResponse
+    public function allProviders(): JsonResponse
     {
-        $providers = [];
-        $available = IntegrationSetting::getAvailableIntegrations();
-        $settings = IntegrationSetting::forWorkspace()->default()->get()->keyBy('integration_id');
-
-        // AI providers from config/integrations.php (those with api_format set)
-        foreach ($available as $id => $info) {
-            if (!isset($info['api_format'])) {
-                continue;
-            }
-
-            /** @var IntegrationSetting|null $setting */
-            $setting = $settings->get($id);
-            /** @var array<string, string> $models */
-            $models = $info['models'] ?? [];
-
-            // Determine if configured: DB-stored key OR .env key
-            $configured = $setting?->hasValidConfig()
-                || !empty(config("prism.providers.{$id}.api_key", ''));
-
-            // Ollama is configured if URL is reachable (no key needed)
-            if ($info['api_format'] === 'ollama') {
-                $configured = $setting?->enabled || !empty(config('prism.providers.ollama.url'));
-            }
-
-            $providers[] = [
-                'id' => $id,
-                'name' => $info['name'],
-                'icon' => $info['icon'],
-                'configured' => (bool) $configured,
-                'source' => $setting?->hasValidConfig() ? 'integration' : 'prism',
-                'models' => collect($models)->map(fn (string $name, string $id) => [
-                    'id' => $id,
-                    'name' => $name,
-                ])->values()->all(),
-            ];
-        }
-
-        // Codex (OAuth-based)
-        $codexToken = CodexTokenStore::current();
-        $codexInfo = $available['codex'] ?? null;
-        if ($codexToken && !$codexToken->isExpired() && $codexInfo && !empty($codexInfo['models'])) {
-            /** @var array<string, string> $codexModels */
-            $codexModels = $codexInfo['models'];
-            $providers[] = [
-                'id' => 'codex',
-                'name' => $codexInfo['name'],
-                'icon' => $codexInfo['icon'],
-                'configured' => true,
-                'source' => 'oauth',
-                'models' => collect($codexModels)->map(fn (string $name, string $id) => [
-                    'id' => $id,
-                    'name' => $name,
-                ])->values()->all(),
-            ];
-        }
-
-        return response()->json($providers);
+        return response()->json(app(ModelCatalog::class)->providerOptions(workspace()->id));
     }
 
     /**
      * Get available embedding models with provider configuration status.
      */
-    public function embeddingModels(): \Illuminate\Http\JsonResponse
+    public function embeddingModels(): JsonResponse
     {
-        $embeddingProviders = [
-            'openai' => [
-                'name' => 'OpenAI',
-                'models' => [
-                    'text-embedding-3-small' => 'text-embedding-3-small (1536d)',
-                    'text-embedding-3-large' => 'text-embedding-3-large (3072d)',
-                    'text-embedding-ada-002' => 'text-embedding-ada-002 (1536d)',
-                ],
-            ],
-            'voyageai' => [
-                'name' => 'VoyageAI',
-                'models' => [
-                    'voyage-3' => 'voyage-3',
-                    'voyage-3-lite' => 'voyage-3-lite',
-                    'voyage-code-3' => 'voyage-code-3',
-                ],
-            ],
-            'gemini' => [
-                'name' => 'Gemini',
-                'models' => [
-                    'text-embedding-004' => 'text-embedding-004 (768d)',
-                ],
-            ],
-            'openrouter' => [
-                'name' => 'OpenRouter',
-                'models' => [
-                    'openai/text-embedding-3-small' => 'text-embedding-3-small (1536d)',
-                    'openai/text-embedding-3-large' => 'text-embedding-3-large (3072d)',
-                ],
-            ],
-        ];
-
-        $result = [];
-        $integrationSettings = IntegrationSetting::forWorkspace()->default()->get()->keyBy('integration_id');
-
-        // Cloud providers
-        foreach ($embeddingProviders as $providerId => $provider) {
-            $integration = $integrationSettings->get($providerId);
-            $configured = $integration?->hasValidConfig()
-                || !empty(config("prism.providers.{$providerId}.api_key", ''));
-
-            foreach ($provider['models'] as $modelId => $modelName) {
-                $result[] = [
-                    'id' => "{$providerId}:{$modelId}",
-                    'provider' => $providerId,
-                    'providerName' => $provider['name'],
-                    'model' => $modelId,
-                    'name' => $modelName,
-                    'configured' => $configured,
-                    'type' => 'cloud',
-                ];
-            }
-        }
-
-        // Ollama (self-hosted) embedding models
-        $ollamaModels = [
-            'snowflake-arctic-embed2' => [
-                'name' => 'Snowflake Arctic Embed 2',
-                'size' => '568M',
-                'parameters' => '568M',
-                'memory' => '~1.2 GB',
-                'dimensions' => 1024,
-                'context' => 8192,
-                'description' => 'State-of-the-art multilingual embedding model with 8K context. Best quality for retrieval across multiple languages.',
-            ],
-            'nomic-embed-text' => [
-                'name' => 'Nomic Embed Text v1.5',
-                'size' => '137M',
-                'parameters' => '137M',
-                'memory' => '~0.5 GB',
-                'dimensions' => 768,
-                'context' => 8192,
-                'description' => 'Efficient general-purpose model with Matryoshka dimension support (64–768d). Good balance of quality and speed.',
-            ],
-            'snowflake-arctic-embed:s' => [
-                'name' => 'Snowflake Arctic Embed S',
-                'size' => '33M',
-                'parameters' => '33M',
-                'memory' => '~0.2 GB',
-                'dimensions' => 384,
-                'context' => 512,
-                'description' => 'Ultra-lightweight model for large datasets. Smallest footprint with competitive accuracy. Best for constrained environments.',
-            ],
-            'mxbai-embed-large' => [
-                'name' => 'MxBAI Embed Large',
-                'size' => '335M',
-                'parameters' => '335M',
-                'memory' => '~1.2 GB',
-                'dimensions' => 1024,
-                'context' => 512,
-                'description' => 'High-quality model from Mixedbread AI. Strong benchmark performance, outperforms OpenAI ada-002.',
-            ],
-        ];
-
-        $ollamaStatus = $this->getOllamaStatus();
-        $downloadedModels = $ollamaStatus['models'];
-
-        foreach ($ollamaModels as $modelId => $info) {
-            $baseName = explode(':', $modelId)[0];
-            $downloaded = in_array($baseName, $downloadedModels) || in_array($modelId, $downloadedModels);
-
-            $result[] = [
-                'id' => "ollama:{$modelId}",
-                'provider' => 'ollama',
-                'providerName' => 'Ollama (self-hosted)',
-                'model' => $modelId,
-                'name' => $info['name'],
-                'configured' => $ollamaStatus['online'],
-                'type' => 'local',
-                'downloaded' => $downloaded,
-                'size' => $info['size'],
-                'parameters' => $info['parameters'],
-                'memory' => $info['memory'],
-                'dimensions' => $info['dimensions'],
-                'context' => $info['context'],
-                'description' => $info['description'],
-            ];
-        }
-
-        return response()->json($result);
+        return response()->json(app(ModelRuntimeCatalog::class)->embeddingModels());
     }
 
     /**
      * Get available reranking models with provider configuration status.
      */
-    public function rerankingModels(): \Illuminate\Http\JsonResponse
+    public function rerankingModels(): JsonResponse
     {
-        $result = [];
-
-        // Ollama (self-hosted) reranking models
-        $ollamaModels = [
-            'dengcao/Qwen3-Reranker-0.6B:Q8_0' => [
-                'name' => 'Qwen3 Reranker 0.6B',
-                'size' => '639 MB',
-                'parameters' => '0.6B',
-                'memory' => '~1 GB',
-                'description' => 'Lightweight reranker based on Qwen3 (Q8_0 quantization). Fast inference on CPU, good accuracy for most use cases.',
-            ],
-            'dengcao/Qwen3-Reranker-4B:Q4_K_M' => [
-                'name' => 'Qwen3 Reranker 4B',
-                'size' => '2.5 GB',
-                'parameters' => '4B',
-                'memory' => '~4 GB',
-                'description' => 'Mid-size reranker with stronger relevance judgments (Q4_K_M quantization). Good balance of quality and speed.',
-            ],
-            'dengcao/Qwen3-Reranker-8B:Q4_K_M' => [
-                'name' => 'Qwen3 Reranker 8B',
-                'size' => '5.0 GB',
-                'parameters' => '8B',
-                'memory' => '~7 GB',
-                'description' => 'Largest Qwen3 Reranker variant (Q4_K_M quantization). State-of-the-art accuracy, best for high-stakes retrieval.',
-            ],
-        ];
-
-        $ollamaStatus = $this->getOllamaStatus();
-        $downloadedModels = $ollamaStatus['models'];
-
-        foreach ($ollamaModels as $modelId => $info) {
-            $baseName = explode(':', $modelId)[0];
-            $downloaded = in_array($baseName, $downloadedModels) || in_array($modelId, $downloadedModels);
-
-            $result[] = [
-                'id' => "ollama:{$modelId}",
-                'provider' => 'ollama',
-                'providerName' => 'Ollama (self-hosted)',
-                'model' => $modelId,
-                'name' => $info['name'],
-                'configured' => $ollamaStatus['online'],
-                'type' => 'local',
-                'downloaded' => $downloaded,
-                'size' => $info['size'],
-                'parameters' => $info['parameters'],
-                'memory' => $info['memory'],
-                'description' => $info['description'],
-            ];
-        }
-
-        // Cloud providers (Cohere, Jina)
-        $cloudProviders = [
-            'cohere' => [
-                'name' => 'Cohere',
-                'models' => [
-                    'rerank-v3.5' => 'Rerank v3.5',
-                    'rerank-english-v3.0' => 'Rerank English v3.0',
-                    'rerank-multilingual-v3.0' => 'Rerank Multilingual v3.0',
-                ],
-            ],
-            'jina' => [
-                'name' => 'Jina AI',
-                'models' => [
-                    'jina-reranker-v2-base-multilingual' => 'Jina Reranker v2 Multilingual',
-                ],
-            ],
-        ];
-
-        foreach ($cloudProviders as $providerId => $provider) {
-            $apiKey = config("ai.providers.{$providerId}.key", '');
-            $configured = ! empty($apiKey);
-
-            foreach ($provider['models'] as $modelId => $modelName) {
-                $result[] = [
-                    'id' => "{$providerId}:{$modelId}",
-                    'provider' => $providerId,
-                    'providerName' => $provider['name'],
-                    'model' => $modelId,
-                    'name' => $modelName,
-                    'configured' => $configured,
-                    'type' => 'cloud',
-                ];
-            }
-        }
-
-        // LLM providers (any configured AI chat model can do pointwise reranking)
-        $listedProviders = array_merge(
-            ['ollama'],
-            array_keys($cloudProviders),
-        );
-        $available = IntegrationSetting::getAvailableIntegrations();
-        $integrationSettings = IntegrationSetting::forWorkspace()->default()->get()->keyBy('integration_id');
-
-        foreach ($available as $id => $info) {
-            if (! isset($info['api_format']) || in_array($id, $listedProviders, true)) {
-                continue;
-            }
-
-            $integration = $integrationSettings->get($id);
-            $configured = $integration?->hasValidConfig()
-                || ! empty(config("prism.providers.{$id}.api_key", ''));
-
-            /** @var array<string, string> $models */
-            $models = $info['models'] ?? [];
-            if (empty($models)) {
-                continue;
-            }
-
-            foreach ($models as $modelId => $modelName) {
-                $result[] = [
-                    'id' => "{$id}:{$modelId}",
-                    'provider' => $id,
-                    'providerName' => ($info['name'] ?? $id).' (LLM)',
-                    'model' => $modelId,
-                    'name' => $modelName,
-                    'configured' => (bool) $configured,
-                    'type' => 'llm',
-                ];
-            }
-        }
-
-        return response()->json($result);
+        return response()->json(app(ModelRuntimeCatalog::class)->rerankingModels());
     }
 
     /**
      * Get Ollama connection status and locally available models.
      */
-    public function ollamaModelStatus(): \Illuminate\Http\JsonResponse
+    public function ollamaModelStatus(): JsonResponse
     {
-        return response()->json($this->getOllamaStatus());
+        return response()->json(app(ModelRuntimeCatalog::class)->ollamaStatus());
     }
 
     /**
      * Pull (download) an Ollama model.
      */
-    public function ollamaPullModel(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function ollamaPullModel(Request $request): StreamedResponse
     {
         $request->validate(['model' => 'required|string|max:200']);
 
-        $model = $request->input('model');
-        $url = config('prism.providers.ollama.url', 'http://localhost:11434');
-
-        return response()->stream(function () use ($model, $url) {
-            try {
-                $client = new \GuzzleHttp\Client();
-                $response = $client->post($url . '/api/pull', [
-                    'json' => ['model' => $model, 'stream' => true],
-                    'stream' => true,
-                    'timeout' => 600,
-                    'connect_timeout' => 10,
-                ]);
-
-                $body = $response->getBody();
-                $buffer = '';
-
-                while (! $body->eof()) {
-                    $buffer .= $body->read(8192);
-
-                    while (($newlinePos = strpos($buffer, "\n")) !== false) {
-                        $line = substr($buffer, 0, $newlinePos);
-                        $buffer = substr($buffer, $newlinePos + 1);
-
-                        $line = trim($line);
-                        if ($line === '') {
-                            continue;
-                        }
-
-                        $data = json_decode($line, true);
-                        if (! is_array($data)) {
-                            continue;
-                        }
-
-                        $event = [
-                            'status' => $data['status'] ?? '',
-                        ];
-
-                        if (isset($data['completed'], $data['total']) && $data['total'] > 0) {
-                            $event['completed'] = $data['completed'];
-                            $event['total'] = $data['total'];
-                            $event['percent'] = min(100, (int) round($data['completed'] / $data['total'] * 100));
-                        }
-
-                        if (($data['status'] ?? '') === 'success') {
-                            $event['done'] = true;
-                            $event['success'] = true;
-                        }
-
-                        echo 'data: '.json_encode($event)."\n\n";
-                        ob_flush();
-                        flush();
-                    }
-                }
-
-                // Final event if not already sent
-                echo 'data: '.json_encode(['done' => true, 'success' => true])."\n\n";
-                ob_flush();
-                flush();
-            } catch (\Throwable $e) {
-                echo 'data: '.json_encode(['done' => true, 'success' => false, 'error' => $e->getMessage()])."\n\n";
-                ob_flush();
-                flush();
-            }
-        }, 200, [
-            'Content-Type' => 'text/event-stream',
-            'Cache-Control' => 'no-cache',
-            'Connection' => 'keep-alive',
-            'X-Accel-Buffering' => 'no',
-        ]);
-    }
-
-    /**
-     * Check Ollama availability and list downloaded models.
-     *
-     * @return array{online: bool, models: array<int, mixed>, url: mixed}
-     */
-    private function getOllamaStatus(): array
-    {
-        $url = config('prism.providers.ollama.url', 'http://localhost:11434');
-
-        try {
-            $response = Http::timeout(3)->get($url . '/api/tags');
-
-            if (!$response->successful()) {
-                return ['online' => false, 'models' => [], 'url' => $url];
-            }
-
-            /** @var array<int, array{name: string}> $rawModels */
-            $rawModels = $response->json('models', []);
-            $models = collect($rawModels)
-                ->pluck('name')
-                ->map(fn (string $n) => explode(':', $n)[0])
-                ->unique()
-                ->values()
-                ->toArray();
-
-            return ['online' => true, 'models' => $models, 'url' => $url];
-        } catch (\Throwable) {
-            return ['online' => false, 'models' => [], 'url' => $url];
-        }
+        return app(ModelRuntimeCatalog::class)->pullOllamaModel((string) $request->input('model'));
     }
 
     /**
      * Fetch available models from the provider API and store in database.
      */
-    public function fetchModels(string $id): \Illuminate\Http\JsonResponse
+    public function fetchModels(string $id): JsonResponse
     {
         try {
-            $models = $this->fetchModelsFromProvider($id);
+            $models = app(ModelRuntimeCatalog::class)->fetchProviderModels($id);
 
             if (empty($models)) {
                 return response()->json([
@@ -1384,314 +399,9 @@ class IntegrationController extends Controller
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to fetch models: ' . $e->getMessage(),
+                'error' => 'Failed to fetch models: '.$e->getMessage(),
             ], 400);
         }
-    }
-
-    /**
-     * Fetch models from a provider's API.
-     *
-     * @return array<string, string> Model ID => display name
-     */
-    private function fetchModelsFromProvider(string $id): array
-    {
-        if ($id === 'codex') {
-            return $this->fetchCodexModels();
-        }
-
-        $available = config('integrations', []);
-        $format = $available[$id]['api_format'] ?? null;
-
-        return match ($format) {
-            'anthropic' => $this->fetchAnthropicModels($id),
-            'gemini' => $this->fetchGeminiModels($id),
-            'ollama' => $this->fetchOllamaModels($id),
-            'openai', 'openai_compat' => $this->fetchOpenAiCompatModels($id),
-            default => throw new \InvalidArgumentException("Model fetching not supported for: {$id}"),
-        };
-    }
-
-    /**
-     * Fetch models from an OpenAI-compatible /models endpoint.
-     * Works for: OpenAI, DeepSeek, Groq, Mistral, xAI, OpenRouter, Z.AI, Perplexity.
-     *
-     * @return array<string, string>
-     */
-    private function fetchOpenAiCompatModels(string $id): array
-    {
-        [$apiKey, $baseUrl] = $this->getProviderCredentials($id);
-
-        if (!$apiKey) {
-            throw new \RuntimeException('API key not configured. Save your API key first.');
-        }
-
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
-        ])->timeout(15)->get($baseUrl . '/models');
-
-        if (!$response->successful()) {
-            throw new \RuntimeException('API returned ' . $response->status() . ': ' . $response->body());
-        }
-
-        $data = $response->json('data', []);
-        $models = [];
-
-        foreach ($data as $model) {
-            $modelId = $model['id'] ?? null;
-            if (!$modelId) {
-                continue;
-            }
-            $models[$modelId] = $this->formatModelName($modelId);
-        }
-
-        // Z.AI: probe flash/plus variants not listed by /models
-        if ($id === 'z' || $id === 'z-api') {
-            $models = $this->probeGlmVariants($models, $apiKey, $baseUrl);
-        }
-
-        ksort($models);
-
-        return $models;
-    }
-
-    /**
-     * Fetch models from Anthropic API.
-     *
-     * @return array<string, string>
-     */
-    private function fetchAnthropicModels(string $id): array
-    {
-        [$apiKey, $baseUrl] = $this->getProviderCredentials($id);
-
-        if (!$apiKey) {
-            throw new \RuntimeException('API key not configured. Save your API key first.');
-        }
-
-        $response = Http::withHeaders([
-            'x-api-key' => $apiKey,
-            'anthropic-version' => '2023-06-01',
-        ])->timeout(15)->get($baseUrl . '/models');
-
-        if (!$response->successful()) {
-            throw new \RuntimeException('API returned ' . $response->status() . ': ' . $response->body());
-        }
-
-        $data = $response->json('data', []);
-        $models = [];
-
-        foreach ($data as $model) {
-            $modelId = $model['id'] ?? null;
-            if (!$modelId) {
-                continue;
-            }
-            $models[$modelId] = $model['display_name'] ?? $this->formatModelName($modelId);
-        }
-
-        ksort($models);
-
-        return $models;
-    }
-
-    /**
-     * Fetch models from Google Gemini API.
-     *
-     * @return array<string, string>
-     */
-    private function fetchGeminiModels(string $id): array
-    {
-        [$apiKey, $baseUrl] = $this->getProviderCredentials($id);
-
-        if (!$apiKey) {
-            throw new \RuntimeException('API key not configured. Save your API key first.');
-        }
-
-        $response = Http::timeout(15)->get($baseUrl . '/models', [
-            'key' => $apiKey,
-        ]);
-
-        if (!$response->successful()) {
-            throw new \RuntimeException('API returned ' . $response->status() . ': ' . $response->body());
-        }
-
-        $data = $response->json('models', []);
-        $models = [];
-
-        foreach ($data as $model) {
-            $name = $model['name'] ?? null;
-            if (!$name) {
-                continue;
-            }
-            // Gemini returns "models/gemini-2.0-flash" — strip "models/" prefix
-            $modelId = str_replace('models/', '', $name);
-            // Only include generateContent-capable models
-            $methods = $model['supportedGenerationMethods'] ?? [];
-            if (!in_array('generateContent', $methods)) {
-                continue;
-            }
-            $models[$modelId] = $model['displayName'] ?? $this->formatModelName($modelId);
-        }
-
-        ksort($models);
-
-        return $models;
-    }
-
-    /**
-     * Fetch models from Ollama (OpenAI compatibility layer, no auth).
-     *
-     * @return array<string, string>
-     */
-    private function fetchOllamaModels(string $id): array
-    {
-        $setting = $this->findIntegrationSetting($id);
-        $available = config('integrations', []);
-        $baseUrl = $setting?->getConfigValue('url') ?: ($available[$id]['default_url'] ?? 'http://localhost:11434/v1');
-
-        $response = Http::timeout(10)->get($baseUrl . '/models');
-
-        if (!$response->successful()) {
-            throw new \RuntimeException('Could not connect to Ollama at ' . $baseUrl);
-        }
-
-        $data = $response->json('data', $response->json('models', []));
-        $models = [];
-
-        foreach ($data as $model) {
-            $modelId = $model['id'] ?? $model['name'] ?? null;
-            if (!$modelId) {
-                continue;
-            }
-            $models[$modelId] = $this->formatModelName($modelId);
-        }
-
-        ksort($models);
-
-        return $models;
-    }
-
-    /**
-     * Get API key and base URL for a provider from IntegrationSetting or config.
-     *
-     * @return array{0: ?string, 1: string}
-     */
-    private function getProviderCredentials(string $id): array
-    {
-        $setting = $this->findIntegrationSetting($id);
-        $available = config('integrations', []);
-
-        $apiKey = $setting?->getConfigValue('api_key')
-            ?: config("prism.providers.{$id}.api_key", '');
-        $baseUrl = $setting?->getConfigValue('url')
-            ?: config("prism.providers.{$id}.url")
-            ?: ($available[$id]['default_url'] ?? '');
-
-        return [$apiKey ?: null, $baseUrl];
-    }
-
-    /**
-     * Z.AI-specific: probe flash/plus variants not listed by /models.
-     *
-     * @param  array<string, string>  $models
-     * @return array<string, string>
-     */
-    private function probeGlmVariants(array $models, string $apiKey, string $baseUrl): array
-    {
-        $variants = [];
-        foreach (array_keys($models) as $modelId) {
-            $variants[] = $modelId . '-flash';
-            $variants[] = $modelId . '-plus';
-        }
-
-        foreach ($variants as $variant) {
-            if (isset($models[$variant])) {
-                continue;
-            }
-            try {
-                $probe = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . $apiKey,
-                    'Content-Type' => 'application/json',
-                ])->timeout(8)->post($baseUrl . '/chat/completions', [
-                    'model' => $variant,
-                    'messages' => [['role' => 'user', 'content' => 'hi']],
-                    'max_tokens' => 1,
-                ]);
-                if ($probe->status() === 200 || $probe->status() === 429) {
-                    $models[$variant] = $this->formatModelName($variant);
-                }
-            } catch (\Throwable) {
-                // Skip on timeout/error
-            }
-        }
-
-        return $models;
-    }
-
-    /**
-     * Format a model ID into a readable display name.
-     */
-    private function formatModelName(string $modelId): string
-    {
-        // Strip date suffixes like -20250929
-        $name = preg_replace('/-\d{8}$/', '', $modelId);
-        // Replace separators with spaces
-        $name = str_replace(['-', '_', '/'], [' ', ' ', ' / '], $name);
-        return ucwords($name);
-    }
-
-    /**
-     * Fetch models from the Codex API.
-     *
-     * @return array<string, string>
-     */
-    private function fetchCodexModels(): array
-    {
-        $oauthService = app(\OpenCompany\PrismCodex\CodexOAuthService::class);
-        $token = $oauthService->getAccessToken();
-
-        if (!$token) {
-            throw new \RuntimeException('Not authenticated. Please connect your Codex account first.');
-        }
-
-        $response = Http::withToken($token)
-            ->withHeaders(array_filter([
-                'ChatGPT-Account-Id' => $oauthService->getAccountId(),
-            ]))
-            ->timeout(15)
-            ->get(config('codex.url', 'https://chatgpt.com/backend-api/codex') . '/models');
-
-        if (!$response->successful()) {
-            throw new \RuntimeException('API returned ' . $response->status() . ': ' . $response->body());
-        }
-
-        $data = $response->json('models', $response->json('data', []));
-        $models = [];
-
-        foreach ($data as $model) {
-            $modelId = is_string($model) ? $model : ($model['id'] ?? $model['slug'] ?? null);
-            if (!$modelId) {
-                continue;
-            }
-            $displayName = strtoupper(str_replace(['-', '_'], [' ', ' '], $modelId));
-            $displayName = ucwords(strtolower($displayName));
-            $models[$modelId] = $displayName;
-        }
-
-        return $models;
-    }
-
-    private function accountFromRequest(Request $request): ?string
-    {
-        $account = $request->input('account', $request->query('account'));
-        if ($account === null) {
-            $account = $request->input('accountAlias', $request->query('accountAlias'));
-        }
-
-        if ($account === null) {
-            return null;
-        }
-
-        return trim((string) $account);
     }
 
     private function findIntegrationSetting(string $id, ?string $account = null): ?IntegrationSetting
@@ -1700,47 +410,6 @@ class IntegrationController extends Controller
             ->where('integration_id', $id)
             ->forAccount($account)
             ->first();
-    }
-
-    private function findOrNewIntegrationSetting(string $id, ?string $account = null): IntegrationSetting
-    {
-        $setting = $this->findIntegrationSetting($id, $account);
-        if ($setting) {
-            return $setting;
-        }
-
-        $hasOthers = IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
-            ->exists();
-
-        $setting = new IntegrationSetting;
-        $setting->id = Str::uuid()->toString();
-        $setting->workspace_id = workspace()->id;
-        $setting->integration_id = $id;
-        $setting->account_alias = $account ?? '';
-        $setting->is_default = ! $hasOthers;
-        $setting->enabled = true;
-
-        return $setting;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function googleIntegrationIds(): array
-    {
-        return [
-            'google-calendar',
-            'gmail',
-            'google-drive',
-            'google-contacts',
-            'google-sheets',
-            'google-search-console',
-            'google-tasks',
-            'google-analytics',
-            'google-docs',
-            'google-forms',
-        ];
     }
 
     /**
@@ -1758,83 +427,12 @@ class IntegrationController extends Controller
         return null;
     }
 
-    /**
-     * Convert config_fields from chat_integrations.php to the configSchema format
-     * that DynamicConfigModal expects.
-     */
-    private function buildConfigSchema(array $configFields): array
-    {
-        $schema = [];
-        foreach ($configFields as $key => $field) {
-            $schema[] = [
-                'key' => $key,
-                'type' => match ($field['type']) {
-                    'array' => 'string_list',
-                    'agent_select' => 'text',
-                    default => $field['type'],
-                },
-                'label' => $field['label'],
-                'required' => $field['required'] ?? false,
-                'placeholder' => $field['placeholder'] ?? null,
-                'hint' => $field['hint'] ?? null,
-            ];
-        }
-
-        return $schema;
-    }
-
-    /**
-     * Test connection for a chat platform integration by attempting to create the adapter.
-     */
-    private function testChatIntegrationConnection(string $id, Request $request): \Illuminate\Http\JsonResponse
-    {
-        try {
-            // Build config from request, substituting masked values with stored ones
-            $available = IntegrationSetting::getAvailableIntegrations();
-            $configFields = $available[$id]['config_fields'] ?? [];
-            $setting = $this->findIntegrationSetting($id, $this->accountFromRequest($request));
-
-            $config = [];
-            foreach ($configFields as $key => $field) {
-                $value = $request->input($key);
-                if ($field['type'] === 'secret' && (!$value || str_contains($value, '*'))) {
-                    $config[$key] = $setting?->getConfigValue($key);
-                } else {
-                    $config[$key] = $value;
-                }
-            }
-
-            // Build a temporary IntegrationSetting to test with the adapter factory
-            $testSetting = new IntegrationSetting;
-            $testSetting->integration_id = $id;
-            $testSetting->config = $config;
-
-            $adapter = \App\Services\Chat\ChatAdapterFactory::create($testSetting);
-            if (!$adapter) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Adapter not supported',
-                ], 400);
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Connection configured successfully',
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
     // ─── Multi-Account Endpoints ────────────────────────────────
 
     /**
      * List all accounts for an integration.
      */
-    public function listAccounts(string $id): \Illuminate\Http\JsonResponse
+    public function listAccounts(string $id): JsonResponse
     {
         $settings = IntegrationSetting::forWorkspace()
             ->where('integration_id', $id)
@@ -1855,7 +453,7 @@ class IntegrationController extends Controller
     /**
      * Create a new account for an integration.
      */
-    public function createAccount(Request $request, string $id): \Illuminate\Http\JsonResponse
+    public function createAccount(Request $request, string $id): JsonResponse
     {
         $request->validate([
             'alias' => ['required', 'string', 'max:32', 'regex:/^[a-z0-9_]+$/'],
@@ -1896,7 +494,7 @@ class IntegrationController extends Controller
     /**
      * Update an account's config.
      */
-    public function updateAccount(Request $request, string $id, string $alias): \Illuminate\Http\JsonResponse
+    public function updateAccount(Request $request, string $id, string $alias): JsonResponse
     {
         $setting = IntegrationSetting::forWorkspace()
             ->where('integration_id', $id)
@@ -1923,7 +521,7 @@ class IntegrationController extends Controller
     /**
      * Delete an account.
      */
-    public function deleteAccount(string $id, string $alias): \Illuminate\Http\JsonResponse
+    public function deleteAccount(string $id, string $alias): JsonResponse
     {
         if ($alias === '') {
             return response()->json(['error' => 'Cannot delete the default account.'], 422);
@@ -1961,7 +559,7 @@ class IntegrationController extends Controller
     /**
      * Set an account as the default.
      */
-    public function setDefaultAccount(string $id, string $alias): \Illuminate\Http\JsonResponse
+    public function setDefaultAccount(string $id, string $alias): JsonResponse
     {
         $setting = IntegrationSetting::forWorkspace()
             ->where('integration_id', $id)

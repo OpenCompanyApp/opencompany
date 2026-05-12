@@ -2,13 +2,20 @@
 
 namespace App\Agents\Tools;
 
+use App\Agents\Runtime\Permissions\OpenCompanyPermissionEvaluator;
+use App\Agents\Runtime\Permissions\PermissionDecision;
 use App\Agents\Tools\Providers\BuiltInToolProvider;
 use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\AgentPermissionService;
 use App\Services\Integrations\IntegrationCatalog;
+use App\Services\LuaApiDocGenerator;
+use Illuminate\JsonSchema\JsonSchemaTypeFactory;
 use Illuminate\Support\Str;
+use Laravel\Ai\Contracts\Tool;
+use OpenCompany\IntegrationCore\Contracts\ToolProvider;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class ToolRegistry
 {
@@ -241,7 +248,7 @@ class ToolRegistry
      * Get tools available for a given agent, filtered by permissions.
      * Tools requiring approval are wrapped in ApprovalWrappedTool.
      *
-     * @return array<\Laravel\Ai\Contracts\Tool>
+     * @return array<Tool>
      */
     public function getToolsForAgent(User $agent): array
     {
@@ -262,17 +269,15 @@ class ToolRegistry
                 continue;
             }
 
-            $result = $this->permissionService->resolveToolPermission(
-                $agent, $slug, $meta['type']
-            );
+            $result = $this->evaluateToolPermission($agent, $slug, $meta);
 
-            if (! $result['allowed']) {
+            if ($result->decision === 'deny') {
                 continue;
             }
 
             $tool = $this->instantiateTool($meta['class'], $agent, $slug);
 
-            if ($result['requires_approval']) {
+            if ($result->decision === 'approval_required') {
                 $tool = new ApprovalWrappedTool($tool, $agent, $slug, $meta);
             }
 
@@ -305,8 +310,8 @@ class ToolRegistry
                 continue;
             }
 
-            $result = $this->permissionService->resolveToolPermission($agent, $slug, $meta['type']);
-            if ($result['allowed']) {
+            $result = $this->evaluateToolPermission($agent, $slug, $meta);
+            if ($result->decision !== 'deny') {
                 $slugs[] = $slug;
             }
         }
@@ -337,9 +342,7 @@ class ToolRegistry
                 continue;
             }
 
-            $permission = $this->permissionService->resolveToolPermission(
-                $agent, $slug, $meta['type']
-            );
+            $permission = $this->evaluateToolPermission($agent, $slug, $meta);
 
             $result[] = [
                 'id' => $slug,
@@ -349,8 +352,8 @@ class ToolRegistry
                 'icon' => $meta['icon'],
                 'app' => $app,
                 'isIntegration' => $isIntegration,
-                'enabled' => $permission['allowed'],
-                'requiresApproval' => $permission['requires_approval'],
+                'enabled' => $permission->decision !== 'deny',
+                'requiresApproval' => $permission->decision === 'approval_required',
             ];
         }
 
@@ -404,7 +407,7 @@ class ToolRegistry
      */
     public function getToolCatalog(User $agent): array
     {
-        $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory;
+        $factory = new JsonSchemaTypeFactory;
         $builtIn = [];
         $integrations = [];
 
@@ -529,7 +532,7 @@ class ToolRegistry
     /**
      * Instantiate a specific tool by slug (for post-approval execution).
      */
-    public function instantiateToolBySlug(string $slug, User $agent, ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|\Laravel\Ai\Contracts\Tool|null
+    public function instantiateToolBySlug(string $slug, User $agent, ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|Tool|null
     {
         if (! isset($this->getEffectiveToolMap()[$slug])) {
             return null;
@@ -565,12 +568,10 @@ class ToolRegistry
                 if (! isset($this->getEffectiveToolMap()[$slug])) {
                     continue;
                 }
-                $result = $this->permissionService->resolveToolPermission(
-                    $agent, $slug, $this->getEffectiveToolMap()[$slug]['type']
-                );
-                if ($result['allowed']) {
+                $result = $this->evaluateToolPermission($agent, $slug, $this->getEffectiveToolMap()[$slug]);
+                if ($result->decision !== 'deny') {
                     $hasAllowed = true;
-                    if ($result['requires_approval']) {
+                    if ($result->decision === 'approval_required') {
                         $hasApproval = true;
                     }
                 }
@@ -593,7 +594,7 @@ class ToolRegistry
         $lines[] = 'Do not assume raw upstream API response shapes; integrations may normalize names and structure.';
         $lines[] = 'If docs do not make the return shape clear, inspect with a minimal lua_exec call before writing multi-step logic.';
         $lines[] = '';
-        $lines[] = app(\App\Services\LuaApiDocGenerator::class)->getNamespaceSummary($agent);
+        $lines[] = app(LuaApiDocGenerator::class)->getNamespaceSummary($agent);
 
         return implode("\n", $lines);
     }
@@ -601,7 +602,7 @@ class ToolRegistry
     /**
      * Instantiate a tool class via its provider.
      */
-    private function instantiateTool(string $class, User $agent, string $slug = '', ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|\Laravel\Ai\Contracts\Tool
+    private function instantiateTool(string $class, User $agent, string $slug = '', ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|Tool
     {
         $context = [
             'channel_id' => $this->currentChannelId,
@@ -650,8 +651,17 @@ class ToolRegistry
     }
 
     /**
-     * @param  mixed  $slug
-     * @param  mixed  $meta
+     * @param  array<string, mixed>  $meta
+     */
+    private function evaluateToolPermission(User $agent, string $slug, array $meta): PermissionDecision
+    {
+        return app(OpenCompanyPermissionEvaluator::class)->evaluate($agent, $slug, [
+            'channel_id' => $this->currentChannelId,
+            'task_id' => $this->currentTaskId,
+        ], $meta);
+    }
+
+    /**
      * @return array{class: string, name: string, description: string, type: string, icon: string}|null
      */
     private function normalizeToolMeta(mixed $slug, mixed $meta): ?array
@@ -718,7 +728,6 @@ class ToolRegistry
     }
 
     /**
-     * @param  mixed  $parameters
      * @return array<int, array<string, mixed>>
      */
     private function normalizeCatalogParameters(mixed $parameters): array
@@ -771,11 +780,11 @@ class ToolRegistry
     }
 
     /**
-     * @return array<string, \OpenCompany\IntegrationCore\Contracts\ToolProvider>
+     * @return array<string, ToolProvider>
      */
     private function integrationProviders(): array
     {
-        $registryClass = \OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class;
+        $registryClass = ToolProviderRegistry::class;
 
         if (! class_exists($registryClass) || ! app()->bound($registryClass)) {
             return [];

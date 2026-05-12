@@ -26,19 +26,19 @@ class McpToolProvider implements ToolProvider
 
     public function appName(): string
     {
-        return 'mcp_' . $this->server->slug;
+        return 'mcp_'.$this->server->slug;
     }
 
     public function appMeta(): array
     {
         $toolNames = collect($this->server->discovered_tools ?? [])
             ->pluck('name')
-            ->map(fn ($n) => Str::snake($n))
+            ->map(fn ($n) => Str::snake(str_replace('-', '_', $n)))
             ->implode(', ');
 
         return [
             'label' => $toolNames ?: 'no tools discovered',
-            'description' => $this->server->description ?? 'MCP: ' . $this->server->name,
+            'description' => $this->server->description ?? 'MCP: '.$this->server->name,
             'icon' => $this->server->icon,
         ];
     }
@@ -74,12 +74,14 @@ class McpToolProvider implements ToolProvider
         $toolSlug = $context['tool_slug'] ?? '';
         $mcpToolName = $this->mcpToolNameFromSlug($toolSlug);
         $mcpToolDef = $this->findToolDef($mcpToolName, $server);
+        $remoteToolName = (string) ($mcpToolDef['name'] ?? $mcpToolName);
 
         return new McpProxyTool(
             server: $server,
-            mcpToolName: $mcpToolName,
+            mcpToolName: $remoteToolName,
             mcpToolDescription: $mcpToolDef['description'] ?? '',
             mcpInputSchema: $mcpToolDef['inputSchema'] ?? [],
+            agent: $context['agent'] ?? null,
         );
     }
 
@@ -107,12 +109,12 @@ class McpToolProvider implements ToolProvider
 
     private function toolSlug(string $mcpToolName): string
     {
-        return 'mcp_' . $this->server->slug . '__' . Str::snake($mcpToolName);
+        return 'mcp_'.$this->server->slug.'__'.Str::snake(str_replace('-', '_', $mcpToolName));
     }
 
     private function mcpToolNameFromSlug(string $slug): string
     {
-        $prefix = 'mcp_' . $this->server->slug . '__';
+        $prefix = 'mcp_'.$this->server->slug.'__';
 
         if (str_starts_with($slug, $prefix)) {
             return substr($slug, strlen($prefix));
@@ -129,7 +131,7 @@ class McpToolProvider implements ToolProvider
         $tools = ($server ?? $this->server)->discovered_tools ?? [];
 
         foreach ($tools as $tool) {
-            if (Str::snake($tool['name']) === $mcpToolName || $tool['name'] === $mcpToolName) {
+            if (Str::snake(str_replace('-', '_', $tool['name'])) === $mcpToolName || $tool['name'] === $mcpToolName) {
                 return $tool;
             }
         }

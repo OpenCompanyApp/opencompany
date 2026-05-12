@@ -3,13 +3,15 @@
 namespace App\Services\Mcp;
 
 use App\Models\McpServer;
+use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool as LaravelAiTool;
 use Laravel\Ai\Tools\Request;
 use OpenCompany\IntegrationCore\Contracts\Tool;
 use OpenCompany\IntegrationCore\Support\ToolResult;
 
-class McpProxyTool implements Tool, LaravelAiTool
+class McpProxyTool implements LaravelAiTool, Tool
 {
     /** @param array<string, mixed> $mcpInputSchema */
     public function __construct(
@@ -17,11 +19,12 @@ class McpProxyTool implements Tool, LaravelAiTool
         private string $mcpToolName,
         private string $mcpToolDescription,
         private array $mcpInputSchema,
+        private ?User $agent = null,
     ) {}
 
     public function name(): string
     {
-        return 'mcp_' . $this->server->slug . '__' . str_replace('-', '_', $this->mcpToolName);
+        return 'mcp_'.$this->server->slug.'__'.Str::snake(str_replace('-', '_', $this->mcpToolName));
     }
 
     public function description(): string
@@ -55,8 +58,15 @@ class McpProxyTool implements Tool, LaravelAiTool
     public function execute(array $args): ToolResult
     {
         try {
-            $client = McpClient::fromServer($this->server);
-            $result = $client->callTool($this->mcpToolName, $args);
+            if ($this->agent !== null) {
+                $result = app(McpRuntime::class)->call($this->agent, $this->server, $this->mcpToolName, $args);
+
+                return ($result['success'] ?? false)
+                    ? ToolResult::success((string) ($result['text'] ?? ''))
+                    : ToolResult::error((string) ($result['text'] ?? 'Unknown error from remote server'));
+            }
+
+            $result = McpClient::fromServer($this->server)->callTool($this->mcpToolName, $args);
 
             if (! empty($result['isError'])) {
                 $text = $this->extractText($result['content'] ?? []);
@@ -79,8 +89,15 @@ class McpProxyTool implements Tool, LaravelAiTool
     public function handle(Request $request): string
     {
         try {
-            $client = McpClient::fromServer($this->server);
-            $result = $client->callTool($this->mcpToolName, $request->toArray());
+            if ($this->agent !== null) {
+                $result = app(McpRuntime::class)->call($this->agent, $this->server, $this->mcpToolName, $request->toArray());
+
+                return ($result['success'] ?? false)
+                    ? (string) ($result['text'] ?? '')
+                    : 'MCP Error: '.((string) ($result['text'] ?? 'Unknown error from remote server'));
+            }
+
+            $result = McpClient::fromServer($this->server)->callTool($this->mcpToolName, $request->toArray());
 
             return $this->formatResult($result);
         } catch (\Throwable $e) {
@@ -95,10 +112,10 @@ class McpProxyTool implements Tool, LaravelAiTool
      */
     private function formatResult(array $result): string
     {
-        if (!empty($result['isError'])) {
+        if (! empty($result['isError'])) {
             $text = $this->extractText($result['content'] ?? []);
 
-            return 'MCP Error: ' . ($text ?: 'Unknown error from remote server');
+            return 'MCP Error: '.($text ?: 'Unknown error from remote server');
         }
 
         return $this->extractText($result['content'] ?? []);

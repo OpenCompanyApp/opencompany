@@ -3,14 +3,17 @@
 namespace Tests\Feature;
 
 use App\Agents\OpenCompanyAgent;
+use App\Agents\Runtime\Subagents\GenericSubagent;
+use App\Agents\Runtime\Subagents\OrchestrateSubagents;
+use App\Agents\Tools\ToolRegistry;
 use App\Jobs\IndexDocumentJob;
 use App\Models\Channel;
 use App\Models\Document;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentDocumentService;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -91,9 +94,70 @@ class OpenCompanyAgentTest extends TestCase
         $agentInstance = OpenCompanyAgent::for($agent, 'channel-1');
         $tools = iterator_to_array($agentInstance->tools());
 
-        $registry = app(\App\Agents\Tools\ToolRegistry::class);
+        $registry = app(ToolRegistry::class);
         $expectedToolCount = count($registry->getToolsForAgent($agent));
-        $this->assertCount($expectedToolCount, $tools);
+        $this->assertCount($expectedToolCount + 1, $tools);
+        $this->assertTrue(collect($tools)->contains(fn ($tool) => $tool instanceof OrchestrateSubagents));
+    }
+
+    public function test_generic_peer_agents_are_exposed_as_sdk_subagents(): void
+    {
+        $agent = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'codex:gpt-5.3-codex',
+        ]);
+        $peer = User::factory()->create([
+            'type' => 'agent',
+            'name' => 'Atlas Agent',
+            'brain' => 'codex:gpt-5.3-codex',
+            'workspace_id' => $agent->workspace_id,
+        ]);
+
+        $tools = iterator_to_array(OpenCompanyAgent::for($agent, 'channel-1')->tools());
+        $subagents = array_values(array_filter($tools, fn ($tool) => $tool instanceof GenericSubagent));
+
+        $this->assertCount(1, $subagents);
+        $this->assertSame('subagent_atlas_agent_'.$peer->id, $subagents[0]->name());
+        $this->assertStringContainsString('isolated context', (string) $subagents[0]->description());
+    }
+
+    public function test_generic_subagents_exclude_system_agents_and_keep_duplicate_names_unique(): void
+    {
+        $agent = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'codex:gpt-5.3-codex',
+        ]);
+        $firstPeer = User::factory()->create([
+            'type' => 'agent',
+            'name' => 'Scout',
+            'brain' => 'codex:gpt-5.3-codex',
+            'workspace_id' => $agent->workspace_id,
+        ]);
+        $secondPeer = User::factory()->create([
+            'type' => 'agent',
+            'name' => 'Scout',
+            'brain' => 'codex:gpt-5.3-codex',
+            'workspace_id' => $agent->workspace_id,
+        ]);
+        User::factory()->create([
+            'type' => 'agent',
+            'name' => 'Automation',
+            'agent_type' => 'system',
+            'brain' => 'codex:gpt-5.3-codex',
+            'workspace_id' => $agent->workspace_id,
+        ]);
+
+        $tools = iterator_to_array(OpenCompanyAgent::for($agent, 'channel-1')->tools());
+        $subagentNames = collect($tools)
+            ->filter(fn ($tool) => $tool instanceof GenericSubagent)
+            ->map(fn (GenericSubagent $tool) => $tool->name())
+            ->values()
+            ->all();
+
+        $this->assertSame(collect([
+            'subagent_scout_'.$firstPeer->id,
+            'subagent_scout_'.$secondPeer->id,
+        ])->sort()->values()->all(), $subagentNames);
     }
 
     public function test_fake_prevents_real_api_calls(): void
