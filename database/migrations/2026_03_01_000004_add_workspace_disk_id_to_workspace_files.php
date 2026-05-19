@@ -30,6 +30,7 @@ return new class extends Migration
     {
         Schema::table('workspace_files', function (Blueprint $table) {
             $table->dropForeign(['workspace_disk_id']);
+            $table->dropIndex(['workspace_disk_id']);
             $table->dropColumn('workspace_disk_id');
         });
     }

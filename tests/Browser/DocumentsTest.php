@@ -3,13 +3,11 @@
 namespace Tests\Browser;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 
 class DocumentsTest extends DuskTestCase
 {
-    use DatabaseMigrations;
 
     /**
      * Test that the docs page displays.

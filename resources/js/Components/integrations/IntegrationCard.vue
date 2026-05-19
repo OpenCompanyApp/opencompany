@@ -1,5 +1,7 @@
 <template>
   <div
+    data-test="integration-card"
+    :data-integration-id="integration.id"
     :class="[
       'flex flex-col p-4 rounded-lg border bg-white dark:bg-neutral-900 transition-colors cursor-pointer',
       integration.installed
@@ -71,6 +73,7 @@
       <template v-if="!integration.installed">
         <button
           type="button"
+          data-test="integration-card-action"
           class="w-full py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors"
           @click.stop="$emit('install', integration)"
         >
@@ -85,6 +88,7 @@
         <button
           v-if="canConfigure"
           type="button"
+          data-test="integration-configure"
           class="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
           title="Configure"
           @click.stop="$emit('configure', integration)"
@@ -93,6 +97,7 @@
         </button>
         <button
           type="button"
+          data-test="integration-uninstall"
           class="p-1 text-neutral-400 hover:text-red-500 transition-colors"
           title="Uninstall"
           @click.stop="$emit('uninstall', integration)"

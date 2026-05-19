@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Models\UserExternalIdentity;
 use App\Services\Ai\ModelCatalog;
 use App\Services\Ai\ModelRuntimeCatalog;
-use App\Services\Integrations\ConfigSchemaNormalizer;
 use App\Services\Integrations\IntegrationAccountResolver;
 use App\Services\Integrations\IntegrationConfigResolver;
 use App\Services\Integrations\IntegrationConnectionTester;
@@ -20,8 +19,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -74,7 +71,8 @@ class IntegrationController extends Controller
             try {
                 // First successful configuration can populate provider models.
                 // Failure is non-fatal because the user can refresh models later.
-                $setting = $this->findIntegrationSetting($id, app(IntegrationAccountResolver::class)->accountFromRequest($request));
+                $setting = app(IntegrationAccountResolver::class)
+                    ->findSetting($id, app(IntegrationAccountResolver::class)->accountFromRequest($request));
                 $existingModels = $setting?->getConfigValue('models');
                 if ($setting && empty($existingModels) && ($models = app(ModelRuntimeCatalog::class)->fetchProviderModels($id)) !== []) {
                     $setting->setConfigValue('models', $models);
@@ -95,7 +93,7 @@ class IntegrationController extends Controller
     {
         $request->validate(['enabled' => 'required|boolean']);
 
-        $setting = $this->findIntegrationSetting($id);
+        $setting = app(IntegrationAccountResolver::class)->findSetting($id);
 
         if ($setting) {
             $setting->update(['enabled' => $request->boolean('enabled')]);
@@ -133,24 +131,13 @@ class IntegrationController extends Controller
      */
     public function disconnect(Request $request, string $id): JsonResponse
     {
-        $provider = $this->findConfigurableProvider($id);
-        if (! $provider) {
-            return response()->json(['error' => 'Integration not found'], 404);
-        }
+        $disconnected = app(IntegrationConfigResolver::class)->disconnect(
+            $id,
+            app(IntegrationAccountResolver::class)->accountFromRequest($request),
+        );
 
-        $setting = $this->findIntegrationSetting($id, app(IntegrationAccountResolver::class)->accountFromRequest($request));
-        if ($setting) {
-            $config = $setting->config ?? [];
-            foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
-                if ($field['type'] === 'oauth_connect') {
-                    // Only clear OAuth token fields. API keys or unrelated
-                    // static config should survive a provider disconnect.
-                    unset($config[$field['key']]);
-                }
-            }
-            $setting->config = $config;
-            $setting->enabled = false;
-            $setting->save();
+        if ($disconnected === null) {
+            return response()->json(['error' => 'Integration not found'], 404);
         }
 
         return response()->json(['success' => true]);
@@ -165,7 +152,7 @@ class IntegrationController extends Controller
             return response()->json(['error' => 'Webhooks not supported for this integration'], 400);
         }
 
-        $setting = $this->findIntegrationSetting('telegram');
+        $setting = app(IntegrationAccountResolver::class)->findSetting('telegram');
         $apiKey = $request->input('apiKey');
 
         if (! $apiKey || str_contains($apiKey, '*')) {
@@ -411,7 +398,7 @@ class IntegrationController extends Controller
             // Persist fetched model names as a workspace override so dropdowns
             // can show the provider's current model set without refetching on
             // every page load.
-            $setting = $this->findIntegrationSetting($id);
+            $setting = app(IntegrationAccountResolver::class)->findSetting($id);
             if ($setting) {
                 $setting->setConfigValue('models', $models);
                 $setting->save();
@@ -428,29 +415,6 @@ class IntegrationController extends Controller
                 'error' => 'Failed to fetch models: '.$e->getMessage(),
             ], 400);
         }
-    }
-
-    private function findIntegrationSetting(string $id, ?string $account = null): ?IntegrationSetting
-    {
-        return IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
-            ->forAccount($account)
-            ->first();
-    }
-
-    /**
-     * Find a ToolProvider that implements ConfigurableIntegration for the given ID.
-     */
-    private function findConfigurableProvider(string $id): ?ConfigurableIntegration
-    {
-        $registry = app(ToolProviderRegistry::class);
-        $provider = $registry->get($id);
-
-        if ($provider instanceof ConfigurableIntegration) {
-            return $provider;
-        }
-
-        return null;
     }
 
     // ─── Multi-Account Endpoints ────────────────────────────────

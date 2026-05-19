@@ -5,6 +5,8 @@ namespace App\Services\Integrations;
 use App\Models\IntegrationSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use OpenCompany\IntegrationCore\Contracts\HasIntegrationCapabilities;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 /**
  * Resolves integration account aliases and workspace-scoped settings.
@@ -15,6 +17,10 @@ use Illuminate\Support\Str;
  */
 class IntegrationAccountResolver
 {
+    public function __construct(
+        private ToolProviderRegistry $registry,
+    ) {}
+
     public function accountFromRequest(Request $request): ?string
     {
         $account = $request->input('account', $request->query('account'));
@@ -67,22 +73,64 @@ class IntegrationAccountResolver
      */
     public function sharedCredentialSiblings(string $id): array
     {
-        // Google integrations share one OAuth client in practice, but keep the
-        // list app-local until package metadata can describe shared credential
-        // groups without coupling OpenCompany to vendor-specific IDs.
-        $google = [
-            'google-calendar',
-            'gmail',
-            'google-drive',
-            'google-contacts',
-            'google-sheets',
-            'google-search-console',
-            'google-tasks',
-            'google-analytics',
-            'google-docs',
-            'google-forms',
-        ];
+        return $this->sharedCredentialGroup($id)['integration_ids'];
+    }
 
-        return in_array($id, $google, true) ? $google : [];
+    /**
+     * @return array{integration_ids: list<string>, keys: list<string>}
+     */
+    public function sharedCredentialGroup(string $id): array
+    {
+        $group = $this->sharedCredentialMetadata($id);
+        if ($group === null) {
+            return ['integration_ids' => [], 'keys' => []];
+        }
+
+        $ids = [];
+        foreach ($this->registry->all() as $provider) {
+            if (! $provider instanceof HasIntegrationCapabilities) {
+                continue;
+            }
+
+            $candidateGroup = $this->sharedCredentialMetadata($provider->appName());
+            if (($candidateGroup['group'] ?? null) === $group['group']) {
+                $ids[] = $provider->appName();
+            }
+        }
+
+        return [
+            'integration_ids' => array_values(array_unique($ids)),
+            'keys' => $group['keys'],
+        ];
+    }
+
+    /**
+     * @return array{group: string, keys: list<string>}|null
+     */
+    private function sharedCredentialMetadata(string $id): ?array
+    {
+        $provider = $this->registry->get($id);
+        if (! $provider instanceof HasIntegrationCapabilities) {
+            return null;
+        }
+
+        $metadata = $provider->integrationCapabilities()['shared_credentials'] ?? null;
+        if (! is_array($metadata) || ! is_string($metadata['group'] ?? null)) {
+            return null;
+        }
+
+        $keys = array_values(array_filter(
+            $metadata['keys'] ?? [],
+            static fn ($key): bool => is_string($key) && $key !== '',
+        ));
+
+        if ($keys === []) {
+            return null;
+        }
+
+        return [
+            'group' => $metadata['group'],
+            'keys' => $keys,
+        ];
     }
 }

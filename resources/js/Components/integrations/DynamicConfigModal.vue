@@ -6,7 +6,7 @@
     :icon="meta?.icon || 'ph:gear'"
     size="md"
   >
-    <form class="space-y-5" @submit.prevent="handleSave">
+    <form class="space-y-5" data-test="dynamic-config-form" @submit.prevent="handleSave">
       <div class="space-y-2">
         <div class="flex items-center justify-between gap-3">
           <label class="block text-sm font-medium text-neutral-900 dark:text-white">
@@ -22,6 +22,7 @@
         <div class="flex gap-2">
           <select
             v-model="selectedAccount"
+            data-test="integration-account-select"
             class="flex-1 min-w-0 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
             @change="loadConfig"
           >
@@ -43,6 +44,7 @@
         <div class="flex gap-2">
           <input
             v-model="newAccountAlias"
+            data-test="integration-new-account"
             type="text"
             placeholder="new_account"
             class="flex-1 min-w-0 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm font-mono"
@@ -70,6 +72,8 @@
         <div v-if="field.type === 'secret'" class="relative">
           <input
             v-model="formValues[field.key]"
+            :data-test="`integration-field-${field.key}`"
+            :name="field.key"
             :type="showSecrets[field.key] ? 'text' : 'password'"
             :placeholder="field.placeholder || ''"
             class="w-full px-4 py-2.5 pr-10 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors font-mono text-sm"
@@ -87,6 +91,8 @@
         <input
           v-else-if="field.type === 'url'"
           v-model="formValues[field.key]"
+          :data-test="`integration-field-${field.key}`"
+          :name="field.key"
           type="text"
           :placeholder="field.placeholder || ''"
           class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
@@ -96,6 +102,8 @@
         <input
           v-else-if="field.type === 'text'"
           v-model="formValues[field.key]"
+          :data-test="`integration-field-${field.key}`"
+          :name="field.key"
           type="text"
           :placeholder="field.placeholder || ''"
           class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
@@ -105,6 +113,8 @@
         <select
           v-else-if="field.type === 'select'"
           v-model="formValues[field.key]"
+          :data-test="`integration-field-${field.key}`"
+          :name="field.key"
           class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
         >
           <option v-for="(optLabel, optValue) in field.options" :key="optValue" :value="optValue">
@@ -134,6 +144,8 @@
           <div class="flex gap-2 mt-1.5">
             <input
               v-model="listInputs[field.key]"
+              :data-test="`integration-field-${field.key}`"
+              :name="field.key"
               type="text"
               :placeholder="field.item_placeholder || 'Add item...'"
               class="flex-1 px-4 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm font-mono"
@@ -269,6 +281,7 @@
         </Button>
         <Button
           variant="primary"
+          data-test="save-integration-config"
           :loading="isSaving"
           :disabled="!hasRequiredFields"
           @click="handleSave"

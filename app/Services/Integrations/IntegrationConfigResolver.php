@@ -58,6 +58,35 @@ class IntegrationConfigResolver
         return [$this->updateStatic($request, $id, $available[$id], $account), 200];
     }
 
+    /**
+     * Clear OAuth token fields for a configurable integration account.
+     */
+    public function disconnect(string $id, ?string $account = null): ?bool
+    {
+        $provider = $this->findConfigurableProvider($id);
+        if (! $provider) {
+            return null;
+        }
+
+        $setting = $this->accounts->findSetting($id, $account);
+        if (! $setting) {
+            return true;
+        }
+
+        $config = $setting->config ?? [];
+        foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
+            if ($field['type'] === 'oauth_connect') {
+                unset($config[$field['key']]);
+            }
+        }
+
+        $setting->config = $config;
+        $setting->enabled = false;
+        $setting->save();
+
+        return true;
+    }
+
     public function findConfigurableProvider(string $id): ?ConfigurableIntegration
     {
         $provider = $this->registry->get($id);
@@ -189,17 +218,17 @@ class IntegrationConfigResolver
      */
     private function fillSharedCredentials(string $id, ?string $account, array &$config): void
     {
-        $siblings = $this->accounts->sharedCredentialSiblings($id);
-        if ($siblings === []) {
+        $group = $this->accounts->sharedCredentialGroup($id);
+        if ($group['integration_ids'] === [] || $group['keys'] === []) {
             return;
         }
 
-        foreach (['client_id', 'client_secret'] as $sharedKey) {
+        foreach ($group['keys'] as $sharedKey) {
             if (! empty($config[$sharedKey])) {
                 continue;
             }
 
-            foreach ($siblings as $sibling) {
+            foreach ($group['integration_ids'] as $sibling) {
                 if ($sibling === $id) {
                     continue;
                 }
@@ -330,12 +359,17 @@ class IntegrationConfigResolver
      */
     private function copySharedCredentials(string $id, ?string $account, array &$config): void
     {
-        foreach ($this->accounts->sharedCredentialSiblings($id) as $sibling) {
+        $group = $this->accounts->sharedCredentialGroup($id);
+        if ($group['integration_ids'] === [] || $group['keys'] === []) {
+            return;
+        }
+
+        foreach ($group['integration_ids'] as $sibling) {
             if ($sibling === $id) {
                 continue;
             }
 
-            foreach (['client_id', 'client_secret'] as $sharedKey) {
+            foreach ($group['keys'] as $sharedKey) {
                 if (! empty($config[$sharedKey])) {
                     continue;
                 }

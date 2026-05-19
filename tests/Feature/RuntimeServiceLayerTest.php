@@ -66,6 +66,16 @@ class RuntimeServiceLayerTest extends TestCase
         $this->assertSame(200, $result->status);
     }
 
+    public function test_shared_integration_credentials_are_resolved_from_package_metadata(): void
+    {
+        $group = app(\App\Services\Integrations\IntegrationAccountResolver::class)
+            ->sharedCredentialGroup('gmail');
+
+        $this->assertContains('gmail', $group['integration_ids']);
+        $this->assertContains('google-calendar', $group['integration_ids']);
+        $this->assertSame(['client_id', 'client_secret'], $group['keys']);
+    }
+
     public function test_provider_and_model_catalog_use_workspace_overlay(): void
     {
         IntegrationSetting::create([
