@@ -735,8 +735,8 @@ but not visible on screen:
 
 ## 12. Design Tokens Reference
 
-Complete reference of every CSS custom property defined in `app.css`, with values in
-both light and dark mode.
+Complete reference of every CSS custom property defined in
+`resources/css/app.css`, with values in both light and dark mode.
 
 ### 12.1 Typography Tokens
 

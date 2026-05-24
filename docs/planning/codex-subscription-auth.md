@@ -149,7 +149,7 @@ Current OpenCompany catalog note: `app/Domain/Ai/Catalog/generated/providers.php
 
 | Model ID | Notes |
 |----------|-------|
-| `gpt-5.3-codex` | Latest; manually injected if missing from models.dev registry |
+| `gpt-5.3-codex` | Current generated OpenCompany default in the checked codebase; the upstream model registry may change independently |
 | `gpt-5.2-codex` | |
 | `gpt-5.2` | |
 | `gpt-5.1-codex` | |
@@ -164,7 +164,10 @@ for (const model of Object.values(provider.models)) {
 }
 ```
 
-The `gpt-5.3-codex` model is special-cased — if it doesn't exist in the models.dev registry, the plugin creates it manually with hardcoded capabilities (400K context, reasoning, tool calls, image input).
+The OpenCode research source special-cased `gpt-5.3-codex` when absent from the
+models.dev registry. OpenCompany should treat that as research context, not a
+promise that this is always the latest Codex model; the current app-owned
+catalog is the source of truth until regenerated or overridden.
 
 ## 7. JWT Account ID Extraction
 

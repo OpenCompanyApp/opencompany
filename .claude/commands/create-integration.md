@@ -5,16 +5,16 @@ argument-hint: <tool-name>
 
 # Create Integration Package
 
-Create a new integration package called `$ARGUMENTS` in the `../integrations/` monorepo directory (sibling to this project), following the established OpenCompany integration package pattern.
+Create a new integration package called `$ARGUMENTS` in the `../integrations/packages/` monorepo directory (sibling to this project), following the established OpenCompany integration package pattern.
 
 ## Before you start
 
 Read the reference implementation to understand the exact patterns:
 
-1. Read `../integrations/celestial/src/CelestialToolProvider.php` — ToolProvider with atomic tool entries
-2. Read `../integrations/celestial/src/CelestialServiceProvider.php` — ServiceProvider pattern
-3. Read `../integrations/celestial/src/Tools/CelestialMoonPhase.php` — Atomic tool class (one operation per class)
-4. Read `../integrations/celestial/composer.json` — Package dependencies
+1. Read `../integrations/packages/celestial/src/CelestialToolProvider.php` — ToolProvider with atomic tool entries
+2. Read `../integrations/packages/celestial/src/CelestialServiceProvider.php` — ServiceProvider pattern
+3. Read `../integrations/packages/celestial/src/Tools/CelestialMoonPhase.php` — Atomic tool class (one operation per class)
+4. Read `../integrations/packages/celestial/composer.json` — Package dependencies
 5. Read `../integrations/core/src/Contracts/Tool.php` — The Tool contract to implement
 6. Read `../integrations/core/src/Contracts/ToolProvider.php` — The ToolProvider contract
 7. Read `../integrations/core/src/Contracts/CredentialResolver.php` — For tools needing API keys
@@ -23,9 +23,9 @@ Read the reference implementation to understand the exact patterns:
 ## Package structure to create
 
 ```
-../integrations/$ARGUMENTS/
+../integrations/packages/$ARGUMENTS/
 ├── composer.json
-├── LICENSE          (MIT, copy from ../integrations/celestial/LICENSE)
+├── LICENSE          (MIT, copy from ../integrations/packages/celestial/LICENSE)
 ├── README.md
 ├── lua-docs/        (supplementary Lua API docs)
 │   └── {name}.md
@@ -149,7 +149,7 @@ Tool slug convention: `{appname}_{verb}_{noun}` — e.g., `weather_get_forecast`
 
 Most external API integrations should also implement `ConfigurableIntegration` alongside `ToolProvider`. This gives automatic config UI rendering in the Integrations page, a "Test Connection" button, and credential validation on save.
 
-See `../integrations/clickup/src/ClickUpToolProvider.php` for a complete real-world example.
+See `../integrations/packages/clickup/src/ClickUpToolProvider.php` for a complete real-world example.
 
 ### Lua docs
 
@@ -161,11 +161,11 @@ public function luaDocsPath(): ?string
 }
 ```
 
-See `../integrations/clickup/lua-docs/clickup.md` for an example.
+See `../integrations/packages/clickup/lua-docs/clickup.md` for an example.
 
 ## After creating the package
 
-1. The monorepo wildcard path (`../integrations/*`) auto-discovers the new package.
+1. The monorepo wildcard path (`../integrations/packages/*`) auto-discovers the new package.
 2. Add to `composer.json` require: `"opencompanyapp/integration-$ARGUMENTS": "@dev"`
 3. Run `composer update`
 4. Verify with `php artisan tinker`:

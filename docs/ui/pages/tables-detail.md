@@ -117,18 +117,21 @@ Column header dropdown:
 
 ### View Modes
 
-The toolbar supports 4 view types. Views are managed client-side as an array.
+The toolbar supports 4 view types. Views are loaded from
+`GET /api/tables/{tableId}/views`, persisted through the views API, and rendered
+by dedicated components.
 
 | View | Icon | Description |
 |------|------|-------------|
 | **Grid** | `ph:table` | Default spreadsheet view with `TableGrid` component |
-| **Kanban** | `ph:kanban` | Board view (defined in view options, not yet rendered) |
-| **Gallery** | `ph:squares-four` | Card gallery view (defined in view options, not yet rendered) |
-| **Calendar** | `ph:calendar` | Calendar view (defined in view options, not yet rendered) |
+| **Kanban** | `ph:kanban` | Board view rendered by `TableKanban`; prompts for a select/multiselect group column when unconfigured |
+| **Gallery** | `ph:squares-four` | Card gallery rendered by `TableGallery` with editable visible fields |
+| **Calendar** | `ph:calendar` | Month calendar rendered by `TableCalendar`; prompts for a date column when unconfigured |
 
 - Active view highlighted with white bg and shadow
-- "+" button opens dropdown to add Grid, Kanban, Gallery, or Calendar view
-- A default "Grid" view is auto-created if none exist
+- "+" button opens dropdown to add Grid, Kanban, Gallery, or Calendar views via `POST /api/tables/{tableId}/views`
+- A default "Grid" view is created through the views API if none exist
+- View config changes persist through `PATCH /api/tables/{tableId}/views/{viewId}`
 
 ### Inline Cell Editing
 
@@ -160,7 +163,7 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 
 ### Search & Filter
 - `SearchInput` in toolbar filters rows client-side by matching any cell value
-- Filter and sort panel toggles (buttons present, panels not yet implemented)
+- Filter and sort buttons currently toggle local state only; no filter/sort panel is rendered yet
 
 ### Table Header Actions
 - **Name/Description**: Inline editable text inputs, saved on blur via `PATCH /api/tables/{id}`

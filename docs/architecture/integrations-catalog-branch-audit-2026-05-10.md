@@ -1,12 +1,25 @@
 # Integrations Catalog Branch Audit - 2026-05-10
 
+> Status: Historical branch audit. This file preserves the May 10 findings that
+> shaped the integration-catalog work, but the "current tree" and findings below
+> are not the live repository state. A May 24 code check found the local `dev`
+> branch clean against `origin/dev`, with account-aware Google/TickTick OAuth,
+> workspace/admin middleware on package OAuth routes, packaged catalog lookup,
+> paged catalog loading, catalog-unavailable UI state, global integration-card
+> dedupe, and focused feature/browser coverage now present. Use
+> `docs/ui/pages/integrations.md`, `docs/planning/integrations.md`, and
+> `docs/architecture/docs-code-alignment-audit-2026-05-24.md` for the current
+> integration surface.
+
 ## Scope
 
-This audit covers the current `dev` branch against `origin/main`, plus the uncommitted integration-catalog and multi-account integration work currently in the OpenCompany and sibling `integrations` working trees.
+This original audit covered the May 10 `dev` branch against `origin/main`, plus
+the then-uncommitted integration-catalog and multi-account integration work in
+the OpenCompany and sibling `integrations` working trees.
 
 No commit was created during this audit.
 
-## Current Tree State
+## Original Audit Tree State
 
 OpenCompany:
 
@@ -53,7 +66,27 @@ Runtime provider list:
 
 The important product distinction is that the catalog has 591 possible integrations, while the local runtime can only execute the installed package/provider subset. The UI must keep "catalog available" separate from "package installed/runnable".
 
-## Findings
+## May 24 Refresh
+
+The following May 10 findings were rechecked against current code on May 24:
+
+- Multi-account config and OAuth alias propagation now exist in
+  `DynamicConfigModal.vue`, `IntegrationConfigResolver`, Google OAuth, TickTick
+  OAuth, Google token refresh persistence, and `IntegrationOAuthAccountTest`.
+- Google and TickTick OAuth authorize/callback routes now carry
+  `ResolveWorkspace` and `EnsureWorkspaceAdmin` middleware in the Laravel route
+  table.
+- Catalog lookup now uses the packaged catalog path with availability metadata;
+  `IntegrationCatalogControllerTest` covers the unavailable-file response.
+- `Integrations.vue` now loads catalog entries in pages (`perPage = 50`), shows
+  load-more/unavailable/error states, and uses global card-key dedupe when
+  merging runtime, catalog, and MCP entries.
+- Remaining risk is no longer the P0/P1 branch blockers below. Current risks are
+  the usual product-hardening items: deeper provider-specific setup UX, broader
+  browser coverage for catalog interactions, and continued separation of
+  installed/runnable/catalog-only states.
+
+## Original Findings
 
 ### P0 - Multi-account OAuth is not wired end to end
 

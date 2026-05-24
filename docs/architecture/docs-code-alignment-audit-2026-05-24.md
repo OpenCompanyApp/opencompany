@@ -48,6 +48,14 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Updated [../external-channel-sync.md](../external-channel-sync.md), [../planning/chatogrator.md](../planning/chatogrator.md), and [../discord.md](../discord.md) so chat webhook workspace resolution is described as proof-backed rather than payload-only.
 - Updated confidential OpenAI Frontier competitive notes so OpenCompany is described as source-available/self-hostable under BSL 1.1 + Additional Use Grant, not fully open source.
 - Updated [../INDEX.md](../INDEX.md) so the new UI page docs are discoverable.
+- Updated [integrations-catalog-branch-audit-2026-05-10.md](integrations-catalog-branch-audit-2026-05-10.md) so the old branch audit is explicitly historical and no longer presents resolved multi-account OAuth, OAuth middleware, catalog availability, paging, or dedupe findings as current blockers.
+- Updated [../confidential/website/features.md](../confidential/website/features.md) so external-channel marketing inventory distinguishes current Chatogrator adapter/webhook surfaces from remaining setup/hardening work, instead of calling Discord only a planned sidecar.
+- Updated [../planning/codex-subscription-auth.md](../planning/codex-subscription-auth.md) so `gpt-5.3-codex` is described as the current generated app default, not a timeless "latest" model claim.
+- Updated [../../.claude/commands/create-integration.md](../../.claude/commands/create-integration.md) for the current `../integrations/packages/*` monorepo layout.
+- Updated [../ui/design-system.md](../ui/design-system.md) to point design-token readers at `resources/css/app.css`.
+- Updated [../ui/pages/approvals.md](../ui/pages/approvals.md) so approval API docs match `useApi().respondToApproval()` and server-side authenticated responder handling.
+- Updated [../ui/pages/tables-detail.md](../ui/pages/tables-detail.md) so alternate table views are documented as rendered `TableKanban`, `TableGallery`, and `TableCalendar` components with persisted view APIs.
+- Updated confidential ecosystem overview notes so April 2026 package/runtime counts are marked as a snapshot and current provider/package counts are delegated to `composer.lock`, integration catalog config, and generated AI catalog files.
 
 ## Mechanical Checks
 
