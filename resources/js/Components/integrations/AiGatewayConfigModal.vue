@@ -71,7 +71,7 @@
 
           <div v-else-if="groupedModels.length === 0" class="text-sm text-neutral-500 dark:text-neutral-400">
             <p>No AI models configured.</p>
-            <a :href="workspacePath('/integrations')" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
+            <a :href="integrationsUrl()" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
               Configure integrations
             </a>
           </div>
@@ -278,13 +278,21 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
-import axios from 'axios'
+import {
+  apiKeys as aiGatewayApiKeys,
+  config as aiGatewayConfig,
+  createApiKey,
+  deleteApiKey,
+  updateConfig,
+} from '@/actions/App/Http/Controllers/Api/AiGatewayController'
+import { enabledModels } from '@/actions/App/Http/Controllers/Api/IntegrationController'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { wayfinderRequest } from '@/utils/wayfinder'
 
-const { workspacePath } = useWorkspace()
+const { integrationsUrl } = useWorkspace()
 
 const isOpen = defineModel<boolean>('open', { default: false })
 
@@ -315,6 +323,15 @@ interface ApiKeyEntry {
   last_used_at: string | null
   expires_at: string | null
   created_at: string
+}
+
+interface AiGatewayConfigResponse {
+  enabled: boolean
+  enabled_models?: string[]
+}
+
+interface ApiKeyCreatedResponse {
+  key: string
 }
 
 // Config state
@@ -407,7 +424,7 @@ watch(isOpen, async (open) => {
 const loadConfig = async () => {
   loadingConfig.value = true
   try {
-    const { data } = await axios.get('/api/ai-gateway/config')
+    const { data } = await wayfinderRequest<AiGatewayConfigResponse>(aiGatewayConfig())
     config.enabled = data.enabled
     config.enabled_models = data.enabled_models || []
   } catch (error) {
@@ -420,7 +437,7 @@ const loadConfig = async () => {
 const loadModels = async () => {
   loadingModels.value = true
   try {
-    const { data } = await axios.get('/api/integrations/models')
+    const { data } = await wayfinderRequest<AvailableModel[]>(enabledModels())
     availableModels.value = data
   } catch (error) {
     console.error('Failed to load models:', error)
@@ -431,7 +448,7 @@ const loadModels = async () => {
 
 const loadApiKeys = async () => {
   try {
-    const { data } = await axios.get('/api/ai-gateway/api-keys')
+    const { data } = await wayfinderRequest<ApiKeyEntry[]>(aiGatewayApiKeys())
     apiKeys.value = data
   } catch (error) {
     console.error('Failed to load API keys:', error)
@@ -443,9 +460,11 @@ const save = async () => {
   errorMessage.value = ''
 
   try {
-    await axios.put('/api/ai-gateway/config', {
-      enabled: config.enabled,
-      enabled_models: config.enabled_models,
+    await wayfinderRequest(updateConfig(), {
+      data: {
+        enabled: config.enabled,
+        enabled_models: config.enabled_models,
+      },
     })
     emit('saved', { enabled: config.enabled, configured: true })
   } catch (error: any) {
@@ -462,8 +481,10 @@ const createKey = async () => {
   errorMessage.value = ''
 
   try {
-    const { data } = await axios.post('/api/ai-gateway/api-keys', {
-      name: newKeyName.value.trim(),
+    const { data } = await wayfinderRequest<ApiKeyCreatedResponse>(createApiKey(), {
+      data: {
+        name: newKeyName.value.trim(),
+      },
     })
     newlyCreatedKey.value = data.key
     showCreateKey.value = false
@@ -478,7 +499,7 @@ const createKey = async () => {
 
 const revokeKey = async (id: string) => {
   try {
-    await axios.delete(`/api/ai-gateway/api-keys/${id}`)
+    await wayfinderRequest(deleteApiKey(id))
     apiKeys.value = apiKeys.value.filter(k => k.id !== id)
   } catch (error: any) {
     errorMessage.value = error.response?.data?.message || 'Failed to revoke key'

@@ -94,7 +94,7 @@
 │  ...                                                           │
 └────────────────────────────────────────────────────────────────┘
 
-Clicking a task navigates to `workspacePath('/tasks/{id}')`.
+Clicking a task navigates through the generated task detail route helper.
 ```
 
 ### Tab: Identity
@@ -222,7 +222,7 @@ Clicking a task navigates to `workspacePath('/tasks/{id}')`.
 
 ### Navigation
 - **Back button** at top-left calls `window.history.back()`
-- **Message button** links through `workspacePath('/messages/{agentId}')` (redirects to unified chat)
+- **Message button** links through the generated message route helper (redirects to unified chat)
 
 ### Tab Switching
 - 6 tabs: Overview, Tasks, Identity, Capabilities, Activity, Settings

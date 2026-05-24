@@ -78,6 +78,40 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 })
 
 /**
+* @see \App\Http\Controllers\Api\McpServerController::testNewConnection
+* @see app/Http/Controllers/Api/McpServerController.php:105
+* @route '/api/mcp-servers/test-new'
+*/
+export const testNewConnection = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: testNewConnection.url(options),
+    method: 'post',
+})
+
+testNewConnection.definition = {
+    methods: ["post"],
+    url: '/api/mcp-servers/test-new',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Api\McpServerController::testNewConnection
+* @see app/Http/Controllers/Api/McpServerController.php:105
+* @route '/api/mcp-servers/test-new'
+*/
+testNewConnection.url = (options?: RouteQueryOptions) => {
+    return testNewConnection.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Api\McpServerController::testNewConnection
+* @see app/Http/Controllers/Api/McpServerController.php:105
+* @route '/api/mcp-servers/test-new'
+*/
+testNewConnection.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: testNewConnection.url(options),
+    method: 'post',
+})
+
+/**
 * @see \App\Http\Controllers\Api\McpServerController::show
 * @see app/Http/Controllers/Api/McpServerController.php:52
 * @route '/api/mcp-servers/{id}'
@@ -297,7 +331,7 @@ testConnection.post = (args: { id: string | number } | [id: string | number ] | 
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::discoverTools
-* @see app/Http/Controllers/Api/McpServerController.php:105
+* @see app/Http/Controllers/Api/McpServerController.php:122
 * @route '/api/mcp-servers/{id}/discover'
 */
 export const discoverTools = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -312,7 +346,7 @@ discoverTools.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::discoverTools
-* @see app/Http/Controllers/Api/McpServerController.php:105
+* @see app/Http/Controllers/Api/McpServerController.php:122
 * @route '/api/mcp-servers/{id}/discover'
 */
 discoverTools.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -339,7 +373,7 @@ discoverTools.url = (args: { id: string | number } | [id: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::discoverTools
-* @see app/Http/Controllers/Api/McpServerController.php:105
+* @see app/Http/Controllers/Api/McpServerController.php:122
 * @route '/api/mcp-servers/{id}/discover'
 */
 discoverTools.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -347,6 +381,6 @@ discoverTools.post = (args: { id: string | number } | [id: string | number ] | s
     method: 'post',
 })
 
-const McpServerController = { index, store, show, update, destroy, testConnection, discoverTools }
+const McpServerController = { index, store, testNewConnection, show, update, destroy, testConnection, discoverTools }
 
 export default McpServerController

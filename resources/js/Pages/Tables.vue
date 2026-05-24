@@ -129,7 +129,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import { apiFetch } from '@/utils/apiFetch'
+import {
+  destroy as destroyDataTable,
+  index as dataTablesIndex,
+  store as storeDataTable,
+} from '@/actions/App/Http/Controllers/Api/DataTableController'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
@@ -137,6 +141,7 @@ import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
 import TableCreateModal from '@/Components/tables/TableCreateModal.vue'
 import type { DataTable } from '@/types'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { wayfinderFetch } from '@/utils/wayfinder'
 
 const { tableUrl } = useWorkspace()
 
@@ -154,7 +159,7 @@ const getRowCount = (table: DataTable): number => {
 const fetchTables = async () => {
   loading.value = true
   try {
-    const response = await apiFetch('/api/tables')
+    const response = await wayfinderFetch(dataTablesIndex())
     tables.value = await response.json()
   } catch (error) {
     console.error('Failed to fetch tables:', error)
@@ -166,8 +171,7 @@ const fetchTables = async () => {
 
 const handleCreateTable = async (data: { name: string; description?: string; icon?: string }) => {
   try {
-    const response = await apiFetch('/api/tables', {
-      method: 'POST',
+    const response = await wayfinderFetch(storeDataTable(), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
@@ -187,9 +191,7 @@ const handleDeleteTable = async () => {
   if (!tableToDelete.value) return
 
   try {
-    await apiFetch(`/api/tables/${tableToDelete.value.id}`, {
-      method: 'DELETE',
-    })
+    await wayfinderFetch(destroyDataTable(tableToDelete.value.id))
     tables.value = tables.value.filter(t => t.id !== tableToDelete.value!.id)
     tableToDelete.value = null
   } catch (error) {

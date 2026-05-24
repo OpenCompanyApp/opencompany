@@ -1,7 +1,13 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
-import { apiFetch } from '@/utils/apiFetch'
-import axios from 'axios'
+import {
+  allProviders as allProvidersRoute,
+  embeddingModels,
+  ollamaModelStatus,
+  ollamaPullModel,
+  rerankingModels,
+} from '@/actions/App/Http/Controllers/Api/IntegrationController'
+import { wayfinderFetch, wayfinderRequest } from '@/utils/wayfinder'
 import type {
   MemorySettingsData,
   ProviderInfo,
@@ -10,6 +16,8 @@ import type {
   RerankingModelOption,
   RerankCloudProviderGroup,
 } from '@/Components/settings/types'
+
+type OllamaStatus = { online: boolean; models: string[]; url: string }
 
 export function useMemorySettings(
   initialMemory: MemorySettingsData,
@@ -141,7 +149,7 @@ export function useMemorySettings(
   }
 
   // --- Ollama status ---
-  const ollamaStatus = ref<{ online: boolean; models: string[]; url: string }>({ online: false, models: [], url: '' })
+  const ollamaStatus = ref<OllamaStatus>({ online: false, models: [], url: '' })
 
   function getCsrfToken(): string {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/)
@@ -150,7 +158,7 @@ export function useMemorySettings(
 
   async function checkOllamaStatus() {
     try {
-      const { data } = await axios.get('/api/integrations/ollama/status')
+      const { data } = await wayfinderRequest<OllamaStatus>(ollamaModelStatus())
       ollamaStatus.value = data
     } catch {
       ollamaStatus.value = { online: false, models: [], url: '' }
@@ -161,8 +169,7 @@ export function useMemorySettings(
     pullingModel.value = modelId
     pullProgress.value = { percent: 0, status: 'starting' }
     try {
-      const response = await apiFetch('/api/integrations/ollama/pull', {
-        method: 'POST',
+      const response = await wayfinderFetch(ollamaPullModel(), {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream',
@@ -217,7 +224,7 @@ export function useMemorySettings(
 
   async function refreshEmbeddingModels() {
     try {
-      const { data } = await axios.get('/api/integrations/embedding-models')
+      const { data } = await wayfinderRequest<EmbeddingModelOption[]>(embeddingModels())
       embeddingModelOptions.value = data
     } catch { /* ignore */ }
   }
@@ -361,8 +368,7 @@ export function useMemorySettings(
     pullingRerankModel.value = modelId
     pullRerankProgress.value = { percent: 0, status: 'starting' }
     try {
-      const response = await apiFetch('/api/integrations/ollama/pull', {
-        method: 'POST',
+      const response = await wayfinderFetch(ollamaPullModel(), {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream',
@@ -417,7 +423,7 @@ export function useMemorySettings(
 
   async function refreshRerankingModels() {
     try {
-      const { data } = await axios.get('/api/integrations/reranking-models')
+      const { data } = await wayfinderRequest<RerankingModelOption[]>(rerankingModels())
       rerankingModelOptions.value = data
     } catch { /* ignore */ }
   }
@@ -464,9 +470,9 @@ export function useMemorySettings(
     loadingRerankingModels.value = true
 
     const [providersRes, embeddingRes, rerankingRes] = await Promise.allSettled([
-      axios.get('/api/integrations/all-providers'),
-      axios.get('/api/integrations/embedding-models'),
-      axios.get('/api/integrations/reranking-models'),
+      wayfinderRequest<ProviderInfo[]>(allProvidersRoute()),
+      wayfinderRequest<EmbeddingModelOption[]>(embeddingModels()),
+      wayfinderRequest<RerankingModelOption[]>(rerankingModels()),
     ])
 
     if (providersRes.status === 'fulfilled') {

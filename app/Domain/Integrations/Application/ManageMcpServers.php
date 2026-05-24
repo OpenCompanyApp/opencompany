@@ -158,6 +158,37 @@ class ManageMcpServers
     }
 
     /**
+     * Test a new MCP server definition before it has been persisted.
+     *
+     * This deliberately avoids creating a workspace record or writing discovered
+     * tools. The caller owns validating the shape before passing it in.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    public function testUnsavedConnection(array $config): array
+    {
+        $testServer = new McpServer([
+            'url' => $config['url'],
+            'auth_type' => $config['auth_type'] ?? 'none',
+            'auth_config' => $config['auth_config'] ?? null,
+            'timeout' => $config['timeout'] ?? 30,
+        ]);
+
+        try {
+            return [
+                'success' => true,
+                'serverInfo' => McpClient::fromServer($testServer)->initialize(),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Refresh one server's discovered tool cache.
      *
      * @return array<string, mixed>

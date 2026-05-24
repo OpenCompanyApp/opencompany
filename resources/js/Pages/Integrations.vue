@@ -640,7 +640,20 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import axios from 'axios'
+import { apiKeys as aiGatewayApiKeys, deleteApiKey } from '@/actions/App/Http/Controllers/Api/AiGatewayController'
+import { index as integrationCatalogIndex } from '@/actions/App/Http/Controllers/Api/IntegrationCatalogController'
+import {
+  index as integrationsIndex,
+  showConfig as showIntegrationConfig,
+  toggle as toggleIntegration,
+} from '@/actions/App/Http/Controllers/Api/IntegrationController'
+import {
+  destroy as destroyIntegrationWebhook,
+  index as integrationWebhooksIndex,
+  store as storeIntegrationWebhook,
+  update as updateIntegrationWebhook,
+} from '@/actions/App/Http/Controllers/Api/IntegrationWebhookController'
+import { destroy as destroyMcpServer, store as storeMcpServer } from '@/actions/App/Http/Controllers/Api/McpServerController'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import Modal from '@/Components/shared/Modal.vue'
@@ -650,6 +663,7 @@ import CodexConfigModal from '@/Components/integrations/CodexConfigModal.vue'
 import DynamicConfigModal from '@/Components/integrations/DynamicConfigModal.vue'
 import McpConfigModal from '@/Components/integrations/McpConfigModal.vue'
 import AiGatewayConfigModal from '@/Components/integrations/AiGatewayConfigModal.vue'
+import { wayfinderRequest } from '@/utils/wayfinder'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
 const { developerLuaConsoleUrl, developerToolsUrl } = useWorkspace()
@@ -851,14 +865,14 @@ const loadIntegrationCatalog = async (options: { reset?: boolean; search?: strin
   catalogError.value = null
 
   try {
-    const response = await axios.get('/api/integrations/catalog', {
-      params: {
+    const response = await wayfinderRequest<any>(integrationCatalogIndex({
+      query: {
         page,
         perPage: catalogMeta.perPage,
         search: search || undefined,
         category: category || undefined,
       },
-    })
+    }))
 
     catalogAvailable.value = response.data.available ?? null
     catalogMeta.page = response.data.meta?.page || page
@@ -908,7 +922,7 @@ const loadMoreCatalog = () => {
 
 const loadApiKeys = async () => {
   try {
-    const { data } = await axios.get('/api/ai-gateway/api-keys')
+    const { data } = await wayfinderRequest<any[]>(aiGatewayApiKeys())
     apiKeys.value = data.map((key: any) => ({
       id: key.id,
       name: key.name,
@@ -941,7 +955,7 @@ const formatRelativeDate = (dateStr: string): string => {
 
 const loadIntegrationStatus = async () => {
   try {
-    const response = await axios.get('/api/integrations')
+    const response = await wayfinderRequest<any[]>(integrationsIndex())
     if (response.status === 200) {
       const integrations = response.data
       for (const integration of integrations) {
@@ -1297,7 +1311,7 @@ const closeWebhookModal = () => {
 
 const loadWebhooks = async () => {
   try {
-    const { data } = await axios.get('/api/integration-webhooks')
+    const { data } = await wayfinderRequest<{ data?: Webhook[] }>(integrationWebhooksIndex())
     webhooks.value = data.data || []
   } catch (error) {
     console.error('Failed to load webhooks:', error)
@@ -1314,7 +1328,7 @@ const editWebhook = (webhook: Webhook) => {
 
 const deleteWebhook = async (id: string) => {
   try {
-    await axios.delete(`/api/integration-webhooks/${id}`)
+    await wayfinderRequest(destroyIntegrationWebhook(id))
     webhooks.value = webhooks.value.filter(w => w.id !== id)
   } catch (error) {
     console.error('Failed to delete webhook:', error)
@@ -1330,11 +1344,11 @@ const saveWebhook = async () => {
       targetId: webhookForm.targetId || null,
     }
     if (webhookEditingId.value) {
-      const { data } = await axios.patch(`/api/integration-webhooks/${webhookEditingId.value}`, payload)
+      const { data } = await wayfinderRequest<{ webhook: Webhook }>(updateIntegrationWebhook(webhookEditingId.value), { data: payload })
       const index = webhooks.value.findIndex(w => w.id === webhookEditingId.value)
       if (index >= 0) webhooks.value[index] = data.webhook
     } else {
-      const { data } = await axios.post('/api/integration-webhooks', payload)
+      const { data } = await wayfinderRequest<{ webhook: Webhook }>(storeIntegrationWebhook(), { data: payload })
       webhooks.value.push(data.webhook)
     }
 
@@ -1352,7 +1366,7 @@ const generateApiKey = () => {
 
 const revokeApiKey = async (id: string) => {
   try {
-    await axios.delete(`/api/ai-gateway/api-keys/${id}`)
+    await wayfinderRequest(deleteApiKey(id))
     apiKeys.value = apiKeys.value.filter(k => k.id !== id)
   } catch (error) {
     console.error('Failed to revoke API key:', error)
@@ -1369,7 +1383,7 @@ const openDynamicModal = async (integrationOrId: Integration | string) => {
     : integrationOrId
 
   try {
-    const { data } = await axios.get(`/api/integrations/${integrationId}/config`)
+    const { data } = await wayfinderRequest<any>(showIntegrationConfig(integrationId))
     const schema = data.configSchema || fallback?.configSchema || []
     const merged = {
       ...fallback,
@@ -1407,12 +1421,14 @@ const handleQuickInstallMcp = async (integration: Integration) => {
 
   installingMcpId.value = integration.id
   try {
-    const { data } = await axios.post('/api/mcp-servers', {
-      name: integration.name,
-      url: integration.suggestedMcpConfig.url,
-      auth_type: integration.suggestedMcpConfig.auth_type,
-      icon: integration.suggestedMcpConfig.icon,
-      description: integration.suggestedMcpConfig.description,
+    const { data } = await wayfinderRequest<any>(storeMcpServer(), {
+      data: {
+        name: integration.name,
+        url: integration.suggestedMcpConfig.url,
+        auth_type: integration.suggestedMcpConfig.auth_type,
+        icon: integration.suggestedMcpConfig.icon,
+        description: integration.suggestedMcpConfig.description,
+      },
     })
 
     // Update the suggested entry to show as installed
@@ -1476,7 +1492,7 @@ const handleInstall = async (integration: Integration) => {
 
   // Non-configurable integration — toggle via API
   try {
-    await axios.post(`/api/integrations/${integrationApiId(integration)}/toggle`, { enabled: true })
+    await wayfinderRequest(toggleIntegration(integrationApiId(integration)), { data: { enabled: true } })
     for (const category of integrationCategories.value) {
       const found = category.integrations.find(i => i.id === integration.id)
       if (found) {
@@ -1539,7 +1555,7 @@ const handleDynamicSaved = (result: { enabled: boolean; configured: boolean }) =
 const handleUninstall = async (integration: Integration) => {
   if (integration.type === 'mcp' && integration.mcpServerId) {
     // For MCP, delete via API
-    axios.delete(`/api/mcp-servers/${integration.mcpServerId}`)
+    wayfinderRequest(destroyMcpServer(integration.mcpServerId))
       .then(() => {
         // If it's a suggested entry, reset it back to uninstalled
         if (integration.suggestedMcpConfig) {
@@ -1557,7 +1573,7 @@ const handleUninstall = async (integration: Integration) => {
 
   // Disable via toggle API, then update local state
   try {
-    await axios.post(`/api/integrations/${integrationApiId(integration)}/toggle`, { enabled: false })
+    await wayfinderRequest(toggleIntegration(integrationApiId(integration)), { data: { enabled: false } })
   } catch (error) {
     console.error(`Failed to uninstall ${integration.id}:`, error)
   }

@@ -57,7 +57,7 @@
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| `PendingApprovals` | `Components/dashboard/PendingApprovals.vue` | Displays up to 3 pending approval requests with approve/reject actions. Links to `workspacePath('/approvals')` when more exist. |
+| `PendingApprovals` | `Components/dashboard/PendingApprovals.vue` | Displays up to 3 pending approval requests with approve/reject actions. Links through the generated approvals route helper when more exist. |
 | `PendingApprovalItem` | `Components/dashboard/PendingApprovalItem.vue` | Individual approval row rendered inside PendingApprovals. |
 | `StatsOverview` | `Components/dashboard/StatsOverview.vue` | 4-card stat grid showing agents online, tasks completed, total messages, and total agents. Uses `Stats` type. |
 | `ActivityFeed` | `Components/dashboard/ActivityFeed.vue` | Scrollable list of recent activities (up to 8). Each row shows an `AgentAvatar`, actor name, action verb, target, and relative timestamp. |
@@ -100,7 +100,7 @@ All API calls use the `useApi()` composable.
 
 ### Working Agents
 - Displays up to 5 agents with `status === 'working'`
-- Each agent row links through `workspacePath('/agent/{id}')`
+- Each agent row links through the generated agent route helper
 - Empty state shows moon icon with "All agents idle"
 
 ---

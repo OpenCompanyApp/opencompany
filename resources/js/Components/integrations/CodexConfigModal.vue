@@ -190,10 +190,12 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
-import axios from 'axios'
+import { device, devicePoll, logout, status, test } from '@/actions/App/Http/Controllers/Api/CodexAuthController'
+import { fetchModels } from '@/actions/App/Http/Controllers/Api/IntegrationController'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import { wayfinderRequest } from '@/utils/wayfinder'
 
 const isOpen = defineModel<boolean>('open', { default: false })
 
@@ -254,7 +256,7 @@ watch(isOpen, async (open) => {
 
 const loadStatus = async () => {
   try {
-    const { data } = await axios.get('/api/integrations/codex/auth/status')
+    const { data } = await wayfinderRequest<any>(status())
     Object.assign(authStatus, data)
     if (data.models && Object.keys(data.models).length > 0 && !selectedModel.value) {
       selectedModel.value = Object.keys(data.models)[0]
@@ -269,7 +271,7 @@ const refreshModels = async () => {
   fetchResult.value = null
 
   try {
-    const { data } = await axios.post('/api/integrations/codex/fetch-models')
+    const { data } = await wayfinderRequest<any>(fetchModels['/api/integrations/{id}/fetch-models']('codex'))
     if (data.success) {
       authStatus.models = data.models
       if (!selectedModel.value && data.models) {
@@ -292,7 +294,7 @@ const startDeviceFlow = async () => {
   errorMessage.value = ''
 
   try {
-    const { data } = await axios.post('/api/integrations/codex/auth/device')
+    const { data } = await wayfinderRequest<any>(device())
     deviceFlow.active = true
     deviceFlow.userCode = data.user_code
     deviceFlow.verificationUrl = data.verification_url
@@ -312,9 +314,11 @@ const startDevicePolling = () => {
   deviceFlow.polling = true
   deviceFlow.pollTimer = setInterval(async () => {
     try {
-      const { data } = await axios.post('/api/integrations/codex/auth/device/poll', {
-        device_auth_id: deviceFlow.deviceAuthId,
-        user_code: deviceFlow.userCode,
+      const { data } = await wayfinderRequest<any>(devicePoll(), {
+        data: {
+          device_auth_id: deviceFlow.deviceAuthId,
+          user_code: deviceFlow.userCode,
+        },
       })
 
       if (data.status === 'complete') {
@@ -350,7 +354,7 @@ const testConnection = async () => {
   testResult.value = null
 
   try {
-    const { data } = await axios.post('/api/integrations/codex/test')
+    const { data } = await wayfinderRequest<any>(test())
     testResult.value = {
       success: data.success,
       message: data.success
@@ -372,7 +376,7 @@ const disconnect = async () => {
   isDisconnecting.value = true
 
   try {
-    await axios.post('/api/integrations/codex/auth/logout')
+    await wayfinderRequest(logout())
     await loadStatus()
     emit('saved', { enabled: false, configured: false })
   } catch (error: any) {

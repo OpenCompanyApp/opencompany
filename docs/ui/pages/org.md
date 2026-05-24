@@ -86,7 +86,7 @@
 
 ### Tree View (`OrgTreeNode`)
 - Recursive component rendering each node as a clickable card with connector lines
-- **Node card**: avatar (with status badge for agents), name links through `workspacePath('/agent/{id}')` or `workspacePath('/profile/{id}')`, agent type badge, ephemeral badge (amber), email (humans) or current task / status (agents)
+- **Node card**: avatar (with status badge for agents), name links through generated agent/profile route helpers, agent type badge, ephemeral badge (amber), email (humans) or current task / status (agents)
 - **Expand/collapse**: nodes with children show a count and caret icon; click toggles children visibility
 - **Auto-expand**: first 2 levels expanded by default (`depth < 2`)
 - **Connector lines**: vertical `border-l` lines for depth, horizontal `border-t` connector to each node
@@ -94,7 +94,7 @@
 
 ### Chart View (`OrgChartNode`)
 - Recursive component rendering a top-down org chart with centered alignment
-- **Node card**: avatar, human/agent icon, name links through `workspacePath('/agent/{id}')` or `workspacePath('/profile/{id}')`, agent type or email
+- **Node card**: avatar, human/agent icon, name links through generated agent/profile route helpers, agent type or email
 - **Root styling**: root node has a darker border (`border-neutral-900`)
 - **Ephemeral badge**: positioned absolutely at top-right corner with amber styling
 - **Connectors**: vertical lines (`w-0.5 h-6`) between parent and children row; horizontal line spanning across children

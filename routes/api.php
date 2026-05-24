@@ -281,6 +281,9 @@ Route::middleware('resolve.workspace')->group(function () {
     // Data Tables
     Route::get('/tables', [DataTableController::class, 'index']);
     Route::post('/tables', [DataTableController::class, 'store']);
+    Route::get('/tables/{id}/export', [DataTableController::class, 'export']);
+    Route::post('/tables/{id}/import', [DataTableController::class, 'import']);
+    Route::post('/tables/{id}/duplicate', [DataTableController::class, 'duplicate']);
     Route::get('/tables/{id}', [DataTableController::class, 'show']);
     Route::patch('/tables/{id}', [DataTableController::class, 'update']);
     Route::delete('/tables/{id}', [DataTableController::class, 'destroy']);
@@ -393,6 +396,7 @@ Route::middleware('resolve.workspace')->group(function () {
         // MCP Servers (admin-only)
         Route::get('/mcp-servers', [McpServerController::class, 'index']);
         Route::post('/mcp-servers', [McpServerController::class, 'store']);
+        Route::post('/mcp-servers/test-new', [McpServerController::class, 'testNewConnection']);
         Route::get('/mcp-servers/{id}', [McpServerController::class, 'show']);
         Route::patch('/mcp-servers/{id}', [McpServerController::class, 'update']);
         Route::delete('/mcp-servers/{id}', [McpServerController::class, 'destroy']);

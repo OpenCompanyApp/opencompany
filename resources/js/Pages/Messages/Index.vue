@@ -117,7 +117,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
-import { apiFetch } from '@/utils/apiFetch'
+import { index as directMessagesIndex } from '@/actions/App/Http/Controllers/Api/DirectMessageController'
+import { index as usersIndex } from '@/actions/App/Http/Controllers/Api/UserController'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
@@ -127,6 +128,8 @@ import Badge from '@/Components/shared/Badge.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Skeleton from '@/Components/shared/Skeleton.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { wayfinderFetch } from '@/utils/wayfinder'
+import type { AgentStatus, AgentType } from '@/types'
 
 const { messageUrl } = useWorkspace()
 
@@ -135,8 +138,8 @@ interface User {
   name: string
   avatar?: string
   type: 'human' | 'agent'
-  agentType?: string
-  status?: string
+  agentType?: AgentType
+  status?: AgentStatus
 }
 
 interface Conversation {
@@ -186,7 +189,7 @@ const formatTimeAgo = (date: string): string => {
 const fetchConversations = async () => {
   loading.value = true
   try {
-    const response = await apiFetch('/api/direct-messages')
+    const response = await wayfinderFetch(directMessagesIndex())
     const data = await response.json()
     conversations.value = data
   } catch (error) {
@@ -198,7 +201,7 @@ const fetchConversations = async () => {
 
 const fetchRecipients = async () => {
   try {
-    const response = await apiFetch('/api/users')
+    const response = await wayfinderFetch(usersIndex())
     const data = await response.json()
     availableRecipients.value = data
   } catch (error) {

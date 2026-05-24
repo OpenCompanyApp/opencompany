@@ -120,6 +120,9 @@
       :last-refreshed-at="workspaceStatusLastRefreshedAt"
       :current-agent="agent"
       :current-task="currentTask"
+      :current-channel="channel"
+      :tasks="tasks"
+      :approvals="channelApprovals"
       @refresh="$emit('refreshStatus')"
       @dismiss="$emit('closeStatus')"
     />

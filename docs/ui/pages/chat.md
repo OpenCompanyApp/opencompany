@@ -74,6 +74,7 @@ redirect into this page; see [messages.md](messages.md).
 | `AssistantConversation` | `Components/chat/assistant/AssistantConversation.vue` | Main conversation panel with header, empty states, messages, inline approvals, runtime activity, and composer. |
 | `AssistantMessage` | `Components/chat/assistant/AssistantMessage.vue` | Current rendered message row for the unified shell. |
 | `PromptComposer` | `Components/chat/assistant/PromptComposer.vue` | Composer with attachment support, stop/compact/status actions, and send event. |
+| `AssistantStatusPanel` | `Components/chat/assistant/AssistantStatusPanel.vue` | Dismissible workspace/chat status panel with agent activity, queue counters, and current assistant run context. |
 | `ThinkingPanel` | `Components/chat/assistant/ThinkingPanel.vue` | Shows active/pending task runtime status either inline after the triggering message or as the empty-conversation runtime panel, with catalog-backed tool display names and syntax-highlighted tool inspection sections. |
 | `EmptyState` | `Components/chat/assistant/EmptyState.vue` | Shared `AgentSelector` and suggested prompt state before a conversation has messages. |
 | `AgentSelector` | `Components/chat/assistant/AgentSelector.vue` | Reka popover for choosing an assistant agent, used by the sidebar new-chat button and empty state. |
@@ -103,7 +104,7 @@ non-assistant conversations.
 | `respondToApproval(id, status)` | Approve or reject an inline approval |
 | `cancelAgentTask(id)` | Stop the active assistant task |
 | `compactChannel(channelId)` | Run `/compact` through the assistant command path |
-| `fetchWorkspaceStatus()` | Support runtime/status refreshes |
+| `fetchWorkspaceStatus({ channelId?, agentId? })` | Refresh workspace status plus optional chat-local context budget/run metadata for the status panel |
 
 Older helpers for reactions, pinned messages, thread panels, typing indicators,
 and member removal still exist in `Chat.vue` and/or legacy chat components, but
@@ -144,8 +145,8 @@ that exposed those interactions.
 - If no channel is selected and an agent is selected, the page creates or opens
   the agent DM before sending.
 - Attachments are uploaded before `sendMessage()`.
-- `/compact` and `/status` are sent through the same composer path as normal
-  prompts.
+- `/compact` is sent through the assistant command path. `/status` is intercepted
+  locally and opens the status panel instead of becoming a chat prompt.
 - Retry sends a prompt asking the assistant to retry and improve the selected
   response.
 

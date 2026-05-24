@@ -222,10 +222,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
-import { apiFetch } from '@/utils/apiFetch'
+import { activity as userActivity, show as showUser } from '@/actions/App/Http/Controllers/Api/UserController'
 import Icon from '@/Components/shared/Icon.vue'
 import SharedSkeleton from '@/Components/shared/Skeleton.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { wayfinderFetch } from '@/utils/wayfinder'
 
 const { agentUrl, messageUrl } = useWorkspace()
 const page = usePage()
@@ -320,8 +321,8 @@ const fetchData = async () => {
   loading.value = true
   try {
     const [userResponse, activityResponse] = await Promise.all([
-      apiFetch(`/api/users/${props.id}`),
-      apiFetch(`/api/users/${props.id}/activity`),
+      wayfinderFetch(showUser(props.id)),
+      wayfinderFetch(userActivity(props.id)),
     ])
     const userData = await userResponse.json()
     const activity = await activityResponse.json()

@@ -126,7 +126,7 @@
   - Source icon (`ph:users-three`, `ph:question`, or `ph:megaphone`)
   - Label: "Delegated by", "Asked by", or "Notified by" depending on source
   - Requester avatar and name (from `task.requester`)
-  - Link to parent task: "View parent task: {title}" with `ph:arrow-bend-up-left` icon, navigates to `workspacePath('/tasks/{parentTask.id}')`
+  - Link to parent task: "View parent task: {title}" with `ph:arrow-bend-up-left` icon, navigates through the generated task detail route helper
 
 ### Execution Trace
 - Rendered by the `ExecutionTrace` component (`resources/js/Components/tasks/ExecutionTrace.vue`)

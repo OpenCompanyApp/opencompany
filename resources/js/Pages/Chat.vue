@@ -544,7 +544,10 @@ const refreshWorkspaceStatusPanel = async () => {
   workspaceStatusError.value = null
 
   try {
-    const { data } = await fetchWorkspaceStatus()
+    const { data } = await fetchWorkspaceStatus({
+      channelId: selectedChannel.value?.id,
+      agentId: selectedChannel.value?.members?.find(member => member.type === 'agent')?.id ?? selectedAgentId.value,
+    })
     workspaceStatus.value = data as WorkspaceStatus
     workspaceStatusLastRefreshedAt.value = new Date()
   } catch (error: any) {

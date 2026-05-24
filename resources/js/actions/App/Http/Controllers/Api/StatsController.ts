@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\StatsController::index
-* @see app/Http/Controllers/Api/StatsController.php:10
+* @see app/Http/Controllers/Api/StatsController.php:11
 * @route '/api/stats'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\StatsController::index
-* @see app/Http/Controllers/Api/StatsController.php:10
+* @see app/Http/Controllers/Api/StatsController.php:11
 * @route '/api/stats'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\StatsController::index
-* @see app/Http/Controllers/Api/StatsController.php:10
+* @see app/Http/Controllers/Api/StatsController.php:11
 * @route '/api/stats'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\StatsController::index
-* @see app/Http/Controllers/Api/StatsController.php:10
+* @see app/Http/Controllers/Api/StatsController.php:11
 * @route '/api/stats'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\StatsController::status
-* @see app/Http/Controllers/Api/StatsController.php:28
+* @see app/Http/Controllers/Api/StatsController.php:29
 * @route '/api/stats/status'
 */
 export const status = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -60,7 +60,7 @@ status.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\StatsController::status
-* @see app/Http/Controllers/Api/StatsController.php:28
+* @see app/Http/Controllers/Api/StatsController.php:29
 * @route '/api/stats/status'
 */
 status.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ status.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\StatsController::status
-* @see app/Http/Controllers/Api/StatsController.php:28
+* @see app/Http/Controllers/Api/StatsController.php:29
 * @route '/api/stats/status'
 */
 status.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -79,7 +79,7 @@ status.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\StatsController::status
-* @see app/Http/Controllers/Api/StatsController.php:28
+* @see app/Http/Controllers/Api/StatsController.php:29
 * @route '/api/stats/status'
 */
 status.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

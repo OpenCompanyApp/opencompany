@@ -54,7 +54,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│ [<- workspacePath('/tables')]  [icon picker]  [editable name input] │
+│ [<- tables route helper]       [icon picker]  [editable name input] │
 │                              [editable description input]      │
 │                                                                │
 │              [Import v]  [Export v]  |  [gear]  [... menu]     │
@@ -168,10 +168,10 @@ by dedicated components.
 ### Table Header Actions
 - **Name/Description**: Inline editable text inputs, saved on blur via `PATCH /api/tables/{id}`
 - **Icon picker**: Dropdown with 12 icon options, saved via `PATCH /api/tables/{id}`
-- **Import**: Dropdown with CSV and JSON options, triggers hidden file input; frontend currently calls an unregistered backend route
-- **Export**: Dropdown with CSV and JSON options; frontend currently calls an unregistered backend route
-- **Duplicate table**: Frontend currently calls an unregistered backend route, then expects a new table response
-- **Delete table**: `ConfirmDialog`, then `DELETE /api/tables/{id}`, redirects to `workspacePath('/tables')`
+- **Import**: Dropdown with CSV and JSON options, triggers hidden file input and posts to the generated table import route
+- **Export**: Dropdown with CSV and JSON options, opens the generated table export route with a `format` query parameter
+- **Duplicate table**: Posts to the generated duplicate route and navigates to the duplicated table response
+- **Delete table**: `ConfirmDialog`, then `DELETE /api/tables/{id}`, redirects through the generated tables index route helper
 
 ---
 

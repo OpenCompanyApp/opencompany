@@ -310,10 +310,19 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
-import { apiFetch } from '@/utils/apiFetch'
+import {
+  createAccount as createIntegrationAccount,
+  disconnect,
+  listAccounts,
+  setDefaultAccount as setDefaultIntegrationAccount,
+  showConfig,
+  testConnection as testIntegrationConnection,
+  updateConfig,
+} from '@/actions/App/Http/Controllers/Api/IntegrationController'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import { wayfinderFetch } from '@/utils/wayfinder'
 
 interface ConfigField {
   key: string
@@ -388,8 +397,8 @@ const selectedAccountInfo = computed(() => {
 })
 const hasOAuthFields = computed(() => props.schema.some(field => field.type === 'oauth_connect'))
 
-const accountQuery = () => {
-  return selectedAccount.value ? `?account=${encodeURIComponent(selectedAccount.value)}` : ''
+const accountRouteOptions = () => {
+  return selectedAccount.value ? { query: { account: selectedAccount.value } } : undefined
 }
 
 const copyToClipboard = async (text: string, key: string) => {
@@ -438,8 +447,7 @@ const connectOAuth = async (field: ConfigField) => {
       if (f.type === 'oauth_connect') continue
       payload[f.key] = formValues[f.key]
     }
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
-      method: 'PUT',
+    const response = await wayfinderFetch(updateConfig(props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
     })
@@ -463,7 +471,7 @@ const disconnectOAuth = async (field: ConfigField) => {
   }
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/disconnect${accountQuery()}`, { method: 'POST' })
+    const response = await wayfinderFetch(disconnect(props.integrationId, accountRouteOptions()))
     if (response.ok) {
       formValues[field.key] = ''
     }
@@ -527,7 +535,7 @@ watch(isOpen, async (open) => {
 
 const loadAccounts = async () => {
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/accounts`)
+    const response = await wayfinderFetch(listAccounts(props.integrationId))
     if (!response.ok) return
 
     const data = await response.json()
@@ -541,7 +549,7 @@ const loadAccounts = async () => {
 
 const loadConfig = async () => {
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config${accountQuery()}`)
+    const response = await wayfinderFetch(showConfig(props.integrationId, accountRouteOptions()))
     if (response.ok) {
       const data = await response.json()
       for (const field of props.schema) {
@@ -560,8 +568,7 @@ const createAccount = async () => {
   if (!alias) return
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/accounts`, {
-      method: 'POST',
+    const response = await wayfinderFetch(createIntegrationAccount(props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ alias, config: {} }),
     })
@@ -586,9 +593,10 @@ const setDefaultAccount = async () => {
   if (!selectedAccount.value) return
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/accounts/${encodeURIComponent(selectedAccount.value)}/default`, {
-      method: 'POST',
-    })
+    const response = await wayfinderFetch(setDefaultIntegrationAccount({
+      id: props.integrationId,
+      alias: selectedAccount.value,
+    }))
 
     if (response.ok) {
       await loadAccounts()
@@ -626,8 +634,7 @@ const testConnection = async () => {
       payload[field.key] = formValues[field.key]
     }
 
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/test`, {
-      method: 'POST',
+    const response = await wayfinderFetch(testIntegrationConnection(props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
     })
@@ -657,8 +664,7 @@ const handleSave = async () => {
       payload[field.key] = formValues[field.key]
     }
 
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
-      method: 'PUT',
+    const response = await wayfinderFetch(updateConfig(props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
     })

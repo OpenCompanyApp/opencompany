@@ -201,6 +201,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { exportMethod as exportCalendarEvents } from '@/actions/App/Http/Controllers/Api/CalendarEventController'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import Slideover from '@/Components/shared/Slideover.vue'
@@ -395,8 +396,7 @@ const handleDeleteEvent = async () => {
 
 const handleExport = () => {
   const range = getDateRange()
-  const url = `/api/calendar/events/export.ics?start=${encodeURIComponent(range.start)}&end=${encodeURIComponent(range.end)}`
-  window.open(url, '_blank')
+  window.open(exportCalendarEvents.url({ query: range }), '_blank')
 }
 
 const handleImport = async (e: Event) => {

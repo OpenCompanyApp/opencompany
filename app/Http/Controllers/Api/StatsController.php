@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\WorkspaceStatusService;
+use Illuminate\Http\Request;
 
 class StatsController extends Controller
 {
@@ -25,10 +26,17 @@ class StatsController extends Controller
     /**
      * Detailed workspace status (agents with tasks, full stats).
      */
-    public function status(WorkspaceStatusService $statusService): \Illuminate\Http\JsonResponse
+    public function status(Request $request, WorkspaceStatusService $statusService): \Illuminate\Http\JsonResponse
     {
+        $channelId = $request->query('channelId');
+        $agentId = $request->query('agentId');
+
         return response()->json(
-            $statusService->gather(workspace()->id)
+            $statusService->gather(
+                workspace()->id,
+                is_string($channelId) ? $channelId : null,
+                is_string($agentId) ? $agentId : null,
+            )
         );
     }
 }

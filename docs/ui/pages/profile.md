@@ -61,7 +61,7 @@ A standalone full-page view for any user or agent profile, loaded by UUID. Fetch
 - **Agent badge** -- colored pill showing agent type (e.g. "manager Agent")
 - **Ephemeral badge** -- amber pill when `isEphemeral` is true
 - **Quick stats** -- completed tasks count in a small card
-- **Action buttons** -- "Send Message" links through `workspacePath('/messages/{id}')`, which currently redirects to Chat with `?dm={id}`; "Manage Agent" links through `workspacePath('/agent/{id}')` (agents only); current user (`h1`) does not see "Send Message"
+- **Action buttons** -- "Send Message" links through the generated message route helper, which currently redirects to Chat with `?dm={id}`; "Manage Agent" links through the generated agent route helper (agents only); current user (`h1`) does not see "Send Message"
 - **Tabbed content** -- two tabs: Activity (steps with status icons and timestamps) and Tasks (task list with status badges)
 - **Reactive routing** -- watches `props.id` and re-fetches on change
 

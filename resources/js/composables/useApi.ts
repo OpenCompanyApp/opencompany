@@ -313,7 +313,8 @@ export const useApi = () => {
 
   // Stats
   const fetchStats = () => useFetch<Stats>('/stats')
-  const fetchWorkspaceStatus = () => api.get('/stats/status')
+  const fetchWorkspaceStatus = (params?: { channelId?: string; agentId?: string }) =>
+    api.get('/stats/status', { params })
   const updateStats = (data: Partial<Stats>) =>
     api.patch('/stats', data)
 

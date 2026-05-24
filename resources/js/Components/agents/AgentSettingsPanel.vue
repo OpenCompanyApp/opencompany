@@ -321,9 +321,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import { apiFetch } from '@/utils/apiFetch'
+import { enabledModels } from '@/actions/App/Http/Controllers/Api/IntegrationController'
+import { index as usersIndex } from '@/actions/App/Http/Controllers/Api/UserController'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { wayfinderFetch } from '@/utils/wayfinder'
 import type { AgentSettings, AgentBehaviorMode } from '@/types'
 
 const { integrationsUrl, memberUrl } = useWorkspace()
@@ -428,7 +430,7 @@ onMounted(async () => {
 const loadAvailableBrains = async () => {
   loadingBrains.value = true
   try {
-    const response = await apiFetch('/api/integrations/models')
+    const response = await wayfinderFetch(enabledModels())
     if (response.ok) {
       availableBrains.value = await response.json()
     }
@@ -505,7 +507,7 @@ const updateBehaviorMode = (mode: AgentBehaviorMode) => {
 
 const loadAvailableManagers = async () => {
   try {
-    const response = await apiFetch('/api/users')
+    const response = await wayfinderFetch(usersIndex())
     if (response.ok) {
       const users = await response.json()
       // Exclude the current agent from the manager list

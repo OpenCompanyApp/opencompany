@@ -100,6 +100,23 @@ class McpServerController extends Controller
     }
 
     /**
+     * Test an unsaved MCP server definition before creating it.
+     */
+    public function testNewConnection(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'url' => 'required|string|url',
+            'auth_type' => 'nullable|string|in:none,bearer,header',
+            'auth_config' => 'nullable|array',
+            'timeout' => 'nullable|integer|min:5|max:300',
+        ]);
+
+        $result = $this->servers->testUnsavedConnection($validated);
+
+        return response()->json($result, ($result['success'] ?? false) ? 200 : 400);
+    }
+
+    /**
      * Refresh tool discovery for an MCP server.
      */
     public function discoverTools(string $id): JsonResponse

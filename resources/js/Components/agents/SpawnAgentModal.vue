@@ -295,11 +295,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { apiFetch } from '@/utils/apiFetch'
+import { store as storeAgent } from '@/actions/App/Http/Controllers/Api/AgentController'
+import { enabledModels } from '@/actions/App/Http/Controllers/Api/IntegrationController'
+import { index as usersIndex } from '@/actions/App/Http/Controllers/Api/UserController'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { wayfinderFetch } from '@/utils/wayfinder'
 
 const { integrationsUrl } = useWorkspace()
 
@@ -397,7 +400,7 @@ watch(isOpen, (open) => {
 
 const loadAvailableBrains = async () => {
   try {
-    const response = await apiFetch('/api/integrations/models')
+    const response = await wayfinderFetch(enabledModels())
     if (response.ok) {
       availableBrains.value = await response.json()
       // Auto-select first brain if none selected
@@ -412,7 +415,7 @@ const loadAvailableBrains = async () => {
 
 const loadAvailableManagers = async () => {
   try {
-    const response = await apiFetch('/api/users')
+    const response = await wayfinderFetch(usersIndex())
     if (response.ok) {
       const users = await response.json()
       availableManagers.value = users.map((u: any) => ({
@@ -526,8 +529,7 @@ const handleSpawn = async () => {
 
   try {
     // Create the agent via API
-    const response = await apiFetch('/api/agents', {
-      method: 'POST',
+    const response = await wayfinderFetch(storeAgent(), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: agentName.value.trim(),

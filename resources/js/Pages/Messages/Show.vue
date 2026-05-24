@@ -163,7 +163,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
-import { apiFetch } from '@/utils/apiFetch'
+import { markRead, show as showDm, store as storeDm } from '@/actions/App/Http/Controllers/Api/DmController'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
@@ -173,6 +173,8 @@ import { useRealtime } from '@/composables/useRealtime'
 import { useHighlight } from '@/composables/useHighlight'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { sanitizeHtml } from '@/utils/sanitize'
+import { wayfinderFetch } from '@/utils/wayfinder'
+import type { AgentStatus, AgentType } from '@/types'
 
 const { memberUrl, messagesUrl, profileUrl } = useWorkspace()
 
@@ -181,8 +183,8 @@ interface User {
   name: string
   avatar?: string
   type: 'human' | 'agent'
-  agentType?: string
-  status?: string
+  agentType?: AgentType
+  status?: AgentStatus
 }
 
 interface Message {
@@ -274,13 +276,13 @@ const isSameAuthor = (index: number) => {
 const fetchConversation = async () => {
   loading.value = true
   try {
-    const response = await apiFetch(`/api/dm/${props.userId}`)
+    const response = await wayfinderFetch(showDm(props.userId))
     const data = await response.json()
     conversation.value = data
     messages.value = data.messages
 
     // Mark as read
-    await apiFetch(`/api/dm/${props.userId}/read`, { method: 'POST' })
+    await wayfinderFetch(markRead(props.userId))
 
     // Scroll to bottom
     nextTick(() => {
@@ -301,8 +303,7 @@ const sendMessage = async () => {
   newMessage.value = ''
 
   try {
-    const response = await apiFetch(`/api/dm/${props.userId}`, {
-      method: 'POST',
+    const response = await wayfinderFetch(storeDm(props.userId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     })
@@ -376,7 +377,7 @@ onMounted(() => {
       })
 
       // Mark as read since we're viewing the conversation
-      apiFetch(`/api/dm/${props.userId}/read`, { method: 'POST' })
+      wayfinderFetch(markRead(props.userId))
     }
   })
 

@@ -193,7 +193,7 @@
           <!-- Cloud provider warning -->
           <p v-if="selectedCloudProviderInfo && !selectedCloudProviderInfo.configured" class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
             <Icon name="ph:warning" class="w-3.5 h-3.5" />
-            This provider needs an API key. Configure it in <a :href="workspacePath('/integrations')" class="underline hover:no-underline">Integrations</a> or via environment variables.
+            This provider needs an API key. Configure it in <a :href="integrationsUrl()" class="underline hover:no-underline">Integrations</a> or via environment variables.
           </p>
         </template>
       </SettingsField>
@@ -236,11 +236,11 @@
           </div>
           <p v-if="selectedSummaryProvider && !selectedProviderConfigured" class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
             <Icon name="ph:warning" class="w-3.5 h-3.5" />
-            This provider needs an API key. Configure it in <a :href="workspacePath('/integrations')" class="underline hover:no-underline">Integrations</a> or via environment variables.
+            This provider needs an API key. Configure it in <a :href="integrationsUrl()" class="underline hover:no-underline">Integrations</a> or via environment variables.
           </p>
         </template>
         <div v-else class="text-sm text-neutral-500 dark:text-neutral-400 py-2">
-          <p>No AI providers available. <a :href="workspacePath('/integrations')" class="text-neutral-900 dark:text-white underline hover:no-underline">Configure integrations</a> first.</p>
+          <p>No AI providers available. <a :href="integrationsUrl()" class="text-neutral-900 dark:text-white underline hover:no-underline">Configure integrations</a> first.</p>
         </div>
       </SettingsField>
 
@@ -462,7 +462,7 @@
               <!-- Cloud provider warning -->
               <p v-if="selectedRerankCloudProviderInfo && !selectedRerankCloudProviderInfo.configured" class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                 <Icon name="ph:warning" class="w-3.5 h-3.5" />
-                This provider needs an API key. Configure it in <a :href="workspacePath('/integrations')" class="underline hover:no-underline">Integrations</a> or via environment variables.
+                This provider needs an API key. Configure it in <a :href="integrationsUrl()" class="underline hover:no-underline">Integrations</a> or via environment variables.
               </p>
 
               <!-- Divider -->
@@ -504,7 +504,7 @@
                 <!-- LLM provider warning -->
                 <p v-if="selectedRerankLlmProviderInfo && !selectedRerankLlmProviderInfo.configured" class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                   <Icon name="ph:warning" class="w-3.5 h-3.5" />
-                  This provider needs an API key. Configure it in <a :href="workspacePath('/integrations')" class="underline hover:no-underline">Integrations</a> or via environment variables.
+                  This provider needs an API key. Configure it in <a :href="integrationsUrl()" class="underline hover:no-underline">Integrations</a> or via environment variables.
                 </p>
               </template>
             </template>
@@ -624,7 +624,7 @@ const emit = defineEmits<{
   save: [category: string, settings: Record<string, unknown>]
 }>()
 
-const { workspacePath } = useWorkspace()
+const { integrationsUrl } = useWorkspace()
 
 const {
   memorySettings,
