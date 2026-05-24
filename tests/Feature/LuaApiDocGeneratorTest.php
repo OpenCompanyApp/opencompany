@@ -53,6 +53,12 @@ class LuaApiDocGeneratorTest extends TestCase
 
         $this->assertArrayHasKey('chat.send_channel_message', $map);
         $this->assertEquals('send_channel_message', $map['chat.send_channel_message']);
+
+        $this->assertArrayHasKey('web.search', $map);
+        $this->assertEquals('web_search', $map['web.search']);
+
+        $this->assertArrayHasKey('web.fetch', $map);
+        $this->assertEquals('web_fetch', $map['web.fetch']);
     }
 
     public function test_build_function_map_excludes_system_namespaces(): void
@@ -103,6 +109,7 @@ class LuaApiDocGeneratorTest extends TestCase
         $this->assertStringContainsString('app.chat', $index);
         $this->assertStringContainsString('app.docs', $index);
         $this->assertStringContainsString('app.memory', $index);
+        $this->assertStringContainsString('app.web', $index);
     }
 
     public function test_generate_namespace_index_with_filter(): void

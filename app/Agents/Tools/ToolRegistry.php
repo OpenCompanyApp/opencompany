@@ -224,13 +224,34 @@ class ToolRegistry
      */
     public function getIconByClassName(string $className): string
     {
+        return $this->getToolMetaByClassName($className)['icon'];
+    }
+
+    /**
+     * Look up a tool's display metadata by its class basename.
+     *
+     * Checkpointed tool events expose the runtime tool class name rather than
+     * the registry slug, so runtime timelines use this helper to keep labels
+     * aligned with the catalog without persisting package-owned implementation
+     * details in the UI.
+     *
+     * @return array{icon: string, name: string}
+     */
+    public function getToolMetaByClassName(string $className): array
+    {
         foreach ($this->getEffectiveToolMap() as $meta) {
             if (class_basename($meta['class']) === $className) {
-                return $meta['icon'] ?? 'ph:wrench';
+                return [
+                    'icon' => $meta['icon'] ?? 'ph:wrench',
+                    'name' => $meta['name'] ?? Str::headline($className),
+                ];
             }
         }
 
-        return 'ph:wrench';
+        return [
+            'icon' => 'ph:wrench',
+            'name' => Str::headline($className),
+        ];
     }
 
     /**

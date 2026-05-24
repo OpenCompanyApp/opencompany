@@ -85,6 +85,7 @@ const showCreateChannelModal = ref(false)
 const showCreateDmModal = ref(false)
 const showChannelInfo = ref(false)
 const selectedAgentId = ref<string>('')
+const draftingNewAssistantChat = ref(false)
 const assistantTasks = ref<AgentTask[]>([])
 const approvals = ref<ApprovalRequest[]>([])
 const approvalLoadingId = ref<string | null>(null)
@@ -169,7 +170,7 @@ const selectedChannel = ref<Channel | null>(null)
 
 // Initialize with first channel or from query
 watch(channelsData, async (newChannels) => {
-  if (!selectedChannel.value && newChannels.length > 0) {
+  if (!selectedChannel.value && !draftingNewAssistantChat.value && newChannels.length > 0) {
     const url = new URL(window.location.href)
     const channelId = url.searchParams.get('channel')
     const dmUserId = url.searchParams.get('dm')
@@ -337,6 +338,7 @@ const refreshPinnedMessages = async () => {
 // Refresh messages when channel changes
 watch(selectedChannel, async (channel) => {
   if (channel) {
+    draftingNewAssistantChat.value = false
     await refreshMessages()
     await refreshPinnedMessages()
     await markChannelRead(channel.id)
@@ -366,10 +368,12 @@ const channelMessages = computed<Message[]>(() => {
 
 // Get first few members as viewers
 const selectChannel = async (channel: Channel) => {
+  draftingNewAssistantChat.value = false
   selectedChannel.value = channel
 }
 
 const openAgentChat = async (agentId: string) => {
+  draftingNewAssistantChat.value = false
   selectedAgentId.value = agentId
   let channel = channelsData.value.find(c =>
     c.type === 'dm' && c.members?.some(m => m.id === agentId)
@@ -393,6 +397,7 @@ const openAgentChat = async (agentId: string) => {
 const startNewAssistantChat = (agentId: string) => {
   // Keep agent DMs as the durable backing conversation, but make the plus
   // button visibly reset to a draft state instead of reselecting the current DM.
+  draftingNewAssistantChat.value = true
   selectedAgentId.value = agentId
   selectedChannel.value = null
 }

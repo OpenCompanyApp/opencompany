@@ -139,6 +139,11 @@
   - Country, Language, and Recency hints
 - Provider API keys are configured under Integrations; this section controls
   workspace web policy and defaults.
+- Runtime note: search result limits, fetch character limits, domain policy,
+  provider defaults/fallbacks, external fetch opt-in, locale/recency hints, and
+  cache TTL are consumed by the web runtime. `web_fetch_max_bytes` is also
+  consumed by `DirectFetchProvider` when a workspace is bound, with
+  `config('web.fetch.max_bytes')` as the fallback.
 
 ### 7. Storage
 - **Icon**: `ph:hard-drives`

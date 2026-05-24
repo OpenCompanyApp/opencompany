@@ -5,7 +5,10 @@ namespace Tests\Feature\Tools;
 use App\Agents\Tools\ToolRegistry;
 use App\Agents\Tools\Web\WebFetchTool;
 use App\Agents\Tools\Web\WebSearchTool;
+use App\Domain\Web\Managers\WebFetchProviderManager;
 use App\Domain\Web\Safety\WebRequestGuard;
+use App\Domain\Web\ValueObjects\WebFetchRequest;
+use App\Models\AppSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -52,11 +55,18 @@ class WebToolsTest extends TestCase
         $this->assertStringContainsString('Provider: tavily', $output);
         $this->assertStringContainsString('Queues - Laravel', $output);
         $this->assertStringContainsString('Structured data:', $output);
+        $this->assertDatabaseHas('web_usage_events', [
+            'workspace_id' => $this->workspace->id,
+            'capability' => 'search',
+            'provider' => 'tavily',
+            'success' => true,
+        ]);
     }
 
     public function test_web_fetch_tool_supports_outline_section_and_chunk_modes(): void
     {
-        $this->app->bind(WebRequestGuard::class, fn () => new class extends WebRequestGuard {
+        $this->app->bind(WebRequestGuard::class, fn () => new class extends WebRequestGuard
+        {
             protected function resolveIpAddresses(string $host): array
             {
                 return ['93.184.216.34'];
@@ -77,5 +87,36 @@ class WebToolsTest extends TestCase
         $section = $tool->handle(new Request(['url' => 'https://example.com/guide', 'mode' => 'section', 'section_id' => 'deep-dive', 'max_chars' => 120]));
         $this->assertStringContainsString('Important details.', $section);
         $this->assertStringContainsString('Next chunk token:', $section);
+        $this->assertDatabaseHas('web_usage_events', [
+            'workspace_id' => $this->workspace->id,
+            'capability' => 'fetch',
+            'provider' => 'direct',
+            'success' => true,
+        ]);
+    }
+
+    public function test_fetch_manager_enforces_workspace_domain_policy(): void
+    {
+        AppSetting::setValue('web_allowed_domains', ['allowed.example'], 'web');
+
+        $this->expectExceptionMessage('blocked by workspace web access policy');
+
+        app(WebFetchProviderManager::class)->fetch(new WebFetchRequest(
+            url: 'https://blocked.example/page',
+            workspaceId: $this->workspace->id,
+        ));
+    }
+
+    public function test_external_fetch_providers_require_workspace_opt_in(): void
+    {
+        config(['web.providers.jina.api_key' => '']);
+
+        $this->expectExceptionMessage('External web fetch providers are disabled');
+
+        app(WebFetchProviderManager::class)->fetch(new WebFetchRequest(
+            url: 'https://example.com/page',
+            provider: 'jina',
+            workspaceId: $this->workspace->id,
+        ));
     }
 }

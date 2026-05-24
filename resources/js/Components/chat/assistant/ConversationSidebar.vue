@@ -158,10 +158,14 @@ const filteredConversations = computed(() => {
   )
 })
 
-const newChat = () => {
+const preferredAgentId = computed(() => {
   const currentAgent = props.selectedChannel?.members?.find(member => member.type === 'agent')
   const preferred = currentAgent ?? props.agents.find(agent => agent.status !== 'offline') ?? props.agents[0]
-  if (preferred) emit('newAgentChat', preferred.id)
+  return preferred?.id ?? ''
+})
+
+const newChat = () => {
+  if (preferredAgentId.value) emit('newAgentChat', preferredAgentId.value)
 }
 
 const sidebarClasses = computed(() => [

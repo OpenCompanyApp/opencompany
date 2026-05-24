@@ -4,7 +4,6 @@ namespace App\Domain\Web\Providers;
 
 use App\Domain\Web\Contracts\WebFetchProvider;
 use App\Domain\Web\Contracts\WebSearchProvider;
-use App\Domain\Web\Enums\WebCapability;
 use App\Domain\Web\Safety\WebRequestGuard;
 use App\Domain\Web\Support\WebCredentialResolver;
 use App\Domain\Web\ValueObjects\WebFetchRequest;
@@ -13,7 +12,7 @@ use App\Domain\Web\ValueObjects\WebSearchRequest;
 use App\Domain\Web\ValueObjects\WebSearchResponse;
 use App\Domain\Web\ValueObjects\WebSearchResult;
 
-class TavilyProvider extends AbstractWebProvider implements WebSearchProvider, WebFetchProvider
+class TavilyProvider extends AbstractWebProvider implements WebFetchProvider, WebSearchProvider
 {
     public function __construct(WebCredentialResolver $credentials, private WebRequestGuard $guard)
     {

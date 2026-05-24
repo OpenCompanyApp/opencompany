@@ -60,10 +60,12 @@ class CheckpointToolCall
             }
 
             $toolRegistry = app(ToolRegistry::class);
+            $toolMeta = $toolRegistry->getToolMetaByClassName($toolName);
+            $toolDisplayName = $toolMeta['name'];
 
             // Human-readable descriptions for agent communication steps
-            $description = "Used tool: {$toolName}";
-            $stepIcon = $toolRegistry->getIconByClassName($toolName);
+            $description = "Used tool: {$toolDisplayName}";
+            $stepIcon = $toolMeta['icon'];
 
             if ($toolName === 'ContactAgent' && isset($event->arguments['action'])) {
                 $action = $event->arguments['action'];
@@ -113,6 +115,7 @@ class CheckpointToolCall
                 'action',
                 array_filter([
                     'tool' => $toolName,
+                    'tool_name' => $toolDisplayName,
                     'tool_call_id' => $event->toolInvocationId,
                     'icon' => $stepIcon,
                     'arguments' => $event->arguments,

@@ -70,12 +70,13 @@ redirect into this page; see [messages.md](messages.md).
 | Component | Path | Purpose |
 |-----------|------|---------|
 | `AssistantChatShell` | `Components/chat/assistant/AssistantChatShell.vue` | Active page shell. Owns the desktop/sidebar split, mobile conversation slideover, and shell events. |
-| `ConversationSidebar` | `Components/chat/assistant/ConversationSidebar.vue` | Conversation list for agent chats, DMs, and channels. Includes search, new assistant chat, DM, channel buttons, and desktop collapse state. |
+| `ConversationSidebar` | `Components/chat/assistant/ConversationSidebar.vue` | Conversation list for agent chats, DMs, and channels. Includes search, new assistant chat agent popover, DM, channel buttons, and desktop collapse state. |
 | `AssistantConversation` | `Components/chat/assistant/AssistantConversation.vue` | Main conversation panel with header, empty states, messages, inline approvals, runtime activity, and composer. |
 | `AssistantMessage` | `Components/chat/assistant/AssistantMessage.vue` | Current rendered message row for the unified shell. |
-| `PromptComposer` | `Components/chat/assistant/PromptComposer.vue` | Composer with attachment support, agent picker for assistant channels, stop/compact/status actions, and send event. |
-| `ThinkingPanel` | `Components/chat/assistant/ThinkingPanel.vue` | Shows active/pending task runtime status either inline after the triggering message or as the empty-conversation runtime panel. |
-| `EmptyState` | `Components/chat/assistant/EmptyState.vue` | Agent selection and suggested prompt state before a conversation has messages. |
+| `PromptComposer` | `Components/chat/assistant/PromptComposer.vue` | Composer with attachment support, shared `AgentSelector` picker for assistant drafts/channels, stop/compact/status actions, and send event. |
+| `ThinkingPanel` | `Components/chat/assistant/ThinkingPanel.vue` | Shows active/pending task runtime status either inline after the triggering message or as the empty-conversation runtime panel, with catalog-backed tool display names and syntax-highlighted tool inspection sections. |
+| `EmptyState` | `Components/chat/assistant/EmptyState.vue` | Shared `AgentSelector` and suggested prompt state before a conversation has messages. |
+| `AgentSelector` | `Components/chat/assistant/AgentSelector.vue` | Reka popover for choosing an assistant agent, used by the sidebar new-chat button, empty state, and composer. |
 | `ApprovalCard` | `Components/chat/ApprovalCard.vue` | Inline approval card rendered in the unified conversation approval queue. |
 | `CreateChannelModal` | `Components/chat/CreateChannelModal.vue` | Modal for creating a channel. |
 | `CreateDmModal` | `Components/chat/CreateDmModal.vue` | Modal for creating a DM. |
@@ -117,7 +118,7 @@ that exposed those interactions.
 |-----------|------------------|
 | Echo private channel `chat.{channelId}` | Selected-channel watcher subscribes through `useRealtime().privateChannel()` and leaves the previous channel on selection change. |
 | `.MessageSent` | Bridges into `message:new`, then refreshes messages, assistant runtime, and channel unread state. |
-| `.text_start`, `.text_delta`, `.text_end`, `.stream_end`, `.stream_failed` | Bridges provider stream events into local `message:stream:*` events. The page creates a temporary `stream-{message_id|invocation_id}` assistant message, appends deltas, and clears its `streaming` flag on end/error. |
+| `.stream_start`, `.text_start`, `.text_delta`, `.text_end`, `.stream_end`, `.stream_failed` | Bridges chat-consumed provider stream events into local `message:stream:*` events. Tool call/result events are intentionally kept out of the websocket stream and persisted through task steps. The page creates a temporary `stream-{message_id|invocation_id}` assistant message, appends deltas, and clears its `streaming` flag on end/error. |
 | `useTypingIndicator()` | Still initialized for chat typing support, though the current unified shell does not render the old typing bar. |
 | Runtime poll | Every 3 seconds, refreshes assistant runtime for the selected channel and refreshes messages when pending/active/paused tasks exist. |
 | Channel watcher | Refreshes messages and marks the selected channel as read. Assistant channels also refresh runtime state. |
@@ -153,10 +154,10 @@ that exposed those interactions.
 - Assistant channels are detected as DMs that include an agent member.
 - Assistant channels show agent-aware empty states, inline approvals, runtime
   activity, task thinking state, stop, compact, and status controls.
-- The sidebar "New assistant chat" action sets `selectedAgentId` and clears the
-  selected channel, showing a draft assistant chat. Sending the first prompt then
-  opens or creates the durable agent DM through the normal `openAgentChat()`
-  path.
+- The sidebar "New assistant chat" action opens `AgentSelector`; selecting an
+  agent sets `selectedAgentId` and clears the selected channel, showing a draft
+  assistant chat. Sending the first prompt then opens or creates the durable
+  agent DM through the normal `openAgentChat()` path.
 - Runtime tasks with `triggerMessageId` are interleaved immediately after the
   user message that spawned them. Active unanchored tasks still appear at the
   end of the conversation, and the first-task panel remains for assistant
@@ -164,6 +165,10 @@ that exposed those interactions.
 - Provider stream deltas are rendered immediately as a temporary assistant
   message with animated streaming dots until a stream end or failure event
   arrives.
+- `RespondToChatMessage` only broadcasts chat-consumed stream events; large
+  tool calls/results are checkpointed into task steps and surfaced through
+  `ThinkingPanel` refreshes instead of being pushed through Reverb/Pusher
+  frames.
 - Non-assistant DMs/channels use the same message/composer surface, but hide
   assistant-only composer controls.
 
@@ -192,6 +197,7 @@ uses them again.
 | **Non-assistant channel with no messages** | "Start the conversation" centered state. |
 | **Runtime before first visible response** | Small runtime activity panel while an assistant task is active. |
 | **Runtime tied to a prompt** | `ThinkingPanel` appears directly after the triggering message when the task exposes `triggerMessageId`. |
+| **Tool inspection** | Runtime steps use `metadata.tool_name` when present, fall back to a humanized class name, and render Lua code, Lua-style tool-call arguments/results, Lua runtime metadata, or JSON fallback sections under "Inspect tool data". |
 | **Streaming response** | Temporary assistant message with incremental markdown content and pulsing dots. |
 | **No conversations** | Sidebar empty state with "Start with an agent, DM, or channel." |
 | **Sidebar collapsed** | Desktop sidebar shrinks to icon-only `w-16`; state is persisted in `localStorage`. |
@@ -217,6 +223,7 @@ uses them again.
 | `resources/js/Components/chat/assistant/AssistantConversation.vue` | Active conversation panel |
 | `resources/js/Components/chat/assistant/AssistantMessage.vue` | Active message renderer |
 | `resources/js/Components/chat/assistant/PromptComposer.vue` | Active composer |
+| `resources/js/Components/chat/assistant/AgentSelector.vue` | Shared assistant-agent popover selector |
 | `resources/js/Components/chat/assistant/ThinkingPanel.vue` | Runtime task panel |
 | `resources/js/Components/chat/assistant/EmptyState.vue` | Assistant/channel empty state |
 | `resources/js/Components/chat/ApprovalCard.vue` | Inline approval |

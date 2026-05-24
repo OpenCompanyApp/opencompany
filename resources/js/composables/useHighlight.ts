@@ -16,6 +16,7 @@ import rust from 'highlight.js/lib/languages/rust'
 import java from 'highlight.js/lib/languages/java'
 import csharp from 'highlight.js/lib/languages/csharp'
 import ruby from 'highlight.js/lib/languages/ruby'
+import lua from 'highlight.js/lib/languages/lua'
 
 // Register languages
 hljs.registerLanguage('javascript', javascript)
@@ -45,6 +46,7 @@ hljs.registerLanguage('csharp', csharp)
 hljs.registerLanguage('cs', csharp)
 hljs.registerLanguage('ruby', ruby)
 hljs.registerLanguage('rb', ruby)
+hljs.registerLanguage('lua', lua)
 
 export function useHighlight() {
   const highlight = (code: string, language?: string): string => {

@@ -10,6 +10,7 @@ use App\Domain\Web\Extraction\HtmlPageExtractor;
 use App\Domain\Web\Safety\WebRequestGuard;
 use App\Domain\Web\ValueObjects\WebFetchRequest;
 use App\Domain\Web\ValueObjects\WebFetchResponse;
+use App\Models\AppSetting;
 use Illuminate\Support\Facades\Http;
 
 class DirectFetchProvider implements WebFetchProvider
@@ -49,11 +50,11 @@ class DirectFetchProvider implements WebFetchProvider
             ->withOptions(['allow_redirects' => ['track_redirects' => true, 'max' => 5]])
             ->get($request->url);
 
-        $body = $response->body();
+        $body = $this->decodeBody($response->body(), (string) $response->header('content-encoding'));
         $finalUrl = (string) ($response->handlerStats()['url'] ?? $request->url);
         $this->guard->assertSafePublicUrl($finalUrl);
 
-        $maxBytes = (int) config('web.fetch.max_bytes', 10485760);
+        $maxBytes = $this->maxBytes();
         if (strlen($body) > $maxBytes) {
             throw new WebProviderException('Fetched page exceeds the maximum allowed size.');
         }
@@ -66,7 +67,8 @@ class DirectFetchProvider implements WebFetchProvider
             throw new $class("Direct fetch failed ({$response->status()}) for {$request->url}.");
         }
 
-        $contentType = strtolower(trim(explode(';', $response->header('content-type'))[0]));
+        $contentTypeHeader = trim((string) $response->header('content-type'));
+        $contentType = strtolower(trim(explode(';', $contentTypeHeader !== '' ? $contentTypeHeader : 'text/plain')[0]));
 
         if (str_contains($contentType, 'html') || $contentType === 'application/xhtml+xml') {
             $page = $this->extractor->extract($body, $finalUrl);
@@ -131,5 +133,37 @@ class DirectFetchProvider implements WebFetchProvider
     private function isPermanentStatus(int $status): bool
     {
         return $status >= 400 && $status < 500 && ! in_array($status, [408, 429], true);
+    }
+
+    private function decodeBody(string $body, string $encoding): string
+    {
+        $encoding = strtolower(trim($encoding));
+
+        if ($encoding === 'gzip' || $encoding === 'x-gzip') {
+            $decoded = gzdecode($body);
+
+            return is_string($decoded) ? $decoded : $body;
+        }
+
+        if ($encoding === 'deflate') {
+            $decoded = @gzinflate($body);
+            if (is_string($decoded)) {
+                return $decoded;
+            }
+
+            $decoded = @gzuncompress($body);
+
+            return is_string($decoded) ? $decoded : $body;
+        }
+
+        return $body;
+    }
+
+    private function maxBytes(): int
+    {
+        $default = (int) config('web.fetch.max_bytes', 10485760);
+        $value = app()->bound('currentWorkspace') ? AppSetting::getValue('web_fetch_max_bytes', $default) : $default;
+
+        return max(1, (int) $value);
     }
 }

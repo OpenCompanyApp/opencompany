@@ -241,9 +241,10 @@ return [
         'api_key_url' => 'https://api.z.ai/',
         'default_model' => 'glm-5.1',
         'aliases' => ['glm-coding', 'zai'],
+        'supports_streaming_by_default' => false,
         'models' => [
-            'glm-5.1' => ['label' => 'GLM 5.1 Coding', 'context_window' => 131072, 'supports_reasoning' => true],
-            'glm-4.6' => ['label' => 'GLM 4.6 Coding', 'context_window' => 131072, 'supports_reasoning' => true],
+            'glm-5.1' => ['label' => 'GLM 5.1 Coding', 'context_window' => 131072, 'supports_reasoning' => true, 'supports_streaming' => false],
+            'glm-4.6' => ['label' => 'GLM 4.6 Coding', 'context_window' => 131072, 'supports_reasoning' => true, 'supports_streaming' => false],
         ],
     ],
     'kimi' => [

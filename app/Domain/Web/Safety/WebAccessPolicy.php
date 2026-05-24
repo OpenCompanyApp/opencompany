@@ -97,7 +97,6 @@ class WebAccessPolicy
     }
 
     /**
-     * @param  mixed  $default
      * @return list<string>
      */
     private function configuredDomains(string $key, mixed $default): array

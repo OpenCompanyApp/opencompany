@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Models\Concerns\BelongsToWorkspace;
 
 class AppSetting extends Model
 {
@@ -48,7 +48,7 @@ class AppSetting extends Model
      * For split config keys (separate provider + model keys):
      *   resolveProviderModel('memory_embedding_model', 'memory.embedding.provider', 'memory.embedding.model')
      *
-     * @return array{0: string, 1: string}  [provider, model]
+     * @return array{0: string, 1: string} [provider, model]
      */
     public static function resolveProviderModel(string $settingKey, string $configKey, ?string $configModelKey = null): array
     {
@@ -98,7 +98,7 @@ class AppSetting extends Model
     /**
      * Batch upsert settings for a category.
      *
-     * @param array<string, mixed> $settings
+     * @param  array<string, mixed>  $settings
      */
     public static function setMany(array $settings, string $category): void
     {

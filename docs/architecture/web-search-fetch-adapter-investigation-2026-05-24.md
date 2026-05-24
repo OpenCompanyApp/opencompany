@@ -2,8 +2,8 @@
 
 Date: 2026-05-24
 
-Status: Investigation / implementation proposal with partial app-owned
-implementation scaffold.
+Status: Investigation / implementation proposal with active app-owned
+implementation baseline.
 External provider notes were spot-checked on 2026-05-24 against the linked
 Tavily, Firecrawl, Exa, and Jina docs. The current OpenCompany worktree has the
 first app-owned scaffold in `config/web.php` plus `app/Domain/Web` contracts,
@@ -19,11 +19,15 @@ connection validation also exist in the current worktree. Workspace web defaults
 and controls are present in `AppSetting`, `SettingController`, `Settings.vue`,
 and `WebAccessSettings.vue`. Lua `app.web.*` docs and structured-output
 normalization are present through `resources/lua-docs/web.md` and
-`IntegrationRuntime`. Focused tests cover direct tool registration,
-formatted/structured search output, outline/section/chunk fetch behavior, URL
-safety, and direct HTML extraction. Usage recording, diagnostics/live smoke
-tests, and broader provider/manager/Lua coverage remain proposed until matching
-app code exists.
+`IntegrationRuntime`. Workspace-scoped usage events are recorded through
+`WebUsageRecorder` / `web_usage_events`, and `web:providers`, `web:configure`,
+`web:doctor`, `web:search`, and `web:fetch` provide the current Artisan
+diagnostics and operator probes. Focused tests cover direct tool registration,
+formatted/structured search output, usage-event recording,
+outline/section/chunk fetch behavior, workspace domain policy enforcement,
+external-fetch opt-in behavior, URL safety, and direct HTML extraction. Broader
+provider error/malformed-payload coverage, direct gzip/deflate decoding, and
+opt-in direct/Tavily live smoke paths are present in the focused web test suite.
 KosmoKrator provider class names, endpoints, and default models in the parity
 plan reflect the local
 `/Users/rutger/Projects/kosmokrator` snapshot checked on 2026-05-24; refresh
@@ -54,8 +58,9 @@ Current implementation state in this worktree:
 - Present: request/response value objects for search/fetch plus
   `ExtractedPage`.
 - Present: `WebCredentialResolver`, `StreamableMcpToolInvoker`,
-  `WebRequestGuard`, `HtmlPageExtractor`, `MarkdownPageExtractor`,
-  `WebResultCache`, and `DirectFetchProvider`.
+  `WebRequestGuard`, `WebAccessPolicy`, `HtmlPageExtractor`,
+  `MarkdownPageExtractor`, `WebResultCache`, `WebUsageRecorder`, and
+  `DirectFetchProvider`.
 - Present: concrete provider classes for `tavily`, `firecrawl`, `exa`,
   `brave`, `parallel`, `jina`, `searxng`, `perplexity`, `openai_native`,
   `anthropic_native`, and Z.AI search/fetch.
@@ -69,16 +74,34 @@ Current implementation state in this worktree:
   `IntegrationConnectionTester` validation that required web-provider config is
   present without making live vendor calls.
 - Present: web access settings defaults and UI controls for provider defaults,
-  fallbacks, external provider fetch, cache TTL, limits, domain allow/block
-  lists, country, language, and recency.
+  fallbacks, external provider fetch, cache TTL, search/fetch character limits,
+  max fetch bytes, domain allow/block lists, country, language, and recency.
+  `DirectFetchProvider` consumes `web_fetch_max_bytes` when a workspace is
+  bound and falls back to `config('web.fetch.max_bytes')`.
 - Present: `resources/lua-docs/web.md` for `app.web.search` /
   `app.web.fetch`, plus `IntegrationRuntime` parsing for formatter-emitted
   structured data.
 - Present: focused tests in `tests/Feature/Tools/WebToolsTest.php`,
-  `tests/Unit/Domain/Web/WebRequestGuardTest.php`, and
-  `tests/Unit/Domain/Web/DirectFetchProviderTest.php`.
-- Not present yet: usage recorder, diagnostics/live provider smoke tests, and
-  broader provider/manager/Lua test coverage.
+  `tests/Feature/Admin/WebProviderSettingsTest.php`,
+  `tests/Feature/Domain/Web/WebCredentialResolverTest.php`,
+  `tests/Feature/Domain/Web/WebLiveSmokeTest.php`,
+  `tests/Feature/Domain/Web/WebProviderManagerTest.php`,
+  `tests/Feature/Domain/Web/WebProviderRegistryTest.php`,
+  `tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php`,
+  `tests/Feature/LuaApiDocGeneratorTest.php`,
+  `tests/Unit/Domain/Web/WebRequestGuardTest.php`,
+  `tests/Unit/Domain/Web/DirectFetchProviderTest.php`, and
+  `tests/Unit/Domain/Web/HtmlPageExtractorTest.php`,
+  `tests/Unit/Domain/Web/MarkdownPageExtractorTest.php`,
+  `tests/Unit/Domain/Web/WebProviderAdapterFailureTest.php`,
+  `tests/Unit/Domain/Web/WebProviderAdapterTest.php`,
+  `tests/Unit/Domain/Web/WebResultCacheTest.php`, and
+  `tests/Unit/Domain/Web/ZaiWebProviderTest.php`.
+- Present: Artisan commands `web:providers`, `web:configure`, `web:doctor`,
+  `web:search`, and `web:fetch`.
+- Present: provider adapter error/malformed-payload coverage and
+  credential-gated live provider smoke tests that skip unless explicitly
+  enabled with local credentials.
 
 This should be separate from the Playwright browser runtime. Most web research
 does not need a full browser session; search/fetch should be the cheap default,
@@ -203,7 +226,7 @@ Suggested classes:
 - `Extraction/HtmlPageExtractor`
 - `Extraction/MarkdownPageExtractor`
 - `Safety/WebRequestGuard`
-- `Policy/WebAccessPolicy`
+- `Safety/WebAccessPolicy`
 - `Cache/WebResultCache`
 - `Usage/WebUsageRecorder`
 
@@ -719,11 +742,12 @@ The current worktree already has the config, contracts, value objects,
 exceptions, extraction helpers, URL safety guard, cache service, credential
 resolver, streamable-HTTP MCP helper, direct fetch provider, and provider
 adapter classes listed below. The current worktree also has the manager,
-registry, formatter, direct-tool registration, and integration-settings pieces.
-The current settings UI also exposes default provider, fallback provider,
-external fetch, cache, domain, locale, and recency controls through
-`WebAccessSettings`. The remaining plan is to fill the missing usage,
-diagnostics, and broader test pieces.
+registry, formatter, direct-tool registration, integration-settings pieces,
+usage recorder, and Artisan diagnostics. The current settings UI also exposes
+default provider, fallback provider, external fetch, cache, domain, locale, and
+recency controls through `WebAccessSettings`. Remaining hardening should track
+future provider-specific API drift and new adapter capabilities rather than a
+known missing parity item.
 
 Create:
 
@@ -743,14 +767,13 @@ Create:
 - `app/Domain/Web/Managers/WebSearchProviderManager.php`;
 - `app/Domain/Web/Managers/WebFetchProviderManager.php`;
 - `app/Domain/Web/Registry/WebProviderRegistry.php`;
-- `app/Domain/Web/Http/HttpWebClient.php`;
 - `app/Domain/Web/Extraction/HtmlPageExtractor.php`;
 - `app/Domain/Web/Extraction/MarkdownPageExtractor.php`;
 - `app/Domain/Web/Safety/WebRequestGuard.php`;
-- `app/Domain/Web/Policy/WebAccessPolicy.php`;
+- `app/Domain/Web/Safety/WebAccessPolicy.php`;
 - `app/Domain/Web/Cache/WebResultCache.php`;
 - `app/Domain/Web/Usage/WebUsageRecorder.php`;
-- `app/Domain/Web/Formatting/WebToolFormatter.php`.
+- `app/Domain/Web/Support/WebToolFormatter.php`.
 
 Providers:
 
@@ -897,10 +920,9 @@ external provider.
 
 ### Implementation Sequence
 
-Current worktree note: portions of steps 1 through 11 now exist as app-owned
-code. The sequence below remains the full implementation path because usage
-recording, diagnostics, live smoke paths, and broader provider/manager/Lua tests
-are not in place yet.
+Current worktree note: steps 1 through 12 now exist as app-owned code. The
+sequence below is retained as the implementation audit trail and as guidance
+for future adapter expansion.
 
 1. Add `config/web.php`, domain contracts, value objects, exceptions, formatter,
    and provider registry.
@@ -924,8 +946,8 @@ are not in place yet.
     fallback providers, domain policy, and external-fetch enablement.
 12. Add diagnostics UI or Artisan commands equivalent to Kosmo's
     `web:providers`, `web:configure`, `web:doctor`, `web:search`, and
-    `web:fetch`. In OpenCompany these can be admin/debug screens first and
-    Artisan commands second.
+    `web:fetch`. OpenCompany currently has all five Artisan commands plus the
+    normal Integrations and Web Access settings UI.
 13. Add documentation and examples for direct tool use and Lua use.
 14. Run provider contract tests, feature tests, and a small local smoke test
     with fake HTTP clients. Live provider tests should be opt-in and skipped

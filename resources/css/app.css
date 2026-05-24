@@ -524,6 +524,114 @@ body {
   color: oklch(0.75 0.12 25);
 }
 
+/* Theme-aware syntax colors for runtime/tool inspectors. */
+.oc-syntax.hljs {
+  background: transparent;
+  color: oklch(0.20 0 0);
+}
+
+.oc-syntax .hljs-comment,
+.oc-syntax .hljs-quote {
+  color: oklch(0.46 0 0);
+}
+
+.oc-syntax .hljs-keyword,
+.oc-syntax .hljs-selector-tag,
+.oc-syntax .hljs-subst {
+  color: oklch(0.43 0.16 295);
+}
+
+.oc-syntax .hljs-string,
+.oc-syntax .hljs-addition,
+.oc-syntax .hljs-symbol,
+.oc-syntax .hljs-bullet {
+  color: oklch(0.39 0.12 145);
+}
+
+.oc-syntax .hljs-number,
+.oc-syntax .hljs-literal,
+.oc-syntax .hljs-variable,
+.oc-syntax .hljs-template-variable {
+  color: oklch(0.48 0.15 45);
+}
+
+.oc-syntax .hljs-title,
+.oc-syntax .hljs-section,
+.oc-syntax .hljs-name {
+  color: oklch(0.43 0.16 255);
+}
+
+.oc-syntax .hljs-built_in,
+.oc-syntax .hljs-type,
+.oc-syntax .hljs-class {
+  color: oklch(0.43 0.12 200);
+}
+
+.oc-syntax .hljs-attr,
+.oc-syntax .hljs-attribute,
+.oc-syntax .hljs-property,
+.oc-syntax .hljs-params {
+  color: oklch(0.44 0.12 65);
+}
+
+.oc-syntax .hljs-deletion,
+.oc-syntax .hljs-meta {
+  color: oklch(0.48 0.16 25);
+}
+
+.dark .oc-syntax.hljs {
+  color: oklch(0.92 0 0);
+}
+
+.dark .oc-syntax .hljs-comment,
+.dark .oc-syntax .hljs-quote {
+  color: oklch(0.65 0 0);
+}
+
+.dark .oc-syntax .hljs-keyword,
+.dark .oc-syntax .hljs-selector-tag,
+.dark .oc-syntax .hljs-subst {
+  color: oklch(0.78 0.14 295);
+}
+
+.dark .oc-syntax .hljs-string,
+.dark .oc-syntax .hljs-addition,
+.dark .oc-syntax .hljs-symbol,
+.dark .oc-syntax .hljs-bullet {
+  color: oklch(0.78 0.12 145);
+}
+
+.dark .oc-syntax .hljs-number,
+.dark .oc-syntax .hljs-literal,
+.dark .oc-syntax .hljs-variable,
+.dark .oc-syntax .hljs-template-variable {
+  color: oklch(0.80 0.13 60);
+}
+
+.dark .oc-syntax .hljs-title,
+.dark .oc-syntax .hljs-section,
+.dark .oc-syntax .hljs-name {
+  color: oklch(0.78 0.12 250);
+}
+
+.dark .oc-syntax .hljs-built_in,
+.dark .oc-syntax .hljs-type,
+.dark .oc-syntax .hljs-class {
+  color: oklch(0.78 0.10 200);
+}
+
+.dark .oc-syntax .hljs-attr,
+.dark .oc-syntax .hljs-attribute,
+.dark .oc-syntax .hljs-property,
+.dark .oc-syntax .hljs-params {
+  color: oklch(0.80 0.10 70);
+}
+
+.dark .oc-syntax .hljs-deletion,
+.dark .oc-syntax .hljs-meta {
+  color: oklch(0.72 0.14 25);
+}
+
 /* Blockquote */
 .tiptap-editor .tiptap blockquote {
   border-left: 3px solid oklch(0.85 0 0);

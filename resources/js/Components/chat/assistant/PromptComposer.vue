@@ -67,14 +67,13 @@
         </div>
 
         <div class="flex min-w-0 items-center gap-2">
-          <select
+          <AgentSelector
             v-if="showAgentPicker && agents.length > 0"
-            :value="selectedAgentId"
-            class="h-9 max-w-44 rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition-colors hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-            @change="$emit('update:selectedAgentId', ($event.target as HTMLSelectElement).value)"
-          >
-            <option v-for="agent in agents" :key="agent.id" :value="agent.id">{{ agent.name }}</option>
-          </select>
+            :agents="agents"
+            :selected-agent-id="selectedAgentId"
+            label="Message as"
+            @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
+          />
 
           <button
             v-if="running"
@@ -108,6 +107,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
+import AgentSelector from './AgentSelector.vue'
 import type { User } from '@/types'
 
 export interface ComposerAttachment {

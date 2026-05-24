@@ -12,7 +12,7 @@ use App\Domain\Web\ValueObjects\WebSearchRequest;
 use App\Domain\Web\ValueObjects\WebSearchResponse;
 use App\Domain\Web\ValueObjects\WebSearchResult;
 
-class JinaProvider extends AbstractWebProvider implements WebSearchProvider, WebFetchProvider
+class JinaProvider extends AbstractWebProvider implements WebFetchProvider, WebSearchProvider
 {
     public function __construct(WebCredentialResolver $credentials, private WebRequestGuard $guard)
     {

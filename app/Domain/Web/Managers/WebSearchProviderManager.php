@@ -9,6 +9,7 @@ use App\Domain\Web\Safety\WebAccessPolicy;
 use App\Domain\Web\Usage\WebUsageRecorder;
 use App\Domain\Web\ValueObjects\WebSearchRequest;
 use App\Domain\Web\ValueObjects\WebSearchResponse;
+use App\Domain\Web\ValueObjects\WebSearchResult;
 use App\Models\AppSetting;
 
 /**
@@ -90,8 +91,8 @@ class WebSearchProviderManager
     }
 
     /**
-     * @param  list<\App\Domain\Web\ValueObjects\WebSearchResult>  $results
-     * @return list<\App\Domain\Web\ValueObjects\WebSearchResult>
+     * @param  list<WebSearchResult>  $results
+     * @return list<WebSearchResult>
      */
     private function filterResults(array $results, WebSearchRequest $request): array
     {

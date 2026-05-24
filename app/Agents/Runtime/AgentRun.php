@@ -5,6 +5,7 @@ namespace App\Agents\Runtime;
 use App\Agents\OpenCompanyAgent;
 use App\Agents\Runtime\Context\AgentContextPipeline;
 use App\Ai\Prompting\SystemPromptBag;
+use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\User;
 use Laravel\Ai\Responses\Data\FinishReason;
 use Laravel\Ai\Responses\StreamedAgentResponse;
@@ -108,6 +109,10 @@ class AgentRun
      */
     public function stream(string $prompt, callable $onEvent): AgentRunResult
     {
+        if (! $this->supportsStreaming()) {
+            return $this->run($prompt);
+        }
+
         $this->emit('run.started');
 
         $snapshot = $this->context->snapshot($this->agentUser, $this->agent)->toArray();
@@ -174,5 +179,26 @@ class AgentRun
     private function emit(string $type, array $data = []): void
     {
         $this->events[] = new AgentRuntimeEvent($type, $data, $this->taskId, $this->agentUser->id);
+    }
+
+    /**
+     * Respect catalog streaming capability before entering Laravel AI's stream path.
+     *
+     * Some OpenAI-compatible providers support normal chat completions but have
+     * unreliable or incompatible streaming behavior through the PHP/Guzzle
+     * transport. The catalog is the app-owned place to record that runtime
+     * capability so chat can fall back to durable non-streaming completion
+     * without provider-specific branching in the response service.
+     */
+    private function supportsStreaming(): bool
+    {
+        $catalog = app(AiCatalog::class);
+        $provider = $catalog->provider($this->agent->provider());
+
+        if (! $provider) {
+            return true;
+        }
+
+        return $provider->model($this->agent->model())->supportsStreaming;
     }
 }

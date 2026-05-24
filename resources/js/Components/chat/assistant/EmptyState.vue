@@ -8,16 +8,14 @@
       Ask an agent to reason through work, use approved tools, inspect workspace data, or prepare the next action.
     </p>
 
-    <div v-if="agents.length" class="mx-auto mt-5 flex max-w-sm items-center justify-center gap-2">
-      <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400" for="assistant-agent">Agent</label>
-      <select
-        id="assistant-agent"
-        :value="selectedAgentId"
-        class="h-9 min-w-40 rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-        @change="$emit('update:selectedAgentId', ($event.target as HTMLSelectElement).value)"
-      >
-        <option v-for="agent in agents" :key="agent.id" :value="agent.id">{{ agent.name }}</option>
-      </select>
+    <div v-if="agents.length" class="mx-auto mt-5 flex max-w-sm justify-center">
+      <AgentSelector
+        :agents="agents"
+        :selected-agent-id="selectedAgentId"
+        label="Start with"
+        align="center"
+        @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
+      />
     </div>
 
     <div class="mt-8 grid gap-2 text-left sm:grid-cols-2">
@@ -40,6 +38,7 @@
 
 <script setup lang="ts">
 import Icon from '@/Components/shared/Icon.vue'
+import AgentSelector from './AgentSelector.vue'
 import type { User } from '@/types'
 
 defineProps<{

@@ -118,6 +118,13 @@ Light Mode Hierarchy          Dark Mode Hierarchy
 | `--color-agent-working` | `oklch(0.50 0.10 145)` | `oklch(0.60 0.12 145)` | Agent actively processing | `bg-green-500` |
 | `--color-agent-idle` | `oklch(0.60 0 0)` | `oklch(0.50 0 0)` | Agent available but idle | `bg-neutral-400` |
 | `--color-agent-offline` | `oklch(0.75 0 0)` | `oklch(0.35 0 0)` | Agent unavailable | `bg-neutral-300` |
+
+### 2.9 Syntax Highlighting
+
+Runtime and tool-inspector code blocks use highlight.js classes plus the
+`oc-syntax` class from `resources/css/app.css`. The class keeps backgrounds
+transparent so the surrounding panel owns the surface color, while light/dark
+syntax colors stay theme-aware for Lua, JSON, Markdown, and provider payloads.
 | `--color-agent-sleeping` | `oklch(0.55 0.12 250)` | `oklch(0.60 0.12 250)` | Agent in scheduled sleep | `bg-indigo-400` |
 | `--color-agent-awaiting-approval` | `oklch(0.55 0.10 70)` | `oklch(0.65 0.10 70)` | Waiting for human approval | `bg-amber-500` |
 | `--color-agent-awaiting-delegation` | `oklch(0.50 0.12 250)` | `oklch(0.55 0.12 250)` | Waiting for delegated work | `bg-indigo-500` |

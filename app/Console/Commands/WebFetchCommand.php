@@ -38,7 +38,7 @@ class WebFetchCommand extends Command
             workspaceId: $workspace?->id,
         );
 
-        $this->line($formatter->fetch($providers->fetch($request), $request->mode));
+        $this->line($formatter->fetch($providers->fetch($request), $request->mode, true, true));
 
         return Command::SUCCESS;
     }

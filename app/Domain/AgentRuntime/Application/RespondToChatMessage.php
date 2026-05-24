@@ -13,12 +13,14 @@ use App\Jobs\AgentRespondJob;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Task;
+use App\Models\TaskStep;
 use App\Models\User;
 use App\Services\AgentCommunicationService;
 use App\Services\Memory\MemoryFlushService;
 use App\Services\TelegramService;
 use App\Support\TokenMetrics;
 use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Streaming\Events\StreamEvent;
@@ -33,6 +35,23 @@ use Laravel\Ai\Streaming\Events\StreamEvent;
  */
 class RespondToChatMessage
 {
+    /**
+     * Stream event types consumed by the chat UI.
+     *
+     * Tool calls/results are persisted as task steps instead of being pushed
+     * through the realtime message stream. Large tool results, especially Lua
+     * documentation and integration payloads, can exceed the Pusher/Reverb
+     * frame limit and must never be allowed to fail the durable agent run.
+     */
+    private const CHAT_STREAM_EVENT_TYPES = [
+        'stream_start',
+        'text_start',
+        'text_delta',
+        'text_end',
+        'stream_end',
+        'stream_failed',
+    ];
+
     private ?string $telegramChatId = null;
 
     private Message $userMessage;
@@ -82,6 +101,7 @@ class RespondToChatMessage
             $this->taskId,
             $this->attempts(),
         );
+        $this->taskId = $task->id;
         $hasDeliveredResponse = $this->deliveredResponses->handle(
             $task,
             $this->userMessage,
@@ -106,6 +126,7 @@ class RespondToChatMessage
         safeBroadcast(new TaskUpdated($task, 'started'), 'task started');
 
         $responseDelivered = false;
+        $llmStep = null;
 
         try {
             // Update agent status to working
@@ -154,7 +175,7 @@ class RespondToChatMessage
             $llmStep->start();
             $runResult = $agentRun->stream(
                 $this->buildPromptWithThreadContext($this->userMessage),
-                fn (StreamEvent $event) => $event->broadcastNow(new PrivateChannel('chat.'.$this->channelId)),
+                fn (StreamEvent $event) => $this->broadcastChatStreamEvent($event),
             );
             $response = $runResult->response;
             $responseText = $runResult->text;
@@ -354,7 +375,17 @@ class RespondToChatMessage
                 'error' => $e->getMessage(),
             ]);
 
-            $task->addStep("Error: {$e->getMessage()}", 'action');
+            if ($llmStep instanceof TaskStep) {
+                $llmStep->refresh();
+
+                if ($llmStep->isPending() || $llmStep->isInProgress()) {
+                    $llmStep->skip();
+                }
+            }
+
+            $errorStep = $task->addStep("Error: {$e->getMessage()}", 'action');
+            $errorStep->start();
+            $errorStep->complete();
             $task->fail($e->getMessage());
 
             // If this was a delegated/ask task, send error back to the requesting agent
@@ -373,6 +404,39 @@ class RespondToChatMessage
         } finally {
             $this->stopTypingIndicator();
             $this->agent->resolveIdleStatus();
+        }
+    }
+
+    /**
+     * Broadcast only the stream events that the chat message UI consumes.
+     *
+     * Runtime tool evidence is already saved by CheckpointToolCall and exposed
+     * through task refreshes. Keeping large tool_result payloads out of the
+     * websocket stream avoids Reverb/Pusher frame-limit failures while retaining
+     * the durable task timeline.
+     */
+    private function broadcastChatStreamEvent(StreamEvent $event): void
+    {
+        $payload = $event->toArray();
+        $type = (string) ($payload['type'] ?? '');
+
+        if (! in_array($type, self::CHAT_STREAM_EVENT_TYPES, true)) {
+            return;
+        }
+
+        try {
+            Broadcast::on(new PrivateChannel('chat.'.$this->channelId))
+                ->as($type)
+                ->with($payload)
+                ->sendNow();
+        } catch (\Throwable $e) {
+            Log::warning('Failed to broadcast agent stream event', [
+                'agent' => $this->agent->name,
+                'channel' => $this->channelId,
+                'task' => $this->taskId,
+                'type' => $type,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

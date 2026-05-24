@@ -76,6 +76,10 @@ a package provider bridge.
 - Pricing is an estimate unless a provider returns actual billing. OpenRouter usage rows can be reconciled through `ReconcileOpenRouterUsage`.
 - Workspace `IntegrationSetting` rows own credentials, enabled state, custom URLs, and optional model allowlists.
 - OpenCompany AI Gateway owns external API access. It does not register package-owned server routes or package-owned model handlers.
+- Chat streaming is catalog-gated. `AgentRun::stream()` checks `AiCatalog`
+  model metadata before entering Laravel AI's streaming path; providers or
+  models marked `supports_streaming=false` fall back to the durable
+  non-streaming response path instead of branching in chat orchestration code.
 
 ## Usage And Cost Flow
 
