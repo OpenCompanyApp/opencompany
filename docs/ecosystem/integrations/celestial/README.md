@@ -1,6 +1,6 @@
 # Integration: Celestial
 
-> Astronomy integration for the [Laravel AI SDK](https://github.com/laravel/ai) — moon phases, sunrise/sunset, planet positions, eclipses, night sky reports. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
+> Astronomy integration tools — moon phases, sunrise/sunset, planet positions, eclipses, night sky reports. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
 
 Give your AI agents the ability to perform real-time astronomical calculations. Built on [astronomy-bundle-php](https://github.com/OpenCompanyApp/astronomy-bundle-php) (Jean Meeus' *Astronomical Algorithms*) and the [Integration Core](https://github.com/OpenCompanyApp/integration-core) framework.
 
@@ -36,7 +36,7 @@ Laravel auto-discovers the service provider. No manual registration needed.
 
 All actions accept optional `date` (ISO format, defaults to now) and `timezone` (defaults to UTC or configured default).
 
-## Quick Start: Use with Laravel AI SDK
+## Quick Start
 
 ```php
 use Laravel\Ai\Facades\Ai;
@@ -106,14 +106,12 @@ echo $service->lunarEclipse('2025-09-07');
 |---------|---------|
 | [opencompanyapp/integration-core](https://github.com/OpenCompanyApp/integration-core) | ToolProvider contract and registry |
 | [opencompanyapp/astronomy-bundle](https://github.com/OpenCompanyApp/astronomy-bundle-php) | Astronomical calculation engine (Meeus algorithms, VSOP87) |
-| [laravel/ai](https://github.com/laravel/ai) | Laravel AI SDK Tool contract |
 
 ## Requirements
 
 - PHP 8.2+
 - Laravel 11 or 12
-- [Laravel AI SDK](https://github.com/laravel/ai) ^0.1
 
 ## License
 
-MIT - see the package source repository license.
+MIT.

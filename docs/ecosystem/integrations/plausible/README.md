@@ -1,6 +1,6 @@
 # Integration: Plausible
 
-> Plausible Analytics integration for the [Laravel AI SDK](https://github.com/laravel/ai) — query stats, realtime visitors, manage sites and goals. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
+> Plausible Analytics integration tools — query stats, realtime visitors, manage sites and goals. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
 
 Give your AI agents access to privacy-friendly web analytics. Query traffic data, track realtime visitors, and manage sites and conversion goals — all through the [Plausible Analytics](https://plausible.io) API.
 
@@ -118,15 +118,13 @@ $service->createGoal('example.com', ['goal_type' => 'event', 'event_name' => 'Si
 | Package | Purpose |
 |---------|---------|
 | [opencompanyapp/integration-core](https://github.com/OpenCompanyApp/integration-core) | ToolProvider contract and registry |
-| [laravel/ai](https://github.com/laravel/ai) | Laravel AI SDK Tool contract |
 
 ## Requirements
 
 - PHP 8.2+
 - Laravel 11 or 12
-- [Laravel AI SDK](https://github.com/laravel/ai) ^0.1
 - A [Plausible Analytics](https://plausible.io) account with API access
 
 ## License
 
-MIT - see the package source repository license.
+MIT.

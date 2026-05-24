@@ -1,6 +1,6 @@
 # Google Integration
 
-Google Calendar, Gmail, Google Drive, Google Contacts, Google Sheets, Google Search Console, Google Tasks, Google Analytics, Google Docs, and Google Forms integration for the Laravel AI SDK. Part of the **OpenCompany** integration ecosystem — an open platform where AI agents collaborate with humans to run organizations.
+Google Calendar, Gmail, Google Drive, Google Contacts, Google Sheets, Google Search Console, Google Tasks, Google Analytics, Google Docs, and Google Forms integration tools. Part of the **OpenCompany** integration ecosystem — an open platform where AI agents collaborate with humans to run organizations.
 
 ## Integrations
 
@@ -60,11 +60,18 @@ This package registers **ten separate integrations**, each appearing independent
 | `google_tasks_read` | read | List task lists and tasks, get task details |
 | `google_tasks_manage` | write | Create, update, complete, delete, and organize tasks |
 
-### Google Analytics (1 tool)
+### Google Analytics (8 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `google_analytics_query` | read | Website traffic reports, realtime data, and metadata discovery |
+| `google_analytics_list_properties` | read | Discover accessible GA4 accounts and properties |
+| `google_analytics_metadata` | read | List available GA4 dimensions and metrics |
+| `google_analytics_report` | read | Run a standard GA4 Data API report |
+| `google_analytics_realtime` | read | Run a GA4 realtime report |
+| `google_analytics_check_compatibility` | read | Check dimension and metric compatibility |
+| `google_analytics_pivot_report` | read | Run an advanced pivot report |
+| `google_analytics_batch_run_reports` | read | Run multiple standard reports in one request |
+| `google_analytics_batch_run_pivot_reports` | read | Run multiple pivot reports in one request |
 
 ### Google Docs (2 tools)
 
@@ -122,7 +129,6 @@ $response = Ai::tools(['google_calendar_list', 'google_calendar_event'])
 |---------|---------|
 | PHP | ^8.2 |
 | opencompanyapp/integration-core | ^2.0 |
-| laravel/ai | ^0.1 |
 
 ## License
 

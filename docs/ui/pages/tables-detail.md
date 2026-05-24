@@ -165,9 +165,9 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 ### Table Header Actions
 - **Name/Description**: Inline editable text inputs, saved on blur via `PATCH /api/tables/{id}`
 - **Icon picker**: Dropdown with 12 icon options, saved via `PATCH /api/tables/{id}`
-- **Import**: Dropdown with CSV and JSON options, triggers hidden file input
-- **Export**: Dropdown with CSV and JSON options, downloads file as blob
-- **Duplicate table**: `POST /api/tables/{id}/duplicate`, navigates to new table
+- **Import**: Dropdown with CSV and JSON options, triggers hidden file input; frontend currently calls an unregistered backend route
+- **Export**: Dropdown with CSV and JSON options; frontend currently calls an unregistered backend route
+- **Duplicate table**: Frontend currently calls an unregistered backend route, then expects a new table response
 - **Delete table**: `ConfirmDialog`, then `DELETE /api/tables/{id}`, redirects to `workspacePath('/tables')`
 
 ---
@@ -200,9 +200,9 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 | `/api/tables/{id}/rows` | GET | `onMounted` -- fetches all rows |
 | `/api/tables/{id}` | PATCH | Inline edit of name, description, or icon |
 | `/api/tables/{id}` | DELETE | Delete table confirmation |
-| `/api/tables/{id}/duplicate` | POST | Duplicate from header menu |
-| `/api/tables/{id}/export?format=csv\|json` | GET | Export button |
-| `/api/tables/{id}/import` | POST | Import file upload (FormData) |
+| `/api/tables/{id}/duplicate` | POST | Frontend call only; no current route in `routes/api.php` |
+| `/api/tables/{id}/export?format=csv\|json` | GET | Frontend call only; no current route in `routes/api.php` |
+| `/api/tables/{id}/import` | POST | Frontend call only; no current route in `routes/api.php` |
 | `/api/tables/{id}/rows` | POST | Add row button |
 | `/api/tables/{id}/rows/{rowId}` | PATCH | Inline cell edit |
 | `/api/tables/{id}/rows/{rowId}` | DELETE | Delete row confirmation |
@@ -210,6 +210,9 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 | `/api/tables/{id}/columns` | POST | Add column modal |
 | `/api/tables/{id}/columns/{colId}` | PATCH | Edit column modal or inline update |
 | `/api/tables/{id}/columns/{colId}` | DELETE | Delete column confirmation |
+| `/api/tables/{id}/columns/reorder` | POST | Registered route; not currently surfaced prominently in the page doc |
+| `/api/tables/{id}/views` | GET/POST | Load and create saved views |
+| `/api/tables/{id}/views/{viewId}` | PATCH/DELETE | Update or delete saved views |
 
 ---
 

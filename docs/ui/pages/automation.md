@@ -1,6 +1,6 @@
-# Automation
+# Automations
 
-> Manage task templates and automation rules that power workflow automations, including template-based task creation and event-driven rule execution.
+> Manage scheduled prompt and Luau script automations, including run history, bulk actions, and editor-based create/edit flows.
 
 ---
 
@@ -8,8 +8,10 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/w/{workspace}/automation` |
-| **Name** | `automation` |
+| **Index route** | `/w/{workspace}/automation` |
+| **Create route** | `/w/{workspace}/automation/create` |
+| **Edit route** | `/w/{workspace}/automation/{id}/edit` |
+| **Names** | `automation`, `automation.create`, `automation.edit` |
 | **Auth** | Required |
 | **Layout** | AppLayout |
 
@@ -19,61 +21,37 @@
 
 ```
 +------------------------------------------------------------------+
-| Header (shrink-0, border-b, px-6 py-4)                          |
-| +--------------------------------------------------------------+ |
-| | "Automation"                                                  | |
-| | Create task templates and automation rules for your workflows | |
-| +--------------------------------------------------------------+ |
-| | [Task Templates]  [Automation Rules]       (tab buttons)      | |
-| +--------------------------------------------------------------+ |
+| Header                                                           |
+| "Automations" [status tabs or bulk toolbar] [Search] [New]       |
 +------------------------------------------------------------------+
-| Content (flex-1, overflow-y-auto, p-6)                           |
+| Content                                                          |
 |                                                                  |
-| Tab: Task Templates                                              |
-| +--------------------------------------------------------------+ |
-| | "Task Templates"                     [+ Create Template]      | |
-| +--------------------------------------------------------------+ |
-| | +----------------------------------------------------------+ | |
-| | | Template Name  [Active/Inactive]                         | | |
-| | | Description                                              | | |
-| | | [title icon] Default Title  [flag] Priority  [user] Asn  | | |
-| | | [tag] [tag] [tag]                  [play] [edit] [delete] | | |
-| | +----------------------------------------------------------+ | |
-| | +----------------------------------------------------------+ | |
-| | | (next template...)                                       | | |
-| | +----------------------------------------------------------+ | |
-| | Empty: file-dashed icon, "No task templates yet"             | |
-| +--------------------------------------------------------------+ |
-|                                                                  |
-| Tab: Automation Rules                                            |
-| +--------------------------------------------------------------+ |
-| | "Automation Rules"                       [+ Create Rule]      | |
-| +--------------------------------------------------------------+ |
-| | +----------------------------------------------------------+ | |
-| | | Rule Name  [Active/Inactive]                             | | |
-| | | Description                                              | | |
-| | | [lightning] Trigger Type  -->  [gear] Action Type        | | |
-| | | Using template: Template Name                            | | |
-| | | Triggered 5 times - Last: Jan 15, 3:30 PM               | | |
-| | |                          [toggle] [edit] [delete]        | | |
-| | +----------------------------------------------------------+ | |
-| | Empty: robot icon, "No automation rules yet"                 | |
-| +--------------------------------------------------------------+ |
+| Loading: skeleton list                                           |
+| Empty: lightning icon, "No automations yet", create button       |
+| List: selectable automation rows                                 |
+|   [checkbox] [status icon] name [Prompt/Script] [schedule]       |
+|   agent + prompt/script preview                                  |
+|   next run / run count / last run / failure snippet              |
+|   [toggle] [actions menu: run, edit, delete]                     |
 +------------------------------------------------------------------+
-| Create Template Modal                                            |
-| +--------------------------------------------------------------+ |
-| | Template Name, Description, Default Task Title,              | |
-| | Default Description, Default Priority + Estimated Cost,      | |
-| | Default Assignee, Tags (comma separated)                     | |
-| | [Cancel]  [Create/Update Template]                           | |
-| +--------------------------------------------------------------+ |
+| Confirm dialogs: bulk delete, bulk run                           |
 +------------------------------------------------------------------+
-| Create Rule Modal                                                |
-| +--------------------------------------------------------------+ |
-| | Rule Name, Description, Trigger + Action (2-col selects),   | |
-| | Task Template (conditional, shown when action=create_task)   | |
-| | [Cancel]  [Create/Update Rule]                               | |
-| +--------------------------------------------------------------+ |
+```
+
+Create and edit screens use a full-height editor layout:
+
+```
++------------------------------------------------------------------+
+| Toolbar: back, name input, Prompt/Script toggle, Save/Run        |
++------------------------------------------------------------------+
+| Monaco editor                                      | Sidebar     |
+| Markdown prompt or Luau script                     | Agent       |
+|                                                    | Schedule    |
+|                                                    | Timezone    |
+|                                                    | History     |
+|                                                    | Recent runs |
++------------------------------------------------------------------+
+| Status bar: language, cursor position                            |
 +------------------------------------------------------------------+
 ```
 
@@ -83,57 +61,39 @@
 
 | Component | Purpose |
 |-----------|---------|
-| `Modal` (shared) | Reusable modal wrapper for both template and rule create/edit forms |
-| `Icon` (shared) | Iconify wrapper with Phosphor icons throughout the page |
+| `Button` (shared) | Header, row, editor, and dialog actions |
+| `Checkbox` (shared) | Per-row and select-all bulk selection |
+| `ConfirmDialog` (shared) | Bulk delete and bulk run confirmations |
+| `Modal` (shared) | Run-detail modal on edit screen |
+| `SearchInput` (shared) | Index search |
+| `CronBuilder` | Schedule builder in create/edit sidebars |
+| `MonacoEditor` | Prompt Markdown and Luau script editor |
+| `Icon` (shared) | Phosphor icons throughout |
 
 ---
 
 ## Features & Interactions
 
-### Tab Navigation
-- Two tabs styled as pill buttons: "Task Templates" (icon: `ph:file-text`) and "Automation Rules" (icon: `ph:robot`)
-- Active tab uses dark filled style; inactive tabs use muted text with hover state
-- Default tab is "templates"
+### Index
 
-### Task Templates
-- Grid list of template cards with rounded-xl borders
-- Each template card displays:
-  - Name with Active/Inactive status badge (green or neutral)
-  - Optional description
-  - Metadata row: default title, default priority, default assignee, estimated cost
-  - Tags as small rounded-full chips
-- Actions per template:
-  - **Play** (run): Creates a task from the template via `createTaskFromTemplate()`, then navigates to `workspacePath('/tasks')`
-  - **Edit**: Opens the create modal pre-filled with template data
-  - **Delete**: Browser confirm dialog, then `deleteTaskTemplate()`
-- "Create Template" button opens modal
+- Status tabs filter all, active, inactive, and failing automations.
+- Search matches automation name, agent name, prompt text, or script text.
+- Selecting rows replaces the status tabs with a bulk toolbar for Run, Delete, and Clear.
+- Rows show execution type (`Prompt` or `Script`), human-readable cron schedule, assigned agent, preview text, next run, run count, last run, and failure snippet.
+- Toggle switch updates `isActive`.
+- Row action menu supports Run, Edit, and Delete.
+- "New" navigates to `workspacePath('/automation/create')`.
+- Edit navigates to `workspacePath('/automation/{id}/edit')`.
 
-### Template Form (Modal)
-- Fields: name, description, default task title, default description, default priority (select), estimated cost (number), default assignee (select from users), tags (comma-separated text input)
-- Tags are split on commas, trimmed, and filtered for empty strings
-- Modal title changes to "Update Template" when editing
-- Form resets when modal closes (via watcher)
+### Create/Edit
 
-### Automation Rules
-- Grid list of rule cards with trigger-action flow visualization
-- Each rule card displays:
-  - Name with Active/Inactive status badge
-  - Optional description
-  - Visual flow: `[lightning icon] Trigger Type --> [gear icon] Action Type`
-  - Associated template name (when applicable)
-  - Trigger count and last triggered timestamp
-- Actions per rule:
-  - **Toggle**: Switches `isActive` state via `updateAutomationRule()`
-  - **Edit**: Opens the create modal pre-filled with rule data
-  - **Delete**: Browser confirm dialog, then `deleteAutomationRule()`
-- "Create Rule" button opens modal
-
-### Rule Form (Modal)
-- Fields: name, description, trigger type (select), action type (select), task template (conditional select, only shown when action is `create_task`)
-- Trigger types: Task Created, Task Completed, Task Assigned, Approval Granted, Approval Rejected
-- Action types: Create Task, Assign Task, Send Notification, Update Task, Spawn Agent
-- Modal title changes to "Update Rule" when editing
-- Form resets when modal closes (via watcher)
+- The name is edited inline in the toolbar.
+- Prompt/Script segmented control switches the Monaco editor between Markdown and Luau modes.
+- Script mode shows a Luau badge and an API Reference link to `workspacePath('/developer/tools')`.
+- Sidebar fields select agent, cron schedule, timezone, and conversation history retention.
+- Create screen saves through `createAutomation()`.
+- Edit screen loads the automation and recent runs, saves through `updateAutomation()`, and can trigger an immediate run.
+- Edit screen opens recent run details in a modal.
 
 ---
 
@@ -141,17 +101,10 @@
 
 | State | Description |
 |-------|-------------|
-| **Empty (Templates)** | Dashed-file icon at 50% opacity, "No task templates yet", "Create a template to get started" |
-| **Empty (Rules)** | Robot icon at 50% opacity, "No automation rules yet", "Create a rule to automate your workflows" |
-| **Loading** | Data loaded via `useApi()` composable; no explicit loading indicators in the UI |
-
----
-
-## Responsive Behavior
-
-| Breakpoint | Changes |
-|------------|---------|
-| **All sizes** | Single-column layout; no distinct mobile breakpoint handling beyond standard padding and text sizing. The page uses `px-6 py-4` header and `p-6` content padding throughout. |
+| **Loading** | Skeleton rows while `fetchAutomations()` resolves |
+| **Empty** | Centered lightning icon, "No automations yet", explanatory text, and create button |
+| **No results** | Search/filter empty state with magnifying-glass icon |
+| **Failing** | Rows with `consecutiveFailures > 0` use red status styling and show the latest error snippet |
 
 ---
 
@@ -159,16 +112,17 @@
 
 | Function | Endpoint | Purpose |
 |----------|----------|---------|
-| `fetchUsers()` | `GET /api/users` | Load users for assignee dropdown |
-| `fetchTaskTemplates(false)` | `GET /api/task-templates` | Load all templates (lazy) |
-| `fetchAutomationRules(false)` | `GET /api/automation-rules` | Load all rules (lazy) |
-| `createTaskTemplate()` | `POST /api/task-templates` | Create new template |
-| `updateTaskTemplate()` | `PATCH /api/task-templates/:id` | Update existing template |
-| `deleteTaskTemplate()` | `DELETE /api/task-templates/:id` | Delete template |
-| `createTaskFromTemplate()` | `POST /api/task-templates/:id/run` | Create task from template |
-| `createAutomationRule()` | `POST /api/automation-rules` | Create new rule |
-| `updateAutomationRule()` | `PATCH /api/automation-rules/:id` | Update rule (including toggle active) |
-| `deleteAutomationRule()` | `DELETE /api/automation-rules/:id` | Delete rule |
+| `fetchAutomations()` | `GET /api/automations` | Load automation list |
+| `fetchAutomation(id)` | `GET /api/automations/:id` | Load one automation for edit |
+| `createAutomation()` | `POST /api/automations` | Create prompt or script automation |
+| `updateAutomation()` | `PATCH /api/automations/:id` | Update fields, enabled state, schedule, prompt, or script |
+| `deleteAutomation()` | `DELETE /api/automations/:id` | Delete one automation |
+| `triggerAutomation()` | `POST /api/automations/:id/run` | Run one automation immediately |
+| `bulkDeleteAutomations()` | `POST /api/automations/bulk-delete` | Delete selected automations |
+| `bulkTriggerAutomations()` | `POST /api/automations/bulk-run` | Run selected automations |
+| `fetchAutomationRuns()` | `GET /api/automations/:id/runs` | Load recent runs for edit screen |
+| `previewSchedule()` | `GET /api/automations/preview-schedule` | Preview next cron run times |
+| `fetchAgents()` | `GET /api/agents` | Populate agent selector |
 
 ---
 
@@ -176,8 +130,10 @@
 
 | File | Purpose |
 |------|---------|
-| `resources/js/Pages/Automation.vue` | Main page component with tab switching, template/rule lists, and create/edit modals |
-| `resources/js/Components/shared/Modal.vue` | Modal wrapper for template and rule forms |
-| `resources/js/Components/shared/Icon.vue` | Iconify icon wrapper |
-| `resources/js/composables/useApi.ts` | API composable providing template and rule CRUD functions |
-| `resources/js/types/index.ts` | TypeScript types: `User` (used for assignee selection) |
+| `resources/js/Pages/Automation.vue` | Automation index with filters, bulk actions, row actions, and status summaries |
+| `resources/js/Pages/Automation/Create.vue` | Editor-based automation creation page |
+| `resources/js/Pages/Automation/Edit.vue` | Editor-based automation edit page with run history and immediate run |
+| `resources/js/Components/automation/CronBuilder.vue` | Cron schedule control |
+| `resources/js/Components/developer/MonacoEditor.vue` | Shared Monaco editor surface |
+| `resources/js/composables/useApi.ts` | Automation API functions |
+| `resources/js/types/index.ts` | `Automation` and related TypeScript types |

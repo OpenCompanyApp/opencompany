@@ -1,6 +1,6 @@
 # Integration: Mermaid
 
-> Mermaid diagram rendering integration for the [Laravel AI SDK](https://github.com/laravel/ai). Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
+> Mermaid diagram rendering integration tools. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
 
 Generates PNG images from Mermaid diagram syntax. Supports flowcharts, sequence diagrams, class diagrams, state diagrams, ER diagrams, Gantt charts, pie charts, git graphs, and more.
 
@@ -51,9 +51,8 @@ $response = Ai::agent()
 | Package | Purpose |
 |---------|---------|
 | `opencompanyapp/integration-core` | ToolProvider contract and registry |
-| `laravel/ai` | Laravel AI SDK Tool interface |
 | `@mermaid-js/mermaid-cli` | Mermaid to PNG rendering (npm) |
 
 ## License
 
-MIT - see the package source repository license.
+MIT.

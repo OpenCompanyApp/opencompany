@@ -1,6 +1,6 @@
 # Integration: TickTick
 
-> Task management integration for the [Laravel AI SDK](https://github.com/laravel/ai) — manage projects, create tasks, set priorities, track completion. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
+> Task management integration tools — manage projects, create tasks, set priorities, track completion. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
 
 Give your AI agents the ability to manage TickTick tasks and projects. Supports both direct access token and OAuth authentication, plus the Dida365 variant.
 
@@ -50,7 +50,7 @@ Two authentication methods are supported — select your preferred method in the
 2. Enter your Client ID and Client Secret in the config
 3. Use the OAuth authorize flow to connect
 
-## Quick Start: Use with Laravel AI SDK
+## Quick Start
 
 ```php
 use Laravel\Ai\Facades\Ai;
@@ -93,14 +93,12 @@ TickTick operates as Dida365 in China. To use this integration with Dida365, cha
 | Package | Purpose |
 |---------|---------|
 | [opencompanyapp/integration-core](https://github.com/OpenCompanyApp/integration-core) | ToolProvider contract and registry |
-| [laravel/ai](https://github.com/laravel/ai) | Laravel AI SDK Tool contract |
 
 ## Requirements
 
 - PHP 8.2+
 - Laravel 11 or 12
-- [Laravel AI SDK](https://github.com/laravel/ai) ^0.1
 
 ## License
 
-MIT - see the package source repository license.
+MIT.

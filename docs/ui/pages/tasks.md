@@ -1,6 +1,6 @@
 # Tasks
 
-> Displays agent-managed work items (cases) in a filterable list with detail drawer, task lifecycle controls, and creation modal.
+> Displays agent-managed work items in a paginated, filterable tree list with a full-page task detail view.
 
 ---
 
@@ -21,10 +21,10 @@
 +------------------------------------------------------------------+
 | Header (border-b, shrink-0)                                      |
 | +----------------------------------------------+-----------+     |
-| | "Tasks"  [Workload] [Activity]  12 tasks / 3 active / 5 done  |
+| | "Tasks"  [Workload] [Activity] [Analytics] 12/3/2/7 counts    |
 | +----------------------------------------------+-----------+     |
 | | [All] [Pending] [Active] [Completed]                     |     |
-| | [All agents v] [All sources v]           [+ New Task]    |     |
+| | [search] [status v] [agent v] [source v]                 |     |
 | +-----------------------------------------------------------+     |
 +------------------------------------------------------------------+
 | Table Header (sticky, bg-neutral-50)                             |
@@ -43,13 +43,6 @@
 | | Empty State: briefcase icon, "No tasks found", [Create]    |   |
 | +-----------------------------------------------------------+   |
 +------------------------------------------------------------------+
-| Modal: "New Task" (overlay)                                      |
-| +-----------------------------------------------------------+   |
-| | Title, Description, Type + Priority (2-col),              |   |
-| | Assign to Agent                                            |   |
-| | [Cancel] [Create Task]                                     |   |
-| +-----------------------------------------------------------+   |
-+------------------------------------------------------------------+
 ```
 
 ---
@@ -59,7 +52,6 @@
 | Component | Purpose |
 |-----------|---------|
 | `ExecutionTrace` | Expandable step-by-step execution trace with tool icons, status indicators, duration badges, and collapsible argument/result panels |
-| `Modal` (shared) | Reusable modal wrapper used for the "New Task" creation form |
 | `AgentAvatar` (shared) | Displays agent/user avatar in task cards and detail page |
 | `StatusBadge` (shared) | Agent status badge with dot, label, icon, and tooltip; supports all `AgentStatus` values including `sleeping`, `awaiting_approval`, `awaiting_delegation` |
 | `SharedSkeleton` (shared) | Placeholder shimmer used during loading state on detail page |
@@ -90,6 +82,12 @@
 ### Agent Filtering
 - Dropdown select populated from `fetchAgents()` API
 - Filters tasks by assigned agent ID
+
+### Search & Pagination
+- Search input passes `search` to `fetchAgentTasks()`
+- Status, agent, source, search, and per-page changes reset to page 1
+- Pagination footer shows current range, page controls with ellipsis, and 25/50/100 per-page selector
+- Real-time `task:updated` events refresh the current page
 
 ### Task List
 - Compact row-based table with columns: status dot, task title, agent, source icon, step count, and time-ago
@@ -154,24 +152,18 @@ The `StatusBadge` component (`resources/js/Components/shared/StatusBadge.vue`) s
 
 Each status has full variant support: filled, soft, outline, ghost, dot-only, and minimal. Tooltips include status descriptions.
 
-### Task Creation
-- Modal with form fields: title, description, type (select), priority (select), agent assignment
-- Type options: Custom, Ticket, Request, Analysis, Content, Research
-- Priority options: Low, Normal, High, Urgent
-- Agent dropdown populated from `fetchAgents()` API
-- Submit disabled until title is non-empty
-- On creation: calls `createAgentTask()`, closes modal, resets form, refreshes list
-
 ### Task Lifecycle Management
 - Start: `startAgentTask(taskId)` -- transitions pending to active
 - Pause: `pauseAgentTask(taskId)` -- pauses active task
 - Resume: `resumeAgentTask(taskId)` -- resumes paused task
 - Complete: `completeAgentTask(taskId, result?)` -- marks as completed
 - Cancel: `cancelAgentTask(taskId)` -- cancels task
-- All actions refresh the task list and update the selected task in the drawer
+- Actions are exposed from the task detail page and use the `/api/tasks/{id}` lifecycle endpoints.
 
 ### Header Navigation
-- "Workload" link in header navigates to `workspacePath('/workload')`
+- "Workload" link navigates to `workspacePath('/workload')`
+- "Activity" link navigates to `workspacePath('/activity')`
+- "Analytics" link navigates to `workspacePath('/tasks/analytics')`
 
 ---
 
@@ -179,8 +171,8 @@ Each status has full variant support: filled, soft, outline, ghost, dot-only, an
 
 | State | Description |
 |-------|-------------|
-| **Empty** | Briefcase icon centered, "No tasks found" message, contextual subtitle (differs based on active filter), "Create Task" button |
-| **Loading** | Data loaded via `useApi()` composable `fetchAgentTasks()` -- no explicit loading skeleton in list |
+| **Empty** | Briefcase icon centered, "No tasks yet" or "No tasks match the current filters" with contextual subtitle |
+| **Loading** | Current list area waits for `fetchAgentTasks()` response; detail page uses shared skeleton placeholders |
 | **Error** | Errors handled at API composable level |
 
 ---
@@ -190,7 +182,7 @@ Each status has full variant support: filled, soft, outline, ghost, dot-only, an
 | Breakpoint | Changes |
 |------------|---------|
 | **Mobile (<md)** | Header stacks vertically with gap-3; task counts hidden; "New" button (compact) shown in title row; filter pills horizontally scrollable; Agent and Source columns hidden; task detail page fills width |
-| **Desktop (md+)** | Header is single row with `h-14`; full "New Task" button in filter bar; task counts visible; all table columns shown; task detail page is `max-w-4xl` centered |
+| **Desktop (md+)** | Header is single row with `h-14`; task counts visible; all table columns shown; task detail page is `max-w-4xl` centered |
 
 ---
 
@@ -198,15 +190,16 @@ Each status has full variant support: filled, soft, outline, ghost, dot-only, an
 
 | Function | Endpoint | Purpose |
 |----------|----------|---------|
-| `fetchAgentTasks()` | `GET /api/agent-tasks` | Load all agent tasks (list page) |
-| `fetchAgentTask(id)` | `GET /api/agent-tasks/:id` | Load single task with steps, subtasks, context, and result (detail page) |
+| `fetchAgentTasks()` | `GET /api/tasks` | Load paginated task list with optional status, agent, source, search, page, and per-page filters |
+| `fetchAgentTask(id)` | `GET /api/tasks/:id` | Load single task with steps, subtasks, context, and result (detail page) |
 | `fetchAgents()` | `GET /api/agents` | Load agents for assignment and filter dropdowns |
-| `createAgentTask()` | `POST /api/agent-tasks` | Create new task |
-| `startAgentTask()` | `POST /api/agent-tasks/:id/start` | Start a pending task |
-| `pauseAgentTask()` | `POST /api/agent-tasks/:id/pause` | Pause an active task |
-| `resumeAgentTask()` | `POST /api/agent-tasks/:id/resume` | Resume a paused task |
-| `completeAgentTask()` | `POST /api/agent-tasks/:id/complete` | Complete a task |
-| `cancelAgentTask()` | `POST /api/agent-tasks/:id/cancel` | Cancel a task |
+| `startAgentTask()` | `POST /api/tasks/:id/start` | Start a pending task |
+| `pauseAgentTask()` | `POST /api/tasks/:id/pause` | Pause an active task |
+| `resumeAgentTask()` | `POST /api/tasks/:id/resume` | Resume a paused task |
+| `completeAgentTask()` | `POST /api/tasks/:id/complete` | Complete a task |
+| `failAgentTask()` | `POST /api/tasks/:id/fail` | Mark a task failed |
+| `cancelAgentTask()` | `POST /api/tasks/:id/cancel` | Cancel a task |
+| `fetchTaskSteps()` | `GET /api/tasks/:id/steps` | Load execution steps when needed |
 
 ---
 
@@ -214,11 +207,10 @@ Each status has full variant support: filled, soft, outline, ghost, dot-only, an
 
 | File | Purpose |
 |------|---------|
-| `resources/js/Pages/Tasks.vue` | Task list page with tree view, filtering, and creation modal |
+| `resources/js/Pages/Tasks.vue` | Task list page with tree view, filtering, pagination, and real-time refresh |
 | `resources/js/Pages/Tasks/Show.vue` | Task detail page with stats, delegation banner, execution trace, output, and context |
 | `resources/js/Components/tasks/ExecutionTrace.vue` | Expandable execution trace with tool icons, arguments, and results |
 | `resources/js/Components/shared/StatusBadge.vue` | Agent status badge supporting all statuses including `sleeping`, `awaiting_approval`, `awaiting_delegation` |
-| `resources/js/Components/shared/Modal.vue` | Modal wrapper used for task creation |
 | `resources/js/Components/shared/AgentAvatar.vue` | Agent/user avatar display |
 | `resources/js/Components/shared/Icon.vue` | Iconify icon wrapper |
 | `resources/js/composables/useApi.ts` | API composable providing all fetch/mutation functions |

@@ -1,6 +1,6 @@
 # Integrations
 
-> Connect external services, manage webhooks and API keys, and browse an integration library.
+> Connect AI providers, package integrations, chat platforms, remote MCP servers, and the OpenCompany AI Gateway from a searchable integration catalog.
 
 ---
 
@@ -19,54 +19,23 @@
 
 ```
 +--------------------------------------------------------------------+
-| h-full overflow-y-auto                                             |
-| ┌────────────────────────────────────────────────────────────────┐ |
-| │ max-w-4xl mx-auto p-6                                         │ |
-| │                                                                │ |
-| │ Header: "Integrations"                                         │ |
-| │ "Connect external services and manage API access"              │ |
-| │                                                                │ |
-| │ ┌──────────────┐ ┌──────────────┐                              │ |
-| │ │  Installed   │ │   Library    │  <- Tab buttons              │ |
-| │ └──────────────┘ └──────────────┘                              │ |
-| │                                                                │ |
-| │ ── Installed Tab ──────────────────────────────────────────    │ |
-| │                                                                │ |
-| │ Webhooks                                      [+ Add webhook]  │ |
-| │ ┌──────────────────────────────────────────────────────────┐   │ |
-| │ │ GitHub PR Notifications          Active    [edit] [del]  │   │ |
-| │ │ POST /api/webhooks/wh-1                                  │   │ |
-| │ ├──────────────────────────────────────────────────────────┤   │ |
-| │ │ Stripe Payment Events           Disabled   [edit] [del]  │   │ |
-| │ └──────────────────────────────────────────────────────────┘   │ |
-| │                                                                │ |
-| │ API Keys                                    [Generate key]     │ |
-| │ ┌──────────────────────────────────────────────────────────┐   │ |
-| │ │ Production API Key    sk_live_••••4f2a   [copy] [revoke] │   │ |
-| │ └──────────────────────────────────────────────────────────┘   │ |
-| │                                                                │ |
-| │ Connected Services                                             │ |
-| │ ┌──────────────────────────────────────────────────────────┐   │ |
-| │ │ [icon] GitHub   Connected  [disconnect]                  │   │ |
-| │ └──────────────────────────────────────────────────────────┘   │ |
-| │                                                                │ |
-| │ ── Library Tab ────────────────────────────────────────────    │ |
-| │                                                                │ |
-| │ [Search integrations...]                                       │ |
-| │                                                                │ |
-| │ AI Models                                                      │ |
-| │ ┌─────────────────────────┐ ┌─────────────────────────────┐   │ |
-| │ │ Z.AI API      [Install]│ │ Z.AI Coding Plan   [Install]│   │ |
-| │ └─────────────────────────┘ └─────────────────────────────┘   │ |
-| │                                                                │ |
-| │ Communication                                                  │ |
-| │ ┌─────────────────────────┐ ┌─────────────────────────────┐   │ |
-| │ │ Slack          [Install]│ │ Discord            [Install]│   │ |
-| │ └─────────────────────────┘ └─────────────────────────────┘   │ |
-| │ ...more categories...                                          │ |
-| └────────────────────────────────────────────────────────────────┘ |
+| Header: "Integrations"       [Tool Catalog] [Lua Console]          |
+| "Connect external services and manage API access"                  |
++--------------------------------------------------------------------+
+| Sidebar / mobile pills                 | Main content              |
+| [Search]                               | Search results            |
+| All                                    | or category grids         |
+| Installed                              | or Installed view         |
+| Native categories                      |                          |
+| MCP Servers                            | IntegrationCard grid      |
+| AI Gateway                             | Webhooks/API Keys blocks  |
+| Add MCP Server                         | Load more catalog button  |
++--------------------------------------------------------------------+
+| Modals: provider, Codex, dynamic config, AI Gateway, MCP, webhook  |
 +--------------------------------------------------------------------+
 ```
+
+Desktop uses a left sidebar. Mobile uses search plus horizontal category pills.
 
 ---
 
@@ -74,64 +43,54 @@
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| `IntegrationCard` | `Components/integrations/IntegrationCard.vue` | Card for each integration in the library grid |
-| `ProviderConfigModal` | `Components/integrations/ProviderConfigModal.vue` | Configuration modal for standard AI model providers |
-| `CodexConfigModal` | `Components/integrations/CodexConfigModal.vue` | OAuth configuration modal for Codex |
-| `DynamicConfigModal` | `Components/integrations/DynamicConfigModal.vue` | Metadata-driven configuration modal for package integrations |
-| `AiGatewayConfigModal` | `Components/integrations/AiGatewayConfigModal.vue` | API key and model access modal for the OpenCompany AI Gateway |
-| `McpConfigModal` | `Components/integrations/McpConfigModal.vue` | Configuration modal for MCP servers |
-| `SearchInput` | `Components/shared/SearchInput.vue` | Clearable search input for library filtering |
-| `Modal` | `Components/shared/Modal.vue` | Shared modal for webhook creation/editing |
+| `IntegrationCard` | `Components/integrations/IntegrationCard.vue` | Card for native, package, catalog-only, and MCP entries |
+| `ProviderConfigModal` | `Components/integrations/ProviderConfigModal.vue` | Standard AI provider configuration |
+| `CodexConfigModal` | `Components/integrations/CodexConfigModal.vue` | Codex OAuth configuration |
+| `DynamicConfigModal` | `Components/integrations/DynamicConfigModal.vue` | Metadata-driven package/chat integration configuration |
+| `AiGatewayConfigModal` | `Components/integrations/AiGatewayConfigModal.vue` | OpenCompany AI Gateway enabled models and API keys |
+| `McpConfigModal` | `Components/integrations/McpConfigModal.vue` | Remote MCP server configuration |
+| `Modal` | `Components/shared/Modal.vue` | Local webhook demo modal in Installed view |
 | `Icon` | `Components/shared/Icon.vue` | Phosphor icon wrapper |
 
 ---
 
 ## Features & Interactions
 
-### Tab Navigation
-- Two tabs: "Installed" and "Library"
-- Installed tab shows a badge with total count (webhooks + API keys + connected services)
-- Active tab styled with dark fill; inactive tabs use ghost hover style
+### Navigation & Search
 
-### Webhooks (Installed Tab)
-- **List**: bordered card with name, active/disabled badge, endpoint URL, last triggered time, weekly call count
-- **Add**: "Add webhook" button opens Modal with name, target type (agent/channel/task), and target selector
-- **Edit**: pencil icon opens the same modal pre-filled with webhook data
-- **Delete**: trash icon removes the webhook from the list
-- **Empty state**: webhook icon with "No webhooks configured" message
+- Sidebar categories: All, Installed, native integration categories, MCP Servers, AI Gateway, and Add MCP Server.
+- Search filters across all integration entries by name/description.
+- All view renders each native category, then MCP server suggestions.
+- Category view renders only the selected category.
+- Catalog controls can load more catalog integrations when available.
 
-### API Keys (Installed Tab)
-- **List**: card with name, masked key (`sk_live_••••4f2a`), creation date, last used time
-- **Generate**: "Generate key" button creates a new key entry
-- **Copy**: copy icon (placeholder for clipboard API)
-- **Revoke**: trash icon removes the key
-- **Empty state**: key icon with "No API keys" message
+### Installed View
 
-### Connected Services (Installed Tab)
-- **List**: green-tinted icon, service name, description, green "Connected" badge, disconnect button
-- **Disconnect**: plug icon removes the service from connected list
-- **Empty state**: linked-plugs icon with "No connected services" and a link to the Library tab
+- Connected Services is backed by the current integration catalog/status data.
+- Webhooks block is currently local page state/mock data. It displays endpoint text as `POST /api/webhooks/{id}`, but there is no generic persisted webhook CRUD API for those rows.
+- API Keys block is also local page state/mock data. Real AI Gateway API keys are managed in `AiGatewayConfigModal`.
 
-### Integration Library (Library Tab)
-- **Search**: `SearchInput` filters across all categories by name and description
-- **Categories**: AI Models, Communication, Developer Tools, Productivity, Data & APIs
-- **Cards**: 2-column grid (`md:grid-cols-2`); each `IntegrationCard` shows icon, name, description, "Popular" badge, and install/configure/uninstall actions
-- **Install flow**: provider integrations open `ProviderConfigModal`, Codex opens `CodexConfigModal`, package integrations open `DynamicConfigModal`, MCP suggestions open `McpConfigModal`, and the gateway opens `AiGatewayConfigModal`.
-- **Configure**: gear icon on installed integrations opens configuration
-- **Uninstall**: trash icon sets `installed` to false
-- **Empty search**: magnifying glass icon with "No integrations found" message
+### Install & Configure Flow
 
-### Provider Configuration Modal
-- Fields: API Key (password/text toggle), API URL, Default Model (dropdown)
-- "Test Connection" button sends POST to `/api/integrations/{id}/test`
-- Test result shown as success (green) or error (red) banner
-- Enable/disable toggle for the integration
-- "Save Configuration" sends PUT to `/api/integrations/{id}/config`
-- Loads existing config on open via GET `/api/integrations/{id}/config`
+- Standard AI providers open `ProviderConfigModal`.
+- Codex opens `CodexConfigModal`.
+- Package integrations and chat platforms open `DynamicConfigModal`.
+- MCP suggestions quick-install a server when possible, then open `McpConfigModal`.
+- Existing MCP entries open `McpConfigModal`.
+- AI Gateway opens `AiGatewayConfigModal`.
+- Installed status is refreshed from `GET /api/integrations` and catalog metadata.
 
-### Integration Status Loading
-- On mount, fetches `/api/integrations` to sync real integration status from backend
-- Updates the `installed` flag on matching library integrations
+### Real Backend APIs Used
+
+| Surface | Endpoints |
+|---------|-----------|
+| Integration status/catalog | `GET /api/integrations`, `GET /api/integrations/catalog`, `GET /api/integrations/catalog/{slug}` |
+| Provider config | `GET /api/integrations/{id}/config`, `PUT /api/integrations/{id}/config`, `POST /api/integrations/{id}/test`, `POST /api/integrations/{id}/toggle`, `POST /api/integrations/{id}/disconnect` |
+| Provider models | `GET /api/integrations/models`, `GET /api/integrations/all-providers`, `GET /api/integrations/embedding-models`, `GET /api/integrations/reranking-models`, `POST /api/integrations/{id}/fetch-models` |
+| OAuth/account integrations | `GET/POST/PUT/DELETE /api/integrations/{id}/accounts...`, Codex auth endpoints, Google/TickTick OAuth routes |
+| Webhook setup | `POST /api/integrations/{id}/setup-webhook` for supported integrations such as Telegram |
+| MCP servers | `GET/POST/PATCH/DELETE /api/mcp-servers...`, plus test/discover endpoints |
+| AI Gateway | `GET/PUT /api/ai-gateway/config`, `GET/POST/DELETE /api/ai-gateway/api-keys...` |
 
 ---
 
@@ -139,12 +98,11 @@
 
 | State | Description |
 |-------|-------------|
-| **Empty webhooks** | Webhook icon, "No webhooks configured" text, hint to add one |
-| **Empty API keys** | Key icon, "No API keys" text, hint to generate one |
-| **Empty services** | Plugs icon, "No connected services" text, link to Library tab |
-| **Empty search** | Magnifying glass, "No integrations found for ..." message |
-| **Provider testing** | "Test Connection" button shows loading state; result appears below |
-| **Provider saving** | "Save Configuration" button shows loading spinner |
+| **Search results** | Shows result count and matching cards, or an empty search state |
+| **No connected services** | Installed view prompts user to browse the library |
+| **No MCP servers** | MCP category prompts user to add a remote MCP server |
+| **Catalog unavailable/error** | Catalog controls show unavailable or error text |
+| **Provider testing/saving** | Modal buttons and result banners live inside the relevant config modal |
 
 ---
 
@@ -152,8 +110,8 @@
 
 | Breakpoint | Changes |
 |------------|---------|
-| **Desktop (md+)** | Library grid shows 2 columns (`md:grid-cols-2`) |
-| **Mobile (<md)** | Library grid collapses to single column; full-width scrollable page |
+| **Desktop (md+)** | Left sidebar, main content grid up to 3 columns |
+| **Mobile (<md)** | Search plus horizontal category pills; cards collapse to one column |
 
 ---
 
@@ -161,12 +119,10 @@
 
 | File | Purpose |
 |------|---------|
-| `resources/js/Pages/Integrations.vue` | Page component with tabs, webhook/key management, library |
-| `resources/js/Components/integrations/IntegrationCard.vue` | Integration card with install/configure/uninstall |
+| `resources/js/Pages/Integrations.vue` | Page component with category navigation, search, installed view, catalog loading, and modal orchestration |
+| `resources/js/Components/integrations/IntegrationCard.vue` | Integration card with install/configure/uninstall behavior |
 | `resources/js/Components/integrations/ProviderConfigModal.vue` | AI provider configuration modal |
 | `resources/js/Components/integrations/CodexConfigModal.vue` | Codex OAuth configuration modal |
-| `resources/js/Components/integrations/DynamicConfigModal.vue` | Package integration configuration modal |
-| `resources/js/Components/integrations/AiGatewayConfigModal.vue` | OpenCompany AI Gateway configuration modal |
-| `resources/js/Components/integrations/McpConfigModal.vue` | MCP server configuration modal |
-| `resources/js/Components/shared/SearchInput.vue` | Search input with clear button |
-| `resources/js/Components/shared/Modal.vue` | Shared modal dialog |
+| `resources/js/Components/integrations/DynamicConfigModal.vue` | Package/chat integration configuration modal |
+| `resources/js/Components/integrations/AiGatewayConfigModal.vue` | OpenCompany AI Gateway settings and API keys |
+| `resources/js/Components/integrations/McpConfigModal.vue` | Remote MCP server configuration modal |
