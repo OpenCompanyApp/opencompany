@@ -2,7 +2,7 @@
 
 > The complete integration roadmap for making AI agents genuinely useful for real business operations.
 
-Status: Roadmap / planning. The current-state table is code-checked against `config/ai.php`, `config/integrations.php`, `config/chat_integrations.php`, the installed `opencompanyapp/integration-*` packages in `composer.json`, the generated integration catalog exposed through `IntegrationCatalog`, and the MCP runtime in `app/Services/Mcp`. Items in the roadmap sections are proposed until there is corresponding app or package code.
+Status: Roadmap / planning. The current-state table is code-checked against `config/ai.php`, `config/integrations.php`, `config/chat_integrations.php`, the installed `opencompanyapp/integration-*` packages in `composer.json`/`composer.lock`, the generated integration catalog exposed through `IntegrationCatalog`, and the MCP runtime in `app/Services/Mcp`. Items in the roadmap sections are proposed until there is corresponding app or package code.
 
 ---
 
@@ -19,8 +19,8 @@ Integrations are what transform OpenCompany from an internal collaboration tool 
 | Category | Built / runnable in current app | Catalog-listed or planned |
 |----------|-------------------------------|---------------------------|
 | AI Models | Anthropic, OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, Ollama, OpenRouter, Perplexity, MiniMax, Kimi, Z.AI, Codex | Additional model IDs are accepted for known providers when configured |
-| Communication | Telegram; chat catalog entries for Slack, Discord, Teams, Google Chat, GitHub, and Linear are present but not all have runtime bridges | Discord/Slack/Teams sidecars and sync listeners remain planned unless code exists |
-| Package Catalog | Installed package providers include Aircall plus Celestial, ClickUp, CoinGecko, ExchangeRate, Google, Mermaid, Plausible, TickTick, TrustMRR, Typst, PlantUML, Vega-Lite, World Bank, and related bundle/catalog packages | Generated catalog currently exposes 591 integrations and 41,493 tools from the package catalog; entries are only runnable when the package/runtime support is installed and configured |
+| Communication | Chat platform settings exist for Telegram, Slack, Discord, Teams, Google Chat, GitHub chat, and Linear chat. `ChatManager`, `ChatAdapterFactory`, `ChatWebhookController`, and `SyncToChat` wire enabled workspace settings through Chatogrator adapters at `/api/webhooks/chat/{adapter}`. | Provider-specific hardening, setup UX, gateway workers, and interaction coverage remain per-adapter work where the package/app code does not yet support the full provider surface. |
+| Package Catalog | `composer.lock` currently installs 585 `opencompanyapp/integration-*` packages plus `opencompany/chatogrator` v1.2.0. The generated package catalog currently exposes 591 integrations and 41,493 tools through `IntegrationCatalog`, with 595 providers registered in `ToolProviderRegistry`. | Catalog entries are discoverable metadata until the corresponding package/runtime support, credentials, and workspace configuration make them executable. |
 | Analytics | Plausible, Google Analytics, Google Search Console | Broader catalog analytics integrations remain catalog/planning unless installed |
 | Productivity | Google Calendar, Google Drive, Google Docs, Google Sheets, Google Contacts, Google Forms, Google Tasks, Gmail, ClickUp, TickTick | Notion, Trello, Obsidian and similar catalog entries remain future package/runtime work unless installed |
 | Developer | Remote MCP servers and catalog/package discovery | GitHub, GitLab, Linear, Jira app-specific runtimes remain planned unless backed by installed packages or MCP servers |

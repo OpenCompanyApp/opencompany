@@ -2,21 +2,32 @@
 
 Status: Historical / mostly implemented. The current app consumes framework-agnostic `opencompanyapp/integration-*` packages through `opencompanyapp/integration-core`, `ToolProviderRegistry`, `LuaBridge`, `config/integration_catalog.php`, and `app/Agents/Tools/ToolRegistry.php`. Remaining phase notes are useful as refactor rationale, not a literal current file inventory.
 
+Current code check, 2026-05-24:
+
+- `../integrations/core/src/Contracts/Tool.php` is framework-agnostic and exposes `name()`, `description()`, `parameters()`, and `execute(array $args): ToolResult`.
+- `../integrations/core/src/Contracts/ToolProvider.php` now includes `luaDocsPath()` and `credentialFields()` directly.
+- `../integrations/core/src/Support/ToolProviderRegistry.php` is a small registry; the app still has a local `app/Agents/Tools/ToolRegistry.php` because built-in OpenCompany tools and Laravel AI agent wiring remain app-owned.
+- Built-in OpenCompany tool groups are split across `app/Agents/Tools/Providers/*ToolProvider.php`.
+- Packages have been renamed to `opencompanyapp/integration-*`; `composer.lock` currently installs 585 integration packages.
+
 ## Context
 
 The AI tool packages were originally built around `Laravel\Ai\Contracts\Tool` — each tool exposed `description()`, `schema(JsonSchema)`, and `handle(Request)` for direct LLM function calling. We then switched to Lua code mode where the LLM writes Lua scripts that call tools via `LuaBridge`, making the LLM-oriented interface unnecessary overhead.
 
 Additionally, KosmoKrator (CLI agent) needs to share the same tool ecosystem but cannot depend on `laravel/ai`. The packages must become framework-agnostic.
 
-### Current Pain Points
+### Historical Pain Points At Time Of Writing
 
-1. **`integration-core` depends on `laravel/ai`** for the `Tool` interface. Every tool package transitively depends on `laravel/ai`. KosmoKrator cannot use them.
-2. **225+ tool classes** implement `Laravel\Ai\Contracts\Tool` with `schema(JsonSchema)` and `handle(Request)` even though they are never direct LLM tools — they are called via Lua.
-3. **`ToolRegistry` is a 1965-line monolith** mixing tool metadata (`TOOL_MAP`), instantiation (180-line `match`), permissions, catalog generation, and app group config.
+The items below describe the baseline this plan was written against. They are
+not all current defects in the May 2026 codebase.
+
+1. **`integration-core` depended on `laravel/ai`** for the `Tool` interface. Every tool package transitively depended on `laravel/ai`. KosmoKrator could not use them.
+2. **225+ tool classes** implemented `Laravel\Ai\Contracts\Tool` with `schema(JsonSchema)` and `handle(Request)` even though they were never direct LLM tools — they were called via Lua.
+3. **`ToolRegistry` was a 1965-line monolith** mixing tool metadata (`TOOL_MAP`), instantiation (180-line `match`), permissions, catalog generation, and app group config.
 4. **Two registration paths**: external packages self-register via `ToolProviderRegistry`, built-in tools are hardcoded in `TOOL_MAP` + the giant `match`.
-5. **`ProvidesLuaDocs`** is optional and zero packages implement it despite Lua being the primary mode.
+5. **`ProvidesLuaDocs`** was optional and zero packages implemented it despite Lua being the primary mode.
 6. **No multi-account support** in `ToolProvider` or `CredentialResolver` — needed for KosmoKrator's `app.gmail.work.*` / `app.gmail.personal.*` pattern.
-7. **Package naming** (`ai-tool-*`) reflects Era 1 thinking.
+7. **Package naming** (`ai-tool-*`) reflected Era 1 thinking.
 
 ---
 

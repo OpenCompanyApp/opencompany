@@ -118,7 +118,7 @@ Technical
 ├── Memory System                             — Dual-memory model, compaction, hybrid search, token tracking
 ├── Agent Spawning                            — Ephemeral agents, parent-child relationships, lifecycle
 ├── Tools & Skills                            — Tool registry, hybrid resolution, package architecture
-├── External Channel Sync                     — Bidirectional Telegram/Discord message synchronization
+├── External Channel Sync                     — Bidirectional Chatogrator-backed channel synchronization
 ├── Automations                               — Event broadcasting, scheduled execution, approval workflows
 ├── LLM Providers                             — Provider resolution, brain field format, token accounting
 ├── Data Model                       [NEW]    — Entity relationships, workspace scoping, key tables
@@ -154,9 +154,9 @@ Integrations
 │
 ├── Communication
 │   ├── Telegram                              — Bot creation, webhook config, message sync
-│   ├── Discord                      [SOON]   — Bot setup, sidecar architecture, channel mapping
-│   ├── Slack                        [SOON]   — App installation, event subscriptions, channel sync
-│   └── Microsoft Teams              [SOON]   — Teams app, bot framework, message routing
+│   ├── Discord                      [SOON]   — Bot setup, Chatogrator adapter path, gateway/interaction hardening
+│   ├── Slack                        [SOON]   — App installation, event subscriptions, Chatogrator channel sync
+│   └── Microsoft Teams              [SOON]   — Teams app, bot framework, Chatogrator message routing
 │
 ├── Visualization
 │   ├── Mermaid Diagrams                      — Flowcharts, sequence diagrams, Gantt charts

@@ -61,8 +61,8 @@
 |----------|---------------|--------------|
 | [memory-implementation.md](planning/memory-implementation.md) | Memory system architecture reference — STM/LTM model, phase summary **(Status: Complete)** | Understanding the memory architecture |
 | [kosmokrator-runtime-alignment-checklist.md](planning/kosmokrator-runtime-alignment-checklist.md) | Checklist for aligning runtime behavior with KosmoKrator patterns — completed work + pointers to open Plane issues | Reviewing runtime-alignment status |
-| [external-channel-sync.md](external-channel-sync.md) | Bidirectional sync design for Telegram/Discord — message tracking, edit/pin/react sync, channel discovery **(Telegram: Done, Discord: Not started)** | Working on external platform integration |
-| [discord.md](discord.md) | Discord integration documentation — architecture, sidecar, configuration | Setting up or debugging Discord integration |
+| [external-channel-sync.md](external-channel-sync.md) | Bidirectional sync design for Chatogrator-backed external channels — message tracking, edit/pin/react sync, channel discovery, and provider hardening status | Working on external platform integration |
+| [discord.md](discord.md) | Historical Discord sidecar proposal plus current Chatogrator adapter/webhook pointer | Evaluating Discord integration design history before implementing current work |
 | [automation-endpoints-dashboards.md](planning/automation-endpoints-dashboards.md) | Automation endpoint and dashboard implementation plan | Working on automation API or UI gaps |
 | [chatogrator.md](planning/chatogrator.md) | Chat integration and ChatOgrator planning | Planning chat-side package/runtime behavior |
 | [codex-subscription-auth.md](planning/codex-subscription-auth.md) | Codex subscription authentication planning | Working on Codex integration |

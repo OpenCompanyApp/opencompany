@@ -27,7 +27,7 @@ The official first-party Laravel AI SDK (`laravel/ai`) provides a unified API fo
 - Built-in conversation persistence via `RemembersConversations` trait
 - Native streaming + broadcasting (`->stream()`, `->broadcastOnQueue()`)
 - Queue support (`->queue()`)
-- Provider failover (`provider: ['anthropic', 'openai']`)
+- Provider failover capability when a caller supplies a failover chain (`provider: ['anthropic', 'openai']`)
 - Comprehensive testing: `Agent::fake()`, `assertPrompted()`, `preventStrayPrompts()`
 - MCP client/server behavior is app-owned today; `laravel/mcp` is not installed in `composer.json`
 - Providers: OpenAI, Anthropic, Gemini, Groq, xAI, Cohere, Jina, ElevenLabs

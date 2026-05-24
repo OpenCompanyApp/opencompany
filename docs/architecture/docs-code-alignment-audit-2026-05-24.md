@@ -20,6 +20,16 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Added [workspace.md](../ui/pages/workspace.md) for setup, workspace creation, and invitation acceptance flows.
 - Updated [chat.md](../ui/pages/chat.md) and [profile.md](../ui/pages/profile.md) so DM links and redirects match current routes.
 - Updated [../discord.md](../discord.md) so the sidecar design is clearly marked historical and the current Chatogrator adapter/webhook path is not contradicted.
+- Updated [../planning/chatogrator.md](../planning/chatogrator.md) so it distinguishes the package's standalone webhook route from OpenCompany's workspace-aware `/api/webhooks/chat/{adapter}` route and current adapter wiring.
+- Updated [../planning/integrations.md](../planning/integrations.md) so the current-state table reflects the installed integration package/catalog counts and Chatogrator-backed chat adapter wiring.
+- Updated [../planning/integration-refactor.md](../planning/integration-refactor.md) so old refactor pain points are marked as historical and the May 2026 code check records the current `integration-core` contracts and provider registry shape.
+- Updated [../ai-providers.md](../ai-providers.md) so provider setup no longer claims every provider requires a static `config/integrations.php` row and the implementation pattern matches `AiCatalog`-driven provider cards.
+- Updated [ai-provider-runtime-architecture.md](ai-provider-runtime-architecture.md) so prompt-cache gateway files and direct AI Gateway usage recording are represented in the runtime map.
+- Updated [../README.md](../../README.md) and [technology-decisions.md](technology-decisions.md) so provider failover is described as a Laravel AI SDK capability, while current app support is framed around the app-owned provider catalog.
+- Updated [../documentation.md](../documentation.md) and [../INDEX.md](../INDEX.md) so external-channel docs reference the current Chatogrator-backed architecture instead of the older Discord sidecar/not-started framing.
+- Updated confidential monetization notes so BSL 1.1 + Additional Use Grant remains the authoritative current license posture and workspace/plan gating is not presented as shipped without enforcement code.
+- Updated [../tools/charts.md](../tools/charts.md) so visualization renderers are described as built-in SVG plus integration-package tools reached through Lua, not generic external MCP tools.
+- Updated [../planning/lua-scripting.md](../planning/lua-scripting.md) and [../../resources/lua-docs/_overview.md](../../resources/lua-docs/_overview.md) so current script automations use `execution_type = "script"`, `RunScriptAutomationJob`, `LuaSandboxService`, and the current 30-second sandbox default instead of the older "No Lua yet" / `script_language` plan.
 - Updated [../INDEX.md](../INDEX.md) so the new UI page docs are discoverable.
 
 ## Mechanical Checks

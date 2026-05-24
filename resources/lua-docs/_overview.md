@@ -36,7 +36,7 @@ app.calendar.create_event({
 
 | Limit | Default |
 |-------|---------|
-| CPU time | 5 seconds |
+| CPU time | 30 seconds |
 | Memory | 32 MB |
 | Network | None (use `app.http.*` for pre-approved webhooks) |
 | File system | None |

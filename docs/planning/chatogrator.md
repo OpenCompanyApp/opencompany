@@ -2,13 +2,41 @@
 
 Chatogrator — Laravel Chat Aggregator. Port of the [Vercel Chat SDK](https://github.com/vercel/chat/) to PHP/Laravel.
 
-Status: Package strategy / planning. OpenCompany currently uses `opencompany/chatogrator` routes plus Telegram adapter runtime, while broader Slack/Discord/Teams/Google Chat support in this document is package roadmap unless implemented in the package and wired into this app.
+Status: Package strategy / planning with partial app adoption. OpenCompany
+currently installs `opencompany/chatogrator` v1.2.0 and uses app-owned
+workspace routing at `POST /api/webhooks/chat/{adapter}`. The package's own
+routes are moved to `internal/chatogrator/webhooks` so they do not bypass
+OpenCompany workspace resolution. Current app wiring maps Telegram, Slack,
+Discord, Teams, Google Chat, GitHub chat, and Linear chat settings through
+`App\Services\Chat\ChatAdapterFactory`; provider behavior still depends on the
+installed Chatogrator adapter and credentials for that workspace.
 
 A standalone, open-source package that lets any Laravel developer build multi-platform chat bots with a single unified API. Write bot logic once, deploy to Slack, Discord, Microsoft Teams, Google Chat, GitHub, and Linear.
 
 - Package: `opencompany/chatogrator`
 - Namespace: `OpenCompany\Chatogrator`
 - Location: `tmp/chatogrator/`
+
+## Current OpenCompany Wiring
+
+OpenCompany keeps tenant resolution and credential loading in the app, then
+hands normalized requests to Chatogrator:
+
+- `routes/api.php` exposes `POST /api/webhooks/chat/{adapter}` through
+  `App\Http\Controllers\Api\ChatWebhookController`.
+- `config/chatogrator.php` sets the package route prefix to
+  `internal/chatogrator/webhooks` because package routes do not know the
+  workspace before adapter-specific verification.
+- `config/chat_integrations.php` owns the chat platform catalog and credential
+  field definitions.
+- `App\Services\Chat\ChatManager` builds a per-workspace Chatogrator runtime,
+  registers enabled workspace adapters, and caches the runtime until settings
+  change.
+- `App\Services\Chat\ChatAdapterFactory` maps `IntegrationSetting` rows to
+  Chatogrator adapters for Telegram, Slack, Discord, Teams, Google Chat,
+  GitHub chat, and Linear chat.
+- `App\Listeners\SyncToChat` handles outbound sync through the selected
+  Chatogrator adapter when the adapter supports the requested action.
 
 ---
 
@@ -742,12 +770,18 @@ The package registers routes automatically via the ServiceProvider:
 POST /webhooks/chat/{adapter}  →  ChatWebhookController@handle
 ```
 
+In OpenCompany this package route is not the public workspace-aware route.
+OpenCompany exposes `POST /api/webhooks/chat/{adapter}` through its own
+`ChatWebhookController`, resolves the workspace from adapter-specific payload
+or secret data, binds `currentWorkspace`, and then calls Chatogrator.
+
 Config (`chatogrator.php`):
 
 ```php
 return [
-    'route_prefix' => 'webhooks/chat',
-    'middleware' => [],  // No auth — webhooks are verified by each adapter
+    // OpenCompany value. Standalone package consumers may use webhooks/chat.
+    'route_prefix' => 'internal/chatogrator/webhooks',
+    'middleware' => [],
 ];
 ```
 

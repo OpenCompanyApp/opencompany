@@ -76,7 +76,7 @@ the final source of truth for newly released model IDs.
 ## Priority Tiers
 
 ### Tier 1 — Upgrade partial → full integration (already have runtime support)
-Need: `config/integrations.php` entry + config modal + model fetch + connection test
+Need: `AiCatalog` metadata, generic provider config coverage, model fetch/test coverage where the provider exposes it, and workspace credential validation. A static `config/integrations.php` entry is optional legacy/display overlay now because `IntegrationSetting::catalogAiIntegrations()` surfaces non-OAuth catalog providers automatically.
 
 1. **Anthropic** — #1 competitor model family, reasoning and coding
 2. **OpenAI** — most widely used, largest ecosystem
@@ -89,7 +89,7 @@ Need: `config/integrations.php` entry + config modal + model fetch + connection 
 9. **OpenRouter** — meta-aggregator and billing-reconciliation path; avoid fixed model-count assumptions
 
 ### Tier 2 — New OpenAI-compatible providers (easy to add)
-Need: Everything from Tier 1 + provider catalog/config entry + resolver coverage
+Need: Everything from Tier 1 + provider catalog entry or override, runtime driver mapping if the existing OpenAI-compatible path is not enough, and resolver/test coverage.
 
 1. **Fireworks AI** — fast inference, competitive pricing, hosts popular open models
 2. **Together AI** — popular platform, strong open model selection
@@ -118,13 +118,17 @@ Need: Everything from Tier 1 + provider catalog/config entry + resolver coverage
 Most API-key providers follow the same app-owned runtime pattern:
 
 ```
-AiCatalog  →  config/integrations.php  →  IntegrationSetting  →  OpenCompanyAiProviderFactory
-   ↓                  ↓                           ↓                         ↓
-Provider/model     Config Modal UI        Encrypted workspace      Laravel AI provider
-metadata                                credentials + overrides
+AiCatalog  →  IntegrationSetting catalog view  →  ProviderConfigModal  →  OpenCompanyAiProviderFactory
+   ↓                  ↓                                  ↓                         ↓
+Provider/model     Config metadata +             Encrypted workspace      Laravel AI provider
+metadata           optional static overlay        credentials + overrides
 ```
 
-A **generic ProviderConfigModal** could handle all OpenAI-compatible providers with the same UI:
+The generic `ProviderConfigModal` handles API-key providers with the same UI:
 API key field + base URL + model dropdown + test connection + enable toggle.
 
-This makes adding a new provider a config-only change (~5 lines in `integrations.php`).
+Adding a new OpenAI-compatible provider should usually be a catalog metadata
+change, plus tests or overrides when the provider needs special auth, endpoint,
+pricing, cache, or runtime behavior. The runtime intentionally accepts custom
+model IDs for known providers so OpenCompany does not need a code update for
+every model release.

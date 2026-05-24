@@ -1,24 +1,42 @@
 # Visualization Tools — Reference
 
-> Reference for the five visualization tools available to agents. Each tool accepts markup or a spec and returns an image embed (or PDF).
+> Reference for the visualization renderers available through OpenCompany's
+> built-in SVG tool provider and installed integration packages. Agents normally
+> reach these through `lua_exec` after reading the relevant Lua docs.
+
+Status: Current runtime split. `render_svg` is app-built-in under
+`App\Agents\Tools\Providers\SvgToolProvider`; Mermaid, PlantUML, Typst, and
+Vega-Lite are `opencompanyapp/integration-*` packages registered through
+`OpenCompany\IntegrationCore\Support\ToolProviderRegistry`.
 
 ---
 
 ## Overview
 
-Agents have five tools for generating visual output:
+OpenCompany has five renderers for generating visual output:
 
 | Tool | Input | Output | Provider |
 |------|-------|--------|----------|
 | `render_svg` | Raw SVG markup | PNG image | Built-in |
-| `render_vegalite` | Vega-Lite JSON spec | PNG image | External (MCP) |
-| `render_mermaid` | Mermaid diagram markup | PNG image | External (MCP) |
-| `render_plantuml` | PlantUML markup | PNG image | External (MCP) |
-| `render_typst` | Typst markup | PDF document | External (MCP) |
+| `render_vegalite` | Vega-Lite JSON spec | PNG image | Integration package |
+| `render_mermaid` | Mermaid diagram markup | PNG image | Integration package |
+| `render_plantuml` | PlantUML markup | PNG image | Integration package |
+| `render_typst` | Typst markup | PDF document | Integration package |
 
 All image tools return a markdown image embed (`![title](/storage/...png)`). The Typst tool returns a markdown link to the generated PDF.
 
 **Rule:** Never fabricate image or document URLs. Always use these tools and embed the returned path.
+
+Current agent guidance points agents to the Lua API:
+
+- SVG: `app.svg.render_svg(...)`
+- Mermaid: `app.integrations.mermaid.render_mermaid(...)`
+- PlantUML: `app.integrations.plantuml.render_plantuml(...)`
+- Typst: `app.integrations.typst.render_typst(...)`
+- Vega-Lite: `app.integrations.vegalite.render_vegalite(...)`
+
+The exact function signatures are generated from the active tool providers, so
+agents should call `lua_read_doc()` for the namespace before writing code.
 
 ---
 
@@ -64,7 +82,7 @@ Converts raw SVG markup to a PNG image using `rsvg-convert`. Use this for custom
 
 ---
 
-## `render_vegalite` — Vega-Lite Charts (External)
+## `render_vegalite` — Vega-Lite Charts (Integration Package)
 
 Accepts a [Vega-Lite](https://vega.github.io/vega-lite/) JSON specification and renders it to a PNG image. This is the primary tool for data charts — bar, line, area, pie, scatter, and everything else Vega-Lite supports.
 
@@ -219,7 +237,7 @@ Set `"innerRadius": 0` for a solid pie, or increase it for a donut.
 
 ---
 
-## `render_mermaid` — Mermaid Diagrams (External)
+## `render_mermaid` — Mermaid Diagrams (Integration Package)
 
 Renders [Mermaid](https://mermaid.js.org/) diagram markup to a PNG image. Best for flowcharts, sequence diagrams, class diagrams, ER diagrams, Gantt charts, and similar structural diagrams.
 
@@ -263,7 +281,7 @@ gantt
 
 ---
 
-## `render_plantuml` — PlantUML Diagrams (External)
+## `render_plantuml` — PlantUML Diagrams (Integration Package)
 
 Renders [PlantUML](https://plantuml.com/) markup to a PNG image. Best for UML diagrams — class, component, activity, state, deployment, use-case, and more.
 
@@ -307,7 +325,7 @@ stop
 
 ---
 
-## `render_typst` — Typst to PDF (External)
+## `render_typst` — Typst to PDF (Integration Package)
 
 Renders [Typst](https://typst.app/) markup to a PDF document. Use this for formatted reports, invoices, letters, or any document that needs precise layout and typography.
 

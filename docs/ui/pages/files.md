@@ -72,7 +72,7 @@
 | Surface | Endpoints |
 |---------|-----------|
 | Disk selector | `GET /api/disks` |
-| File listing | `GET /api/files?parent_id=&search=&disk_id=` |
+| File listing | `GET /api/files` with optional `parent_id`, `search`, and `disk_id` query parameters |
 | Folder tree | `GET /api/files/tree` |
 | Upload | `POST /api/files` multipart form with `file`, optional `parent_id`, optional `disk_id` |
 | New folder | `POST /api/files/folder` with `name`, optional `parent_id`, optional `disk_id` |

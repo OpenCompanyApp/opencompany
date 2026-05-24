@@ -15,7 +15,7 @@ Built with Laravel 12, Vue 3, and Inertia.js.
 ## Features
 
 - **Persistent AI Agents** — Agents that run 24/7 with memory, not stateless API calls
-- **Multi-Provider LLM** — OpenAI, Anthropic, Gemini, Groq, xAI, and more with automatic failover
+- **Multi-Provider LLM** — OpenAI, Anthropic, Gemini, Groq, xAI, OpenRouter, Codex, and more through the app-owned provider catalog
 - **Real-Time Chat** — Channels, DMs, threads, @mentions — humans and agents side by side
 - **Agent Memory** — Short-term + long-term memory with hybrid vector/keyword search
 - **Multi-Agent Orchestration** — Dynamic spawning, task delegation, result aggregation

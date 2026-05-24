@@ -31,6 +31,17 @@ app/Domain/Ai/
     ├── LlmUsageEvent.php
     ├── OpenRouterGenerationStore.php
     └── UsageRecorder.php
+
+app/Ai/
+├── Gateways/
+│   ├── CachingTextGateway.php
+│   ├── PromptCachePolicy.php
+│   ├── CodexTextGateway.php
+│   └── UnsupportedTextGateway.php
+├── Providers/
+│   └── CohereTextProvider.php
+└── TextGeneration/
+    └── MergedTextGenerationOptions.php
 ```
 
 ```text
@@ -69,9 +80,9 @@ a package provider bridge.
 ## Usage And Cost Flow
 
 ```text
-Agent response
+Agent response or AI Gateway request
   ├── TokenMetrics keeps task result snapshots
-  └── UsageRecorder writes llm_usage_events
+  └── UsageRecorder/AiGateway writes llm_usage_events
         ├── requested provider/model
         ├── resolved provider/model
         ├── token and cache-token counts
