@@ -30,6 +30,9 @@ final readonly class WebFetchResponse
         public bool $cacheHit = false,
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $meta
+     */
     public function withContent(string $content, bool $truncated = false, ?string $nextChunkToken = null, array $meta = []): self
     {
         return new self(
@@ -58,6 +61,9 @@ final readonly class WebFetchResponse
         return new self($this->provider, $this->url, $this->finalUrl, $this->statusCode, $this->contentType, $this->format, $this->title, $this->metadata, $this->outline, $this->sections, $this->content, $this->rawHtml, $this->truncated, $this->nextChunkToken, $this->extractionMethod, $this->meta, $cacheHit);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

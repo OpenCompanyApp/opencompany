@@ -32,7 +32,7 @@ class ToolRegistry
      * App groups that remain as direct AI tools.
      * Everything else is accessible only via lua_exec (code-first approach).
      */
-    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua'];
+    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua', 'web'];
 
     /**
      * Apps that are external integrations (can be toggled per agent).

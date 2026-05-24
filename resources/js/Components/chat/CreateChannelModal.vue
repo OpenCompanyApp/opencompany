@@ -2,179 +2,165 @@
   <Modal
     :open="open"
     title="Create a Channel"
-    :ui="{
-      width: 'max-w-lg',
-      background: 'bg-neutral-800',
-      header: 'text-white border-b border-neutral-700',
-      title: 'text-lg font-semibold text-white',
-      close: 'text-neutral-400 hover:text-white',
-    }"
+    size="md"
     @update:open="emit('update:open', $event)"
   >
-        <form class="flex-1 overflow-y-auto p-4 space-y-4" @submit.prevent="handleSubmit">
-          <!-- Channel Type -->
-          <div>
-            <label class="block text-sm font-medium text-neutral-300 mb-2">Channel Type</label>
-            <div class="grid grid-cols-3 gap-2">
-              <button
-                v-for="type in channelTypes"
-                :key="type.value"
-                type="button"
-                class="flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors"
-                :class="channelType === type.value
-                  ? 'bg-indigo-600/20 border-indigo-500 text-white'
-                  : 'bg-neutral-700/50 border-neutral-600 text-neutral-300 hover:border-neutral-500'"
-                @click="channelType = type.value"
-              >
-                <Icon :name="type.icon" class="w-5 h-5" />
-                <span class="text-xs font-medium">{{ type.label }}</span>
-              </button>
-            </div>
-            <p class="mt-2 text-xs text-neutral-400">{{ selectedTypeDescription }}</p>
-          </div>
-
-          <!-- Channel Name -->
-          <div>
-            <label for="channel-name" class="block text-sm font-medium text-neutral-300 mb-2">
-              Channel Name
-            </label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-                <Icon :name="channelTypeIcon" class="w-4 h-4" />
-              </span>
-              <input
-                id="channel-name"
-                v-model="channelName"
-                type="text"
-                placeholder="e.g. marketing, engineering"
-                class="w-full bg-neutral-700 border border-neutral-600 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                :class="{ 'border-red-500 focus:ring-red-500': nameError }"
-              />
-            </div>
-            <p v-if="nameError" class="mt-1 text-xs text-red-400">{{ nameError }}</p>
-            <p v-else class="mt-1 text-xs text-neutral-400">
-              Names must be lowercase, without spaces. Use hyphens for separation.
-            </p>
-          </div>
-
-          <!-- Description -->
-          <div>
-            <label for="channel-description" class="block text-sm font-medium text-neutral-300 mb-2">
-              Description <span class="text-neutral-500">(optional)</span>
-            </label>
-            <textarea
-              id="channel-description"
-              v-model="description"
-              rows="3"
-              placeholder="What's this channel about?"
-              class="w-full bg-neutral-700 border border-neutral-600 rounded-lg px-4 py-2 text-sm text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-            />
-          </div>
-
-          <!-- Add Members -->
-          <div>
-            <label class="block text-sm font-medium text-neutral-300 mb-2">
-              Add Members <span class="text-neutral-500">(optional)</span>
-            </label>
-
-            <!-- Search Users -->
-            <div class="relative mb-2">
-              <Icon name="ph:magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-              <input
-                v-model="memberSearch"
-                type="text"
-                placeholder="Search users to add..."
-                class="w-full bg-neutral-700 border border-neutral-600 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            <!-- Selected Members -->
-            <div v-if="selectedMembers.length > 0" class="flex flex-wrap gap-2 mb-2">
-              <span
-                v-for="member in selectedMembers"
-                :key="member.id"
-                class="inline-flex items-center gap-1 px-2 py-1 bg-neutral-700 rounded-full text-xs text-white"
-              >
-                <img
-                  v-if="member.avatar"
-                  :src="member.avatar"
-                  :alt="member.name"
-                  class="w-4 h-4 rounded-full"
-                />
-                <span
-                  v-else
-                  class="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-medium"
-                  :class="member.type === 'agent' ? 'bg-purple-600' : 'bg-blue-600'"
-                >
-                  {{ member.name.charAt(0).toUpperCase() }}
-                </span>
-                {{ member.name }}
-                <button
-                  type="button"
-                  class="ml-1 text-neutral-400 hover:text-white"
-                  @click="removeMember(member)"
-                >
-                  <Icon name="ph:x" class="w-3 h-3" />
-                </button>
-              </span>
-            </div>
-
-            <!-- Available Users -->
-            <div v-if="memberSearch" class="max-h-32 overflow-y-auto bg-neutral-700/50 rounded-lg border border-neutral-600">
-              <button
-                v-for="user in filteredUsers"
-                :key="user.id"
-                type="button"
-                class="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-600/50 text-left"
-                @click="addMember(user)"
-              >
-                <div class="relative flex-shrink-0">
-                  <img
-                    v-if="user.avatar"
-                    :src="user.avatar"
-                    :alt="user.name"
-                    class="w-6 h-6 rounded-full"
-                  />
-                  <div
-                    v-else
-                    class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium"
-                    :class="user.type === 'agent' ? 'bg-purple-600' : 'bg-blue-600'"
-                  >
-                    {{ user.name.charAt(0).toUpperCase() }}
-                  </div>
-                </div>
-                <span class="text-sm text-white">{{ user.name }}</span>
-                <span class="text-xs text-neutral-400 capitalize">{{ user.type }}</span>
-              </button>
-              <p v-if="filteredUsers.length === 0" class="px-3 py-2 text-sm text-neutral-400 text-center">
-                No users found
-              </p>
-            </div>
-          </div>
-        </form>
-
-        <!-- Footer -->
-        <div class="p-4 border-t border-neutral-700 flex items-center justify-end gap-2">
+    <form class="space-y-5" @submit.prevent="handleSubmit">
+      <div>
+        <label class="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-200">Channel Type</label>
+        <div class="grid grid-cols-2 gap-2">
           <button
+            v-for="type in channelTypes"
+            :key="type.value"
             type="button"
-            class="px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors"
-            @click="emit('update:open', false)"
+            class="flex flex-col items-center gap-2 rounded-lg border p-3 transition-colors"
+            :class="channelType === type.value
+              ? 'border-neutral-900 bg-neutral-100 text-neutral-950 dark:border-neutral-100 dark:bg-neutral-800 dark:text-white'
+              : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-neutral-950 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-white'"
+            @click="channelType = type.value"
           >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            :disabled="!isValid || creating"
-            @click="handleSubmit"
-          >
-            <span v-if="creating" class="flex items-center gap-2">
-              <Icon name="ph:spinner" class="w-4 h-4 animate-spin" />
-              Creating...
-            </span>
-            <span v-else>Create Channel</span>
+            <Icon :name="type.icon" class="h-5 w-5" />
+            <span class="text-xs font-medium">{{ type.label }}</span>
           </button>
         </div>
+        <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">{{ selectedTypeDescription }}</p>
+      </div>
+
+      <div>
+        <label for="channel-name" class="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-200">
+          Channel Name
+        </label>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500">
+            <Icon :name="channelTypeIcon" class="h-4 w-4" />
+          </span>
+          <input
+            id="channel-name"
+            v-model="channelName"
+            type="text"
+            placeholder="e.g. marketing, engineering"
+            class="w-full rounded-lg border border-neutral-200 bg-white py-2 pl-9 pr-4 text-sm text-neutral-950 outline-none placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:placeholder:text-neutral-500 dark:focus:border-neutral-500 dark:focus:ring-neutral-100/10"
+            :class="{ 'border-red-500 focus:ring-red-500': nameError }"
+          >
+        </div>
+        <p v-if="nameError" class="mt-1 text-xs text-red-500 dark:text-red-400">{{ nameError }}</p>
+        <p v-else class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          Names must be lowercase, without spaces. Use hyphens for separation.
+        </p>
+      </div>
+
+      <div>
+        <label for="channel-description" class="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-200">
+          Description <span class="text-neutral-400 dark:text-neutral-500">(optional)</span>
+        </label>
+        <textarea
+          id="channel-description"
+          v-model="description"
+          rows="3"
+          placeholder="What's this channel about?"
+          class="w-full resize-none rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-950 outline-none placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:placeholder:text-neutral-500 dark:focus:border-neutral-500 dark:focus:ring-neutral-100/10"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-200">
+          Add Members <span class="text-neutral-400 dark:text-neutral-500">(optional)</span>
+        </label>
+
+        <div class="relative mb-2">
+          <Icon name="ph:magnifying-glass" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+          <input
+            v-model="memberSearch"
+            type="text"
+            placeholder="Search users to add..."
+            class="w-full rounded-lg border border-neutral-200 bg-white py-2 pl-9 pr-4 text-sm text-neutral-950 outline-none placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:placeholder:text-neutral-500 dark:focus:border-neutral-500 dark:focus:ring-neutral-100/10"
+          >
+        </div>
+
+        <div v-if="selectedMembers.length > 0" class="mb-2 flex flex-wrap gap-2">
+          <span
+            v-for="member in selectedMembers"
+            :key="member.id"
+            class="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-1 text-xs text-neutral-800 dark:bg-neutral-800 dark:text-white"
+          >
+            <img
+              v-if="member.avatar"
+              :src="member.avatar"
+              :alt="member.name"
+              class="h-4 w-4 rounded-full"
+            >
+            <span
+              v-else
+              class="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-medium"
+              :class="member.type === 'agent' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'"
+            >
+              {{ member.name.charAt(0).toUpperCase() }}
+            </span>
+            {{ member.name }}
+            <button
+              type="button"
+              class="ml-1 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+              @click="removeMember(member)"
+            >
+              <Icon name="ph:x" class="h-3 w-3" />
+            </button>
+          </span>
+        </div>
+
+        <div v-if="memberSearch" class="max-h-32 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900">
+          <button
+            v-for="user in filteredUsers"
+            :key="user.id"
+            type="button"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white dark:hover:bg-neutral-800"
+            @click="addMember(user)"
+          >
+            <div class="relative shrink-0">
+              <img
+                v-if="user.avatar"
+                :src="user.avatar"
+                :alt="user.name"
+                class="h-6 w-6 rounded-full"
+              >
+              <div
+                v-else
+                class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium text-white"
+                :class="user.type === 'agent' ? 'bg-purple-600' : 'bg-blue-600'"
+              >
+                {{ user.name.charAt(0).toUpperCase() }}
+              </div>
+            </div>
+            <span class="text-sm text-neutral-900 dark:text-white">{{ user.name }}</span>
+            <span class="text-xs capitalize text-neutral-500 dark:text-neutral-400">{{ user.type }}</span>
+          </button>
+          <p v-if="filteredUsers.length === 0" class="px-3 py-2 text-center text-sm text-neutral-500 dark:text-neutral-400">
+            No users found
+          </p>
+        </div>
+      </div>
+    </form>
+
+    <div class="mt-5 flex items-center justify-end gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+      <button
+        type="button"
+        class="px-4 py-2 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-950 dark:text-neutral-300 dark:hover:text-white"
+        @click="emit('update:open', false)"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        class="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+        :disabled="!isValid || creating"
+        @click="handleSubmit"
+      >
+        <span v-if="creating" class="flex items-center gap-2">
+          <Icon name="ph:spinner" class="h-4 w-4 animate-spin" />
+          Creating...
+        </span>
+        <span v-else>Create Channel</span>
+      </button>
+    </div>
   </Modal>
 </template>
 
@@ -259,8 +245,9 @@ watch(() => props.open, async (isOpen) => {
     selectedMembers.value = []
 
     // Fetch users
-    const { data } = await fetchUsers()
-    allUsers.value = data.value ?? []
+    const result = fetchUsers()
+    await result.promise
+    allUsers.value = result.data.value ?? []
   }
 }, { immediate: true })
 
@@ -296,7 +283,8 @@ async function handleSubmit() {
       memberIds: [currentUserId.value, ...selectedMembers.value.map(m => m.id)],
     })
 
-    emit('channel-created', (result as { id: string }).id)
+    const channel = 'data' in result ? result.data : result
+    emit('channel-created', channel.id)
     emit('update:open', false)
   } catch (error) {
     console.error('Failed to create channel:', error)

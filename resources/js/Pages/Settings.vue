@@ -130,6 +130,14 @@
               @save="saveCategory"
             />
 
+            <WebAccessSettings
+              v-if="activeSection === 'web'"
+              :initial-web="webSettingsData"
+              :saving-category="saving"
+              :saved-category="saved"
+              @save="saveCategory"
+            />
+
             <StorageSettings v-if="activeSection === 'storage'" />
 
             <DebugSettings v-if="activeSection === 'debug'" />
@@ -150,11 +158,12 @@ import AgentDefaultsSettings from '@/Components/settings/AgentDefaultsSettings.v
 import PoliciesSettings from '@/Components/settings/PoliciesSettings.vue'
 import NotificationsSettings from '@/Components/settings/NotificationsSettings.vue'
 import MemorySettings from '@/Components/settings/MemorySettings.vue'
+import WebAccessSettings from '@/Components/settings/WebAccessSettings.vue'
 import StorageSettings from '@/Components/settings/StorageSettings.vue'
 import DebugSettings from '@/Components/settings/DebugSettings.vue'
 import DangerZoneSettings from '@/Components/settings/DangerZoneSettings.vue'
 import { useApi } from '@/composables/useApi'
-import type { ActionPolicy, MemorySettingsData } from '@/Components/settings/types'
+import type { ActionPolicy, MemorySettingsData, WebSettingsData } from '@/Components/settings/types'
 
 // --- Sidebar sections ---
 const sections = [
@@ -163,6 +172,7 @@ const sections = [
   { id: 'policies', name: 'Action Policies', icon: 'ph:shield-check' },
   { id: 'notifications', name: 'Notifications', icon: 'ph:bell' },
   { id: 'memory', name: 'Memory', icon: 'ph:brain' },
+  { id: 'web', name: 'Web Access', icon: 'ph:globe' },
   { id: 'storage', name: 'Storage', icon: 'ph:hard-drives' },
   { id: 'debug', name: 'Debug', icon: 'ph:bug' },
   { id: 'danger', name: 'Danger Zone', icon: 'ph:warning' },
@@ -207,6 +217,23 @@ const memorySettingsData = reactive<MemorySettingsData>({
   model_context_windows: {},
 })
 
+const webSettingsData = reactive<WebSettingsData>({
+  web_search_default_provider: 'tavily',
+  web_search_fallback_providers: [],
+  web_fetch_default_provider: 'direct',
+  web_fetch_fallback_providers: ['jina'],
+  web_fetch_allow_external: false,
+  web_cache_ttl_seconds: 900,
+  web_search_max_results: 8,
+  web_fetch_max_chars: 12000,
+  web_fetch_max_bytes: 10485760,
+  web_allowed_domains: [],
+  web_blocked_domains: [],
+  web_language: null,
+  web_country: null,
+  web_recency: null,
+})
+
 // --- Load settings ---
 onMounted(async () => {
   try {
@@ -244,6 +271,23 @@ onMounted(async () => {
         memorySettingsData.memory_reranking_enabled = s.memory.memory_reranking_enabled !== false
         memorySettingsData.memory_reranking_model = (s.memory.memory_reranking_model as string) ?? 'ollama:dengcao/Qwen3-Reranker-0.6B:Q8_0'
         memorySettingsData.model_context_windows = (s.memory.model_context_windows as Record<string, number>) ?? {}
+      }
+      // Web
+      if (s.web) {
+        webSettingsData.web_search_default_provider = (s.web.web_search_default_provider as string) ?? 'tavily'
+        webSettingsData.web_search_fallback_providers = (s.web.web_search_fallback_providers as string[]) ?? []
+        webSettingsData.web_fetch_default_provider = (s.web.web_fetch_default_provider as string) ?? 'direct'
+        webSettingsData.web_fetch_fallback_providers = (s.web.web_fetch_fallback_providers as string[]) ?? ['jina']
+        webSettingsData.web_fetch_allow_external = !!s.web.web_fetch_allow_external
+        webSettingsData.web_cache_ttl_seconds = Number(s.web.web_cache_ttl_seconds) || 900
+        webSettingsData.web_search_max_results = Number(s.web.web_search_max_results) || 8
+        webSettingsData.web_fetch_max_chars = Number(s.web.web_fetch_max_chars) || 12000
+        webSettingsData.web_fetch_max_bytes = Number(s.web.web_fetch_max_bytes) || 10485760
+        webSettingsData.web_allowed_domains = (s.web.web_allowed_domains as string[]) ?? []
+        webSettingsData.web_blocked_domains = (s.web.web_blocked_domains as string[]) ?? []
+        webSettingsData.web_language = (s.web.web_language as string | null) ?? null
+        webSettingsData.web_country = (s.web.web_country as string | null) ?? null
+        webSettingsData.web_recency = (s.web.web_recency as string | null) ?? null
       }
     }
   } finally {

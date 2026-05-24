@@ -53,6 +53,9 @@ final readonly class WebSearchRequest
         );
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function cachePayload(): array
     {
         return [
@@ -95,7 +98,7 @@ final readonly class WebSearchRequest
         foreach ($domains as $domain) {
             $domain = strtolower(trim($domain));
             $domain = preg_replace('#^https?://#', '', $domain) ?? $domain;
-            $domain = trim(explode('/', $domain)[0] ?? $domain);
+            $domain = trim(explode('/', $domain)[0]);
             if ($domain !== '') {
                 $normalized[] = $domain;
             }

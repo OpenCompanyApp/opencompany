@@ -192,6 +192,134 @@ return [
         'icon' => 'ph:open-ai-logo',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Web Search / Fetch Providers
+    |--------------------------------------------------------------------------
+    */
+
+    'web.tavily' => [
+        'category' => 'web-providers',
+        'name' => 'Tavily Web',
+        'description' => 'Search and extract web pages through Tavily.',
+        'icon' => 'ph:magnifying-glass',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true, 'hint' => 'Used by web_search and provider-backed web_fetch.'],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.tavily.com'],
+        ],
+    ],
+
+    'web.zai' => [
+        'category' => 'web-providers',
+        'name' => 'Z.AI Web',
+        'description' => 'Z.AI remote MCP search, coding-plan chat search, and reader fetch.',
+        'icon' => 'ph:code',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'remote_url' => ['label' => 'Remote MCP URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.z.ai/api/mcp/web_search_prime/mcp'],
+            'base_url' => ['label' => 'Coding PaaS URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.z.ai/api/coding/paas/v4'],
+        ],
+    ],
+
+    'web.firecrawl' => [
+        'category' => 'web-providers',
+        'name' => 'Firecrawl Web',
+        'description' => 'Search and scrape web pages through Firecrawl.',
+        'icon' => 'ph:flame',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.firecrawl.dev'],
+        ],
+    ],
+
+    'web.exa' => [
+        'category' => 'web-providers',
+        'name' => 'Exa Web',
+        'description' => 'Neural web search and page contents through Exa.',
+        'icon' => 'ph:sparkle',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.exa.ai'],
+        ],
+    ],
+
+    'web.brave' => [
+        'category' => 'web-providers',
+        'name' => 'Brave Search',
+        'description' => 'Search results from Brave Search API.',
+        'icon' => 'ph:compass',
+        'config_fields' => [
+            'api_key' => ['label' => 'Subscription Token', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.search.brave.com'],
+        ],
+    ],
+
+    'web.parallel' => [
+        'category' => 'web-providers',
+        'name' => 'Parallel Web',
+        'description' => 'Search and extract web content through Parallel.',
+        'icon' => 'ph:git-branch',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.parallel.ai'],
+        ],
+    ],
+
+    'web.jina' => [
+        'category' => 'web-providers',
+        'name' => 'Jina Reader',
+        'description' => 'Reader and search endpoints for LLM-friendly web text. API key is optional for free-tier use.',
+        'icon' => 'ph:article',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => false],
+            'search_url' => ['label' => 'Search URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://s.jina.ai'],
+            'reader_url' => ['label' => 'Reader URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://r.jina.ai'],
+        ],
+    ],
+
+    'web.searxng' => [
+        'category' => 'web-providers',
+        'name' => 'SearXNG',
+        'description' => 'Self-hosted metasearch provider.',
+        'icon' => 'ph:binoculars',
+        'config_fields' => [
+            'base_url' => ['label' => 'Base URL', 'type' => 'url', 'required' => true, 'placeholder' => 'https://search.example.com'],
+        ],
+    ],
+
+    'web.perplexity' => [
+        'category' => 'web-providers',
+        'name' => 'Perplexity Search',
+        'description' => 'Search API from Perplexity.',
+        'icon' => 'ph:compass-tool',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.perplexity.ai'],
+        ],
+    ],
+
+    'web.openai_native' => [
+        'category' => 'web-providers',
+        'name' => 'OpenAI Native Web Search',
+        'description' => 'OpenAI Responses API native web search provider.',
+        'icon' => 'ph:open-ai-logo',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.openai.com/v1'],
+        ],
+    ],
+
+    'web.anthropic_native' => [
+        'category' => 'web-providers',
+        'name' => 'Anthropic Native Web Search',
+        'description' => 'Anthropic Messages API native web search provider.',
+        'icon' => 'ph:chat-circle-dots',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.anthropic.com'],
+        ],
+    ],
+
     // Chat platform integrations (Telegram, Slack, Discord) have been moved
     // to config/chat_integrations.php to keep them separate from AI model providers.
 

@@ -38,6 +38,15 @@ class IntegrationRuntime
             return $this->normalize($raw);
         }
 
+        if (str_contains($raw, "\nStructured data:\n")) {
+            $json = trim((string) str($raw)->afterLast("\nStructured data:\n"));
+            $decoded = json_decode($json, true);
+
+            if ($decoded !== null) {
+                return $this->normalize($decoded);
+            }
+        }
+
         $trimmed = ltrim($raw);
         if (($trimmed[0] ?? '') !== '{' && ($trimmed[0] ?? '') !== '[') {
             return $raw;
@@ -97,6 +106,6 @@ class IntegrationRuntime
             $normalized[$key] = $this->normalize($item);
         }
 
-        return array_is_list($normalized) ? array_values($normalized) : $normalized;
+        return $normalized;
     }
 }

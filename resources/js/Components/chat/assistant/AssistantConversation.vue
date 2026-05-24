@@ -75,13 +75,18 @@
         </div>
 
         <template v-else>
-          <AssistantMessage
-            v-for="message in messages"
-            :key="message.id"
-            :message="message"
-            :current-user-id="currentUserId"
-            @retry="$emit('retry', message)"
-          />
+          <template v-for="item in conversationItems" :key="item.key">
+            <AssistantMessage
+              v-if="item.type === 'message'"
+              :message="item.message"
+              :current-user-id="currentUserId"
+              @retry="$emit('retry', item.message)"
+            />
+            <ThinkingPanel
+              v-else
+              :task="item.task"
+            />
+          </template>
         </template>
 
         <div v-if="channelApprovals.length" class="mx-auto w-full max-w-3xl space-y-3 px-4 py-4">
@@ -103,7 +108,7 @@
           />
         </div>
 
-        <ThinkingPanel :tasks="tasks" />
+        <ThinkingPanel v-if="messages.length === 0" :tasks="tasks" />
       </template>
     </div>
 
@@ -113,8 +118,8 @@
       :disabled="!channel && !selectedAgentId"
       :running="isRunning"
       :placeholder="composerPlaceholder"
-      :show-agent-picker="isAssistantChannel"
-      :show-ai-actions="isAssistantChannel"
+      :show-agent-picker="!channel || isAssistantChannel"
+      :show-ai-actions="!channel || isAssistantChannel"
       @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
       @send="(content, attachments) => $emit('send', content, attachments)"
       @stop="$emit('stop')"
@@ -192,6 +197,63 @@ const subtitle = computed(() => {
 const isRunning = computed(() => props.tasks.some(task => ['pending', 'active'].includes(task.status)))
 const channelApprovals = computed(() => props.approvals.filter(approval => approval.status === 'pending'))
 const hasRuntimeActivity = computed(() => channelApprovals.value.length > 0 || props.tasks.length > 0)
+const conversationItems = computed(() => {
+  const messageItems = props.messages
+    .slice()
+    .sort((a, b) => timestampMs(a.timestamp) - timestampMs(b.timestamp))
+    .map(message => ({
+      type: 'message' as const,
+      key: `message-${message.id}`,
+      message,
+    }))
+
+  const tasksByTrigger = new Map<string, AgentTask[]>()
+  const unanchoredTasks: AgentTask[] = []
+
+  for (const task of props.tasks) {
+    const triggerMessageId = task.triggerMessageId ?? (task as any).trigger_message_id
+    if (triggerMessageId) {
+      const bucket = tasksByTrigger.get(triggerMessageId) ?? []
+      bucket.push(task)
+      tasksByTrigger.set(triggerMessageId, bucket)
+    } else if (['pending', 'active', 'paused'].includes(task.status)) {
+      unanchoredTasks.push(task)
+    }
+  }
+
+  const items: Array<
+    | { type: 'message'; key: string; message: Message }
+    | { type: 'task'; key: string; task: AgentTask }
+  > = []
+
+  for (const item of messageItems) {
+    items.push(item)
+
+    // Chat response tasks belong directly after the user message that spawned
+    // them. That keeps tool calls and runtime steps in the same chronological
+    // position the model executed them: after the request, before the answer.
+    const anchoredTasks = tasksByTrigger.get(item.message.id) ?? []
+    anchoredTasks
+      .slice()
+      .sort(compareTasks)
+      .forEach(task => items.push({
+        type: 'task',
+        key: `task-${task.id}`,
+        task,
+      }))
+  }
+
+  const anchoredIds = new Set(Array.from(tasksByTrigger.values()).flat().map(task => task.id))
+  for (const task of unanchoredTasks.filter(task => !anchoredIds.has(task.id)).sort(compareTasks)) {
+    items.push({
+      type: 'task',
+      key: `task-${task.id}`,
+      task,
+    })
+  }
+
+  return items
+})
 const channelIcon = computed(() => {
   if (!props.channel) return null
   if (props.channel.type === 'dm') return 'ph:chat-circle'
@@ -199,7 +261,7 @@ const channelIcon = computed(() => {
   return 'ph:hash'
 })
 const composerPlaceholder = computed(() => {
-  if (props.isAssistantChannel && agent.value) return `Ask ${agent.value.name}...`
+  if ((!props.channel || props.isAssistantChannel) && agent.value) return `Ask ${agent.value.name}...`
   if (props.channel?.type === 'dm') return `Message ${otherMember.value?.name ?? 'this DM'}...`
   if (props.channel) return `Message #${props.channel.name ?? 'channel'}...`
   return 'Ask OpenCompany anything...'
@@ -219,4 +281,15 @@ const sendSuggestedPrompt = (prompt: string) => {
 const respond = (id: string, status: 'approved' | 'rejected') => {
   emit('approval', id, status)
 }
+
+const timestampMs = (value: Date | string | undefined) => {
+  if (!value) return 0
+  const parsed = new Date(value).getTime()
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+const taskStartMs = (task: AgentTask) =>
+  timestampMs(task.startedAt ?? task.createdAt ?? task.updatedAt)
+
+const compareTasks = (a: AgentTask, b: AgentTask) => taskStartMs(a) - taskStartMs(b)
 </script>

@@ -21,6 +21,10 @@ class WebCredentialResolver
 
         foreach (array_filter([$integrationId, $provider]) as $id) {
             $setting = $this->setting((string) $id);
+            if ($setting !== null && ! $setting->enabled) {
+                return '';
+            }
+
             $key = $setting?->getConfigValue('api_key')
                 ?? $setting?->getConfigValue('apiKey')
                 ?? $setting?->getConfigValue('token')
@@ -31,8 +35,7 @@ class WebCredentialResolver
             }
         }
 
-        $env = $catalog['api_key_env'] ?? null;
-        $value = is_string($env) ? env($env) : null;
+        $value = $catalog['api_key'] ?? null;
 
         return is_string($value) ? trim($value) : '';
     }
@@ -45,6 +48,10 @@ class WebCredentialResolver
 
         foreach (array_filter([$integrationId, $provider]) as $id) {
             $setting = $this->setting((string) $id);
+            if ($setting !== null && ! $setting->enabled) {
+                return null;
+            }
+
             $value = $setting?->getConfigValue((string) $key)
                 ?? ($key === 'base_url' ? $setting?->getConfigValue('url') : null);
 
@@ -77,6 +84,9 @@ class WebCredentialResolver
         return $this->apiKey($provider) !== '';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function providerConfig(string $provider): array
     {
         return config('web.providers.'.$this->normalize($provider), []);

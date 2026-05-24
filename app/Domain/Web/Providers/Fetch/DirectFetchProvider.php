@@ -8,7 +8,6 @@ use App\Domain\Web\Exceptions\WebFetchPermanentException;
 use App\Domain\Web\Exceptions\WebProviderException;
 use App\Domain\Web\Extraction\HtmlPageExtractor;
 use App\Domain\Web\Safety\WebRequestGuard;
-use App\Domain\Web\Support\WebCredentialResolver;
 use App\Domain\Web\ValueObjects\WebFetchRequest;
 use App\Domain\Web\ValueObjects\WebFetchResponse;
 use Illuminate\Support\Facades\Http;
@@ -18,7 +17,6 @@ class DirectFetchProvider implements WebFetchProvider
     public function __construct(
         private WebRequestGuard $guard,
         private HtmlPageExtractor $extractor,
-        private WebCredentialResolver $credentials,
     ) {}
 
     public function id(): string
@@ -68,7 +66,7 @@ class DirectFetchProvider implements WebFetchProvider
             throw new $class("Direct fetch failed ({$response->status()}) for {$request->url}.");
         }
 
-        $contentType = strtolower(trim(explode(';', $response->header('content-type') ?? 'text/plain')[0]));
+        $contentType = strtolower(trim(explode(';', $response->header('content-type'))[0]));
 
         if (str_contains($contentType, 'html') || $contentType === 'application/xhtml+xml') {
             $page = $this->extractor->extract($body, $finalUrl);
@@ -114,6 +112,9 @@ class DirectFetchProvider implements WebFetchProvider
         throw new WebProviderException("Unsupported content type for direct fetch: {$contentType}");
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function headers(): array
     {
         return [

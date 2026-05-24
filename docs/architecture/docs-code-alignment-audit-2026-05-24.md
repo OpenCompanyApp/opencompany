@@ -7,7 +7,8 @@ Status: In progress. This audit records code-backed documentation alignment work
 
 The current pass checked the tracked and confidential Markdown inventory against high-risk code surfaces:
 
-- Markdown inventory after this pass: 156 files across tracked Markdown plus `docs/confidential`.
+- Markdown inventory after this pass: 157 files across tracked Markdown,
+  `docs/confidential`, and `resources/lua-docs`.
 - Route inventory: 357 Laravel routes from `php artisan route:list --json`.
 - UI page inventory: 23 `docs/ui/pages/*.md` files covering routed page groups and legacy redirect surfaces.
 - `AGENTS.md` and `CLAUDE.md` remain byte-identical.
@@ -76,7 +77,13 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Rechecked [../ui/pages/chat.md](../ui/pages/chat.md) against the current dirty `resources/js/Pages/Chat.vue` worktree and updated it from the old separate `ChannelList` / `Area` / `ChannelInfo` layout to the active unified `AssistantChatShell` / `ConversationSidebar` / `AssistantConversation` surface.
 - Updated [../ui/pages/chat.md](../ui/pages/chat.md) again for the same dirty worktree's new Echo stream-event bridge: `.text_start`, `.text_delta`, `.text_end`, `.stream_end`, and `.stream_failed` now create/update temporary streaming assistant messages in the page.
 - Updated confidential streaming comparisons so OpenCompany is no longer described as having no streaming at all; current chat response stream events are distinguished from still-separate AI Gateway/general transport streaming.
-- Rechecked [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) against the new dirty `config/web.php` plus `app/Domain/Web` scaffold. Updated its status from pure proposal to partial scaffold: config, contracts, enum, exceptions, and value objects exist; providers, managers, safety, extraction, cache, usage, tools, Lua routing, UI, migrations, and tests remain proposed.
+- Rechecked [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) against the new dirty `config/web.php` plus `app/Domain/Web` scaffold. The first update moved it from pure proposal to partial scaffold when config, contracts, enum, exceptions, and value objects appeared.
+- Rechecked the same web-search/fetch investigation after additional web runtime classes appeared in the worktree. The doc now distinguishes present code (`WebCredentialResolver`, `StreamableMcpToolInvoker`, `WebRequestGuard`, extractors, `WebResultCache`, provider managers, provider registry, formatter, direct `web_search`/`web_fetch` tools, `WebToolProvider`, `config/integrations.php` web-provider setup entries, Integrations UI category support, web access settings UI/defaults, config-only connection validation, `resources/lua-docs/web.md`, structured-output normalization in `IntegrationRuntime`, focused web tool/safety/direct-fetch tests, and concrete Tavily/Z.AI/Firecrawl/Exa/Brave/Parallel/Jina/SearxNG/Perplexity/OpenAI-native/Anthropic-native adapters) from the still-missing usage recorder, diagnostics/live smoke tests, and broader provider/manager/Lua coverage.
+- Rechecked [../ui/pages/chat.md](../ui/pages/chat.md) after the task-thinking UI changed. It now documents `triggerMessageId` task anchoring, inline `ThinkingPanel` placement after the spawning message, and the fallback first-task panel for empty assistant conversations.
+- Rechecked [../ui/pages/settings.md](../ui/pages/settings.md) after `WebAccessSettings` and the `web` settings category appeared. It now lists Memory, Web Access, Storage, Debug, and Danger Zone as separate sections and documents web provider defaults, external fetch, limits, cache, domain, locale, and recency controls.
+- Rechecked [../ui/pages/integrations.md](../ui/pages/integrations.md) after static `web.*` provider setup entries and the `web-providers` category appeared. It now documents that web providers open through `DynamicConfigModal` and lists the current web provider setup slugs.
+- Rechecked [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) against the current `WebResultCache` implementation and clarified that the implemented baseline is workspace-scoped transient cache-store caching, while a persistent cache table remains optional future audit/diagnostic work.
+- Rechecked [../ui/pages/chat.md](../ui/pages/chat.md) after `Chat.vue` added `startNewAssistantChat()`. The doc now explains that the New assistant chat action clears the selected channel into a draft state and sends the first prompt through the existing durable agent-DM path.
 
 ## Mechanical Checks
 
@@ -87,8 +94,8 @@ git diff --check
 ```
 
 ```bash
-# Local Markdown links across tracked Markdown plus docs/confidential:
-# 156 files checked; fenced and inline code examples ignored; 0 failures.
+# Local Markdown links across tracked Markdown, docs/confidential, and resources/lua-docs:
+# 157 files checked; fenced and inline code examples ignored; 0 failures.
 php <local-link-checker>
 ```
 

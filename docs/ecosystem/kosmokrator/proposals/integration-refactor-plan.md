@@ -181,7 +181,9 @@ Each provider:
 - Handles instantiation in `createTool()` (eliminates the `match` statement)
 - Provides `appMeta()` (eliminates `APP_GROUPS` entries for that section)
 
-The 5 direct tool groups (`tasks`, `system`, `agents`, `memory`, `lua`) can also become providers or stay in ToolRegistry since they are core agent machinery.
+OpenCompany current-state note: the direct tool groups are now `tasks`,
+`system`, `agents`, `memory`, `lua`, and `web`. This proposal's older
+five-group framing predated direct web-search/fetch tools.
 
 Register in `AppServiceProvider`:
 
@@ -197,7 +199,7 @@ $registry->register(new DocsToolProvider($this->app));
 ```php
 class ToolRegistry
 {
-    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua'];
+    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua', 'web'];
 
     public function getToolsForAgent(User $agent): array { /* iterate registry, filter, wrap */ }
     public function getAppCatalog(User $agent): string { /* build system prompt */ }

@@ -75,3 +75,20 @@ export interface MemorySettingsData {
   memory_reranking_model: string
   model_context_windows: Record<string, number>
 }
+
+export interface WebSettingsData {
+  web_search_default_provider: string
+  web_search_fallback_providers: string[]
+  web_fetch_default_provider: string
+  web_fetch_fallback_providers: string[]
+  web_fetch_allow_external: boolean
+  web_cache_ttl_seconds: number
+  web_search_max_results: number
+  web_fetch_max_chars: number
+  web_fetch_max_bytes: number
+  web_allowed_domains: string[]
+  web_blocked_domains: string[]
+  web_language: string | null
+  web_country: string | null
+  web_recency: string | null
+}

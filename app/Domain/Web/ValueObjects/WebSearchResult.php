@@ -4,6 +4,9 @@ namespace App\Domain\Web\ValueObjects;
 
 final readonly class WebSearchResult
 {
+    /**
+     * @param  array<string, mixed>  $metadata
+     */
     public function __construct(
         public string $title,
         public string $url,
@@ -15,6 +18,9 @@ final readonly class WebSearchResult
         public array $metadata = [],
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

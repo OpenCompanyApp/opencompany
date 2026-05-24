@@ -65,11 +65,12 @@ import Icon from '@/Components/shared/Icon.vue'
 import type { AgentTask, TaskStep } from '@/types'
 
 const props = defineProps<{
-  tasks: AgentTask[]
+  tasks?: AgentTask[]
+  task?: AgentTask | null
 }>()
 
 const expanded = ref(true)
-const task = computed(() => props.tasks[0] ?? null)
+const task = computed(() => props.task ?? props.tasks?.[0] ?? null)
 const isRunning = computed(() => task.value && ['pending', 'active', 'paused'].includes(task.value.status))
 
 watch(task, (next, previous) => {

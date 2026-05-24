@@ -76,6 +76,9 @@ class HtmlPageExtractor
         return $dom->documentElement;
     }
 
+    /**
+     * @return array<string, string>
+     */
     private function metadata(DOMXPath $xpath, string $url, string $title): array
     {
         $metadata = [

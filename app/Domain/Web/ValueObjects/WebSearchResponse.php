@@ -22,6 +22,9 @@ final readonly class WebSearchResponse
         return new self($this->provider, $this->query, $this->results, $this->answer, $this->metadata, $cacheHit);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

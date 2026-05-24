@@ -16,7 +16,7 @@
         :approval-loading-id="approvalLoadingId"
         :approval-loading-action="approvalLoadingAction"
         @select-channel="selectChannel"
-        @new-agent-chat="openAgentChat"
+        @new-agent-chat="startNewAssistantChat"
         @create-channel="showCreateChannelModal = true"
         @create-dm="showCreateDmModal = true"
         @send="handleUnifiedSend"
@@ -349,6 +349,11 @@ watch(selectedChannel, async (channel) => {
       assistantTasks.value = []
       approvals.value = []
     }
+  } else {
+    messages.value = []
+    pinnedMessagesData.value = []
+    assistantTasks.value = []
+    approvals.value = []
   }
 })
 
@@ -383,6 +388,13 @@ const openAgentChat = async (agentId: string) => {
   }
 
   selectedChannel.value = channel ?? null
+}
+
+const startNewAssistantChat = (agentId: string) => {
+  // Keep agent DMs as the durable backing conversation, but make the plus
+  // button visibly reset to a draft state instead of reselecting the current DM.
+  selectedAgentId.value = agentId
+  selectedChannel.value = null
 }
 
 interface MessageAttachment {

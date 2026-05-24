@@ -57,6 +57,9 @@ final readonly class WebFetchRequest
         );
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function cachePayload(): array
     {
         return [

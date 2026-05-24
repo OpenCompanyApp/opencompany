@@ -74,7 +74,7 @@ redirect into this page; see [messages.md](messages.md).
 | `AssistantConversation` | `Components/chat/assistant/AssistantConversation.vue` | Main conversation panel with header, empty states, messages, inline approvals, runtime activity, and composer. |
 | `AssistantMessage` | `Components/chat/assistant/AssistantMessage.vue` | Current rendered message row for the unified shell. |
 | `PromptComposer` | `Components/chat/assistant/PromptComposer.vue` | Composer with attachment support, agent picker for assistant channels, stop/compact/status actions, and send event. |
-| `ThinkingPanel` | `Components/chat/assistant/ThinkingPanel.vue` | Shows active/pending task runtime status under the conversation. |
+| `ThinkingPanel` | `Components/chat/assistant/ThinkingPanel.vue` | Shows active/pending task runtime status either inline after the triggering message or as the empty-conversation runtime panel. |
 | `EmptyState` | `Components/chat/assistant/EmptyState.vue` | Agent selection and suggested prompt state before a conversation has messages. |
 | `ApprovalCard` | `Components/chat/ApprovalCard.vue` | Inline approval card rendered in the unified conversation approval queue. |
 | `CreateChannelModal` | `Components/chat/CreateChannelModal.vue` | Modal for creating a channel. |
@@ -153,6 +153,14 @@ that exposed those interactions.
 - Assistant channels are detected as DMs that include an agent member.
 - Assistant channels show agent-aware empty states, inline approvals, runtime
   activity, task thinking state, stop, compact, and status controls.
+- The sidebar "New assistant chat" action sets `selectedAgentId` and clears the
+  selected channel, showing a draft assistant chat. Sending the first prompt then
+  opens or creates the durable agent DM through the normal `openAgentChat()`
+  path.
+- Runtime tasks with `triggerMessageId` are interleaved immediately after the
+  user message that spawned them. Active unanchored tasks still appear at the
+  end of the conversation, and the first-task panel remains for assistant
+  channels with no messages yet.
 - Provider stream deltas are rendered immediately as a temporary assistant
   message with animated streaming dots until a stream end or failure event
   arrives.
@@ -179,10 +187,11 @@ uses them again.
 
 | State | Description |
 |-------|-------------|
-| **No channel selected** | Agent chooser and suggested prompts inside `EmptyState`. |
+| **No channel selected / assistant draft** | Agent chooser and suggested prompts inside `EmptyState`; if an agent is selected, the composer can send the first prompt and create/reselect the durable agent DM. |
 | **Assistant channel with no messages** | Agent-aware prompt suggestions unless runtime work is already active. |
 | **Non-assistant channel with no messages** | "Start the conversation" centered state. |
 | **Runtime before first visible response** | Small runtime activity panel while an assistant task is active. |
+| **Runtime tied to a prompt** | `ThinkingPanel` appears directly after the triggering message when the task exposes `triggerMessageId`. |
 | **Streaming response** | Temporary assistant message with incremental markdown content and pulsing dots. |
 | **No conversations** | Sidebar empty state with "Start with an agent, DM, or channel." |
 | **Sidebar collapsed** | Desktop sidebar shrinks to icon-only `w-16`; state is persisted in `localStorage`. |

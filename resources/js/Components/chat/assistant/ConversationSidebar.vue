@@ -11,6 +11,7 @@
             type="button"
             :class="iconButtonClasses"
             title="New assistant chat"
+            aria-label="New assistant chat"
             @click="newChat"
           >
             <Icon name="ph:plus" class="h-4 w-4" />
@@ -20,6 +21,7 @@
             type="button"
             :class="ghostIconButtonClasses"
             :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
             @click="$emit('toggleCollapse')"
           >
             <Icon :name="collapsed ? 'ph:sidebar-simple' : 'ph:sidebar-simple-duotone'" class="h-4 w-4" />
@@ -157,7 +159,8 @@ const filteredConversations = computed(() => {
 })
 
 const newChat = () => {
-  const preferred = props.agents.find(agent => agent.status !== 'offline') ?? props.agents[0]
+  const currentAgent = props.selectedChannel?.members?.find(member => member.type === 'agent')
+  const preferred = currentAgent ?? props.agents.find(agent => agent.status !== 'offline') ?? props.agents[0]
   if (preferred) emit('newAgentChat', preferred.id)
 }
 

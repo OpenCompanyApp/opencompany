@@ -7,7 +7,7 @@ Current code check, 2026-05-24:
 - `../integrations/core/src/Contracts/Tool.php` is framework-agnostic and exposes `name()`, `description()`, `parameters()`, and `execute(array $args): ToolResult`.
 - `../integrations/core/src/Contracts/ToolProvider.php` now includes `luaDocsPath()` and `credentialFields()` directly.
 - `../integrations/core/src/Support/ToolProviderRegistry.php` is a small registry; the app still has a local `app/Agents/Tools/ToolRegistry.php` because built-in OpenCompany tools and Laravel AI agent wiring remain app-owned.
-- Built-in OpenCompany tool groups are split across `app/Agents/Tools/Providers/*ToolProvider.php`.
+- Built-in OpenCompany tool groups are split across `app/Agents/Tools/Providers/*ToolProvider.php`; the current direct AI-callable groups are `tasks`, `system`, `agents`, `memory`, `lua`, and `web`.
 - Packages have been renamed to `opencompanyapp/integration-*`; `composer.lock` currently installs 585 integration packages.
 
 ## Context
@@ -239,7 +239,7 @@ Each provider:
 - Handles instantiation in `createTool()` (eliminates the `match` statement)
 - Provides `appMeta()` (eliminates `APP_GROUPS` entries for that section)
 
-The 5 direct tool groups (`tasks`, `system`, `agents`, `memory`, `lua`) can also become providers or stay in ToolRegistry since they are core agent machinery.
+The current direct tool groups (`tasks`, `system`, `agents`, `memory`, `lua`, and `web`) can also become providers or stay in ToolRegistry since they are core agent machinery.
 
 Register in `AppServiceProvider`:
 
@@ -255,7 +255,7 @@ $registry->register(new DocsToolProvider($this->app));
 ```php
 class ToolRegistry
 {
-    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua'];
+    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua', 'web'];
 
     public function getToolsForAgent(User $agent): array { /* iterate registry, filter, wrap */ }
     public function getAppCatalog(User $agent): string { /* build system prompt */ }

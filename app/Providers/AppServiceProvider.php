@@ -128,5 +128,6 @@ class AppServiceProvider extends ServiceProvider
         $registry->registerBuiltIn(new ToolProviders\AutomationsToolProvider);
         $registry->registerBuiltIn(new ToolProviders\SvgToolProvider);
         $registry->registerBuiltIn(new ToolProviders\LuaToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\WebToolProvider);
     }
 }

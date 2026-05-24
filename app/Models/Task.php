@@ -131,6 +131,7 @@ class Task extends Model
         $array['agentId'] = $this->agent_id;
         $array['requesterId'] = $this->requester_id;
         $array['channelId'] = $this->channel_id;
+        $array['triggerMessageId'] = $this->trigger_message_id;
         $array['listItemId'] = $this->list_item_id;
         $array['parentTaskId'] = $this->parent_task_id;
         $array['source'] = $this->source;

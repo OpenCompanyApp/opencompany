@@ -47,6 +47,9 @@ class JinaProvider extends AbstractWebProvider implements WebSearchProvider, Web
         return new WebFetchResponse($this->id(), $request->url, $request->url, 200, 'text/markdown', 'markdown', null, [], [], ['full' => $content], $this->limit($content, $request->outputLimitChars), extractionMethod: 'jina_reader');
     }
 
+    /**
+     * @return array<string, string>
+     */
     private function headers(): array
     {
         $apiKey = $this->credentials->apiKey($this->id());
@@ -54,12 +57,15 @@ class JinaProvider extends AbstractWebProvider implements WebSearchProvider, Web
         return $apiKey === '' ? [] : ['Authorization' => 'Bearer '.$apiKey];
     }
 
+    /**
+     * @return list<array{title: string, url: string, snippet: string}>
+     */
     private function linksFromMarkdown(string $text, int $limit): array
     {
         preg_match_all('/\[(?<title>[^\]]+)\]\((?<url>https?:\/\/[^)]+)\)(?<tail>[^\n]*)/', $text, $matches, PREG_SET_ORDER);
         $links = [];
         foreach (array_slice($matches, 0, max(1, $limit)) as $match) {
-            $links[] = ['title' => trim($match['title']), 'url' => trim($match['url']), 'snippet' => trim($match['tail'] ?? '')];
+            $links[] = ['title' => trim($match['title']), 'url' => trim($match['url']), 'snippet' => trim($match['tail'])];
         }
 
         return $links;

@@ -762,6 +762,7 @@ const categoryLabels: Record<string, { name: string; icon: string }> = {
   data: { name: 'Data & APIs', icon: 'ph:database' },
   productivity: { name: 'Productivity', icon: 'ph:briefcase' },
   rendering: { name: 'Rendering', icon: 'ph:paint-brush' },
+  'web-providers': { name: 'Web Providers', icon: 'ph:globe' },
 }
 
 const categoryFor = (id: string, icon = 'ph:puzzle-piece'): IntegrationCategory => {
@@ -1093,6 +1094,12 @@ const integrationCategories = ref<IntegrationCategory[]>([
     id: 'data',
     name: 'Data & APIs',
     icon: 'ph:database',
+    integrations: [],
+  },
+  {
+    id: 'web-providers',
+    name: 'Web Providers',
+    icon: 'ph:globe',
     integrations: [],
   },
   {

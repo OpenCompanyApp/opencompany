@@ -2,15 +2,30 @@
 
 Date: 2026-05-24
 
-Status: Investigation / implementation proposal with partial scaffold.
+Status: Investigation / implementation proposal with partial app-owned
+implementation scaffold.
 External provider notes were spot-checked on 2026-05-24 against the linked
 Tavily, Firecrawl, Exa, and Jina docs. The current OpenCompany worktree has the
 first app-owned scaffold in `config/web.php` plus `app/Domain/Web` contracts,
-capability enum, exceptions, and request/response value objects. Provider
-managers, safety guard, extraction, provider implementations, persistent cache,
-usage recording, direct tools, Lua functions, settings UI, and tests remain
-proposed until matching app code exists. KosmoKrator provider class names,
-endpoints, and default models in the parity plan reflect the local
+capability enum, exceptions, request/response value objects, credential
+resolver, URL safety guard, extraction helpers, result cache service, direct
+fetch provider, streamable-HTTP MCP helper, and concrete provider adapter
+classes for Tavily, Z.AI search/fetch, Firecrawl, Exa, Brave, Parallel, Jina,
+SearxNG, Perplexity, OpenAI-native search, and Anthropic-native search.
+Provider managers, provider registry, web tool formatter, direct
+`web_search`/`web_fetch` tool registration, web-provider setup entries in
+`config/integrations.php`, the Integrations UI category, and config-only
+connection validation also exist in the current worktree. Workspace web defaults
+and controls are present in `AppSetting`, `SettingController`, `Settings.vue`,
+and `WebAccessSettings.vue`. Lua `app.web.*` docs and structured-output
+normalization are present through `resources/lua-docs/web.md` and
+`IntegrationRuntime`. Focused tests cover direct tool registration,
+formatted/structured search output, outline/section/chunk fetch behavior, URL
+safety, and direct HTML extraction. Usage recording, diagnostics/live smoke
+tests, and broader provider/manager/Lua coverage remain proposed until matching
+app code exists.
+KosmoKrator provider class names, endpoints, and default models in the parity
+plan reflect the local
 `/Users/rutger/Projects/kosmokrator` snapshot checked on 2026-05-24; refresh
 that source before treating any provider detail as a current vendor contract.
 
@@ -38,9 +53,32 @@ Current implementation state in this worktree:
   `WebFetchPermanentException.php`.
 - Present: request/response value objects for search/fetch plus
   `ExtractedPage`.
-- Not present yet: manager classes, provider registry, HTTP client, concrete
-  providers, direct fetch, URL safety guard, extraction services, cache service,
-  usage recorder, agent tools, Lua routing, settings UI, migrations, and tests.
+- Present: `WebCredentialResolver`, `StreamableMcpToolInvoker`,
+  `WebRequestGuard`, `HtmlPageExtractor`, `MarkdownPageExtractor`,
+  `WebResultCache`, and `DirectFetchProvider`.
+- Present: concrete provider classes for `tavily`, `firecrawl`, `exa`,
+  `brave`, `parallel`, `jina`, `searxng`, `perplexity`, `openai_native`,
+  `anthropic_native`, and Z.AI search/fetch.
+- Present: `WebSearchProviderManager`, `WebFetchProviderManager`,
+  `WebProviderRegistry`, `WebToolFormatter`, `WebToolProvider`,
+  `WebSearchTool`, and `WebFetchTool`; `web` is in
+  `ToolRegistry::DIRECT_TOOL_GROUPS` and `WebToolProvider` is registered in
+  `AppServiceProvider`.
+- Present: `web.*` provider setup entries in `config/integrations.php`, a
+  `web-providers` category in `resources/js/Pages/Integrations.vue`, and
+  `IntegrationConnectionTester` validation that required web-provider config is
+  present without making live vendor calls.
+- Present: web access settings defaults and UI controls for provider defaults,
+  fallbacks, external provider fetch, cache TTL, limits, domain allow/block
+  lists, country, language, and recency.
+- Present: `resources/lua-docs/web.md` for `app.web.search` /
+  `app.web.fetch`, plus `IntegrationRuntime` parsing for formatter-emitted
+  structured data.
+- Present: focused tests in `tests/Feature/Tools/WebToolsTest.php`,
+  `tests/Unit/Domain/Web/WebRequestGuardTest.php`, and
+  `tests/Unit/Domain/Web/DirectFetchProviderTest.php`.
+- Not present yet: usage recorder, diagnostics/live provider smoke tests, and
+  broader provider/manager/Lua test coverage.
 
 This should be separate from the Playwright browser runtime. Most web research
 does not need a full browser session; search/fetch should be the cheap default,
@@ -361,8 +399,12 @@ or at least the final URL before buffering content.
 
 ## Caching
 
-KosmoKrator uses in-memory turn-based cache. OpenCompany should use a
-workspace-scoped persistent cache:
+KosmoKrator uses in-memory turn-based cache. The current OpenCompany worktree
+has `WebResultCache`, a workspace-scoped transient cache-store service keyed by
+capability, provider, normalized request payload, and workspace id. That is the
+implemented baseline; a database-backed persistent cache remains an optional
+next step if result reuse, diagnostics, or audit requirements outgrow the cache
+store.
 
 - key: provider + normalized request payload + workspace policy version;
 - storage: database or cache store;
@@ -378,6 +420,13 @@ it to documents/files/memory.
 
 ## Provider Rollout
 
+Current-state note: the worktree already has initial code for direct fetch,
+Tavily, Z.AI, Firecrawl, Exa, Brave, Parallel, Jina, SearXNG, Perplexity,
+OpenAI-native, Anthropic-native, the direct `web_search`/`web_fetch` tools,
+provider setup entries, config-only connection validation, safety, extraction,
+cache, and Lua docs/runtime normalization. The phase list below is retained as
+rollout structure for hardening, tests, diagnostics, and product polish.
+
 Phase 1:
 
 - `direct` fetch provider;
@@ -390,7 +439,7 @@ Phase 2:
 
 - `jina` reader/fetch provider;
 - `brave` or `exa` search provider;
-- settings UI for provider choice and credentials;
+- provider setup UI for provider choice and credentials;
 - usage accounting and per-workspace limits.
 
 Phase 3:
@@ -666,6 +715,16 @@ agent planning and source gathering.
 
 ### OpenCompany Class Plan
 
+The current worktree already has the config, contracts, value objects,
+exceptions, extraction helpers, URL safety guard, cache service, credential
+resolver, streamable-HTTP MCP helper, direct fetch provider, and provider
+adapter classes listed below. The current worktree also has the manager,
+registry, formatter, direct-tool registration, and integration-settings pieces.
+The current settings UI also exposes default provider, fallback provider,
+external fetch, cache, domain, locale, and recency controls through
+`WebAccessSettings`. The remaining plan is to fill the missing usage,
+diagnostics, and broader test pieces.
+
 Create:
 
 - `config/web.php`;
@@ -838,6 +897,11 @@ external provider.
 
 ### Implementation Sequence
 
+Current worktree note: portions of steps 1 through 11 now exist as app-owned
+code. The sequence below remains the full implementation path because usage
+recording, diagnostics, live smoke paths, and broader provider/manager/Lua tests
+are not in place yet.
+
 1. Add `config/web.php`, domain contracts, value objects, exceptions, formatter,
    and provider registry.
 2. Add safety guard and tests before any network provider code.
@@ -918,7 +982,8 @@ The full implementation is done when:
   extraction, sections, and chunks;
 - provider credentials are workspace-scoped and encrypted;
 - URL safety is enforced before direct and provider-backed fetch;
-- cache and audit behavior are workspace-scoped;
+- cache behavior is workspace-scoped;
+- audit/usage behavior is added and workspace-scoped;
 - settings/admin diagnostics make provider status understandable;
 - tests cover the parity matrix with fake HTTP clients and no required live
   provider calls.

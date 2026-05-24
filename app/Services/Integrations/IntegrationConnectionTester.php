@@ -8,7 +8,6 @@ use App\Services\Chat\ChatAdapterFactory;
 use App\Services\Integrations\Data\IntegrationConnectionTestResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use OpenCompany\IntegrationCore\Contracts\Tool as IntegrationTool;
 use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
@@ -54,10 +53,10 @@ class IntegrationConnectionTester
                 $result = $provider->testConnection($config);
 
                 return new IntegrationConnectionTestResult(
-                    success: (bool) ($result['success'] ?? false),
+                    success: $result['success'],
                     message: $result['message'] ?? null,
                     error: $result['error'] ?? null,
-                    status: ($result['success'] ?? false) ? 200 : 400,
+                    status: $result['success'] ? 200 : 400,
                     meta: array_diff_key($result, array_flip(['success', 'message', 'error'])),
                 );
             } catch (\Throwable $e) {
@@ -75,6 +74,10 @@ class IntegrationConnectionTester
         $available = IntegrationSetting::getAvailableIntegrations();
         if (! isset($available[$id])) {
             return new IntegrationConnectionTestResult(false, error: 'Integration not found', status: 404);
+        }
+
+        if (($available[$id]['category'] ?? null) === 'web-providers') {
+            return $this->testWebProviderConfig($id, $request, $available[$id]);
         }
 
         if ($available[$id]['config_fields'] ?? null) {
@@ -163,6 +166,38 @@ class IntegrationConnectionTester
         }
     }
 
+    /**
+     * Validate web provider configuration without making a live vendor request.
+     *
+     * Live search/fetch smoke tests belong in the web tool test path where URL
+     * policy, provider routing, and output normalization are exercised together.
+     */
+    /**
+     * @param  array<string, mixed>  $info
+     */
+    private function testWebProviderConfig(string $id, Request $request, array $info): IntegrationConnectionTestResult
+    {
+        $configFields = $info['config_fields'] ?? [];
+        $setting = $this->accounts->findSetting($id, $this->accounts->accountFromRequest($request));
+
+        foreach ($configFields as $key => $field) {
+            if (! ($field['required'] ?? false)) {
+                continue;
+            }
+
+            $value = $request->input($key);
+            if (($field['type'] ?? null) === 'secret' && (! $value || str_contains((string) $value, '*'))) {
+                $value = $setting?->getConfigValue($key);
+            }
+
+            if (! is_string($value) || trim($value) === '') {
+                return new IntegrationConnectionTestResult(false, error: "{$field['label']} is required.", status: 400);
+            }
+        }
+
+        return new IntegrationConnectionTestResult(true, 'Web provider configuration is present. Run web_search or web_fetch to perform a live provider call.');
+    }
+
     private function testPackageIntegration(ToolProvider $provider, string $id): IntegrationConnectionTestResult
     {
         try {
@@ -177,7 +212,7 @@ class IntegrationConnectionTester
             }
 
             foreach ($provider->tools() as $slug => $meta) {
-                if (($meta['type'] ?? 'read') !== 'read') {
+                if ($meta['type'] !== 'read') {
                     continue;
                 }
 
@@ -189,12 +224,12 @@ class IntegrationConnectionTester
                     'tool_slug' => (string) $slug,
                 ]);
 
-                if (! $tool instanceof IntegrationTool || $this->hasRequiredParameters($tool->parameters())) {
+                if ($this->hasRequiredParameters($tool->parameters())) {
                     continue;
                 }
 
                 $result = $tool->execute([]);
-                $name = (string) ($meta['name'] ?? $slug);
+                $name = $meta['name'];
 
                 return $result->succeeded()
                     ? new IntegrationConnectionTestResult(

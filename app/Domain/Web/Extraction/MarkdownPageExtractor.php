@@ -9,6 +9,9 @@ use App\Domain\Web\ValueObjects\ExtractedPage;
  */
 class MarkdownPageExtractor
 {
+    /**
+     * @param  array<string, mixed>  $metadata
+     */
     public function extract(string $content, ?string $title = null, array $metadata = []): ExtractedPage
     {
         $content = trim($this->normalizeWhitespace($content));

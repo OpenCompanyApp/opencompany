@@ -116,7 +116,9 @@ For most user-facing flows, OpenCompany should require explicit approval on Link
 
 4. Direct tool availability is not automatic.
 
-OpenCompany currently keeps only `tasks`, `system`, `agents`, `memory`, and `lua` as direct AI-callable tool groups. Other integrations are exposed through the code-first Lua API path. A Link integration should either:
+OpenCompany currently keeps `tasks`, `system`, `agents`, `memory`, `lua`, and
+`web` as direct AI-callable tool groups. Other integrations are exposed through
+the code-first Lua API path. A Link integration should either:
 
 - intentionally remain code-first with strong docs and guards; or
 - add a narrowly scoped direct tool group for payment requests, with no direct raw-credential tool.

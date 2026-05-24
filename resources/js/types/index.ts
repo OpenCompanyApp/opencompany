@@ -219,6 +219,7 @@ export interface AgentTask {
   agentId?: string
   requester?: User
   requesterId: string
+  triggerMessageId?: string
   channel?: Channel
   channelId?: string
   project?: { id: string; name: string }

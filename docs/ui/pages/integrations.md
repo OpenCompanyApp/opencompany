@@ -81,10 +81,15 @@ Desktop uses a left sidebar. Mobile uses search plus horizontal category pills.
 
 - Standard AI providers open `ProviderConfigModal`.
 - Codex opens `CodexConfigModal`.
-- Package integrations and chat platforms open `DynamicConfigModal`.
+- Package integrations, chat platforms, and web-provider setup entries open
+  `DynamicConfigModal`.
 - MCP suggestions quick-install a server when possible, then open `McpConfigModal`.
 - Existing MCP entries open `McpConfigModal`.
 - AI Gateway opens `AiGatewayConfigModal`.
+- Web providers are grouped under `web-providers` / "Web Providers" and use
+  static entries such as `web.tavily`, `web.zai`, `web.firecrawl`, `web.exa`,
+  `web.brave`, `web.parallel`, `web.jina`, `web.searxng`,
+  `web.perplexity`, `web.openai_native`, and `web.anthropic_native`.
 - Installed status is refreshed from `GET /api/integrations` and catalog metadata.
 
 ### Real Backend APIs Used

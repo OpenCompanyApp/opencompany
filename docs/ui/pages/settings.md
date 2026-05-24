@@ -121,8 +121,38 @@
   - Slack Integration: stored notification flag; app-local Slack delivery is not wired in the current codebase
   - Daily Summary: receive daily agent activity summary
 
-### 5. Danger Zone
+### 5. Memory
+- **Icon**: `ph:brain`
+- **Component**: `MemorySettings`
+- **Fields**: memory provider/model defaults, compaction, reranking, context
+  window overrides, and related memory runtime settings.
+
+### 6. Web Access
+- **Icon**: `ph:globe`
+- **Component**: `WebAccessSettings`
+- **Fields**:
+  - Search Provider and Search Fallbacks for `web_search`
+  - Fetch Provider and Fetch Fallbacks for `web_fetch`
+  - External Fetch Providers toggle for provider-backed URL extraction
+  - Max Search Results, Max Fetch Characters, Max Fetch Bytes, and Cache TTL
+  - Allowed Domains and Blocked Domains
+  - Country, Language, and Recency hints
+- Provider API keys are configured under Integrations; this section controls
+  workspace web policy and defaults.
+
+### 7. Storage
+- **Icon**: `ph:hard-drives`
+- **Component**: `StorageSettings`
+- **Purpose**: storage and disk configuration surface.
+
+### 8. Debug
+- **Icon**: `ph:bug`
+- **Component**: `DebugSettings`
+- **Purpose**: diagnostics and development/debug controls.
+
+### 9. Danger Zone
 - **Icon**: `ph:warning`
+- **Component**: `DangerZoneSettings`
 - **Actions** (each with description and red-styled button):
   - Pause All Agents: immediately pause all running agent tasks
   - Reset Agent Memory: clear all agent memory and learned behaviors
@@ -188,6 +218,14 @@
 | File | Purpose |
 |------|---------|
 | `resources/js/Pages/Settings.vue` | Page component with all settings sections and policy modal |
+| `resources/js/Components/settings/AgentDefaultsSettings.vue` | Agent default behavior controls |
+| `resources/js/Components/settings/PoliciesSettings.vue` | Action policy list and modal entry point |
+| `resources/js/Components/settings/NotificationsSettings.vue` | Notification preferences |
+| `resources/js/Components/settings/MemorySettings.vue` | Memory provider/model and runtime controls |
+| `resources/js/Components/settings/WebAccessSettings.vue` | Web search/fetch provider defaults, policy, limits, and cache controls |
+| `resources/js/Components/settings/StorageSettings.vue` | Storage settings section |
+| `resources/js/Components/settings/DebugSettings.vue` | Debug settings section |
+| `resources/js/Components/settings/DangerZoneSettings.vue` | Destructive organization/runtime actions |
 | `resources/js/Components/settings/SettingsSection.vue` | Reusable section card with icon header and actions slot |
 | `resources/js/Components/settings/SettingsField.vue` | Reusable field wrapper with label, hint, and error display |
 | `resources/js/Components/shared/Button.vue` | Save button |

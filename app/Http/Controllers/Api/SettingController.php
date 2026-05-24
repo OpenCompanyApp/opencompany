@@ -39,7 +39,7 @@ class SettingController extends Controller
     public function update(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
-            'category' => 'required|string|in:organization,agents,notifications,policies,memory',
+            'category' => 'required|string|in:organization,agents,notifications,policies,memory,web',
             'settings' => 'required|array',
         ]);
 
