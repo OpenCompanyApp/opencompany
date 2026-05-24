@@ -23,18 +23,17 @@
 |                                                                    |
 | +--------------------------------------------------------------+ |
 | | Header (shrink-0, border-b)                                   | |
-| | [Tasks link] "Workload"               [refresh button]        | |
-| | "Monitor agent performance and task distribution"              | |
+| | [Tasks] "Workload" [Activity] [Analytics]   [refresh button]  | |
 | +--------------------------------------------------------------+ |
 |                                                                    |
 | +--------------------------------------------------------------+ |
 | | Content (flex-1, overflow-y-auto, p-6)                        | |
 | |                                                                | |
-| | Summary Cards (4-column grid on lg, 2 on md, 1 on sm)        | |
+| | Summary Cards (4-column grid on lg, 2 on sm)                 | |
 | | +------------+ +------------+ +------------+ +------------+   | |
-| | | Active     | | Tasks In   | | Completed  | | Avg        |   | |
-| | | Agents     | | Progress   | | This Week  | | Efficiency |   | |
-| | | 3/5        | | 12         | | 28         | | 85%        |   | |
+| | | Active     | | Active     | | Completed  | | Failed     |   | |
+| | | Agents     | | Tasks      | | This Week  | | This Week  |   | |
+| | | 3/5        | | 12         | | 28         | | 1          |   | |
 | | +------------+ +------------+ +------------+ +------------+   | |
 | |                                                                | |
 | | Agent Cards (3-column grid on xl, 2 on lg, 1 on sm)          | |
@@ -43,13 +42,8 @@
 | | | AgentType Status | | AgentType Status | | AgentType Stat.|  | |
 | | | Current task     | | Current task     | | Current task   |  | |
 | | |                  | |                  | |                |  | |
-| | | Workload  [==  ] | | Workload  [====] | | Workload [=  ] |  | |
-| | | Efficiency[====] | | Efficiency[==  ] | | Efficiency[===]|  | |
-| | |                  | |                  | |                |  | |
-| | | In Prog | Pend | | In Prog | Pend | | In Prog | Pend |  | |
-| | | Week    |      | | Week    |      | | Week    |      |  | |
-| | |                  | |                  | |                |  | |
-| | | activities $cost | | activities $cost | | activities     |  | |
+| | | Active | Pending | Today | Week                               | |
+| | | Avg duration                         failed count if any       | |
 | | +------------------+ +------------------+ +----------------+  | |
 | |                                                                | |
 | +--------------------------------------------------------------+ |
@@ -65,7 +59,7 @@
 | `Icon` | `Components/shared/Icon.vue` | Phosphor icons throughout |
 | `AgentAvatar` | `Components/shared/AgentAvatar.vue` | Agent avatar with status indicator in each card header |
 | `StatusBadge` | `Components/shared/StatusBadge.vue` | Status pill (working, idle, etc.) in each card header |
-| `Link` | `@inertiajs/vue3` | "Tasks" breadcrumb link and agent name links through `workspacePath('/agent/{id}')` |
+| `Link` | `@inertiajs/vue3` | Header navigation links and agent name links through `workspacePath('/agent/{id}')` |
 
 No child page-specific components -- the page renders everything inline.
 
@@ -73,37 +67,35 @@ No child page-specific components -- the page renders everything inline.
 
 ## Data & API
 
-Data is fetched directly via `fetch()` calls (not the `useApi()` composable):
+Data is fetched through `useApi().fetchWorkload()`.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /api/users/agents` | Fetches all agent users |
-| `GET /api/tasks` | Fetches all tasks to compute per-agent metrics |
+| `GET /api/workload` | Returns workspace-scoped agent workload rows and summary counts |
 
-Metrics are computed client-side by joining agents with their assigned tasks:
+Metrics are computed server-side in `WorkloadController` to avoid client-side joins and N+1 task fetching:
 
-- **currentTasks**: Tasks with `status === 'in_progress'` assigned to agent
-- **pendingTasks**: Tasks with `status === 'backlog'` assigned to agent
-- **completedTasksWeek**: Tasks with `status === 'done'` assigned to agent
-- **totalCostSpent**: Sum of `cost` field across agent's tasks
-- **workloadScore**: `min(100, currentTasks * 30 + pendingTasks * 10)`
-- **efficiencyScore**: `completedTasks / totalAssigned * 100`
+- **currentTasks**: Active tasks assigned to the agent
+- **pendingTasks**: Pending tasks assigned to the agent
+- **completedToday**: Completed tasks since today started
+- **completedThisWeek**: Completed tasks since the current week started
+- **failedThisWeek**: Failed tasks updated this week
+- **avgDurationSeconds**: Average completed-task duration for the current week when start/end timestamps exist
+- **currentTaskTitle**: Most recent active task title for the agent
 
 ---
 
 ## Features & Interactions
 
 ### Summary Cards
-- Four stat cards at the top: Active Agents (ratio), Tasks In Progress, Completed This Week, Avg Efficiency
+- Four stat cards at the top: Active Agents (ratio), Active Tasks, Completed This Week, Failed This Week
 - Each card has a colored icon container and large numeric display
 
 ### Agent Cards
-- Sorted by status (working agents first), then by workload score descending
+- Returned by the workload API sorted by status (working agents first, then idle, then other statuses)
 - **Header**: Avatar with status dot, name (links to agent detail), agent type, current task description, status badge
-- **Workload Bar**: Color-coded progress bar (green < 60%, yellow 60-80%, red >= 80%)
-- **Efficiency Bar**: Green progress bar showing completion ratio
-- **Metrics Grid**: 3-column mini-grid showing In Progress, Pending, and This Week counts
-- **Footer**: Activity count and cost spent (if > 0)
+- **Metrics Grid**: 4-column mini-grid showing Active, Pending, Today, and Week counts
+- **Footer**: Average task duration when available, plus failed-this-week count when greater than zero
 
 ### Refresh
 - Manual refresh button in header triggers `fetchWorkload()`
@@ -117,8 +109,7 @@ Metrics are computed client-side by joining agents with their assigned tasks:
 |-------|-------------|
 | **Default** | Summary cards populated, agent cards displayed in grid |
 | **Empty** | Robot icon centered with "No agents found" when `agents` array is empty |
-| **Loading** | No explicit loading skeleton; data appears on resolve |
-| **Error** | Console error; `workloadData` set to null, which triggers empty state |
+| **Loading** | Centered spinner while `fetchWorkload()` is loading |
 
 ---
 
@@ -126,8 +117,7 @@ Metrics are computed client-side by joining agents with their assigned tasks:
 
 | Breakpoint | Changes |
 |------------|---------|
-| `< md` | Summary cards stack to single column. Agent cards stack to single column. |
-| `md` | Summary cards in 2-column grid. Agent cards remain single column. |
+| `< lg` | Summary cards render in 2 columns. Agent cards stack to single column. |
 | `lg` | Summary cards in 4-column grid. Agent cards in 2-column grid. |
 | `xl+` | Agent cards expand to 3-column grid. |
 

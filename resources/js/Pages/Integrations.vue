@@ -60,7 +60,7 @@
                   ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
               ]"
-              @click="activeCategory = 'all'; searchQuery = ''"
+              @click="setCategory('all')"
             >
               All
             </button>
@@ -72,7 +72,7 @@
                   ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
               ]"
-              @click="activeCategory = 'installed'; searchQuery = ''"
+              @click="setCategory('installed')"
             >
               <Icon name="ph:check-circle" class="w-3.5 h-3.5" />
               Installed
@@ -84,7 +84,7 @@
               </span>
             </button>
             <button
-              v-for="category in nativeCategories"
+              v-for="category in visibleNativeCategories"
               :key="'mobile-' + category.id"
               type="button"
               :class="[
@@ -93,7 +93,7 @@
                   ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
               ]"
-              @click="activeCategory = category.id; searchQuery = ''"
+              @click="setCategory(category.id)"
             >
               <Icon :name="category.icon" class="w-3.5 h-3.5" />
               {{ category.name }}
@@ -106,7 +106,7 @@
                   ? 'bg-purple-600 text-white'
                   : 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400',
               ]"
-              @click="activeCategory = 'mcp-servers'; searchQuery = ''"
+              @click="setCategory('mcp-servers')"
             >
               <Icon name="ph:plugs-connected" class="w-3.5 h-3.5" />
               MCP
@@ -153,7 +153,7 @@
                 ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
             ]"
-            @click="activeCategory = 'all'; searchQuery = ''"
+            @click="setCategory('all')"
           >
             <Icon name="ph:squares-four" class="w-4 h-4" />
             All
@@ -169,7 +169,7 @@
                 ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
             ]"
-            @click="activeCategory = 'installed'; searchQuery = ''"
+            @click="setCategory('installed')"
           >
             <Icon name="ph:check-circle" class="w-4 h-4" />
             Installed
@@ -186,7 +186,7 @@
 
           <!-- Categories -->
           <button
-            v-for="category in nativeCategories"
+            v-for="category in visibleNativeCategories"
             :key="category.id"
             type="button"
             :class="[
@@ -195,7 +195,7 @@
                 ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
             ]"
-            @click="activeCategory = category.id; searchQuery = ''"
+            @click="setCategory(category.id)"
           >
             <Icon :name="category.icon" class="w-4 h-4" />
             {{ category.name }}
@@ -212,7 +212,7 @@
                 ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800',
             ]"
-            @click="activeCategory = 'mcp-servers'; searchQuery = ''"
+            @click="setCategory('mcp-servers')"
           >
             <Icon name="ph:plugs-connected" class="w-4 h-4" />
             MCP Servers
@@ -293,7 +293,7 @@
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">No connected services</p>
                 <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
                   Browse the
-                  <button type="button" class="text-neutral-900 dark:text-white underline" @click="activeCategory = 'all'">
+                  <button type="button" class="text-neutral-900 dark:text-white underline" @click="setCategory('all')">
                     library
                   </button>
                   to connect integrations
@@ -422,7 +422,7 @@
 
           <!-- All Integrations View -->
           <template v-else-if="activeCategory === 'all'">
-            <section v-for="category in nativeCategories" :key="category.id" class="mb-8 last:mb-0">
+            <section v-for="category in visibleNativeCategories" :key="category.id" class="mb-8 last:mb-0">
               <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
                 <Icon :name="category.icon" class="w-4 h-4 text-neutral-500" />
                 {{ category.name }}
@@ -654,9 +654,12 @@ import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
 const { workspacePath } = useWorkspace()
 
-// Sidebar state
-const activeCategory = ref<string>('all')
-const searchQuery = ref('')
+const initialQuery = new URLSearchParams(window.location.search)
+
+// Sidebar state. Start on installed services because catalog browsing is huge;
+// direct query params still allow deep links to a search or category.
+const activeCategory = ref<string>(initialQuery.get('category') || (initialQuery.get('q') ? 'all' : 'installed'))
+const searchQuery = ref(initialQuery.get('q') || '')
 const catalogLoading = ref(false)
 const catalogError = ref<string | null>(null)
 const catalogAvailable = ref<boolean | null>(null)
@@ -732,8 +735,6 @@ const showMcpConfigModal = ref(false)
 const activeMcpServerId = ref<string | undefined>(undefined)
 
 // Type filter
-const typeFilter = ref<'all' | 'native' | 'mcp'>('all')
-
 // Track which integrations are configurable (loaded from API)
 const configurableIntegrations = ref<Record<string, any>>({})
 
@@ -744,7 +745,11 @@ onMounted(async () => {
 
 const loadCatalogThenStatus = async () => {
   await loadIntegrationStatus()
-  await loadIntegrationCatalog({ reset: true })
+  await loadIntegrationCatalog({
+    reset: true,
+    search: searchQuery.value.trim(),
+    category: catalogCategoryFor(activeCategory.value, searchQuery.value),
+  })
 }
 
 const categoryLabels: Record<string, { name: string; icon: string }> = {
@@ -767,11 +772,35 @@ const categoryFor = (id: string, icon = 'ph:puzzle-piece'): IntegrationCategory 
   return category
 }
 
+const mcpIdentityFor = (integration: Integration): string | null => {
+  if (integration.type !== 'mcp') return null
+
+  const url = integration.url || integration.suggestedMcpConfig?.url
+  if (integration.mcpServerId) return `mcp:id:${integration.mcpServerId}`
+  if (url) return `mcp:url:${url}`
+  return null
+}
+
+const dedupeIntegrations = <T extends Integration>(integrations: T[]): T[] => {
+  const seen = new Set<string>()
+  const deduped: T[] = []
+
+  for (const integration of integrations) {
+    const identity = mcpIdentityFor(integration) || `integration:${integration.id}`
+    if (seen.has(identity)) continue
+    seen.add(identity)
+    deduped.push(integration)
+  }
+
+  return deduped
+}
+
 const mergeIntegrationCard = (incoming: Integration) => {
   const category = categoryFor(incoming.category || 'data', incoming.icon)
+  const incomingMcpIdentity = mcpIdentityFor(incoming)
   const existing = integrationCategories.value
     .flatMap(c => c.integrations)
-    .find(i => i.id === incoming.id)
+    .find(i => i.id === incoming.id || (incomingMcpIdentity && mcpIdentityFor(i) === incomingMcpIdentity))
 
   if (existing) {
     Object.assign(existing, {
@@ -784,6 +813,9 @@ const mergeIntegrationCard = (incoming: Integration) => {
       configurable: incoming.configurable ?? existing.configurable,
       badge: incoming.badge || existing.badge,
       catalog: existing.catalog || incoming.catalog,
+      url: incoming.url || existing.url,
+      mcpServerId: incoming.mcpServerId || existing.mcpServerId,
+      toolCount: incoming.toolCount ?? existing.toolCount,
     })
     return existing
   }
@@ -848,13 +880,9 @@ const loadIntegrationCatalog = async (options: { reset?: boolean; search?: strin
 }
 
 const loadMoreCatalog = () => {
-  const category = activeCategory.value !== 'all' && activeCategory.value !== 'installed' && activeCategory.value !== 'mcp-servers'
-    ? activeCategory.value
-    : ''
-
   loadIntegrationCatalog({
     search: searchQuery.value.trim(),
-    category: searchQuery.value.trim() ? '' : category,
+    category: catalogCategoryFor(activeCategory.value, searchQuery.value),
   })
 }
 
@@ -902,6 +930,32 @@ const loadIntegrationStatus = async () => {
           configurableIntegrations.value[integration.id] = integration
         }
 
+        if (integration.type === 'mcp') {
+          const mcpCat = integrationCategories.value.find(c => c.id === 'mcp-servers')
+          const suggested = mcpCat?.integrations.find(
+            i => i.suggestedMcpConfig && i.suggestedMcpConfig.url === integration.url
+          )
+
+          if (suggested) {
+            Object.assign(suggested, {
+              ...integration,
+              id: suggested.id,
+              installed: integration.enabled,
+              enabled: integration.enabled,
+              configured: integration.configured,
+              runnable: true,
+              badge: suggested.badge || integration.badge || 'mcp',
+              configurable: integration.configurable ?? false,
+              packageInstalled: true,
+              type: 'mcp' as const,
+              url: integration.url,
+              mcpServerId: integration.mcpServerId,
+              toolCount: integration.toolCount,
+            })
+            continue
+          }
+        }
+
         mergeIntegrationCard({
           id: integration.id,
           name: integration.name,
@@ -916,24 +970,10 @@ const loadIntegrationStatus = async () => {
           configurable: integration.configurable ?? false,
           packageInstalled: true,
           type: integration.type || 'native',
+          url: integration.url,
           mcpServerId: integration.mcpServerId,
           toolCount: integration.toolCount,
         })
-
-        // For MCP integrations, try to match against suggested entries by URL
-        if (integration.type === 'mcp') {
-          const mcpCat = integrationCategories.value.find(c => c.id === 'mcp-servers')
-          if (mcpCat) {
-            const suggested = mcpCat.integrations.find(
-              i => i.suggestedMcpConfig && i.suggestedMcpConfig.url === integration.url
-            )
-            if (suggested) {
-              suggested.installed = true
-              suggested.mcpServerId = integration.mcpServerId
-              suggested.toolCount = integration.toolCount
-            }
-          }
-        }
       }
     }
   } catch (error) {
@@ -943,17 +983,45 @@ const loadIntegrationStatus = async () => {
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
+const catalogCategoryFor = (category: string, search: string) => {
+  if (search.trim()) return ''
+  return category !== 'all' && category !== 'installed' && category !== 'mcp-servers'
+    ? category
+    : ''
+}
+
+const replaceIntegrationUrl = () => {
+  const params = new URLSearchParams()
+  if (activeCategory.value !== 'installed') {
+    params.set('category', activeCategory.value)
+  }
+  if (searchQuery.value.trim()) {
+    params.set('q', searchQuery.value.trim())
+  }
+
+  const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`
+  window.history.replaceState(window.history.state, '', next)
+}
+
+const setCategory = (category: string) => {
+  activeCategory.value = category
+  searchQuery.value = ''
+}
+
 watch(searchQuery, (query) => {
   if (searchTimer) {
     clearTimeout(searchTimer)
   }
 
   searchTimer = setTimeout(() => {
+    replaceIntegrationUrl()
     loadIntegrationCatalog({ reset: true, search: query.trim(), category: '' })
   }, 250)
 })
 
 watch(activeCategory, (category) => {
+  replaceIntegrationUrl()
+
   if (category === 'all' || category === 'installed' || category === 'mcp-servers') {
     return
   }
@@ -1118,13 +1186,27 @@ const nativeCategories = computed(() => {
   return integrationCategories.value.filter(c => c.id !== 'mcp-servers')
 })
 
+const visibleNativeCategories = computed(() => {
+  return nativeCategories.value.filter(category => category.integrations.length > 0)
+})
+
 // Computed - MCP category
 const mcpCategory = computed(() => {
-  return integrationCategories.value.find(c => c.id === 'mcp-servers')
+  const category = integrationCategories.value.find(c => c.id === 'mcp-servers')
+  if (!category) return undefined
+
+  return {
+    ...category,
+    integrations: dedupeIntegrations(category.integrations),
+  }
 })
 
 // Computed - Selected category
 const selectedCategory = computed(() => {
+  if (activeCategory.value === 'mcp-servers') {
+    return mcpCategory.value
+  }
+
   return integrationCategories.value.find(c => c.id === activeCategory.value)
 })
 
@@ -1135,21 +1217,21 @@ const totalIntegrationCount = computed(() => {
 
 // Computed - Connected services (installed integrations)
 const connectedServices = computed<Service[]>(() => {
-  const installed: Service[] = []
+  const installed: Integration[] = []
   for (const category of integrationCategories.value) {
     for (const integration of category.integrations) {
       if (integration.installed) {
-        installed.push({
-          id: integration.id,
-          name: integration.name,
-          icon: integration.icon,
-          description: integration.description,
-          connected: true,
-        })
+        installed.push(integration)
       }
     }
   }
-  return installed
+  return dedupeIntegrations(installed).map(integration => ({
+    id: integration.id,
+    name: integration.name,
+    icon: integration.icon,
+    description: integration.description,
+    connected: true,
+  }))
 })
 
 // Computed - Installed integrations as Integration objects (for cards)
@@ -1162,7 +1244,7 @@ const installedIntegrations = computed(() => {
       }
     }
   }
-  return installed
+  return dedupeIntegrations(installed)
 })
 
 // Computed - Installed count
@@ -1185,7 +1267,7 @@ const searchResults = computed(() => {
       }
     }
   }
-  return results
+  return dedupeIntegrations(results)
 })
 
 const showCatalogControls = computed(() => {

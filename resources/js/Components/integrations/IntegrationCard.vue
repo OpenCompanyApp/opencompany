@@ -129,6 +129,7 @@ export interface Integration {
   docsUrl?: string | null
   configurable?: boolean
   type?: 'native' | 'mcp'
+  url?: string
   mcpServerId?: string
   toolCount?: number
   suggestedMcpConfig?: {

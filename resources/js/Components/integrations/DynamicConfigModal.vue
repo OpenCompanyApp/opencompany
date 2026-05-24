@@ -9,9 +9,14 @@
     <form class="space-y-5" data-test="dynamic-config-form" @submit.prevent="handleSave">
       <div class="space-y-2">
         <div class="flex items-center justify-between gap-3">
-          <label class="block text-sm font-medium text-neutral-900 dark:text-white">
-            Account
-          </label>
+          <div>
+            <label class="block text-sm font-medium text-neutral-900 dark:text-white">
+              Integration Account
+            </label>
+            <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Add named accounts when one integration needs more than one inbox, API key, or external workspace.
+            </p>
+          </div>
           <span
             v-if="selectedAccountInfo?.is_default"
             class="text-[11px] px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
@@ -46,8 +51,8 @@
             v-model="newAccountAlias"
             data-test="integration-new-account"
             type="text"
-            placeholder="new_account"
-            class="flex-1 min-w-0 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm font-mono"
+            placeholder="Account name"
+            class="flex-1 min-w-0 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
             @keydown.enter.prevent="createAccount"
           />
           <Button
@@ -60,9 +65,19 @@
             Add
           </Button>
         </div>
+        <p v-if="!newAccountAlias.trim()" class="text-[11px] text-neutral-400 dark:text-neutral-500">
+          Enter a short label to add another account; the existing default account remains unchanged.
+        </p>
       </div>
 
       <!-- Dynamic Fields -->
+      <div v-if="hasOAuthFields" class="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 px-3 py-2">
+        <p class="text-xs font-medium text-neutral-700 dark:text-neutral-300">OAuth app configuration</p>
+        <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+          Client credentials are shared by this integration; connected account tokens stay scoped to the selected account above.
+        </p>
+      </div>
+
       <div v-for="field in schema" :key="field.key" v-show="isFieldVisible(field)" class="space-y-2">
         <label class="block text-sm font-medium text-neutral-900 dark:text-white">
           {{ field.label }}
@@ -171,7 +186,7 @@
               <Icon name="ph:check-circle-fill" class="w-4 h-4 text-green-500" />
               <span class="text-sm font-medium text-green-700 dark:text-green-400">Connected</span>
             </div>
-            <Button type="button" variant="ghost" size="sm" @click="disconnectOAuth(field)">
+            <Button type="button" variant="danger" size="sm" @click="disconnectOAuth(field)">
               Disconnect
             </Button>
           </div>
@@ -371,6 +386,7 @@ const selectedAccountInfo = computed(() => {
     || accounts.value.find(account => account.is_default)
     || null
 })
+const hasOAuthFields = computed(() => props.schema.some(field => field.type === 'oauth_connect'))
 
 const accountQuery = () => {
   return selectedAccount.value ? `?account=${encodeURIComponent(selectedAccount.value)}` : ''
@@ -441,6 +457,11 @@ const connectOAuth = async (field: ConfigField) => {
 }
 
 const disconnectOAuth = async (field: ConfigField) => {
+  const accountLabel = selectedAccount.value || 'default account'
+  if (!window.confirm(`Disconnect ${props.meta?.name || props.integrationId} from the ${accountLabel}?`)) {
+    return
+  }
+
   try {
     const response = await apiFetch(`/api/integrations/${props.integrationId}/disconnect${accountQuery()}`, { method: 'POST' })
     if (response.ok) {

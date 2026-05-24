@@ -112,79 +112,16 @@ class MetricsService
 #### AI Cost Tracking
 
 ```php
-// app/Services/Observability/AICostTracker.php
+// Current implementation:
+// - app/Domain/Ai/Usage/UsageRecorder.php writes llm_usage_events
+// - app/Domain/Ai/Usage/CostCalculator.php estimates from AiCatalog pricing
+// - app/Jobs/ReconcileOpenRouterUsage.php refreshes OpenRouter actual charges
+// - app/Http/Controllers/Api/TokenAnalyticsController.php reads the ledger
 
-namespace App\Services\Observability;
-
-use App\Models\AIUsageLog;
-
-class AICostTracker
-{
-    // Cost per 1K tokens (approximate, update as needed)
-    private const COSTS = [
-        'anthropic' => [
-            'claude-sonnet-4-20250514' => ['input' => 0.003, 'output' => 0.015],
-            'claude-opus-4-20250514' => ['input' => 0.015, 'output' => 0.075],
-        ],
-        'openai' => [
-            'gpt-4o' => ['input' => 0.005, 'output' => 0.015],
-            'gpt-4o-mini' => ['input' => 0.00015, 'output' => 0.0006],
-        ],
-        'glm' => [
-            'glm-4.7' => ['input' => 0.001, 'output' => 0.002],
-        ],
-    ];
-
-    public function record(
-        string $provider,
-        string $model,
-        int $inputTokens,
-        int $outputTokens,
-        ?string $agentId = null
-    ): void {
-        $costs = self::COSTS[$provider][$model] ?? ['input' => 0, 'output' => 0];
-        $totalCost = ($inputTokens / 1000 * $costs['input']) +
-                     ($outputTokens / 1000 * $costs['output']);
-
-        AIUsageLog::create([
-            'provider' => $provider,
-            'model' => $model,
-            'input_tokens' => $inputTokens,
-            'output_tokens' => $outputTokens,
-            'estimated_cost' => $totalCost,
-            'agent_id' => $agentId,
-            'recorded_at' => now(),
-        ]);
-    }
-
-    public function getDailyCost(?string $provider = null): float
-    {
-        $query = AIUsageLog::whereDate('recorded_at', today());
-
-        if ($provider) {
-            $query->where('provider', $provider);
-        }
-
-        return $query->sum('estimated_cost');
-    }
-
-    public function getCostByProvider(string $period = 'day'): array
-    {
-        $startDate = match($period) {
-            'day' => today(),
-            'week' => now()->startOfWeek(),
-            'month' => now()->startOfMonth(),
-            default => today(),
-        };
-
-        return AIUsageLog::where('recorded_at', '>=', $startDate)
-            ->selectRaw('provider, SUM(estimated_cost) as total_cost, SUM(input_tokens) as total_input, SUM(output_tokens) as total_output')
-            ->groupBy('provider')
-            ->get()
-            ->keyBy('provider')
-            ->toArray();
-    }
-}
+$dailyCost = LlmUsageEvent::query()
+    ->where('workspace_id', workspace()->id)
+    ->where('occurred_at', '>=', today())
+    ->sum(DB::raw('COALESCE(actual_cost_usd, estimated_cost_usd, 0)'));
 ```
 
 ### 1.3 Infrastructure Metrics
@@ -804,14 +741,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Observability\MetricsService;
-use App\Services\Observability\AICostTracker;
+use App\Domain\Ai\Usage\LlmUsageEvent;
 use Inertia\Inertia;
 
 class ObservabilityController extends Controller
 {
     public function __construct(
         private MetricsService $metrics,
-        private AICostTracker $costTracker,
     ) {}
 
     public function index()
@@ -851,11 +787,17 @@ class ObservabilityController extends Controller
 
     private function getAIMetrics(): array
     {
+        $ledger = LlmUsageEvent::query()
+            ->where('workspace_id', workspace()->id)
+            ->where('occurred_at', '>=', today());
+
         return [
-            'cost_today' => $this->costTracker->getDailyCost(),
-            'cost_by_provider' => $this->costTracker->getCostByProvider('day'),
-            'tokens_today' => AIUsageLog::whereDate('recorded_at', today())
-                ->sum(DB::raw('input_tokens + output_tokens')),
+            'cost_today' => (clone $ledger)->sum(DB::raw('COALESCE(actual_cost_usd, estimated_cost_usd, 0)')),
+            'cost_by_provider' => (clone $ledger)
+                ->selectRaw('resolved_provider, SUM(COALESCE(actual_cost_usd, estimated_cost_usd, 0)) as total_cost')
+                ->groupBy('resolved_provider')
+                ->pluck('total_cost', 'resolved_provider'),
+            'tokens_today' => (clone $ledger)->sum(DB::raw('prompt_tokens + completion_tokens')),
         ];
     }
 
@@ -1027,8 +969,7 @@ class AlertService
 
 | Task | Files | Priority |
 |------|-------|----------|
-| Create AICostTracker | `app/Services/Observability/AICostTracker.php` | High |
-| Add ai_usage_logs migration | `database/migrations/*_create_ai_usage_logs_table.php` | High |
+| Wire AI cost metrics to current ledger | `app/Domain/Ai/Usage/*`, `database/migrations/2026_05_24_000001_create_llm_usage_events_table.php` | High |
 | Create custom exceptions | `app/Exceptions/AgentException.php`, etc. | Medium |
 | Update exception handler | `bootstrap/app.php` | Medium |
 | Create ObservabilityController | `app/Http/Controllers/Admin/ObservabilityController.php` | High |
@@ -1058,6 +999,11 @@ class AlertService
 ## Database Migrations
 
 ### AI Usage Logs
+
+Status: Superseded by the current AI runtime ledger. Do not create a separate
+`ai_usage_logs` table for new work; observability views should read
+`llm_usage_events` through `TokenAnalyticsController` or a dedicated
+observability query layer.
 
 ```php
 // database/migrations/xxxx_create_ai_usage_logs_table.php

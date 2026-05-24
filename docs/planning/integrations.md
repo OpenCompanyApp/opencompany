@@ -2,7 +2,7 @@
 
 > The complete integration roadmap for making AI agents genuinely useful for real business operations.
 
-Status: Roadmap / planning. The current-state table is code-checked against `config/ai.php`, `config/integrations.php`, `config/chat_integrations.php`, the installed `opencompanyapp/integration-*` packages in `composer.json`, and the MCP runtime in `app/Services/Mcp`. Items in the roadmap sections are proposed until there is corresponding app or package code.
+Status: Roadmap / planning. The current-state table is code-checked against `config/ai.php`, `config/integrations.php`, `config/chat_integrations.php`, the installed `opencompanyapp/integration-*` packages in `composer.json`, the generated integration catalog exposed through `IntegrationCatalog`, and the MCP runtime in `app/Services/Mcp`. Items in the roadmap sections are proposed until there is corresponding app or package code.
 
 ---
 
@@ -16,16 +16,17 @@ Integrations are what transform OpenCompany from an internal collaboration tool 
 
 ## Current State (May 2026)
 
-| Category | Built & Working | Listed in UI (Not Built) |
-|----------|----------------|--------------------------|
-| AI Models | Anthropic, OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, Ollama, OpenRouter, Perplexity, MiniMax, Kimi, Z.AI, Codex | — |
-| Communication | Telegram | Slack, Discord, Teams, Matrix |
-| Analytics | Plausible, Google Analytics, Google Search Console | — |
-| Productivity | Google Calendar, Google Drive, Google Docs, Google Sheets, Google Contacts, Google Forms, Google Tasks, Gmail, ClickUp, TickTick | Notion, Trello, Obsidian |
-| Developer | — | GitHub, GitLab, Linear, Jira |
-| Visualization | Mermaid, Typst, PlantUML, Vega-Lite, SVG | — |
-| Data & APIs | Webhooks (partial) | Email SMTP, REST API |
-| MCP Servers | DeepWiki, Context7, Cloudflare Docs, Exa Search | — |
+| Category | Built / runnable in current app | Catalog-listed or planned |
+|----------|-------------------------------|---------------------------|
+| AI Models | Anthropic, OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, Ollama, OpenRouter, Perplexity, MiniMax, Kimi, Z.AI, Codex | Additional model IDs are accepted for known providers when configured |
+| Communication | Telegram; chat catalog entries for Slack, Discord, Teams, Google Chat, GitHub, and Linear are present but not all have runtime bridges | Discord/Slack/Teams sidecars and sync listeners remain planned unless code exists |
+| Package Catalog | Installed package providers include Aircall plus Celestial, ClickUp, CoinGecko, ExchangeRate, Google, Mermaid, Plausible, TickTick, TrustMRR, Typst, PlantUML, Vega-Lite, World Bank, and related bundle/catalog packages | Generated catalog currently exposes 591 integrations and 41,493 tools from the package catalog; entries are only runnable when the package/runtime support is installed and configured |
+| Analytics | Plausible, Google Analytics, Google Search Console | Broader catalog analytics integrations remain catalog/planning unless installed |
+| Productivity | Google Calendar, Google Drive, Google Docs, Google Sheets, Google Contacts, Google Forms, Google Tasks, Gmail, ClickUp, TickTick | Notion, Trello, Obsidian and similar catalog entries remain future package/runtime work unless installed |
+| Developer | Remote MCP servers and catalog/package discovery | GitHub, GitLab, Linear, Jira app-specific runtimes remain planned unless backed by installed packages or MCP servers |
+| Visualization | Mermaid, Typst, PlantUML, Vega-Lite, SVG | Additional rendering packages are catalog/planning unless installed |
+| Data & APIs | Webhooks (partial), Celestial, CoinGecko, ExchangeRate, TrustMRR, World Bank, Aircall | REST/API catalog entries remain catalog/planning unless installed |
+| MCP Servers | Workspace-configured remote MCP servers with discovery cache | Example servers such as DeepWiki, Context7, Cloudflare Docs, and Exa depend on workspace configuration |
 
 ---
 
