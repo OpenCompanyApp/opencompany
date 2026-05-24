@@ -49,7 +49,7 @@ Desktop uses a left sidebar. Mobile uses search plus horizontal category pills.
 | `DynamicConfigModal` | `Components/integrations/DynamicConfigModal.vue` | Metadata-driven package/chat integration configuration |
 | `AiGatewayConfigModal` | `Components/integrations/AiGatewayConfigModal.vue` | OpenCompany AI Gateway enabled models and API keys |
 | `McpConfigModal` | `Components/integrations/McpConfigModal.vue` | Remote MCP server configuration |
-| `Modal` | `Components/shared/Modal.vue` | Local webhook demo modal in Installed view |
+| `Modal` | `Components/shared/Modal.vue` | Webhook form modal in Installed view |
 | `Icon` | `Components/shared/Icon.vue` | Phosphor icon wrapper |
 
 ---
@@ -63,11 +63,18 @@ Desktop uses a left sidebar. Mobile uses search plus horizontal category pills.
 - All view renders each native category, then MCP server suggestions.
 - Category view renders only the selected category.
 - Catalog controls can load more catalog integrations when available.
+- Integration cards can carry both a UI-stable prefixed `id` and a raw `configId`.
+  Current prefixes distinguish AI providers, package integrations, chat entries,
+  static entries, and MCP entries so same-slug surfaces do not overwrite each
+  other in the catalog UI.
 
 ### Installed View
 
 - Connected Services is backed by the current integration catalog/status data.
-- Webhooks block is currently local page state/mock data. It displays endpoint text as `POST /api/webhooks/{id}`, but there is no generic persisted webhook CRUD API for those rows.
+- Webhooks have a persisted backend API (`/api/integration-webhooks`) plus public
+  receiver (`POST /api/webhooks/{webhook}`), but the current `Integrations.vue`
+  list/create/delete handlers still use local page state and are not wired to
+  those endpoints yet.
 - API Keys block is also local page state/mock data. Real AI Gateway API keys are managed in `AiGatewayConfigModal`.
 
 ### Install & Configure Flow
@@ -85,10 +92,12 @@ Desktop uses a left sidebar. Mobile uses search plus horizontal category pills.
 | Surface | Endpoints |
 |---------|-----------|
 | Integration status/catalog | `GET /api/integrations`, `GET /api/integrations/catalog`, `GET /api/integrations/catalog/{slug}` |
-| Provider config | `GET /api/integrations/{id}/config`, `PUT /api/integrations/{id}/config`, `POST /api/integrations/{id}/test`, `POST /api/integrations/{id}/toggle`, `POST /api/integrations/{id}/disconnect` |
-| Provider models | `GET /api/integrations/models`, `GET /api/integrations/all-providers`, `GET /api/integrations/embedding-models`, `GET /api/integrations/reranking-models`, `POST /api/integrations/{id}/fetch-models` |
+| AI provider config | `GET/PUT /api/ai/providers/{id}/config`, `POST /api/ai/providers/{id}/test`, `POST /api/ai/providers/{id}/fetch-models` |
+| Package/chat/static config | `GET /api/integrations/{id}/config`, `PUT /api/integrations/{id}/config`, `POST /api/integrations/{id}/test`, `POST /api/integrations/{id}/toggle`, `POST /api/integrations/{id}/disconnect` |
+| Provider models | `GET /api/integrations/models`, `GET /api/integrations/all-providers`, `GET /api/integrations/embedding-models`, `GET /api/integrations/reranking-models` |
 | OAuth/account integrations | `GET/POST/PUT/DELETE /api/integrations/{id}/accounts...`, Codex auth endpoints, Google/TickTick OAuth routes |
 | Webhook setup | `POST /api/integrations/{id}/setup-webhook` for supported integrations such as Telegram |
+| Generic webhooks | `GET/POST/PATCH/DELETE /api/integration-webhooks`, public `POST /api/webhooks/{webhook}` receiver |
 | MCP servers | `GET/POST/PATCH/DELETE /api/mcp-servers...`, plus test/discover endpoints |
 | AI Gateway | `GET/PUT /api/ai-gateway/config`, `GET/POST/DELETE /api/ai-gateway/api-keys...` |
 
@@ -126,3 +135,6 @@ Desktop uses a left sidebar. Mobile uses search plus horizontal category pills.
 | `resources/js/Components/integrations/DynamicConfigModal.vue` | Package/chat integration configuration modal |
 | `resources/js/Components/integrations/AiGatewayConfigModal.vue` | OpenCompany AI Gateway settings and API keys |
 | `resources/js/Components/integrations/McpConfigModal.vue` | Remote MCP server configuration modal |
+| `app/Services/Integrations/IntegrationIdentity.php` | Applies and strips UI-facing integration ID prefixes around raw config slugs |
+| `app/Http/Controllers/Api/IntegrationWebhookController.php` | Workspace-scoped persisted webhook CRUD API |
+| `app/Http/Controllers/Api/IncomingIntegrationWebhookController.php` | Public per-webhook receiver with secret verification and receipt diagnostics |

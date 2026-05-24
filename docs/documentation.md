@@ -89,7 +89,7 @@ User Guide
 │
 ├── Automations                      [NEW]    — Scheduled tasks, cron expressions, execution history
 │   ├── Scheduled Automations        [NEW]    — Create and manage recurring agent tasks
-│   └── Lua Scripting                [SOON]   — Deterministic automation rules with Lua
+│   └── Lua Scripting                [NEW]    — Deterministic script automations with the Lua sandbox and bridge
 │
 ├── Org Chart                                 — Agent hierarchy, team structure, constellation view
 │
@@ -116,7 +116,7 @@ Technical
 ├── Overview                                  — Technical documentation hub and reading guide
 ├── Architecture                              — Application layers, request lifecycle, AI SDK integration
 ├── Memory System                             — Dual-memory model, compaction, hybrid search, token tracking
-├── Agent Spawning                            — Ephemeral agents, parent-child relationships, lifecycle
+├── Agent Orchestration                       — Agent creation, peer subagents, delegation callbacks, lifecycle
 ├── Tools & Skills                            — Tool registry, hybrid resolution, package architecture
 ├── External Channel Sync                     — Bidirectional Chatogrator-backed channel synchronization
 ├── Automations                               — Event broadcasting, scheduled execution, approval workflows

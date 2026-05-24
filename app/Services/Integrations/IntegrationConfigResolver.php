@@ -27,6 +27,7 @@ class IntegrationConfigResolver
      */
     public function show(string $id, ?string $account = null): ?array
     {
+        $id = IntegrationIdentity::rawId($id);
         $provider = $this->findConfigurableProvider($id);
         if ($provider) {
             return $this->showConfigurable($provider, $account);
@@ -45,6 +46,7 @@ class IntegrationConfigResolver
      */
     public function update(Request $request, string $id, ?string $account = null): array
     {
+        $id = IntegrationIdentity::rawId($id);
         $provider = $this->findConfigurableProvider($id);
         if ($provider) {
             return [$this->updateConfigurable($request, $provider, $account), 200];
@@ -63,6 +65,7 @@ class IntegrationConfigResolver
      */
     public function disconnect(string $id, ?string $account = null): ?bool
     {
+        $id = IntegrationIdentity::rawId($id);
         $provider = $this->findConfigurableProvider($id);
         if (! $provider) {
             return null;
@@ -89,9 +92,42 @@ class IntegrationConfigResolver
 
     public function findConfigurableProvider(string $id): ?ConfigurableIntegration
     {
+        $id = IntegrationIdentity::rawId($id);
         $provider = $this->registry->get($id);
 
         return $provider instanceof ConfigurableIntegration ? $provider : null;
+    }
+
+    /**
+     * Read only the static AI-provider configuration shape. This deliberately
+     * bypasses package providers with colliding slugs such as openai so the
+     * model-runtime UI and API-tool integration UI cannot overwrite each other.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function showAiProvider(string $id, ?string $account = null): ?array
+    {
+        $id = IntegrationIdentity::rawId($id);
+        $available = IntegrationSetting::getAvailableIntegrations();
+        if (! isset($available[$id]) || ($available[$id]['category'] ?? null) !== 'ai-models') {
+            return null;
+        }
+
+        return $this->showStatic($id, $available[$id], $account);
+    }
+
+    /**
+     * @return array{0: array<string, mixed>, 1: int}
+     */
+    public function updateAiProvider(Request $request, string $id, ?string $account = null): array
+    {
+        $id = IntegrationIdentity::rawId($id);
+        $available = IntegrationSetting::getAvailableIntegrations();
+        if (! isset($available[$id]) || ($available[$id]['category'] ?? null) !== 'ai-models') {
+            return [['error' => 'AI provider not found'], 404];
+        }
+
+        return [$this->updateStatic($request, $id, $available[$id], $account), 200];
     }
 
     /**

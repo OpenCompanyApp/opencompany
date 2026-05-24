@@ -11,6 +11,7 @@ use App\Services\Integrations\IntegrationAccountResolver;
 use App\Services\Integrations\IntegrationConfigResolver;
 use App\Services\Integrations\IntegrationConnectionTester;
 use App\Services\Integrations\IntegrationDirectory;
+use App\Services\Integrations\IntegrationIdentity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -59,10 +60,11 @@ class IntegrationController extends Controller
      */
     public function updateConfig(Request $request, string $id): JsonResponse
     {
+        $account = app(IntegrationAccountResolver::class)->accountFromRequest($request);
         [$payload, $status] = app(IntegrationConfigResolver::class)->update(
             $request,
             $id,
-            app(IntegrationAccountResolver::class)->accountFromRequest($request),
+            $account,
         );
 
         if ($status === 200 && ($payload['configured'] ?? false)) {
@@ -70,9 +72,9 @@ class IntegrationController extends Controller
                 // First successful configuration can populate provider models.
                 // Failure is non-fatal because the user can refresh models later.
                 $setting = app(IntegrationAccountResolver::class)
-                    ->findSetting($id, app(IntegrationAccountResolver::class)->accountFromRequest($request));
+                    ->findSetting($id, $account);
                 $existingModels = $setting?->getConfigValue('models');
-                if ($setting && empty($existingModels) && ($models = app(ModelRuntimeCatalog::class)->fetchProviderModels($id)) !== []) {
+                if ($setting && empty($existingModels) && ($models = app(ModelRuntimeCatalog::class)->fetchProviderModels(IntegrationIdentity::rawId($id))) !== []) {
                     $setting->setConfigValue('models', $models);
                     $setting->save();
                 }
@@ -80,6 +82,37 @@ class IntegrationController extends Controller
                 //
             }
         }
+
+        return response()->json($payload, $status);
+    }
+
+    /**
+     * Get configuration for a static AI model provider.
+     */
+    public function showAiProviderConfig(Request $request, string $id): JsonResponse
+    {
+        $config = app(IntegrationConfigResolver::class)->showAiProvider(
+            $id,
+            app(IntegrationAccountResolver::class)->accountFromRequest($request),
+        );
+
+        if ($config === null) {
+            return response()->json(['error' => 'AI provider not found'], 404);
+        }
+
+        return response()->json($config);
+    }
+
+    /**
+     * Save configuration for a static AI model provider.
+     */
+    public function updateAiProviderConfig(Request $request, string $id): JsonResponse
+    {
+        [$payload, $status] = app(IntegrationConfigResolver::class)->updateAiProvider(
+            $request,
+            $id,
+            app(IntegrationAccountResolver::class)->accountFromRequest($request),
+        );
 
         return response()->json($payload, $status);
     }
@@ -109,6 +142,17 @@ class IntegrationController extends Controller
     }
 
     /**
+     * Test a static AI model provider without falling through to a same-slug
+     * package integration.
+     */
+    public function testAiProviderConnection(Request $request, string $id): JsonResponse
+    {
+        $result = app(IntegrationConnectionTester::class)->testAiProvider($request, $id);
+
+        return response()->json($result->toArray(), $result->status);
+    }
+
+    /**
      * Disconnect an OAuth-based integration (clear stored tokens).
      */
     public function disconnect(Request $request, string $id): JsonResponse
@@ -130,6 +174,8 @@ class IntegrationController extends Controller
      */
     public function setupWebhook(Request $request, string $id): JsonResponse
     {
+        $id = IntegrationIdentity::rawId($id);
+
         if ($id !== 'telegram') {
             return response()->json(['error' => 'Webhooks not supported for this integration'], 400);
         }
@@ -315,6 +361,8 @@ class IntegrationController extends Controller
      */
     public function fetchModels(string $id): JsonResponse
     {
+        $id = IntegrationIdentity::rawId($id);
+
         try {
             $models = app(ModelRuntimeCatalog::class)->fetchProviderModels($id);
 
@@ -363,14 +411,14 @@ class IntegrationController extends Controller
     public function createAccount(Request $request, string $id): JsonResponse
     {
         $request->validate([
-            'alias' => ['required', 'string', 'max:32', 'regex:/^[a-z0-9_]+$/'],
+            'alias' => ['required', 'string'],
             'config' => ['nullable', 'array'],
         ]);
 
-        $alias = $request->input('alias');
+        $alias = app(IntegrationAccountResolver::class)->normalizeAlias($request->input('alias'));
 
         $exists = IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
+            ->where('integration_id', IntegrationIdentity::rawId($id))
             ->where('account_alias', $alias)
             ->exists();
 

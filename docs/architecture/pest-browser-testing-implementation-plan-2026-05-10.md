@@ -29,7 +29,9 @@ npm install --save-dev playwright@latest
 npx playwright install
 ```
 
-Pest 5 currently requires PHP 8.4, while this app is still declared as PHP 8.2+. Pin the Pest 4 line until the app itself moves to PHP 8.4.
+The app now declares PHP `^8.4` in `composer.json` and currently pins Pest on
+the v4 line. Treat a Pest 5 upgrade as a separate dependency/browser-suite
+evaluation rather than a blocker for the current browser-test migration.
 
 Keep PHPUnit tests in place. Do not migrate existing tests wholesale just to use Pest syntax. Add Pest browser tests only where a browser catches behavior PHPUnit cannot.
 

@@ -285,7 +285,7 @@ Status badges appear in the agent header next to the agent name, and support mul
 ### Inter-Agent Communication
 - Agents can use the `contact_agent` tool to communicate with other agents
 - Three communication patterns:
-  - **Ask** (synchronous) -- Agent sends a question and waits for a response; creates a task with source `agent_ask`
+  - **Ask** (async callback) -- Agent sends a question by creating a task with source `agent_ask`; the parent task waits through the delegation callback flow rather than blocking inside the tool call
   - **Delegate** (asynchronous) -- Agent assigns work to another agent and continues; creates a task with source `agent_delegation`; the delegating agent enters `awaiting_delegation` status
   - **Notify** (fire-and-forget) -- Agent sends a one-way notification; creates a task with source `agent_notify`; no response expected
 - The `contact_agent` tool appears in the Capabilities tab tool list with icon `ph:users-three`

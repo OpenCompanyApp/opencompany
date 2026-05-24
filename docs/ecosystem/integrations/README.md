@@ -62,7 +62,12 @@ worldbank/          World Bank economic indicators for 200+ countries
 - **CredentialResolver** — Abstraction for API keys. The standalone default reads from `config/ai-tools.php`; OpenCompany swaps this for encrypted, workspace-scoped `IntegrationSetting` storage.
 - **LuaBridge** — Routes `app.integrations.{name}.{function}(...)` calls from the Lua VM to PHP tool classes.
 
-## Available Integrations
+## Documented Core Packages
+
+The table below covers the curated package docs maintained in this directory.
+OpenCompany's runtime can expose many more catalog integrations through
+`opencompanyapp/integration-bundle` and the generated package catalog; use
+`IntegrationCatalog` and `ToolProviderRegistry` for the live installed count.
 
 | Package | Tools | Credentials | Category | Description |
 |---------|------:|-------------|----------|-------------|

@@ -558,7 +558,11 @@ Zero-code integration through the MCP config modal. The `McpServer` model discov
 **Best for:** Services that already expose an MCP endpoint, or for Phase 3 long-tail coverage.
 
 ### Pattern 4: Webhook + REST API
-For services that push data via webhooks. The existing webhook system receives events and routes them to agents/channels/tasks.
+For services that push data via webhooks. The current generic webhook backend
+creates workspace-owned endpoints, verifies per-webhook secrets, and records
+receipt diagnostics (`last_triggered_at`, `call_count`, and encrypted
+`last_payload`). Delivery into agents, channels, or tasks still needs an
+explicit processor per workflow.
 
 **Best for:** Stripe webhooks, GitHub webhooks, Shopify webhooks.
 

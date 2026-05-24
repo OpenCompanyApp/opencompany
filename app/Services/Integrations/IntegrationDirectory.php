@@ -65,7 +65,11 @@ class IntegrationDirectory
             /** @var IntegrationSetting|null $setting */
             $setting = $settings->get($provider->appName());
             $integrations[] = (new IntegrationDescriptor([
-                'id' => $provider->appName(),
+                'id' => IntegrationIdentity::forPackage($provider->appName()),
+                'configId' => $provider->appName(),
+                'entryType' => IntegrationIdentity::PACKAGE,
+                'source' => 'package',
+                'cardKey' => IntegrationIdentity::forPackage($provider->appName()),
                 'name' => $meta['description'] ?? $provider->appName(),
                 'description' => $meta['label'] ?? '',
                 'icon' => $meta['icon'] ?? 'ph:puzzle-piece',
@@ -83,7 +87,11 @@ class IntegrationDirectory
         // permissions are managed at the app/tool slug layer.
         foreach (McpServer::forWorkspace()->where('enabled', true)->get() as $server) {
             $integrations[] = (new IntegrationDescriptor([
-                'id' => 'mcp_'.$server->slug,
+                'id' => IntegrationIdentity::forMcp($server->slug),
+                'configId' => 'mcp_'.$server->slug,
+                'entryType' => IntegrationIdentity::MCP,
+                'source' => 'workspace_mcp',
+                'cardKey' => IntegrationIdentity::forMcp($server->slug),
                 'name' => $server->name,
                 'description' => $server->description ?? 'Remote MCP server',
                 'icon' => $server->icon,
@@ -110,7 +118,11 @@ class IntegrationDirectory
             $codexToken = CodexTokenStore::current();
 
             return new IntegrationDescriptor([
-                'id' => $id,
+                'id' => IntegrationIdentity::forAiProvider($id),
+                'configId' => $id,
+                'entryType' => IntegrationIdentity::AI_PROVIDER,
+                'source' => 'static_ai_provider',
+                'cardKey' => IntegrationIdentity::forAiProvider($id),
                 'name' => $info['name'],
                 'description' => $info['description'],
                 'icon' => $info['icon'],
@@ -124,9 +136,21 @@ class IntegrationDirectory
         }
 
         $configFields = $info['config_fields'] ?? null;
+        $entryType = ($info['category'] ?? null) === 'ai-models'
+            ? IntegrationIdentity::AI_PROVIDER
+            : (($info['category'] ?? null) === 'chat-platforms' ? IntegrationIdentity::CHAT : IntegrationIdentity::STATIC);
+        $cardId = match ($entryType) {
+            IntegrationIdentity::AI_PROVIDER => IntegrationIdentity::forAiProvider($id),
+            IntegrationIdentity::CHAT => IntegrationIdentity::forChat($id),
+            default => IntegrationIdentity::forStatic($id),
+        };
 
         return new IntegrationDescriptor([
-            'id' => $id,
+            'id' => $cardId,
+            'configId' => $id,
+            'entryType' => $entryType,
+            'source' => $entryType === IntegrationIdentity::AI_PROVIDER ? 'static_ai_provider' : 'static_config',
+            'cardKey' => $cardId,
             'name' => $info['name'],
             'description' => $info['description'],
             'icon' => $info['icon'],
@@ -143,9 +167,14 @@ class IntegrationDirectory
     private function configurableProviderDescriptor(ConfigurableIntegration $provider, ?IntegrationSetting $setting): IntegrationDescriptor
     {
         $meta = $provider->integrationMeta();
+        $cardId = IntegrationIdentity::forPackage($provider->appName());
 
         return new IntegrationDescriptor([
-            'id' => $provider->appName(),
+            'id' => $cardId,
+            'configId' => $provider->appName(),
+            'entryType' => IntegrationIdentity::PACKAGE,
+            'source' => 'package',
+            'cardKey' => $cardId,
             'name' => $meta['name'],
             'description' => $meta['description'],
             'icon' => $meta['icon'] ?? 'ph:puzzle-piece',

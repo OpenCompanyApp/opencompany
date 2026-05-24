@@ -83,4 +83,28 @@ class IntegrationMultiAccountControllerTest extends TestCase
         $this->assertTrue($accounts->firstWhere('alias', 'ops')['is_default']);
         $this->assertFalse($accounts->firstWhere('alias', '')['is_default']);
     }
+
+    public function test_config_update_rejects_invalid_account_aliases_before_database_write(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->putJson('/api/integrations/slack/config', [
+            'account' => 'Ops-Team',
+            'bot_token' => 'xoxb-ops',
+            'signing_secret' => 'ops-secret',
+            'enabled' => true,
+        ])->assertUnprocessable();
+
+        $this->actingAs($user)->putJson('/api/integrations/slack/config', [
+            'account' => str_repeat('a', 33),
+            'bot_token' => 'xoxb-ops',
+            'signing_secret' => 'ops-secret',
+            'enabled' => true,
+        ])->assertUnprocessable();
+
+        $this->assertFalse(IntegrationSetting::forWorkspace()
+            ->where('integration_id', 'slack')
+            ->where('account_alias', 'Ops-Team')
+            ->exists());
+    }
 }

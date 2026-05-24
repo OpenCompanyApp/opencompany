@@ -119,6 +119,10 @@ export interface Integration {
   icon: string
   description: string
   category?: string
+  configId?: string
+  cardKey?: string
+  entryType?: 'ai_provider' | 'integration' | 'chat' | 'static' | 'mcp'
+  source?: string
   installed: boolean
   badge?: string
   catalog?: boolean

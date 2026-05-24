@@ -308,7 +308,7 @@
                 <button
                   type="button"
                   class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors duration-150"
-                  @click="showWebhookModal = true"
+                  @click="openNewWebhook"
                 >
                   <Icon name="ph:plus" class="w-3.5 h-3.5" />
                   Add webhook
@@ -337,7 +337,7 @@
                         </span>
                       </div>
                       <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-mono">
-                        POST /api/webhooks/{{ webhook.id }}
+                        POST {{ webhook.endpoint || `/api/webhooks/${webhook.id}` }}
                       </p>
                       <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
                         Last triggered: {{ webhook.lastTriggered || 'Never' }}
@@ -579,7 +579,7 @@
     />
 
     <!-- Webhook Modal -->
-    <Modal v-model:open="showWebhookModal" title="Add Webhook">
+    <Modal v-model:open="showWebhookModal" :title="webhookEditingId ? 'Edit Webhook' : 'Add Webhook'">
       <template #body>
         <div class="space-y-4">
           <div>
@@ -620,7 +620,7 @@
           <button
             type="button"
             class="px-3 py-1.5 text-sm rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-            @click="showWebhookModal = false"
+            @click="closeWebhookModal"
           >
             Cancel
           </button>
@@ -629,7 +629,7 @@
             class="px-3 py-1.5 text-sm font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100"
             @click="saveWebhook"
           >
-            Create Webhook
+            {{ webhookEditingId ? 'Save Webhook' : 'Create Webhook' }}
           </button>
         </div>
       </template>
@@ -678,7 +678,10 @@ interface Webhook {
   name: string
   enabled: boolean
   targetType: 'agent' | 'channel' | 'task'
-  targetId: string
+  targetId: string | null
+  endpoint?: string
+  url?: string
+  secret?: string | null
   lastTriggered?: string
   callCount?: number
 }
@@ -708,6 +711,7 @@ interface IntegrationCategory {
 
 // Webhook state
 const showWebhookModal = ref(false)
+const webhookEditingId = ref<string | null>(null)
 const webhookForm = reactive({
   name: '',
   targetType: 'agent' as 'agent' | 'channel' | 'task',
@@ -724,6 +728,7 @@ const showCodexConfigModal = ref(false)
 // Dynamic Config modal (for package-provided integrations and chat platforms)
 const showDynamicConfigModal = ref(false)
 const dynamicIntegrationId = ref('')
+const dynamicIntegrationCardId = ref('')
 const dynamicConfigSchema = ref<any[]>([])
 const dynamicIntegrationMeta = ref<any>({ name: '', description: '', icon: 'ph:gear' })
 
@@ -740,7 +745,7 @@ const configurableIntegrations = ref<Record<string, any>>({})
 
 // Load integration status from backend
 onMounted(async () => {
-  await Promise.all([loadCatalogThenStatus(), loadApiKeys()])
+  await Promise.all([loadCatalogThenStatus(), loadApiKeys(), loadWebhooks()])
 })
 
 const loadCatalogThenStatus = async () => {
@@ -781,12 +786,21 @@ const mcpIdentityFor = (integration: Integration): string | null => {
   return null
 }
 
+const integrationCardKey = (integration: Integration): string => {
+  return integration.cardKey || mcpIdentityFor(integration) || `${integration.entryType || 'integration'}:${integration.configId || integration.id}`
+}
+
+const integrationApiId = (integration: Integration | string): string => {
+  if (typeof integration === 'string') return integration.includes(':') ? integration.split(':').slice(1).join(':') : integration
+  return integration.configId || (integration.id.includes(':') ? integration.id.split(':').slice(1).join(':') : integration.id)
+}
+
 const dedupeIntegrations = <T extends Integration>(integrations: T[]): T[] => {
   const seen = new Set<string>()
   const deduped: T[] = []
 
   for (const integration of integrations) {
-    const identity = mcpIdentityFor(integration) || `integration:${integration.id}`
+    const identity = integrationCardKey(integration)
     if (seen.has(identity)) continue
     seen.add(identity)
     deduped.push(integration)
@@ -798,9 +812,10 @@ const dedupeIntegrations = <T extends Integration>(integrations: T[]): T[] => {
 const mergeIntegrationCard = (incoming: Integration) => {
   const category = categoryFor(incoming.category || 'data', incoming.icon)
   const incomingMcpIdentity = mcpIdentityFor(incoming)
+  const incomingKey = integrationCardKey(incoming)
   const existing = integrationCategories.value
     .flatMap(c => c.integrations)
-    .find(i => i.id === incoming.id || (incomingMcpIdentity && mcpIdentityFor(i) === incomingMcpIdentity))
+    .find(i => integrationCardKey(i) === incomingKey || (incomingMcpIdentity && mcpIdentityFor(i) === incomingMcpIdentity))
 
   if (existing) {
     Object.assign(existing, {
@@ -854,7 +869,11 @@ const loadIntegrationCatalog = async (options: { reset?: boolean; search?: strin
 
     for (const item of response.data.data || []) {
       mergeIntegrationCard({
-        id: item.id,
+        id: `integration:${item.slug || item.id}`,
+        configId: item.slug || item.id,
+        cardKey: `integration:${item.slug || item.id}`,
+        entryType: 'integration',
+        source: 'catalog',
         name: item.name,
         icon: item.icon || 'ph:puzzle-piece',
         description: item.description,
@@ -958,6 +977,10 @@ const loadIntegrationStatus = async () => {
 
         mergeIntegrationCard({
           id: integration.id,
+          configId: integration.configId || integration.id,
+          cardKey: integration.cardKey,
+          entryType: integration.entryType,
+          source: integration.source,
           name: integration.name,
           icon: integration.icon || 'ph:puzzle-piece',
           description: integration.description,
@@ -1029,27 +1052,7 @@ watch(activeCategory, (category) => {
   loadIntegrationCatalog({ reset: true, search: '', category })
 })
 
-// Mock data - Webhooks
-const webhooks = ref<Webhook[]>([
-  {
-    id: 'wh-1',
-    name: 'GitHub PR Notifications',
-    enabled: true,
-    targetType: 'agent',
-    targetId: 'agent-1',
-    lastTriggered: '2h ago',
-    callCount: 47,
-  },
-  {
-    id: 'wh-2',
-    name: 'Stripe Payment Events',
-    enabled: false,
-    targetType: 'channel',
-    targetId: 'channel-1',
-    lastTriggered: '3d ago',
-    callCount: 12,
-  },
-])
+const webhooks = ref<Webhook[]>([])
 
 // API Keys (loaded from backend)
 const apiKeys = ref<ApiKey[]>([])
@@ -1066,24 +1069,13 @@ const integrationCategories = ref<IntegrationCategory[]>([
     id: 'analytics',
     name: 'Analytics',
     icon: 'ph:chart-line-up',
-    integrations: [
-      { id: 'plausible', name: 'Plausible Analytics', icon: 'ph:chart-line-up', description: 'Privacy-friendly website analytics', installed: false, badge: 'verified' },
-      { id: 'google-analytics', name: 'Google Analytics', icon: 'ph:google-logo', description: 'Website traffic analytics', installed: false },
-    ],
+    integrations: [],
   },
   {
     id: 'chat-platforms',
     name: 'Chat Platforms',
     icon: 'ph:chat-dots',
-    integrations: [
-      { id: 'telegram', name: 'Telegram', icon: 'ph:telegram-logo', description: 'Telegram Bot for DMs, notifications, and approvals', installed: false, badge: 'verified' },
-      { id: 'slack', name: 'Slack', icon: 'ph:slack-logo', description: 'Connect your Slack workspace for team chat', installed: false },
-      { id: 'discord', name: 'Discord', icon: 'ph:discord-logo', description: 'Connect a Discord server', installed: false },
-      { id: 'teams', name: 'Microsoft Teams', icon: 'ph:microsoft-teams-logo', description: 'Connect a Teams channel', installed: false },
-      { id: 'google_chat', name: 'Google Chat', icon: 'ph:google-logo', description: 'Google Chat space integration', installed: false },
-      { id: 'github_chat', name: 'GitHub', icon: 'ph:github-logo', description: 'Chat via GitHub issue/PR comments', installed: false },
-      { id: 'linear_chat', name: 'Linear', icon: 'ph:line-segments', description: 'Chat via Linear issue comments', installed: false },
-    ],
+    integrations: [],
   },
   {
     id: 'developer',
@@ -1095,10 +1087,7 @@ const integrationCategories = ref<IntegrationCategory[]>([
     id: 'productivity',
     name: 'Productivity',
     icon: 'ph:briefcase',
-    integrations: [
-      { id: 'google-calendar', name: 'Google Calendar', icon: 'ph:calendar', description: 'Calendar sync', installed: false },
-      { id: 'google-drive', name: 'Google Drive', icon: 'ph:google-drive-logo', description: 'File storage and sharing', installed: false },
-    ],
+    integrations: [],
   },
   {
     id: 'data',
@@ -1282,30 +1271,70 @@ const showCatalogControls = computed(() => {
 })
 
 // Webhook handlers
-const editWebhook = (webhook: Webhook) => {
-  webhookForm.name = webhook.name
-  webhookForm.targetType = webhook.targetType
-  webhookForm.targetId = webhook.targetId
-  showWebhookModal.value = true
-}
-
-const deleteWebhook = (id: string) => {
-  webhooks.value = webhooks.value.filter(w => w.id !== id)
-}
-
-const saveWebhook = () => {
-  const newWebhook: Webhook = {
-    id: `wh-${Date.now()}`,
-    name: webhookForm.name,
-    enabled: true,
-    targetType: webhookForm.targetType,
-    targetId: webhookForm.targetId,
-  }
-  webhooks.value.push(newWebhook)
-  showWebhookModal.value = false
+const resetWebhookForm = () => {
+  webhookEditingId.value = null
   webhookForm.name = ''
   webhookForm.targetType = 'agent'
   webhookForm.targetId = ''
+}
+
+const openNewWebhook = () => {
+  resetWebhookForm()
+  showWebhookModal.value = true
+}
+
+const closeWebhookModal = () => {
+  showWebhookModal.value = false
+  resetWebhookForm()
+}
+
+const loadWebhooks = async () => {
+  try {
+    const { data } = await axios.get('/api/integration-webhooks')
+    webhooks.value = data.data || []
+  } catch (error) {
+    console.error('Failed to load webhooks:', error)
+  }
+}
+
+const editWebhook = (webhook: Webhook) => {
+  webhookEditingId.value = webhook.id
+  webhookForm.name = webhook.name
+  webhookForm.targetType = webhook.targetType
+  webhookForm.targetId = webhook.targetId || ''
+  showWebhookModal.value = true
+}
+
+const deleteWebhook = async (id: string) => {
+  try {
+    await axios.delete(`/api/integration-webhooks/${id}`)
+    webhooks.value = webhooks.value.filter(w => w.id !== id)
+  } catch (error) {
+    console.error('Failed to delete webhook:', error)
+  }
+}
+
+const saveWebhook = async () => {
+  try {
+    const payload = {
+      name: webhookForm.name,
+      enabled: true,
+      targetType: webhookForm.targetType,
+      targetId: webhookForm.targetId || null,
+    }
+    if (webhookEditingId.value) {
+      const { data } = await axios.patch(`/api/integration-webhooks/${webhookEditingId.value}`, payload)
+      const index = webhooks.value.findIndex(w => w.id === webhookEditingId.value)
+      if (index >= 0) webhooks.value[index] = data.webhook
+    } else {
+      const { data } = await axios.post('/api/integration-webhooks', payload)
+      webhooks.value.push(data.webhook)
+    }
+
+    closeWebhookModal()
+  } catch (error) {
+    console.error('Failed to save webhook:', error)
+  }
 }
 
 // API Key handlers
@@ -1326,9 +1355,10 @@ const revokeApiKey = async (id: string) => {
 // Open the dynamic config modal for a configurable integration.
 // Fetch by id so catalog cards do not depend on the large /api/integrations cache.
 const openDynamicModal = async (integrationOrId: Integration | string) => {
-  const integrationId = typeof integrationOrId === 'string' ? integrationOrId : integrationOrId.id
+  const integrationId = integrationApiId(integrationOrId)
+  const cardId = typeof integrationOrId === 'string' ? integrationOrId : integrationOrId.id
   const fallback = typeof integrationOrId === 'string'
-    ? configurableIntegrations.value[integrationId]
+    ? configurableIntegrations.value[integrationOrId] || configurableIntegrations.value[`integration:${integrationId}`] || configurableIntegrations.value[`chat:${integrationId}`]
     : integrationOrId
 
   try {
@@ -1337,14 +1367,16 @@ const openDynamicModal = async (integrationOrId: Integration | string) => {
     const merged = {
       ...fallback,
       ...data,
-      id: integrationId,
+      id: cardId,
+      configId: integrationId,
       configSchema: schema,
       docsUrl: data.docsUrl || fallback?.docsUrl,
       icon: data.icon || fallback?.icon || 'ph:gear',
     }
 
-    configurableIntegrations.value[integrationId] = merged
+    configurableIntegrations.value[cardId] = merged
     dynamicIntegrationId.value = integrationId
+    dynamicIntegrationCardId.value = cardId
     dynamicConfigSchema.value = schema
     dynamicIntegrationMeta.value = {
       name: merged.name || fallback?.name || integrationId,
@@ -1417,15 +1449,15 @@ const handleInstall = async (integration: Integration) => {
     return
   }
 
-  // AI providers with API key config (category driven from backend)
-  if (integration.category === 'ai-models' && integration.id !== 'codex') {
-    activeProviderId.value = integration.id
-    showProviderConfigModal.value = true
+  if (integration.configId === 'codex' || integration.id === 'codex' || integration.id === 'ai_provider:codex') {
+    showCodexConfigModal.value = true
     return
   }
 
-  if (integration.id === 'codex') {
-    showCodexConfigModal.value = true
+  // AI providers with API key config (category driven from backend)
+  if (integration.category === 'ai-models') {
+    activeProviderId.value = integrationApiId(integration)
+    showProviderConfigModal.value = true
     return
   }
 
@@ -1437,7 +1469,7 @@ const handleInstall = async (integration: Integration) => {
 
   // Non-configurable integration — toggle via API
   try {
-    await axios.post(`/api/integrations/${integration.id}/toggle`, { enabled: true })
+    await axios.post(`/api/integrations/${integrationApiId(integration)}/toggle`, { enabled: true })
     for (const category of integrationCategories.value) {
       const found = category.integrations.find(i => i.id === integration.id)
       if (found) {
@@ -1452,7 +1484,7 @@ const handleInstall = async (integration: Integration) => {
 
 const handleProviderSaved = (result: { enabled: boolean; configured: boolean }) => {
   for (const category of integrationCategories.value) {
-    const found = category.integrations.find(i => i.id === activeProviderId.value)
+    const found = category.integrations.find(i => integrationApiId(i) === activeProviderId.value && i.category === 'ai-models')
     if (found) {
       found.installed = result.enabled
       found.enabled = result.enabled
@@ -1464,7 +1496,7 @@ const handleProviderSaved = (result: { enabled: boolean; configured: boolean }) 
 
 const handleCodexSaved = (result: { enabled: boolean; configured: boolean }) => {
   for (const category of integrationCategories.value) {
-    const found = category.integrations.find(i => i.id === 'codex')
+    const found = category.integrations.find(i => integrationApiId(i) === 'codex')
     if (found) {
       found.installed = result.enabled
       break
@@ -1476,18 +1508,18 @@ const handleConfigure = async (integration: Integration) => {
   if (integration.type === 'mcp' && integration.mcpServerId) {
     activeMcpServerId.value = integration.mcpServerId
     showMcpConfigModal.value = true
-  } else if (integration.category === 'ai-models' && integration.id !== 'codex') {
-    activeProviderId.value = integration.id
-    showProviderConfigModal.value = true
-  } else if (integration.id === 'codex') {
+  } else if (integration.configId === 'codex' || integration.id === 'codex' || integration.id === 'ai_provider:codex') {
     showCodexConfigModal.value = true
+  } else if (integration.category === 'ai-models') {
+    activeProviderId.value = integrationApiId(integration)
+    showProviderConfigModal.value = true
   } else if (integration.configurable || configurableIntegrations.value[integration.id]) {
     await openDynamicModal(integration)
   }
 }
 
 const handleDynamicSaved = (result: { enabled: boolean; configured: boolean }) => {
-  const id = dynamicIntegrationId.value
+  const id = dynamicIntegrationCardId.value
   for (const category of integrationCategories.value) {
     const found = category.integrations.find(i => i.id === id)
     if (found) {
@@ -1518,7 +1550,7 @@ const handleUninstall = async (integration: Integration) => {
 
   // Disable via toggle API, then update local state
   try {
-    await axios.post(`/api/integrations/${integration.id}/toggle`, { enabled: false })
+    await axios.post(`/api/integrations/${integrationApiId(integration)}/toggle`, { enabled: false })
   } catch (error) {
     console.error(`Failed to uninstall ${integration.id}:`, error)
   }

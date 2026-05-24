@@ -29,6 +29,8 @@ use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\IntegrationCatalogController;
 use App\Http\Controllers\Api\IntegrationController;
+use App\Http\Controllers\Api\IntegrationWebhookController;
+use App\Http\Controllers\Api\IncomingIntegrationWebhookController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\ListItemCommentController;
 use App\Http\Controllers\Api\ListItemController;
@@ -56,6 +58,7 @@ use Illuminate\Support\Facades\Route;
 // ─── Webhooks (external, no auth, no workspace) ───────────────────
 Route::post('/webhooks/chat/{adapter}', ChatWebhookController::class);
 Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']); // Legacy, kept during migration
+Route::post('/webhooks/{webhook}', IncomingIntegrationWebhookController::class);
 
 // OpenCompany AI Gateway (external, workspace resolved from bearer API key)
 Route::prefix('/ai-gateway/v1')->middleware(AuthenticateAiGateway::class)->group(function () {
@@ -359,6 +362,17 @@ Route::middleware('resolve.workspace')->group(function () {
         Route::get('/settings/debug', [SettingController::class, 'debug']);
 
         // Integration config (admin-only)
+        Route::get('/ai/providers/{id}/config', [IntegrationController::class, 'showAiProviderConfig']);
+        Route::put('/ai/providers/{id}/config', [IntegrationController::class, 'updateAiProviderConfig']);
+        Route::post('/ai/providers/{id}/test', [IntegrationController::class, 'testAiProviderConnection']);
+        Route::post('/ai/providers/{id}/fetch-models', [IntegrationController::class, 'fetchModels']);
+        Route::get('/integrations/external-identities', [IntegrationController::class, 'externalIdentities']);
+        Route::post('/integrations/link-user', [IntegrationController::class, 'linkExternalUser']);
+        Route::delete('/integrations/link-user/{identityId}', [IntegrationController::class, 'unlinkExternalUser']);
+        Route::get('/integration-webhooks', [IntegrationWebhookController::class, 'index']);
+        Route::post('/integration-webhooks', [IntegrationWebhookController::class, 'store']);
+        Route::patch('/integration-webhooks/{id}', [IntegrationWebhookController::class, 'update']);
+        Route::delete('/integration-webhooks/{id}', [IntegrationWebhookController::class, 'destroy']);
         Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConfig']);
         Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
         Route::post('/integrations/{id}/toggle', [IntegrationController::class, 'toggle']);
@@ -371,9 +385,6 @@ Route::middleware('resolve.workspace')->group(function () {
         Route::put('/integrations/{id}/accounts/{alias}', [IntegrationController::class, 'updateAccount']);
         Route::delete('/integrations/{id}/accounts/{alias}', [IntegrationController::class, 'deleteAccount']);
         Route::post('/integrations/{id}/accounts/{alias}/default', [IntegrationController::class, 'setDefaultAccount']);
-        Route::get('/integrations/external-identities', [IntegrationController::class, 'externalIdentities']);
-        Route::post('/integrations/link-user', [IntegrationController::class, 'linkExternalUser']);
-        Route::delete('/integrations/link-user/{identityId}', [IntegrationController::class, 'unlinkExternalUser']);
 
         // Ollama (admin-only)
         Route::get('/integrations/ollama/status', [IntegrationController::class, 'ollamaModelStatus']);

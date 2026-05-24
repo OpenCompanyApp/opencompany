@@ -236,7 +236,7 @@ const loadConfig = async () => {
   enabled.value = false
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`)
+    const response = await apiFetch(`/api/ai/providers/${props.integrationId}/config`)
     if (response.ok) {
       const data = await response.json()
 
@@ -270,7 +270,7 @@ const refreshModels = async () => {
   fetchResult.value = null
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/fetch-models`, {
+    const response = await apiFetch(`/api/ai/providers/${props.integrationId}/fetch-models`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     })
@@ -297,7 +297,7 @@ const testConnection = async () => {
   testResult.value = null
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/test`, {
+    const response = await apiFetch(`/api/ai/providers/${props.integrationId}/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -334,7 +334,7 @@ const handleSave = async () => {
   isSaving.value = true
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
+    const response = await apiFetch(`/api/ai/providers/${props.integrationId}/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

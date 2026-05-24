@@ -81,7 +81,9 @@ class ChatWebhookController
     }
 
     /**
-     * Slack sends team_id in the JSON body or form-encoded payload.
+     * Slack workspace binding requires both the declared team_id and a valid
+     * request signature. A team_id alone is tenant-controlled request content
+     * and must never decide the OpenCompany workspace by itself.
      */
     private function resolveFromSlackSignature(Request $request): ?Workspace
     {
@@ -105,13 +107,15 @@ class ChatWebhookController
         $setting = IntegrationSetting::where('integration_id', 'slack')
             ->where('enabled', true)
             ->get()
-            ->first(fn ($s) => $s->getConfigValue('team_id') === $teamId);
+            ->first(fn ($s) => $s->getConfigValue('team_id') === $teamId && $this->validSlackSignature($request, $s));
 
         return $setting ? Workspace::find($setting->workspace_id) : null;
     }
 
     /**
-     * Discord identifies by application_id in the payload.
+     * Discord payloads must match the configured application_id and carry a
+     * provider proof. Native interactions use Ed25519 request signatures; relay
+     * events may instead use the configured gateway/webhook secret header.
      */
     private function resolveFromDiscordAppId(Request $request): ?Workspace
     {
@@ -125,7 +129,7 @@ class ChatWebhookController
         $setting = IntegrationSetting::where('integration_id', 'discord')
             ->where('enabled', true)
             ->get()
-            ->first(fn ($s) => $s->getConfigValue('application_id') === $applicationId);
+            ->first(fn ($s) => $s->getConfigValue('application_id') === $applicationId && $this->validDiscordProof($request, $s));
 
         return $setting ? Workspace::find($setting->workspace_id) : null;
     }
@@ -145,7 +149,7 @@ class ChatWebhookController
         $setting = IntegrationSetting::where('integration_id', 'teams')
             ->where('enabled', true)
             ->get()
-            ->first(fn ($s) => $s->getConfigValue('app_id') === $recipientId);
+            ->first(fn ($s) => $s->getConfigValue('app_id') === $recipientId && $this->validSecretHeader($request, $s, ['webhook_secret', 'app_password']));
 
         return $setting ? Workspace::find($setting->workspace_id) : null;
     }
@@ -170,5 +174,76 @@ class ChatWebhookController
             ->first(fn ($s) => $s->getConfigValue('webhook_secret') === $secret);
 
         return $setting ? Workspace::find($setting->workspace_id) : null;
+    }
+
+    private function validSlackSignature(Request $request, IntegrationSetting $setting): bool
+    {
+        $secret = $setting->getConfigValue('signing_secret');
+        $timestamp = $request->header('X-Slack-Request-Timestamp');
+        $signature = $request->header('X-Slack-Signature');
+
+        if (! is_string($secret) || $secret === '' || ! is_string($timestamp) || ! is_string($signature)) {
+            return false;
+        }
+
+        if (abs(time() - (int) $timestamp) > 300) {
+            return false;
+        }
+
+        $base = 'v0:'.$timestamp.':'.$request->getContent();
+        $expected = 'v0='.hash_hmac('sha256', $base, $secret);
+
+        return hash_equals($expected, $signature);
+    }
+
+    private function validDiscordProof(Request $request, IntegrationSetting $setting): bool
+    {
+        if ($this->validSecretHeader($request, $setting, ['gateway_secret', 'webhook_secret'])) {
+            return true;
+        }
+
+        $publicKey = $setting->getConfigValue('public_key');
+        $signature = $request->header('X-Signature-Ed25519');
+        $timestamp = $request->header('X-Signature-Timestamp');
+
+        if (! function_exists('sodium_crypto_sign_verify_detached')
+            || ! is_string($publicKey)
+            || ! is_string($signature)
+            || ! is_string($timestamp)
+        ) {
+            return false;
+        }
+
+        $publicKeyBytes = @hex2bin($publicKey);
+        $signatureBytes = @hex2bin($signature);
+        if ($publicKeyBytes === false || $signatureBytes === false) {
+            return false;
+        }
+
+        return sodium_crypto_sign_verify_detached(
+            $signatureBytes,
+            $timestamp.$request->getContent(),
+            $publicKeyBytes,
+        );
+    }
+
+    /**
+     * @param  list<string>  $configKeys
+     */
+    private function validSecretHeader(Request $request, IntegrationSetting $setting, array $configKeys): bool
+    {
+        $secret = $request->header('X-Webhook-Secret') ?? $request->query('secret');
+        if (! is_string($secret) || $secret === '') {
+            return false;
+        }
+
+        foreach ($configKeys as $key) {
+            $candidate = $setting->getConfigValue($key);
+            if (is_string($candidate) && $candidate !== '' && hash_equals($candidate, $secret)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -8,6 +8,8 @@ use App\Models\IntegrationSetting;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\UserExternalIdentity;
+use App\Services\Integrations\IntegrationAccountResolver;
+use App\Services\Integrations\IntegrationIdentity;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -26,6 +28,8 @@ class ManageIntegrationSettings
      */
     public function toggle(string $integrationId, bool $enabled): IntegrationSetting
     {
+        $integrationId = IntegrationIdentity::rawId($integrationId);
+
         $setting = IntegrationSetting::forWorkspace()
             ->where('integration_id', $integrationId)
             ->where('account_alias', '')
@@ -53,6 +57,8 @@ class ManageIntegrationSettings
      */
     public function listAccounts(string $integrationId): Collection
     {
+        $integrationId = IntegrationIdentity::rawId($integrationId);
+
         return IntegrationSetting::forWorkspace()
             ->where('integration_id', $integrationId)
             ->orderByDesc('is_default')
@@ -71,6 +77,9 @@ class ManageIntegrationSettings
      */
     public function createAccount(string $integrationId, string $alias, array $config = []): IntegrationSetting
     {
+        $integrationId = IntegrationIdentity::rawId($integrationId);
+        $alias = app(IntegrationAccountResolver::class)->normalizeAlias($alias);
+
         $hasOthers = IntegrationSetting::forWorkspace()
             ->where('integration_id', $integrationId)
             ->exists();
@@ -91,6 +100,8 @@ class ManageIntegrationSettings
      */
     public function updateAccountConfig(string $integrationId, string $alias, array $config): bool
     {
+        $integrationId = IntegrationIdentity::rawId($integrationId);
+        $alias = app(IntegrationAccountResolver::class)->normalizeAlias($alias);
         $setting = $this->findAccount($integrationId, $alias);
 
         if (! $setting) {
@@ -114,9 +125,11 @@ class ManageIntegrationSettings
 
     public function deleteAccount(string $integrationId, string $alias): ?bool
     {
+        $integrationId = IntegrationIdentity::rawId($integrationId);
         if ($alias === '') {
             return null;
         }
+        $alias = app(IntegrationAccountResolver::class)->normalizeAlias($alias);
 
         $setting = $this->findAccount($integrationId, $alias);
         if (! $setting) {
@@ -144,6 +157,8 @@ class ManageIntegrationSettings
 
     public function setDefaultAccount(string $integrationId, string $alias): bool
     {
+        $integrationId = IntegrationIdentity::rawId($integrationId);
+        $alias = app(IntegrationAccountResolver::class)->normalizeAlias($alias);
         $setting = $this->findAccount($integrationId, $alias);
 
         if (! $setting) {

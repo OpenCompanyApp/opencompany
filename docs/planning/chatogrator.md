@@ -773,7 +773,11 @@ POST /webhooks/chat/{adapter}  →  ChatWebhookController@handle
 In OpenCompany this package route is not the public workspace-aware route.
 OpenCompany exposes `POST /api/webhooks/chat/{adapter}` through its own
 `ChatWebhookController`, resolves the workspace from adapter-specific payload
-or secret data, binds `currentWorkspace`, and then calls Chatogrator.
+plus provider proof where available, binds `currentWorkspace`, and then calls
+Chatogrator. Current proof handling includes Telegram's secret token, Slack's
+signed request, Discord Ed25519 or gateway/webhook secret, Teams secret/password,
+and a generic `X-Webhook-Secret`/`secret` fallback for adapters without a
+first-class verifier yet.
 
 Config (`chatogrator.php`):
 

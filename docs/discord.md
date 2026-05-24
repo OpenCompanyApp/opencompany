@@ -5,8 +5,11 @@ bespoke Discord sidecar/service/listener/controller described below. Discord now
 flows through the generic Chatogrator path where configured:
 `ChatAdapterFactory` maps `discord` integration settings to `DiscordAdapter`,
 `ChatWebhookController` exposes `/api/webhooks/chat/{adapter}`, and `SyncToChat`
-handles outbound message/edit/delete/pin/reaction sync through adapters. Treat
-the sidecar-specific sections below as design context only, not current files.
+handles outbound message/edit/delete/pin/reaction sync through adapters. The
+current webhook resolver requires either a valid Discord Ed25519 interaction
+signature or the configured gateway/webhook secret before binding the workspace.
+Treat the sidecar-specific sections below as design context only, not current
+files.
 
 Bidirectional message bridge between Discord and OpenCompany. Agents can respond to Discord users, forward messages, and handle approval workflows with interactive buttons.
 

@@ -5,6 +5,7 @@ namespace App\Services\Integrations;
 use App\Models\IntegrationSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use OpenCompany\IntegrationCore\Contracts\HasIntegrationCapabilities;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
@@ -32,11 +33,44 @@ class IntegrationAccountResolver
             return null;
         }
 
-        return trim((string) $account);
+        return $this->normalizeAlias((string) $account, allowDefault: true);
+    }
+
+    /**
+     * Normalize and validate an integration account alias.
+     *
+     * The database has a 32-character account_alias column and all UI/runtime
+     * selectors assume lowercase token-like aliases. Enforcing that contract
+     * here keeps direct config updates, OAuth callbacks, and explicit account
+     * management routes from drifting apart.
+     */
+    public function normalizeAlias(?string $alias, bool $allowDefault = false): ?string
+    {
+        $alias = trim((string) $alias);
+        if ($alias === '') {
+            if ($allowDefault) {
+                return null;
+            }
+
+            throw ValidationException::withMessages([
+                'alias' => 'The account alias field is required.',
+            ]);
+        }
+
+        if (strlen($alias) > 32 || ! preg_match('/^[a-z0-9_]+$/', $alias)) {
+            throw ValidationException::withMessages([
+                'alias' => 'Account aliases may only contain lowercase letters, numbers, and underscores, and must be 32 characters or fewer.',
+            ]);
+        }
+
+        return $alias;
     }
 
     public function findSetting(string $id, ?string $account = null): ?IntegrationSetting
     {
+        $id = IntegrationIdentity::rawId($id);
+        $account = $account === null ? null : $this->normalizeAlias($account, allowDefault: true);
+
         return IntegrationSetting::forWorkspace()
             ->where('integration_id', $id)
             ->forAccount($account)
@@ -45,6 +79,8 @@ class IntegrationAccountResolver
 
     public function findOrNewSetting(string $id, ?string $account = null): IntegrationSetting
     {
+        $id = IntegrationIdentity::rawId($id);
+        $account = $account === null ? null : $this->normalizeAlias($account, allowDefault: true);
         $setting = $this->findSetting($id, $account);
         if ($setting) {
             return $setting;

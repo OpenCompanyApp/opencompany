@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\Integrations\ConfigSchemaNormalizer;
+use App\Services\Integrations\IntegrationIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
@@ -91,6 +92,40 @@ class IntegrationCatalogControllerTest extends TestCase
             ->assertJsonPath('configSchema.2.key', 'site')
             ->assertJsonPath('configSchema.2.options.us', 'US (datadoghq.com)')
             ->assertJsonPath('configSchema.2.options.eu', 'EU (datadoghq.eu)');
+    }
+
+    public function test_integration_directory_uses_unique_card_identities_for_colliding_providers(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->getJson('/api/integrations');
+
+        $response->assertOk();
+        $entries = collect($response->json());
+        $ids = $entries->pluck('id')->all();
+
+        $this->assertCount(count(array_unique($ids)), $ids);
+        $this->assertNotNull($entries->firstWhere('id', IntegrationIdentity::forAiProvider('openai')));
+        $this->assertNotNull($entries->firstWhere('id', IntegrationIdentity::forPackage('openai')));
+        $this->assertNotNull($entries->firstWhere('id', IntegrationIdentity::forChat('slack')));
+        $this->assertNotNull($entries->firstWhere('id', IntegrationIdentity::forPackage('slack')));
+    }
+
+    public function test_ai_provider_config_endpoint_does_not_return_same_slug_package_schema(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->getJson('/api/ai/providers/openai/config')
+            ->assertOk()
+            ->assertJsonPath('category', null)
+            ->assertJsonPath('defaultUrl', 'https://api.openai.com/v1')
+            ->assertJsonPath('config.apiKey', null);
+
+        $this->actingAs($user)
+            ->getJson('/api/integrations/openai/config')
+            ->assertOk()
+            ->assertJsonPath('configSchema.0.key', 'api_key');
     }
 
     public function test_all_configurable_provider_schemas_normalize_to_supported_modal_fields(): void

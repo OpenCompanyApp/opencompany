@@ -31,6 +31,7 @@ class IntegrationConnectionTester
 
     public function test(Request $request, string $id): IntegrationConnectionTestResult
     {
+        $id = IntegrationIdentity::rawId($id);
         $provider = $this->configResolver->findConfigurableProvider($id);
         if ($provider) {
             $config = $request->all();
@@ -84,6 +85,27 @@ class IntegrationConnectionTester
         if (! $apiKey || str_contains((string) $apiKey, '*')) {
             // Preserve the same masked-secret behavior for older static entries
             // until every provider has moved behind package metadata.
+            $setting = $this->accounts->findSetting($id, $this->accounts->accountFromRequest($request));
+            $apiKey = $setting?->getConfigValue('api_key');
+        }
+
+        $format = $available[$id]['api_format'] ?? null;
+        $url = $request->input('url') ?: ($available[$id]['default_url'] ?? '');
+        $model = $request->input('defaultModel') ?: array_key_first($available[$id]['models'] ?? []);
+
+        return $this->models->test($id, $apiKey, $url, $model, $format);
+    }
+
+    public function testAiProvider(Request $request, string $id): IntegrationConnectionTestResult
+    {
+        $id = IntegrationIdentity::rawId($id);
+        $available = IntegrationSetting::getAvailableIntegrations();
+        if (! isset($available[$id]) || ($available[$id]['category'] ?? null) !== 'ai-models') {
+            return new IntegrationConnectionTestResult(false, error: 'AI provider not found', status: 404);
+        }
+
+        $apiKey = $request->input('apiKey');
+        if (! $apiKey || str_contains((string) $apiKey, '*')) {
             $setting = $this->accounts->findSetting($id, $this->accounts->accountFromRequest($request));
             $apiKey = $setting?->getConfigValue('api_key');
         }

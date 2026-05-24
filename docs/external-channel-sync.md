@@ -15,7 +15,7 @@ Making agents full community participants — not just chatbots.
 - `app/Events/MessageEdited.php`, `MessageDeleted.php`, `MessagePinned.php`, `MessageReactionAdded.php` — Sync events
 - `app/Listeners/SyncToChat.php` — Consolidated outbound listener for send, edit, delete, pin, and reaction sync through chat adapters
 - `app/Services/Chat/ChatAdapterFactory.php` — Maps `IntegrationSetting` rows to Telegram, Slack, Discord, Teams, Google Chat, GitHub, and Linear Chatogrator adapters
-- `app/Http/Controllers/Api/ChatWebhookController.php` — Generic `/api/webhooks/chat/{adapter}` webhook entrypoint with workspace resolution
+- `app/Http/Controllers/Api/ChatWebhookController.php` — Generic `/api/webhooks/chat/{adapter}` webhook entrypoint with proof-backed workspace resolution
 - `app/Services/TelegramService.php` — Legacy/direct Telegram helpers still used by Telegram-specific commands and flows
 - `app/Agents/Tools/Chat/EditMessage.php`, `DeleteMessage.php`, `PinMessage.php`, `AddMessageReaction.php`, `RemoveMessageReaction.php` — Agent tools for message mutations
 - `app/Agents/Tools/Chat/SearchMessages.php` — Full-text message search tool
@@ -24,9 +24,10 @@ Making agents full community participants — not just chatbots.
 
 **What's left:** provider-by-provider hardening. Telegram has the most complete
 app-specific path. Slack, Discord, Teams, Google Chat, GitHub, and Linear have
-Chatogrator adapter and webhook-resolution plumbing, but each provider still
-needs verification for inbound events, outbound action parity, channel discovery,
-signature/auth handling, and UI setup before broad marketing claims.
+Chatogrator adapter and proof-backed webhook-resolution plumbing, but each
+provider still needs verification for inbound events, outbound action parity,
+channel discovery, provider-specific signature/auth handling, and UI setup
+before broad marketing claims.
 
 ---
 
@@ -79,7 +80,7 @@ For each provider beyond Telegram, verify the adapter and app integration end to
 
 | Area | What to prove |
 |------|---------------|
-| Webhook resolution | `ChatWebhookController` can authenticate and bind the correct workspace |
+| Webhook resolution | `ChatWebhookController` can authenticate provider proof and bind the correct workspace. Current code uses Telegram's secret token, Slack's signed request, Discord Ed25519 or gateway/webhook secret, Teams secret/password, and generic `X-Webhook-Secret`/`secret` fallback where provider-specific verification is not yet first-class. |
 | Inbound events | Chatogrator adapter converts provider payloads into workspace messages/actions |
 | Outbound actions | `SyncToChat` can send, edit, delete, pin, and react where the provider supports it |
 | Channel discovery | Agent tools can list/join/leave provider channels where the provider API allows it |

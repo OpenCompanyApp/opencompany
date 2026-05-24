@@ -8,7 +8,7 @@ Status: In progress. This audit records code-backed documentation alignment work
 The current pass checked the tracked and confidential Markdown inventory against high-risk code surfaces:
 
 - Markdown inventory after this pass: 154 files across tracked docs plus `docs/confidential`.
-- Route inventory: 348 Laravel routes from `php artisan route:list --json`.
+- Route inventory: 357 Laravel routes from `php artisan route:list --json`.
 - UI page inventory: 23 `docs/ui/pages/*.md` files covering routed page groups and legacy redirect surfaces.
 - `AGENTS.md` and `CLAUDE.md` remain byte-identical.
 
@@ -35,10 +35,18 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Updated [../planning/vector-optional.md](../planning/vector-optional.md) so the optional-embeddings plan explicitly states the current write path still requires embeddings and reorders follow-up work from the now-implemented memory refactor baseline.
 - Updated [../planning/codex-subscription-auth.md](../planning/codex-subscription-auth.md) so OpenCompany's current Codex implementation is described as app-local device auth plus `CodexTextGateway`, with only the generated provider catalog treated as the current model list.
 - Updated integration package reference docs under [../ecosystem/integrations](../ecosystem/integrations/) against the current `ToolProviderRegistry` counts, including CoinGecko, ExchangeRate, Google, and World Bank.
+- Clarified the [../ecosystem/integrations/README.md](../ecosystem/integrations/README.md) package table as the curated local docs set, not the full installed `integration-bundle`/generated catalog surface.
 - Updated confidential strategy/website drafts so OpenCompany's community posture is source-available under BSL 1.1 + Additional Use Grant, not MIT or generic open source.
 - Updated [interagent-comms.md](interagent-comms.md) so the implemented `ContactAgent` ask path is documented as an async `agent_ask` task/callback rather than the older synchronous inline ask/timeout/depth-counter design.
 - Added explicit research/status guards to [openclaw-patterns.md](openclaw-patterns.md) and [openclaw-reference.md](openclaw-reference.md) so OpenClaw material is not confused with current OpenCompany behavior.
 - Updated [../ui/pages/tasks.md](../ui/pages/tasks.md) to cover `Tasks/Analytics.vue`, `/w/{workspace}/tasks/analytics`, and `GET /api/tasks/analytics/tokens`, and to describe `agent_ask` as async.
+- Updated [../ui/pages/agent-detail.md](../ui/pages/agent-detail.md) so the inter-agent communication section matches the implemented async `contact_agent`/`agent_ask` callback flow.
+- Updated [../documentation.md](../documentation.md) so the docs-site blueprint no longer marks Lua scripting as a future feature and describes current agent orchestration rather than ephemeral spawning.
+- Updated [pest-browser-testing-implementation-plan-2026-05-10.md](pest-browser-testing-implementation-plan-2026-05-10.md) so the Pest migration note reflects the current PHP `^8.4` requirement and Pest v4 dependency state.
+- Updated [../ui/pages/integrations.md](../ui/pages/integrations.md) for prefixed integration card IDs, the split AI-provider config endpoints, and the new generic webhook backend while noting the Vue webhook list still uses local state.
+- Updated [../planning/integrations.md](../planning/integrations.md) so generic webhooks are described as persisted receipt/diagnostic endpoints, not as fully routed agent/channel/task delivery.
+- Updated [../external-channel-sync.md](../external-channel-sync.md), [../planning/chatogrator.md](../planning/chatogrator.md), and [../discord.md](../discord.md) so chat webhook workspace resolution is described as proof-backed rather than payload-only.
+- Updated confidential OpenAI Frontier competitive notes so OpenCompany is described as source-available/self-hostable under BSL 1.1 + Additional Use Grant, not fully open source.
 - Updated [../INDEX.md](../INDEX.md) so the new UI page docs are discoverable.
 
 ## Mechanical Checks
