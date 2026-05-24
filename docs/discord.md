@@ -1,6 +1,12 @@
 # Discord Integration
 
-Status: Proposal / not implemented in the current codebase. The current app has Telegram runtime code, but no tracked Discord service, sidecar, webhook controller, config modal, listener, or approval job yet.
+Status: Historical sidecar proposal. The current codebase no longer has the
+bespoke Discord sidecar/service/listener/controller described below. Discord now
+flows through the generic Chatogrator path where configured:
+`ChatAdapterFactory` maps `discord` integration settings to `DiscordAdapter`,
+`ChatWebhookController` exposes `/api/webhooks/chat/{adapter}`, and `SyncToChat`
+handles outbound message/edit/delete/pin/reaction sync through adapters. Treat
+the sidecar-specific sections below as design context only, not current files.
 
 Bidirectional message bridge between Discord and OpenCompany. Agents can respond to Discord users, forward messages, and handle approval workflows with interactive buttons.
 
@@ -141,8 +147,11 @@ This means:
 
 ### When the sidecar is stopped
 
+This section describes the historical sidecar proposal, not current Chatogrator
+behavior.
+
 - **Inbound messages are not received** — no Gateway connection means no events from Discord.
-- **Outbound messages still work** — `DiscordService` uses Discord's REST API directly, independent of the sidecar.
+- **Outbound messages still work in the proposal** — the proposed `DiscordService` would use Discord's REST API directly, independent of the sidecar.
 - **Approval button clicks are not processed** — button interactions come via the Gateway.
 - **No data loss** — Discord does not queue Gateway events. After the sidecar restarts, new events are received normally.
 
@@ -369,6 +378,11 @@ Shadow users appear in the UI with the user's Discord display name. They can be 
 ---
 
 ## Implementation Reference
+
+Historical proposal only. These are not current tracked implementation files.
+For the current app path, start with `app/Services/Chat/ChatAdapterFactory.php`,
+`app/Http/Controllers/Api/ChatWebhookController.php`, and
+`app/Listeners/SyncToChat.php`.
 
 ### New files
 

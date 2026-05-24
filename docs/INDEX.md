@@ -22,6 +22,7 @@
 | [maintainability-refactor-audit-2026-05-19.md](architecture/maintainability-refactor-audit-2026-05-19.md) | Fresh maintainability audit with prioritized refactor opportunities and the calendar domain extraction completed during the audit | Planning the next backend cleanup pass |
 | [ai-provider-runtime-architecture.md](architecture/ai-provider-runtime-architecture.md) | Current provider/model catalog, Laravel AI runtime registration, prompt-cache, and LLM usage/cost ledger architecture | Working on AI providers, model metadata, cost analytics, or OpenRouter billing |
 | [runtime-alignment-implementation-audit.md](architecture/runtime-alignment-implementation-audit.md) | Post-implementation audit — findings now tracked as Plane issues (OC-1 through OC-6) | Reviewing audit results and fix status |
+| [docs-code-alignment-audit-2026-05-24.md](architecture/docs-code-alignment-audit-2026-05-24.md) | In-progress docs/code alignment audit evidence and remaining work | Continuing the all-docs cross-check |
 | [integrations-catalog-branch-audit-2026-05-10.md](architecture/integrations-catalog-branch-audit-2026-05-10.md) | Branch audit of integrations catalog, multi-account OAuth, UI wiring, and validation gaps | Reviewing current integration work before fixing or shipping |
 | [pest-browser-testing-implementation-plan-2026-05-10.md](architecture/pest-browser-testing-implementation-plan-2026-05-10.md) | Pest Browser/Playwright migration plan. The current tree has both Dusk browser tests and new Pest browser specs. | Reviewing or continuing browser-test migration |
 | [documentation.md](documentation.md) | Product documentation outline and information architecture | Updating user-facing docs or navigation |
@@ -109,9 +110,12 @@
 | [pages/calendar.md](ui/pages/calendar.md) | Calendar page specification | Working on calendar UI |
 | [pages/chat.md](ui/pages/chat.md) | Chat page specification | Working on chat UI |
 | [pages/dashboard.md](ui/pages/dashboard.md) | Dashboard page specification | Working on dashboard UI |
+| [pages/developer.md](ui/pages/developer.md) | Developer tool catalog and Lua console specification | Working on developer tool reference or script execution UI |
 | [pages/docs.md](ui/pages/docs.md) | Docs page specification | Working on document viewer UI |
+| [pages/files.md](ui/pages/files.md) | Files page specification | Working on workspace file manager UI |
 | [pages/integrations.md](ui/pages/integrations.md) | Integrations page specification | Working on integration UI |
 | [pages/lists.md](ui/pages/lists.md) | Lists page specification | Working on list/board UI |
+| [pages/messages.md](ui/pages/messages.md) | Direct-message redirect and legacy component notes | Working on DM links or Chat redirect compatibility |
 | [pages/org.md](ui/pages/org.md) | Organization page specification | Working on organization settings |
 | [pages/profile.md](ui/pages/profile.md) | Profile page specification | Working on user profile UI |
 | [pages/settings.md](ui/pages/settings.md) | Settings page specification | Working on workspace settings |
@@ -119,6 +123,7 @@
 | [pages/tables-detail.md](ui/pages/tables-detail.md) | Table detail page specification | Working on table detail UI |
 | [pages/tasks.md](ui/pages/tasks.md) | Agent tasks page specification | Working on agent case/task UI |
 | [pages/welcome.md](ui/pages/welcome.md) | Welcome page specification | Working on onboarding/welcome UI |
+| [pages/workspace.md](ui/pages/workspace.md) | Workspace setup, creation, and invitation page specification | Working on onboarding or workspace creation flows |
 | [pages/workload.md](ui/pages/workload.md) | Workload page specification | Working on workload planning UI |
 
 ---

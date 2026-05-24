@@ -121,6 +121,7 @@ Subscriptions are set up via `useRealtime()` in `onMounted` and cleaned up in `o
 - Desktop: Click channel in sidebar list
 - Mobile: Open left slideover, tap channel, slideover auto-closes
 - URL query params `?channel=` and `?dm=` are watched and synced
+- Legacy `/w/{workspace}/messages` and `/w/{workspace}/messages/{id}` routes redirect here; see [messages.md](messages.md)
 - First channel is auto-selected as fallback
 
 ### Messaging
