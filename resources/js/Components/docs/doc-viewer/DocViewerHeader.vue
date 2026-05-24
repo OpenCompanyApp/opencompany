@@ -496,8 +496,8 @@ const documentTypeColors: Record<DocumentType, string> = {
 const props = withDefaults(defineProps<{
   title: string
   author?: User
-  updatedAt?: Date
-  createdAt?: Date
+  updatedAt?: Date | string
+  createdAt?: Date | string
   viewers?: User[]
   editors?: User[]
   size?: HeaderSize

@@ -23,7 +23,7 @@
               </div>
               <div>
                 <p class="text-sm font-medium text-neutral-900 dark:text-white">
-                  {{ config.enabled ? 'Gateway Active' : 'Gateway Disabled' }}
+                  {{ loadingConfig ? 'Loading gateway status...' : config.enabled ? 'Gateway Active' : 'Gateway Disabled' }}
                 </p>
                 <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                   <code class="text-[11px]">/api/ai-gateway/v1</code>
@@ -34,16 +34,19 @@
               type="button"
               role="switch"
               :aria-checked="config.enabled"
+              :disabled="loadingConfig"
               :class="[
                 'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                config.enabled ? 'bg-green-500' : 'bg-neutral-300 dark:bg-neutral-600',
+                loadingConfig
+                  ? 'bg-neutral-200 dark:bg-neutral-700 cursor-wait'
+                  : config.enabled ? 'bg-green-500' : 'bg-neutral-300 dark:bg-neutral-600',
               ]"
               @click="config.enabled = !config.enabled"
             >
               <span
                 :class="[
                   'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                  config.enabled ? 'translate-x-[18px]' : 'translate-x-[3px]',
+                  config.enabled && !loadingConfig ? 'translate-x-[18px]' : 'translate-x-[3px]',
                 ]"
               />
             </button>
@@ -323,6 +326,7 @@ const config = reactive({
 // Available models
 const availableModels = ref<AvailableModel[]>([])
 const loadingModels = ref(false)
+const loadingConfig = ref(false)
 const expandedProviders = ref(new Set<string>())
 
 // API Keys
@@ -401,12 +405,15 @@ watch(isOpen, async (open) => {
 })
 
 const loadConfig = async () => {
+  loadingConfig.value = true
   try {
     const { data } = await axios.get('/api/ai-gateway/config')
     config.enabled = data.enabled
     config.enabled_models = data.enabled_models || []
   } catch (error) {
     console.error('Failed to load AI Gateway config:', error)
+  } finally {
+    loadingConfig.value = false
   }
 }
 

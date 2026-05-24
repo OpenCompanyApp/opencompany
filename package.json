@@ -5,6 +5,8 @@
     "scripts": {
         "build": "vite build",
         "build:typecheck": "vue-tsc && vite build",
+        "ngrok:prepare": "rm -f public/hot && vite build",
+        "ngrok:check-assets": "node scripts/check-ngrok-assets.mjs",
         "typecheck": "vue-tsc --noEmit",
         "dev": "vite"
     },

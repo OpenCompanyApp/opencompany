@@ -381,7 +381,7 @@ const props = withDefaults(defineProps<{
   selected: boolean
   level: number
   childCount?: number
-  updatedAt?: Date
+  updatedAt?: Date | string
   documentType?: string
   isShared?: boolean
   isStarred?: boolean

@@ -55,8 +55,12 @@ export function useTipTapEditor(options: TipTapEditorOptions): {
     extensions: [
       StarterKit.configure({
         // Code blocks are provided by lowlight below so syntax highlighting can
-        // be configured centrally.
+        // be configured centrally. Link and underline are configured below with
+        // app-specific behavior and classes; disabling StarterKit copies avoids
+        // duplicate extension warnings.
         codeBlock: false,
+        link: false,
+        underline: false,
       }),
       Underline,
       Link.configure({
