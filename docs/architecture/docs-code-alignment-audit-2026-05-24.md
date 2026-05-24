@@ -7,7 +7,7 @@ Status: In progress. This audit records code-backed documentation alignment work
 
 The current pass checked the tracked and confidential Markdown inventory against high-risk code surfaces:
 
-- Markdown inventory after this pass: 154 files across tracked docs plus `docs/confidential`.
+- Markdown inventory after this pass: 155 files across tracked docs, untracked docs in `docs/`, plus `docs/confidential`.
 - Route inventory: 357 Laravel routes from `php artisan route:list --json`.
 - UI page inventory: 23 `docs/ui/pages/*.md` files covering routed page groups and legacy redirect surfaces.
 - `AGENTS.md` and `CLAUDE.md` remain byte-identical.
@@ -56,6 +56,16 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Updated [../ui/pages/approvals.md](../ui/pages/approvals.md) so approval API docs match `useApi().respondToApproval()` and server-side authenticated responder handling.
 - Updated [../ui/pages/tables-detail.md](../ui/pages/tables-detail.md) so alternate table views are documented as rendered `TableKanban`, `TableGallery`, and `TableCalendar` components with persisted view APIs.
 - Updated confidential ecosystem overview notes so April 2026 package/runtime counts are marked as a snapshot and current provider/package counts are delegated to `composer.lock`, integration catalog config, and generated AI catalog files.
+- Updated confidential landing-page, licensing, and ecosystem strategy wording so OpenCompany is consistently source-available under BSL 1.1 + Additional Use Grant, not generic "open source" or SUL.
+- Updated confidential pricing/token strategy so free self-hosted limits are framed as proposed product entitlements layered on top of BSL self-hosting, not license-imposed limits.
+- Updated [../ecosystem/integrations/README.md](../ecosystem/integrations/README.md) installation instructions for the current `../integrations/core` plus `../integrations/packages/*` path repository layout.
+- Updated [../INDEX.md](../INDEX.md) so the May 10 integration-catalog audit is indexed as historical hardening context rather than current blocker guidance.
+- Updated [../INDEX.md](../INDEX.md) so the observability plan is indexed as a proposal with planned paths, not as shipped admin/ops inventory.
+- Updated [../INDEX.md](../INDEX.md) with directory-level coverage for generated integration Lua docs and imported KosmoKrator architecture/audit leaf docs.
+- Folded the new [embedded-chromium-browser-investigation-2026-05-24.md](embedded-chromium-browser-investigation-2026-05-24.md) into the audit inventory and added an explicit investigation/proposal status guard.
+- Updated confidential competitive landscape notes so OpenCompany's license, MCP support, external-channel sync, token-streaming status, and agent-to-agent flow match the current BSL/app-owned-runtime/MCP-client/Chatogrator/async-task codebase.
+- Added explicit strategy/proposal guards to confidential SSO, GCP cloud infrastructure, tenancy/BYOK, and USA/Dubai corporate structure docs so planned organization billing/SSO/license/cloud infrastructure is not confused with current workspace-scoped app code.
+- Updated confidential corporate-structure language from generic fair-source wording to the current BSL 1.1 + Additional Use Grant posture.
 
 ## Mechanical Checks
 
@@ -66,28 +76,52 @@ git diff --check
 ```
 
 ```bash
-# Local Markdown links across tracked Markdown plus docs/confidential
+# Local Markdown links across tracked Markdown plus docs/confidential:
+# 155 files checked; fenced and inline code examples ignored.
 php <local-link-checker>
 ```
 
 ```bash
-# docs/INDEX.md coverage for tracked docs
+# docs/INDEX.md coverage for tracked docs:
+# Direct doc links plus intentional directory-level entries for imported KosmoKrator
+# and generated integration sub-docs were checked.
 php <docs-index-coverage-checker>
 ```
 
 ```bash
-# resources/js/Components/shared inventory against docs/ui/components.md
+# resources/js/Components/shared inventory against docs/ui/components.md:
+# 28 shared Vue components checked.
 php <shared-component-inventory-checker>
 ```
 
 ```bash
-# documented API route references against php artisan route:list --json
+# documented API route references against php artisan route:list --json:
+# 251 API routes checked. Historical/planning docs, external API examples, and
+# intentionally documented missing table import/export/duplicate routes excluded.
 php <api-route-reference-checker>
 ```
 
 ```bash
-# resources/js/Pages coverage against docs/ui/pages/*.md
+# resources/js/Pages coverage against docs/ui/pages/*.md:
+# 38 Vue page files checked against 23 UI page docs.
 php <ui-page-coverage-checker>
+```
+
+```bash
+# Inline path references in current, non-imported, non-planning docs:
+# Existing app/docs/package paths checked. Imported KosmoKrator repo-relative
+# paths and standalone package `config/ai-tools.php` examples excluded.
+php <inline-path-reference-checker>
+```
+
+```bash
+# Current inventory/count claims:
+# composer.lock integration packages: 585
+# IntegrationCatalog totals: 591 integrations, 41,493 tools
+# ToolProviderRegistry totals: 595 providers, 41,420 registered runtime tools
+# AI provider catalog: 22 provider IDs
+# Laravel route inventory: 357 total routes
+php <inventory-count-checkers>
 ```
 
 ## Known Historical/Imported Exceptions
@@ -98,7 +132,10 @@ The stale-term scan still reports expected historical/imported references:
 - `docs/vendor-open-source-audit-2026-04-10.md` and `docs/vendor-open-source-critical-audit-2026-04-10-round-2.md` intentionally retain Prism findings as removal rationale.
 - `docs/ecosystem/kosmokrator/**` and `docs/ecosystem/iris/**` are imported ecosystem context; Prism references there describe those repos or historical comparisons, not current OpenCompany runtime dependencies.
 - `docs/confidential/strategy/fair-code-valuation-strategy.md` uses `Sustainable Use License` as an n8n comparator, not as an OpenCompany license claim.
+- `docs/confidential/research/competitive-landscape.md` uses `SUL` only for n8n/competitor comparison, not as an OpenCompany license claim.
+- `docs/testing/qa-strategy.md` retains the old `tmp/integrations/` to `../integrations/` move in a historical commit-range note.
+- `AGENTS.md` and `CLAUDE.md` mention Prism only as a guardrail against reintroducing Prism runtime dependencies.
 
 ## Remaining Work
 
-Completion remains unproven until the broader Markdown set has been sampled or mechanically checked for stale claims beyond route/page/provider surfaces, especially older planning docs and confidential strategy docs.
+Completion remains unproven until the broader Markdown set has been semantically reviewed for non-mechanical claims that cannot be covered by route, path, inventory, link, UI, and stale-term validators, especially confidential strategy/research docs and imported ecosystem material.

@@ -12,8 +12,9 @@
 | [openclaw-patterns.md](architecture/openclaw-patterns.md) | Which OpenClaw patterns to adopt, adapt, or skip for OpenCompany | Planning new agent capabilities |
 | [laravel-ai-sdk.md](architecture/laravel-ai-sdk.md) | Historical Laravel AI SDK strategy - providers, tools, streaming, memory, workflows, QMD adaptation. Current runtime details live in [ai-provider-runtime-architecture.md](architecture/ai-provider-runtime-architecture.md). | Understanding earlier AI architecture decisions |
 | [technology-decisions.md](architecture/technology-decisions.md) | Tech stack choices: Laravel AI SDK, app-owned provider runtime, Laravel queues for orchestration | Understanding why we chose what |
-| [observability.md](architecture/observability.md) | Monitoring, metrics, logging, error tracking, health checks, alerting | Building admin/ops features |
+| [observability.md](architecture/observability.md) | Proposal for monitoring, metrics, logging, error tracking, health checks, and alerting; planned file paths are not current inventory unless they exist | Planning admin/ops features |
 | [ai-tool-packages.md](architecture/ai-tool-packages.md) | AI tool package ecosystem strategy - ToolProvider contract, credential abstraction, hybrid ToolRegistry, building new tool packages | Creating or modifying AI tool packages, understanding package architecture |
+| [embedded-chromium-browser-investigation-2026-05-24.md](architecture/embedded-chromium-browser-investigation-2026-05-24.md) | Feasibility research for remote Chromium browser sessions with user live control, agent automation, provider options, and OpenCompany runtime/security boundaries | Planning browser automation, web research, or human-in-the-loop browsing features |
 | [link-agent-wallets-investigation.md](architecture/link-agent-wallets-investigation.md) | Stripe Link Agents investigation — agent wallet/payment credential flow, MCP fit, and OpenCompany integration risks | Evaluating payment-agent capabilities or planning Link integration |
 | [interagent-comms.md](architecture/interagent-comms.md) | Inter-agent communication protocol — ContactAgent tool with ask/delegate/notify patterns, DM channels, delegation tracking | Building or debugging agent-to-agent communication |
 | [kosmokrator-reuse-audit.md](architecture/kosmokrator-reuse-audit.md) | Full audit of what OpenCompany should reuse, adapt, or skip from KosmoKrator | Planning cross-repo reuse, agent runtime work, metadata consolidation |
@@ -23,7 +24,7 @@
 | [ai-provider-runtime-architecture.md](architecture/ai-provider-runtime-architecture.md) | Current provider/model catalog, Laravel AI runtime registration, prompt-cache, and LLM usage/cost ledger architecture | Working on AI providers, model metadata, cost analytics, or OpenRouter billing |
 | [runtime-alignment-implementation-audit.md](architecture/runtime-alignment-implementation-audit.md) | Post-implementation audit — findings now tracked as Plane issues (OC-1 through OC-6) | Reviewing audit results and fix status |
 | [docs-code-alignment-audit-2026-05-24.md](architecture/docs-code-alignment-audit-2026-05-24.md) | In-progress docs/code alignment audit evidence and remaining work | Continuing the all-docs cross-check |
-| [integrations-catalog-branch-audit-2026-05-10.md](architecture/integrations-catalog-branch-audit-2026-05-10.md) | Branch audit of integrations catalog, multi-account OAuth, UI wiring, and validation gaps | Reviewing current integration work before fixing or shipping |
+| [integrations-catalog-branch-audit-2026-05-10.md](architecture/integrations-catalog-branch-audit-2026-05-10.md) | Historical May 10 branch audit of integration-catalog gaps, with May 24 notes for resolved OAuth, catalog, paging, and dedupe work | Understanding why the integration-catalog hardening work happened |
 | [pest-browser-testing-implementation-plan-2026-05-10.md](architecture/pest-browser-testing-implementation-plan-2026-05-10.md) | Pest Browser/Playwright migration plan. The current tree has both Dusk browser tests and new Pest browser specs. | Reviewing or continuing browser-test migration |
 | [documentation.md](documentation.md) | Product documentation outline and information architecture | Updating user-facing docs or navigation |
 | [ai-providers.md](ai-providers.md) | AI provider inventory and implementation priority using the current OpenCompany AI Runtime | Evaluating provider support or adding model integrations |
@@ -32,7 +33,7 @@
 
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
-| [ecosystem/integrations/README.md](ecosystem/integrations/README.md) | Integration package authoring reference, package layout, Lua tools, credentials, triggers, and app publishing flow | Building or updating OpenCompany integration packages |
+| [ecosystem/integrations/](ecosystem/integrations/) | Integration package authoring reference, package layout, Lua tools, credentials, triggers, app publishing flow, and generated per-package Lua docs | Building or updating OpenCompany integration packages |
 | [ecosystem/integrations/core/README.md](ecosystem/integrations/core/README.md) | Shared integration-core contracts and primitives used by package implementations | Changing common package behavior or reviewing package ownership boundaries |
 | [ecosystem/integrations/celestial/README.md](ecosystem/integrations/celestial/README.md) | Celestial integration package reference | Working on the Celestial package |
 | [ecosystem/integrations/clickup/README.md](ecosystem/integrations/clickup/README.md) | ClickUp integration package reference | Working on the ClickUp package |
@@ -47,9 +48,10 @@
 | [ecosystem/iris/ecosystem-overview.md](ecosystem/iris/ecosystem-overview.md) | Imported Iris ecosystem overview and reusable architecture notes | Comparing OpenCompany with Iris ideas |
 | [ecosystem/iris/missing-in-iris.md](ecosystem/iris/missing-in-iris.md) | Iris capability gaps and missing features | Evaluating whether an Iris concept should move into OpenCompany |
 | [ecosystem/kosmokrator/README.md](ecosystem/kosmokrator/README.md) | Imported KosmoKrator documentation index | Navigating the imported KosmoKrator research corpus |
-| [ecosystem/kosmokrator/architecture/overview.md](ecosystem/kosmokrator/architecture/overview.md) | KosmoKrator architecture overview | Studying reusable runtime and agent patterns |
+| [ecosystem/kosmokrator/architecture/](ecosystem/kosmokrator/architecture/) | Imported KosmoKrator architecture docs, including overview, permission modes, and subagent architecture | Studying reusable runtime and agent patterns |
 | [ecosystem/kosmokrator/audits/](ecosystem/kosmokrator/audits/) | Imported KosmoKrator audit reports, including RAM and memory-leak audits | Reviewing external audit findings for reusable lessons |
 | [ecosystem/kosmokrator/audits/ram-audit/](ecosystem/kosmokrator/audits/ram-audit/) | Imported KosmoKrator RAM-efficiency audit and synthesis reports | Reviewing memory/performance findings in detail |
+| [ecosystem/kosmokrator/deep-audit-2026-04-04.md](ecosystem/kosmokrator/deep-audit-2026-04-04.md) | Imported root-level KosmoKrator deep audit | Reviewing external audit findings that are outside the nested audits directory |
 | [ecosystem/kosmokrator/proposals/](ecosystem/kosmokrator/proposals/) | Imported KosmoKrator proposals for context, desktop UX, integrations, streaming, and TUI work | Looking for product/runtime inspiration |
 | [ecosystem/kosmokrator/reports/](ecosystem/kosmokrator/reports/) | Imported KosmoKrator reports, including sub-agent swarm gap analysis | Reviewing external runtime/product audit reports |
 | [ecosystem/kosmokrator/research/](ecosystem/kosmokrator/research/) | Imported research on Claude Code, OpenCode, and related coding-agent systems | Comparing agent product patterns |

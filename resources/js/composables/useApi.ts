@@ -117,7 +117,7 @@ export const useApi = () => {
   const removeMessageReaction = (messageId: string, reactionId: string) =>
     api.delete(`/messages/${messageId}/reactions/${reactionId}`)
   const fetchMessageThread = (messageId: string) =>
-    useFetch(`/messages/${messageId}/thread`)
+    useFetch<{ parentMessage: Message; replies: Message[] }>(`/messages/${messageId}/thread`)
   const pinMessage = (messageId: string, userId?: string) =>
     api.post(`/messages/${messageId}/pin`, { userId })
   const fetchPinnedMessages = (channelId: string) =>
@@ -169,7 +169,7 @@ export const useApi = () => {
   const deleteTaskComment = deleteListItemComment
 
   // Agent Tasks (cases - discrete work items)
-  const fetchAgentTasks = (filters?: { status?: string | string[]; agentId?: string; requesterId?: string; type?: string; priority?: string; source?: string; search?: string; page?: number; perPage?: number }) => {
+  const fetchAgentTasks = (filters?: { status?: string | string[]; agentId?: string; requesterId?: string; channelId?: string; type?: string; priority?: string; source?: string; search?: string; page?: number; perPage?: number }) => {
     const params = new URLSearchParams()
     if (filters?.status) {
       if (Array.isArray(filters.status)) {
@@ -180,6 +180,7 @@ export const useApi = () => {
     }
     if (filters?.agentId) params.append('agentId', filters.agentId)
     if (filters?.requesterId) params.append('requesterId', filters.requesterId)
+    if (filters?.channelId) params.append('channelId', filters.channelId)
     if (filters?.type) params.append('type', filters.type)
     if (filters?.priority) params.append('priority', filters.priority)
     if (filters?.source) params.append('source', filters.source)

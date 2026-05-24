@@ -1,0 +1,174 @@
+<template>
+  <section class="relative flex h-full min-w-0 flex-1 flex-col bg-white dark:bg-neutral-950">
+    <header class="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-neutral-200 px-4 dark:border-neutral-800">
+      <div class="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white md:hidden"
+          @click="$emit('toggleSidebar')"
+        >
+          <Icon name="ph:sidebar-simple" class="h-5 w-5" />
+        </button>
+        <SharedAgentAvatar v-if="agent" :user="agent" size="sm" :show-status="true" class="shrink-0" />
+        <div class="min-w-0">
+          <h1 class="truncate text-sm font-semibold text-neutral-950 dark:text-white">{{ title }}</h1>
+          <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ subtitle }}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          class="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white"
+          @click="$emit('refresh')"
+        >
+          <Icon name="ph:arrow-clockwise" class="h-4 w-4" />
+          <span class="hidden sm:inline">Refresh</span>
+        </button>
+        <button
+          type="button"
+          class="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white"
+          @click="$emit('openChannels')"
+        >
+          <Icon name="ph:hash" class="h-4 w-4" />
+          <span class="hidden sm:inline">Channels</span>
+        </button>
+      </div>
+    </header>
+
+    <div ref="scrollContainer" class="flex-1 overflow-y-auto">
+      <div v-if="!channel" class="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-4 py-10">
+        <EmptyState
+          :agents="agents"
+          :selected-agent-id="selectedAgentId"
+          @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
+          @prompt="sendSuggestedPrompt"
+        />
+      </div>
+
+      <template v-else>
+        <div v-if="messages.length === 0" class="mx-auto flex min-h-[calc(100vh-18rem)] max-w-3xl flex-col justify-center px-4 py-10">
+          <EmptyState
+            :agents="agents"
+            :selected-agent-id="agent?.id ?? selectedAgentId"
+            @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
+            @prompt="sendSuggestedPrompt"
+          />
+        </div>
+
+        <template v-else>
+          <AssistantMessage
+            v-for="message in messages"
+            :key="message.id"
+            :message="message"
+            :current-user-id="currentUserId"
+            @retry="$emit('retry', message)"
+            @edit="$emit('edit', message)"
+          />
+        </template>
+
+        <div v-if="channelApprovals.length" class="mx-auto w-full max-w-3xl space-y-3 px-4 py-4">
+          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+            <Icon name="ph:shield-check" class="h-4 w-4" />
+            Approval queue
+          </div>
+          <ChatApprovalCard
+            v-for="approval in channelApprovals"
+            :key="approval.id"
+            :request="approval"
+            :author="approval.requester ?? agent ?? fallbackAgent"
+            :timestamp="approval.createdAt ?? approval.requestedAt ?? new Date()"
+            variant="detailed"
+            size="md"
+            :loading="approvalLoadingId === approval.id ? approvalLoadingAction : false"
+            @approve="respond(approval.id, 'approved')"
+            @reject="respond(approval.id, 'rejected')"
+          />
+        </div>
+
+        <ThinkingPanel :tasks="tasks" />
+      </template>
+    </div>
+
+    <PromptComposer
+      :agents="agents"
+      :selected-agent-id="agent?.id ?? selectedAgentId"
+      :disabled="!channel && !selectedAgentId"
+      :running="isRunning"
+      :placeholder="composerPlaceholder"
+      @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
+      @send="(content, attachments) => $emit('send', content, attachments)"
+      @stop="$emit('stop')"
+      @compact="$emit('compact')"
+      @status="$emit('status')"
+    />
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, nextTick, ref, watch } from 'vue'
+import Icon from '@/Components/shared/Icon.vue'
+import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
+import ChatApprovalCard from '@/Components/chat/ApprovalCard.vue'
+import AssistantMessage from '@/Components/chat/assistant/AssistantMessage.vue'
+import PromptComposer, { type ComposerAttachment } from '@/Components/chat/assistant/PromptComposer.vue'
+import ThinkingPanel from '@/Components/chat/assistant/ThinkingPanel.vue'
+import EmptyState from '@/Components/chat/assistant/EmptyState.vue'
+import type { AgentTask, ApprovalRequest, Channel, Message, User } from '@/types'
+
+const props = defineProps<{
+  channel: Channel | null
+  messages: Message[]
+  tasks: AgentTask[]
+  approvals: ApprovalRequest[]
+  agents: User[]
+  currentUserId: string
+  selectedAgentId?: string
+  approvalLoadingId?: string | null
+  approvalLoadingAction?: false | 'approve' | 'reject'
+}>()
+
+const emit = defineEmits<{
+  send: [content: string, attachments: ComposerAttachment[]]
+  retry: [message: Message]
+  edit: [message: Message]
+  stop: []
+  compact: []
+  status: []
+  refresh: []
+  openChannels: []
+  toggleSidebar: []
+  'update:selectedAgentId': [agentId: string]
+  approval: [id: string, status: 'approved' | 'rejected']
+}>()
+
+const scrollContainer = ref<HTMLElement | null>(null)
+
+const agent = computed(() => props.channel?.members?.find(member => member.type === 'agent') ?? props.agents.find(agent => agent.id === props.selectedAgentId) ?? null)
+const fallbackAgent = computed<User>(() => agent.value ?? props.agents[0] ?? { id: 'system', name: 'OpenCompany', type: 'agent' } as User)
+const title = computed(() => agent.value ? `Chat with ${agent.value.name}` : 'New assistant chat')
+const subtitle = computed(() => {
+  if (!agent.value) return 'Choose an agent and start with a prompt'
+  if (agent.value.status === 'awaiting_approval') return 'Waiting for approval'
+  if (agent.value.status === 'working') return 'Working with tools and workspace context'
+  return `${agent.value.status ?? 'idle'} · workspace-aware assistant`
+})
+const isRunning = computed(() => props.tasks.some(task => ['pending', 'active'].includes(task.status)))
+const channelApprovals = computed(() => props.approvals.filter(approval => approval.status === 'pending'))
+const composerPlaceholder = computed(() => agent.value ? `Ask ${agent.value.name}...` : 'Ask OpenCompany anything...')
+
+watch(() => props.messages.length, () => {
+  nextTick(() => {
+    if (!scrollContainer.value) return
+    scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight
+  })
+})
+
+const sendSuggestedPrompt = (prompt: string) => {
+  emit('send', prompt, [])
+}
+
+const respond = (id: string, status: 'approved' | 'rejected') => {
+  emit('approval', id, status)
+}
+</script>

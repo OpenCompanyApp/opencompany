@@ -4,6 +4,7 @@ namespace Tests\Feature\Domain\Work;
 
 use App\Domain\Work\Application\ManageTasks;
 use App\Jobs\ExecuteAgentTaskJob;
+use App\Models\Channel;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\Workspace;
@@ -57,6 +58,47 @@ class ManageTasksTest extends TestCase
         app(ManageTasks::class)->start($task->id);
 
         Bus::assertDispatched(ExecuteAgentTaskJob::class);
+    }
+
+    public function test_list_can_filter_chat_tasks_by_channel(): void
+    {
+        $requester = User::factory()->create(['type' => 'human']);
+        $agent = User::factory()->agent()->create();
+        $keptChannel = Channel::factory()->dm()->create(['workspace_id' => $this->workspace->id]);
+        $otherChannel = Channel::factory()->dm()->create(['workspace_id' => $this->workspace->id]);
+
+        Task::create([
+            'id' => 'visible-chat-run',
+            'workspace_id' => $this->workspace->id,
+            'title' => 'Visible chat run',
+            'type' => Task::TYPE_CUSTOM,
+            'status' => Task::STATUS_PENDING,
+            'priority' => Task::PRIORITY_NORMAL,
+            'source' => Task::SOURCE_CHAT,
+            'requester_id' => $requester->id,
+            'agent_id' => $agent->id,
+            'channel_id' => $keptChannel->id,
+        ]);
+        Task::create([
+            'id' => 'other-chat-run',
+            'workspace_id' => $this->workspace->id,
+            'title' => 'Other chat run',
+            'type' => Task::TYPE_CUSTOM,
+            'status' => Task::STATUS_PENDING,
+            'priority' => Task::PRIORITY_NORMAL,
+            'source' => Task::SOURCE_CHAT,
+            'requester_id' => $requester->id,
+            'agent_id' => $agent->id,
+            'channel_id' => $otherChannel->id,
+        ]);
+
+        $result = app(ManageTasks::class)->list([
+            'source' => Task::SOURCE_CHAT,
+            'channelId' => $keptChannel->id,
+        ]);
+
+        $this->assertCount(1, $result['data']);
+        $this->assertSame('Visible chat run', $result['data'][0]['title']);
     }
 
     public function test_step_mutations_do_not_cross_workspace_boundaries(): void

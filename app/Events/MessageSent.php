@@ -34,7 +34,7 @@ class MessageSent implements ShouldBroadcast
     /** @return array<string, mixed> */
     public function broadcastWith(): array
     {
-        $message = $this->message->load(['author', 'reactions.user', 'attachments', 'replyTo.author']);
+        $message = $this->message->load(['author', 'reactions.user', 'attachments', 'replyTo.author', 'approvalRequest.requester', 'approvalRequest.respondedBy']);
         $data = $message->toArray();
 
         // Truncate long content to stay within Reverb/Pusher payload limits (~10KB)

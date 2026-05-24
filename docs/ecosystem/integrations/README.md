@@ -92,7 +92,8 @@ Each subdirectory is an independent Composer package. In your consuming applicat
 ```json
 {
     "repositories": [
-        {"type": "path", "url": "../integrations/*"}
+        {"type": "path", "url": "../integrations/core"},
+        {"type": "path", "url": "../integrations/packages/*"}
     ],
     "require": {
         "opencompanyapp/integration-core": "@dev",

@@ -28,7 +28,7 @@ class ManageTasks
             ->whereNull('parent_task_id')
             ->with(['agent', 'requester', 'channel', 'steps']);
 
-        foreach (['status', 'agentId', 'requesterId', 'type', 'priority', 'source'] as $filter) {
+        foreach (['status', 'agentId', 'requesterId', 'channelId', 'type', 'priority', 'source'] as $filter) {
             if (! array_key_exists($filter, $filters)) {
                 continue;
             }
@@ -37,6 +37,7 @@ class ManageTasks
                 'status' => $query->whereIn('status', is_array($filters[$filter]) ? $filters[$filter] : [$filters[$filter]]),
                 'agentId' => $query->where('agent_id', $filters[$filter]),
                 'requesterId' => $query->where('requester_id', $filters[$filter]),
+                'channelId' => $query->where('channel_id', $filters[$filter]),
                 default => $query->where($filter, $filters[$filter]),
             };
         }

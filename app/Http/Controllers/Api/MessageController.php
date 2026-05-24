@@ -36,7 +36,7 @@ class MessageController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Message::with(['author', 'reactions.user', 'attachments', 'replyTo.author']);
+        $query = Message::with(['author', 'reactions.user', 'attachments', 'replyTo.author', 'approvalRequest.requester', 'approvalRequest.respondedBy']);
 
         if ($request->has('channelId')) {
             // Validate channel ownership before returning messages. The message
@@ -90,7 +90,7 @@ class MessageController extends Controller
         // Check for @mentions of agents in non-DM channels
         $this->handleMentionedAgents($message);
 
-        return $message->load(['author', 'reactions.user', 'attachments', 'replyTo.author']);
+        return $message->load(['author', 'reactions.user', 'attachments', 'replyTo.author', 'approvalRequest.requester', 'approvalRequest.respondedBy']);
     }
 
     private function handleAgentResponse(Message $message): void
