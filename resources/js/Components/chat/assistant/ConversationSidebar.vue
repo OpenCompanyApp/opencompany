@@ -16,7 +16,7 @@
             <Icon name="ph:plus" class="h-4 w-4" />
           </button>
           <button
-            v-if="collapsible"
+            v-if="canCollapse"
             type="button"
             :class="ghostIconButtonClasses"
             :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
@@ -117,7 +117,7 @@ const emit = defineEmits<{
 }>()
 
 const search = ref('')
-const collapsible = computed(() => props.collapsible ?? true)
+const canCollapse = computed(() => props.collapsible ?? true)
 
 const conversations = computed(() => props.channels.map(channel => {
   const members = channel.members ?? []
