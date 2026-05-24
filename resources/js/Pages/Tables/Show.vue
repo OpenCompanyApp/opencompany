@@ -95,7 +95,7 @@
         <div class="text-center">
           <Icon name="ph:warning" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
           <p class="text-neutral-500 dark:text-neutral-400">Table not found</p>
-          <Link :href="workspacePath('/tables')" class="text-sm text-neutral-900 dark:text-white hover:underline mt-2 inline-block">
+          <Link :href="tablesUrl()" class="text-sm text-neutral-900 dark:text-white hover:underline mt-2 inline-block">
             Back to Tables
           </Link>
         </div>
@@ -214,7 +214,7 @@ import TableCalendar from '@/Components/tables/TableCalendar.vue'
 import ColumnTypeModal from '@/Components/tables/ColumnTypeModal.vue'
 import type { DataTable, DataTableRow, DataTableColumn, DataTableView, DataTableViewType, DataTableViewConfig } from '@/types'
 
-const { workspacePath } = useWorkspace()
+const { tablesUrl, tableUrl } = useWorkspace()
 
 const props = defineProps<{
   tableId: string
@@ -498,7 +498,7 @@ const handleDeleteView = (viewId: string) => {
 const handleDeleteTable = async () => {
   try {
     await apiFetch(`/api/tables/${props.tableId}`, { method: 'DELETE' })
-    router.visit(workspacePath('/tables'))
+    router.visit(tablesUrl())
   } catch (error) {
     console.error('Failed to delete table:', error)
   }
@@ -511,7 +511,7 @@ const handleDuplicateTable = async () => {
       method: 'POST',
     })
     const newTable = await response.json()
-    router.visit(workspacePath(`/tables/${newTable.id}`))
+    router.visit(tableUrl(newTable.id))
   } catch (error) {
     console.error('Failed to duplicate table:', error)
   }

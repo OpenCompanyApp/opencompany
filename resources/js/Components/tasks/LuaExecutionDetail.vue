@@ -177,7 +177,7 @@ const MonacoEditor = defineAsyncComponent(() =>
   import('@/Components/developer/MonacoEditor.vue')
 )
 
-const { workspacePath } = useWorkspace()
+const { developerLuaConsoleUrl } = useWorkspace()
 
 interface BridgeCall {
   path: string
@@ -254,7 +254,7 @@ const editorHeight = computed(() => {
 
 function openInConsole() {
   sessionStorage.setItem('lua-console-code', props.code)
-  router.visit(workspacePath('/developer/lua-console'))
+  router.visit(developerLuaConsoleUrl())
 }
 
 function formatBytes(bytes: number): string {
