@@ -2,6 +2,8 @@
 
 Monorepo for all [OpenCompany](https://github.com/OpenCompanyApp) integration packages. Each package exposes tools that AI agents can call — from rendering diagrams to querying APIs to managing tasks.
 
+Status: Current package authoring/reference copy. In standalone Laravel consumers the default credential resolver reads `config/ai-tools.php`; in OpenCompany itself credentials and enablement are workspace-scoped through `IntegrationSetting`, `config/integrations.php`, `config/chat_integrations.php`, and dynamic integration catalog metadata.
+
 Integrations are independent Composer packages built on a shared core. They work in any PHP 8.2+ application: [OpenCompany](https://github.com/OpenCompanyApp) (web), [KosmoKrator](https://github.com/OpenCompanyApp) (CLI), or your own consumer.
 
 ## Repository Structure
@@ -57,7 +59,7 @@ worldbank/          World Bank economic indicators for 200+ countries
 - **Tool** — A single callable action (e.g. "render a Mermaid diagram", "list ClickUp tasks"). Implements `name()`, `description()`, `parameters()`, `execute()`.
 - **ToolProvider** — Groups related tools under an app name. Declares metadata, handles tool instantiation with credentials, and optionally provides Lua documentation.
 - **ToolProviderRegistry** — Singleton that collects all providers. The host queries it to discover available tools.
-- **CredentialResolver** — Abstraction for API keys. The default reads from `config/ai-tools.php`; OpenCompany swaps this for encrypted database storage.
+- **CredentialResolver** — Abstraction for API keys. The standalone default reads from `config/ai-tools.php`; OpenCompany swaps this for encrypted, workspace-scoped `IntegrationSetting` storage.
 - **LuaBridge** — Routes `app.integrations.{name}.{function}(...)` calls from the Lua VM to PHP tool classes.
 
 ## Available Integrations

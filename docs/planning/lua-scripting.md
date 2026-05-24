@@ -2,6 +2,8 @@
 
 Design document for adding embedded Lua scripting as a lightweight automation runtime, complementing the existing AI agent execution model.
 
+Status: Planning with partial implementation. The current codebase has Lua tool/runtime surfaces such as `app/Agents/Tools/Lua`, `app/Services/LuaBridge.php`, `app/Services/LuaSandboxService.php`, `routes/api.php` `/api/lua/execute`, and integration package Lua docs. Automation examples below are design targets unless backed by current tool or integration code.
+
 ## Problem
 
 Every automation currently spawns a full AI agent — even trivial ones.

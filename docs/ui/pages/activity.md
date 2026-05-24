@@ -59,7 +59,7 @@
 | Component | Path | Purpose |
 |-----------|------|---------|
 | `Icon` | `Components/shared/Icon.vue` | Timeline dot icons and metadata badges |
-| `Link` | `@inertiajs/vue3` | Actor name links to `/agent/{id}` or `/profile/{id}` based on type |
+| `Link` | `@inertiajs/vue3` | Actor name links through `workspacePath('/agent/{id}')` or `workspacePath('/profile/{id}')` based on type |
 
 The page renders everything inline without child components.
 

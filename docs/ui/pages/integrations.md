@@ -56,7 +56,7 @@
 | │                                                                │ |
 | │ AI Models                                                      │ |
 | │ ┌─────────────────────────┐ ┌─────────────────────────────┐   │ |
-| │ │ GLM (Zhipu AI) [Install]│ │ GLM Coding Plan    [Install]│   │ |
+| │ │ Z.AI API      [Install]│ │ Z.AI Coding Plan   [Install]│   │ |
 | │ └─────────────────────────┘ └─────────────────────────────┘   │ |
 | │                                                                │ |
 | │ Communication                                                  │ |

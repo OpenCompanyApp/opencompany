@@ -1,5 +1,7 @@
 # Integration Package Refactor Plan
 
+Status: Historical / mostly implemented. The current app consumes framework-agnostic `opencompanyapp/integration-*` packages through `opencompanyapp/integration-core`, `ToolProviderRegistry`, `LuaBridge`, `config/integration_catalog.php`, and `app/Agents/Tools/ToolRegistry.php`. Remaining phase notes are useful as refactor rationale, not a literal current file inventory.
+
 ## Context
 
 The AI tool packages were originally built around `Laravel\Ai\Contracts\Tool` — each tool exposed `description()`, `schema(JsonSchema)`, and `handle(Request)` for direct LLM function calling. We then switched to Lua code mode where the LLM writes Lua scripts that call tools via `LuaBridge`, making the LLM-oriented interface unnecessary overhead.

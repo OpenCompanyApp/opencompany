@@ -50,7 +50,7 @@
 │  ────────────────────────────────────────────────── │
 │  [columns icon] 5 columns   [rows icon] 42 rows    │
 └────────────────────────────────────────────────────┘
-  ^-- entire card is a Link to /tables/{id}
+  ^-- entire card is a Link to `workspacePath('/tables/{id}')`
 ```
 
 ---
@@ -89,7 +89,7 @@
 - On confirm: `DELETE /api/tables/{id}`, table removed from list
 
 ### Navigation
-- Clicking a table card navigates to `/tables/{id}` (Tables Detail page)
+- Clicking a table card navigates to `workspacePath('/tables/{id}')` (Tables Detail page)
 
 ---
 

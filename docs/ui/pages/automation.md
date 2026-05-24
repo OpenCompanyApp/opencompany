@@ -103,7 +103,7 @@
   - Metadata row: default title, default priority, default assignee, estimated cost
   - Tags as small rounded-full chips
 - Actions per template:
-  - **Play** (run): Creates a task from the template via `createTaskFromTemplate()`, then navigates to `/tasks`
+  - **Play** (run): Creates a task from the template via `createTaskFromTemplate()`, then navigates to `workspacePath('/tasks')`
   - **Edit**: Opens the create modal pre-filled with template data
   - **Delete**: Browser confirm dialog, then `deleteTaskTemplate()`
 - "Create Template" button opens modal

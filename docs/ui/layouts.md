@@ -348,11 +348,11 @@ Used by **Dashboard**, **Workload**, and similar pages that display content in r
 
 ## Tabbed Content
 
-Used by the **Agent Detail** page and **Settings**. A header area with tab navigation followed by tab-specific content.
+Used by the **Agent Detail** page. A header area with tab navigation is followed by tab-specific content. Settings uses sidebar section navigation instead of tabs.
 
-**Pages:** `resources/js/Pages/Agent/Show.vue`, `resources/js/Pages/Settings.vue`
+**Pages:** `resources/js/Pages/Agent/Show.vue`
 
-### Agent Detail (8 Tabs)
+### Agent Detail (6 Tabs)
 
 ```
 +------------------------------------------------------------------+
@@ -366,18 +366,16 @@ Used by the **Agent Detail** page and **Settings**. A header area with tab navig
 | | | Avatar |  Status label                                    | |
 | | +--------+                                                   | |
 | |                                                              | |
-| | [Overview] [Tasks] [Personality] [Instructions] ...          | |
+| | [Overview] [Tasks] [Identity] [Capabilities] ...             | |
 | |                                                              | |
 | | +----------------------------------------------------------+| |
 | | |                                                          || |
 | | |  Tab Content (min-h-[500px])                             || |
 | | |                                                          || |
 | | |  Overview: Identity card + current task + activity       || |
-| | |  Tasks: Filtered task list with detail drawer            || |
-| | |  Personality: Markdown editor                            || |
-| | |  Instructions: Markdown editor                           || |
+| | |  Tasks: Filtered task list with task-page links          || |
+| | |  Identity: Identity file editor                          || |
 | | |  Capabilities: Toggle list with approval flags           || |
-| | |  Memory: Session info + memory entries                   || |
 | | |  Activity: Timestamped log with type badges              || |
 | | |  Settings: Behavior mode, cost limit, danger zone        || |
 | | |                                                          || |
@@ -392,18 +390,18 @@ Used by the **Agent Detail** page and **Settings**. A header area with tab navig
 | Active tab | `bg-neutral-900 dark:bg-white text-white dark:text-neutral-900` |
 | Inactive tab | `text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100` |
 | Tabs list | `flex gap-1 mb-6 overflow-x-auto pb-1` (scrollable on mobile) |
-| Tab count | 8: Overview, Tasks, Personality, Instructions, Capabilities, Memory, Activity, Settings |
+| Tab count | 6: Overview, Tasks, Identity, Capabilities, Activity, Settings |
 | Content area | `min-h-[500px]` to prevent layout shift during tab switches |
 
 ### Settings Page
 
-The Settings page does not use tab components but achieves a similar effect with stacked `SettingsSection` components, each containing a collapsible group of fields.
+The Settings page uses sidebar section navigation with `SettingsSection` components inside each section.
 
 ```
 +------------------------------------------------------------------+
 | h-full overflow-y-auto                                           |
 | +--------------------------------------------------------------+ |
-| | max-w-3xl mx-auto p-6                                       | |
+| | max-w-5xl mx-auto p-4 md:p-6                               | |
 | |                                                              | |
 | | Header: "Settings"                                           | |
 | |                                                              | |
@@ -420,14 +418,18 @@ The Settings page does not use tab components but achieves a similar effect with
 | | +----------------------------------------------------------+ | |
 | |                                                              | |
 | | +-- Notifications -----------------------------------------+ | |
-| | | Email, Slack, Daily Summary toggles                      | | |
+| | | Email, Slack flag, Daily Summary toggles                 | | |
+| | +----------------------------------------------------------+ | |
+| |                                                              | |
+| | +-- Memory / Storage / Debug ------------------------------+ | |
+| | | Memory models, disks, diagnostics                        | | |
 | | +----------------------------------------------------------+ | |
 | |                                                              | |
 | | +-- Danger Zone -------------------------------------------+ | |
 | | | Pause All, Reset Memory, Delete Organization             | | |
 | | +----------------------------------------------------------+ | |
 | |                                                              | |
-| |                                     [Save Changes]           | |
+| |                             Section-level save buttons       | |
 | +--------------------------------------------------------------+ |
 +------------------------------------------------------------------+
 ```

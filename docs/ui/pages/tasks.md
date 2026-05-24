@@ -97,9 +97,9 @@
 - Parent tasks display a collapse/expand toggle (caret icon) and a descendant count badge with `ph:tree-structure` icon
 - Auto-collapse on first load: all parent roots except the most recent are collapsed by default
 - Delegation-source tasks show requester-to-agent flow (`[RequesterAvatar] -> [AgentAvatar]`) in the Agent column
-- Click on any row navigates to the task detail page via `router.visit(/tasks/{id})`
+- Click on any row navigates to the task detail page via `router.visit(workspacePath('/tasks/{id}'))`
 
-### Task Detail Page (`/tasks/{id}`)
+### Task Detail Page (`/w/{workspace}/tasks/{id}`)
 - Full page view (route `Tasks/Show.vue`) with back button, replaces the previous drawer-based approach
 - Header shows type badge, status badge, and source badge (with icon)
 - Summary stats bar (4-column grid) with execution metrics:
@@ -128,7 +128,7 @@
   - Source icon (`ph:users-three`, `ph:question`, or `ph:megaphone`)
   - Label: "Delegated by", "Asked by", or "Notified by" depending on source
   - Requester avatar and name (from `task.requester`)
-  - Link to parent task: "View parent task: {title}" with `ph:arrow-bend-up-left` icon, navigates to `/tasks/{parentTask.id}`
+  - Link to parent task: "View parent task: {title}" with `ph:arrow-bend-up-left` icon, navigates to `workspacePath('/tasks/{parentTask.id}')`
 
 ### Execution Trace
 - Rendered by the `ExecutionTrace` component (`resources/js/Components/tasks/ExecutionTrace.vue`)
@@ -171,7 +171,7 @@ Each status has full variant support: filled, soft, outline, ghost, dot-only, an
 - All actions refresh the task list and update the selected task in the drawer
 
 ### Header Navigation
-- "Workload" link in header navigates to `/workload` page
+- "Workload" link in header navigates to `workspacePath('/workload')`
 
 ---
 

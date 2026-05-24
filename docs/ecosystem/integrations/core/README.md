@@ -2,6 +2,8 @@
 
 > Framework-agnostic core for building integration packages. Part of the [OpenCompany](https://github.com/OpenCompanyApp) ecosystem.
 
+Status: Current package reference copy. `ConfigCredentialResolver` uses `config/ai-tools.php` for standalone consumers; OpenCompany overrides credential lookup with workspace-scoped integration settings.
+
 Provides the contracts, credential abstraction, and auto-discovery registry that all OpenCompany integration packages build on. Packages built on integration-core work in any PHP application — OpenCompany (web), KosmoKrator (CLI), or custom consumers.
 
 ## About OpenCompany
@@ -25,6 +27,7 @@ Laravel auto-discovers the service provider. Non-Laravel apps can use the contra
 | `Tool` interface | Framework-agnostic tool contract — `name()`, `description()`, `parameters()`, `execute()` |
 | `ToolResult` value object | Structured result from tool execution — `success()`, `error()`, metadata |
 | `ToolProvider` interface | Contract every integration package implements — declares tools, metadata, factory, and Lua docs |
+| `HasIntegrationCapabilities` interface | Optional capability metadata for catalog, CLI, Lua, MCP gateway, and SEO generators |
 | `CredentialResolver` interface | Abstraction for API keys/config — swap between config files, databases, or vaults |
 | `ConfigCredentialResolver` | Default resolver that reads from `config/ai-tools.php` |
 | `ToolProviderRegistry` | Singleton registry that collects all tool providers for discovery |
@@ -186,6 +189,33 @@ $this->app->singleton(
     YourCustomResolver::class
 );
 ```
+
+## Capability Metadata
+
+Hosts can infer most catalog metadata from `ToolProvider::credentialFields()` and `ToolProvider::tools()`. Implement `HasIntegrationCapabilities` only when an integration needs explicit compatibility or setup semantics, such as browser-only OAuth setup, device-code OAuth, CLI-only runtimes, external binaries, service accounts, or future proxy-only support.
+
+```php
+use OpenCompany\IntegrationCore\Contracts\HasIntegrationCapabilities;
+
+class WeatherToolProvider implements ToolProvider, HasIntegrationCapabilities
+{
+    public function integrationCapabilities(): array
+    {
+        return [
+            'auth_strategy' => 'api_key',
+            'cli_setup_supported' => true,
+            'cli_runtime_supported' => true,
+            'runtime_requirements' => [],
+            'seo' => [
+                'cli_setup_summary' => 'Configure Weather headlessly with KosmoKrator.',
+                'mcp_setup_summary' => 'Expose Weather tools through the KosmoKrator MCP gateway.',
+            ],
+        ];
+    }
+}
+```
+
+Catalog builders merge these values over inferred defaults and keep unsupported integrations visible. Set `cli_setup_supported` or `cli_runtime_supported` to `false` to document the limitation instead of removing the integration from discovery.
 
 ## Integration Packages
 

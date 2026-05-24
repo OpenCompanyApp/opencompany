@@ -2,6 +2,8 @@
 
 Goal: agents that learn from experience, get better at their work over time, and function like a human organization — developing expertise, sharing knowledge, and improving collectively.
 
+Status: Research / roadmap. The "Current System" section is code-aligned with the current memory services; "What's missing" and the implementation roadmap are proposed improvements.
+
 ---
 
 ## Current System

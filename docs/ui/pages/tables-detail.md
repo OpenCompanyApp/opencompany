@@ -54,7 +54,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│ [<- /tables]  [icon picker]  [editable name input]             │
+│ [<- workspacePath('/tables')]  [icon picker]  [editable name input] │
 │                              [editable description input]      │
 │                                                                │
 │              [Import v]  [Export v]  |  [gear]  [... menu]     │
@@ -168,7 +168,7 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 - **Import**: Dropdown with CSV and JSON options, triggers hidden file input
 - **Export**: Dropdown with CSV and JSON options, downloads file as blob
 - **Duplicate table**: `POST /api/tables/{id}/duplicate`, navigates to new table
-- **Delete table**: `ConfirmDialog`, then `DELETE /api/tables/{id}`, redirects to `/tables`
+- **Delete table**: `ConfirmDialog`, then `DELETE /api/tables/{id}`, redirects to `workspacePath('/tables')`
 
 ---
 

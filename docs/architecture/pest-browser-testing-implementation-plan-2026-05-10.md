@@ -1,11 +1,12 @@
 # Pest Browser Testing Implementation Plan
 
 Date: 2026-05-10
+Status: Historical proposal. The current tree has an active Laravel Dusk browser-test suite under `tests/Browser`; the Pest/Playwright notes below are retained as a possible future migration path, not the current browser-testing implementation.
 
 ## Current State
 
 - The app currently uses PHPUnit/Laravel test cases under `tests/Feature` and `tests/Unit`.
-- `laravel/dusk` is installed, but there is no active browser-test suite in the current tree.
+- `laravel/dusk` is installed and active through `tests/DuskTestCase.php` and `tests/Browser/*`.
 - The frontend is Vue 3/Inertia/Tailwind v4, with the most urgent browser coverage needed around login, workspace routing, settings, and integration configuration flows.
 - Local full-suite execution is slow enough to interrupt development feedback. Browser tests should be targeted locally and broader in CI.
 

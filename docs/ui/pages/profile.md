@@ -8,10 +8,10 @@
 
 | Page | Route | Name | Auth | Layout |
 |------|-------|------|------|--------|
-| **View** | `/profile/{id}` | `profile.show` | Required | None (standalone) |
-| **Edit** | `/profile` | `profile.edit` | Required | AppLayout |
-| **Update** | `PATCH /profile` | `profile.update` | Required | -- |
-| **Delete** | `DELETE /profile` | `profile.destroy` | Required | -- |
+| **View** | `/w/{workspace}/profile/{id}` | `profile.show` | Required | None (standalone) |
+| **Edit** | `/w/{workspace}/profile` | `profile.edit` | Required | AppLayout |
+| **Update** | `PATCH /w/{workspace}/profile` | `profile.update` | Required | -- |
+| **Delete** | `DELETE /w/{workspace}/profile` | `profile.destroy` | Required | -- |
 
 ---
 
@@ -61,7 +61,7 @@ A standalone full-page view for any user or agent profile, loaded by UUID. Fetch
 - **Agent badge** -- colored pill showing agent type (e.g. "manager Agent")
 - **Ephemeral badge** -- amber pill when `isEphemeral` is true
 - **Quick stats** -- completed tasks count in a small card
-- **Action buttons** -- "Send Message" links to `/messages/{id}`; "Manage Agent" links to `/agent/{id}` (agents only); current user (`h1`) does not see "Send Message"
+- **Action buttons** -- "Send Message" links through `workspacePath('/messages/{id}')`; "Manage Agent" links through `workspacePath('/agent/{id}')` (agents only); current user (`h1`) does not see "Send Message"
 - **Tabbed content** -- two tabs: Activity (steps with status icons and timestamps) and Tasks (task list with status badges)
 - **Reactive routing** -- watches `props.id` and re-fetches on change
 

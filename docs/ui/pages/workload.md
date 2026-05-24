@@ -65,7 +65,7 @@
 | `Icon` | `Components/shared/Icon.vue` | Phosphor icons throughout |
 | `AgentAvatar` | `Components/shared/AgentAvatar.vue` | Agent avatar with status indicator in each card header |
 | `StatusBadge` | `Components/shared/StatusBadge.vue` | Status pill (working, idle, etc.) in each card header |
-| `Link` | `@inertiajs/vue3` | "Tasks" breadcrumb link and agent name links to `/agent/{id}` |
+| `Link` | `@inertiajs/vue3` | "Tasks" breadcrumb link and agent name links through `workspacePath('/agent/{id}')` |
 
 No child page-specific components -- the page renders everything inline.
 

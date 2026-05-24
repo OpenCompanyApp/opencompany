@@ -21,7 +21,7 @@
 +--------------------------------------------------------------------+
 | h-full overflow-y-auto                                             |
 | ┌────────────────────────────────────────────────────────────────┐ |
-| │ max-w-3xl mx-auto p-6                                         │ |
+| │ max-w-5xl mx-auto p-4 md:p-6 with sidebar + content pane       │ |
 | │                                                                │ |
 | │ Header: "Settings"                                             │ |
 | │ "Manage your organization and agent configuration"             │ |
@@ -58,7 +58,7 @@
 | │ │ [icon] Notifications                                     │   │ |
 | │ ├──────────────────────────────────────────────────────────┤   │ |
 | │ │  [x] Email Notifications                                │   │ |
-| │ │  [ ] Slack Integration                                   │   │ |
+| │ │  [ ] Slack Integration flag                              │   │ |
 | │ │  [x] Daily Summary                                       │   │ |
 | │ └──────────────────────────────────────────────────────────┘   │ |
 | │                                                                │ |
@@ -72,7 +72,7 @@
 | │ │  Delete Organization                      [Delete]       │   │ |
 | │ └──────────────────────────────────────────────────────────┘   │ |
 | │                                                                │ |
-| │                                    [Save Changes]              │ |
+| │                    Section-level save buttons                  │ |
 | └────────────────────────────────────────────────────────────────┘ |
 +--------------------------------------------------------------------+
 ```
@@ -85,7 +85,7 @@
 |-----------|------|---------|
 | `SettingsSection` | `Components/settings/SettingsSection.vue` | Bordered card section with icon header, title, description, actions slot |
 | `SettingsField` | `Components/settings/SettingsField.vue` | Label + description + input slot + error/hint messages |
-| `SharedButton` (Button) | `Components/shared/Button.vue` | Primary "Save Changes" button |
+| `SaveButton` | `Components/settings/SaveButton.vue` | Section-level save button with saving/saved state |
 | `Modal` | `Components/shared/Modal.vue` | Policy create/edit modal |
 | `Icon` | `Components/shared/Icon.vue` | Phosphor icon wrapper |
 
@@ -118,7 +118,7 @@
 - **Icon**: `ph:bell`
 - **Fields** (all checkboxes):
   - Email Notifications: receive email for approval requests
-  - Slack Integration: send notifications to Slack channel
+  - Slack Integration: stored notification flag; app-local Slack delivery is not wired in the current codebase
   - Daily Summary: receive daily agent activity summary
 
 ### 5. Danger Zone
@@ -129,10 +129,10 @@
   - Delete Organization: permanently delete organization and all data
 - Separated by subtle dividers (`border-neutral-100`)
 
-### Save Button
-- Right-aligned `SharedButton` with `variant="primary"` and `size="lg"`
-- Floppy disk icon + "Save Changes" text
-- Currently logs settings to console (placeholder implementation)
+### Save Buttons
+- Each settings section exposes its own `SaveButton`
+- Saves call `PATCH /api/settings` through `useApi().updateSettings(category, settings)`
+- Saving and saved states are reflected per category
 
 ---
 
@@ -170,7 +170,7 @@
 | **Default** | All sections rendered with current values; policies listed |
 | **No policies** | Shield icon with "No action policies configured" message and hint |
 | **Policy modal open** | Modal with form fields; title adapts to create/edit mode |
-| **Saving** | Console log (placeholder); no visible loading indicator yet |
+| **Saving** | Category-specific saving state with section-level feedback |
 
 ---
 
@@ -178,7 +178,8 @@
 
 | Breakpoint | Changes |
 |------------|---------|
-| **All sizes** | Single-column layout constrained to `max-w-3xl`; all sections stack vertically; page scrolls vertically |
+| **Mobile** | Horizontal section pills above the content pane |
+| **Desktop** | Left sidebar section navigation with debug and danger actions separated at the bottom |
 
 ---
 

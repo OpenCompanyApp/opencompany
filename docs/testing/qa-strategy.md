@@ -1,5 +1,7 @@
 # QA Testing Strategy — Full Project Audit
 
+Status: Historical QA plan. The commit range and "uncommitted changes" notes below describe the March/April audit window, not the current working tree. Use it as regression-test coverage guidance, not as a live git-state report.
+
 **Scope:** All changes in current git tree (commits ce35785 through df74cb3, plus uncommitted work)
 
 ---
@@ -70,7 +72,7 @@ Fixed file forwarding to external platforms.
 - ApprovalExecutionService: workspace context binding for approved tools
 - Memory leak fixes: event listener cleanup in `usePresence.ts`, `useKeyboardShortcuts.ts`
 
-### 8. Uncommitted Changes (Current Working Tree)
+### 8. Historical Uncommitted Changes From Audit Window
 
 Multi-account integration settings and additional refinements.
 

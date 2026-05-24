@@ -2,6 +2,8 @@
 
 > The complete integration roadmap for making AI agents genuinely useful for real business operations.
 
+Status: Roadmap / planning. The current-state table is code-checked against `config/ai.php`, `config/integrations.php`, `config/chat_integrations.php`, the installed `opencompanyapp/integration-*` packages in `composer.json`, and the MCP runtime in `app/Services/Mcp`. Items in the roadmap sections are proposed until there is corresponding app or package code.
+
 ---
 
 ## Why Integrations Matter
@@ -12,11 +14,11 @@ Integrations are what transform OpenCompany from an internal collaboration tool 
 
 ---
 
-## Current State (February 2026)
+## Current State (May 2026)
 
 | Category | Built & Working | Listed in UI (Not Built) |
 |----------|----------------|--------------------------|
-| AI Models | Anthropic, OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, Ollama, OpenRouter, MiniMax, Kimi, GLM, Codex | — |
+| AI Models | Anthropic, OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, Ollama, OpenRouter, Perplexity, MiniMax, Kimi, Z.AI, Codex | — |
 | Communication | Telegram | Slack, Discord, Teams, Matrix |
 | Analytics | Plausible, Google Analytics, Google Search Console | — |
 | Productivity | Google Calendar, Google Drive, Google Docs, Google Sheets, Google Contacts, Google Forms, Google Tasks, Gmail, ClickUp, TickTick | Notion, Trello, Obsidian |
@@ -566,4 +568,4 @@ Lightweight deterministic automations that call integration APIs via `oc.integra
 
 ---
 
-*Last Updated: February 2026*
+*Last Updated: May 2026*

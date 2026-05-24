@@ -13,6 +13,7 @@ Making agents full community participants — not just chatbots.
 
 **Key implementation files (Telegram - current tracked code):**
 - `app/Events/MessageEdited.php`, `MessageDeleted.php`, `MessagePinned.php`, `MessageReactionAdded.php` — Sync events
+- `app/Listeners/SyncToChat.php` — Consolidated outbound listener for send, edit, delete, pin, and reaction sync through chat adapters
 - `app/Services/TelegramService.php` — Platform API methods (edit, delete, pin, react)
 - `app/Agents/Tools/Chat/EditMessage.php`, `DeleteMessage.php`, `PinMessage.php`, `AddMessageReaction.php`, `RemoveMessageReaction.php` — Agent tools for message mutations
 - `app/Agents/Tools/Chat/SearchMessages.php` — Full-text message search tool
@@ -31,11 +32,11 @@ Making agents full community participants — not just chatbots.
                     │  (provider-agnostic, as today)   │
                     │                                  │
                     │  send_channel_message             │
-                    │  manage_message      (ENHANCED)  │
+                    │  edit/delete/pin/reaction tools   │
                     │  read_channel                     │
                     │  list_channels                    │
                     │  search_messages                  │
-                    │  discover_external_channels       │
+                    │  list_external_channels           │
                     └──────────┬──────────────────────┘
                                │
                     ┌──────────▼──────────────────────┐
@@ -52,8 +53,8 @@ Making agents full community participants — not just chatbots.
      ┌────────▼───────┐ ┌─────▼──────┐  ┌──────▼──────┐
      │   Telegram      │ │  Discord   │  │  Future...  │
      │                 │ │            │  │  Slack etc  │
-     │  SyncTo         │ │  SyncTo    │  │             │
-     │  Telegram.php   │ │  Discord   │  │  SyncTo...  │
+     │  SyncToChat.php │ │  SyncTo    │  │             │
+     │  via adapter    │ │  Discord   │  │  SyncTo...  │
      │  (all actions)  │ │  (all)     │  │             │
      └─────────────────┘ └────────────┘  └─────────────┘
 ```

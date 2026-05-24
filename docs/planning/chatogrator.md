@@ -2,6 +2,8 @@
 
 Chatogrator — Laravel Chat Aggregator. Port of the [Vercel Chat SDK](https://github.com/vercel/chat/) to PHP/Laravel.
 
+Status: Package strategy / planning. OpenCompany currently uses `opencompany/chatogrator` routes plus Telegram adapter runtime, while broader Slack/Discord/Teams/Google Chat support in this document is package roadmap unless implemented in the package and wired into this app.
+
 A standalone, open-source package that lets any Laravel developer build multi-platform chat bots with a single unified API. Write bot logic once, deploy to Slack, Discord, Microsoft Teams, Google Chat, GitHub, and Linear.
 
 - Package: `opencompany/chatogrator`

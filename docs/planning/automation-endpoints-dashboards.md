@@ -1,5 +1,7 @@
 # Automation Endpoints & Agent-Built Dashboards
 
+Status: Planning. This document describes a future automation/dashboard surface; endpoints, builders, and dashboard runtime pieces below are proposed until matching routes, controllers, services, and UI files exist.
+
 ## Vision
 
 Turn automations into API endpoints and let agents build full internal tools — HTML dashboards with Tailwind that read and write data through Lua-powered endpoints. The platform evolves from "agents that chat" into "agents that build internal apps."

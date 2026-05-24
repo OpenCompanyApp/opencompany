@@ -8,29 +8,26 @@ Reference of all major AI providers, their compatibility with OpenCompany, and i
 
 ## Current Status in OpenCompany
 
-### Fully Integrated
+### Catalog-backed providers
 | Provider | Key | Integration Type | Models |
 |---|---|---|---|
-| GLM (Zhipu AI) | `glm` | IntegrationSetting + OpenCompany AI Runtime | Dynamic (API fetch) |
-| GLM Coding | `glm-coding` | IntegrationSetting + OpenCompany AI Runtime | Dynamic (API fetch) |
-| Codex (ChatGPT) | `codex` | App-owned OAuth + `CodexTextGateway` | Dynamic (API fetch) |
-
-### Partially Wired (`.env` only, hardcoded models, no config UI)
-| Provider | Key | Runtime Driver | Default Model |
-|---|---|---|---|
-| Anthropic | `anthropic` | Laravel AI SDK provider | claude-sonnet-4-5-20250929 |
-| OpenAI | `openai` | Laravel AI SDK provider | gpt-4o |
-| Gemini | `gemini` | Laravel AI SDK provider | gemini-2.0-flash |
-| DeepSeek | `deepseek` | Laravel AI SDK provider | deepseek-chat |
-| Groq | `groq` | Laravel AI SDK provider | llama-3.3-70b-versatile |
-| Mistral | `mistral` | Laravel AI SDK provider | mistral-large-latest |
-| xAI (Grok) | `xai` | Laravel AI SDK provider | grok-2 |
-
-### In Config Only (not in `allProviders` endpoint)
-| Provider | Key | Notes |
-|---|---|---|
-| Ollama | `ollama` | Local models, in `config/ai.php` + resolver |
-| OpenRouter | `openrouter` | In `config/ai.php` + resolver |
+| Anthropic | `anthropic` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| OpenAI | `openai` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| Gemini | `gemini` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| DeepSeek | `deepseek` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| Groq | `groq` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| Mistral | `mistral` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| xAI | `xai` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| Ollama | `ollama` | Local runtime + OpenCompany AI Runtime | Catalog defaults + local runtime status |
+| OpenRouter | `openrouter` | API key + OpenCompany AI Runtime | Catalog defaults + OpenRouter generation lookup |
+| Perplexity | `perplexity` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| Cohere | `cohere` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| Z.AI API | `z-api` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| Z.AI Coding Plan | `z` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| Kimi | `kimi`, `kimi-coding` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| MiniMax | `minimax`, `minimax-cn` | API key + OpenCompany AI Runtime | Catalog defaults + workspace overrides |
+| Mimo / StepFun / Alibaba | `mimo`, `mimo-api`, `stepfun-plan`, `alibaba` | Catalog metadata | Catalog defaults; not listed in static `config/integrations.php` |
+| Codex (ChatGPT) | `codex` | App-owned OAuth + `CodexTextGateway` | Dynamic model fetch through Codex auth |
 
 ---
 
@@ -109,12 +106,13 @@ Need: Everything from Tier 1 + provider catalog/config entry + resolver coverage
 
 ## Implementation Pattern
 
-All OpenAI-compatible providers follow the same pattern as GLM:
+Most API-key providers follow the same app-owned runtime pattern:
 
 ```
-config/integrations.php  →  IntegrationSetting  →  OpenCompanyAiProviderFactory  →  DynamicProviderResolver
-       ↓                           ↓
-   Config Modal UI          API key + models stored (encrypted)
+AiCatalog  →  config/integrations.php  →  IntegrationSetting  →  OpenCompanyAiProviderFactory
+   ↓                  ↓                           ↓                         ↓
+Provider/model     Config Modal UI        Encrypted workspace      Laravel AI provider
+metadata                                credentials + overrides
 ```
 
 A **generic ProviderConfigModal** could handle all OpenAI-compatible providers with the same UI:
