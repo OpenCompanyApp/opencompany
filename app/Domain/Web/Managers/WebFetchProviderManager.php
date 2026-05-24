@@ -8,6 +8,7 @@ use App\Domain\Web\Exceptions\WebProviderException;
 use App\Domain\Web\Extraction\MarkdownPageExtractor;
 use App\Domain\Web\Registry\WebProviderRegistry;
 use App\Domain\Web\Safety\WebAccessPolicy;
+use App\Domain\Web\Usage\WebUsageRecorder;
 use App\Domain\Web\ValueObjects\WebFetchRequest;
 use App\Domain\Web\ValueObjects\WebFetchResponse;
 use App\Models\AppSetting;
@@ -22,6 +23,7 @@ class WebFetchProviderManager
         private WebResultCache $cache,
         private MarkdownPageExtractor $markdown,
         private WebAccessPolicy $policy,
+        private WebUsageRecorder $usage,
     ) {}
 
     public function fetch(WebFetchRequest $request): WebFetchResponse
@@ -31,7 +33,12 @@ class WebFetchProviderManager
             throw new WebProviderException('URL is required.');
         }
 
-        $this->policy->assertUrlAllowed($request->url);
+        try {
+            $this->policy->assertUrlAllowed($request->url);
+        } catch (WebFetchPermanentException $e) {
+            $this->usage->recordFailure('fetch', $request->provider ?? 'policy', $request->cachePayload(), $request->workspaceId, $request->agentId, $request->userId, $e);
+            throw $e;
+        }
 
         $errors = [];
         foreach ($this->providerOrder($request) as $providerId) {
@@ -46,7 +53,10 @@ class WebFetchProviderManager
                 }
 
                 if (! $request->noCache && ($cached = $this->cache->get('fetch', $provider->id(), $request->cachePayload(), $request->workspaceId)) instanceof WebFetchResponse) {
-                    return $cached->withCacheHit(true);
+                    $cached = $cached->withCacheHit(true);
+                    $this->usage->recordFetchSuccess($request, $cached, true);
+
+                    return $cached;
                 }
 
                 $response = $this->normalizeProviderResponse($provider->fetch($request));
@@ -57,10 +67,14 @@ class WebFetchProviderManager
                     $this->cache->put('fetch', $provider->id(), $request->cachePayload(), $request->workspaceId, $response);
                 }
 
+                $this->usage->recordFetchSuccess($request, $response, false);
+
                 return $response;
             } catch (WebFetchPermanentException $e) {
+                $this->usage->recordFailure('fetch', $providerId, $request->cachePayload(), $request->workspaceId, $request->agentId, $request->userId, $e);
                 throw $e;
             } catch (\Throwable $e) {
+                $this->usage->recordFailure('fetch', $providerId, $request->cachePayload(), $request->workspaceId, $request->agentId, $request->userId, $e);
                 $errors[] = "{$providerId}: {$e->getMessage()}";
             }
         }

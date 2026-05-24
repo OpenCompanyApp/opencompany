@@ -6,6 +6,7 @@ use App\Domain\Web\Cache\WebResultCache;
 use App\Domain\Web\Exceptions\WebProviderException;
 use App\Domain\Web\Registry\WebProviderRegistry;
 use App\Domain\Web\Safety\WebAccessPolicy;
+use App\Domain\Web\Usage\WebUsageRecorder;
 use App\Domain\Web\ValueObjects\WebSearchRequest;
 use App\Domain\Web\ValueObjects\WebSearchResponse;
 use App\Models\AppSetting;
@@ -19,6 +20,7 @@ class WebSearchProviderManager
         private WebProviderRegistry $registry,
         private WebResultCache $cache,
         private WebAccessPolicy $policy,
+        private WebUsageRecorder $usage,
     ) {}
 
     public function search(WebSearchRequest $request): WebSearchResponse
@@ -37,7 +39,10 @@ class WebSearchProviderManager
                 }
 
                 if (! $request->noCache && ($cached = $this->cache->get('search', $provider->id(), $request->cachePayload(), $request->workspaceId)) instanceof WebSearchResponse) {
-                    return $cached->withCacheHit(true);
+                    $cached = $cached->withCacheHit(true);
+                    $this->usage->recordSearchSuccess($request, $cached, true);
+
+                    return $cached;
                 }
 
                 $response = $provider->search($request);
@@ -47,8 +52,11 @@ class WebSearchProviderManager
                     $this->cache->put('search', $provider->id(), $request->cachePayload(), $request->workspaceId, $response);
                 }
 
+                $this->usage->recordSearchSuccess($request, $response, false);
+
                 return $response;
             } catch (\Throwable $e) {
+                $this->usage->recordFailure('search', $providerId, $request->cachePayload(), $request->workspaceId, $request->agentId, $request->userId, $e);
                 $errors[] = "{$providerId}: {$e->getMessage()}";
             }
         }
