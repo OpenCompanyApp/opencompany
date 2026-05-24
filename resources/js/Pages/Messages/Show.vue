@@ -7,7 +7,7 @@
           <div class="flex items-center gap-4">
             <!-- Back button -->
             <Link
-              :href="workspacePath('/messages')"
+              :href="messagesUrl()"
               class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
             >
               <Icon name="ph:arrow-left" class="w-5 h-5" />
@@ -23,7 +23,7 @@
               />
               <div>
                 <Link
-                  :href="workspacePath(conversation.otherUser.type === 'agent' ? `/agent/${conversation.otherUser.id}` : `/profile/${conversation.otherUser.id}`)"
+                  :href="memberUrl(conversation.otherUser)"
                   class="font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
                 >
                   {{ conversation.otherUser.name }}
@@ -38,7 +38,7 @@
             <!-- Actions -->
             <div class="flex items-center gap-1">
               <Link
-                :href="workspacePath(conversation?.otherUser.type === 'agent' ? `/agent/${conversation.otherUser.id}` : `/profile/${userId}`)"
+                :href="conversation ? memberUrl(conversation.otherUser) : profileUrl(userId)"
                 class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                 :title="conversation?.otherUser.type === 'agent' ? 'View agent' : 'View profile'"
               >
@@ -174,7 +174,7 @@ import { useHighlight } from '@/composables/useHighlight'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { sanitizeHtml } from '@/utils/sanitize'
 
-const { workspacePath } = useWorkspace()
+const { memberUrl, messagesUrl, profileUrl } = useWorkspace()
 
 interface User {
   id: string

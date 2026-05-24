@@ -37,7 +37,7 @@
           <Link
             v-for="conversation in filteredConversations"
             :key="conversation.id"
-            :href="workspacePath(`/messages/${conversation.otherUser.id}`)"
+            :href="messageUrl(conversation.otherUser.id)"
             class="flex items-center gap-4 p-4 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
           >
             <!-- Avatar -->
@@ -128,7 +128,7 @@ import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import Skeleton from '@/Components/shared/Skeleton.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 
-const { workspacePath } = useWorkspace()
+const { messageUrl } = useWorkspace()
 
 interface User {
   id: string
@@ -208,7 +208,7 @@ const fetchRecipients = async () => {
 
 const startConversation = () => {
   if (selectedRecipient.value) {
-    router.visit(workspacePath(`/messages/${selectedRecipient.value}`))
+    router.visit(messageUrl(selectedRecipient.value))
   }
 }
 
