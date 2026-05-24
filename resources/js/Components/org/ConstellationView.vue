@@ -85,7 +85,7 @@ const props = defineProps<{
 }>()
 
 const { isDark } = useColorMode()
-const { workspacePath } = useWorkspace()
+const { memberUrl } = useWorkspace()
 const canvasEl = ref<HTMLElement | null>(null)
 const hoveredNode = ref<ConstellationNode | null>(null)
 const tooltipPos = ref({ x: 0, y: 0 })
@@ -102,7 +102,7 @@ const { init, isReady, updateNodeData } = useConstellation(
   isDark,
   (id: string) => {
     const node = nodesRef.value.find(n => n.id === id)
-    router.visit(workspacePath(node?.type === 'agent' ? `/agent/${id}` : `/profile/${id}`))
+    router.visit(memberUrl({ id, type: node?.type }))
   },
   (node: ConstellationNode | null, x: number, y: number) => {
     hoveredNode.value = node

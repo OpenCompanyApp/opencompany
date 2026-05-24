@@ -30,7 +30,7 @@
               class="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-300 shrink-0"
             />
             <Link
-              :href="workspacePath(node.type === 'agent' ? `/agent/${node.id}` : `/profile/${node.id}`)"
+              :href="memberUrl(node)"
               class="font-medium text-neutral-900 dark:text-white truncate text-sm hover:text-neutral-900 dark:hover:text-white transition-colors duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
               @click.stop
             >
@@ -98,7 +98,7 @@ import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 
 defineOptions({ name: 'ChartNode' })
 
-const { workspacePath } = useWorkspace()
+const { memberUrl } = useWorkspace()
 
 interface OrgNode {
   id: string

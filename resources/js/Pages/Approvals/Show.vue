@@ -27,7 +27,7 @@
         <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-center">
           <Icon name="ph:warning" class="w-8 h-8 text-red-400 mx-auto mb-2" />
           <p class="text-sm text-red-600 dark:text-red-400">Approval not found or failed to load.</p>
-          <Link :href="workspacePath('/approvals')" class="text-sm text-red-500 hover:underline mt-2 inline-block">
+          <Link :href="approvalsUrl()" class="text-sm text-red-500 hover:underline mt-2 inline-block">
             Back to approvals
           </Link>
         </div>
@@ -198,7 +198,7 @@ const props = defineProps<{
 
 const page = usePage()
 const { fetchApproval, respondToApproval } = useApi()
-const { workspacePath } = useWorkspace()
+const { approvalsUrl } = useWorkspace()
 
 const currentUserId = computed(() => (page.props.auth as any)?.user?.id || '')
 const processing = ref<string | null>(null)

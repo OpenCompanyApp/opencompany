@@ -99,7 +99,7 @@ The sidebar navigation is defined in `resources/js/Components/layout/SidebarNav.
 
 ### Active State
 
-Active nav items use `bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white` and switch to the `-fill` variant of their icon. Matching is done via `page.url.startsWith(path)`, with Dashboard using an exact match on `/`.
+Active nav items use `bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white` and switch to the `-fill` variant of their icon. Matching is done via `page.url.startsWith(path)`, with Dashboard using an exact match on the workspace dashboard/root URL.
 
 ### Agents Section
 

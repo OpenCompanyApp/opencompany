@@ -3,6 +3,8 @@ import GuestLayout from '@/Layouts/GuestLayout.vue'
 import Input from '@/Components/shared/Input.vue'
 import Button from '@/Components/shared/Button.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
+import { store } from '@/actions/App/Http/Controllers/Auth/RegisteredUserController'
+import { login } from '@/routes'
 
 const form = useForm({
   name: '',
@@ -12,7 +14,7 @@ const form = useForm({
 })
 
 const submit = () => {
-  form.post(route('register'), {
+  form.submit(store(), {
     onFinish: () => {
       form.reset('password', 'password_confirmation')
     },
@@ -73,7 +75,7 @@ const submit = () => {
 
     <template #footer>
       Already have an account?
-      <Link :href="route('login')" class="text-neutral-900 dark:text-white hover:underline ml-1">
+      <Link :href="login()" class="text-neutral-900 dark:text-white hover:underline ml-1">
         Log in
       </Link>
     </template>

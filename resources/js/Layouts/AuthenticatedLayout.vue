@@ -5,9 +5,20 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import { useWorkspace } from '@/composables/useWorkspace';
+import { dashboard } from '@/routes';
+import { edit as editProfile } from '@/routes/profile';
+import { destroy as logout } from '@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController';
 
 const showingNavigationDropdown = ref(false);
+const page = usePage();
+const { workspaceRouteParams } = useWorkspace();
+const authUser = (page.props as { auth: { user: { name: string; email: string } } }).auth.user;
+const dashboardUrl = () => dashboard.url(workspaceRouteParams());
+const profileUrl = () => editProfile.url(workspaceRouteParams());
+const logoutUrl = () => logout.url();
+const isDashboard = () => page.url === dashboard.url(workspaceRouteParams());
 </script>
 
 <template>
@@ -22,7 +33,7 @@ const showingNavigationDropdown = ref(false);
                         <div class="flex">
                             <!-- Logo -->
                             <div class="flex shrink-0 items-center">
-                                <Link :href="route('home')">
+                                <Link :href="dashboardUrl()">
                                     <ApplicationLogo
                                         class="block h-9 w-auto fill-current text-neutral-800 dark:text-neutral-100"
                                     />
@@ -34,8 +45,8 @@ const showingNavigationDropdown = ref(false);
                                 class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
                             >
                                 <NavLink
-                                    :href="route('home')"
-                                    :active="route().current('dashboard')"
+                                    :href="dashboardUrl()"
+                                    :active="isDashboard()"
                                 >
                                     Dashboard
                                 </NavLink>
@@ -52,7 +63,7 @@ const showingNavigationDropdown = ref(false);
                                                 type="button"
                                                 class="inline-flex items-center rounded-md border border-transparent bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-medium leading-4 text-neutral-500 dark:text-neutral-300 transition duration-150 ease-in-out hover:text-neutral-700 dark:hover:text-neutral-200 focus:outline-none"
                                             >
-                                                {{ $page.props.auth.user.name }}
+                                                {{ authUser.name }}
 
                                                 <svg
                                                     class="-me-0.5 ms-2 h-4 w-4"
@@ -72,12 +83,12 @@ const showingNavigationDropdown = ref(false);
 
                                     <template #content>
                                         <DropdownLink
-                                            :href="route('profile.edit')"
+                                            :href="profileUrl()"
                                         >
                                             Profile
                                         </DropdownLink>
                                         <DropdownLink
-                                            :href="route('logout')"
+                                            :href="logoutUrl()"
                                             method="post"
                                             as="button"
                                         >
@@ -141,8 +152,8 @@ const showingNavigationDropdown = ref(false);
                 >
                     <div class="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
-                            :href="route('home')"
-                            :active="route().current('dashboard')"
+                            :href="dashboardUrl()"
+                            :active="isDashboard()"
                         >
                             Dashboard
                         </ResponsiveNavLink>
@@ -156,19 +167,19 @@ const showingNavigationDropdown = ref(false);
                             <div
                                 class="text-base font-medium text-neutral-800 dark:text-neutral-100"
                             >
-                                {{ $page.props.auth.user.name }}
+                                {{ authUser.name }}
                             </div>
                             <div class="text-sm font-medium text-neutral-500 dark:text-neutral-300">
-                                {{ $page.props.auth.user.email }}
+                                {{ authUser.email }}
                             </div>
                         </div>
 
                         <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')">
+                            <ResponsiveNavLink :href="profileUrl()">
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
-                                :href="route('logout')"
+                                :href="logoutUrl()"
                                 method="post"
                                 as="button"
                             >

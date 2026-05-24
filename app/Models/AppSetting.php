@@ -168,6 +168,7 @@ class AppSetting extends Model
                 'web_search_max_results' => config('web.search.max_results', 8),
                 'web_fetch_max_chars' => config('web.fetch.max_chars', 12000),
                 'web_fetch_max_bytes' => config('web.fetch.max_bytes', 10485760),
+                'web_fetch_allowed_private_hosts' => config('web.fetch.allowed_private_hosts', []),
                 'web_allowed_domains' => [],
                 'web_blocked_domains' => [],
                 'web_language' => null,

@@ -43,7 +43,7 @@
 |  | Recent Activity list with avatars,            |  | Quick     |  |
 |  | actor names, action text, timestamps.         |  | Actions   |  |
 |  | Shows up to 8 items.                          |  |           |  |
-|  | "View all" link to `workspacePath('/activity')` |  | Working   |  |
+|  | "View all" link to Activity                   |  | Working   |  |
 |  |                                               |  | Agents    |  |
 |  +----------------------------------------------+  +-----------+  |
 |                                                                    |
@@ -84,10 +84,10 @@ All API calls use the `useApi()` composable.
 ## Features & Interactions
 
 ### Quick Actions
-- **New channel**: Navigates to `/chat` via `router.visit`
+- **New channel**: Navigates through the generated chat route helper.
 - **Spawn agent**: Opens `SpawnAgentModal`; on success refreshes agents, activities, and stats
-- **Create task**: Navigates to `workspacePath('/tasks')`
-- **New document**: Navigates to `workspacePath('/docs')`
+- **Create task**: Navigates through the generated tasks route helper.
+- **New document**: Navigates through the generated docs route helper.
 
 ### Pending Approvals
 - Conditionally rendered only when there are pending approvals
@@ -96,7 +96,7 @@ All API calls use the `useApi()` composable.
 
 ### Activity Feed
 - Shows 8 most recent activities with avatar, actor name, action verb, optional target, and relative timestamp
-- "View all" link navigates to `workspacePath('/activity')`
+- "View all" link navigates to the workspace Activity page.
 
 ### Working Agents
 - Displays up to 5 agents with `status === 'working'`

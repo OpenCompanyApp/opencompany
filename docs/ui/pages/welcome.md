@@ -75,8 +75,8 @@ This is the default Laravel welcome page. No custom child components are used.
 ## Features & Interactions
 
 ### Navigation
-- If user is authenticated: shows "Dashboard" link to `route('dashboard')`
-- If not authenticated: shows "Log in" link and optionally "Register" link
+- If user is authenticated: shows "Dashboard" link through the generated `home()` route helper.
+- If not authenticated: shows "Log in" and optional "Register" links through generated route helpers.
 - Navigation visibility controlled by `canLogin` and `canRegister` props
 
 ### Content Cards

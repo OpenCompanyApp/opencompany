@@ -5,20 +5,20 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-1">
           <Link
-            :href="workspacePath('/tasks')"
+            :href="tasks(workspaceRouteParams())"
             class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
           >
             Tasks
           </Link>
           <span class="text-xl font-semibold text-neutral-900 dark:text-white">Workload</span>
           <Link
-            :href="workspacePath('/activity')"
+            :href="activity(workspaceRouteParams())"
             class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
           >
             Activity
           </Link>
           <Link
-            :href="workspacePath('/tasks/analytics')"
+            :href="taskAnalytics(workspaceRouteParams())"
             class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
           >
             Analytics
@@ -109,7 +109,7 @@
               <SharedAgentAvatar :user="item.agent" size="md" show-status />
               <div class="flex-1 min-w-0">
                 <Link
-                  :href="workspacePath(`/agent/${item.agent.id}`)"
+                  :href="showAgentRoute(workspaceRouteParams({ id: item.agent.id }))"
                   class="font-medium text-neutral-900 dark:text-white hover:underline transition-colors"
                 >
                   {{ item.agent.name }}
@@ -176,12 +176,15 @@
 import { onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { activity, tasks } from '@/routes'
+import { show as showAgentRoute } from '@/routes/agent'
+import { analytics as taskAnalytics } from '@/routes/tasks'
 import { useApi } from '@/composables/useApi'
 import Icon from '@/Components/shared/Icon.vue'
 import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import SharedStatusBadge from '@/Components/shared/StatusBadge.vue'
 
-const { workspacePath } = useWorkspace()
+const { workspaceRouteParams } = useWorkspace()
 const { fetchWorkload } = useApi()
 
 const { data: workload, loading, refresh } = fetchWorkload()

@@ -73,10 +73,10 @@ redirect into this page; see [messages.md](messages.md).
 | `ConversationSidebar` | `Components/chat/assistant/ConversationSidebar.vue` | Conversation list for agent chats, DMs, and channels. Includes search, new assistant chat agent popover, DM, channel buttons, and desktop collapse state. |
 | `AssistantConversation` | `Components/chat/assistant/AssistantConversation.vue` | Main conversation panel with header, empty states, messages, inline approvals, runtime activity, and composer. |
 | `AssistantMessage` | `Components/chat/assistant/AssistantMessage.vue` | Current rendered message row for the unified shell. |
-| `PromptComposer` | `Components/chat/assistant/PromptComposer.vue` | Composer with attachment support, shared `AgentSelector` picker for assistant drafts/channels, stop/compact/status actions, and send event. |
+| `PromptComposer` | `Components/chat/assistant/PromptComposer.vue` | Composer with attachment support, stop/compact/status actions, and send event. |
 | `ThinkingPanel` | `Components/chat/assistant/ThinkingPanel.vue` | Shows active/pending task runtime status either inline after the triggering message or as the empty-conversation runtime panel, with catalog-backed tool display names and syntax-highlighted tool inspection sections. |
 | `EmptyState` | `Components/chat/assistant/EmptyState.vue` | Shared `AgentSelector` and suggested prompt state before a conversation has messages. |
-| `AgentSelector` | `Components/chat/assistant/AgentSelector.vue` | Reka popover for choosing an assistant agent, used by the sidebar new-chat button, empty state, and composer. |
+| `AgentSelector` | `Components/chat/assistant/AgentSelector.vue` | Reka popover for choosing an assistant agent, used by the sidebar new-chat button and empty state. |
 | `ApprovalCard` | `Components/chat/ApprovalCard.vue` | Inline approval card rendered in the unified conversation approval queue. |
 | `CreateChannelModal` | `Components/chat/CreateChannelModal.vue` | Modal for creating a channel. |
 | `CreateDmModal` | `Components/chat/CreateDmModal.vue` | Modal for creating a DM. |

@@ -3,6 +3,7 @@
 namespace App\Domain\Web\Safety;
 
 use App\Domain\Web\Exceptions\WebProviderException;
+use App\Models\AppSetting;
 
 /**
  * SSRF guard for direct and provider-backed fetches.
@@ -13,6 +14,11 @@ use App\Domain\Web\Exceptions\WebProviderException;
  */
 class WebRequestGuard
 {
+    /**
+     * @param  list<string>|null  $allowedPrivateHosts
+     */
+    public function __construct(private ?array $allowedPrivateHosts = null) {}
+
     /** @var list<string> */
     private const BLOCKED_HOSTS = [
         'localhost',
@@ -28,7 +34,15 @@ class WebRequestGuard
         '100.100.100.200',
     ];
 
-    public function assertSafePublicUrl(string $url): void
+    /**
+     * Validate a URL before any web provider touches it.
+     *
+     * Direct fetch can opt into a narrow workspace-configured private-host
+     * allowance for local development targets such as opencompany.test.
+     * Provider-backed readers/search extractors should keep the default public
+     * guard so private URLs are never sent to third-party services.
+     */
+    public function assertSafePublicUrl(string $url, bool $allowConfiguredPrivateHosts = false): void
     {
         if (mb_strlen($url) > 2048) {
             throw new WebProviderException('URL is too long.');
@@ -53,6 +67,7 @@ class WebRequestGuard
             throw new WebProviderException("Blocked internal hostname: {$host}");
         }
 
+        $allowPrivateHost = $allowConfiguredPrivateHosts && $this->allowsConfiguredPrivateHost($host);
         $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : $this->resolveIpAddresses($host);
         if ($ips === []) {
             throw new WebProviderException("Could not resolve host '{$host}'.");
@@ -60,6 +75,10 @@ class WebRequestGuard
 
         foreach ($ips as $ip) {
             if ($this->isPrivateOrReservedIp($ip)) {
+                if ($allowPrivateHost && ! $this->isAlwaysBlockedIp($ip)) {
+                    continue;
+                }
+
                 throw new WebProviderException("Blocked private or reserved address for host '{$host}'.");
             }
         }
@@ -96,7 +115,7 @@ class WebRequestGuard
 
     private function isPrivateOrReservedIp(string $ip): bool
     {
-        if (in_array($ip, self::BLOCKED_IPS, true)) {
+        if ($this->isAlwaysBlockedIp($ip)) {
             return true;
         }
 
@@ -119,6 +138,55 @@ class WebRequestGuard
         return str_starts_with($lower, 'fe80:')
             || str_starts_with($lower, 'fd00:')
             || str_starts_with($lower, 'fc00:');
+    }
+
+    private function isAlwaysBlockedIp(string $ip): bool
+    {
+        if (in_array($ip, self::BLOCKED_IPS, true)) {
+            return true;
+        }
+
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+            $long = ip2long($ip);
+
+            return $long === false || $this->ipv4InRange($long, '169.254.0.0', 16);
+        }
+
+        return str_starts_with(strtolower($ip), 'fe80:');
+    }
+
+    private function allowsConfiguredPrivateHost(string $host): bool
+    {
+        $host = strtolower(trim($host));
+        $configured = $this->allowedPrivateHosts;
+
+        if ($configured === null) {
+            $configured = function_exists('config') ? config('web.fetch.allowed_private_hosts', []) : [];
+        }
+
+        if (function_exists('app') && app()->bound('currentWorkspace')) {
+            $configured = AppSetting::getValue('web_fetch_allowed_private_hosts', $configured);
+        }
+
+        if (! is_array($configured)) {
+            return false;
+        }
+
+        foreach ($configured as $allowedHost) {
+            if (! is_string($allowedHost)) {
+                continue;
+            }
+
+            $allowedHost = strtolower(trim($allowedHost));
+            $allowedHost = preg_replace('#^https?://#', '', $allowedHost) ?? $allowedHost;
+            $allowedHost = trim(explode('/', $allowedHost)[0]);
+
+            if ($allowedHost !== '' && $host === $allowedHost) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function ipv4InRange(int $ip, string $network, int $bits): bool

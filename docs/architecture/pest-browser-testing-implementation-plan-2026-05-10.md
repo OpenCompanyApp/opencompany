@@ -111,7 +111,7 @@ Run only targeted local checks:
 
 ```bash
 npm run build
-vendor/bin/pest tests/Browser/AuthSmokeTest.php
+vendor/bin/pest tests/Browser/AuthenticationTest.php
 vendor/bin/pest tests/Browser/IntegrationsTest.php
 php artisan test tests/Feature/IntegrationCatalogControllerTest.php
 ```

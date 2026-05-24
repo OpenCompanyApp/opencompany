@@ -3,6 +3,7 @@ import GuestLayout from '@/Layouts/GuestLayout.vue'
 import Input from '@/Components/shared/Input.vue'
 import Button from '@/Components/shared/Button.vue'
 import { Head, useForm } from '@inertiajs/vue3'
+import { store } from '@/routes/password'
 
 const props = defineProps<{
   email: string
@@ -19,7 +20,7 @@ const form = useForm({
 // Token/email are server-provided and must remain in the form; only clear the
 // sensitive password fields after the request completes.
 const submit = () => {
-  form.post(route('password.store'), {
+  form.submit(store(), {
     onFinish: () => {
       form.reset('password', 'password_confirmation')
     },

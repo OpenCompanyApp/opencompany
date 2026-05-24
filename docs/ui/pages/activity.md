@@ -59,7 +59,7 @@
 | Component | Path | Purpose |
 |-----------|------|---------|
 | `Icon` | `Components/shared/Icon.vue` | Timeline dot icons and metadata badges |
-| `Link` | `@inertiajs/vue3` | Actor name links through `workspacePath('/agent/{id}')` or `workspacePath('/profile/{id}')` based on type |
+| `Link` | `@inertiajs/vue3` | Header navigation and clickable activity rows when an activity URL maps to a known workspace route |
 
 The page renders everything inline without child components.
 
@@ -100,7 +100,8 @@ Filtering is sent to `GET /api/activities` through query params. Date ranges are
 ### Timeline
 - Vertical timeline line (absolute, w-0.5, left-aligned)
 - Each activity has a colored circle icon (40px) representing the type
-- Activity card shows actor name (linked), verb, description, optional metadata badges (task title, amount, channel name)
+- Activity card shows actor name, verb, description, optional metadata badges (task title, amount, channel name)
+- Rows with known activity URLs link through generated route helpers for chat channels, approvals, agents, and tasks; unknown URLs render as static timeline rows.
 - Relative timestamps: "just now", "Xm ago", "Xh ago", "Xd ago", or date
 
 ### Activity Type Icons and Colors

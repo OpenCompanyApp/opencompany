@@ -316,9 +316,9 @@ Current code:
 
 Target use cases:
 
-- `RunAgentTurn`
 - `RespondToChatMessage`
 - `ExecuteAssignedTask`
+- `AgentRun`
 - `ResumeAgentTask`
 - `PlanAgentContext`
 - `RecordRuntimeEvents`
@@ -732,7 +732,7 @@ Context A -> Context B only through public application contracts or events
 Allowed:
 
 - `Agents\Application\CreateAgent` calls `Knowledge\Application\CreateAgentIdentityTree` through a contract.
-- `AgentRuntime\Application\RunAgentTurn` calls `Authorization\Application\EvaluateToolAccess`.
+- `AgentRuntime\Application\RespondToChatMessage` composes the `AgentRun` runtime wrapper and permission-aware tool catalog.
 - `Integrations\Application\CallIntegrationTool` calls package tools through `IntegrationToolRuntime`.
 - `Collaboration\Application\IngestExternalMessage` dispatches `AgentRuntime\Application\RespondToChatMessage`.
 
@@ -867,7 +867,7 @@ Extract chat response and task execution workflows from jobs:
 ```text
 app/Domain/AgentRuntime/Application/RespondToChatMessage.php
 app/Domain/AgentRuntime/Application/ExecuteAssignedTask.php
-app/Domain/AgentRuntime/Application/RunAgentTurn.php
+app/Agents/Runtime/AgentRun.php
 ```
 
 Jobs become transport adapters only.

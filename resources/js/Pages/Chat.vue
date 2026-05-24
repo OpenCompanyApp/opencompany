@@ -15,6 +15,11 @@
         :is-assistant-channel="isAssistantChannel(selectedChannel)"
         :approval-loading-id="approvalLoadingId"
         :approval-loading-action="approvalLoadingAction"
+        :status-panel-open="statusPanelOpen"
+        :workspace-status="workspaceStatus"
+        :workspace-status-loading="workspaceStatusLoading"
+        :workspace-status-error="workspaceStatusError"
+        :workspace-status-last-refreshed-at="workspaceStatusLastRefreshedAt"
         @select-channel="selectChannel"
         @new-agent-chat="startNewAssistantChat"
         @create-channel="showCreateChannelModal = true"
@@ -25,6 +30,8 @@
         @compact="handleCompactCommand"
         @status="handleStatusCommand"
         @refresh="refreshAssistantRuntime"
+        @refresh-status="refreshWorkspaceStatusPanel"
+        @close-status="statusPanelOpen = false"
         @update:selected-agent-id="selectedAgentId = $event"
         @approval="handleApprovalResponse"
       />
@@ -60,13 +67,14 @@ import ChatCreateChannelModal from '@/Components/chat/CreateChannelModal.vue'
 import ChatCreateDmModal from '@/Components/chat/CreateDmModal.vue'
 import AssistantChatShell from '@/Components/chat/assistant/AssistantChatShell.vue'
 import type { ComposerAttachment } from '@/Components/chat/assistant/PromptComposer.vue'
+import type { WorkspaceStatus } from '@/Components/chat/assistant/AssistantStatusPanel.vue'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
 import { useTypingIndicator } from '@/composables/useTypingIndicator'
 import { useIsMobile } from '@/composables/useMediaQuery'
 import { useWorkspace } from '@/composables/useWorkspace'
 
-const { workspacePath } = useWorkspace()
+const { memberUrl } = useWorkspace()
 
 const page = usePage()
 const currentUser = computed(() => (page.props.auth as any)?.user)
@@ -90,6 +98,11 @@ const assistantTasks = ref<AgentTask[]>([])
 const approvals = ref<ApprovalRequest[]>([])
 const approvalLoadingId = ref<string | null>(null)
 const approvalLoadingAction = ref<false | 'approve' | 'reject'>(false)
+const statusPanelOpen = ref(false)
+const workspaceStatus = ref<WorkspaceStatus | null>(null)
+const workspaceStatusLoading = ref(false)
+const workspaceStatusError = ref<string | null>(null)
+const workspaceStatusLastRefreshedAt = ref<Date | null>(null)
 let runtimePoll: number | null = null
 
 // Channels data
@@ -455,48 +468,7 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
 
   // Intercept /status command
   if (content.trim() === '/status') {
-    try {
-      const { data } = await fetchWorkspaceStatus()
-      const statusIcon = (s: string) => s === 'working' ? '🟢' : s === 'idle' ? '🟡' : '⚫'
-      const agentLines = data.agents.map((a: any) => {
-        let line = `${statusIcon(a.status)} **${a.name}** — ${a.status}`
-        if (a.current_task) line += ` · ${a.current_task}`
-        return line
-      }).join('\n')
-
-      const text = [
-        `**Workspace Status**\n`,
-        `🤖 **Agents**: ${data.agents_online}/${data.agents_total} online`,
-        agentLines,
-        `\n📋 **Tasks**: ${data.tasks_active} active · ${data.tasks_today} completed today · ${data.tasks_completed} total`,
-        `💬 **Messages**: ${data.messages_today} today · ${data.messages_total} total`,
-      ].join('\n')
-
-      messages.value = [...messages.value, {
-        id: `system-${Date.now()}`,
-        content: text,
-        channelId: selectedChannel.value.id,
-        channel_id: selectedChannel.value.id,
-        authorId: 'system',
-        author: { id: 'system', name: 'System', type: 'system' },
-        timestamp: new Date().toISOString(),
-        reactions: [],
-        attachments: [],
-      } as any]
-    } catch (error: any) {
-      const msg = error.response?.data?.message || 'Failed to fetch status'
-      messages.value = [...messages.value, {
-        id: `system-${Date.now()}`,
-        content: `⚠️ ${msg}`,
-        channelId: selectedChannel.value.id,
-        channel_id: selectedChannel.value.id,
-        authorId: 'system',
-        author: { id: 'system', name: 'System', type: 'system' },
-        timestamp: new Date().toISOString(),
-        reactions: [],
-        attachments: [],
-      } as any]
-    }
+    await openStatusPanel()
     return
   }
 
@@ -560,7 +532,27 @@ const handleUnifiedSend = async (content: string, attachments?: ComposerAttachme
 }
 
 const handleCompactCommand = () => handleUnifiedSend('/compact', [])
-const handleStatusCommand = () => handleUnifiedSend('/status', [])
+const handleStatusCommand = () => openStatusPanel()
+
+const openStatusPanel = async () => {
+  statusPanelOpen.value = true
+  await refreshWorkspaceStatusPanel()
+}
+
+const refreshWorkspaceStatusPanel = async () => {
+  workspaceStatusLoading.value = true
+  workspaceStatusError.value = null
+
+  try {
+    const { data } = await fetchWorkspaceStatus()
+    workspaceStatus.value = data as WorkspaceStatus
+    workspaceStatusLastRefreshedAt.value = new Date()
+  } catch (error: any) {
+    workspaceStatusError.value = error.response?.data?.message || error.message || 'Failed to fetch workspace status.'
+  } finally {
+    workspaceStatusLoading.value = false
+  }
+}
 
 const handleStopResponse = async () => {
   const activeTask = assistantTasks.value.find(task => ['pending', 'active', 'paused'].includes(task.status))
@@ -667,7 +659,7 @@ const handleMemberRemove = async (member: User) => {
 
 const handleMemberClick = (member: User) => {
   // Navigate to user profile
-  router.visit(workspacePath(`/users/${member.id}`))
+  router.visit(memberUrl(member))
 }
 
 const handleMemberMessage = async (member: User) => {

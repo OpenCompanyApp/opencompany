@@ -368,13 +368,6 @@ class RespondToChatMessage
                 return;
             }
 
-            Log::error('Agent response failed', [
-                'agent' => $this->agent->name,
-                'channel' => $this->channelId,
-                'task' => $task->id,
-                'error' => $e->getMessage(),
-            ]);
-
             if ($llmStep instanceof TaskStep) {
                 $llmStep->refresh();
 
@@ -382,6 +375,31 @@ class RespondToChatMessage
                     $llmStep->skip();
                 }
             }
+
+            if ($this->shouldRetryProviderFailure($e)) {
+                Log::warning('Agent response attempt failed; retrying', [
+                    'agent' => $this->agent->name,
+                    'channel' => $this->channelId,
+                    'task' => $task->id,
+                    'attempt' => $this->attempts(),
+                    'max_attempts' => $this->tries,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $retryStep = $task->addStep("Retrying after provider error: {$e->getMessage()}", 'action');
+                $retryStep->start();
+                $retryStep->complete();
+                safeBroadcast(new TaskUpdated($task, 'retrying'), 'task retrying');
+
+                throw $e;
+            }
+
+            Log::error('Agent response failed', [
+                'agent' => $this->agent->name,
+                'channel' => $this->channelId,
+                'task' => $task->id,
+                'error' => $e->getMessage(),
+            ]);
 
             $errorStep = $task->addStep("Error: {$e->getMessage()}", 'action');
             $errorStep->start();
@@ -634,5 +652,42 @@ class RespondToChatMessage
     private function attempts(): int
     {
         return $this->attempts;
+    }
+
+    /**
+     * Defer visible task failure for provider/network outages that queue retry
+     * can realistically repair. Without this guard, a transient Z.AI refusal
+     * marks the task failed on attempt one, broadcasts a failed run to chat,
+     * and then the queue retries a task the UI already considers terminal.
+     */
+    private function shouldRetryProviderFailure(\Throwable $e): bool
+    {
+        if ($this->attempts() >= $this->tries) {
+            return false;
+        }
+
+        $message = strtolower($e->getMessage());
+
+        foreach ([
+            'connection refused',
+            'connection timed out',
+            'operation timed out',
+            'timeout',
+            'temporarily unavailable',
+            'too many requests',
+            'rate limit',
+            'status code 429',
+            'status code 500',
+            'status code 502',
+            'status code 503',
+            'status code 504',
+            'server error',
+        ] as $needle) {
+            if (str_contains($message, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

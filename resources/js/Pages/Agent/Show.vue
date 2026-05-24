@@ -74,7 +74,7 @@
 
           <div class="flex items-center gap-2">
             <Link
-              :href="workspacePath(`/messages/${agent.id}`)"
+              :href="messageUrl(agent.id)"
               class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
             >
               <Icon name="ph:chat-circle" class="w-4 h-4" />
@@ -136,7 +136,7 @@
                   <div class="flex-1 min-w-0">
                     <p class="text-xs text-neutral-500 dark:text-neutral-400">Reports to</p>
                     <Link
-                      :href="workspacePath(agentManager.type === 'agent' ? `/agent/${agentManager.id}` : `/profile/${agentManager.id}`)"
+                      :href="memberUrl(agentManager)"
                       class="text-sm font-medium text-neutral-900 dark:text-white hover:underline"
                     >
                       {{ agentManager.name }}
@@ -153,7 +153,7 @@
                   <Link
                     v-for="report in agentDirectReports"
                     :key="report.id"
-                    :href="workspacePath(`/agent/${report.id}`)"
+                    :href="agentUrl(report.id)"
                     class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
                   >
                     <AgentAvatar
@@ -191,7 +191,7 @@
                   v-for="delegationId in agentAwaitingDelegationIds"
                   :key="delegationId"
                   class="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700/50 transition-colors"
-                  @click="router.visit(workspacePath(`/tasks/${delegationId}`))"
+                  @click="router.visit(taskUrl(delegationId))"
                 >
                   <Icon name="ph:arrow-bend-up-right" class="w-4 h-4 text-amber-500 shrink-0" />
                   <span class="text-sm text-neutral-600 dark:text-neutral-300 truncate">{{ delegationId }}</span>
@@ -422,7 +422,7 @@ import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
 import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask } from '@/types'
 
-const { workspacePath } = useWorkspace()
+const { agentUrl, memberUrl, messageUrl, taskUrl } = useWorkspace()
 
 const { fetchAgentDetail, fetchAgentIdentityFiles, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions, updateAgentFileFolderPermissions, updateAgentIntegrations } = useApi()
 
@@ -858,7 +858,7 @@ const taskTypeIcons: Record<string, string> = {
 }
 
 const openTaskDetail = (task: AgentTask) => {
-  router.visit(workspacePath(`/tasks/${task.id}`))
+  router.visit(taskUrl(task.id))
 }
 
 onMounted(() => {

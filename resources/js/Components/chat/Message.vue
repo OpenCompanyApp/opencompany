@@ -34,7 +34,7 @@
         <!-- Author name (first in group, others only) -->
         <div v-if="showHeader && !isOwn" class="flex items-center gap-1.5 mb-1 ml-1">
           <Link
-            :href="workspacePath(message.author.type === 'agent' ? `/agent/${message.author.id}` : `/profile/${message.author.id}`)"
+            :href="memberUrl(message.author)"
             class="text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:underline"
           >
             {{ message.author.name }}
@@ -481,7 +481,7 @@ const emit = defineEmits<{
   replyClick: [message: Message]
 }>()
 
-const { workspacePath } = useWorkspace()
+const { memberUrl } = useWorkspace()
 const { highlight } = useHighlight()
 const { renderMarkdown } = useMarkdown()
 

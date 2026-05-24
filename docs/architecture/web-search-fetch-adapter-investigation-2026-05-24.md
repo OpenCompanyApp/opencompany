@@ -495,13 +495,22 @@ Implementation path:
 9. Add tests for provider manager fallback/cache, guard behavior, direct fetch,
    HTML extraction, direct tools, and Lua invocation.
 
-Suggested test slice:
+Implemented focused test slice:
 
-- `tests/Unit/Web/WebProviderManagerTest.php`
-- `tests/Unit/Web/DirectFetchProviderTest.php`
-- `tests/Unit/Web/HtmlPageExtractorTest.php`
-- `tests/Feature/WebToolsTest.php`
-- `tests/Feature/LuaWebToolsTest.php`
+- `tests/Feature/Tools/WebToolsTest.php`
+- `tests/Feature/Domain/Web/WebProviderManagerTest.php`
+- `tests/Feature/Domain/Web/WebProviderRegistryTest.php`
+- `tests/Feature/Domain/Web/WebCredentialResolverTest.php`
+- `tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php`
+- `tests/Feature/LuaApiDocGeneratorTest.php`
+- `tests/Unit/Domain/Web/DirectFetchProviderTest.php`
+- `tests/Unit/Domain/Web/HtmlPageExtractorTest.php`
+- `tests/Unit/Domain/Web/MarkdownPageExtractorTest.php`
+- `tests/Unit/Domain/Web/WebRequestGuardTest.php`
+- `tests/Unit/Domain/Web/WebResultCacheTest.php`
+- `tests/Unit/Domain/Web/WebProviderAdapterTest.php`
+- `tests/Unit/Domain/Web/WebProviderAdapterFailureTest.php`
+- `tests/Unit/Domain/Web/ZaiWebProviderTest.php`
 
 ## Recommendation
 
@@ -955,21 +964,23 @@ for future adapter expansion.
 
 ### Test Plan
 
-Minimum test files:
+Current focused test files:
 
 - `tests/Unit/Domain/Web/WebRequestGuardTest.php`;
 - `tests/Unit/Domain/Web/DirectFetchProviderTest.php`;
 - `tests/Unit/Domain/Web/HtmlPageExtractorTest.php`;
 - `tests/Unit/Domain/Web/MarkdownPageExtractorTest.php`;
 - `tests/Unit/Domain/Web/WebResultCacheTest.php`;
-- `tests/Unit/Domain/Web/WebSearchProviderManagerTest.php`;
-- `tests/Unit/Domain/Web/WebFetchProviderManagerTest.php`;
-- `tests/Unit/Domain/Web/WebProviderRegistryTest.php`;
-- `tests/Unit/Domain/Web/ZaiProvidersTest.php`;
-- `tests/Unit/Agents/Tools/WebSearchToolTest.php`;
-- `tests/Unit/Agents/Tools/WebFetchToolTest.php`;
-- `tests/Feature/Agents/WebToolsRuntimeTest.php`;
-- `tests/Feature/Agents/LuaWebToolsTest.php`;
+- `tests/Unit/Domain/Web/WebProviderAdapterTest.php`;
+- `tests/Unit/Domain/Web/WebProviderAdapterFailureTest.php`;
+- `tests/Unit/Domain/Web/ZaiWebProviderTest.php`;
+- `tests/Feature/Domain/Web/WebProviderManagerTest.php`;
+- `tests/Feature/Domain/Web/WebProviderRegistryTest.php`;
+- `tests/Feature/Domain/Web/WebCredentialResolverTest.php`;
+- `tests/Feature/Domain/Web/WebLiveSmokeTest.php`;
+- `tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php`;
+- `tests/Feature/Tools/WebToolsTest.php`;
+- `tests/Feature/LuaApiDocGeneratorTest.php`;
 - `tests/Feature/Admin/WebProviderSettingsTest.php`.
 
 Coverage targets:

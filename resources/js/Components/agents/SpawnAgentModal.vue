@@ -133,7 +133,7 @@
             You need to configure at least one AI model before creating an agent.
           </p>
           <a
-            :href="workspacePath('/integrations')"
+            :href="integrationsUrl()"
             class="inline-flex items-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg font-medium text-sm hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
           >
             <Icon name="ph:gear" class="w-4 h-4" />
@@ -301,7 +301,7 @@ import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 
-const { workspacePath } = useWorkspace()
+const { integrationsUrl } = useWorkspace()
 
 const isOpen = defineModel<boolean>('open', { default: false })
 

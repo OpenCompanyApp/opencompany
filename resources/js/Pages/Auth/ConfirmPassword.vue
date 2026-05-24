@@ -3,6 +3,7 @@ import GuestLayout from '@/Layouts/GuestLayout.vue'
 import Input from '@/Components/shared/Input.vue'
 import Button from '@/Components/shared/Button.vue'
 import { Head, useForm } from '@inertiajs/vue3'
+import { store } from '@/actions/App/Http/Controllers/Auth/ConfirmablePasswordController'
 
 const form = useForm({
   password: '',
@@ -11,7 +12,7 @@ const form = useForm({
 // Reset the password field after confirmation so a failed/successful navigation
 // does not leave sensitive input in component state.
 const submit = () => {
-  form.post(route('password.confirm'), {
+  form.submit(store(), {
     onFinish: () => {
       form.reset()
     },

@@ -24,6 +24,7 @@ class WebConfigureCommand extends Command
         {--fetch-provider= : Default fetch provider}
         {--fetch-fallbacks= : Comma-separated fetch fallback providers}
         {--allow-external-fetch= : true/false}
+        {--allowed-private-hosts= : Comma-separated private/reserved hosts direct fetch may access}
         {--allowed-domains= : Comma-separated allowed domains}
         {--blocked-domains= : Comma-separated blocked domains}
         {--cache-ttl= : Cache TTL in seconds}
@@ -80,6 +81,7 @@ class WebConfigureCommand extends Command
         $this->intOption($settings, 'cache-ttl', 'web_cache_ttl_seconds');
         $this->listOption($settings, 'search-fallbacks', 'web_search_fallback_providers');
         $this->listOption($settings, 'fetch-fallbacks', 'web_fetch_fallback_providers');
+        $this->listOption($settings, 'allowed-private-hosts', 'web_fetch_allowed_private_hosts');
         $this->listOption($settings, 'allowed-domains', 'web_allowed_domains');
         $this->listOption($settings, 'blocked-domains', 'web_blocked_domains');
 

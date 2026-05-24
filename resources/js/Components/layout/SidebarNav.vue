@@ -8,18 +8,18 @@
     <!-- Dashboard (always at top) -->
     <div class="space-y-0.5">
       <Link
-        :href="workspacePath('/')"
+        :href="dashboardUrl()"
         :class="[
           'group flex items-center rounded-lg transition-colors duration-150 outline-none',
           collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-          isActive(workspacePath('/'))
+          isActive(dashboardUrl())
             ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
             : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200',
           'focus-visible:ring-1 focus-visible:ring-neutral-400',
         ]"
       >
         <Icon
-          :name="isActive(workspacePath('/')) ? 'ph:house-fill' : 'ph:house'"
+          :name="isActive(dashboardUrl()) ? 'ph:house-fill' : 'ph:house'"
           class="w-[18px] h-[18px] shrink-0"
         />
         <span v-if="!collapsed" class="text-sm truncate flex-1">Dashboard</span>
@@ -83,10 +83,10 @@
             <Link
               v-for="agent in agents"
               :key="agent.id"
-              :href="workspacePath(`/agent/${agent.id}`)"
+              :href="agentUrl(agent.id)"
               :class="[
                 'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors duration-150 text-left outline-none',
-                isActive(workspacePath(`/agent/${agent.id}`))
+                isActive(agentUrl(agent.id))
                   ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
                   : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white',
                 'focus-visible:ring-1 focus-visible:ring-neutral-400',
@@ -145,7 +145,20 @@ const emit = defineEmits<{
 
 // Composables
 const page = usePage()
-const { workspacePath } = useWorkspace()
+const {
+  agentUrl,
+  approvalsUrl,
+  automationUrl,
+  calendarUrl,
+  chatUrl,
+  dashboardUrl,
+  docsUrl,
+  filesUrl,
+  listsUrl,
+  orgUrl,
+  tablesUrl,
+  tasksUrl,
+} = useWorkspace()
 
 // State — default expanded, persist to localStorage
 const agentsSectionOpen = ref(
@@ -158,26 +171,26 @@ watch(agentsSectionOpen, (val) => {
 
 // Agent Work - Tasks, approvals, organization
 const agentWorkItems = computed<NavItemType[]>(() => [
-  { to: workspacePath('/tasks'), icon: 'ph:check-square', iconActive: 'ph:check-square-fill', label: 'Tasks' },
-  { to: workspacePath('/approvals'), icon: 'ph:seal-check', iconActive: 'ph:seal-check-fill', label: 'Approvals', badge: 3 },
-  { to: workspacePath('/org'), icon: 'ph:tree-structure', iconActive: 'ph:tree-structure-fill', label: 'Organization' },
-  { to: workspacePath('/automation'), icon: 'ph:lightning', iconActive: 'ph:lightning-fill', label: 'Automation' },
+  { to: tasksUrl(), icon: 'ph:check-square', iconActive: 'ph:check-square-fill', label: 'Tasks' },
+  { to: approvalsUrl(), icon: 'ph:seal-check', iconActive: 'ph:seal-check-fill', label: 'Approvals', badge: 3 },
+  { to: orgUrl(), icon: 'ph:tree-structure', iconActive: 'ph:tree-structure-fill', label: 'Organization' },
+  { to: automationUrl(), icon: 'ph:lightning', iconActive: 'ph:lightning-fill', label: 'Automation' },
 ])
 
 // Office - Daily productivity tools
 const officeItems = computed<NavItemType[]>(() => [
-  { to: workspacePath('/chat'), icon: 'ph:chat-circle', iconActive: 'ph:chat-circle-fill', label: 'Chat', badge: 15 },
-  { to: workspacePath('/docs'), icon: 'ph:file-text', iconActive: 'ph:file-text-fill', label: 'Docs' },
-  { to: workspacePath('/files'), icon: 'ph:folder', iconActive: 'ph:folder-fill', label: 'Files' },
-  { to: workspacePath('/tables'), icon: 'ph:table', iconActive: 'ph:table-fill', label: 'Tables' },
-  { to: workspacePath('/calendar'), icon: 'ph:calendar', iconActive: 'ph:calendar-fill', label: 'Calendar' },
-  { to: workspacePath('/lists'), icon: 'ph:kanban', iconActive: 'ph:kanban-fill', label: 'Lists' },
+  { to: chatUrl(), icon: 'ph:chat-circle', iconActive: 'ph:chat-circle-fill', label: 'Chat', badge: 15 },
+  { to: docsUrl(), icon: 'ph:file-text', iconActive: 'ph:file-text-fill', label: 'Docs' },
+  { to: filesUrl(), icon: 'ph:folder', iconActive: 'ph:folder-fill', label: 'Files' },
+  { to: tablesUrl(), icon: 'ph:table', iconActive: 'ph:table-fill', label: 'Tables' },
+  { to: calendarUrl(), icon: 'ph:calendar', iconActive: 'ph:calendar-fill', label: 'Calendar' },
+  { to: listsUrl(), icon: 'ph:kanban', iconActive: 'ph:kanban-fill', label: 'Lists' },
 ])
 
 // Methods
 const isActive = (path: string): boolean => {
   const currentUrl = page.url
-  if (path === workspacePath('/')) return currentUrl === workspacePath('/')
+  if (path === dashboardUrl()) return currentUrl === dashboardUrl()
   return currentUrl.startsWith(path)
 }
 

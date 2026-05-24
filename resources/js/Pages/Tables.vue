@@ -74,7 +74,7 @@
           </div>
 
           <Link
-            :href="workspacePath(`/tables/${table.id}`)"
+            :href="tableUrl(table.id)"
             class="block"
           >
             <div class="flex items-start gap-3">
@@ -138,7 +138,7 @@ import TableCreateModal from '@/Components/tables/TableCreateModal.vue'
 import type { DataTable } from '@/types'
 import { useWorkspace } from '@/composables/useWorkspace'
 
-const { workspacePath } = useWorkspace()
+const { tableUrl } = useWorkspace()
 
 const tables = ref<DataTable[]>([])
 const loading = ref(true)

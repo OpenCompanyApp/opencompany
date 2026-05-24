@@ -88,7 +88,7 @@
               <div class="flex items-center gap-2 mt-2">
                 <Link
                   v-if="user.id !== currentUserId"
-                  :href="workspacePath(`/messages/${user.id}`)"
+                  :href="messageUrl(user.id)"
                   class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-neutral-900 dark:text-white hover:bg-white dark:hover:bg-neutral-600 transition-colors"
                 >
                   <Icon name="ph:chat-circle" class="w-4 h-4" />
@@ -96,7 +96,7 @@
                 </Link>
                 <Link
                   v-if="user.type === 'agent'"
-                  :href="workspacePath(`/agent/${user.id}`)"
+                  :href="agentUrl(user.id)"
                   class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
                 >
                   <Icon name="ph:gear" class="w-4 h-4" />
@@ -227,7 +227,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import SharedSkeleton from '@/Components/shared/Skeleton.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 
-const { workspacePath } = useWorkspace()
+const { agentUrl, messageUrl } = useWorkspace()
 const page = usePage()
 const currentUserId = computed(() => (page.props.auth as any)?.user?.id ?? '')
 

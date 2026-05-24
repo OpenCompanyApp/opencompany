@@ -4,6 +4,8 @@ import Input from '@/Components/shared/Input.vue'
 import Button from '@/Components/shared/Button.vue'
 import Checkbox from '@/Components/shared/Checkbox.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
+import { store } from '@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController'
+import { request as requestPasswordReset } from '@/routes/password'
 
 defineProps<{
   canResetPassword?: boolean
@@ -19,7 +21,7 @@ const form = useForm({
 // Only clear the password on completion; keeping email/remember avoids forcing
 // users to retype them after a validation error.
 const submit = () => {
-  form.post(route('login'), {
+  form.submit(store(), {
     onFinish: () => {
       form.reset('password')
     },
@@ -65,7 +67,7 @@ const submit = () => {
 
         <Link
           v-if="canResetPassword"
-          :href="route('password.request')"
+          :href="requestPasswordReset()"
           class="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors"
         >
           Forgot password?

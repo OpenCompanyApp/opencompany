@@ -29,7 +29,7 @@
 
         <div v-else-if="groupedBrains.length === 0" class="text-sm text-neutral-500 dark:text-neutral-400">
           <p>No AI models configured.</p>
-          <Link :href="workspacePath('/integrations')" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
+          <Link :href="integrationsUrl()" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
             Configure integrations
           </Link>
         </div>
@@ -179,7 +179,7 @@
             <p class="text-xs text-neutral-500 dark:text-neutral-400 capitalize">{{ manager.type === 'agent' ? manager.agentType || 'agent' : 'Human' }}</p>
           </div>
           <Link
-            :href="workspacePath(manager.type === 'agent' ? `/agent/${manager.id}` : `/profile/${manager.id}`)"
+            :href="memberUrl(manager)"
             class="text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
           >
             View
@@ -326,7 +326,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import type { AgentSettings, AgentBehaviorMode } from '@/types'
 
-const { workspacePath } = useWorkspace()
+const { integrationsUrl, memberUrl } = useWorkspace()
 
 interface BrainOption {
   id: string

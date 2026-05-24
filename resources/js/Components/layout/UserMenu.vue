@@ -370,7 +370,7 @@ const quickStatuses: QuickStatus[] = [
 const { isDark, toggleDark } = useColorMode()
 
 // Workspace
-const { workspacePath } = useWorkspace()
+const { settingsUrl, profileEditUrl } = useWorkspace()
 
 // State
 const currentUser = computed<User>(() => props.user)
@@ -454,9 +454,9 @@ const handleMenuAction = (actionId: string) => {
   if (actionId === 'custom-status') {
     customStatusDialogOpen.value = true
   } else if (actionId === 'profile') {
-    router.visit(workspacePath('/profile'))
+    router.visit(profileEditUrl())
   } else if (actionId === 'settings') {
-    router.visit(workspacePath('/settings'))
+    router.visit(settingsUrl())
   }
 }
 

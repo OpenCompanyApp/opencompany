@@ -66,15 +66,7 @@
           </button>
         </div>
 
-        <div class="flex min-w-0 items-center gap-2">
-          <AgentSelector
-            v-if="showAgentPicker && agents.length > 0"
-            :agents="agents"
-            :selected-agent-id="selectedAgentId"
-            label="Message as"
-            @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
-          />
-
+        <div class="flex items-center gap-2">
           <button
             v-if="running"
             type="button"
@@ -107,7 +99,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import AgentSelector from './AgentSelector.vue'
 import type { User } from '@/types'
 
 export interface ComposerAttachment {

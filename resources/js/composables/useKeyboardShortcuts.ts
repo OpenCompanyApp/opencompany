@@ -2,6 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useMagicKeys, whenever } from '@vueuse/core'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { approvals, chat, dashboard, docs, org, settings, tasks } from '@/routes'
 
 const isInputFocused = () => {
   const activeElement = document.activeElement
@@ -15,7 +16,7 @@ const commandPaletteOpen = ref(false)
 
 export const useKeyboardShortcuts = () => {
   const keys = useMagicKeys()
-  const { workspacePath } = useWorkspace()
+  const { workspaceRouteParams } = useWorkspace()
 
   // Cmd+K / Ctrl+K - Open command palette
   whenever(keys['Meta+k'], () => {
@@ -49,7 +50,7 @@ export const useKeyboardShortcuts = () => {
   whenever(keys.h, () => {
     if (isInputFocused()) return
     if (gPressed.value) {
-      router.visit(workspacePath('/'))
+      router.visit(dashboard(workspaceRouteParams()))
       gPressed.value = false
     }
   })
@@ -58,7 +59,7 @@ export const useKeyboardShortcuts = () => {
   whenever(keys.c, () => {
     if (isInputFocused()) return
     if (gPressed.value) {
-      router.visit(workspacePath('/chat'))
+      router.visit(chat(workspaceRouteParams()))
       gPressed.value = false
     }
   })
@@ -67,7 +68,7 @@ export const useKeyboardShortcuts = () => {
   whenever(keys.t, () => {
     if (isInputFocused()) return
     if (gPressed.value) {
-      router.visit(workspacePath('/tasks'))
+      router.visit(tasks(workspaceRouteParams()))
       gPressed.value = false
     }
   })
@@ -76,7 +77,7 @@ export const useKeyboardShortcuts = () => {
   whenever(keys.d, () => {
     if (isInputFocused()) return
     if (gPressed.value) {
-      router.visit(workspacePath('/docs'))
+      router.visit(docs(workspaceRouteParams()))
       gPressed.value = false
     }
   })
@@ -85,7 +86,7 @@ export const useKeyboardShortcuts = () => {
   whenever(keys.a, () => {
     if (isInputFocused()) return
     if (gPressed.value) {
-      router.visit(workspacePath('/approvals'))
+      router.visit(approvals(workspaceRouteParams()))
       gPressed.value = false
     }
   })
@@ -94,7 +95,7 @@ export const useKeyboardShortcuts = () => {
   whenever(keys.o, () => {
     if (isInputFocused()) return
     if (gPressed.value) {
-      router.visit(workspacePath('/org'))
+      router.visit(org(workspaceRouteParams()))
       gPressed.value = false
     }
   })
@@ -103,7 +104,7 @@ export const useKeyboardShortcuts = () => {
   whenever(keys.s, () => {
     if (isInputFocused()) return
     if (gPressed.value) {
-      router.visit(workspacePath('/settings'))
+      router.visit(settings(workspaceRouteParams()))
       gPressed.value = false
     }
   })
@@ -125,7 +126,7 @@ export const useKeyboardShortcuts = () => {
   whenever(keys.t, () => {
     if (isInputFocused()) return
     if (nPressed.value) {
-      router.visit(workspacePath('/tasks?action=new'))
+      router.visit(tasks(workspaceRouteParams(), { query: { action: 'new' } }))
       nPressed.value = false
     }
   })

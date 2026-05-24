@@ -3,6 +3,8 @@ import GuestLayout from '@/Layouts/GuestLayout.vue'
 import Input from '@/Components/shared/Input.vue'
 import Button from '@/Components/shared/Button.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
+import { email } from '@/routes/password'
+import { login } from '@/routes'
 
 defineProps<{
   status?: string
@@ -13,7 +15,7 @@ const form = useForm({
 })
 
 const submit = () => {
-  form.post(route('password.email'))
+  form.submit(email())
 }
 </script>
 
@@ -53,7 +55,7 @@ const submit = () => {
     </form>
 
     <template #footer>
-      <Link :href="route('login')" class="text-neutral-900 dark:text-white hover:underline">
+      <Link :href="login()" class="text-neutral-900 dark:text-white hover:underline">
         Back to login
       </Link>
     </template>

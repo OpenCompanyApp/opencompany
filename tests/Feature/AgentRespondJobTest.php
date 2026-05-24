@@ -101,6 +101,47 @@ class AgentRespondJobTest extends TestCase
         $this->assertEquals('idle', $agent->status);
     }
 
+    public function test_transient_provider_failure_waits_for_final_attempt_before_failing_task(): void
+    {
+        OpenCompanyAgent::fake(function () {
+            throw new \RuntimeException('Connection refused for URI https://api.z.ai/api/coding/paas/v4/chat/completions');
+        });
+        Event::fake([MessageSent::class]);
+
+        $human = User::factory()->create(['type' => 'human']);
+        $agent = User::factory()->create([
+            'type' => 'agent',
+            'brain' => 'z:glm-5.1',
+            'status' => 'idle',
+        ]);
+        $channel = Channel::factory()->create(['type' => 'dm']);
+
+        $userMessage = Message::create([
+            'id' => 'msg-transient-provider-failure',
+            'content' => 'Hello',
+            'channel_id' => $channel->id,
+            'author_id' => $human->id,
+            'timestamp' => now(),
+        ]);
+
+        $job = new AgentRespondJob($userMessage, $agent, $channel->id);
+
+        try {
+            $job->handle();
+        } catch (\RuntimeException) {
+            // Expected: the queue should retry transient provider failures.
+        }
+
+        $task = Task::where('trigger_message_id', $userMessage->id)->firstOrFail();
+        $this->assertEquals(Task::STATUS_ACTIVE, $task->status);
+        $this->assertTrue($task->steps()->where('description', 'like', 'Retrying after provider error:%')->exists());
+        $this->assertFalse($task->steps()->where('description', 'like', 'Error:%')->exists());
+        $this->assertCount(0, Message::where('author_id', $agent->id)->get());
+
+        $agent->refresh();
+        $this->assertEquals('idle', $agent->status);
+    }
+
     public function test_agent_status_set_to_working_during_execution(): void
     {
         $statusDuringExecution = null;

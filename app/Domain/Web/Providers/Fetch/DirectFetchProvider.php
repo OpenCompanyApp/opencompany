@@ -42,7 +42,7 @@ class DirectFetchProvider implements WebFetchProvider
 
     public function fetch(WebFetchRequest $request): WebFetchResponse
     {
-        $this->guard->assertSafePublicUrl($request->url);
+        $this->guard->assertSafePublicUrl($request->url, allowConfiguredPrivateHosts: true);
 
         $timeout = $request->timeoutSeconds ?? (int) config('web.fetch.timeout_seconds', 30);
         $response = Http::withHeaders($this->headers())
@@ -52,7 +52,7 @@ class DirectFetchProvider implements WebFetchProvider
 
         $body = $this->decodeBody($response->body(), (string) $response->header('content-encoding'));
         $finalUrl = (string) ($response->handlerStats()['url'] ?? $request->url);
-        $this->guard->assertSafePublicUrl($finalUrl);
+        $this->guard->assertSafePublicUrl($finalUrl, allowConfiguredPrivateHosts: true);
 
         $maxBytes = $this->maxBytes();
         if (strlen($body) > $maxBytes) {

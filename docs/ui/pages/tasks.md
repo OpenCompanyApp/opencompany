@@ -95,7 +95,7 @@
 - Parent tasks display a collapse/expand toggle (caret icon) and a descendant count badge with `ph:tree-structure` icon
 - Auto-collapse on first load: all parent roots except the most recent are collapsed by default
 - Delegation-source tasks show requester-to-agent flow (`[RequesterAvatar] -> [AgentAvatar]`) in the Agent column
-- Click on any row navigates to the task detail page via `router.visit(workspacePath('/tasks/{id}'))`
+- Click on any row navigates to the task detail page via the generated task show route helper.
 
 ### Task Detail Page (`/w/{workspace}/tasks/{id}`)
 - Full page view (route `Tasks/Show.vue`) with back button, replaces the previous drawer-based approach
@@ -161,9 +161,9 @@ Each status has full variant support: filled, soft, outline, ghost, dot-only, an
 - Actions are exposed from the task detail page and use the `/api/tasks/{id}` lifecycle endpoints.
 
 ### Header Navigation
-- "Workload" link navigates to `workspacePath('/workload')`
-- "Activity" link navigates to `workspacePath('/activity')`
-- "Analytics" link navigates to `workspacePath('/tasks/analytics')`
+- "Workload" link navigates through the generated workload route helper.
+- "Activity" link navigates through the generated activity route helper.
+- "Analytics" link navigates through the generated task analytics route helper.
 
 ### Token Analytics Page (`/w/{workspace}/tasks/analytics`)
 - Route renders `resources/js/Pages/Tasks/Analytics.vue`.

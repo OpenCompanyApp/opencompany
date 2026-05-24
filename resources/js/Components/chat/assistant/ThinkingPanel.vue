@@ -90,11 +90,11 @@ const props = defineProps<{
 }>()
 
 const { highlight } = useHighlight()
-const { workspacePath } = useWorkspace()
+const { taskUrl } = useWorkspace()
 const expanded = ref(true)
 const task = computed(() => props.task ?? props.tasks?.[0] ?? null)
 const isRunning = computed(() => task.value && ['pending', 'active', 'paused'].includes(task.value.status))
-const taskDetailHref = computed(() => task.value?.id ? workspacePath(`/tasks/${task.value.id}`) : null)
+const taskDetailHref = computed(() => task.value?.id ? taskUrl(task.value.id) : null)
 
 watch(task, (next, previous) => {
   if (next?.id !== previous?.id) expanded.value = true

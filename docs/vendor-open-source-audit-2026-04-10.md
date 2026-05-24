@@ -2,7 +2,7 @@
 
 Date: 2026-04-10
 
-Status: Historical vendor audit. `prism-php/prism` is no longer an OpenCompany dependency; Prism findings are retained as removal rationale, not current runtime risk.
+Status: Historical vendor audit. `prism-php/prism` and `tightenco/ziggy` are no longer OpenCompany dependencies; those findings are retained as removal/upstream-report rationale, not current runtime risk.
 
 Scope:
 - Included: third-party packages in `vendor/`

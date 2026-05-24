@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Message;
+use App\Models\ApprovalRequest;
 use App\Models\Task;
 use App\Models\User;
 
@@ -50,6 +51,16 @@ class WorkspaceStatusService
             ->whereDate('updated_at', today())
             ->count();
 
+        $tasksFailed = Task::where('workspace_id', $workspaceId)
+            ->where('status', Task::STATUS_FAILED)
+            ->count();
+
+        $pendingApprovals = ApprovalRequest::where('status', 'pending')
+            ->whereHas('channel', function ($q) use ($workspaceId) {
+                $q->where('workspace_id', $workspaceId);
+            })
+            ->count();
+
         $messagesTotal = Message::whereHas('channel', function ($q) use ($workspaceId) {
             $q->where('workspace_id', $workspaceId);
         })->count();
@@ -65,6 +76,8 @@ class WorkspaceStatusService
             'tasks_active' => $tasksActive,
             'tasks_completed' => $tasksCompleted,
             'tasks_today' => $tasksToday,
+            'tasks_failed' => $tasksFailed,
+            'pending_approvals' => $pendingApprovals,
             'messages_total' => $messagesTotal,
             'messages_today' => $messagesToday,
         ];

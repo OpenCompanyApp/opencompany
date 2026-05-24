@@ -93,8 +93,14 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Rechecked [ai-provider-runtime-architecture.md](ai-provider-runtime-architecture.md) and [../ui/pages/chat.md](../ui/pages/chat.md) after `AgentRun::stream()` added catalog-gated streaming fallback and `RespondToChatMessage` limited websocket broadcasts to chat-consumed stream events. The docs now distinguish streamed text events from task-step tool evidence.
 - Rechecked the same web investigation and [../INDEX.md](../INDEX.md) after `WebConfigureCommand` appeared. The current web Artisan namespace is now documented as `web:providers`, `web:configure`, `web:doctor`, `web:search`, and `web:fetch`.
 - Rechecked [../ui/design-system.md](../ui/design-system.md) after runtime/tool-inspector syntax colors were added to `resources/css/app.css`; the design-system guide now documents the `oc-syntax` highlight.js wrapper class.
-- Rechecked [../ui/pages/chat.md](../ui/pages/chat.md) after `AgentSelector.vue` appeared and the sidebar, empty state, and composer switched from native selects/plus-only behavior to the shared Reka popover.
+- Rechecked [../ui/pages/chat.md](../ui/pages/chat.md) after `AgentSelector.vue` appeared and the sidebar, empty state, and composer initially switched from native selects/plus-only behavior to the shared Reka popover. A later Wayfinder/chat-composer follow-up below narrows current `AgentSelector` usage to the sidebar and empty state.
 - Rechecked [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) after `WebLiveSmokeTest`, `WebProviderAdapterFailureTest`, and direct gzip/deflate decode coverage appeared. The remaining web hardening note now points at broader provider live smoke coverage rather than missing adapter failure/malformed-payload tests.
+- Rechecked [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) for stale proposed test paths after the full tree was committed; later implementation/test-plan sections now list the actual `tests/Feature/Domain/Web`, `tests/Feature/Tools/WebToolsTest.php`, `tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php`, and `tests/Unit/Domain/Web` files that exist.
+- Rechecked [domain-driven-design-architecture.md](domain-driven-design-architecture.md) against `app/Domain/AgentRuntime/Application` and `app/Agents/Runtime`; the doc no longer references a non-existent `RunAgentTurn.php` application service and now treats `RespondToChatMessage`, `ExecuteAssignedTask`, and `AgentRun` as the current split.
+- Rechecked [../ui/pages/auth.md](../ui/pages/auth.md) and [../ui/pages/welcome.md](../ui/pages/welcome.md) after the dirty frontend worktree removed Ziggy registration and switched auth/welcome links/forms to generated route/action helpers. The docs now describe those helpers instead of explicit `route(...)` usage.
+- Rechecked [../vendor-open-source-audit-2026-04-10.md](../vendor-open-source-audit-2026-04-10.md) against the same dependency change; the historical audit now states that both Prism and Ziggy findings are retained as removal/upstream-report rationale rather than current dependency risk.
+- Rechecked [pest-browser-testing-implementation-plan-2026-05-10.md](pest-browser-testing-implementation-plan-2026-05-10.md) against `tests/Browser`; the targeted validation example now uses existing `tests/Browser/AuthenticationTest.php` instead of the obsolete `AuthSmokeTest.php` name.
+- Rechecked the dirty Wayfinder route-helper conversion across [../ui/pages/automation.md](../ui/pages/automation.md), [../ui/pages/dashboard.md](../ui/pages/dashboard.md), [../ui/pages/activity.md](../ui/pages/activity.md), [../ui/pages/workload.md](../ui/pages/workload.md), [../ui/pages/tasks.md](../ui/pages/tasks.md), [../ui/pages/chat.md](../ui/pages/chat.md), and [../ui/layouts.md](../ui/layouts.md). Page-level navigation docs now distinguish generated route helpers from older `workspacePath(...)` examples, while shared components that still use `workspacePath(...)` remain documented that way.
 
 ## Mechanical Checks
 
@@ -111,10 +117,10 @@ php <local-link-checker>
 ```
 
 ```bash
-# docs/INDEX.md coverage for tracked docs:
-# Direct doc links plus intentional directory-level entries for imported KosmoKrator
-# and generated integration sub-docs were checked.
-# 116 non-confidential docs checked; 0 coverage gaps.
+# docs/INDEX.md coverage for tracked docs and generated Lua docs:
+# Direct doc links plus intentional directory-level entries for imported KosmoKrator,
+# generated integration sub-docs, and resources/lua-docs were checked.
+# 121 non-confidential docs checked; 0 coverage gaps.
 php <docs-index-coverage-checker>
 ```
 

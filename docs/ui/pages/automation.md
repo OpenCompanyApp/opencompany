@@ -82,14 +82,14 @@ Create and edit screens use a full-height editor layout:
 - Rows show execution type (`Prompt` or `Script`), human-readable cron schedule, assigned agent, preview text, next run, run count, last run, and failure snippet.
 - Toggle switch updates `isActive`.
 - Row action menu supports Run, Edit, and Delete.
-- "New" navigates to `workspacePath('/automation/create')`.
-- Edit navigates to `workspacePath('/automation/{id}/edit')`.
+- "New" navigates through the generated `automation.create` route helper.
+- Edit navigates through the generated `automation.edit` route helper.
 
 ### Create/Edit
 
 - The name is edited inline in the toolbar.
 - Prompt/Script segmented control switches the Monaco editor between Markdown and Luau modes.
-- Script mode shows a Luau badge and an API Reference link to `workspacePath('/developer/tools')`.
+- Script mode shows a Luau badge and an API Reference link through the generated developer tools route helper.
 - Sidebar fields select agent, cron schedule, timezone, and conversation history retention.
 - Create screen saves through `createAutomation()`.
 - Edit screen loads the automation and recent runs, saves through `updateAutomation()`, and can trigger an immediate run.

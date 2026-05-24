@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between h-10 px-3 shrink-0 border-b border-neutral-200 dark:border-neutral-700/60 bg-white dark:bg-[#1f1f1f]">
       <div class="flex items-center gap-3">
         <Link
-          :href="workspacePath('/developer')"
+          :href="developerToolsUrl()"
           class="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
         >
           <Icon name="ph:arrow-left" class="w-4 h-4" />
@@ -15,7 +15,7 @@
         </span>
         <span class="w-px h-4 bg-neutral-200 dark:bg-neutral-700" />
         <Link
-          :href="workspacePath('/developer/tools')"
+          :href="developerToolsUrl()"
           class="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
           title="API Reference"
         >
@@ -83,17 +83,18 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import axios from 'axios'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
+import { execute as executeLua } from '@/actions/App/Http/Controllers/Api/LuaConsoleController'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import MonacoEditor from '@/Components/developer/MonacoEditor.vue'
 import ConsoleOutput from '@/Components/developer/ConsoleOutput.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useLuaCompletions } from '@/composables/useLuaCompletions'
+import { wayfinderRequest } from '@/utils/wayfinder'
 import type { editor as MonacoEditorType } from 'monaco-editor'
 
-const { workspacePath } = useWorkspace()
+const { developerToolsUrl } = useWorkspace()
 useLuaCompletions()
 
 const code = ref('')
@@ -145,7 +146,7 @@ async function execute() {
 
   running.value = true
   try {
-    const { data } = await axios.post('/api/lua/execute', { code: code.value })
+    const { data } = await wayfinderRequest(executeLua(), { data: { code: code.value } })
     lastResult.value = data
   } catch (err: any) {
     lastResult.value = {

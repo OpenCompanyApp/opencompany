@@ -70,8 +70,7 @@
         "opencompanyapp/integration-typst": "@dev",
         "opencompanyapp/integration-vegalite": "@dev",
         "opencompanyapp/integration-worldbank": "@dev",
-        "pgvector/pgvector": "^0.2.2",
-        "tightenco/ziggy": "^2.0"
+        "pgvector/pgvector": "^0.2.2"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

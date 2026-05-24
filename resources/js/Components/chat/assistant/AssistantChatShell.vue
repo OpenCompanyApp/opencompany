@@ -27,12 +27,19 @@
       :sidebar-collapsed="sidebarCollapsed"
       :approval-loading-id="approvalLoadingId"
       :approval-loading-action="approvalLoadingAction"
+      :status-panel-open="statusPanelOpen"
+      :workspace-status="workspaceStatus"
+      :workspace-status-loading="workspaceStatusLoading"
+      :workspace-status-error="workspaceStatusError"
+      :workspace-status-last-refreshed-at="workspaceStatusLastRefreshedAt"
       @send="(content, attachments) => $emit('send', content, attachments)"
       @retry="$emit('retry', $event)"
       @stop="$emit('stop')"
       @compact="$emit('compact')"
       @status="$emit('status')"
       @refresh="$emit('refresh')"
+      @refresh-status="$emit('refreshStatus')"
+      @close-status="$emit('closeStatus')"
       @toggle-sidebar="handleConversationSidebarToggle"
       @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
       @approval="(id, status) => $emit('approval', id, status)"
@@ -77,6 +84,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import Slideover from '@/Components/shared/Slideover.vue'
 import ConversationSidebar from '@/Components/chat/assistant/ConversationSidebar.vue'
 import AssistantConversation from '@/Components/chat/assistant/AssistantConversation.vue'
+import type { WorkspaceStatus } from '@/Components/chat/assistant/AssistantStatusPanel.vue'
 import type { ComposerAttachment } from '@/Components/chat/assistant/PromptComposer.vue'
 import type { AgentTask, ApprovalRequest, Channel, Message, User } from '@/types'
 
@@ -93,6 +101,11 @@ const props = defineProps<{
   isAssistantChannel: boolean
   approvalLoadingId?: string | null
   approvalLoadingAction?: false | 'approve' | 'reject'
+  statusPanelOpen?: boolean
+  workspaceStatus?: WorkspaceStatus | null
+  workspaceStatusLoading?: boolean
+  workspaceStatusError?: string | null
+  workspaceStatusLastRefreshedAt?: Date | string | null
 }>()
 
 const emit = defineEmits<{
@@ -106,6 +119,8 @@ const emit = defineEmits<{
   compact: []
   status: []
   refresh: []
+  refreshStatus: []
+  closeStatus: []
   'update:selectedAgentId': [agentId: string]
   approval: [id: string, status: 'approved' | 'rejected']
 }>()

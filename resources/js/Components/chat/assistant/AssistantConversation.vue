@@ -112,6 +112,18 @@
       </template>
     </div>
 
+    <AssistantStatusPanel
+      v-if="statusPanelOpen"
+      :status="workspaceStatus"
+      :loading="workspaceStatusLoading"
+      :error="workspaceStatusError"
+      :last-refreshed-at="workspaceStatusLastRefreshedAt"
+      :current-agent="agent"
+      :current-task="currentTask"
+      @refresh="$emit('refreshStatus')"
+      @dismiss="$emit('closeStatus')"
+    />
+
     <PromptComposer
       :agents="agents"
       :selected-agent-id="agent?.id ?? selectedAgentId"
@@ -135,6 +147,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
 import ChatApprovalCard from '@/Components/chat/ApprovalCard.vue'
 import AssistantMessage from '@/Components/chat/assistant/AssistantMessage.vue'
+import AssistantStatusPanel, { type WorkspaceStatus } from '@/Components/chat/assistant/AssistantStatusPanel.vue'
 import PromptComposer, { type ComposerAttachment } from '@/Components/chat/assistant/PromptComposer.vue'
 import ThinkingPanel from '@/Components/chat/assistant/ThinkingPanel.vue'
 import EmptyState from '@/Components/chat/assistant/EmptyState.vue'
@@ -153,6 +166,11 @@ const props = defineProps<{
   sidebarCollapsed?: boolean
   approvalLoadingId?: string | null
   approvalLoadingAction?: false | 'approve' | 'reject'
+  statusPanelOpen?: boolean
+  workspaceStatus?: WorkspaceStatus | null
+  workspaceStatusLoading?: boolean
+  workspaceStatusError?: string | null
+  workspaceStatusLastRefreshedAt?: Date | string | null
 }>()
 
 const emit = defineEmits<{
@@ -162,6 +180,8 @@ const emit = defineEmits<{
   compact: []
   status: []
   refresh: []
+  refreshStatus: []
+  closeStatus: []
   toggleSidebar: []
   'update:selectedAgentId': [agentId: string]
   approval: [id: string, status: 'approved' | 'rejected']
@@ -195,6 +215,9 @@ const subtitle = computed(() => {
   return `${agent.value.status ?? 'idle'} · workspace-aware assistant`
 })
 const isRunning = computed(() => props.tasks.some(task => ['pending', 'active'].includes(task.status)))
+const currentTask = computed(() =>
+  props.tasks.find(task => ['pending', 'active', 'paused'].includes(task.status)) ?? props.tasks[0] ?? null
+)
 const channelApprovals = computed(() => props.approvals.filter(approval => approval.status === 'pending'))
 const hasRuntimeActivity = computed(() => channelApprovals.value.length > 0 || props.tasks.length > 0)
 const conversationItems = computed(() => {

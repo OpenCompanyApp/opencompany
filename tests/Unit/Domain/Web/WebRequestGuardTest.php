@@ -64,6 +64,22 @@ class WebRequestGuardTest extends TestCase
         (new FakeWebRequestGuard(['example.com' => ['10.0.0.5']]))->assertSafePublicUrl('https://example.com');
     }
 
+    public function test_accepts_configured_private_host_when_direct_fetch_opts_in(): void
+    {
+        (new FakeWebRequestGuard(['opencompany.test' => ['127.0.0.1']], ['opencompany.test']))
+            ->assertSafePublicUrl('http://opencompany.test/w/default/chat', allowConfiguredPrivateHosts: true);
+
+        $this->assertTrue(true);
+    }
+
+    public function test_rejects_configured_private_host_without_direct_fetch_opt_in(): void
+    {
+        $this->expectException(WebProviderException::class);
+
+        (new FakeWebRequestGuard(['opencompany.test' => ['127.0.0.1']], ['opencompany.test']))
+            ->assertSafePublicUrl('http://opencompany.test/w/default/chat');
+    }
+
     public function test_rejects_link_local_metadata_ip(): void
     {
         $this->expectException(WebProviderException::class);
@@ -88,7 +104,10 @@ class WebRequestGuardTest extends TestCase
 
 class FakeWebRequestGuard extends WebRequestGuard
 {
-    public function __construct(private array $records = []) {}
+    public function __construct(private array $records = [], array $allowedPrivateHosts = [])
+    {
+        parent::__construct($allowedPrivateHosts);
+    }
 
     protected function resolveIpAddresses(string $host): array
     {
