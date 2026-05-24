@@ -67,7 +67,7 @@ watch(() => props.content, (newContent) => {
   // Only update if content actually differs (prevents cursor jump)
   const currentHtml = editor.value.getHTML()
   if (currentHtml !== html) {
-    editor.value.commands.setContent(html, false)
+    editor.value.commands.setContent(html, { emitUpdate: false })
   }
 })
 

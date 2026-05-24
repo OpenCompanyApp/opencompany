@@ -2,7 +2,9 @@
 
 Status: Historical QA plan. The commit range and "uncommitted changes" notes below describe the March/April audit window, not the current working tree. Use it as regression-test coverage guidance, not as a live git-state report.
 
-**Scope:** All changes in current git tree (commits ce35785 through df74cb3, plus uncommitted work)
+**Scope at time of writing:** Changes from the March/April audit window
+(commits `ce35785` through `df74cb3`, plus then-uncommitted work). This is not
+the current git tree.
 
 ---
 
@@ -59,7 +61,9 @@ Fixed file forwarding to external platforms.
 
 - `TokenMetrics` helper — centralized token/cost calculation across all job types
 - `SetsWorkspaceContext` trait — workspace binding for queue jobs
-- Multiple custom providers (GLM, Kimi, MiniMax, Codex)
+- Multiple custom/catalog-backed providers. The old GLM naming has since moved
+  to the app-owned AI catalog/runtime with providers such as Z.AI (`z`,
+  `z-api`), Kimi, MiniMax, and Codex.
 - Analytics dashboard with cost estimation, breakdowns by agent/model/source
 
 ### 7. Security Hardening (Feb 28)
@@ -111,7 +115,8 @@ Multi-account integration settings and additional refinements.
 6. Create a test workspace with at least 2 agents
 7. Configure at least one external channel (Telegram) for forwarding tests
 8. Have test credentials for at least one integration (ClickUp, Google, etc.)
-9. Have at least one custom LLM provider configured (GLM, Kimi, or MiniMax)
+9. Have at least one non-default LLM provider configured through the current AI
+   catalog/runtime (for example Z.AI, Kimi, MiniMax, OpenRouter, or Codex)
 
 ---
 

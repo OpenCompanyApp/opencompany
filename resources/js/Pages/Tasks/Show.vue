@@ -447,14 +447,14 @@
             <div class="mt-3 pt-2.5 border-t border-neutral-100 dark:border-neutral-800">
               <div class="flex items-center justify-between mb-1.5">
                 <span class="text-xs text-neutral-500 dark:text-neutral-400">Compaction proximity</span>
-                <span class="text-xs tabular-nums font-mono" :class="tb.compaction.pct_used >= 90 ? 'text-red-500' : tb.compaction.pct_used >= 70 ? 'text-amber-500' : 'text-green-600 dark:text-green-400'">
-                  {{ tb.compaction.pct_used }}% &middot; {{ formatTokens(tb.compaction.remaining) }} remaining
+                <span class="text-xs tabular-nums font-mono" :class="compactionStats.pct_used >= 90 ? 'text-red-500' : compactionStats.pct_used >= 70 ? 'text-amber-500' : 'text-green-600 dark:text-green-400'">
+                  {{ compactionStats.pct_used }}% &middot; {{ formatTokens(compactionStats.remaining) }} remaining
                 </span>
               </div>
               <div class="h-1.5 rounded-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                 <div
                   :class="[compactionColor, 'h-full rounded-full transition-all duration-300']"
-                  :style="{ width: Math.min(tb.compaction.pct_used, 100) + '%' }"
+                  :style="{ width: Math.min(compactionStats.pct_used, 100) + '%' }"
                 />
               </div>
             </div>
@@ -665,7 +665,7 @@ interface TokenBreakdown {
   output_reserve: number
   system_prompt: { total: number; sections: PromptSection[] }
   messages: { total: number; count: number }
-  compaction: { threshold: number; adjusted_tokens: number; remaining: number; pct_used: number }
+  compaction?: { threshold?: number; adjusted_tokens?: number; remaining: number; pct_used: number }
   actual_prompt_tokens?: number
   actual_completion_tokens?: number
 }
@@ -834,11 +834,23 @@ const contextBarSegments = computed(() => {
 })
 
 const compactionColor = computed(() => {
-  if (!tb.value) return 'bg-green-500'
-  const pct = tb.value.compaction.pct_used
+  const pct = compactionStats.value.pct_used
   if (pct >= 90) return 'bg-red-500'
   if (pct >= 70) return 'bg-amber-500'
   return 'bg-green-500'
+})
+
+const compactionStats = computed(() => {
+  const breakdown = tb.value
+
+  if (!breakdown) {
+    return { pct_used: 0, remaining: 0 }
+  }
+
+  return breakdown.compaction ?? {
+    pct_used: Math.round(((breakdown.system_prompt.total + breakdown.messages.total) / breakdown.context_window) * 100),
+    remaining: Math.max(0, breakdown.context_window - breakdown.system_prompt.total - breakdown.messages.total - breakdown.output_reserve),
+  }
 })
 
 // Compute per-section token allocation from char ratios

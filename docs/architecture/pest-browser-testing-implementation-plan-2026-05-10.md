@@ -1,12 +1,19 @@
 # Pest Browser Testing Implementation Plan
 
 Date: 2026-05-10
-Status: Historical proposal. The current tree has an active Laravel Dusk browser-test suite under `tests/Browser`; the Pest/Playwright notes below are retained as a possible future migration path, not the current browser-testing implementation.
+Status: Partly implemented / active migration plan. The current tree has both
+Laravel Dusk browser coverage (`tests/DuskTestCase.php`, existing
+`tests/Browser/*Test.php` classes) and Pest Browser/Playwright dependencies plus
+new Pest-style browser specs (`tests/Pest.php`, `tests/Browser/WorkspaceSmokeTest.php`,
+`tests/Browser/IntegrationsTest.php`, `tests/Browser/ChatRunHistoryTest.php`).
+Use the notes below as the migration plan and keep Dusk/Pest coexistence explicit
+until the suite is deliberately consolidated.
 
 ## Current State
 
 - The app currently uses PHPUnit/Laravel test cases under `tests/Feature` and `tests/Unit`.
-- `laravel/dusk` is installed and active through `tests/DuskTestCase.php` and `tests/Browser/*`.
+- `laravel/dusk` is still installed and active through `tests/DuskTestCase.php` and legacy class-based browser tests.
+- Pest v4, `pest-plugin-browser`, `pest-plugin-laravel`, and Playwright are now present in the worktree; new Pest browser specs are being added alongside the Dusk tests.
 - The frontend is Vue 3/Inertia/Tailwind v4, with the most urgent browser coverage needed around login, workspace routing, settings, and integration configuration flows.
 - Local full-suite execution is slow enough to interrupt development feedback. Browser tests should be targeted locally and broader in CI.
 
@@ -34,7 +41,8 @@ Keep PHPUnit tests in place. Do not migrate existing tests wholesale just to use
    - `tests/Pest.php`
    - `tests/Browser/`
 
-2. Add npm script shortcuts:
+2. Add script shortcuts. These are still missing from `package.json` as of the
+   current check:
    - `test:browser`: `vendor/bin/pest tests/Browser`
    - `test:browser:debug`: `vendor/bin/pest tests/Browser --debug`
    - `test:browser:headed`: `vendor/bin/pest tests/Browser --headed`
@@ -83,7 +91,7 @@ Start with smoke tests that catch the issues we just had:
 
 ## CI/CD Shape
 
-- Local default: run the one browser spec relevant to the change, for example `vendor/bin/pest tests/Browser/IntegrationConfigTest.php`.
+- Local default: run the one browser spec relevant to the change, for example `vendor/bin/pest tests/Browser/IntegrationsTest.php`.
 - Pull request CI: run `npm ci`, `npx playwright install --with-deps`, then browser tests in Chromium.
 - Nightly or protected branch CI: run browser tests in parallel and add Firefox.
 - Keep screenshots/traces as CI artifacts only on failure.
@@ -102,7 +110,7 @@ Run only targeted local checks:
 ```bash
 npm run build
 vendor/bin/pest tests/Browser/AuthSmokeTest.php
-vendor/bin/pest tests/Browser/IntegrationConfigTest.php
+vendor/bin/pest tests/Browser/IntegrationsTest.php
 php artisan test tests/Feature/IntegrationCatalogControllerTest.php
 ```
 

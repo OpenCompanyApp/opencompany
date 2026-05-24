@@ -23,7 +23,7 @@
 | [ai-provider-runtime-architecture.md](architecture/ai-provider-runtime-architecture.md) | Current provider/model catalog, Laravel AI runtime registration, prompt-cache, and LLM usage/cost ledger architecture | Working on AI providers, model metadata, cost analytics, or OpenRouter billing |
 | [runtime-alignment-implementation-audit.md](architecture/runtime-alignment-implementation-audit.md) | Post-implementation audit — findings now tracked as Plane issues (OC-1 through OC-6) | Reviewing audit results and fix status |
 | [integrations-catalog-branch-audit-2026-05-10.md](architecture/integrations-catalog-branch-audit-2026-05-10.md) | Branch audit of integrations catalog, multi-account OAuth, UI wiring, and validation gaps | Reviewing current integration work before fixing or shipping |
-| [pest-browser-testing-implementation-plan-2026-05-10.md](architecture/pest-browser-testing-implementation-plan-2026-05-10.md) | Historical Pest browser testing proposal. Current browser coverage is implemented with Laravel Dusk. | Reviewing browser-test rollout history |
+| [pest-browser-testing-implementation-plan-2026-05-10.md](architecture/pest-browser-testing-implementation-plan-2026-05-10.md) | Pest Browser/Playwright migration plan. The current tree has both Dusk browser tests and new Pest browser specs. | Reviewing or continuing browser-test migration |
 | [documentation.md](documentation.md) | Product documentation outline and information architecture | Updating user-facing docs or navigation |
 | [ai-providers.md](ai-providers.md) | AI provider inventory and implementation priority using the current OpenCompany AI Runtime | Evaluating provider support or adding model integrations |
 

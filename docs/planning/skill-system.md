@@ -397,7 +397,7 @@ const checkForSkill = () => {
 }
 ```
 
-Skills fetched from `GET /api/skills` on component mount. Popup shows matching skills with icon, `$slug`, and description. Same UI pattern as the existing commands popup.
+Planned endpoint: skills would be fetched from `GET /api/skills` on component mount. This route is not present in the current Laravel route table; add the API before wiring the popup. Popup shows matching skills with icon, `$slug`, and description. Same UI pattern as the existing commands popup.
 
 ### Skills Management Page
 
