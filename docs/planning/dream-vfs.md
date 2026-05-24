@@ -1,8 +1,8 @@
 # Dream (Memory Consolidation) + VFS (Virtual Filesystem) for Agent Retrieval
 
 Date: 2026-04-07
-Status: Planning
-Depends on: Identity + Memory Refactor (in progress)
+Status: Planning. The identity/memory folder refactor and app file tools now exist; Dream consolidation, temporal decay, cache pruning, and unix-style `grep`/`glob`/`head` VFS tools remain proposed enhancements.
+Depends on: Identity + Memory Refactor (implemented baseline)
 
 ---
 
@@ -13,7 +13,7 @@ This document covers two complementary enhancements to the agent memory system:
 1. **Dream** — Offline memory consolidation: pruning, merging, and curating long-term memory that grows unboundedly over time.
 2. **VFS** — Virtual filesystem tools (`grep`, `glob`, `head`) alongside existing RAG, giving agents unix-like retrieval capabilities.
 
-Both are designed to layer on top of the **Identity + Memory Refactor** (which introduces `topics/`, `logs/`, `peers/` directories, `edit_memory`, `forget_memory` tools). The refactor gives us the structure; Dream and VFS give us lifecycle management and better retrieval.
+Both are designed to layer on top of the implemented **Identity + Memory Refactor** (which introduced `topics/`, `logs/`, `peers/` directories, `edit_memory`, and `forget_memory` tools). Current app file tools provide `list_files`, `read_file`, `search_files`, and write/move/copy/delete operations over `WorkspaceFile` virtual paths; this document's unix-style `grep`/`glob`/`head` tools and Dream lifecycle management are still roadmap items.
 
 ---
 
@@ -21,11 +21,11 @@ Both are designed to layer on top of the **Identity + Memory Refactor** (which i
 
 ### The Problem
 
-After the memory refactor, the folder structure will be:
+After the memory refactor, the folder structure is:
 
 ```
 agents/{slug}/memory/
-  ├── MEMORY.md          (core facts + index, always in prompt)
+  ├── MEMORY.md          (core facts + index, injected in private agent/user contexts)
   ├── topics/{slug}.md   (curated knowledge files)
   ├── logs/YYYY-MM-DD.md (daily append-only logs)
   └── peers/
@@ -671,7 +671,7 @@ The Dream job doesn't call agent tools directly — it uses the underlying servi
 ### Dependency Order
 
 ```
-1. Memory Refactor (in progress) — creates new folder structure, tools
+1. Memory Refactor (implemented baseline) — created the folder structure and memory tools
 2. Temporal decay (Tier 1a) — drop-in to existing search, works immediately
 3. VFS tools (Option A) — builds on existing FileSystemService, independent of refactor
 4. Consolidation job (Tier 2) — depends on refactor's new folder structure
@@ -679,7 +679,7 @@ The Dream job doesn't call agent tools directly — it uses the underlying servi
 6. Auto-extract (Tier 3d) — works with both old and new structure
 ```
 
-Steps 2 and 3 can be done in parallel with the refactor. Step 4 requires the refactor's folder structure to be in place.
+Steps 2 and 3 can be done independently now that the refactor baseline exists. Step 4 should build on the current `memory/logs`, `topics`, `peers`, and `MEMORY.md` structure.
 
 ### Config Additions
 

@@ -4,61 +4,35 @@ Google Calendar, Gmail, Google Drive, Google Contacts, Google Sheets, Google Sea
 
 ## Integrations
 
-This package registers **ten separate integrations**, each appearing independently on the integrations page:
+This package registers **ten separate integrations** in the current OpenCompany registry, each appearing independently on the integrations page. Tool counts below are checked against `ToolProviderRegistry`.
 
-### Google Calendar (3 tools)
+### Google Calendar (8 tools)
 
-| Tool | Type | Description |
-|------|------|-------------|
-| `google_calendar_list` | read | List calendars and search/list events |
-| `google_calendar_event` | write | Create, update, delete, or quick-add calendar events |
-| `google_calendar_freebusy` | read | Check free/busy status across calendars |
+Current slugs: `google_calendar_create_event`, `google_calendar_delete_event`, `google_calendar_freebusy`, `google_calendar_get_event`, `google_calendar_list_calendars`, `google_calendar_list_events`, `google_calendar_quick_add`, `google_calendar_update_event`.
 
-### Gmail (4 tools)
+### Gmail (16 tools)
 
-| Tool | Type | Description |
-|------|------|-------------|
-| `gmail_search` | read | Search and list email messages |
-| `gmail_read` | read | Get full email content |
-| `gmail_send` | write | Send emails or create/send drafts |
-| `gmail_manage` | write | Labels, read/unread, trash, and archive |
+Current slugs include search/read/send/reply, draft send/create, labels, archive/trash/untrash, read-state changes, sender counts, label listing, and attachment saving.
 
-### Google Drive (3 tools)
+### Google Drive (15 tools)
 
-| Tool | Type | Description |
-|------|------|-------------|
-| `google_drive_search` | read | Search and retrieve files |
-| `google_drive_manage` | write | Create, rename, move, copy, and delete files |
-| `google_drive_share` | write | Share files and manage permissions |
+Current slugs cover file/folder creation, search, get, copy, rename, move, delete/trash/untrash, star/unstar, share/unshare, and permission listing.
 
-### Google Contacts (2 tools)
+### Google Contacts (7 tools)
 
-| Tool | Type | Description |
-|------|------|-------------|
-| `google_contacts_search` | read | Search, list, and look up contacts |
-| `google_contacts_manage` | write | Create, update, and delete contacts |
+Current slugs cover contact create/get/list/search/update/delete and contact-group listing.
 
-### Google Sheets (3 tools)
+### Google Sheets (20 tools)
 
-| Tool | Type | Description |
-|------|------|-------------|
-| `google_sheets_read` | read | Read spreadsheet data, metadata, and search |
-| `google_sheets_write` | write | Create spreadsheets and write data |
-| `google_sheets_manage` | write | Manage sheets, rows, columns, sorting, and filters |
+Current slugs cover spreadsheet create, range read/write/append/clear, batch read/write, metadata, find, sheet add/rename/duplicate/delete, row/column insert/delete, sorting, and filters.
 
-### Google Search Console (2 tools)
+### Google Search Console (9 tools)
 
-| Tool | Type | Description |
-|------|------|-------------|
-| `google_search_console_query` | read | Search performance, URL inspection, and sitemaps |
-| `google_search_console_manage` | write | Submit sitemaps and manage site properties |
+Current slugs cover site listing/add/delete, search performance, URL inspection, sitemap list/get/submit/delete.
 
-### Google Tasks (2 tools)
+### Google Tasks (11 tools)
 
-| Tool | Type | Description |
-|------|------|-------------|
-| `google_tasks_read` | read | List task lists and tasks, get task details |
-| `google_tasks_manage` | write | Create, update, complete, delete, and organize tasks |
+Current slugs cover task-list list/create/delete, task list/get/create/update/complete/delete/move, and clearing completed tasks.
 
 ### Google Analytics (8 tools)
 
@@ -73,19 +47,13 @@ This package registers **ten separate integrations**, each appearing independent
 | `google_analytics_batch_run_reports` | read | Run multiple standard reports in one request |
 | `google_analytics_batch_run_pivot_reports` | read | Run multiple pivot reports in one request |
 
-### Google Docs (2 tools)
+### Google Docs (14 tools)
 
-| Tool | Type | Description |
-|------|------|-------------|
-| `google_docs_read` | read | Read document content, structure, and search text |
-| `google_docs_write` | write | Create, edit, format, and manage documents |
+Current slugs cover document create/get/structure/search, text insert/delete/replace, formatting, headings, bullets, page breaks, tables, and images.
 
-### Google Forms (2 tools)
+### Google Forms (13 tools)
 
-| Tool | Type | Description |
-|------|------|-------------|
-| `google_forms_read` | read | Read form structure and responses |
-| `google_forms_write` | write | Create, edit, and manage forms |
+Current slugs cover form create/get, response list/get, publishing, info/settings update, question/section/text-item add/update/delete/move.
 
 ## Installation
 

@@ -6,8 +6,16 @@ No API key required.
 
 ## Tools
 
-- **exchangerate_search** — List and search available currencies (fiat, crypto, metals)
-- **exchangerate_convert** — Convert currencies, get rates, compare historical rates
+The current provider registers six read-only tools:
+
+| Tool | Description |
+|------|-------------|
+| `exchangerate_list_currencies` | List and search available fiat, crypto, and precious-metal currencies |
+| `exchangerate_popular_currencies` | Show commonly used currency codes |
+| `exchangerate_convert_currency` | Convert an amount from one currency to another |
+| `exchangerate_pair_rate` | Get the direct exchange rate for one currency pair |
+| `exchangerate_rates` | Get all exchange rates for a base currency |
+| `exchangerate_history` | Compare a currency pair across multiple dates |
 
 ## Popular Currency Codes
 

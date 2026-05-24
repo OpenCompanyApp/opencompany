@@ -2,7 +2,7 @@
 
 > Architecture overview for agent memory, document embeddings, conversation compaction, and hybrid search.
 
-**Status**: Complete (all 6 phases implemented)
+**Status**: Complete (all 6 phases implemented). Current runtime note: the permanent `MEMORY.md` prompt section and memory tools are injected only in private agent/user contexts (`dm`, `agent`, or `external` channels), while public channels intentionally omit private memory context.
 **Config**: `config/memory.php` (comprehensive: embedding, chunking, search, reranking, compaction, memory_flush, context_windows, scope)
 
 ### Implementation Summary
@@ -18,7 +18,7 @@ All phases are built and operational. Key files:
 | 5 | Pre-compaction memory flush | `app/Services/Memory/MemoryFlushService.php` (hooked into `AgentRespondJob`) |
 | 6 | Hybrid search (full-text + vector) | `app/Services/Memory/DocumentIndexingService.php`, tsvector column on `document_chunks` |
 
-Bonus services (not in original plan): `TokenEstimator`, `ModelContextRegistry`, `MemoryScopeGuard`, `RerankingService` (cross-encoder reranking via Ollama).
+Bonus services (not in original plan): `TokenEstimator`, `ModelContextRegistry`, `MemoryScopeGuard`, `RerankingService` (native Cohere/Jina reranking, Ollama Qwen3-style reranking, or LLM-based pointwise reranking through the configured AI provider).
 
 Migrations: `create_document_chunks_table`, `create_embedding_cache_table`, `create_conversation_summaries_table`, `add_flush_count_to_conversation_summaries_table`, `add_search_vector_to_document_chunks`.
 
@@ -46,9 +46,9 @@ Agents have two distinct memory systems, mirroring how human memory works:
 - **Scope**: Per-agent, accessible across all conversations
 - **Lifetime**: Permanent — persists until explicitly deleted
 - **Managed by**: `SaveMemory` / `RecallMemory` tools
-- **Storage**: `agents/*/memory/YYYY-MM-DD.md` documents → chunked & embedded in `document_chunks`
+- **Storage**: `agents/*/memory/logs/YYYY-MM-DD.md` documents, `agents/*/memory/topics/*.md`, peer files, and `MEMORY.md` → chunked & embedded in `document_chunks`
 - **Capacity**: Unlimited (PostgreSQL + pgvector)
-- **Retrieval**: Semantic search (vector similarity), not loaded by default — agents must actively recall
+- **Retrieval**: Hybrid search (pgvector cosine + PostgreSQL full-text search merged with weighted RRF), not loaded by default except for private-channel `MEMORY.md` / peer-card prompt context — agents must actively recall topic/log content
 
 ### The Bridge: STM → LTM Promotion
 

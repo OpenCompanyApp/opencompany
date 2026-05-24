@@ -68,9 +68,9 @@ worldbank/          World Bank economic indicators for 200+ countries
 |---------|------:|-------------|----------|-------------|
 | [celestial](celestial/) | 9 | None | Data | Moon phases, sunrise/sunset, planet positions, eclipses, zodiac |
 | [clickup](clickup/) | 34 | API token | Productivity | Tasks, lists, folders, time tracking, docs, chat |
-| [coingecko](coingecko/) | 8 | None | Data | Crypto prices, market data, trending coins, historical charts |
-| [exchangerate](exchangerate/) | 5 | None | Data | 340+ currency conversions (fiat, crypto, metals) |
-| [google](google/) | 117 | OAuth | Productivity | Calendar, Gmail, Drive, Sheets, Docs, Forms, Contacts, Tasks, Analytics, Search Console |
+| [coingecko](coingecko/) | 29 | None | Data | Crypto prices, market data, trending coins, historical charts |
+| [exchangerate](exchangerate/) | 6 | None | Data | 340+ currency conversions (fiat, crypto, metals) |
+| [google](google/) | 121 | OAuth | Productivity | Calendar, Gmail, Drive, Sheets, Docs, Forms, Contacts, Tasks, Analytics, Search Console |
 | [mermaid](mermaid/) | 1 | None | Rendering | Flowcharts, sequences, Gantt, class diagrams → PNG |
 | plantuml | 1 | None | Rendering | UML class, sequence, activity, component, state → PNG |
 | [plausible](plausible/) | 8 | API key | Analytics | Stats, realtime visitors, site and goal management |
@@ -78,7 +78,7 @@ worldbank/          World Bank economic indicators for 200+ countries
 | [trustmrr](trustmrr/) | 2 | API key | Data | Verified startup revenue, MRR, growth, acquisitions |
 | typst | 1 | None | Rendering | Reports, invoices, proposals → PDF |
 | vegalite | 1 | None | Rendering | Bar, line, scatter, heatmap, boxplot charts → PNG |
-| [worldbank](worldbank/) | 6 | None | Data | GDP, inflation, population for 200+ countries |
+| [worldbank](worldbank/) | 14 | None | Data | GDP, inflation, population for 200+ countries |
 
 ## Installation
 

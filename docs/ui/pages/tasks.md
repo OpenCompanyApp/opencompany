@@ -1,6 +1,6 @@
 # Tasks
 
-> Displays agent-managed work items in a paginated, filterable tree list with a full-page task detail view.
+> Displays agent-managed work items in a paginated, filterable tree list, full-page task detail view, and token analytics dashboard.
 
 ---
 
@@ -74,7 +74,7 @@
   - `chat` -- Created from a chat conversation (icon: `ph:chat-circle`)
   - `automation` -- Created by an automation rule (icon: `ph:lightning`)
   - `agent_delegation` -- Delegated by another agent, async (icon: `ph:users-three`, indigo)
-  - `agent_ask` -- Synchronous question from another agent (icon: `ph:question`, indigo)
+  - `agent_ask` -- Async question task from another agent (icon: `ph:question`, indigo)
   - `agent_notify` -- Fire-and-forget notification from another agent (icon: `ph:megaphone`, amber)
 - Source icons appear in the "Source" column of the task list
 - Delegation-source tasks (`agent_delegation`, `agent_ask`, `agent_notify`) show a requester-to-agent arrow flow in the Agent column: `[RequesterAvatar] -> [AgentAvatar] agent name`
@@ -165,6 +165,15 @@ Each status has full variant support: filled, soft, outline, ghost, dot-only, an
 - "Activity" link navigates to `workspacePath('/activity')`
 - "Analytics" link navigates to `workspacePath('/tasks/analytics')`
 
+### Token Analytics Page (`/w/{workspace}/tasks/analytics`)
+- Route renders `resources/js/Pages/Tasks/Analytics.vue`.
+- Header keeps the Tasks / Workload / Activity navigation and adds a period selector for 7 days, 30 days, 90 days, or all time.
+- Loads token analytics from `GET /api/tasks/analytics/tokens` with an optional `period` query parameter.
+- Summary cards show total tokens, estimated cost, average tokens/sec, total tasks, and cache hit rate.
+- Main chart shows input/output token usage over time with hover details.
+- Breakdown panels group usage by agent, model, and source; performance table shows tokens/sec, average generation time, and task count per model.
+- Empty state shows a chart icon with "No analytics data available".
+
 ---
 
 ## States
@@ -200,6 +209,7 @@ Each status has full variant support: filled, soft, outline, ghost, dot-only, an
 | `failAgentTask()` | `POST /api/tasks/:id/fail` | Mark a task failed |
 | `cancelAgentTask()` | `POST /api/tasks/:id/cancel` | Cancel a task |
 | `fetchTaskSteps()` | `GET /api/tasks/:id/steps` | Load execution steps when needed |
+| `fetchTokenAnalytics()` | `GET /api/tasks/analytics/tokens` | Load token/cost analytics for the selected period |
 
 ---
 
@@ -208,6 +218,7 @@ Each status has full variant support: filled, soft, outline, ghost, dot-only, an
 | File | Purpose |
 |------|---------|
 | `resources/js/Pages/Tasks.vue` | Task list page with tree view, filtering, pagination, and real-time refresh |
+| `resources/js/Pages/Tasks/Analytics.vue` | Token analytics page with time-series chart, usage breakdowns, estimated cost, and performance table |
 | `resources/js/Pages/Tasks/Show.vue` | Task detail page with stats, delegation banner, execution trace, output, and context |
 | `resources/js/Components/tasks/ExecutionTrace.vue` | Expandable execution trace with tool icons, arguments, and results |
 | `resources/js/Components/shared/StatusBadge.vue` | Agent status badge supporting all statuses including `sleeping`, `awaiting_approval`, `awaiting_delegation` |

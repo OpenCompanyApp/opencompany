@@ -30,6 +30,15 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Updated confidential monetization notes so BSL 1.1 + Additional Use Grant remains the authoritative current license posture and workspace/plan gating is not presented as shipped without enforcement code.
 - Updated [../tools/charts.md](../tools/charts.md) so visualization renderers are described as built-in SVG plus integration-package tools reached through Lua, not generic external MCP tools.
 - Updated [../planning/lua-scripting.md](../planning/lua-scripting.md) and [../../resources/lua-docs/_overview.md](../../resources/lua-docs/_overview.md) so current script automations use `execution_type = "script"`, `RunScriptAutomationJob`, `LuaSandboxService`, and the current 30-second sandbox default instead of the older "No Lua yet" / `script_language` plan.
+- Updated [../planning/memory-implementation.md](../planning/memory-implementation.md) and [../planning/memory-systems.md](../planning/memory-systems.md) so memory docs describe private-channel-only `MEMORY.md` prompt injection, current `memory/logs/YYYY-MM-DD.md` storage, weighted RRF retrieval, and current reranking provider options.
+- Updated [../planning/dream-vfs.md](../planning/dream-vfs.md) so it treats the identity/memory refactor and current `WorkspaceFile` tools as implemented baseline while keeping Dream consolidation and unix-style VFS tools as roadmap.
+- Updated [../planning/vector-optional.md](../planning/vector-optional.md) so the optional-embeddings plan explicitly states the current write path still requires embeddings and reorders follow-up work from the now-implemented memory refactor baseline.
+- Updated [../planning/codex-subscription-auth.md](../planning/codex-subscription-auth.md) so OpenCompany's current Codex implementation is described as app-local device auth plus `CodexTextGateway`, with only the generated provider catalog treated as the current model list.
+- Updated integration package reference docs under [../ecosystem/integrations](../ecosystem/integrations/) against the current `ToolProviderRegistry` counts, including CoinGecko, ExchangeRate, Google, and World Bank.
+- Updated confidential strategy/website drafts so OpenCompany's community posture is source-available under BSL 1.1 + Additional Use Grant, not MIT or generic open source.
+- Updated [interagent-comms.md](interagent-comms.md) so the implemented `ContactAgent` ask path is documented as an async `agent_ask` task/callback rather than the older synchronous inline ask/timeout/depth-counter design.
+- Added explicit research/status guards to [openclaw-patterns.md](openclaw-patterns.md) and [openclaw-reference.md](openclaw-reference.md) so OpenClaw material is not confused with current OpenCompany behavior.
+- Updated [../ui/pages/tasks.md](../ui/pages/tasks.md) to cover `Tasks/Analytics.vue`, `/w/{workspace}/tasks/analytics`, and `GET /api/tasks/analytics/tokens`, and to describe `agent_ask` as async.
 - Updated [../INDEX.md](../INDEX.md) so the new UI page docs are discoverable.
 
 ## Mechanical Checks

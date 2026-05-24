@@ -1,5 +1,7 @@
 # Strategic Analysis: OpenClaw Patterns for OpenCompany
 
+Status: Research/reference. This document compares OpenClaw patterns with OpenCompany and should not be read as a current OpenCompany implementation inventory. Current OpenCompany runtime evidence lives in `app/Agents`, `app/Domain`, `app/Services`, and the focused runtime architecture docs.
+
 ## Executive Summary
 
 OpenClaw is a personal AI assistant system with sophisticated patterns for agent management, approval workflows, and multi-channel communication. While built for individual power users with a "local-first, security-optional" philosophy, many of its architectural patterns can be adapted for OpenCompany's enterprise-focused agent work OS.

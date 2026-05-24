@@ -4,7 +4,7 @@
 
 **Source**: `inspiration/opencode/packages/opencode/src/plugin/codex.ts` (625 lines — the entire implementation)
 
-**OpenCompany status**: Implemented app-locally in `app/Domain/Ai/Codex`, `config/codex.php`, and `CodexTextGateway`. This research remains useful for protocol context, but the current runtime does not depend on a Prism-era Codex package.
+**OpenCompany status**: Implemented app-locally in `app/Domain/Ai/Codex`, `config/codex.php`, `CodexAuthController`, `CodexConfigModal.vue`, and `CodexTextGateway`. The current wired UI/API flow uses device authorization through `/api/integrations/codex/auth/device` and `/api/integrations/codex/auth/device/poll`; browser PKCE helpers exist in `CodexOAuthService` but no browser callback route is currently wired. This research remains useful for protocol context, but the current runtime does not depend on a Prism-era Codex package.
 
 ---
 
@@ -144,6 +144,8 @@ The Vercel AI SDK thinks it's talking to `api.openai.com`, but every request is 
 ## 6. Model Filtering
 
 When using OAuth (Codex subscription), only these models are available:
+
+Current OpenCompany catalog note: `app/Domain/Ai/Catalog/generated/providers.php` currently exposes `gpt-5.3-codex` and `gpt-5.2-codex` for the `codex` provider. The broader list below reflects the OpenCode research source and should not be treated as the current OpenCompany catalog unless the generated provider catalog is updated.
 
 | Model ID | Notes |
 |----------|-------|
