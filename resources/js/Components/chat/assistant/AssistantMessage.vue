@@ -59,16 +59,7 @@
             {{ copied ? 'Copied' : 'Copy' }}
           </button>
           <button
-            v-if="isUser"
-            type="button"
-            class="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
-            @click="$emit('edit', message)"
-          >
-            <Icon name="ph:pencil-simple" class="h-3.5 w-3.5" />
-            Edit
-          </button>
-          <button
-            v-else
+            v-if="isAgentMessage"
             type="button"
             class="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
             @click="$emit('retry', message)"
@@ -96,12 +87,12 @@ const props = defineProps<{
 }>()
 
 defineEmits<{
-  edit: [message: Message]
   retry: [message: Message]
 }>()
 
 const copied = ref(false)
 const isUser = computed(() => props.message.author?.id === props.currentUserId || props.message.author?.type === 'human')
+const isAgentMessage = computed(() => props.message.author?.type === 'agent')
 const authorName = computed(() => isUser.value ? 'You' : props.message.author?.name ?? 'Assistant')
 const userInitials = computed(() => authorName.value.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase())
 

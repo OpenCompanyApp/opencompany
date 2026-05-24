@@ -66,6 +66,12 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Updated confidential competitive landscape notes so OpenCompany's license, MCP support, external-channel sync, token-streaming status, and agent-to-agent flow match the current BSL/app-owned-runtime/MCP-client/Chatogrator/async-task codebase.
 - Added explicit strategy/proposal guards to confidential SSO, GCP cloud infrastructure, tenancy/BYOK, and USA/Dubai corporate structure docs so planned organization billing/SSO/license/cloud infrastructure is not confused with current workspace-scoped app code.
 - Updated confidential corporate-structure language from generic fair-source wording to the current BSL 1.1 + Additional Use Grant posture.
+- Refreshed confidential OpenAI Frontier research against OpenAI/Axios/Fortune/TechCrunch sources, removing unsupported named-vendor agent compatibility and replacing an invented/paraphrased customer quote with an analyst note.
+- Updated confidential emergent-strategy notes so the implemented MCP surface is correctly described as a remote MCP client/runtime; OpenCompany-as-MCP-server export remains roadmap.
+- Added explicit status guards to confidential corporate-structure and domain research snapshots.
+- Updated [../planning/integrations.md](../planning/integrations.md) so the Lua scripting bridge integration pattern is no longer labeled wholly planned; current `app.*` Lua bridge and script automations are distinguished from older proposed `oc.*` syntax.
+- Added a current-runtime note to [../planning/lua-scripting.md](../planning/lua-scripting.md) so the older `oc.*` namespace examples are explicitly future ergonomics while current execution uses `app.*` through `LuaBridge`.
+- Folded the new [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) into the Markdown inventory and added an explicit investigation/proposal status guard after checking the linked provider docs.
 
 ## Mechanical Checks
 

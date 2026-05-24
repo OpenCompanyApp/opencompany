@@ -47,13 +47,26 @@
       </div>
 
       <template v-else>
-        <div v-if="messages.length === 0" class="mx-auto flex min-h-[calc(100vh-18rem)] max-w-3xl flex-col justify-center px-4 py-10">
+        <div v-if="messages.length === 0 && !hasRuntimeActivity" class="mx-auto flex min-h-[calc(100vh-18rem)] max-w-3xl flex-col justify-center px-4 py-10">
           <EmptyState
             :agents="agents"
             :selected-agent-id="agent?.id ?? selectedAgentId"
             @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
             @prompt="sendSuggestedPrompt"
           />
+        </div>
+        <div v-else-if="messages.length === 0" class="mx-auto w-full max-w-3xl px-4 py-6">
+          <div class="flex items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/70">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-neutral-500 shadow-sm dark:bg-neutral-950 dark:text-neutral-300">
+              <Icon name="ph:sparkle" class="h-5 w-5" />
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-neutral-950 dark:text-white">Runtime activity</p>
+              <p class="text-sm text-neutral-600 dark:text-neutral-300">
+                {{ agent?.name ?? 'The assistant' }} is working before the first visible chat response.
+              </p>
+            </div>
+          </div>
         </div>
 
         <template v-else>
@@ -63,7 +76,6 @@
             :message="message"
             :current-user-id="currentUserId"
             @retry="$emit('retry', message)"
-            @edit="$emit('edit', message)"
           />
         </template>
 
@@ -131,7 +143,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   send: [content: string, attachments: ComposerAttachment[]]
   retry: [message: Message]
-  edit: [message: Message]
   stop: []
   compact: []
   status: []
@@ -155,6 +166,7 @@ const subtitle = computed(() => {
 })
 const isRunning = computed(() => props.tasks.some(task => ['pending', 'active'].includes(task.status)))
 const channelApprovals = computed(() => props.approvals.filter(approval => approval.status === 'pending'))
+const hasRuntimeActivity = computed(() => channelApprovals.value.length > 0 || props.tasks.length > 0)
 const composerPlaceholder = computed(() => agent.value ? `Ask ${agent.value.name}...` : 'Ask OpenCompany anything...')
 
 watch(() => props.messages.length, () => {

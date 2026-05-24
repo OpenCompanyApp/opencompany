@@ -1,6 +1,6 @@
 # KosmoKrator Ecosystem Architecture
 
-> Status: Proposal. This document outlines a future ecosystem architecture around Lua, MCP, and shared integrations. These capabilities are not fully implemented in the current CLI.
+> Status: Proposal. This document outlines a future ecosystem architecture around Lua, MCP, and shared integrations. These capabilities are not fully implemented in the current CLI. In the current OpenCompany app, MCP support is a remote MCP client/runtime for workspace-configured servers; exposing OpenCompany itself as an MCP server remains roadmap.
 
 ## Overview
 
@@ -246,7 +246,7 @@ The tool runs on the user's OpenCompany instance. KosmoKrator sends requests to 
 KosmoKrator → OpenCompany API → ClickUpService → ClickUp API
 ```
 
-Hosted mode is effectively MCP over HTTP — OpenCompany acts as an MCP server for its configured integrations. This means:
+Hosted mode is effectively MCP over HTTP in this proposal — the current OpenCompany app does not yet expose itself as an MCP server for configured integrations. If implemented later, this would mean:
 
 - Users who already have OpenCompany with configured integrations can use them from KosmoKrator immediately
 - No need to re-enter credentials or set up OAuth flows locally

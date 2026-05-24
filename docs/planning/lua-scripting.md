@@ -241,6 +241,13 @@ oc.agent.delegate(agentId, {
 })
 ```
 
+> Current-runtime note: the namespace examples in this section preserve the
+> original proposed `oc.*` API. Current tool-capable Lua execution routes calls
+> through `app.*` via `LuaBridge`, `OpenCompanyLuaToolInvoker`, and
+> `LuaSandboxService`. Treat `oc.external`, `oc.integrations`, `oc.http`, and
+> `oc.util` as desired future ergonomics unless a matching `app.*` bridge method
+> exists.
+
 ### `oc.external` — External Channels & Platforms
 
 ```lua

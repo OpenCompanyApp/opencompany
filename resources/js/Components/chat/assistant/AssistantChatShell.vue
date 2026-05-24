@@ -23,7 +23,6 @@
       :approval-loading-action="approvalLoadingAction"
       @send="(content, attachments) => $emit('send', content, attachments)"
       @retry="$emit('retry', $event)"
-      @edit="$emit('edit', $event)"
       @stop="$emit('stop')"
       @compact="$emit('compact')"
       @status="$emit('status')"
@@ -94,7 +93,6 @@ const emit = defineEmits<{
   openChannels: []
   send: [content: string, attachments: ComposerAttachment[]]
   retry: [message: Message]
-  edit: [message: Message]
   stop: []
   compact: []
   status: []

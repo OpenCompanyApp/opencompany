@@ -161,7 +161,7 @@
             <!-- Approve Button -->
             <button
               :class="approveButtonClasses"
-              :disabled="loading"
+              :disabled="Boolean(loading)"
               @click="handleApprove"
             >
               <Icon
@@ -174,7 +174,7 @@
             <!-- Reject Button -->
             <button
               :class="rejectButtonClasses"
-              :disabled="loading"
+              :disabled="Boolean(loading)"
               @click="handleReject"
             >
               <Icon
@@ -186,7 +186,7 @@
 
             <!-- More Actions -->
             <DropdownMenu v-if="showMoreActions" :items="moreActionsItems" :side-offset="5">
-              <button :class="moreButtonClasses" :disabled="loading">
+              <button :class="moreButtonClasses" :disabled="Boolean(loading)">
                 <Icon name="ph:dots-three" class="w-4 h-4" />
               </button>
             </DropdownMenu>

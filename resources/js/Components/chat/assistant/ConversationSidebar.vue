@@ -90,8 +90,6 @@ const emit = defineEmits<{
 
 const search = ref('')
 
-const agentById = computed(() => new Map(props.agents.map(agent => [agent.id, agent])))
-
 const conversations = computed(() => props.channels
   .filter(channel => channel.type === 'dm' && channel.members?.some(member => member.type === 'agent'))
   .map(channel => {

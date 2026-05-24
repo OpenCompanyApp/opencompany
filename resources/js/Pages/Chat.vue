@@ -45,7 +45,6 @@
         @open-channels="openChannelMode"
         @send="handleAssistantSend"
         @retry="handleRetryMessage"
-        @edit="handleEditMessage"
         @stop="handleStopResponse"
         @compact="handleCompactCommand"
         @status="handleStatusCommand"
@@ -277,9 +276,9 @@ const channelsData = computed<Channel[]>(() =>
   })
 )
 
-// Agent data powers the assistant-first chat shell. It is intentionally kept
-// separate from channel members so a brand-new assistant chat can be started
-// even before the underlying DM channel exists.
+// Agent data powers the assistant-first chat shell. Existing DMs can reference
+// agents that are not returned by the lightweight agent endpoint, so selectors
+// merge both sources before rendering labels or selected values.
 const agents = ref<User[]>([])
 const refreshAgents = async () => {
   const result = fetchAgents()
@@ -290,7 +289,23 @@ const refreshAgents = async () => {
   }
 }
 
-const agentsData = computed<User[]>(() => agents.value)
+const agentsData = computed<User[]>(() => {
+  const byId = new Map<string, User>()
+
+  for (const agent of agents.value) {
+    byId.set(agent.id, agent)
+  }
+
+  for (const channel of channelsData.value) {
+    for (const member of channel.members ?? []) {
+      if (member.type === 'agent') {
+        byId.set(member.id, member)
+      }
+    }
+  }
+
+  return Array.from(byId.values())
+})
 
 const isAssistantChannel = (channel: Channel | null | undefined): channel is Channel =>
   Boolean(channel?.type === 'dm' && channel.members?.some(member => member.type === 'agent'))
@@ -681,7 +696,7 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
     timestamp: new Date(),
     reactions: [],
     attachments: [],
-  } as Message
+  } as unknown as Message
   messages.value = [...messages.value, optimisticMsg]
 
   // Send in background, then reconcile
@@ -708,8 +723,8 @@ const handleAssistantSend = async (content: string, attachments?: ComposerAttach
   await refreshAssistantRuntime()
 }
 
-const handleCompactCommand = () => handleSendMessage('/compact')
-const handleStatusCommand = () => handleSendMessage('/status')
+const handleCompactCommand = () => handleAssistantSend('/compact', [])
+const handleStatusCommand = () => handleAssistantSend('/status', [])
 
 const handleStopResponse = async () => {
   const activeTask = assistantTasks.value.find(task => ['pending', 'active', 'paused'].includes(task.status))
@@ -725,10 +740,6 @@ const handleStopResponse = async () => {
 
 const handleRetryMessage = async (message: Message) => {
   await handleAssistantSend(`Please retry this response and improve it:\n\n${message.content}`, [])
-}
-
-const handleEditMessage = async (message: Message) => {
-  await navigator.clipboard?.writeText(message.content)
 }
 
 const handleApprovalResponse = async (id: string, status: 'approved' | 'rejected') => {
@@ -759,10 +770,11 @@ const handleOpenThread = async (message: Message) => {
   try {
     const result = fetchMessageThread(message.id)
     await result.promise
-    if (result.data.value) {
+    const threadData = result.data.value as any
+    if (threadData) {
       activeThread.value = {
-        parentMessage: result.data.value.parentMessage as Message,
-        replies: result.data.value.replies as Message[],
+        parentMessage: threadData.parentMessage as Message,
+        replies: threadData.replies as Message[],
       }
     }
   } catch (error) {

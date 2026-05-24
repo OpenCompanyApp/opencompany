@@ -189,9 +189,75 @@ Suggested backend components:
 - `BrowserSessionProvider`: creates, resumes, closes, and inspects browser sessions. The first adapter should be local Playwright. Later adapters can target Browserbase, Cloudflare Browser Run, Scrapybara, Browserless, Steel, Hyperbrowser, or self-hosted Chromium.
 - `BrowserSession`: workspace-scoped Eloquent model storing provider, provider session id, current URL/title/status, owner user, optional agent, expiry, policy, and encrypted connection metadata.
 - `BrowserRuntime`: the only service allowed to send browser actions. It should enforce workspace scope, session ownership, active-control locks, permission policy, and approvals.
-- `BrowserToolProvider`: exposes safe agent tools such as `browser_create_session`, `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_type`, `browser_extract_text`, `browser_request_human_takeover`, and `browser_close`.
+- `BrowserToolProvider`: exposes a hybrid tool surface. Keep high-level safe tools such as `browser_create_session`, `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_type`, `browser_extract_text`, `browser_request_human_takeover`, and `browser_close`, plus an advanced `browser_playwright` tool that runs a constrained Playwright JavaScript block against an existing session.
+- `BrowserPlaywrightWorker`: Node/Playwright worker that receives `{session_id, input, code, timeout_ms}`, attaches to the selected session/page, wraps the code in an async function with controlled globals, and returns only JSON-serializable output.
 - `BrowserActionLog`: append-only action/event log with actor type (`human`, `agent`, `system`), target session, URL, tool/action, params redaction, result status, and screenshots/recording references where allowed.
 - Queue jobs for session cleanup, idle timeout, recording finalization, and stuck-session recovery.
+
+## Lua Runtime Shape
+
+Lua should expose browser control through the existing `app.*` bridge, not
+through a separate runtime. The default API should be convenient and safe, but
+the flexible path should let agents write real Playwright JavaScript because
+LLMs have strong training priors for Playwright examples.
+
+High-level Lua calls:
+
+```lua
+local session = app.browser.create_session({
+    provider = "local",
+    viewport = { width = 1280, height = 900 },
+})
+
+app.browser.navigate({
+    session_id = session.id,
+    url = "https://example.com",
+})
+
+local text = app.browser.extract_text({
+    session_id = session.id,
+})
+```
+
+Advanced Playwright block:
+
+```lua
+local result = app.browser.playwright({
+    session_id = session.id,
+    input = { url = "https://example.com" },
+    timeout_ms = 30000,
+    code = [[
+        await page.goto(input.url);
+        await page.getByRole('link', { name: 'Pricing' }).click();
+        await page.waitForLoadState('networkidle');
+
+        return {
+            title: await page.title(),
+            url: page.url(),
+            text: await page.locator('main').innerText(),
+        };
+    ]],
+})
+```
+
+Execution flow:
+
+```text
+Lua script
+  -> app.browser.playwright(...)
+  -> LuaBridge
+  -> OpenCompanyLuaToolInvoker
+  -> IntegrationRuntime / ToolRegistry
+  -> BrowserRuntime
+  -> BrowserPlaywrightWorker
+  -> Playwright page/context
+```
+
+The Playwright block should be powerful enough to preserve Playwright's normal
+ergonomics, but it should still run as an OpenCompany browser action. It should
+not become arbitrary Node execution. The worker should expose `page`, `context`,
+`input`, and a controlled logger; it should not expose `require`, `import`,
+`process.env`, shell access, filesystem access, or raw provider credentials.
 
 Suggested frontend components:
 
@@ -230,6 +296,7 @@ Minimum requirements:
 - Domain allowlist/blocklist policy per workspace/agent/session.
 - Human approval for purchases, auth delegation, destructive actions, credential entry, file upload/download, cross-domain navigation into sensitive sites, and any external mutation.
 - Secrets and live/CDP URLs encrypted at rest and never exposed to the model.
+- Advanced `browser_playwright` execution should have its own permission bit so a workspace can allow high-level browser tools while denying arbitrary Playwright JS.
 - Redaction for typed values, cookies, headers, local storage, auth tokens, and payment data.
 - No reuse of browser profiles across workspaces.
 - Aggressive cleanup of downloads, uploads, screenshots, recordings, and auth state.
@@ -264,6 +331,7 @@ This avoids burning expensive browser sessions for simple search/fetch work and 
 ### Phase 2: Agent tools and approvals
 
 - Add `BrowserRuntime` and `BrowserToolProvider`.
+- Add the hybrid Lua surface: high-level `app.browser.*` functions plus `app.browser.playwright(...)` for raw Playwright JavaScript blocks.
 - Route agent browser actions through existing permissions and approval flow.
 - Add browser action logs.
 - Add allowlist/blocklist policy.
@@ -291,6 +359,7 @@ Start with local Playwright. Build the browser feature around an app-owned `Brow
 - Provider URLs, Playwright endpoints, and CDP endpoints are secrets.
 - Agents never get raw connection strings.
 - All actions go through `BrowserRuntime`.
+- Use a hybrid browser API: typed high-level tools for common actions, plus a permissioned Playwright JS executor for maximum flexibility.
 - Browser tools integrate with the existing permission/approval model.
 
 Do not start with direct iframe embedding, a provider-specific integration, a Docker Compose browser service, or a pure MCP server configuration. MCP can expose the actions later, but OpenCompany needs to own session lifecycle, UI live view, workspace isolation, approvals, and auditability.
