@@ -2,15 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Integrations\Application\ManageMcpServers;
 use App\Http\Controllers\Controller;
-use App\Models\AgentPermission;
-use App\Models\McpServer;
-use App\Services\Mcp\McpClient;
-use App\Services\Mcp\McpToolProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 /**
  * Workspace MCP server management API.
@@ -21,32 +16,14 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
  */
 class McpServerController extends Controller
 {
+    public function __construct(private ManageMcpServers $servers) {}
+
     /**
      * List all MCP servers.
      */
     public function index(): JsonResponse
     {
-        $servers = McpServer::forWorkspace()->orderBy('name')->get();
-
-        return response()->json($servers->map(fn (McpServer $server) => [
-            'id' => $server->id,
-            'name' => $server->name,
-            'slug' => $server->slug,
-            'enabled' => $server->enabled,
-            'authType' => $server->auth_type,
-            'maskedAuth' => $server->getMaskedAuthValue(),
-            'icon' => $server->icon,
-            'description' => $server->description,
-            'timeout' => $server->timeout,
-            'toolCount' => count($server->discovered_tools ?? []),
-            'tools' => collect($server->discovered_tools ?? [])->map(fn ($t) => [
-                'name' => $t['name'],
-                'description' => Str::limit($t['description'] ?? '', 120),
-            ]),
-            'toolsDiscoveredAt' => $server->tools_discovered_at?->toIso8601String(),
-            'isStale' => $server->isToolDiscoveryStale(),
-            'createdAt' => $server->created_at?->toIso8601String(),
-        ]));
+        return response()->json($this->servers->list());
     }
 
     /**
@@ -64,60 +41,9 @@ class McpServerController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
 
-        $slug = Str::slug($request->input('name'), '_');
-
-        // Slugs become part of local tool names and permission keys. Keep them
-        // stable and unique within the workspace.
-        $baseSlug = $slug;
-        $counter = 1;
-        while (McpServer::forWorkspace()->where('slug', $slug)->exists()) {
-            $slug = $baseSlug.'_'.$counter++;
-        }
-
-        $server = McpServer::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => workspace()->id,
-            'name' => $request->input('name'),
-            'slug' => $slug,
-            'url' => $request->input('url'),
-            'auth_type' => $request->input('auth_type', 'none'),
-            'auth_config' => $request->input('auth_config'),
-            'timeout' => $request->input('timeout', 30),
-            'icon' => $request->input('icon', 'ph:plug'),
-            'description' => $request->input('description'),
-            'enabled' => false,
-        ]);
-
-        // Auto-discovery is best-effort. A server can be saved even when the
-        // remote endpoint is temporarily unavailable so users can fix config.
-        try {
-            $client = McpClient::fromServer($server);
-            $serverInfo = $client->initialize();
-            $tools = $client->listTools();
-
-            $server->update([
-                'server_info' => $serverInfo,
-                'discovered_tools' => $tools,
-                'tools_discovered_at' => now(),
-                'enabled' => true,
-            ]);
-
-            // Register immediately for this request lifecycle. Future requests
-            // rebuild providers from the persisted MCP server records.
-            $registry = app(ToolProviderRegistry::class);
-            $registry->register(new McpToolProvider($server));
-        } catch (\Throwable $e) {
-            // Server created but discovery failed; the user can retry via the
-            // discover endpoint after fixing URL/auth/timeout.
-            return response()->json([
-                'server' => $this->formatServer($server),
-                'warning' => 'Server created but tool discovery failed: '.$e->getMessage(),
-            ], 201);
-        }
-
-        return response()->json([
-            'server' => $this->formatServer($server->fresh()),
-        ], 201);
+        return response()->json($this->servers->create($request->only([
+            'name', 'url', 'auth_type', 'auth_config', 'timeout', 'icon', 'description',
+        ])), 201);
     }
 
     /**
@@ -125,9 +51,7 @@ class McpServerController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $server = McpServer::forWorkspace()->findOrFail($id);
-
-        return response()->json($this->formatServer($server));
+        return response()->json($this->servers->show($id));
     }
 
     /**
@@ -135,8 +59,6 @@ class McpServerController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        $server = McpServer::forWorkspace()->findOrFail($id);
-
         $request->validate([
             'name' => 'nullable|string|max:255',
             'url' => 'nullable|string|url',
@@ -148,23 +70,11 @@ class McpServerController extends Controller
             'enabled' => 'nullable|boolean',
         ]);
 
-        $updates = array_filter($request->only([
+        $updates = $request->only([
             'name', 'url', 'auth_type', 'auth_config', 'timeout', 'icon', 'description', 'enabled',
-        ]), fn ($v) => $v !== null);
+        ]);
 
-        // Preserve encrypted secrets when the UI submits masked placeholders.
-        if (isset($updates['auth_config'])) {
-            foreach ($updates['auth_config'] as $key => $value) {
-                if (is_string($value) && str_contains($value, '*')) {
-                    $existing = $server->auth_config ?? [];
-                    $updates['auth_config'][$key] = $existing[$key] ?? $value;
-                }
-            }
-        }
-
-        $server->update($updates);
-
-        return response()->json($this->formatServer($server->fresh()));
+        return response()->json($this->servers->update($id, $updates));
     }
 
     /**
@@ -172,25 +82,7 @@ class McpServerController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $server = McpServer::forWorkspace()->findOrFail($id);
-        $appName = 'mcp_'.$server->slug;
-
-        // Remove integration-level permissions first so agents no longer see
-        // the MCP app after the server row disappears.
-        AgentPermission::where('scope_type', 'integration')
-            ->where('scope_key', $appName)
-            ->delete();
-
-        // Tool-level permissions store generated slugs. Clean them explicitly
-        // or deleted MCP tools can leave dead permission rows behind.
-        $toolSlugs = $server->getToolSlugs();
-        if (! empty($toolSlugs)) {
-            AgentPermission::where('scope_type', 'tool')
-                ->whereIn('scope_key', $toolSlugs)
-                ->delete();
-        }
-
-        $server->delete();
+        $this->servers->delete($id);
 
         return response()->json(['success' => true]);
     }
@@ -200,38 +92,11 @@ class McpServerController extends Controller
      */
     public function testConnection(Request $request, string $id): JsonResponse
     {
-        $server = McpServer::forWorkspace()->findOrFail($id);
+        $result = $this->servers->testConnection($id, $request->only([
+            'url', 'auth_type', 'auth_config', 'timeout',
+        ]));
 
-        // Allow testing unsaved URL/auth changes without mutating the encrypted
-        // server record. This powers setup modals safely.
-        $url = $request->input('url', $server->url);
-        $authType = $request->input('auth_type', $server->auth_type);
-        $authConfig = $request->input('auth_config', $server->auth_config);
-        $timeout = $request->input('timeout', $server->timeout);
-
-        // Build a temporary model instance for McpClient. It is intentionally
-        // not saved and therefore cannot change runtime tool availability.
-        $testServer = new McpServer([
-            'url' => $url,
-            'auth_type' => $authType,
-            'auth_config' => $authConfig,
-            'timeout' => $timeout,
-        ]);
-
-        try {
-            $client = McpClient::fromServer($testServer);
-            $result = $client->initialize();
-
-            return response()->json([
-                'success' => true,
-                'serverInfo' => $result,
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 400);
-        }
+        return response()->json($result, ($result['success'] ?? false) ? 200 : 400);
     }
 
     /**
@@ -239,60 +104,13 @@ class McpServerController extends Controller
      */
     public function discoverTools(string $id): JsonResponse
     {
-        $server = McpServer::forWorkspace()->findOrFail($id);
-
         try {
-            $client = McpClient::fromServer($server);
-            $tools = $client->listTools();
-
-            // Discovery updates cached metadata only. Permission slugs derive
-            // from this cache, so users may need to review permissions after a
-            // remote server changes its tool list.
-            $server->update([
-                'discovered_tools' => $tools,
-                'tools_discovered_at' => now(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'toolCount' => count($tools),
-                'tools' => collect($tools)->map(fn ($t) => [
-                    'name' => $t['name'],
-                    'description' => Str::limit($t['description'] ?? '', 120),
-                ]),
-            ]);
+            return response()->json($this->servers->refreshTools($id));
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
             ], 400);
         }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function formatServer(McpServer $server): array
-    {
-        return [
-            'id' => $server->id,
-            'name' => $server->name,
-            'slug' => $server->slug,
-            'url' => $server->url,
-            'enabled' => $server->enabled,
-            'auth_type' => $server->auth_type,
-            'maskedAuth' => $server->getMaskedAuthValue(),
-            'icon' => $server->icon,
-            'description' => $server->description,
-            'timeout' => $server->timeout,
-            'toolCount' => count($server->discovered_tools ?? []),
-            'tools' => collect($server->discovered_tools ?? [])->map(fn ($t) => [
-                'name' => $t['name'],
-                'description' => Str::limit($t['description'] ?? '', 120),
-            ]),
-            'toolsDiscoveredAt' => $server->tools_discovered_at?->toIso8601String(),
-            'isStale' => $server->isToolDiscoveryStale(),
-            'createdAt' => $server->created_at?->toIso8601String(),
-        ];
     }
 }

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AgentPermission;
 use App\Models\McpServer;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -319,7 +320,7 @@ class McpServerControllerTest extends TestCase
             ],
         ]);
 
-        $agent = User::factory()->create(['type' => 'agent']);
+        $agent = User::factory()->agent()->create();
 
         // Create integration-level permission
         AgentPermission::create([
@@ -345,6 +346,62 @@ class McpServerControllerTest extends TestCase
             'scope_key' => 'mcp_perm_server',
         ]);
         $this->assertDatabaseMissing('agent_permissions', [
+            'scope_key' => 'mcp_perm_server__tool_one',
+        ]);
+    }
+
+    public function test_destroy_only_cleans_permissions_for_current_workspace_agents(): void
+    {
+        $server = McpServer::create([
+            'id' => Str::uuid()->toString(),
+            'name' => 'Perm Server',
+            'slug' => 'perm_server',
+            'url' => 'https://perm.example.com',
+            'auth_type' => 'none',
+            'enabled' => true,
+            'timeout' => 30,
+            'workspace_id' => $this->workspace->id,
+            'discovered_tools' => [
+                ['name' => 'tool_one', 'description' => 'First tool'],
+            ],
+        ]);
+        $otherWorkspace = Workspace::create([
+            'name' => 'Other Workspace',
+            'slug' => 'other',
+        ]);
+        $currentAgent = User::factory()->agent()->create();
+        $otherAgent = User::factory()->agent()->create(['workspace_id' => $otherWorkspace->id]);
+
+        foreach ([$currentAgent, $otherAgent] as $agent) {
+            AgentPermission::create([
+                'id' => Str::uuid()->toString(),
+                'agent_id' => $agent->id,
+                'scope_type' => 'integration',
+                'scope_key' => 'mcp_perm_server',
+                'permission' => 'allow',
+            ]);
+            AgentPermission::create([
+                'id' => Str::uuid()->toString(),
+                'agent_id' => $agent->id,
+                'scope_type' => 'tool',
+                'scope_key' => 'mcp_perm_server__tool_one',
+                'permission' => 'allow',
+            ]);
+        }
+
+        $this->actingAs($this->user)->deleteJson("/api/mcp-servers/{$server->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('agent_permissions', [
+            'agent_id' => $currentAgent->id,
+            'scope_key' => 'mcp_perm_server',
+        ]);
+        $this->assertDatabaseHas('agent_permissions', [
+            'agent_id' => $otherAgent->id,
+            'scope_key' => 'mcp_perm_server',
+        ]);
+        $this->assertDatabaseHas('agent_permissions', [
+            'agent_id' => $otherAgent->id,
             'scope_key' => 'mcp_perm_server__tool_one',
         ]);
     }

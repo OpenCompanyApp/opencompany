@@ -2,30 +2,32 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Automations\Application\ManageAutomations;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AutomationResource;
-use App\Jobs\RunAutomationJob;
 use App\Models\Automation;
-use App\Models\Task;
 use Cron\CronExpression;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
+/**
+ * API adapter for workspace automations.
+ *
+ * The Automations domain context owns schedule validation, CRUD semantics,
+ * manual dispatch, run history, and schedule previews. This controller keeps
+ * HTTP validation and response details close to the route boundary.
+ */
 class AutomationController extends Controller
 {
+    public function __construct(private ManageAutomations $automations) {}
+
     /**
      * @return array<int, mixed>
      */
     public function index(): array
     {
-        $automations = Automation::forWorkspace()->with(['agent', 'channel', 'createdBy'])
-            ->orderBy('name')
-            ->get();
-
-        return AutomationResource::collection($automations)->resolve();
+        return AutomationResource::collection($this->automations->list())->resolve();
     }
 
     /**
@@ -34,7 +36,6 @@ class AutomationController extends Controller
     public function store(Request $request): array|JsonResponse
     {
         $executionType = $request->input('executionType', 'prompt');
-
         $rules = [
             'name' => 'required|string|max:255',
             'agentId' => 'required|exists:users,id',
@@ -42,12 +43,9 @@ class AutomationController extends Controller
             'cronExpression' => 'required|string',
             'timezone' => 'nullable|string|timezone',
         ];
-
-        if ($executionType === 'script') {
-            $rules['script'] = 'required|string|max:50000';
-        } else {
-            $rules['prompt'] = 'required|string|max:10000';
-        }
+        $rules[$executionType === 'script' ? 'script' : 'prompt'] = $executionType === 'script'
+            ? 'required|string|max:50000'
+            : 'required|string|max:10000';
 
         $request->validate($rules);
 
@@ -55,26 +53,11 @@ class AutomationController extends Controller
             return response()->json(['message' => 'Invalid cron expression'], 422);
         }
 
-        $automation = Automation::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => workspace()->id,
-            'name' => $request->input('name'),
-            'description' => $request->input('description'),
-            'execution_type' => $executionType,
-            'agent_id' => $request->input('agentId'),
-            'prompt' => $request->input('prompt'),
-            'script' => $request->input('script'),
-            'cron_expression' => $request->input('cronExpression'),
-            'timezone' => $request->input('timezone', 'UTC'),
-            'channel_id' => $request->input('channelId'),
-            'keep_history' => $request->boolean('keepHistory', true),
-            'created_by_id' => auth()->id(),
-            'is_active' => true,
-        ]);
-
-        return (new AutomationResource(
-            $automation->load(['agent', 'channel', 'createdBy'])
-        ))->resolve();
+        return $this->automationResource($this->automations->create([
+            ...$request->all(),
+            ...$this->automationBooleans($request),
+            'createdById' => $request->user()->id,
+        ]));
     }
 
     /**
@@ -82,10 +65,8 @@ class AutomationController extends Controller
      */
     public function show(string $id): array
     {
-        $automation = Automation::forWorkspace()->with(['agent', 'channel', 'createdBy'])
-            ->findOrFail($id);
-
-        $data = (new AutomationResource($automation))->resolve();
+        $automation = $this->automations->show($id);
+        $data = $this->automationResource($automation);
         $data['nextRuns'] = collect($automation->getNextRuns(5))
             ->map(fn ($run) => $run->toIso8601String());
 
@@ -97,69 +78,23 @@ class AutomationController extends Controller
      */
     public function update(Request $request, string $id): array|JsonResponse
     {
-        $automation = Automation::forWorkspace()->findOrFail($id);
-
-        $data = [];
-
-        if ($request->has('name')) {
-            $data['name'] = $request->input('name');
-        }
-        if ($request->has('description')) {
-            $data['description'] = $request->input('description');
-        }
-        if ($request->has('agentId')) {
-            $data['agent_id'] = $request->input('agentId');
-        }
-        if ($request->has('executionType')) {
-            $execType = $request->input('executionType');
-            if (! in_array($execType, ['prompt', 'script'])) {
-                return response()->json(['message' => "executionType must be 'prompt' or 'script'"], 422);
-            }
-            $data['execution_type'] = $execType;
-        }
-        if ($request->has('prompt')) {
-            $data['prompt'] = $request->input('prompt');
-        }
-        if ($request->has('script')) {
-            $data['script'] = $request->input('script');
-        }
-        if ($request->has('channelId')) {
-            $data['channel_id'] = $request->input('channelId');
-        }
-        if ($request->has('timezone')) {
-            $data['timezone'] = $request->input('timezone');
-        }
-        if ($request->has('isActive')) {
-            $data['is_active'] = $request->boolean('isActive');
-            if ($data['is_active']) {
-                $data['consecutive_failures'] = 0;
-            }
-        }
-        if ($request->has('cronExpression')) {
-            $cronExpr = $request->input('cronExpression');
-            if (! CronExpression::isValidExpression($cronExpr)) {
-                return response()->json(['message' => 'Invalid cron expression'], 422);
-            }
-            $data['cron_expression'] = $cronExpr;
-        }
-        if ($request->has('keepHistory')) {
-            $data['keep_history'] = $request->boolean('keepHistory');
+        if ($request->has('executionType') && ! in_array($request->input('executionType'), ['prompt', 'script'], true)) {
+            return response()->json(['message' => "executionType must be 'prompt' or 'script'"], 422);
         }
 
-        $automation->update($data);
-
-        if ($request->has('cronExpression') || $request->has('timezone')) {
-            $automation->refreshNextRunAt();
+        if ($request->has('cronExpression') && ! CronExpression::isValidExpression($request->input('cronExpression'))) {
+            return response()->json(['message' => 'Invalid cron expression'], 422);
         }
 
-        return (new AutomationResource(
-            $automation->load(['agent', 'channel', 'createdBy'])
-        ))->resolve();
+        return $this->automationResource($this->automations->update($id, [
+            ...$request->all(),
+            ...$this->automationBooleans($request),
+        ]));
     }
 
     public function destroy(string $id): JsonResponse
     {
-        Automation::forWorkspace()->findOrFail($id)->delete();
+        $this->automations->delete($id);
 
         return response()->json(['success' => true]);
     }
@@ -171,11 +106,10 @@ class AutomationController extends Controller
             'ids.*' => 'required|string',
         ]);
 
-        $deleted = Automation::forWorkspace()
-            ->whereIn('id', $request->input('ids'))
-            ->delete();
-
-        return response()->json(['success' => true, 'deleted' => $deleted]);
+        return response()->json(array_merge(
+            ['success' => true],
+            $this->automations->bulkDelete($request->input('ids')),
+        ));
     }
 
     public function bulkTriggerRun(Request $request): JsonResponse
@@ -185,57 +119,23 @@ class AutomationController extends Controller
             'ids.*' => 'required|string',
         ]);
 
-        $automations = Automation::forWorkspace()
-            ->whereIn('id', $request->input('ids'))
-            ->where('is_active', true)
-            ->get();
-
-        foreach ($automations as $automation) {
-            RunAutomationJob::dispatch($automation);
-        }
-
-        $total = count($request->input('ids'));
-        $triggered = $automations->count();
-
-        return response()->json([
-            'success' => true,
-            'triggered' => $triggered,
-            'skipped' => $total - $triggered,
-        ]);
+        return response()->json(array_merge(
+            ['success' => true],
+            $this->automations->bulkRun($request->input('ids')),
+        ));
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, mixed>
+     * @return Collection<int, array<string, mixed>>
      */
     public function runs(string $id): Collection
     {
-        $tasks = Task::forWorkspace()->with(['agent'])
-            ->where('source', Task::SOURCE_AUTOMATION)
-            ->where(function ($q) use ($id) {
-                $q->whereJsonContains('context->automation_id', $id)
-                  ->orWhereJsonContains('context->scheduled_automation_id', $id);
-            })
-            ->orderByDesc('created_at')
-            ->limit(20)
-            ->get();
-
-        return $tasks->map(fn (Task $task) => [
-            'id' => $task->id,
-            'title' => $task->title,
-            'status' => $task->status,
-            'runNumber' => $task->context['run_number'] ?? null,
-            'result' => $task->result,
-            'agentName' => $task->agent?->name,
-            'startedAt' => $task->started_at,
-            'completedAt' => $task->completed_at,
-            'createdAt' => $task->created_at,
-        ]);
+        return $this->automations->runs($id);
     }
 
     public function triggerRun(string $id): JsonResponse
     {
-        $automation = Automation::forWorkspace()->findOrFail($id);
-        RunAutomationJob::dispatch($automation);
+        $this->automations->run($id);
 
         return response()->json(['message' => 'Run dispatched']);
     }
@@ -248,16 +148,36 @@ class AutomationController extends Controller
             return response()->json(['message' => 'Invalid cron expression'], 422);
         }
 
-        $cron = new CronExpression($cronExpr);
-        $tz = $request->input('timezone', 'UTC');
-        $reference = now()->timezone($tz);
-        $runs = [];
+        return response()->json([
+            'runs' => $this->automations->previewSchedule($cronExpr, $request->input('timezone', 'UTC')),
+        ]);
+    }
 
-        for ($i = 0; $i < 5; $i++) {
-            $reference = Carbon::instance($cron->getNextRunDate($reference->toDateTime()));
-            $runs[] = $reference->copy()->toIso8601String();
+    /**
+     * @return array<string, mixed>
+     */
+    private function automationResource(Automation $automation): array
+    {
+        return (new AutomationResource($automation))->resolve();
+    }
+
+    /**
+     * Preserve Laravel request boolean semantics before handing input to the
+     * application service, especially for form-style strings like "false".
+     *
+     * @return array<string, bool>
+     */
+    private function automationBooleans(Request $request): array
+    {
+        $booleans = [];
+
+        if ($request->has('isActive')) {
+            $booleans['isActive'] = $request->boolean('isActive');
+        }
+        if ($request->has('keepHistory')) {
+            $booleans['keepHistory'] = $request->boolean('keepHistory');
         }
 
-        return response()->json(['runs' => $runs]);
+        return $booleans;
     }
 }

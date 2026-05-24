@@ -2,13 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Integrations\Application\ManageIntegrationSettings;
 use App\Http\Controllers\Controller;
-use App\Models\ApprovalRequest;
-use App\Models\ChannelMember;
 use App\Models\IntegrationSetting;
-use App\Models\Message;
-use App\Models\User;
-use App\Models\UserExternalIdentity;
 use App\Services\Ai\ModelCatalog;
 use App\Services\Ai\ModelRuntimeCatalog;
 use App\Services\Integrations\IntegrationAccountResolver;
@@ -31,6 +27,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class IntegrationController extends Controller
 {
+    public function __construct(private ManageIntegrationSettings $settings) {}
+
     /**
      * Get all integrations with their status
      */
@@ -93,23 +91,7 @@ class IntegrationController extends Controller
     {
         $request->validate(['enabled' => 'required|boolean']);
 
-        $setting = app(IntegrationAccountResolver::class)->findSetting($id);
-
-        if ($setting) {
-            $setting->update(['enabled' => $request->boolean('enabled')]);
-        } else {
-            // No-config integrations still need a setting row so workspace-level
-            // enablement can be evaluated by AgentPermissionService.
-            $setting = IntegrationSetting::create([
-                'id' => Str::uuid()->toString(),
-                'workspace_id' => workspace()->id,
-                'integration_id' => $id,
-                'account_alias' => '',
-                'config' => [],
-                'enabled' => $request->boolean('enabled'),
-                'is_default' => true,
-            ]);
-        }
+        $setting = $this->settings->toggle($id, $request->boolean('enabled'));
 
         return response()->json([
             'enabled' => $setting->enabled,
@@ -237,68 +219,23 @@ class IntegrationController extends Controller
             'displayName' => 'nullable|string',
         ]);
 
-        $user = User::findOrFail($request->input('userId'));
+        $result = $this->settings->linkExternalIdentity([
+            'userId' => $request->input('userId'),
+            'provider' => $request->input('provider'),
+            'externalId' => $request->input('externalId'),
+            'displayName' => $request->input('displayName'),
+        ]);
 
-        // External provider IDs are globally unique per provider. Prevent one
-        // Telegram/Slack user from being linked to multiple local users.
-        $existing = UserExternalIdentity::where('provider', $request->input('provider'))
-            ->where('external_id', $request->input('externalId'))
-            ->first();
-
-        if ($existing && $existing->user_id !== $user->id) {
-            /** @var User $existingUser */
-            $existingUser = $existing->user;
-
+        if (isset($result['conflict'])) {
             return response()->json([
-                'error' => "This {$request->input('provider')} ID is already linked to user: {$existingUser->name}",
+                'error' => $result['conflict'],
             ], 409);
-        }
-
-        // updateOrCreate allows relinking the same provider identity to the
-        // selected user after conflict checks pass.
-        $identity = UserExternalIdentity::updateOrCreate(
-            [
-                'provider' => $request->input('provider'),
-                'external_id' => $request->input('externalId'),
-            ],
-            [
-                'id' => $existing->id ?? Str::uuid()->toString(),
-                'user_id' => $user->id,
-                'display_name' => $request->input('displayName'),
-            ]
-        );
-
-        // Telegram inbound messages can create an ephemeral shadow user before
-        // the admin links the real account. Merge that history into the chosen
-        // user so old messages/approvals stay attached after linking.
-        if ($request->input('provider') === 'telegram') {
-            $shadowEmail = "telegram-{$request->input('externalId')}@external.opencompany";
-            $shadow = User::where('email', $shadowEmail)
-                ->where('id', '!=', $user->id)
-                ->first();
-
-            if ($shadow) {
-                // Delete duplicate memberships first to avoid unique-key
-                // conflicts when moving the shadow user's remaining rows.
-                $existingChannelIds = ChannelMember::where('user_id', $user->id)->pluck('channel_id');
-                ChannelMember::where('user_id', $shadow->id)
-                    ->whereIn('channel_id', $existingChannelIds)
-                    ->delete();
-
-                // Reassign durable history before deleting the shadow identity.
-                ChannelMember::where('user_id', $shadow->id)->update(['user_id' => $user->id]);
-                Message::where('author_id', $shadow->id)->update(['author_id' => $user->id]);
-                ApprovalRequest::where('responded_by_id', $shadow->id)
-                    ->update(['responded_by_id' => $user->id]);
-
-                $shadow->delete();
-            }
         }
 
         return response()->json([
             'success' => true,
-            'identity' => $identity,
-            'user' => $user->fresh(),
+            'identity' => $result['identity'],
+            'user' => $result['user'],
         ]);
     }
 
@@ -307,8 +244,7 @@ class IntegrationController extends Controller
      */
     public function unlinkExternalUser(string $identityId): JsonResponse
     {
-        $identity = UserExternalIdentity::findOrFail($identityId);
-        $identity->delete();
+        $this->settings->unlinkExternalIdentity($identityId);
 
         return response()->json(['success' => true]);
     }
@@ -318,13 +254,7 @@ class IntegrationController extends Controller
      */
     public function externalIdentities(Request $request): JsonResponse
     {
-        $query = UserExternalIdentity::with('user');
-
-        if ($request->has('provider')) {
-            $query->where('provider', $request->input('provider'));
-        }
-
-        return response()->json($query->get());
+        return response()->json($this->settings->externalIdentities($request->input('provider')));
     }
 
     /**
@@ -424,20 +354,7 @@ class IntegrationController extends Controller
      */
     public function listAccounts(string $id): JsonResponse
     {
-        $settings = IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
-            ->orderByDesc('is_default')
-            ->orderBy('account_alias')
-            ->get();
-
-        $accounts = $settings->map(fn (IntegrationSetting $s) => [
-            'alias' => $s->account_alias,
-            'is_default' => $s->is_default,
-            'enabled' => $s->enabled,
-            'configured' => $s->hasValidConfig(),
-        ]);
-
-        return response()->json(['accounts' => $accounts]);
+        return response()->json(['accounts' => $this->settings->listAccounts($id)]);
     }
 
     /**
@@ -461,19 +378,7 @@ class IntegrationController extends Controller
             return response()->json(['error' => "Account '{$alias}' already exists."], 422);
         }
 
-        $hasOthers = IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
-            ->exists();
-
-        $setting = IntegrationSetting::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => workspace()->id,
-            'integration_id' => $id,
-            'account_alias' => $alias,
-            'config' => $request->input('config', []),
-            'enabled' => true,
-            'is_default' => ! $hasOthers,
-        ]);
+        $setting = $this->settings->createAccount($id, $alias, $request->input('config', []));
 
         return response()->json([
             'alias' => $setting->account_alias,
@@ -486,26 +391,9 @@ class IntegrationController extends Controller
      */
     public function updateAccount(Request $request, string $id, string $alias): JsonResponse
     {
-        $setting = IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
-            ->where('account_alias', $alias)
-            ->first();
-
-        if (! $setting) {
+        if (! $this->settings->updateAccountConfig($id, $alias, $request->input('config', []))) {
             return response()->json(['error' => 'Account not found.'], 404);
         }
-
-        $config = $setting->config ?? [];
-        foreach ($request->input('config', []) as $key => $value) {
-            if (is_string($value) && str_contains($value, '*')) {
-                // Masked secrets from the account modal mean "leave existing
-                // encrypted value unchanged."
-                continue; // Skip masked values
-            }
-            $config[$key] = $value;
-        }
-        $setting->config = $config;
-        $setting->save();
 
         return response()->json(['success' => true]);
     }
@@ -515,35 +403,13 @@ class IntegrationController extends Controller
      */
     public function deleteAccount(string $id, string $alias): JsonResponse
     {
-        if ($alias === '') {
+        $deleted = $this->settings->deleteAccount($id, $alias);
+
+        if ($deleted === null) {
             return response()->json(['error' => 'Cannot delete the default account.'], 422);
         }
-
-        $setting = IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
-            ->where('account_alias', $alias)
-            ->first();
-
-        if (! $setting) {
+        if ($deleted === false) {
             return response()->json(['error' => 'Account not found.'], 404);
-        }
-
-        $wasDefault = $setting->is_default;
-        $setting->delete();
-
-        // If the default account is deleted, prefer the legacy unaliased account
-        // as replacement so existing tools without account aliases keep working.
-        if ($wasDefault) {
-            $replacement = IntegrationSetting::forWorkspace()
-                ->where('integration_id', $id)
-                ->where('account_alias', '')
-                ->first()
-                ?: IntegrationSetting::forWorkspace()
-                    ->where('integration_id', $id)
-                    ->orderBy('account_alias')
-                    ->first();
-
-            $replacement?->update(['is_default' => true]);
         }
 
         return response()->json(['success' => true]);
@@ -554,21 +420,9 @@ class IntegrationController extends Controller
      */
     public function setDefaultAccount(string $id, string $alias): JsonResponse
     {
-        $setting = IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
-            ->where('account_alias', $alias)
-            ->first();
-
-        if (! $setting) {
+        if (! $this->settings->setDefaultAccount($id, $alias)) {
             return response()->json(['error' => 'Account not found.'], 404);
         }
-
-        // Exactly one default account is allowed per integration/workspace.
-        IntegrationSetting::forWorkspace()
-            ->where('integration_id', $id)
-            ->update(['is_default' => false]);
-
-        $setting->update(['is_default' => true]);
 
         return response()->json(['success' => true]);
     }
