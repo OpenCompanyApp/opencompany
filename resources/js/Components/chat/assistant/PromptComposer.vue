@@ -45,6 +45,7 @@
             <Icon name="ph:paperclip" class="h-5 w-5" />
           </button>
           <button
+            v-if="showAiActions"
             type="button"
             class="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white"
             title="Run memory compaction"
@@ -54,6 +55,7 @@
             <span class="hidden sm:inline">Compact</span>
           </button>
           <button
+            v-if="showAiActions"
             type="button"
             class="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white"
             title="Show workspace status"
@@ -66,7 +68,7 @@
 
         <div class="flex min-w-0 items-center gap-2">
           <select
-            v-if="agents.length > 0"
+            v-if="showAgentPicker && agents.length > 0"
             :value="selectedAgentId"
             class="h-9 max-w-44 rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition-colors hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
             @change="$emit('update:selectedAgentId', ($event.target as HTMLSelectElement).value)"
@@ -97,7 +99,7 @@
       </div>
     </div>
 
-    <p class="mt-2 px-2 text-center text-xs text-neutral-400 dark:text-neutral-500">
+    <p v-if="showAiActions" class="mt-2 px-2 text-center text-xs text-neutral-400 dark:text-neutral-500">
       OpenCompany can use tools and may ask for approval before making changes.
     </p>
   </div>
@@ -122,10 +124,14 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   running?: boolean
   placeholder?: string
+  showAgentPicker?: boolean
+  showAiActions?: boolean
 }>(), {
   disabled: false,
   running: false,
   placeholder: 'Ask OpenCompany anything...',
+  showAgentPicker: true,
+  showAiActions: true,
 })
 
 const emit = defineEmits<{

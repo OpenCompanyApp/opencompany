@@ -7,7 +7,7 @@ Status: In progress. This audit records code-backed documentation alignment work
 
 The current pass checked the tracked and confidential Markdown inventory against high-risk code surfaces:
 
-- Markdown inventory after this pass: 155 files across tracked docs, untracked docs in `docs/`, plus `docs/confidential`.
+- Markdown inventory after this pass: 156 files across tracked Markdown plus `docs/confidential`.
 - Route inventory: 357 Laravel routes from `php artisan route:list --json`.
 - UI page inventory: 23 `docs/ui/pages/*.md` files covering routed page groups and legacy redirect surfaces.
 - `AGENTS.md` and `CLAUDE.md` remain byte-identical.
@@ -71,7 +71,12 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Added explicit status guards to confidential corporate-structure and domain research snapshots.
 - Updated [../planning/integrations.md](../planning/integrations.md) so the Lua scripting bridge integration pattern is no longer labeled wholly planned; current `app.*` Lua bridge and script automations are distinguished from older proposed `oc.*` syntax.
 - Added a current-runtime note to [../planning/lua-scripting.md](../planning/lua-scripting.md) so the older `oc.*` namespace examples are explicitly future ergonomics while current execution uses `app.*` through `LuaBridge`.
-- Folded the new [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) into the Markdown inventory and added an explicit investigation/proposal status guard after checking the linked provider docs.
+- Folded the new [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) into the Markdown inventory and added an explicit investigation/proposal status guard after checking the linked Tavily, Firecrawl, Exa, and Jina provider docs.
+- Cross-checked the added web-search/fetch parity plan against the local KosmoKrator `src/Web` snapshot, including native provider managers, the older provider registry, Z.AI MCP/search-reader classes, and provider names; added a guard that KosmoKrator endpoints/default models are snapshot inputs rather than timeless vendor guarantees.
+- Rechecked [../ui/pages/chat.md](../ui/pages/chat.md) against the current dirty `resources/js/Pages/Chat.vue` worktree and updated it from the old separate `ChannelList` / `Area` / `ChannelInfo` layout to the active unified `AssistantChatShell` / `ConversationSidebar` / `AssistantConversation` surface.
+- Updated [../ui/pages/chat.md](../ui/pages/chat.md) again for the same dirty worktree's new Echo stream-event bridge: `.text_start`, `.text_delta`, `.text_end`, `.stream_end`, and `.stream_failed` now create/update temporary streaming assistant messages in the page.
+- Updated confidential streaming comparisons so OpenCompany is no longer described as having no streaming at all; current chat response stream events are distinguished from still-separate AI Gateway/general transport streaming.
+- Rechecked [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) against the new dirty `config/web.php` plus `app/Domain/Web` scaffold. Updated its status from pure proposal to partial scaffold: config, contracts, enum, exceptions, and value objects exist; providers, managers, safety, extraction, cache, usage, tools, Lua routing, UI, migrations, and tests remain proposed.
 
 ## Mechanical Checks
 
@@ -83,7 +88,7 @@ git diff --check
 
 ```bash
 # Local Markdown links across tracked Markdown plus docs/confidential:
-# 155 files checked; fenced and inline code examples ignored.
+# 156 files checked; fenced and inline code examples ignored; 0 failures.
 php <local-link-checker>
 ```
 
@@ -91,12 +96,13 @@ php <local-link-checker>
 # docs/INDEX.md coverage for tracked docs:
 # Direct doc links plus intentional directory-level entries for imported KosmoKrator
 # and generated integration sub-docs were checked.
+# 117 non-confidential docs checked; 0 coverage gaps.
 php <docs-index-coverage-checker>
 ```
 
 ```bash
 # resources/js/Components/shared inventory against docs/ui/components.md:
-# 28 shared Vue components checked.
+# 28 shared Vue components checked; all documented prop names match component Props definitions.
 php <shared-component-inventory-checker>
 ```
 

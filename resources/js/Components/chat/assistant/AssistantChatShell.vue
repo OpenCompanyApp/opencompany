@@ -6,9 +6,12 @@
       :selected-channel="selectedChannel"
       :agents="agents"
       :current-user-id="currentUserId"
+      :collapsed="sidebarCollapsed"
       @select="$emit('selectChannel', $event)"
       @new-agent-chat="$emit('newAgentChat', $event)"
-      @open-channels="$emit('openChannels')"
+      @create-channel="$emit('createChannel')"
+      @create-dm="$emit('createDm')"
+      @toggle-collapse="toggleSidebarCollapse"
     />
 
     <AssistantConversation
@@ -19,6 +22,9 @@
       :agents="agents"
       :current-user-id="currentUserId"
       :selected-agent-id="selectedAgentId"
+      :is-assistant-channel="isAssistantChannel"
+      :is-mobile="isMobile"
+      :sidebar-collapsed="sidebarCollapsed"
       :approval-loading-id="approvalLoadingId"
       :approval-loading-action="approvalLoadingAction"
       @send="(content, attachments) => $emit('send', content, attachments)"
@@ -27,8 +33,7 @@
       @compact="$emit('compact')"
       @status="$emit('status')"
       @refresh="$emit('refresh')"
-      @open-channels="$emit('openChannels')"
-      @toggle-sidebar="mobileSidebarOpen = true"
+      @toggle-sidebar="handleConversationSidebarToggle"
       @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
       @approval="(id, status) => $emit('approval', id, status)"
     />
@@ -36,7 +41,7 @@
     <Slideover v-if="isMobile" v-model:open="mobileSidebarOpen" side="left" size="sm" :show-close="false">
       <template #header>
         <div class="flex w-full items-center justify-between">
-          <span class="font-semibold text-neutral-900 dark:text-white">Assistant history</span>
+          <span class="font-semibold text-neutral-900 dark:text-white">Conversations</span>
           <button
             type="button"
             class="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700"
@@ -54,9 +59,11 @@
             :selected-channel="selectedChannel"
             :agents="agents"
             :current-user-id="currentUserId"
+            :collapsible="false"
             @select="selectFromMobile"
             @new-agent-chat="newAgentFromMobile"
-            @open-channels="openChannelsFromMobile"
+            @create-channel="createChannelFromMobile"
+            @create-dm="createDmFromMobile"
           />
         </div>
       </template>
@@ -73,7 +80,7 @@ import AssistantConversation from '@/Components/chat/assistant/AssistantConversa
 import type { ComposerAttachment } from '@/Components/chat/assistant/PromptComposer.vue'
 import type { AgentTask, ApprovalRequest, Channel, Message, User } from '@/types'
 
-defineProps<{
+const props = defineProps<{
   channels: Channel[]
   selectedChannel: Channel | null
   messages: Message[]
@@ -83,6 +90,7 @@ defineProps<{
   currentUserId: string
   selectedAgentId?: string
   isMobile: boolean
+  isAssistantChannel: boolean
   approvalLoadingId?: string | null
   approvalLoadingAction?: false | 'approve' | 'reject'
 }>()
@@ -90,7 +98,8 @@ defineProps<{
 const emit = defineEmits<{
   selectChannel: [channel: Channel]
   newAgentChat: [agentId: string]
-  openChannels: []
+  createChannel: []
+  createDm: []
   send: [content: string, attachments: ComposerAttachment[]]
   retry: [message: Message]
   stop: []
@@ -102,6 +111,21 @@ const emit = defineEmits<{
 }>()
 
 const mobileSidebarOpen = ref(false)
+const sidebarCollapsed = ref(localStorage.getItem('opencompany.chat.sidebarCollapsed') === 'true')
+
+const toggleSidebarCollapse = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem('opencompany.chat.sidebarCollapsed', String(sidebarCollapsed.value))
+}
+
+const handleConversationSidebarToggle = () => {
+  if (props.isMobile) {
+    mobileSidebarOpen.value = true
+    return
+  }
+
+  toggleSidebarCollapse()
+}
 
 const selectFromMobile = (channel: Channel) => {
   emit('selectChannel', channel)
@@ -113,8 +137,13 @@ const newAgentFromMobile = (agentId: string) => {
   mobileSidebarOpen.value = false
 }
 
-const openChannelsFromMobile = () => {
-  emit('openChannels')
+const createChannelFromMobile = () => {
+  emit('createChannel')
+  mobileSidebarOpen.value = false
+}
+
+const createDmFromMobile = () => {
+  emit('createDm')
   mobileSidebarOpen.value = false
 }
 </script>

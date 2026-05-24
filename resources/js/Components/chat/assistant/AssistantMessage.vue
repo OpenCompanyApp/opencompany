@@ -30,6 +30,11 @@
           class="prose prose-sm max-w-none break-words prose-neutral dark:prose-invert"
           v-html="formattedContent"
         />
+        <div v-if="(message as any).streaming" class="mt-1 inline-flex h-5 items-center gap-1 text-neutral-400">
+          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-current [animation-delay:120ms]" />
+          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-current [animation-delay:240ms]" />
+        </div>
 
         <div v-if="message.attachments?.length" class="mt-3 grid gap-2 sm:grid-cols-2">
           <a
@@ -91,7 +96,7 @@ defineEmits<{
 }>()
 
 const copied = ref(false)
-const isUser = computed(() => props.message.author?.id === props.currentUserId || props.message.author?.type === 'human')
+const isUser = computed(() => props.message.author?.id === props.currentUserId)
 const isAgentMessage = computed(() => props.message.author?.type === 'agent')
 const authorName = computed(() => isUser.value ? 'You' : props.message.author?.name ?? 'Assistant')
 const userInitials = computed(() => authorName.value.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase())

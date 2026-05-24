@@ -2,11 +2,17 @@
 
 Date: 2026-05-24
 
-Status: Investigation / implementation proposal. The external provider notes
-were spot-checked on 2026-05-24 against the linked Tavily, Firecrawl, Exa, and
-Jina docs. The OpenCompany-specific classes, config, tools, Lua functions,
-settings UI, cache, and phases below are proposed until matching app code
-exists.
+Status: Investigation / implementation proposal with partial scaffold.
+External provider notes were spot-checked on 2026-05-24 against the linked
+Tavily, Firecrawl, Exa, and Jina docs. The current OpenCompany worktree has the
+first app-owned scaffold in `config/web.php` plus `app/Domain/Web` contracts,
+capability enum, exceptions, and request/response value objects. Provider
+managers, safety guard, extraction, provider implementations, persistent cache,
+usage recording, direct tools, Lua functions, settings UI, and tests remain
+proposed until matching app code exists. KosmoKrator provider class names,
+endpoints, and default models in the parity plan reflect the local
+`/Users/rutger/Projects/kosmokrator` snapshot checked on 2026-05-24; refresh
+that source before treating any provider detail as a current vendor contract.
 
 ## Summary
 
@@ -21,6 +27,20 @@ Recommended first capability set:
   and provider-based readers.
 - Optional later: `web_crawl`, `web_extract`, `web_research`, and browser-backed
   fetch fallback.
+
+Current implementation state in this worktree:
+
+- Present: `config/web.php`.
+- Present: `app/Domain/Web/Contracts/WebProvider.php`,
+  `WebSearchProvider.php`, and `WebFetchProvider.php`.
+- Present: `app/Domain/Web/Enums/WebCapability.php`.
+- Present: `app/Domain/Web/Exceptions/WebProviderException.php` and
+  `WebFetchPermanentException.php`.
+- Present: request/response value objects for search/fetch plus
+  `ExtractedPage`.
+- Not present yet: manager classes, provider registry, HTTP client, concrete
+  providers, direct fetch, URL safety guard, extraction services, cache service,
+  usage recorder, agent tools, Lua routing, settings UI, migrations, and tests.
 
 This should be separate from the Playwright browser runtime. Most web research
 does not need a full browser session; search/fetch should be the cheap default,
@@ -437,7 +457,468 @@ Change for OpenCompany:
 - integrate with agent permissions and approvals;
 - keep browser/Playwright fallback separate and later.
 
-The first useful build should be small: `direct` fetch, one search adapter
-(`tavily`), `web_search`, `web_fetch`, Lua docs, safety guard, and tests. That
-will unlock normal web research without dragging browser infrastructure into the
-first implementation.
+## Full Parity Implementation Plan
+
+Target scope: OpenCompany should reach functional parity with the current
+KosmoKrator non-browser web search/fetch system, while using OpenCompany's
+workspace, credential, permission, and audit boundaries. This means one
+OpenCompany-native implementation that covers both KosmoKrator web layers:
+
+- the newer native `web_search` / `web_fetch` provider-manager path under
+  `Kosmokrator\Web\Value`, `Kosmokrator\Web\Provider\*ProviderManager`, and
+  `Kosmokrator\Tool\Web\WebSearchTool` / `WebFetchTool`;
+- the older external-provider registry path under `Kosmokrator\Web\WebProviderRegistry`,
+  `WebProviderInterface`, `WebFetchExternalTool`, and the `web:*` CLI commands,
+  where those surfaces expose search/fetch behavior that the native path does
+  not yet cover.
+
+Do not copy the dual architecture into OpenCompany. Build one canonical
+`app/Domain/Web` layer and map every Kosmo capability into it.
+
+### Parity Matrix
+
+Required search parity:
+
+- direct model-visible `web_search` tool;
+- Lua `app.web.search(...)` wrapper over the same runtime path;
+- provider override;
+- default provider and fallback provider chain;
+- provider availability checks;
+- request/result cache;
+- `query`;
+- `max_results`;
+- `allowed_domains`;
+- `blocked_domains`;
+- `search_depth` as `basic` / `advanced`;
+- `include_snippets`;
+- `include_answer`;
+- `mode` / provider depth hint as `auto` / `fast` / `deep` where external
+  providers support it;
+- `country`;
+- `language`;
+- `recency`;
+- timeout seconds;
+- output character limit;
+- provider metadata passthrough;
+- post-provider domain filtering so provider bugs cannot bypass workspace
+  policy;
+- answer/result formatting compatible with direct tool output;
+- structured metadata compatible with Lua and future UI rendering.
+
+Required fetch parity:
+
+- direct model-visible `web_fetch` tool;
+- Lua `app.web.fetch(...)` wrapper over the same runtime path;
+- native direct static fetch provider;
+- external/provider fetch through the same `web_fetch` tool using
+  `strategy="provider_only"` or a provider override, rather than a second
+  OpenCompany-only tool;
+- provider override;
+- default provider and fallback provider chain;
+- `strategy` as `auto` / `direct_only` / `provider_only`;
+- `url`;
+- `mode` as `metadata` / `outline` / `main` / `full` / `section` / `match` /
+  `chunk`;
+- `format` as `markdown` / `text` / `html`;
+- `max_chars`;
+- `summarize` reserved flag;
+- `prompt` reserved/focus field;
+- `heading`;
+- `section_id`;
+- `match`;
+- `start_after` and `end_before` reserved boundary fields;
+- `chunk_token` continuation;
+- timeout seconds;
+- `include_metadata`;
+- `include_outline`;
+- final URL;
+- HTTP status code;
+- content type;
+- title;
+- metadata;
+- outline;
+- section map;
+- raw HTML when requested and available;
+- extraction method;
+- truncation flag;
+- next chunk token;
+- provider metadata passthrough.
+
+Required direct-fetch parity:
+
+- browser-like request headers matching Kosmo's intent:
+  - `User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+    AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36`;
+  - `Accept: text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.7`;
+  - `Accept-Language: en-US,en;q=0.9`;
+  - `Accept-Encoding: gzip, deflate`;
+  - `Cache-Control: no-cache`;
+  - `Pragma: no-cache`;
+  - `Upgrade-Insecure-Requests: 1`;
+- request timeout and inactivity timeout;
+- max response bytes;
+- gzip and deflate decoding;
+- 4xx permanent failure behavior except retryable statuses like `408` and
+  `429`;
+- HTML, XHTML, and `text/*` handling;
+- unsupported content-type failure;
+- final redirect URL capture;
+- redirect target revalidation before content is trusted.
+
+Required extraction parity:
+
+- DOM-based HTML cleanup;
+- removal of noisy nodes such as scripts, styles, nav, footer, aside, forms,
+  buttons, hidden/template content, and other non-content blocks;
+- primary content-root selection using `main`, `article`, role/content hints,
+  and fallback body extraction;
+- title extraction;
+- meta description/canonical/open graph style metadata extraction;
+- HTML-to-markdown conversion;
+- markdown-to-plain-text conversion for `format="text"`;
+- outline generation from headings;
+- stable section IDs;
+- section lookup by exact ID, slug-normalized ID, or heading;
+- match mode over extracted sections;
+- chunk tokens encoded as opaque base64url JSON containing source and offset.
+
+Required provider parity:
+
+- `direct` fetch;
+- `tavily` search/fetch/crawl-capable adapter, with search and extract used for
+  this scope;
+- `zai` search adapter using remote MCP first and chat-search fallback;
+- `zai` reader/fetch adapter using the Z.AI coding PaaS reader endpoint;
+- `firecrawl` search/fetch adapter;
+- `exa` search/fetch adapter;
+- `brave` search adapter;
+- `parallel` search/fetch adapter;
+- `jina` search/fetch adapter;
+- `searxng` search adapter;
+- `perplexity` search adapter;
+- `openai_native` search adapter;
+- `anthropic_native` search adapter.
+
+`web_crawl` can be implemented after search/fetch parity, but the provider
+registry must not be designed in a way that blocks later crawl support. Tavily
+and Firecrawl crawl methods should remain first-class future adapters with page
+limits, instructions, and strict domain caps.
+
+### Z.AI Coding Plan Support
+
+Z.AI needs two separate adapters because Kosmo uses two separate Z.AI surfaces.
+
+`ZaiMcpSearchProvider` parity:
+
+- provider id `zai`;
+- configured by workspace credential `web.zai` or provider alias `zai`;
+- default remote MCP URL
+  `https://api.z.ai/api/mcp/web_search_prime/mcp`;
+- call remote MCP tool `web_search_prime`;
+- send `Authorization: Bearer <key>`;
+- map `search_depth=advanced` to `content_size=high`, otherwise `medium`;
+- pass allowed domains as `search_domain_filter`;
+- normalize MCP payload fields `title`, `link`, `content`, `publish_date`, and
+  `media`;
+- filter blocked domains after the provider response;
+- retry rate limits using short configured delays;
+- detect common rate limit messages including `429`, `1302`, and MCP `-429`.
+
+Z.AI coding-plan/chat-search fallback parity:
+
+- default coding PaaS base URL `https://api.z.ai/api/coding/paas/v4`;
+- call `/chat/completions`;
+- model `glm-5.1` unless provider config overrides it;
+- attach a chat tool of type `web_search`;
+- tool payload:
+  - `enable: true`;
+  - `search_engine: search-prime`;
+  - `search_result: true`;
+  - `count` clamped to `1..10`;
+  - `content_size` from search depth;
+  - `search_domain_filter` when allowed domains are present;
+- prompt the model to return strict JSON with `answer` and `results`;
+- parse fenced or raw JSON;
+- fallback parse pipe-separated lines for degraded responses;
+- prefer chat search for short queries and when `include_answer=true`;
+- preserve answer text when provided.
+
+Z.AI reader/fetch parity:
+
+- call `POST /reader` on the coding PaaS base URL;
+- payload fields:
+  - `url`;
+  - `timeout`;
+  - `return_format` as `markdown` or `text`;
+  - `no_cache: false`;
+  - `retain_images: true`;
+  - `with_links_summary: true`;
+- require URL safety guard before sending;
+- parse `reader_result.content`, `title`, `url`, `description`, and `metadata`;
+- normalize to the same `WebFetchResponse` shape as direct fetch;
+- extract markdown through the markdown extractor so outline/sections/chunks
+  still work.
+
+This is the "Z.AI coding plan support" requirement: OpenCompany must not only
+support a generic Z.AI key. It must support Z.AI's coding PaaS web-search tool
+shape and reader endpoint because those are the surfaces Kosmo uses for coding
+agent planning and source gathering.
+
+### OpenCompany Class Plan
+
+Create:
+
+- `config/web.php`;
+- `app/Domain/Web/Contracts/WebSearchProvider.php`;
+- `app/Domain/Web/Contracts/WebFetchProvider.php`;
+- `app/Domain/Web/Contracts/WebProvider.php` for capability/status metadata;
+- `app/Domain/Web/Enums/WebCapability.php`;
+- `app/Domain/Web/Exceptions/WebProviderException.php`;
+- `app/Domain/Web/Exceptions/WebFetchPermanentException.php`;
+- `app/Domain/Web/ValueObjects/WebSearchRequest.php`;
+- `app/Domain/Web/ValueObjects/WebSearchResponse.php`;
+- `app/Domain/Web/ValueObjects/WebSearchResult.php`;
+- `app/Domain/Web/ValueObjects/WebFetchRequest.php`;
+- `app/Domain/Web/ValueObjects/WebFetchResponse.php`;
+- `app/Domain/Web/ValueObjects/ExtractedPage.php`;
+- `app/Domain/Web/Managers/WebSearchProviderManager.php`;
+- `app/Domain/Web/Managers/WebFetchProviderManager.php`;
+- `app/Domain/Web/Registry/WebProviderRegistry.php`;
+- `app/Domain/Web/Http/HttpWebClient.php`;
+- `app/Domain/Web/Extraction/HtmlPageExtractor.php`;
+- `app/Domain/Web/Extraction/MarkdownPageExtractor.php`;
+- `app/Domain/Web/Safety/WebRequestGuard.php`;
+- `app/Domain/Web/Policy/WebAccessPolicy.php`;
+- `app/Domain/Web/Cache/WebResultCache.php`;
+- `app/Domain/Web/Usage/WebUsageRecorder.php`;
+- `app/Domain/Web/Formatting/WebToolFormatter.php`.
+
+Providers:
+
+- `app/Domain/Web/Providers/Fetch/DirectFetchProvider.php`;
+- `app/Domain/Web/Providers/Fetch/ZaiReaderFetchProvider.php`;
+- `app/Domain/Web/Providers/Search/ZaiMcpSearchProvider.php`;
+- `app/Domain/Web/Providers/TavilyProvider.php`;
+- `app/Domain/Web/Providers/FirecrawlProvider.php`;
+- `app/Domain/Web/Providers/ExaProvider.php`;
+- `app/Domain/Web/Providers/BraveProvider.php`;
+- `app/Domain/Web/Providers/ParallelProvider.php`;
+- `app/Domain/Web/Providers/JinaProvider.php`;
+- `app/Domain/Web/Providers/SearxngProvider.php`;
+- `app/Domain/Web/Providers/PerplexityProvider.php`;
+- `app/Domain/Web/Providers/OpenAiNativeSearchProvider.php`;
+- `app/Domain/Web/Providers/AnthropicNativeSearchProvider.php`.
+
+Tool/runtime classes:
+
+- `app/Agents/Tools/Web/WebSearchTool.php`;
+- `app/Agents/Tools/Web/WebFetchTool.php`;
+- `app/Agents/Tools/Providers/WebToolProvider.php`;
+- register `web` in `ToolRegistry::DIRECT_TOOL_GROUPS`;
+- expose `app.web.search` and `app.web.fetch` through the existing Lua bridge
+  by using the same tool invocation path;
+- update `resources/lua-docs` with request/response examples.
+
+Do not add a separate `web_fetch_external` direct tool in OpenCompany. Fold
+Kosmo's external fetch behavior into `web_fetch` through `provider` and
+`strategy`. That keeps the public agent API smaller while preserving the
+behavior.
+
+### Workspace Configuration Plan
+
+Use static provider catalog data in `config/web.php`:
+
+- provider id;
+- label;
+- capabilities;
+- default base URL;
+- API key env fallback;
+- credential integration id;
+- default timeout;
+- max output defaults;
+- enabled-by-default flag;
+- feature flags for search/fetch/native/crawl.
+
+Use workspace-scoped encrypted `IntegrationSetting` credentials:
+
+- `web.tavily`;
+- `web.zai`;
+- `web.firecrawl`;
+- `web.exa`;
+- `web.brave`;
+- `web.parallel`;
+- `web.jina`;
+- `web.searxng`;
+- `web.perplexity`;
+- `web.openai_native`;
+- `web.anthropic_native`.
+
+Use a workspace policy row or app setting for:
+
+- default search provider;
+- search fallback providers;
+- default fetch provider;
+- fetch fallback providers;
+- whether external provider fetch is allowed;
+- domain allowlist;
+- domain blocklist;
+- max results;
+- max fetch chars;
+- max bytes;
+- cache TTL;
+- per-agent/per-workspace rate limits.
+
+### Database And Audit Plan
+
+Add a persistent cache table unless the existing cache store is clearly enough:
+
+- `id`;
+- `workspace_id`;
+- `provider`;
+- `capability`;
+- `request_hash`;
+- `policy_hash`;
+- `url`;
+- `final_url`;
+- `query`;
+- `status_code`;
+- `content_type`;
+- `title`;
+- `metadata_json`;
+- `outline_json`;
+- `sections_json`;
+- `content`;
+- `content_hash`;
+- `bytes`;
+- `fetched_at`;
+- `expires_at`.
+
+Add an audit/usage table or emit into the existing agent event log:
+
+- `workspace_id`;
+- `agent_id`;
+- `user_id`;
+- `conversation_id` / `message_id` where available;
+- tool name;
+- provider;
+- capability;
+- URL/query;
+- final URL;
+- status;
+- bytes in/out;
+- cache hit;
+- error class;
+- duration milliseconds;
+- created timestamp.
+
+Secrets must never be written to request metadata, tool output, audit logs, or
+agent-visible errors.
+
+### Safety Acceptance Criteria
+
+The guard is not done until tests prove all of these fail:
+
+- `file://`, `ftp://`, and other non-http(s) schemes;
+- URLs with username/password;
+- missing host;
+- overlong URLs;
+- `localhost`;
+- `*.localhost`;
+- loopback IPv4 and IPv6;
+- private IPv4 and IPv6;
+- reserved IPv4 and IPv6;
+- link-local metadata IPs such as `169.254.169.254`;
+- common cloud metadata hostnames;
+- DNS names resolving to blocked IP ranges;
+- redirect from a public URL to a blocked URL.
+
+The guard is done when normal public `http` and `https` URLs still pass and
+provider-backed fetch adapters use the same guard before sending URLs to the
+external provider.
+
+### Implementation Sequence
+
+1. Add `config/web.php`, domain contracts, value objects, exceptions, formatter,
+   and provider registry.
+2. Add safety guard and tests before any network provider code.
+3. Add cache and audit abstractions with in-memory fakes for tests.
+4. Add direct fetch with exact browser-like headers, response decoding, max
+   bytes, permanent failure classification, final URL capture, and redirect
+   revalidation.
+5. Add HTML and markdown extractors with outline, sections, metadata, and
+   markdown/text conversion.
+6. Add fetch manager and full `web_fetch` mode handling: metadata, outline,
+   main, full, section, match, chunk.
+7. Add search manager and `web_search` handling: request normalization, fallback
+   chain, cache, domain filtering, and structured output.
+8. Add `tavily`, `exa`, `brave`, `firecrawl`, `parallel`, `jina`, `searxng`,
+   `perplexity`, `openai_native`, and `anthropic_native` adapters.
+9. Add Z.AI MCP search, Z.AI chat-search fallback, and Z.AI reader/fetch.
+10. Add `WebToolProvider`, direct tools, Lua routing, Lua docs, and tool
+    catalog visibility.
+11. Add settings/admin UI for provider credentials, default provider choices,
+    fallback providers, domain policy, and external-fetch enablement.
+12. Add diagnostics UI or Artisan commands equivalent to Kosmo's
+    `web:providers`, `web:configure`, `web:doctor`, `web:search`, and
+    `web:fetch`. In OpenCompany these can be admin/debug screens first and
+    Artisan commands second.
+13. Add documentation and examples for direct tool use and Lua use.
+14. Run provider contract tests, feature tests, and a small local smoke test
+    with fake HTTP clients. Live provider tests should be opt-in and skipped
+    unless credentials are present.
+
+### Test Plan
+
+Minimum test files:
+
+- `tests/Unit/Domain/Web/WebRequestGuardTest.php`;
+- `tests/Unit/Domain/Web/DirectFetchProviderTest.php`;
+- `tests/Unit/Domain/Web/HtmlPageExtractorTest.php`;
+- `tests/Unit/Domain/Web/MarkdownPageExtractorTest.php`;
+- `tests/Unit/Domain/Web/WebResultCacheTest.php`;
+- `tests/Unit/Domain/Web/WebSearchProviderManagerTest.php`;
+- `tests/Unit/Domain/Web/WebFetchProviderManagerTest.php`;
+- `tests/Unit/Domain/Web/WebProviderRegistryTest.php`;
+- `tests/Unit/Domain/Web/ZaiProvidersTest.php`;
+- `tests/Unit/Agents/Tools/WebSearchToolTest.php`;
+- `tests/Unit/Agents/Tools/WebFetchToolTest.php`;
+- `tests/Feature/Agents/WebToolsRuntimeTest.php`;
+- `tests/Feature/Agents/LuaWebToolsTest.php`;
+- `tests/Feature/Admin/WebProviderSettingsTest.php`.
+
+Coverage targets:
+
+- every request field is normalized and tested;
+- every fetch mode has success and failure tests;
+- every provider adapter has mocked success, provider error, malformed payload,
+  and unavailable credential tests;
+- Z.AI has separate tests for MCP success, MCP empty response, MCP rate limit,
+  chat-search fallback, JSON-fenced response parsing, line fallback parsing,
+  and reader response normalization;
+- direct fetch tests assert the exact browser-like headers;
+- direct fetch tests assert gzip and deflate decoding;
+- safety tests cover DNS and redirect edge cases;
+- Lua tests assert `app.web.search` and `app.web.fetch` return structured data,
+  not only rendered text;
+- workspace tests assert one workspace cannot use another workspace's provider
+  credentials, cache entries, or policy.
+
+### Definition Of Done
+
+The full implementation is done when:
+
+- OpenCompany exposes `web_search` and `web_fetch` directly to agents;
+- Lua exposes `app.web.search` and `app.web.fetch`;
+- every Kosmo search/fetch request option listed above is supported or
+  intentionally reserved with the same no-op semantics as Kosmo;
+- all Kosmo search/fetch providers listed above exist as OpenCompany adapters;
+- Z.AI MCP search, Z.AI coding PaaS chat-search fallback, and Z.AI reader fetch
+  are implemented;
+- direct fetch sends the browser-like headers and handles compression, limits,
+  extraction, sections, and chunks;
+- provider credentials are workspace-scoped and encrypted;
+- URL safety is enforced before direct and provider-backed fetch;
+- cache and audit behavior are workspace-scoped;
+- settings/admin diagnostics make provider status understandable;
+- tests cover the parity matrix with fake HTTP clients and no required live
+  provider calls.

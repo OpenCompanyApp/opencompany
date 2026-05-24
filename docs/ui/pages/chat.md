@@ -1,6 +1,9 @@
 # Chat
 
-> A full-height, three-panel messaging interface with channel list, message area, and channel info sidebar, supporting real-time messaging, threads, reactions, pinning, typing indicators, and file uploads.
+> Unified conversation surface for assistant chats, direct messages, and normal
+> channels. The current page renders `AssistantChatShell` for every selected
+> channel; the older separate `ChannelList` / `Area` / `ChannelInfo` layout
+> components still exist in the tree but are not the active page shell.
 
 ---
 
@@ -12,55 +15,52 @@
 | **Name** | `chat` |
 | **Auth** | Required (`auth`, `verified`) |
 | **Layout** | AppLayout |
-| **Query params** | `?channel={id}` selects channel; `?dm={userId}` selects DM with user |
+| **Query params** | `?channel={id}` selects a channel; `?dm={userId}` selects or creates a DM with a human; `?agent={agentId}` selects or creates an agent DM |
+
+Legacy `/w/{workspace}/messages` and `/w/{workspace}/messages/{id}` routes
+redirect into this page; see [messages.md](messages.md).
 
 ---
 
 ## Layout
 
-### Desktop (md+)
+### Desktop (`md+`)
 
 ```
 +------------------------------------------------------------------+
 | h-full flex flex-col                                              |
-| +----------+------------------------------------+-----------+     |
-| |          |                                    |           |     |
-| | Channel  |  Chat Area                        | Channel   |     |
-| | List     |                                    | Info      |     |
-| | (w-60)   |  +------------------------------+ | (w-72)    |     |
-| |          |  | Header: #name, description,   | |           |     |
-| | Sections:|  | pin count, member count       | | About     |     |
-| | - Pinned |  +------------------------------+ | Pinned    |     |
-| | - Starred|  |                                | | Files     |     |
-| | - DMs    |  | Messages area (scrollable)    | | Members   |     |
-| | - Private|  | - Date separators             | | Notifs    |     |
-| | - Public |  | - Grouped by author/time      | |           |     |
-| | - Extern.|  | - Reactions, thread, pin      | | Footer:   |     |
-| | - Archive|  |                                | | Mute/Pin  |     |
-| |          |  +------------------------------+ | Leave     |     |
-| | Search   |  | Typing indicator (if active)  | |           |     |
-| | Filters  |  +------------------------------+ |           |     |
-| |          |  | MessageInput (rich editor)     | |           |     |
-| +----------+------------------------------------+-----------+     |
+| +---------------------------+----------------------------------+  |
+| | ConversationSidebar       | AssistantConversation             |  |
+| | w-80 / collapsed w-16     |                                  |  |
+| |                           | Header: sidebar toggle,          |  |
+| | Header: OpenCompany       | conversation title, refresh       |  |
+| | Search conversations      |                                  |  |
+| | New assistant chat        | Scroll area:                      |  |
+| | DM / Channel buttons      | - Empty assistant prompt state    |  |
+| |                           | - Message list                    |  |
+| | Conversation rows:        | - Inline approval cards           |  |
+| | - Agent chats             | - Thinking/runtime panel          |  |
+| | - Human DMs               |                                  |  |
+| | - Channels                | PromptComposer                    |  |
+| +---------------------------+----------------------------------+  |
 +------------------------------------------------------------------+
-  CreateChannelModal (overlay)
-  AddMemberModal (overlay)
-  Thread Panel (absolute overlay on right side of ChatArea, w-80)
+  CreateChannelModal / CreateDmModal overlays live at page level.
 ```
 
-### Mobile (< md)
+### Mobile (`< md`)
 
 ```
 +------------------------------------------------------------------+
-| Mobile Toolbar (h-auto)                                           |
-| [hamburger] [#channel-icon channel-name] [info]                   |
+| AssistantConversation                                             |
+| [sidebar icon] title/subtitle                         [refresh]   |
 +------------------------------------------------------------------+
-| Chat Area (full width)                                            |
-| Messages, typing indicator, message input                         |
+| Messages, approvals, runtime activity, empty states                |
++------------------------------------------------------------------+
+| PromptComposer                                                     |
 +------------------------------------------------------------------+
 
-  Slideover (left): Channel List
-  Slideover (right): Channel Info
+  Slideover (left): ConversationSidebar
+  CreateChannelModal / CreateDmModal overlays
 ```
 
 ---
@@ -69,97 +69,109 @@
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| `ChannelList` | `Components/chat/ChannelList.vue` | Sidebar listing channels grouped by type (Pinned, Starred, DMs, Private, Public, External, Archived). Includes search, type/status filters, quick filters, and collapsible sections. |
-| `Area` | `Components/chat/Area.vue` | Main chat area with header, scrollable message list, date separators, pinned messages panel, thread panel, typing indicator, and message input. |
-| `ChannelInfo` | `Components/chat/ChannelInfo.vue` | Right sidebar with About section, pinned messages, shared files, members list (with search and filter), notification settings, and footer actions (mute, pin, leave). |
-| `Message` | `Components/chat/Message.vue` | Individual message bubble with author avatar, name, content, timestamp, reactions, and action buttons (react, thread, pin). |
-| `MessageInput` | `Components/chat/MessageInput.vue` | Rich text input at bottom of chat area. Supports `compact` variant for thread replies. Emits `send` with content and optional attachments. |
-| `TypingIndicator` | `Components/chat/TypingIndicator.vue` | Shows animated dots and user names when others are typing. |
-| `ChannelItem` | `Components/chat/ChannelItem.vue` | Single channel row inside ChannelList sections. Shows icon, name, unread badge. |
-| `ApprovalCard` | `Components/chat/ApprovalCard.vue` | Inline approval card rendered within chat messages. |
-| `AddMemberModal` | `Components/chat/AddMemberModal.vue` | Modal to add members to the current channel. |
-| `CreateChannelModal` | `Components/chat/CreateChannelModal.vue` | Modal for creating a new channel. |
-| `Slideover` | `Components/shared/Slideover.vue` | Slide-in panel used on mobile for channel list (left) and channel info (right). |
+| `AssistantChatShell` | `Components/chat/assistant/AssistantChatShell.vue` | Active page shell. Owns the desktop/sidebar split, mobile conversation slideover, and shell events. |
+| `ConversationSidebar` | `Components/chat/assistant/ConversationSidebar.vue` | Conversation list for agent chats, DMs, and channels. Includes search, new assistant chat, DM, channel buttons, and desktop collapse state. |
+| `AssistantConversation` | `Components/chat/assistant/AssistantConversation.vue` | Main conversation panel with header, empty states, messages, inline approvals, runtime activity, and composer. |
+| `AssistantMessage` | `Components/chat/assistant/AssistantMessage.vue` | Current rendered message row for the unified shell. |
+| `PromptComposer` | `Components/chat/assistant/PromptComposer.vue` | Composer with attachment support, agent picker for assistant channels, stop/compact/status actions, and send event. |
+| `ThinkingPanel` | `Components/chat/assistant/ThinkingPanel.vue` | Shows active/pending task runtime status under the conversation. |
+| `EmptyState` | `Components/chat/assistant/EmptyState.vue` | Agent selection and suggested prompt state before a conversation has messages. |
+| `ApprovalCard` | `Components/chat/ApprovalCard.vue` | Inline approval card rendered in the unified conversation approval queue. |
+| `CreateChannelModal` | `Components/chat/CreateChannelModal.vue` | Modal for creating a channel. |
+| `CreateDmModal` | `Components/chat/CreateDmModal.vue` | Modal for creating a DM. |
+| `AddMemberModal` | `Components/chat/AddMemberModal.vue` | Still mounted by the page, but the current shell does not expose the old channel-info add-member trigger. |
 
 ---
 
 ## Data & API
 
+`resources/js/Pages/Chat.vue` uses `useApi()` for the live page data. Current
+rendered shell actions use the same channel/message APIs for assistant and
+non-assistant conversations.
+
 | Composable Call | Purpose |
 |-----------------|---------|
-| `fetchChannels()` | Load all channels the user belongs to |
-| `fetchMessages(channelId)` | Load messages for selected channel |
-| `sendMessage({ content, channelId, authorId, attachmentIds?, replyToId? })` | Send a new message or thread reply |
-| `markChannelRead(channelId)` | Mark channel as read on selection |
-| `addMessageReaction(messageId, { emoji, userId })` | Add emoji reaction to a message |
-| `fetchMessageThread(messageId)` | Load thread parent and replies |
-| `removeChannelMember(channelId, memberId)` | Remove member from channel |
-| `pinMessage(messageId, userId)` | Pin or unpin a message |
-| `fetchPinnedMessages(channelId)` | Load pinned messages for channel |
-| `sendTypingIndicator(...)` | Notify that current user is typing |
-| `uploadMessageAttachment(file, channelId, userId)` | Upload file attachment |
+| `fetchChannels()` | Load all conversations the user belongs to |
+| `fetchMessages(channelId)` | Load messages for the selected channel |
+| `sendMessage({ content, channelId, authorId, attachmentIds?, replyToId? })` | Send a message, assistant prompt, or command into the selected channel |
+| `markChannelRead(channelId)` | Mark selected channel as read |
+| `uploadMessageAttachment(file, channelId, userId)` | Upload files before sending |
+| `fetchAgents()` | Populate assistant-agent selection and new assistant chat behavior |
+| `fetchAgentTasks()` | Poll runtime tasks for the selected assistant channel |
+| `fetchApprovals()` | Poll pending approval requests for inline approval cards |
+| `respondToApproval(id, status)` | Approve or reject an inline approval |
+| `cancelAgentTask(id)` | Stop the active assistant task |
+| `compactChannel(channelId)` | Run `/compact` through the assistant command path |
+| `fetchWorkspaceStatus()` | Support runtime/status refreshes |
+
+Older helpers for reactions, pinned messages, thread panels, typing indicators,
+and member removal still exist in `Chat.vue` and/or legacy chat components, but
+the current template no longer renders the old `Area` / `ChannelInfo` controls
+that exposed those interactions.
 
 ---
 
-## Real-time Events
+## Real-Time & Polling
 
-| Event | Handler |
-|-------|---------|
-| `message:new` | Refresh messages if for current channel; always refresh channel list for unread counts |
-| `message:reaction:added` | Refresh messages |
-| `message:reaction:removed` | Refresh messages |
-| `message:pinned` | Refresh messages and pinned messages for current channel |
-| `message:unpinned` | Refresh messages and pinned messages for current channel |
-
-Subscriptions are set up via `useRealtime()` in `onMounted` and cleaned up in `onUnmounted`. Typing indicators use the dedicated `useTypingIndicator` composable.
+| Mechanism | Current behavior |
+|-----------|------------------|
+| Echo private channel `chat.{channelId}` | Selected-channel watcher subscribes through `useRealtime().privateChannel()` and leaves the previous channel on selection change. |
+| `.MessageSent` | Bridges into `message:new`, then refreshes messages, assistant runtime, and channel unread state. |
+| `.text_start`, `.text_delta`, `.text_end`, `.stream_end`, `.stream_failed` | Bridges provider stream events into local `message:stream:*` events. The page creates a temporary `stream-{message_id|invocation_id}` assistant message, appends deltas, and clears its `streaming` flag on end/error. |
+| `useTypingIndicator()` | Still initialized for chat typing support, though the current unified shell does not render the old typing bar. |
+| Runtime poll | Every 3 seconds, refreshes assistant runtime for the selected channel and refreshes messages when pending/active/paused tasks exist. |
+| Channel watcher | Refreshes messages and marks the selected channel as read. Assistant channels also refresh runtime state. |
 
 ---
 
 ## Features & Interactions
 
-### Channel Selection
-- Desktop: Click channel in sidebar list
-- Mobile: Open left slideover, tap channel, slideover auto-closes
-- URL query params `?channel=` and `?dm=` are watched and synced
-- Legacy `/w/{workspace}/messages` and `/w/{workspace}/messages/{id}` routes redirect here; see [messages.md](messages.md)
-- First channel is auto-selected as fallback
+### Conversation Selection
 
-### Messaging
-- Send message via `MessageInput` component
-- Supports file attachments (uploaded before send)
-- Messages auto-scroll to bottom on new arrivals
-- Date separators shown between messages on different days
-- Avatar/name grouped when same author within 5 minutes
+- Desktop uses `ConversationSidebar`; mobile opens the same sidebar in a left
+  `Slideover`.
+- `?agent=` selects or creates an agent DM, then treats it as an assistant
+  channel.
+- `?dm=` selects or creates a human DM.
+- `?channel=` selects an existing channel.
+- If no query-selected channel is found, the page prefers the first assistant
+  conversation, then falls back to the first available channel.
 
-### Threads
-- Click thread icon on a message to open the thread panel
-- Thread panel slides in from right (w-80, absolute positioned)
-- Shows parent message, reply count, all replies, and a compact input
-- Thread replies sent with `replyToId` parameter
+### Messaging And Assistant Prompts
 
-### Reactions
-- Add emoji reactions to messages
-- Triggers `addMessageReaction` API call then refreshes
+- All sends route through `handleUnifiedSend()`.
+- If no channel is selected and an agent is selected, the page creates or opens
+  the agent DM before sending.
+- Attachments are uploaded before `sendMessage()`.
+- `/compact` and `/status` are sent through the same composer path as normal
+  prompts.
+- Retry sends a prompt asking the assistant to retry and improve the selected
+  response.
 
-### Pinned Messages
-- Pin/unpin via message action menu
-- Pinned messages panel toggleable in header (badge shows count)
-- Click pinned message to scroll-to-message with highlight animation
+### Assistant Runtime
 
-### Channel Info Panel
-- Collapsible sections: About, Pinned Messages, Shared Files, Members, Notifications
-- Members section has search input (when > 5 members) and filters: All, Humans, Agents, Online
-- Add/remove members, view profiles, send DM
-- Notification preferences: All messages, Mentions only, Nothing
-- Footer: Mute, Pin, Leave channel
+- Assistant channels are detected as DMs that include an agent member.
+- Assistant channels show agent-aware empty states, inline approvals, runtime
+  activity, task thinking state, stop, compact, and status controls.
+- Provider stream deltas are rendered immediately as a temporary assistant
+  message with animated streaming dots until a stream end or failure event
+  arrives.
+- Non-assistant DMs/channels use the same message/composer surface, but hide
+  assistant-only composer controls.
 
-### Channel List Features
-- Search with live filtering
-- Quick filters: Unread, DMs
-- Advanced filter panel: Channel type (Public, Private, DMs, External) and status (Unread, Muted, Pinned, Starred)
-- Unread badge in header
-- Collapsible sections with counts
-- Archived channels hidden by default with toggle
+### Approvals
+
+- Pending approvals for the selected channel are rendered below messages.
+- Approve/reject calls `respondToApproval()`, then refreshes approvals, runtime
+  state, and messages.
+
+### Legacy Chat Controls
+
+The legacy `ChannelList`, `Area`, `ChannelInfo`, `MessageInput`, and
+`TypingIndicator` components remain in `resources/js/Components/chat/`, but the
+current `Chat.vue` template does not render them. Treat their behavior as legacy
+or reusable component behavior, not current page behavior, until the page shell
+uses them again.
 
 ---
 
@@ -167,12 +179,13 @@ Subscriptions are set up via `useRealtime()` in `onMounted` and cleaned up in `o
 
 | State | Description |
 |-------|-------------|
-| **No channel selected** | Large centered icon with "No channel selected" and "Select a channel to start chatting" |
-| **Empty channel** | Chat icon with "No messages yet" and "Be the first to send a message in #name" |
-| **No channels** | Empty state in channel list with "No channels yet" and create button |
-| **No search results** | Magnifying glass icon with "No channels found" and clear button |
-| **Loading channels** | Skeleton placeholders (section headers + channel rows) |
-| **Typing** | Typing indicator bar appears above message input |
+| **No channel selected** | Agent chooser and suggested prompts inside `EmptyState`. |
+| **Assistant channel with no messages** | Agent-aware prompt suggestions unless runtime work is already active. |
+| **Non-assistant channel with no messages** | "Start the conversation" centered state. |
+| **Runtime before first visible response** | Small runtime activity panel while an assistant task is active. |
+| **Streaming response** | Temporary assistant message with incremental markdown content and pulsing dots. |
+| **No conversations** | Sidebar empty state with "Start with an agent, DM, or channel." |
+| **Sidebar collapsed** | Desktop sidebar shrinks to icon-only `w-16`; state is persisted in `localStorage`. |
 
 ---
 
@@ -180,8 +193,8 @@ Subscriptions are set up via `useRealtime()` in `onMounted` and cleaned up in `o
 
 | Breakpoint | Changes |
 |------------|---------|
-| `< md` | Mobile toolbar visible. Channel list and info become slide-over panels. Chat area fills full width. |
-| `md+` | Three-panel layout: channel list (w-60), chat area (flex-1), info sidebar (w-72, toggleable). Mobile toolbar hidden. |
+| `< md` | Sidebar is hidden by default and opens as a left `Slideover` from the conversation header. |
+| `md+` | Sidebar is visible and collapsible; main conversation fills the remaining width. |
 
 ---
 
@@ -189,19 +202,22 @@ Subscriptions are set up via `useRealtime()` in `onMounted` and cleaned up in `o
 
 | File | Purpose |
 |------|---------|
-| `resources/js/Pages/Chat.vue` | Page component |
-| `resources/js/Components/chat/ChannelList.vue` | Channel sidebar |
-| `resources/js/Components/chat/Area.vue` | Chat area with messages, thread, input |
-| `resources/js/Components/chat/ChannelInfo.vue` | Channel details sidebar |
-| `resources/js/Components/chat/Message.vue` | Individual message |
-| `resources/js/Components/chat/MessageInput.vue` | Message composer |
-| `resources/js/Components/chat/TypingIndicator.vue` | Typing dots |
-| `resources/js/Components/chat/ChannelItem.vue` | Channel row |
+| `resources/js/Pages/Chat.vue` | Page owner: query-param selection, channel/message/runtime data, modal state, and unified send/approval handlers |
+| `resources/js/Components/chat/assistant/AssistantChatShell.vue` | Active chat shell |
+| `resources/js/Components/chat/assistant/ConversationSidebar.vue` | Active conversation sidebar |
+| `resources/js/Components/chat/assistant/AssistantConversation.vue` | Active conversation panel |
+| `resources/js/Components/chat/assistant/AssistantMessage.vue` | Active message renderer |
+| `resources/js/Components/chat/assistant/PromptComposer.vue` | Active composer |
+| `resources/js/Components/chat/assistant/ThinkingPanel.vue` | Runtime task panel |
+| `resources/js/Components/chat/assistant/EmptyState.vue` | Assistant/channel empty state |
 | `resources/js/Components/chat/ApprovalCard.vue` | Inline approval |
-| `resources/js/Components/chat/AddMemberModal.vue` | Add member modal |
 | `resources/js/Components/chat/CreateChannelModal.vue` | Create channel modal |
-| `resources/js/Components/shared/Slideover.vue` | Mobile slide panels |
+| `resources/js/Components/chat/CreateDmModal.vue` | Create DM modal |
+| `resources/js/Components/chat/AddMemberModal.vue` | Mounted legacy modal path |
+| `resources/js/Components/chat/ChannelList.vue` | Legacy sidebar component, not rendered by the current page shell |
+| `resources/js/Components/chat/Area.vue` | Legacy chat area component, not rendered by the current page shell |
+| `resources/js/Components/chat/ChannelInfo.vue` | Legacy channel info component, not rendered by the current page shell |
 | `resources/js/composables/useApi.ts` | API composable |
 | `resources/js/composables/useRealtime.ts` | WebSocket event subscriptions |
-| `resources/js/composables/useTypingIndicator.ts` | Typing indicator logic |
+| `resources/js/composables/useTypingIndicator.ts` | Typing indicator state |
 | `resources/js/composables/useMediaQuery.ts` | `useIsMobile()` hook |

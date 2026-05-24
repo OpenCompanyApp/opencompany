@@ -18,8 +18,10 @@ use App\Services\AgentCommunicationService;
 use App\Services\Memory\MemoryFlushService;
 use App\Services\TelegramService;
 use App\Support\TokenMetrics;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Laravel\Ai\Streaming\Events\StreamEvent;
 
 /**
  * Application service that turns a user chat message into one durable agent response.
@@ -150,8 +152,9 @@ class RespondToChatMessage
             }
 
             $llmStep->start();
-            $runResult = $agentRun->run(
-                $this->buildPromptWithThreadContext($this->userMessage)
+            $runResult = $agentRun->stream(
+                $this->buildPromptWithThreadContext($this->userMessage),
+                fn (StreamEvent $event) => $event->broadcastNow(new PrivateChannel('chat.'.$this->channelId)),
             );
             $response = $runResult->response;
             $responseText = $runResult->text;

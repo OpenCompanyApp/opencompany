@@ -1,36 +1,10 @@
 <template>
   <div class="h-full flex flex-col">
-    <!-- Mobile Toolbar -->
-    <div v-if="chatMode === 'channels'" class="md:hidden flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shrink-0">
-      <button
-        type="button"
-        class="p-2 -ml-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-        @click="showMobileChannelList = true"
-      >
-        <Icon name="ph:list" class="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
-      </button>
-      <div v-if="selectedChannel" class="flex-1 flex items-center gap-2 min-w-0">
-        <Icon :name="channelIcon" class="w-4 h-4 text-neutral-500 dark:text-neutral-400 shrink-0" />
-        <span class="font-medium text-neutral-900 dark:text-white truncate">{{ selectedChannel.name }}</span>
-      </div>
-      <div v-else class="flex-1 text-sm text-neutral-500 dark:text-neutral-400">Select a channel</div>
-      <button
-        v-if="selectedChannel"
-        type="button"
-        class="p-2 -mr-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-        @click="showChannelInfo = true"
-      >
-        <Icon name="ph:info" class="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
-      </button>
-    </div>
-
-    <!-- Main Content -->
     <div class="flex-1 flex min-h-0">
       <AssistantChatShell
-        v-if="chatMode === 'assistant'"
         class="flex-1"
         :channels="channelsData"
-        :selected-channel="selectedAssistantChannel"
+        :selected-channel="selectedChannel"
         :messages="channelMessages"
         :tasks="assistantTasks"
         :approvals="channelApprovals"
@@ -38,12 +12,14 @@
         :current-user-id="currentUserId"
         :selected-agent-id="selectedAgentId"
         :is-mobile="isMobile"
+        :is-assistant-channel="isAssistantChannel(selectedChannel)"
         :approval-loading-id="approvalLoadingId"
         :approval-loading-action="approvalLoadingAction"
-        @select-channel="selectAssistantChannel"
+        @select-channel="selectChannel"
         @new-agent-chat="openAgentChat"
-        @open-channels="openChannelMode"
-        @send="handleAssistantSend"
+        @create-channel="showCreateChannelModal = true"
+        @create-dm="showCreateDmModal = true"
+        @send="handleUnifiedSend"
         @retry="handleRetryMessage"
         @stop="handleStopResponse"
         @compact="handleCompactCommand"
@@ -52,123 +28,7 @@
         @update:selected-agent-id="selectedAgentId = $event"
         @approval="handleApprovalResponse"
       />
-
-      <template v-else>
-        <!-- Desktop Channel List Sidebar -->
-        <ChatChannelList
-          class="hidden md:flex"
-          :channels="channelsData"
-          :selected-channel="selectedChannel"
-          @select="selectChannel"
-          @create="showCreateChannelModal = true"
-          @create-dm="showCreateDmModal = true"
-          @create-external="showCreateExternalModal = true"
-        />
-
-        <!-- Main Chat Area -->
-        <ChatArea
-          v-if="selectedChannel"
-          :channel="selectedChannel"
-          :messages="channelMessages"
-          :pinned-messages="pinnedMessagesData"
-          :typing-users="typingUsersData"
-          :current-user-id="currentUserId"
-          :active-thread="activeThread"
-          class="flex-1"
-          @send="handleSendMessage"
-          @react="handleReaction"
-          @open-thread="handleOpenThread"
-          @close-thread="activeThread = null"
-          @thread-reply="handleThreadReply"
-          @pin="handlePinMessage"
-          @typing="handleTyping"
-          @toggle-info="showChannelInfo = !showChannelInfo"
-        />
-
-        <!-- Empty State when no channel selected -->
-        <div v-else class="flex-1 flex items-center justify-center bg-white dark:bg-neutral-900">
-          <div class="text-center">
-            <Icon name="ph:chat-circle-dots" class="w-16 h-16 text-neutral-300 dark:text-neutral-600 mx-auto mb-4" />
-            <h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-1">No channel selected</h3>
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">Select a channel to start chatting</p>
-          </div>
-        </div>
-
-        <!-- Desktop Channel Info Sidebar -->
-        <ChatChannelInfo
-          v-if="selectedChannel && showChannelInfo"
-          class="hidden md:flex"
-          :channel="selectedChannel"
-          :viewers="channelViewers"
-          @close="showChannelInfo = false"
-          @add-member="showAddMemberModal = true"
-          @member-remove="handleMemberRemove"
-          @member-click="handleMemberClick"
-          @member-message="handleMemberMessage"
-        />
-      </template>
     </div>
-
-    <!-- Mobile Channel List Slideover -->
-    <Slideover v-if="isMobile && chatMode === 'channels'" v-model:open="showMobileChannelList" side="left" size="sm" :show-close="false">
-      <template #header>
-        <div class="flex items-center justify-between w-full">
-          <span class="font-semibold text-neutral-900 dark:text-white">Channels</span>
-          <button
-            type="button"
-            class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-            @click="showMobileChannelList = false"
-          >
-            <Icon name="ph:x" class="w-5 h-5 text-neutral-500 dark:text-neutral-300" />
-          </button>
-        </div>
-      </template>
-      <template #body>
-        <div class="-mx-6 -my-4 h-full">
-          <ChatChannelList
-            class="h-full border-r-0 w-full"
-            :channels="channelsData"
-            :selected-channel="selectedChannel"
-            :show-header="false"
-            @select="(channel) => { selectChannel(channel); showMobileChannelList = false }"
-            @create="showCreateChannelModal = true; showMobileChannelList = false"
-            @create-dm="showCreateDmModal = true; showMobileChannelList = false"
-            @create-external="showCreateExternalModal = true; showMobileChannelList = false"
-          />
-        </div>
-      </template>
-    </Slideover>
-
-    <!-- Mobile Channel Info Slideover -->
-    <Slideover v-if="isMobile && chatMode === 'channels'" v-model:open="showChannelInfo" side="right" size="md" :show-close="false">
-      <template #header>
-        <div class="flex items-center justify-between w-full">
-          <span class="font-semibold text-neutral-900 dark:text-white">Channel Details</span>
-          <button
-            type="button"
-            class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-            @click="showChannelInfo = false"
-          >
-            <Icon name="ph:x" class="w-5 h-5 text-neutral-500 dark:text-neutral-300" />
-          </button>
-        </div>
-      </template>
-      <template #body>
-        <div class="-mx-6 -my-4 h-full">
-          <ChatChannelInfo
-            v-if="selectedChannel"
-            class="h-full border-l-0 w-full"
-            :channel="selectedChannel"
-            :viewers="channelViewers"
-            @close="showChannelInfo = false"
-            @add-member="showAddMemberModal = true"
-            @member-remove="handleMemberRemove"
-            @member-click="handleMemberClick"
-            @member-message="handleMemberMessage"
-          />
-        </div>
-      </template>
-    </Slideover>
 
     <!-- Add Member Modal -->
     <ChatAddMemberModal
@@ -195,16 +55,11 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import type { AgentTask, ApprovalRequest, Channel, Message, User } from '@/types'
-import ChatChannelList from '@/Components/chat/ChannelList.vue'
-import ChatArea from '@/Components/chat/Area.vue'
-import ChatChannelInfo from '@/Components/chat/ChannelInfo.vue'
 import ChatAddMemberModal from '@/Components/chat/AddMemberModal.vue'
 import ChatCreateChannelModal from '@/Components/chat/CreateChannelModal.vue'
 import ChatCreateDmModal from '@/Components/chat/CreateDmModal.vue'
 import AssistantChatShell from '@/Components/chat/assistant/AssistantChatShell.vue'
 import type { ComposerAttachment } from '@/Components/chat/assistant/PromptComposer.vue'
-import Slideover from '@/Components/shared/Slideover.vue'
-import Icon from '@/Components/shared/Icon.vue'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
 import { useTypingIndicator } from '@/composables/useTypingIndicator'
@@ -228,24 +83,13 @@ const activeThread = ref<Thread | null>(null)
 const showAddMemberModal = ref(false)
 const showCreateChannelModal = ref(false)
 const showCreateDmModal = ref(false)
-const showCreateExternalModal = ref(false)
 const showChannelInfo = ref(false)
-const showMobileChannelList = ref(false)
-const chatMode = ref<'assistant' | 'channels'>('assistant')
 const selectedAgentId = ref<string>('')
 const assistantTasks = ref<AgentTask[]>([])
 const approvals = ref<ApprovalRequest[]>([])
 const approvalLoadingId = ref<string | null>(null)
 const approvalLoadingAction = ref<false | 'approve' | 'reject'>(false)
 let runtimePoll: number | null = null
-
-// Channel icon for mobile toolbar
-const channelIcon = computed(() => {
-  if (!selectedChannel.value) return 'ph:hash'
-  if (selectedChannel.value.type === 'dm') return 'ph:chat-circle'
-  if (selectedChannel.value.private) return 'ph:lock-simple'
-  return 'ph:hash'
-})
 
 // Channels data
 const channels = ref<Channel[]>([])
@@ -310,10 +154,6 @@ const agentsData = computed<User[]>(() => {
 const isAssistantChannel = (channel: Channel | null | undefined): channel is Channel =>
   Boolean(channel?.type === 'dm' && channel.members?.some(member => member.type === 'agent'))
 
-const selectedAssistantChannel = computed(() =>
-  isAssistantChannel(selectedChannel.value) ? selectedChannel.value : null
-)
-
 const channelApprovals = computed(() => {
   const channelId = selectedChannel.value?.id
   if (!channelId) return []
@@ -354,7 +194,6 @@ watch(channelsData, async (newChannels) => {
           console.error('Failed to create agent DM:', e)
         }
       }
-      chatMode.value = 'assistant'
     }
 
     if (!found && dmUserId) {
@@ -373,17 +212,16 @@ watch(channelsData, async (newChannels) => {
           console.error('Failed to create DM:', e)
         }
       }
-      chatMode.value = isAssistantChannel(found) ? 'assistant' : 'channels'
     }
 
     // Then check for channel parameter
     if (!found && channelId) {
       found = newChannels.find(c => c.id === channelId)
-      chatMode.value = isAssistantChannel(found) ? 'assistant' : 'channels'
     }
 
-    // Fallback to the first assistant conversation so /chat opens as an AI UI.
-    selectedChannel.value = found ?? newChannels.find(isAssistantChannel) ?? null
+    // Prefer an assistant conversation on first load, but keep channels and
+    // human DMs in the same surface instead of falling back to a second UI.
+    selectedChannel.value = found ?? newChannels.find(isAssistantChannel) ?? newChannels[0] ?? null
   }
 }, { immediate: true })
 
@@ -422,7 +260,6 @@ watch(() => {
     }
     if (found) {
       selectedChannel.value = found
-      chatMode.value = isAssistantChannel(found) ? 'assistant' : 'channels'
     }
     return
   }
@@ -432,7 +269,6 @@ watch(() => {
     const found = channelsData.value.find(c => c.id === channelId)
     if (found) {
       selectedChannel.value = found
-      chatMode.value = isAssistantChannel(found) ? 'assistant' : 'channels'
     }
   }
 }, { deep: true })
@@ -508,8 +344,10 @@ watch(selectedChannel, async (channel) => {
     if (isAssistantChannel(channel)) {
       const agent = channel.members?.find(member => member.type === 'agent')
       if (agent) selectedAgentId.value = agent.id
-      chatMode.value = 'assistant'
       await refreshAssistantRuntime()
+    } else {
+      assistantTasks.value = []
+      approvals.value = []
     }
   }
 })
@@ -522,26 +360,8 @@ const channelMessages = computed<Message[]>(() => {
 })
 
 // Get first few members as viewers
-const channelViewers = computed<User[]>(() => {
-  if (!selectedChannel.value) return []
-  return selectedChannel.value.members?.slice(0, 3) ?? []
-})
-
 const selectChannel = async (channel: Channel) => {
   selectedChannel.value = channel
-  chatMode.value = 'channels'
-}
-
-const selectAssistantChannel = async (channel: Channel) => {
-  selectedChannel.value = channel
-  chatMode.value = 'assistant'
-}
-
-const openChannelMode = () => {
-  chatMode.value = 'channels'
-  if (!selectedChannel.value) {
-    selectedChannel.value = channelsData.value.find(channel => !isAssistantChannel(channel)) ?? channelsData.value[0] ?? null
-  }
 }
 
 const openAgentChat = async (agentId: string) => {
@@ -563,7 +383,6 @@ const openAgentChat = async (agentId: string) => {
   }
 
   selectedChannel.value = channel ?? null
-  chatMode.value = 'assistant'
 }
 
 interface MessageAttachment {
@@ -714,7 +533,7 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
   }
 }
 
-const handleAssistantSend = async (content: string, attachments?: ComposerAttachment[]) => {
+const handleUnifiedSend = async (content: string, attachments?: ComposerAttachment[]) => {
   if (!selectedChannel.value && selectedAgentId.value) {
     await openAgentChat(selectedAgentId.value)
   }
@@ -723,8 +542,8 @@ const handleAssistantSend = async (content: string, attachments?: ComposerAttach
   await refreshAssistantRuntime()
 }
 
-const handleCompactCommand = () => handleAssistantSend('/compact', [])
-const handleStatusCommand = () => handleAssistantSend('/status', [])
+const handleCompactCommand = () => handleUnifiedSend('/compact', [])
+const handleStatusCommand = () => handleUnifiedSend('/status', [])
 
 const handleStopResponse = async () => {
   const activeTask = assistantTasks.value.find(task => ['pending', 'active', 'paused'].includes(task.status))
@@ -739,7 +558,7 @@ const handleStopResponse = async () => {
 }
 
 const handleRetryMessage = async (message: Message) => {
-  await handleAssistantSend(`Please retry this response and improve it:\n\n${message.content}`, [])
+  await handleUnifiedSend(`Please retry this response and improve it:\n\n${message.content}`, [])
 }
 
 const handleApprovalResponse = async (id: string, status: 'approved' | 'rejected') => {
@@ -901,14 +720,100 @@ watch(selectedChannel, (newChannel, oldChannel) => {
       console.log('[Realtime] MessageSent on channel', newChannel.id, data)
       emitEvent('message:new', { channelId: newChannel.id, message: data.message })
     })
+    ch?.listen('.text_start', (data: StreamEventPayload) => {
+      emitEvent('message:stream:start', { channelId: newChannel.id, event: data })
+    })
+    ch?.listen('.text_delta', (data: StreamEventPayload) => {
+      emitEvent('message:stream:delta', { channelId: newChannel.id, event: data })
+    })
+    ch?.listen('.text_end', (data: StreamEventPayload) => {
+      emitEvent('message:stream:end', { channelId: newChannel.id, event: data })
+    })
+    ch?.listen('.stream_end', (data: StreamEventPayload) => {
+      emitEvent('message:stream:end', { channelId: newChannel.id, event: data })
+    })
+    ch?.listen('.stream_failed', (data: StreamEventPayload) => {
+      emitEvent('message:stream:error', { channelId: newChannel.id, event: data })
+    })
   }
 }, { immediate: true })
 
 let unsubscribeMessage: (() => void) | null = null
+let unsubscribeStreamStart: (() => void) | null = null
+let unsubscribeStreamDelta: (() => void) | null = null
+let unsubscribeStreamEnd: (() => void) | null = null
+let unsubscribeStreamError: (() => void) | null = null
 let unsubscribeReactionAdded: (() => void) | null = null
 let unsubscribeReactionRemoved: (() => void) | null = null
 let unsubscribePinned: (() => void) | null = null
 let unsubscribeUnpinned: (() => void) | null = null
+
+interface StreamEventPayload {
+  invocation_id?: string
+  message_id?: string
+  delta?: string
+  message?: string
+}
+
+const streamMessageId = (event: StreamEventPayload) =>
+  `stream-${event.message_id ?? event.invocation_id ?? 'response'}`
+
+const streamAuthor = () =>
+  selectedChannel.value?.members?.find(member => member.type === 'agent')
+  ?? agentsData.value[0]
+  ?? { id: 'assistant', name: 'Assistant', type: 'agent' as const }
+
+const ensureStreamingMessage = (event: StreamEventPayload) => {
+  if (!selectedChannel.value) return null
+
+  const id = streamMessageId(event)
+  let message = messages.value.find(existing => existing.id === id)
+
+  if (!message) {
+    message = {
+      id,
+      content: '',
+      channelId: selectedChannel.value.id,
+      channel_id: selectedChannel.value.id,
+      authorId: streamAuthor().id,
+      author: streamAuthor(),
+      timestamp: new Date().toISOString(),
+      reactions: [],
+      attachments: [],
+      streaming: true,
+    } as any
+    messages.value = [...messages.value, message]
+  }
+
+  return message as any
+}
+
+const handleStreamDelta = ({ channelId, event }: { channelId: string; event: StreamEventPayload }) => {
+  if (channelId !== selectedChannel.value?.id) return
+
+  const message = ensureStreamingMessage(event)
+  if (!message) return
+
+  message.content = `${message.content ?? ''}${event.delta ?? ''}`
+  message.streaming = true
+}
+
+const handleStreamEnd = ({ channelId, event }: { channelId: string; event: StreamEventPayload }) => {
+  if (channelId !== selectedChannel.value?.id) return
+
+  const message = ensureStreamingMessage(event)
+  if (message) message.streaming = false
+}
+
+const handleStreamError = ({ channelId, event }: { channelId: string; event: StreamEventPayload }) => {
+  if (channelId !== selectedChannel.value?.id) return
+
+  const message = ensureStreamingMessage(event)
+  if (!message) return
+
+  message.content = event.message ?? 'The response stream failed.'
+  message.streaming = false
+}
 
 onMounted(async () => {
   // Fetch initial data
@@ -918,8 +823,11 @@ onMounted(async () => {
   initTyping()
 
   runtimePoll = window.setInterval(() => {
-    if (chatMode.value === 'assistant' && selectedChannel.value) {
+    if (selectedChannel.value) {
       refreshAssistantRuntime()
+      if (assistantTasks.value.some(task => ['pending', 'active', 'paused'].includes(task.status))) {
+        refreshMessages()
+      }
     }
   }, 3000)
 
@@ -933,6 +841,14 @@ onMounted(async () => {
     // Refresh channels to update unread counts
     refreshChannels()
   })
+
+  unsubscribeStreamStart = on('message:stream:start', (data: { channelId: string; event: StreamEventPayload }) => {
+    if (data.channelId === selectedChannel.value?.id) ensureStreamingMessage(data.event)
+  })
+
+  unsubscribeStreamDelta = on('message:stream:delta', handleStreamDelta)
+  unsubscribeStreamEnd = on('message:stream:end', handleStreamEnd)
+  unsubscribeStreamError = on('message:stream:error', handleStreamError)
 
   // Listen for reaction events
   unsubscribeReactionAdded = on('message:reaction:added', () => {
@@ -961,6 +877,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unsubscribeMessage?.()
+  unsubscribeStreamStart?.()
+  unsubscribeStreamDelta?.()
+  unsubscribeStreamEnd?.()
+  unsubscribeStreamError?.()
   unsubscribeReactionAdded?.()
   unsubscribeReactionRemoved?.()
   unsubscribePinned?.()

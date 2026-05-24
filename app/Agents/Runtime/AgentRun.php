@@ -7,6 +7,8 @@ use App\Agents\Runtime\Context\AgentContextPipeline;
 use App\Ai\Prompting\SystemPromptBag;
 use App\Models\User;
 use Laravel\Ai\Responses\Data\FinishReason;
+use Laravel\Ai\Responses\StreamedAgentResponse;
+use Laravel\Ai\Streaming\Events\StreamEvent;
 
 /**
  * Executes one OpenCompany agent turn and records the runtime evidence around it.
@@ -90,6 +92,68 @@ class AgentRun
         } finally {
             // Always remove the run-local prompt bag. Octane/queue workers can
             // reuse the same container instance across unrelated agent runs.
+            app()->forgetInstance(SystemPromptBag::class);
+        }
+    }
+
+    /**
+     * Execute one agent turn through the provider streaming path.
+     *
+     * The callback receives provider-normalized stream events as soon as the
+     * gateway yields them. Callers own any transport side effects, while this
+     * run object still owns prompt-bag scoping, model/context diagnostics, and
+     * the final aggregate AgentResponse returned to durable runtime code.
+     *
+     * @param  callable(StreamEvent): void  $onEvent
+     */
+    public function stream(string $prompt, callable $onEvent): AgentRunResult
+    {
+        $this->emit('run.started');
+
+        $snapshot = $this->context->snapshot($this->agentUser, $this->agent)->toArray();
+        $this->emit('context.planned', $snapshot['context_plan'] ?? []);
+        $this->emit('model.resolved', [
+            'provider' => $this->agent->provider(),
+            'model' => $this->agent->model(),
+        ]);
+
+        app()->instance(SystemPromptBag::class, new SystemPromptBag($this->agent->systemPrompts()));
+
+        try {
+            $streamedResponse = null;
+            $stream = $this->agent->stream(
+                $prompt,
+                provider: $this->options->provider,
+                model: $this->options->model,
+                timeout: $this->options->timeout,
+            );
+
+            $stream->each(function (StreamEvent $event) use ($onEvent) {
+                $onEvent($event);
+            })->then(function (StreamedAgentResponse $response) use (&$streamedResponse) {
+                $streamedResponse = $response;
+            });
+
+            if (! $streamedResponse instanceof StreamedAgentResponse) {
+                throw new \RuntimeException('The provider stream ended without an aggregate response.');
+            }
+
+            $text = $streamedResponse->text ?: "I processed your request but didn't generate a text response.";
+
+            $this->emit('run.completed', [
+                'promptTokens' => $streamedResponse->usage->promptTokens ?? null,
+                'completionTokens' => $streamedResponse->usage->completionTokens ?? null,
+            ]);
+
+            return new AgentRunResult($streamedResponse, $text, $snapshot, $this->events);
+        } catch (\Throwable $e) {
+            $this->emit('run.failed', [
+                'error' => $e->getMessage(),
+                'class' => $e::class,
+            ]);
+
+            throw new AgentRunFailed($e->getMessage(), $this->events, $snapshot, $e);
+        } finally {
             app()->forgetInstance(SystemPromptBag::class);
         }
     }
