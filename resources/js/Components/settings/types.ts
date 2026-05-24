@@ -8,13 +8,13 @@ export interface ActionPolicy {
 }
 
 export interface ProviderInfo {
-  // source distinguishes static relay providers from providers enabled through
+  // source distinguishes config-backed providers from providers enabled through
   // integration settings or OAuth-backed accounts.
   id: string
   name: string
   icon: string
   configured: boolean
-  source: 'prism' | 'integration' | 'oauth'
+  source: 'config' | 'integration' | 'oauth' | 'catalog'
   models: { id: string; name: string }[]
 }
 

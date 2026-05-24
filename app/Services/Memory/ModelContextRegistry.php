@@ -2,9 +2,9 @@
 
 namespace App\Services\Memory;
 
+use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\Log;
-use OpenCompany\PrismRelay\Meta\ProviderMeta;
 
 class ModelContextRegistry
 {
@@ -14,7 +14,7 @@ class ModelContextRegistry
     private const LEVENSHTEIN_MAX_DISTANCE = 5;
 
     public function __construct(
-        private ProviderMeta $providerMeta,
+        private AiCatalog $catalog,
     ) {}
 
     /**
@@ -22,7 +22,7 @@ class ModelContextRegistry
      *
      * Lookup order:
      * 1. User overrides from AppSetting (admin-configurable)
-     * 2. prism-relay provider metadata when a provider is known
+     * 2. App-owned provider metadata when a provider is known
      * 3. Local fallback registry: exact match, then longest prefix match
      * 4. Levenshtein fuzzy match (closest known model within distance threshold)
      * 5. Default (conservative 32K)
@@ -36,8 +36,9 @@ class ModelContextRegistry
             return $exactOverride;
         }
 
-        if ($provider !== null && $this->providerMeta->has($provider)) {
-            return $this->providerMeta->contextWindow($provider, $model);
+        $catalogModel = $provider !== null ? $this->catalog->model($provider, $model) : null;
+        if ($catalogModel !== null) {
+            return $catalogModel->contextWindow;
         }
 
         $builtIn = config('memory.context_windows.models', []);
@@ -109,6 +110,7 @@ class ModelContextRegistry
             Log::info("ModelContextRegistry: fuzzy match for '{$model}' (distance {$closestDist})", [
                 'context_window' => $closestWindow,
             ]);
+
             return $closestWindow;
         }
 

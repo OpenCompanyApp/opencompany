@@ -113,8 +113,8 @@
             </button>
             <button
               type="button"
-              class="prism-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0"
-              @click="showPrismServerConfigModal = true"
+              class="ai-gateway-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0"
+              @click="showAiGatewayConfigModal = true"
             >
               <Icon name="ph:diamond" class="w-3.5 h-3.5" />
               API
@@ -219,14 +219,14 @@
             <span v-if="mcpCategory" class="ml-auto text-[10px] opacity-60">{{ mcpCategory.integrations.length }}</span>
           </button>
 
-          <!-- Prism Server -->
+          <!-- AI Gateway -->
           <button
             type="button"
-            class="prism-btn flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-left w-full"
-            @click="showPrismServerConfigModal = true"
+            class="ai-gateway-btn flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-left w-full"
+            @click="showAiGatewayConfigModal = true"
           >
             <Icon name="ph:diamond" class="w-4 h-4" />
-            Prism Server
+            AI Gateway
           </button>
 
           <!-- Add MCP Server -->
@@ -564,10 +564,10 @@
       @saved="handleDynamicSaved"
     />
 
-    <!-- Prism Server Config Modal -->
-    <PrismServerConfigModal
-      v-model:open="showPrismServerConfigModal"
-      @saved="handlePrismServerSaved"
+    <!-- AI Gateway Config Modal -->
+    <AiGatewayConfigModal
+      v-model:open="showAiGatewayConfigModal"
+      @saved="handleAiGatewaySaved"
     />
 
     <!-- MCP Server Config Modal -->
@@ -649,7 +649,7 @@ import ProviderConfigModal from '@/Components/integrations/ProviderConfigModal.v
 import CodexConfigModal from '@/Components/integrations/CodexConfigModal.vue'
 import DynamicConfigModal from '@/Components/integrations/DynamicConfigModal.vue'
 import McpConfigModal from '@/Components/integrations/McpConfigModal.vue'
-import PrismServerConfigModal from '@/Components/integrations/PrismServerConfigModal.vue'
+import AiGatewayConfigModal from '@/Components/integrations/AiGatewayConfigModal.vue'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
 const { workspacePath } = useWorkspace()
@@ -724,8 +724,8 @@ const dynamicIntegrationId = ref('')
 const dynamicConfigSchema = ref<any[]>([])
 const dynamicIntegrationMeta = ref<any>({ name: '', description: '', icon: 'ph:gear' })
 
-// Prism Server Config modal
-const showPrismServerConfigModal = ref(false)
+// AI Gateway Config modal
+const showAiGatewayConfigModal = ref(false)
 
 // MCP Config modal
 const showMcpConfigModal = ref(false)
@@ -860,7 +860,7 @@ const loadMoreCatalog = () => {
 
 const loadApiKeys = async () => {
   try {
-    const { data } = await axios.get('/api/prism-server/api-keys')
+    const { data } = await axios.get('/api/ai-gateway/api-keys')
     apiKeys.value = data.map((key: any) => ({
       id: key.id,
       name: key.name,
@@ -1228,13 +1228,13 @@ const saveWebhook = () => {
 
 // API Key handlers
 const generateApiKey = () => {
-  // Open Prism Server modal for key management
-  showPrismServerConfigModal.value = true
+  // Open AI Gateway modal for key management
+  showAiGatewayConfigModal.value = true
 }
 
 const revokeApiKey = async (id: string) => {
   try {
-    await axios.delete(`/api/prism-server/api-keys/${id}`)
+    await axios.delete(`/api/ai-gateway/api-keys/${id}`)
     apiKeys.value = apiKeys.value.filter(k => k.id !== id)
   } catch (error) {
     console.error('Failed to revoke API key:', error)
@@ -1459,7 +1459,7 @@ const handleMcpSaved = () => {
   loadIntegrationStatus()
 }
 
-const handlePrismServerSaved = () => {
+const handleAiGatewaySaved = () => {
   loadApiKeys()
 }
 

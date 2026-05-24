@@ -3,13 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\IntegrationSetting;
 use Illuminate\Console\Command;
 use Laravel\Ai\AnonymousAgent;
-use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 /**
- * Operator smoke test for the configured Z.AI/GLM relay provider.
+ * Operator smoke test for the configured Z.AI/GLM provider.
  *
  * This performs a real model call after resolving the workspace integration
  * overlay, so it validates both stored credentials and Laravel AI provider wiring.
@@ -30,24 +30,23 @@ class TestGlmPing extends Command
             ->where('enabled', true)
             ->first();
 
-        $registry = app(RelayRegistry::class);
+        $catalog = app(AiCatalog::class);
         $provider = 'z';
-        // Use the relay registry default so the command follows provider
-        // upgrades such as GLM 5.1 without hardcoded model drift.
-        $model = $registry->provider($provider)['default_model'] ?? null;
+        // Use the app catalog default so provider upgrades happen in one place
+        // instead of drifting between commands, config, and UI metadata.
+        $model = $catalog->defaultModel($provider);
 
         if (! is_string($model) || $model === '') {
-            $this->error('Z.AI default model is not available in the relay registry.');
+            $this->error('Z.AI default model is not available in the AI catalog.');
 
             return Command::FAILURE;
         }
         $url = $setting?->getConfigValue('url')
             ?? config("ai.providers.{$provider}.url")
-            ?? config("prism.providers.{$provider}.url")
-            ?? $registry->url($provider);
+            ?? $catalog->provider($provider)?->defaultUrl;
         $apiKey = $setting?->getConfigValue('api_key')
             ?? config("ai.providers.{$provider}.key")
-            ?? config("prism.providers.{$provider}.api_key");
+            ?? config("ai.providers.{$provider}.api_key");
 
         if (! $apiKey) {
             $this->error('No enabled Z.AI integration or configured provider key is available.');

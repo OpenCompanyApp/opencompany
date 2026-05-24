@@ -433,7 +433,7 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
      */
     public function timeout(): int
     {
-        return (int) config('prism.request_timeout', 600);
+        return (int) config('ai.request_timeout', 600);
     }
 
     /**

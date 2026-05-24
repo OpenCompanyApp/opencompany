@@ -5,6 +5,7 @@ namespace App\Domain\AgentRuntime\Application;
 use App\Agents\Runtime\AgentRunBuilder;
 use App\Agents\Runtime\AgentRunFailed;
 use App\Agents\Runtime\AgentRunOptions;
+use App\Domain\Ai\Usage\UsageRecorder;
 use App\Events\AgentStatusUpdated;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
@@ -225,6 +226,15 @@ class RespondToChatMessage
             try {
                 $llmStep->refresh();
                 $metrics = TokenMetrics::fromResponse($response, $llmStep->started_at, $llmStep->completed_at);
+                app(UsageRecorder::class)->record(
+                    response: $response,
+                    task: $task,
+                    agent: $this->agent,
+                    purpose: 'chat_response',
+                    requestedProvider: $agentInstance->provider(),
+                    requestedModel: $agentInstance->model(),
+                    metrics: $metrics,
+                );
 
                 $task->complete(array_merge(
                     ['response' => $responseText],

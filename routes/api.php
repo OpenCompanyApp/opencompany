@@ -1,55 +1,71 @@
 <?php
 
 use App\Http\Controllers\Api\ActivityController;
+use App\Http\Controllers\Api\AgentController;
+use App\Http\Controllers\Api\AgentPermissionController;
+use App\Http\Controllers\Api\AiGateway\ChatCompletionsController;
+use App\Http\Controllers\Api\AiGateway\EmbeddingsController;
+use App\Http\Controllers\Api\AiGateway\ModelsController;
+use App\Http\Controllers\Api\AiGatewayController;
 use App\Http\Controllers\Api\ApprovalController;
+use App\Http\Controllers\Api\AutomationController;
 use App\Http\Controllers\Api\AutomationRuleController;
+use App\Http\Controllers\Api\CalendarEventAttendeeController;
+use App\Http\Controllers\Api\CalendarEventController;
+use App\Http\Controllers\Api\CalendarFeedController;
 use App\Http\Controllers\Api\ChannelController;
+use App\Http\Controllers\Api\ChatWebhookController;
+use App\Http\Controllers\Api\CodexAuthController;
+use App\Http\Controllers\Api\DataTableColumnController;
+use App\Http\Controllers\Api\DataTableController;
+use App\Http\Controllers\Api\DataTableRowController;
+use App\Http\Controllers\Api\DataTableViewController;
 use App\Http\Controllers\Api\DirectMessageController;
+use App\Http\Controllers\Api\DmController;
 use App\Http\Controllers\Api\DocumentAttachmentController;
-use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\DocumentCommentController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentVersionController;
+use App\Http\Controllers\Api\FileController;
+use App\Http\Controllers\Api\IntegrationCatalogController;
+use App\Http\Controllers\Api\IntegrationController;
+use App\Http\Controllers\Api\InvitationController;
+use App\Http\Controllers\Api\ListItemCommentController;
+use App\Http\Controllers\Api\ListItemController;
+use App\Http\Controllers\Api\ListStatusController;
+use App\Http\Controllers\Api\ListTemplateController;
+use App\Http\Controllers\Api\LuaConsoleController;
+use App\Http\Controllers\Api\McpServerController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SearchController;
-use App\Http\Controllers\Api\StatsController;
-use App\Http\Controllers\Api\ListItemController;
-use App\Http\Controllers\Api\ListItemCommentController;
-use App\Http\Controllers\Api\ListStatusController;
-use App\Http\Controllers\Api\ListTemplateController;
-use App\Http\Controllers\Api\TaskController;
-use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\CalendarEventController;
-use App\Http\Controllers\Api\CalendarEventAttendeeController;
-use App\Http\Controllers\Api\CalendarFeedController;
-use App\Http\Controllers\Api\DataTableController;
-use App\Http\Controllers\Api\DataTableColumnController;
-use App\Http\Controllers\Api\DataTableRowController;
-use App\Http\Controllers\Api\DataTableViewController;
-use App\Http\Controllers\Api\AgentController;
-use App\Http\Controllers\Api\WorkspaceDiskController;
-use App\Http\Controllers\Api\AgentPermissionController;
-use App\Http\Controllers\Api\DmController;
-use App\Http\Controllers\Api\CodexAuthController;
-use App\Http\Controllers\Api\IntegrationCatalogController;
-use App\Http\Controllers\Api\IntegrationController;
-use App\Http\Controllers\Api\AutomationController;
-use App\Http\Controllers\Api\McpServerController;
-use App\Http\Controllers\Api\PrismServerController;
 use App\Http\Controllers\Api\SettingController;
-use App\Http\Controllers\Api\ChatWebhookController;
+use App\Http\Controllers\Api\StatsController;
+use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TelegramWebhookController;
+use App\Http\Controllers\Api\TokenAnalyticsController;
+use App\Http\Controllers\Api\ToolCatalogController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\WorkloadController;
 use App\Http\Controllers\Api\WorkspaceController;
+use App\Http\Controllers\Api\WorkspaceDiskController;
 use App\Http\Controllers\Api\WorkspaceMemberController;
+use App\Http\Middleware\AuthenticateAiGateway;
 use Illuminate\Support\Facades\Route;
 
 // ─── Webhooks (external, no auth, no workspace) ───────────────────
 Route::post('/webhooks/chat/{adapter}', ChatWebhookController::class);
 Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']); // Legacy, kept during migration
 
+// OpenCompany AI Gateway (external, workspace resolved from bearer API key)
+Route::prefix('/ai-gateway/v1')->middleware(AuthenticateAiGateway::class)->group(function () {
+    Route::get('/models', ModelsController::class);
+    Route::post('/chat/completions', ChatCompletionsController::class);
+    Route::post('/embeddings', EmbeddingsController::class);
+});
+
 // ─── Invitation acceptance (no workspace middleware needed) ───────
-Route::post('/invitations/{token}/accept', [\App\Http\Controllers\Api\InvitationController::class, 'accept']);
+Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept']);
 
 // ─── Workspace creation (auth required, no workspace context) ─────
 Route::post('/workspaces', [WorkspaceController::class, 'store']);
@@ -114,7 +130,7 @@ Route::middleware('resolve.workspace')->group(function () {
     Route::post('/list-templates/{id}/create-item', [ListTemplateController::class, 'createListItem']);
 
     // Token Analytics
-    Route::get('/tasks/analytics/tokens', [\App\Http\Controllers\Api\TokenAnalyticsController::class, 'index']);
+    Route::get('/tasks/analytics/tokens', [TokenAnalyticsController::class, 'index']);
 
     // Tasks (discrete work items - cases)
     Route::get('/tasks', [TaskController::class, 'index']);
@@ -210,7 +226,7 @@ Route::middleware('resolve.workspace')->group(function () {
     Route::get('/activities', [ActivityController::class, 'index']);
 
     // Workload
-    Route::get('/workload', [\App\Http\Controllers\Api\WorkloadController::class, 'index']);
+    Route::get('/workload', [WorkloadController::class, 'index']);
 
     // Stats
     Route::get('/stats', [StatsController::class, 'index']);
@@ -306,10 +322,10 @@ Route::middleware('resolve.workspace')->group(function () {
     Route::put('/agents/{id}/permissions/file-folders', [AgentPermissionController::class, 'updateFileFolders']);
 
     // Tool catalog (developer reference)
-    Route::get('/tools/catalog', [\App\Http\Controllers\Api\ToolCatalogController::class, 'index']);
+    Route::get('/tools/catalog', [ToolCatalogController::class, 'index']);
 
     // Lua console
-    Route::post('/lua/execute', [\App\Http\Controllers\Api\LuaConsoleController::class, 'execute']);
+    Route::post('/lua/execute', [LuaConsoleController::class, 'execute']);
 
     // Integrations (read-only for all members)
     Route::get('/integrations', [IntegrationController::class, 'index']);
@@ -372,12 +388,12 @@ Route::middleware('resolve.workspace')->group(function () {
         Route::post('/mcp-servers/{id}/test', [McpServerController::class, 'testConnection']);
         Route::post('/mcp-servers/{id}/discover', [McpServerController::class, 'discoverTools']);
 
-        // Prism Server (admin-only)
-        Route::get('/prism-server/config', [PrismServerController::class, 'config']);
-        Route::put('/prism-server/config', [PrismServerController::class, 'updateConfig']);
-        Route::get('/prism-server/api-keys', [PrismServerController::class, 'apiKeys']);
-        Route::post('/prism-server/api-keys', [PrismServerController::class, 'createApiKey']);
-        Route::delete('/prism-server/api-keys/{id}', [PrismServerController::class, 'deleteApiKey']);
+        // OpenCompany AI Gateway (admin-only)
+        Route::get('/ai-gateway/config', [AiGatewayController::class, 'config']);
+        Route::put('/ai-gateway/config', [AiGatewayController::class, 'updateConfig']);
+        Route::get('/ai-gateway/api-keys', [AiGatewayController::class, 'apiKeys']);
+        Route::post('/ai-gateway/api-keys', [AiGatewayController::class, 'createApiKey']);
+        Route::delete('/ai-gateway/api-keys/{id}', [AiGatewayController::class, 'deleteApiKey']);
 
         // Workspace member management (admin-only)
         Route::post('/workspace/members/invite', [WorkspaceMemberController::class, 'invite']);

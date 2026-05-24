@@ -28,23 +28,12 @@
         },
         {
             "type": "path",
-            "url": "tmp/chatogrator"
-        },
-        {
-            "type": "path",
-            "url": "tmp/prism-codex"
-        },
-        {
-            "type": "path",
-            "url": "tmp/prism-relay"
+            "url": "tmp/chatogrator",
+            "canonical": false
         },
         {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/chatogrator.git"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/prism-codex"
         },
         {
             "type": "vcs",
@@ -62,7 +51,6 @@
         "laravel/telescope": "^5.18",
         "laravel/tinker": "^2.10.1",
         "opencompany/chatogrator": "^1.1",
-        "opencompany/prism-codex": "@dev",
         "opencompanyapp/astronomy-bundle": "@dev",
         "opencompanyapp/integration-aircall": "dev-main",
         "opencompanyapp/integration-bundle": "dev-main",
@@ -81,9 +69,7 @@
         "opencompanyapp/integration-typst": "@dev",
         "opencompanyapp/integration-vegalite": "@dev",
         "opencompanyapp/integration-worldbank": "@dev",
-        "opencompanyapp/prism-relay": "@dev",
         "pgvector/pgvector": "^0.2.2",
-        "prism-php/prism": "^0.100.1",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

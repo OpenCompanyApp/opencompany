@@ -53,7 +53,7 @@ class ModelConnectionTester
         }
 
         // OpenAI-compatible providers are tested with the chat completions
-        // surface because that is what the relay/Laravel AI gateway ultimately
+        // surface because that is what the Laravel AI gateway ultimately
         // needs for agent text generation.
         $response = Http::withHeaders($headers)
             ->timeout(30)

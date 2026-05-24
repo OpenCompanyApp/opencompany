@@ -2,29 +2,30 @@
 
 namespace App\Services\Ai;
 
+use App\Domain\Ai\Catalog\AiCatalog;
+use App\Domain\Ai\Catalog\ProviderInfo;
+use App\Domain\Ai\Codex\CodexTokenStore;
 use App\Models\IntegrationSetting;
-use OpenCompany\PrismCodex\CodexTokenStore;
-use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 /**
- * Workspace-aware view over the prism-relay provider registry.
+ * Workspace-aware view over OpenCompany's app-owned AI provider catalog.
  *
- * The sibling package owns provider definitions and aliases. OpenCompany adds
- * workspace configuration status, configured URLs, and OAuth token checks so UI
- * and runtime code can ask one catalog what is available right now.
+ * The committed catalog owns provider identity, aliases, defaults, metadata,
+ * and runtime driver mapping. OpenCompany workspace settings add credentials,
+ * custom URLs, and optional model lists without changing the global catalog.
  */
 class ProviderCatalog
 {
-    public function __construct(private RelayRegistry $registry) {}
+    public function __construct(private AiCatalog $catalog) {}
 
     public function canonicalProvider(string $provider): ?string
     {
-        return $this->registry->canonicalProvider($provider);
+        return $this->catalog->canonicalProvider($provider);
     }
 
     public function hasProvider(string $provider): bool
     {
-        return $this->registry->hasProvider($provider);
+        return $this->catalog->hasProvider($provider);
     }
 
     /**
@@ -32,28 +33,34 @@ class ProviderCatalog
      */
     public function provider(string $provider, ?string $workspaceId = null): ?array
     {
-        $canonical = $this->canonicalProvider($provider);
-        if ($canonical === null) {
+        $info = $this->catalog->provider($provider);
+        if ($info === null) {
             return null;
         }
 
-        $definition = $this->registry->provider($canonical) ?? [];
-        $setting = $this->setting($canonical, $workspaceId);
+        $setting = $this->setting($info->id, $workspaceId);
+        $url = $setting?->getConfigValue('url')
+            ?: config("ai.providers.{$info->id}.url")
+            ?: $info->defaultUrl;
 
-        // Registry metadata is the source of truth, but workspace settings can
-        // override credentials and URLs. Keep the merged descriptor explicit so
-        // callers can tell whether a value came from settings, config, or the
-        // package registry.
-        return array_merge($definition, [
-            'id' => $canonical,
-            'canonical' => $canonical,
-            'driver' => $this->registry->driver($canonical),
-            'auth_mode' => $this->registry->authMode($canonical),
-            'requires_api_key' => $this->registry->requiresApiKey($canonical),
-            'url' => $setting?->getConfigValue('url') ?: config("prism.providers.{$canonical}.url") ?: $this->registry->url($canonical),
-            'configured' => $this->configured($canonical, $workspaceId),
-            'source' => $setting?->hasValidConfig() ? 'integration' : ($this->configHasCredentials($canonical) ? 'config' : $this->registry->source($canonical)),
-        ]);
+        return [
+            'id' => $info->id,
+            'canonical' => $info->id,
+            'name' => $info->name,
+            'description' => $info->description,
+            'icon' => $info->icon,
+            'driver' => $info->driver,
+            'api_format' => $info->apiFormat,
+            'auth_mode' => $info->authMode,
+            'requires_api_key' => $info->requiresApiKey(),
+            'url' => $url,
+            'default_url' => $info->defaultUrl,
+            'api_key_url' => $info->apiKeyUrl,
+            'default_model' => $info->defaultModel,
+            'models' => $this->models($info),
+            'configured' => $this->configured($info->id, $workspaceId),
+            'source' => $setting?->hasValidConfig() ? 'integration' : ($this->configHasCredentials($info->id) ? 'config' : $info->source),
+        ];
     }
 
     /**
@@ -62,8 +69,8 @@ class ProviderCatalog
     public function all(?string $workspaceId = null): array
     {
         $providers = [];
-        foreach ($this->registry->canonicalProviders() as $provider) {
-            $descriptor = $this->provider($provider, $workspaceId);
+        foreach ($this->catalog->providers() as $provider) {
+            $descriptor = $this->provider($provider->id, $workspaceId);
             if ($descriptor !== null) {
                 $providers[] = $descriptor;
             }
@@ -74,13 +81,13 @@ class ProviderCatalog
 
     public function configured(string $provider, ?string $workspaceId = null): bool
     {
-        $canonical = $this->canonicalProvider($provider) ?? $provider;
+        $info = $this->catalog->provider($provider);
+        if ($info === null) {
+            return false;
+        }
 
-        if ($this->registry->authMode($canonical) === 'oauth') {
-            if ($canonical === 'codex') {
-                // Codex uses a token store instead of IntegrationSetting API
-                // keys. Treat expired tokens as unconfigured so the UI prompts
-                // for reconnect before a runtime call fails.
+        if ($info->authMode === 'oauth') {
+            if ($info->id === 'codex') {
                 $token = CodexTokenStore::current();
 
                 return $token !== null && ! $token->isExpired();
@@ -89,17 +96,17 @@ class ProviderCatalog
             return false;
         }
 
-        $setting = $this->setting($canonical, $workspaceId);
+        $setting = $this->setting($info->id, $workspaceId);
         if ($setting?->hasValidConfig()) {
             return true;
         }
 
-        if ($this->configHasCredentials($canonical)) {
+        if ($this->configHasCredentials($info->id)) {
             return true;
         }
 
-        if (! $this->registry->requiresApiKey($canonical)) {
-            return filled(config("prism.providers.{$canonical}.url") ?: config("ai.providers.{$canonical}.url") ?: $this->registry->url($canonical));
+        if (! $info->requiresApiKey()) {
+            return filled(config("ai.providers.{$info->id}.url") ?: $info->defaultUrl);
         }
 
         return false;
@@ -108,7 +115,7 @@ class ProviderCatalog
     private function configHasCredentials(string $provider): bool
     {
         return filled(config("ai.providers.{$provider}.key"))
-            || filled(config("prism.providers.{$provider}.api_key"));
+            || filled(config("ai.providers.{$provider}.api_key"));
     }
 
     private function setting(string $provider, ?string $workspaceId): ?IntegrationSetting
@@ -124,5 +131,18 @@ class ProviderCatalog
         }
 
         return $query->first();
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function models(ProviderInfo $provider): array
+    {
+        $models = [];
+        foreach ($provider->models as $model) {
+            $models[$model->id] = $model->toArray();
+        }
+
+        return $models;
     }
 }

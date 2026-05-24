@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\Concerns\BelongsToWorkspace;
 use App\Services\Integrations\ConfigSchemaNormalizer;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,7 +11,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
-use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 /**
  * Workspace integration configuration, including encrypted provider secrets.
@@ -253,7 +253,7 @@ class IntegrationSetting extends Model
     public static function getAvailableIntegrations(): array
     {
         $base = array_merge(
-            self::relayAiIntegrations(),
+            self::catalogAiIntegrations(),
             config('integrations', []),
             config('chat_integrations', []),
         );
@@ -269,7 +269,7 @@ class IntegrationSetting extends Model
             $setting = $settings->get($id);
             $models = $setting?->getConfigValue('models');
             if (is_array($models) && ! empty($models)) {
-                // Workspace-configured model lists override registry defaults
+                // Workspace-configured model lists override catalog defaults
                 // so admins can expose custom aliases or restrict choices.
                 $info['models'] = $models;
             }
@@ -281,51 +281,36 @@ class IntegrationSetting extends Model
     /**
      * @return array<string, array<string, mixed>>
      */
-    private static function relayAiIntegrations(): array
+    private static function catalogAiIntegrations(): array
     {
         try {
-            if (! class_exists(RelayRegistry::class)) {
-                return [];
-            }
-
-            $registry = app(RelayRegistry::class);
+            $catalog = app(AiCatalog::class);
             $providers = [];
 
-            foreach ($registry->canonicalProviders() as $id) {
-                if ($registry->authMode($id) === 'oauth') {
+            foreach ($catalog->providers() as $provider) {
+                if ($provider->authMode === 'oauth') {
                     // OAuth providers are surfaced through dedicated auth flows,
                     // not generic API-key integration cards.
                     continue;
                 }
 
-                $definition = $registry->provider($id) ?? [];
-                $driver = $registry->driver($id);
-
-                if (! $registry->laravelAiRuntimeSupported($id)) {
-                    continue;
-                }
-
                 $models = [];
 
-                foreach ($definition['models'] ?? [] as $modelId => $model) {
-                    if (! is_array($model)) {
-                        continue;
-                    }
-
-                    $models[(string) $modelId] = (string) ($model['display_name'] ?? $model['name'] ?? $modelId);
+                foreach ($provider->models as $model) {
+                    $models[$model->id] = $model->label;
                 }
 
-                $providers[$id] = [
+                $providers[$provider->id] = [
                     'category' => 'ai-models',
-                    'name' => (string) ($definition['label'] ?? $definition['name'] ?? str($id)->replace(['-', '_'], ' ')->title()),
-                    'description' => self::relayProviderDescription($id, $driver),
-                    'icon' => 'ph:cpu',
-                    'default_url' => $registry->url($id) ?: null,
-                    'api_format' => $registry->apiFormat($id),
-                    'api_key_url' => $definition['doc'] ?? null,
+                    'name' => $provider->name,
+                    'description' => $provider->description,
+                    'icon' => $provider->icon,
+                    'default_url' => $provider->defaultUrl,
+                    'api_format' => $provider->apiFormat,
+                    'api_key_url' => $provider->apiKeyUrl,
                     'models' => $models,
-                    'relay_driver' => $driver,
-                    'auth' => $registry->authMode($id),
+                    'driver' => $provider->driver,
+                    'auth' => $provider->authMode,
                 ];
             }
 
@@ -333,10 +318,5 @@ class IntegrationSetting extends Model
         } catch (\Throwable) {
             return [];
         }
-    }
-
-    private static function relayProviderDescription(string $id, string $driver): string
-    {
-        return "AI model provider '{$id}' via {$driver} transport.";
     }
 }

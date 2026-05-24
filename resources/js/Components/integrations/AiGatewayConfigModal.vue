@@ -1,7 +1,7 @@
 <template>
   <Modal
     v-model:open="isOpen"
-    title="Prism Server"
+    title="AI Gateway"
     description="Expose your AI models via an OpenAI-compatible API"
     icon="ph:broadcast"
     size="lg"
@@ -23,10 +23,10 @@
               </div>
               <div>
                 <p class="text-sm font-medium text-neutral-900 dark:text-white">
-                  {{ config.enabled ? 'Server Active' : 'Server Disabled' }}
+                  {{ config.enabled ? 'Gateway Active' : 'Gateway Disabled' }}
                 </p>
                 <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  <code class="text-[11px]">/prism/openai/v1</code>
+                  <code class="text-[11px]">/api/ai-gateway/v1</code>
                 </p>
               </div>
             </div>
@@ -339,7 +339,7 @@ const errorMessage = ref('')
 
 // Base URL
 const baseUrl = computed(() => {
-  return `${window.location.origin}/prism/openai/v1`
+  return `${window.location.origin}/api/ai-gateway/v1`
 })
 
 // Group models by provider
@@ -402,11 +402,11 @@ watch(isOpen, async (open) => {
 
 const loadConfig = async () => {
   try {
-    const { data } = await axios.get('/api/prism-server/config')
+    const { data } = await axios.get('/api/ai-gateway/config')
     config.enabled = data.enabled
     config.enabled_models = data.enabled_models || []
   } catch (error) {
-    console.error('Failed to load Prism Server config:', error)
+    console.error('Failed to load AI Gateway config:', error)
   }
 }
 
@@ -424,7 +424,7 @@ const loadModels = async () => {
 
 const loadApiKeys = async () => {
   try {
-    const { data } = await axios.get('/api/prism-server/api-keys')
+    const { data } = await axios.get('/api/ai-gateway/api-keys')
     apiKeys.value = data
   } catch (error) {
     console.error('Failed to load API keys:', error)
@@ -436,7 +436,7 @@ const save = async () => {
   errorMessage.value = ''
 
   try {
-    await axios.put('/api/prism-server/config', {
+    await axios.put('/api/ai-gateway/config', {
       enabled: config.enabled,
       enabled_models: config.enabled_models,
     })
@@ -455,7 +455,7 @@ const createKey = async () => {
   errorMessage.value = ''
 
   try {
-    const { data } = await axios.post('/api/prism-server/api-keys', {
+    const { data } = await axios.post('/api/ai-gateway/api-keys', {
       name: newKeyName.value.trim(),
     })
     newlyCreatedKey.value = data.key
@@ -471,7 +471,7 @@ const createKey = async () => {
 
 const revokeKey = async (id: string) => {
   try {
-    await axios.delete(`/api/prism-server/api-keys/${id}`)
+    await axios.delete(`/api/ai-gateway/api-keys/${id}`)
     apiKeys.value = apiKeys.value.filter(k => k.id !== id)
   } catch (error: any) {
     errorMessage.value = error.response?.data?.message || 'Failed to revoke key'

@@ -3,20 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AiGatewayApiKey;
 use App\Models\IntegrationSetting;
-use App\Models\PrismApiKey;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
-class PrismServerController extends Controller
+/**
+ * Admin API for OpenCompany AI Gateway workspace settings.
+ *
+ * This manages the app-owned AI Gateway settings surface. It owns only
+ * OpenCompany-owned gateway exposure and API keys; provider credentials remain
+ * owned by each provider integration.
+ */
+class AiGatewayController extends Controller
 {
-    /**
-     * Get Prism Server configuration.
-     */
     public function config(): JsonResponse
     {
-        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'prism-server')->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'ai-gateway')->first();
 
         return response()->json([
             'enabled' => $setting->enabled ?? false,
@@ -24,9 +28,6 @@ class PrismServerController extends Controller
         ]);
     }
 
-    /**
-     * Update Prism Server configuration.
-     */
     public function updateConfig(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -35,13 +36,13 @@ class PrismServerController extends Controller
             'enabled_models.*' => 'string',
         ]);
 
-        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'prism-server')->first();
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'ai-gateway')->first();
 
         if (! $setting) {
             $setting = IntegrationSetting::create([
                 'id' => Str::uuid()->toString(),
                 'workspace_id' => workspace()->id,
-                'integration_id' => 'prism-server',
+                'integration_id' => 'ai-gateway',
                 'enabled' => $validated['enabled'],
                 'config' => ['enabled_models' => $validated['enabled_models']],
             ]);
@@ -60,14 +61,11 @@ class PrismServerController extends Controller
         ]);
     }
 
-    /**
-     * List all API keys (masked).
-     */
     public function apiKeys(): JsonResponse
     {
-        $keys = PrismApiKey::forWorkspace()->orderByDesc('created_at')->get();
+        $keys = AiGatewayApiKey::forWorkspace()->orderByDesc('created_at')->get();
 
-        return response()->json($keys->map(fn (PrismApiKey $key) => [
+        return response()->json($keys->map(fn (AiGatewayApiKey $key) => [
             'id' => $key->id,
             'name' => $key->name,
             'masked_key' => $key->masked_key,
@@ -77,16 +75,13 @@ class PrismServerController extends Controller
         ]));
     }
 
-    /**
-     * Generate a new API key.
-     */
     public function createApiKey(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
         ]);
 
-        $result = PrismApiKey::generateKey($validated['name']);
+        $result = AiGatewayApiKey::generateKey($validated['name']);
 
         return response()->json([
             'id' => $result['key']->id,
@@ -97,12 +92,9 @@ class PrismServerController extends Controller
         ], 201);
     }
 
-    /**
-     * Revoke (delete) an API key.
-     */
     public function deleteApiKey(string $id): JsonResponse
     {
-        $key = PrismApiKey::forWorkspace()->findOrFail($id);
+        $key = AiGatewayApiKey::forWorkspace()->findOrFail($id);
         $key->delete();
 
         return response()->json(['message' => 'API key revoked.']);

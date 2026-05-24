@@ -14,11 +14,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Tools\Request;
 use Mockery;
-use Prism\Prism\Embeddings\Response as EmbeddingResponse;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\ValueObjects\Embedding;
-use Prism\Prism\ValueObjects\EmbeddingsUsage;
-use Prism\Prism\ValueObjects\Meta;
 use Tests\TestCase;
 
 class SaveMemoryTest extends TestCase
@@ -45,19 +40,6 @@ class SaveMemoryTest extends TestCase
         $this->indexer = app(DocumentIndexingService::class);
     }
 
-    private function fakeEmbeddingResponse(int $count = 1): void
-    {
-        $responses = [];
-        for ($i = 0; $i < $count; $i++) {
-            $responses[] = new EmbeddingResponse(
-                embeddings: [new Embedding(array_fill(0, 1536, 0.1 * ($i + 1)))],
-                usage: new EmbeddingsUsage(tokens: 10),
-                meta: new Meta(id: 'test', model: 'test'),
-            );
-        }
-        Prism::fake($responses);
-    }
-
     private function createAgentFolderStructure(): Document
     {
         $agentFolder = $this->docService->createAgentDocumentStructure($this->agent, [
@@ -71,7 +53,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_to_daily_log(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
         $result = $tool->handle(new Request([
@@ -103,7 +84,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_to_core_memory(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
         $result = $tool->handle(new Request([
@@ -124,7 +104,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_to_topic(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
         $result = $tool->handle(new Request([
@@ -143,7 +122,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_to_peer(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(1);
 
         $peerUser = User::factory()->create(['name' => 'Rutger']);
 
@@ -207,7 +185,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_indexes_for_recall(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
         $tool->handle(new Request([
@@ -235,7 +212,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_defaults_to_log_target(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
         $result = $tool->handle(new Request([
@@ -248,7 +224,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_appends_to_existing_daily_log(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(2);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
 
@@ -322,7 +297,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_category_defaults_to_general(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(1);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
         $tool->handle(new Request([
@@ -348,7 +322,6 @@ class SaveMemoryTest extends TestCase
     public function test_save_core_appends_multiple_entries(): void
     {
         $this->createAgentFolderStructure();
-        $this->fakeEmbeddingResponse(2);
 
         $tool = new SaveMemory($this->agent, $this->docService, $this->indexer);
 

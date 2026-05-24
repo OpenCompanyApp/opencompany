@@ -2,10 +2,10 @@
 
 namespace App\Services\Ai;
 
+use App\Domain\Ai\Codex\CodexOAuthService;
 use App\Models\IntegrationSetting;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Http;
-use OpenCompany\PrismCodex\CodexOAuthService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ModelRuntimeCatalog
@@ -21,7 +21,8 @@ class ModelRuntimeCatalog
         foreach ($this->embeddingProviders() as $providerId => $provider) {
             $integration = $integrationSettings->get($providerId);
             $configured = $integration?->hasValidConfig()
-                || ! empty(config("prism.providers.{$providerId}.api_key", ''));
+                || ! empty(config("ai.providers.{$providerId}.api_key", ''))
+                || ! empty(config("ai.providers.{$providerId}.key", ''));
 
             foreach ($provider['models'] as $modelId => $modelName) {
                 $result[] = [
@@ -118,7 +119,8 @@ class ModelRuntimeCatalog
 
             $integration = $integrationSettings->get($id);
             $configured = $integration?->hasValidConfig()
-                || ! empty(config("prism.providers.{$id}.api_key", ''));
+                || ! empty(config("ai.providers.{$id}.api_key", ''))
+                || ! empty(config("ai.providers.{$id}.key", ''));
 
             $models = $info['models'] ?? [];
             if (! is_array($models) || $models === []) {
@@ -146,7 +148,7 @@ class ModelRuntimeCatalog
      */
     public function ollamaStatus(): array
     {
-        $url = config('prism.providers.ollama.url', 'http://localhost:11434');
+        $url = config('ai.providers.ollama.url', 'http://localhost:11434');
 
         try {
             $response = Http::timeout(3)->get($url.'/api/tags');
@@ -170,7 +172,7 @@ class ModelRuntimeCatalog
 
     public function pullOllamaModel(string $model): StreamedResponse
     {
-        $url = config('prism.providers.ollama.url', 'http://localhost:11434');
+        $url = config('ai.providers.ollama.url', 'http://localhost:11434');
 
         return response()->stream(function () use ($model, $url) {
             try {
@@ -428,9 +430,12 @@ class ModelRuntimeCatalog
         $available = config('integrations', []);
 
         return [
-            $setting?->getConfigValue('api_key') ?: config("prism.providers.{$id}.api_key", '') ?: null,
+            $setting?->getConfigValue('api_key')
+                ?: config("ai.providers.{$id}.api_key", '')
+                ?: config("ai.providers.{$id}.key", '')
+                ?: null,
             $setting?->getConfigValue('url')
-                ?: config("prism.providers.{$id}.url")
+                ?: config("ai.providers.{$id}.url")
                 ?: ($available[$id]['default_url'] ?? ''),
         ];
     }

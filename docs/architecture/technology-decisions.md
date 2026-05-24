@@ -9,9 +9,9 @@
 | Component | Choice | Reason |
 |-----------|--------|--------|
 | **Agent SDK** | **Laravel AI SDK (`laravel/ai`)** | Official first-party Laravel package, class-based agents, tool contracts, testing |
-| **LLM Provider Layer** | **Prism (`prism-php/prism`)** | Multi-provider LLM execution (OpenAI, Anthropic, Ollama, DeepSeek, Mistral), embeddings, streaming |
+| **LLM Provider Layer** | **OpenCompany AI Runtime + Laravel AI SDK** | App-owned provider catalog, workspace credential resolution, embeddings, gateway access, usage/cost ledger |
 
-> **Note (Feb 2026):** Both packages are used together. `laravel/ai` provides the agent SDK (Agent class, Tool contract, conversation persistence). `prism-php/prism` provides the underlying LLM provider layer (provider registration, embeddings, direct text generation for services like ConversationCompactionService and EmbeddingService). Custom provider gateways (`CodexPrismGateway`, `GlmPrismGateway`) extend Prism for self-hosted models.
+> **Update (May 2026):** OpenCompany owns the provider runtime in `app/Domain/Ai`. `laravel/ai` remains the agent/provider execution framework, while provider catalog metadata, workspace credentials, Codex auth, embeddings, OpenAI-compatible gateway access, and usage/cost accounting are app-owned.
 
 ---
 

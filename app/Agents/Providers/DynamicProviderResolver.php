@@ -8,7 +8,6 @@ use App\Services\Ai\ModelCatalog;
 use App\Services\Ai\ProviderCatalog;
 use App\Services\Ai\ProviderConfigResolver;
 use InvalidArgumentException;
-use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
 /**
  * Resolves an agent brain setting into the provider/model pair used by Laravel AI.
@@ -23,7 +22,6 @@ class DynamicProviderResolver
     private ?string $workspaceId = null;
 
     public function __construct(
-        private ?RelayRegistry $registry = null,
         private ?ProviderCatalog $providerCatalog = null,
         private ?ModelCatalog $modelCatalog = null,
         private ?ProviderConfigResolver $configResolver = null,
@@ -105,11 +103,6 @@ class DynamicProviderResolver
         }
 
         return $this->models()->defaultModel($providerKey, $this->workspaceId);
-    }
-
-    private function registry(): RelayRegistry
-    {
-        return $this->registry ??= app(RelayRegistry::class);
     }
 
     private function providers(): ProviderCatalog

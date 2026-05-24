@@ -2,12 +2,19 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\PrismApiKey;
+use App\Models\AiGatewayApiKey;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class AuthenticatePrismServer
+/**
+ * Authenticates OpenCompany AI Gateway requests with workspace API keys.
+ *
+ * Successful authentication binds the key's workspace as currentWorkspace so
+ * provider resolution, model exposure, integration credentials, and usage
+ * logging remain scoped exactly like first-party OpenCompany runtime calls.
+ */
+class AuthenticateAiGateway
 {
     public function handle(Request $request, Closure $next): Response
     {
@@ -17,7 +24,7 @@ class AuthenticatePrismServer
             return $this->unauthorized('Missing API key. Provide a Bearer token in the Authorization header.');
         }
 
-        $key = PrismApiKey::findByPlainText($token);
+        $key = AiGatewayApiKey::findByPlainText($token);
 
         if (! $key) {
             return $this->unauthorized('Invalid API key.');
@@ -31,7 +38,6 @@ class AuthenticatePrismServer
             app()->instance('currentWorkspace', $key->workspace);
         }
 
-        // Touch last_used_at without triggering updated_at
         $key->timestamps = false;
         $key->update(['last_used_at' => now()]);
         $key->timestamps = true;

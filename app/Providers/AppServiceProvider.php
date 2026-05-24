@@ -2,23 +2,34 @@
 
 namespace App\Providers;
 
-use App\Ai\Providers\RelayAiProviderFactory;
-use App\Ai\Providers\RelayAiProviderRegistrar;
 use App\Agents\Tools\Providers as ToolProviders;
 use App\Agents\Tools\ToolRegistry;
+use App\Domain\Ai\Codex\CodexOAuthService;
+use App\Domain\Ai\Codex\Contracts\CodexTokenStore as CodexTokenStoreContract;
+use App\Domain\Ai\Codex\Stores\EloquentCodexTokenStore;
+use App\Domain\Ai\Runtime\OpenCompanyAiProviderFactory;
+use App\Domain\Ai\Runtime\OpenCompanyAiProviderRegistrar;
+use App\Domain\Ai\Usage\OpenRouterGenerationStore;
 use App\Models\ApprovalRequest;
 use App\Models\Document;
 use App\Observers\ApprovalRequestObserver;
 use App\Observers\DocumentObserver;
+use App\Services\AgentFileStorageService;
 use App\Services\AgentPermissionService;
 use App\Services\Chat\ChatBridge;
 use App\Services\Chat\ChatManager;
+use App\Services\IntegrationSettingCredentialResolver;
 use App\Services\Mcp\McpServerRegistrar;
-use App\Services\PrismServerService;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
+use OpenCompany\IntegrationCore\Contracts\AgentFileStorage;
+use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
+use OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder;
+use OpenCompany\IntegrationCore\Lua\LuaDocRenderer;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,32 +40,38 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ToolRegistry::class);
 
-        if (class_exists(\OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder::class)) {
-            $this->app->singleton(\OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder::class);
+        if (class_exists(LuaCatalogBuilder::class)) {
+            $this->app->singleton(LuaCatalogBuilder::class);
         }
 
-        if (class_exists(\OpenCompany\IntegrationCore\Lua\LuaDocRenderer::class)) {
-            $this->app->singleton(\OpenCompany\IntegrationCore\Lua\LuaDocRenderer::class);
+        if (class_exists(LuaDocRenderer::class)) {
+            $this->app->singleton(LuaDocRenderer::class);
         }
 
         // Override the default config-based credential resolver with DB-backed one
         $this->app->singleton(
-            \OpenCompany\IntegrationCore\Contracts\CredentialResolver::class,
-            \App\Services\IntegrationSettingCredentialResolver::class
+            CredentialResolver::class,
+            IntegrationSettingCredentialResolver::class
         );
 
         // Agent file storage — allows vendor tool packages to save files into workspace file system
         $this->app->singleton(
-            \OpenCompany\IntegrationCore\Contracts\AgentFileStorage::class,
-            \App\Services\AgentFileStorageService::class,
+            AgentFileStorage::class,
+            AgentFileStorageService::class,
         );
 
         // Chat integration manager (workspace-scoped Chat instances)
         $this->app->singleton(ChatManager::class);
         $this->app->singleton(ChatBridge::class);
 
-        $this->app->singleton(RelayAiProviderFactory::class);
-        $this->app->singleton(RelayAiProviderRegistrar::class);
+        $this->app->singleton(OpenCompanyAiProviderFactory::class);
+        $this->app->singleton(OpenCompanyAiProviderRegistrar::class);
+        $this->app->singleton(OpenRouterGenerationStore::class);
+        $this->app->singleton(CodexTokenStoreContract::class, EloquentCodexTokenStore::class);
+        $this->app->singleton(CodexOAuthService::class, fn ($app) => new CodexOAuthService(
+            $app->make(CodexTokenStoreContract::class),
+            $app->make(HttpFactory::class),
+        ));
     }
 
     /**
@@ -72,27 +89,20 @@ class AppServiceProvider extends ServiceProvider
         JsonResource::withoutWrapping();
 
         // Register MCP servers as tool providers
-        if ($this->app->bound(\OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class)) {
+        if ($this->app->bound(ToolProviderRegistry::class)) {
             McpServerRegistrar::registerAll(
-                $this->app->make(\OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class)
+                $this->app->make(ToolProviderRegistry::class)
             );
         }
 
         // Register built-in tool providers
         $this->registerBuiltInToolProviders();
 
-        // Register enabled models with Prism Server
-        if (config('prism.prism_server.enabled')) {
-            $this->app->booted(function () {
-                app(PrismServerService::class)->registerModels();
-            });
-        }
-
-        // Register all relay registry providers with Laravel AI. OpenCompany
-        // resolves LLM calls through Laravel AI gateways; prism-relay remains a
-        // metadata registry here, not the agent execution path.
+        // Register all app-catalog providers with Laravel AI. Provider metadata,
+        // aliases, and transport mapping are intentionally owned by OpenCompany
+        // so agent execution is not coupled to package-level registries.
         $this->app->afterResolving(AiManager::class, function (AiManager $aiManager, $app) {
-            $app->make(RelayAiProviderRegistrar::class)->register($aiManager);
+            $app->make(OpenCompanyAiProviderRegistrar::class)->register($aiManager);
         });
     }
 

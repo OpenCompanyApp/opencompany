@@ -2,17 +2,22 @@
 
 namespace App\Services\Memory;
 
-use App\Agents\Providers\DynamicProviderResolver;
+use App\Domain\Ai\Embeddings\EmbeddingClient;
 use App\Models\AppSetting;
 use App\Models\EmbeddingCache;
 use Illuminate\Support\Facades\Log;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\PrismManager;
 
+/**
+ * Workspace-scoped embedding service with OpenCompany-owned runtime calls.
+ *
+ * This service owns memory embedding cache semantics only. Provider routing and
+ * credentials are delegated to the AI domain client so memory indexing no
+ * longer depends on provider package facades.
+ */
 class EmbeddingService
 {
     public function __construct(
-        private DynamicProviderResolver $providerResolver,
+        private EmbeddingClient $embeddings,
     ) {}
 
     /**
@@ -43,14 +48,7 @@ class EmbeddingService
             return $embedding;
         }
 
-        $resolved = $this->providerResolver->resolveFromParts($providerKey, $modelName);
-
-        $response = Prism::embeddings()
-            ->using($resolved['provider'], $resolved['model'])
-            ->fromInput($text)
-            ->asEmbeddings();
-
-        $embedding = $response->embeddings[0]->embedding;
+        $embedding = $this->embeddings->embed($providerKey, $modelName, $text, workspace()->id);
 
         EmbeddingCache::updateOrCreate(
             ['id' => $cacheKey],
@@ -74,10 +72,6 @@ class EmbeddingService
 
         [$providerKey, $modelName] = $this->resolveProviderModel();
         $this->ensureWorkspaceContext();
-        $resolved = $this->shouldUseTestingEmbeddingFallback()
-            ? null
-            : $this->providerResolver->resolveFromParts($providerKey, $modelName);
-
         $results = [];
         $uncachedTexts = [];
         $uncachedIndices = [];
@@ -96,7 +90,7 @@ class EmbeddingService
         }
 
         // Call API for uncached texts
-        if (!empty($uncachedTexts) && $this->shouldUseTestingEmbeddingFallback()) {
+        if (! empty($uncachedTexts) && $this->shouldUseTestingEmbeddingFallback()) {
             foreach ($uncachedTexts as $j => $text) {
                 $originalIndex = $uncachedIndices[$j];
                 $embedding = $this->testingEmbedding($text);
@@ -108,16 +102,17 @@ class EmbeddingService
                     ['provider' => $providerKey, 'model' => $modelName, 'embedding' => $embedding, 'workspace_id' => workspace()->id]
                 );
             }
-        } elseif (!empty($uncachedTexts)) {
+        } elseif (! empty($uncachedTexts)) {
             try {
-                $response = Prism::embeddings()
-                    ->using($resolved['provider'], $resolved['model'])
-                    ->fromArray($uncachedTexts)
-                    ->asEmbeddings();
+                $embeddings = $this->embeddings->embedMany(
+                    $providerKey,
+                    $modelName,
+                    $uncachedTexts,
+                    workspace()->id,
+                );
 
-                foreach ($response->embeddings as $j => $embeddingResult) {
+                foreach ($embeddings as $j => $embedding) {
                     $originalIndex = $uncachedIndices[$j];
-                    $embedding = $embeddingResult->embedding;
                     $results[$originalIndex] = $embedding;
 
                     // Cache the result
@@ -142,7 +137,7 @@ class EmbeddingService
     private function shouldUseTestingEmbeddingFallback(): bool
     {
         return app()->environment('testing')
-            && get_class(app(PrismManager::class)) === PrismManager::class;
+            && (bool) config('memory.embedding.testing_fallback', true);
     }
 
     /**
@@ -179,9 +174,9 @@ class EmbeddingService
      */
     private function ensureWorkspaceContext(): void
     {
-        $workspace = app('currentWorkspace');
+        $workspace = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
         if ($workspace) {
-            $this->providerResolver->setWorkspaceId($workspace->id);
+            return;
         }
     }
 }

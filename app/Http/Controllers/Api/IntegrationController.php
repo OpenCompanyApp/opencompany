@@ -268,7 +268,7 @@ class IntegrationController extends Controller
     /**
      * Get all available AI providers with their models for settings dropdowns.
      *
-     * Returns both integration-based providers (Z.AI, Codex) and prism-config
+     * Returns both integration-based providers (Z.AI, Codex) and config-backed
      * providers (Anthropic, OpenAI, etc.) with configuration status.
      */
     public function allProviders(): JsonResponse

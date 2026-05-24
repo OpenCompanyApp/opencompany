@@ -11,7 +11,7 @@ use Laravel\Ai\Responses\TextResponse;
 use RuntimeException;
 
 /**
- * Gateway placeholder for relay providers that cannot execute through Laravel AI.
+ * Gateway placeholder for catalog providers that cannot execute through Laravel AI.
  *
  * Registration still exposes the provider for catalog/config purposes, but any
  * runtime text call fails loudly with a transport-specific error.

@@ -49,7 +49,7 @@ composer dev
 |-------|-----------|
 | Backend | Laravel 12, PHP 8.4+ |
 | Frontend | Vue 3, Inertia.js, Tailwind CSS v4 |
-| AI | Laravel AI SDK, Prism (multi-provider) |
+| AI | OpenCompany AI Runtime on Laravel AI SDK |
 | Real-time | Laravel Reverb (WebSockets) |
 | Memory | PostgreSQL + pgvector |
 | UI | Reka UI (headless primitives) |

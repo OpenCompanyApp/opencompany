@@ -38,19 +38,17 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 - Prefer wrapper components over native elements when equivalents already exist.
 - Dark mode exists and should not be broken.
 
-## Package Ownership
+## Runtime Ownership
 
-- Do not default to fixing generic bridge, provider, registry, caching, or integration-runtime behavior inside `app/`.
-- First decide whether the behavior belongs to OpenCompany or to a sibling package.
-- Inspect the real package source before patching. In this workspace, package code may be path-based or symlinked into `vendor/`.
+- OpenCompany owns its AI runtime in `app/Domain/Ai`, `app/Ai`, `config/ai.php`, and the provider/model catalogs.
+- Do not reintroduce Prism, Prism Relay, Prism Server, or Prism Codex as runtime dependencies.
+- Provider transport behavior, model metadata, prompt caching, cost accounting, Codex OAuth, embeddings, and the OpenAI-compatible gateway are app-owned unless they clearly belong in `../integrations`.
+- Inspect sibling package source before patching integration-runtime behavior. In this workspace, integration package code may be path-based or symlinked into `vendor/`.
 - Common package sources:
-- `tmp/prism-relay`
-- `tmp/prism-codex`
 - `../integrations/core`
 - `../integrations/packages/*`
 - Do not patch `vendor/` for durable fixes.
-- If a fix stays app-local, note why it is OpenCompany-specific.
-- Avoid hardcoding provider IDs, model IDs, API formats, URLs, capabilities, auth modes, or runtime support lists in app code. Prefer package registry/catalog metadata (`tmp/prism-relay`, `../integrations`) or config, and add package-level metadata first when missing.
+- Avoid hardcoding provider IDs, model IDs, API formats, URLs, capabilities, auth modes, or runtime support lists outside the app-owned provider/model catalogs or config.
 
 ## Working Notes
 

@@ -2,8 +2,8 @@
 
 namespace App\Services\Memory;
 
-use App\Ai\Agents\OneShotTextAgent;
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Ai\Agents\OneShotTextAgent;
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -22,9 +22,7 @@ class RerankingService
      * When reranking is disabled, returns documents in original order
      * with synthetic descending scores so callers never need conditional logic.
      *
-     * @param  string  $query
      * @param  array<int, string>  $documents
-     * @param  int|null  $topK
      * @return array<int, array{index: int, document: string, score: float}>
      */
     public function rerank(string $query, array $documents, ?int $topK = null): array
@@ -76,7 +74,7 @@ class RerankingService
      */
     private function rerankWithOllama(string $query, array $documents, string $model, int $topK): array
     {
-        $url = config('prism.providers.ollama.url', 'http://localhost:11434');
+        $url = config('ai.providers.ollama.url', 'http://localhost:11434');
 
         // Quick connectivity check to avoid N slow timeouts
         try {
@@ -152,6 +150,7 @@ class RerankingService
             Log::warning('LLM reranking provider resolution failed, falling back to passthrough', [
                 'provider' => $provider, 'model' => $model, 'error' => $e->getMessage(),
             ]);
+
             return $this->passThrough($documents);
         }
 

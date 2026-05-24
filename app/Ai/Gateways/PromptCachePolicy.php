@@ -2,13 +2,19 @@
 
 namespace App\Ai\Gateways;
 
-use OpenCompany\PrismRelay\Caching\CacheStrategy;
-use OpenCompany\PrismRelay\Registry\RelayRegistry;
+use App\Domain\Ai\Catalog\AiCatalog;
 
+/**
+ * Provides provider-specific prompt-cache options for Laravel AI requests.
+ *
+ * Cache behavior is catalog metadata now. That keeps OpenCompany independent
+ * from package-owned cache helpers while preserving the invariant that runtime
+ * calls only receive options a provider explicitly supports.
+ */
 class PromptCachePolicy
 {
     public function __construct(
-        private readonly ?RelayRegistry $registry = null,
+        private readonly ?AiCatalog $catalog = null,
     ) {}
 
     /**
@@ -16,9 +22,7 @@ class PromptCachePolicy
      */
     public function providerOptions(string $provider): array
     {
-        $provider = $this->canonicalProvider($provider);
-
-        return CacheStrategy::providerOptions($provider);
+        return $this->catalog()->provider($provider)?->cacheOptions ?? [];
     }
 
     public function shouldWrap(string $provider): bool
@@ -26,10 +30,8 @@ class PromptCachePolicy
         return true;
     }
 
-    private function canonicalProvider(string $provider): string
+    private function catalog(): AiCatalog
     {
-        $registry = $this->registry ?? (app()->bound(RelayRegistry::class) ? app(RelayRegistry::class) : null);
-
-        return $registry?->canonicalProvider($provider) ?? $provider;
+        return $this->catalog ?? app(AiCatalog::class);
     }
 }

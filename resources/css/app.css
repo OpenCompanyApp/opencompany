@@ -143,19 +143,19 @@
   box-shadow: var(--shadow-lg);
 }
 
-/* Prism Server button — gold text with animated rainbow shimmer */
-.prism-btn {
+/* AI Gateway button — gold text with animated rainbow shimmer */
+.ai-gateway-btn {
   position: relative;
   color: oklch(0.55 0.12 70);
   overflow: hidden;
   transition: background 150ms var(--ease-out);
 }
 
-.prism-btn:hover {
+.ai-gateway-btn:hover {
   background: oklch(0.55 0.12 70 / 0.08);
 }
 
-.prism-btn::after {
+.ai-gateway-btn::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -170,25 +170,25 @@
     transparent 80%
   );
   background-size: 200% 100%;
-  animation: prism-shimmer 4s ease-in-out infinite;
+  animation: ai-gateway-shimmer 4s ease-in-out infinite;
   pointer-events: none;
   border-radius: inherit;
 }
 
-@keyframes prism-shimmer {
+@keyframes ai-gateway-shimmer {
   0%, 100% { background-position: 200% 0; }
   50% { background-position: -200% 0; }
 }
 
-.dark .prism-btn {
+.dark .ai-gateway-btn {
   color: oklch(0.72 0.12 70);
 }
 
-.dark .prism-btn:hover {
+.dark .ai-gateway-btn:hover {
   background: oklch(0.72 0.12 70 / 0.10);
 }
 
-.dark .prism-btn::after {
+.dark .ai-gateway-btn::after {
   background: linear-gradient(
     105deg,
     transparent 20%,
@@ -200,7 +200,7 @@
     transparent 80%
   );
   background-size: 200% 100%;
-  animation: prism-shimmer 4s ease-in-out infinite;
+  animation: ai-gateway-shimmer 4s ease-in-out infinite;
 }
 
 /* Base styles */

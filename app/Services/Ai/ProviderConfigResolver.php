@@ -7,7 +7,7 @@ use App\Models\IntegrationSetting;
 use Laravel\Ai\AiManager;
 
 /**
- * Materializes workspace provider settings into Laravel AI and Prism config.
+ * Materializes workspace provider settings into Laravel AI config.
  *
  * The provider catalog answers what exists; this resolver answers whether a
  * provider is usable for the current workspace and mutates runtime config only
@@ -71,24 +71,19 @@ class ProviderConfigResolver
         $setting = $this->setting($providerKey, $workspaceId);
         $provider = $this->catalog->provider($providerKey, $workspaceId) ?? [];
 
-        $apiKey = $setting?->getConfigValue('api_key') ?: config("prism.providers.{$providerKey}.api_key") ?: config("ai.providers.{$providerKey}.key");
+        $apiKey = $setting?->getConfigValue('api_key')
+            ?: config("ai.providers.{$providerKey}.api_key")
+            ?: config("ai.providers.{$providerKey}.key");
         $url = $setting?->getConfigValue('url') ?: ($provider['url'] ?? null);
 
-        // Laravel AI and Prism read provider config from separate namespaces in
-        // this app. Keep both synchronized until all provider execution has
-        // moved fully behind the Laravel AI SDK.
+        // Laravel AI provider instances are built from config. Keep the
+        // workspace-resolved key and base URL in one app-owned namespace so
+        // queue workers and HTTP requests never depend on package config.
         config(["ai.providers.{$providerKey}" => array_merge(
             config("ai.providers.{$providerKey}", []),
             array_filter([
                 'driver' => $providerKey,
                 'key' => $apiKey,
-                'url' => $url,
-            ], static fn (mixed $value): bool => $value !== null && $value !== ''),
-        )]);
-
-        config(["prism.providers.{$providerKey}" => array_merge(
-            config("prism.providers.{$providerKey}", []),
-            array_filter([
                 'api_key' => $apiKey,
                 'url' => $url,
             ], static fn (mixed $value): bool => $value !== null && $value !== ''),

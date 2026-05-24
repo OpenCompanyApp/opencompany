@@ -27,7 +27,7 @@ class ModelContextRegistryTest extends TestCase
         $this->assertEquals(128_000, $result);
     }
 
-    public function test_provider_aware_lookup_uses_prism_relay_metadata(): void
+    public function test_provider_aware_lookup_uses_ai_catalog_metadata(): void
     {
         $result = $this->registry->getContextWindow('claude-sonnet-4-5-20250929', 'anthropic');
 

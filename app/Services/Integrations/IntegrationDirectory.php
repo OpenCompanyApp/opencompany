@@ -2,12 +2,12 @@
 
 namespace App\Services\Integrations;
 
+use App\Domain\Ai\Codex\CodexTokenStore;
 use App\Models\IntegrationSetting;
 use App\Models\McpServer;
 use App\Services\Integrations\Data\IntegrationDescriptor;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
-use OpenCompany\PrismCodex\CodexTokenStore;
 
 /**
  * Produces the workspace integration directory consumed by settings and tools.

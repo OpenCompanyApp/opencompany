@@ -5,6 +5,7 @@ namespace App\Domain\Automations\Application;
 use App\Agents\OpenCompanyAgent;
 use App\Agents\Tools\ToolRegistry;
 use App\Ai\Prompting\SystemPromptBag;
+use App\Domain\Ai\Usage\UsageRecorder;
 use App\Events\AgentStatusUpdated;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
@@ -132,6 +133,15 @@ class ExecutePromptAutomation
             }
 
             $metrics = TokenMetrics::fromResponse($response, $generationStartedAt, $generationCompletedAt);
+            app(UsageRecorder::class)->record(
+                response: $response,
+                task: $task,
+                agent: $agent,
+                purpose: 'automation',
+                requestedProvider: $agentInstance->provider(),
+                requestedModel: $agentInstance->model(),
+                metrics: $metrics,
+            );
             $task->complete(array_merge(
                 ['response' => Str::limit($response->text, 500)],
                 $metrics,

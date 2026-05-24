@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Agents\Conversations\ChannelConversationLoader;
+use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\AgentPermission;
 use App\Models\Channel;
 use App\Models\Message;
@@ -11,7 +12,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\UserMessage;
-use OpenCompany\PrismRelay\Registry\RelayRegistry;
 use Tests\TestCase;
 
 class ChannelConversationLoaderTest extends TestCase
@@ -187,9 +187,9 @@ class ChannelConversationLoaderTest extends TestCase
 
     private function defaultBrain(): string
     {
-        $registry = app(RelayRegistry::class);
+        $catalog = app(AiCatalog::class);
         $provider = (string) config('ai.default_for_agents');
-        $model = (string) ($registry->provider($provider)['default_model'] ?? 'default');
+        $model = $catalog->defaultModel($provider);
 
         return "{$provider}:{$model}";
     }

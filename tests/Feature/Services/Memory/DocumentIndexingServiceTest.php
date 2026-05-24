@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services\Memory;
 
+use App\Domain\Ai\Embeddings\EmbeddingClient;
 use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use App\Models\DocumentChunk;
@@ -11,11 +12,7 @@ use App\Services\Memory\DocumentIndexingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
-use Prism\Prism\Embeddings\Response as EmbeddingResponse;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\ValueObjects\Embedding;
-use Prism\Prism\ValueObjects\EmbeddingsUsage;
-use Prism\Prism\ValueObjects\Meta;
+use Mockery;
 use Tests\TestCase;
 
 class DocumentIndexingServiceTest extends TestCase
@@ -33,20 +30,6 @@ class DocumentIndexingServiceTest extends TestCase
         $this->user = User::factory()->create();
         // Prevent observer from dispatching jobs during direct service tests
         Bus::fake([IndexDocumentJob::class]);
-    }
-
-    private function fakeEmbeddingResponse(int $count = 1): void
-    {
-        $responses = [];
-        for ($i = 0; $i < $count; $i++) {
-            $embedding = array_fill(0, 1536, 0.1 * ($i + 1));
-            $responses[] = new EmbeddingResponse(
-                embeddings: [new Embedding($embedding)],
-                usage: new EmbeddingsUsage(tokens: 10),
-                meta: new Meta(id: 'test', model: 'test'),
-            );
-        }
-        Prism::fake($responses);
     }
 
     private function createDocument(string $title = 'Test Doc', string $content = 'Some test content', ?string $parentId = null): Document
@@ -69,8 +52,6 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('Test', 'First paragraph with enough words to matter.');
 
-        $this->fakeEmbeddingResponse(1);
-
         $this->service->index($doc);
 
         $chunks = DocumentChunk::where('document_id', $doc->id)->get();
@@ -88,8 +69,6 @@ class DocumentIndexingServiceTest extends TestCase
         $doc = $this->createDocument('Memory Log', 'Agent memory content here.');
         $agent = User::factory()->agent()->create();
 
-        $this->fakeEmbeddingResponse(1);
-
         $this->service->index($doc, 'memory', $agent->id);
 
         $chunk = DocumentChunk::where('document_id', $doc->id)->first();
@@ -104,7 +83,6 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('Test', 'Original content.');
 
-        $this->fakeEmbeddingResponse(1);
         $this->service->index($doc);
 
         $this->assertEquals(1, DocumentChunk::where('document_id', $doc->id)->count());
@@ -112,7 +90,6 @@ class DocumentIndexingServiceTest extends TestCase
         // Update and reindex
         $doc->update(['content' => 'Updated content.']);
 
-        $this->fakeEmbeddingResponse(1);
         $this->service->index($doc);
 
         $chunks = DocumentChunk::where('document_id', $doc->id)->get();
@@ -127,7 +104,6 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('Test', 'Some content.');
 
-        $this->fakeEmbeddingResponse(1);
         $this->service->index($doc);
 
         $this->assertEquals(1, DocumentChunk::where('document_id', $doc->id)->count());
@@ -145,7 +121,6 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('Test', 'Content to index.');
 
-        $this->fakeEmbeddingResponse(1);
         $this->service->index($doc);
 
         $this->assertGreaterThan(0, DocumentChunk::where('document_id', $doc->id)->count());
@@ -162,7 +137,6 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('Test', 'Hashable content.');
 
-        $this->fakeEmbeddingResponse(1);
         $this->service->index($doc);
 
         $chunk = DocumentChunk::where('document_id', $doc->id)->first();
@@ -177,7 +151,6 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('Test', 'Some content first.');
 
-        $this->fakeEmbeddingResponse(1);
         $this->service->index($doc);
 
         $this->assertEquals(1, DocumentChunk::where('document_id', $doc->id)->count());
@@ -196,7 +169,6 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('My Important Doc', 'Content to index.');
 
-        $this->fakeEmbeddingResponse(1);
         $this->service->index($doc);
 
         $chunk = DocumentChunk::where('document_id', $doc->id)->first();
@@ -212,7 +184,6 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('Dated Doc', 'Content with timestamp.');
 
-        $this->fakeEmbeddingResponse(1);
         $this->service->index($doc);
 
         $chunk = DocumentChunk::where('document_id', $doc->id)->first();
@@ -240,19 +211,6 @@ class DocumentIndexingServiceTest extends TestCase
         $chunkCount = count($expectedChunks);
 
         $doc = $this->createDocument('Long Doc', $content);
-
-        // embedBatch sends all chunks in ONE API call, so fake ONE response with $chunkCount embeddings
-        $embeddings = [];
-        for ($i = 0; $i < $chunkCount; $i++) {
-            $embeddings[] = new Embedding(array_fill(0, 1536, 0.1 * ($i + 1)));
-        }
-        Prism::fake([
-            new EmbeddingResponse(
-                embeddings: $embeddings,
-                usage: new EmbeddingsUsage(tokens: 10 * $chunkCount),
-                meta: new Meta(id: 'test', model: 'test'),
-            ),
-        ]);
 
         $this->service->index($doc);
 
@@ -285,9 +243,16 @@ class DocumentIndexingServiceTest extends TestCase
 
         $doc = $this->createDocument('Test', 'Content that will fail to embed.');
 
-        Prism::fake([]);
+        config(['memory.embedding.testing_fallback' => false]);
 
-        $this->expectException(\Throwable::class);
+        $client = Mockery::mock(EmbeddingClient::class);
+        $client->shouldReceive('embedMany')
+            ->once()
+            ->andThrow(new \RuntimeException('Embedding failed'));
+        $this->app->instance(EmbeddingClient::class, $client);
+        $this->service = app(DocumentIndexingService::class);
+
+        $this->expectException(\RuntimeException::class);
 
         $this->service->index($doc);
     }

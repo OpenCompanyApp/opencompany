@@ -4,6 +4,7 @@ namespace App\Domain\AgentRuntime\Application;
 
 use App\Agents\OpenCompanyAgent;
 use App\Ai\Prompting\SystemPromptBag;
+use App\Domain\Ai\Usage\UsageRecorder;
 use App\Events\AgentStatusUpdated;
 use App\Events\TaskUpdated;
 use App\Models\Channel;
@@ -61,6 +62,15 @@ class ExecuteAssignedTask
 
             $analyzeStep->refresh();
             $metrics = TokenMetrics::fromResponse($response, $analyzeStep->started_at, $analyzeStep->completed_at);
+            app(UsageRecorder::class)->record(
+                response: $response,
+                task: $task,
+                agent: $agent,
+                purpose: 'assigned_task',
+                requestedProvider: $agentInstance->provider(),
+                requestedModel: $agentInstance->model(),
+                metrics: $metrics,
+            );
 
             $task->complete();
             $task->update([

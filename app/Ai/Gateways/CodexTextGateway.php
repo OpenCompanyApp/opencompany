@@ -2,6 +2,7 @@
 
 namespace App\Ai\Gateways;
 
+use App\Domain\Ai\Codex\CodexOAuthService;
 use Generator;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\PendingRequest;
@@ -12,7 +13,6 @@ use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Gateway\OpenAi\OpenAiGateway;
 use Laravel\Ai\Gateway\TextGenerationOptions;
 use Laravel\Ai\Providers\Provider;
-use Laravel\Ai\Responses\Data\Meta;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\TextResponse;
 use Laravel\Ai\Streaming\Events\StreamEnd;
@@ -20,7 +20,6 @@ use Laravel\Ai\Streaming\Events\StreamStart;
 use Laravel\Ai\Streaming\Events\TextDelta;
 use Laravel\Ai\Streaming\Events\TextEnd;
 use Laravel\Ai\Streaming\Events\TextStart;
-use OpenCompany\PrismCodex\CodexOAuthService;
 use RuntimeException;
 
 class CodexTextGateway extends OpenAiGateway

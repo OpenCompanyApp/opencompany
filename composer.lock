@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bf8aa1467998b88fdc1fce589b14a2b0",
+    "content-hash": "078879b59fd76fefa27e07c43a8da4a9",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -3590,70 +3590,6 @@
                 "issues": "https://github.com/OpenCompanyApp/chatogrator/issues"
             },
             "time": "2026-02-28T01:10:21+00:00"
-        },
-        {
-            "name": "opencompany/prism-codex",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/prism-codex",
-                "reference": "530d4ce28cb8115df5e28e0507547cddb0cfe184"
-            },
-            "require": {
-                "illuminate/console": "^11.0|^12.0|^13.0",
-                "illuminate/database": "^11.0|^12.0|^13.0",
-                "illuminate/encryption": "^11.0|^12.0|^13.0",
-                "illuminate/http": "^11.0|^12.0|^13.0",
-                "illuminate/support": "^11.0|^12.0|^13.0",
-                "php": "^8.2",
-                "prism-php/prism": "^0.99|^0.100|^1.0"
-            },
-            "require-dev": {
-                "orchestra/testbench": "^9.0|^10.0|^11.0",
-                "phpunit/phpunit": "^11.0"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\PrismCodex\\CodexServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\PrismCodex\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "OpenCompany\\PrismCodex\\Tests\\": "tests/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "OpenCompany",
-                    "homepage": "https://github.com/OpenCompanyApp"
-                }
-            ],
-            "description": "Use your ChatGPT Pro/Plus subscription as a Prism PHP provider — $0 token costs via Codex API",
-            "homepage": "https://github.com/OpenCompanyApp/prism-codex",
-            "keywords": [
-                "ai",
-                "chatgpt",
-                "codex",
-                "laravel",
-                "llm",
-                "oauth",
-                "openai",
-                "prism"
-            ],
-            "transport-options": {
-                "relative": true
-            }
         },
         {
             "name": "opencompanyapp/astronomy-bundle",
@@ -31363,45 +31299,6 @@
             }
         },
         {
-            "name": "opencompanyapp/prism-relay",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "tmp/prism-relay",
-                "reference": "7f7a945b4ac41843331e4da84bf0a3f42a6223c4"
-            },
-            "require": {
-                "php": "^8.2",
-                "prism-php/prism": "^0.99 || ^0.100 || ^1.0",
-                "psr/log": "^3.0"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "OpenCompany\\PrismRelay\\PrismRelayServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "OpenCompany\\PrismRelay\\": "src/"
-                }
-            },
-            "scripts": {
-                "sync-registry": [
-                    "node scripts/sync-registry.mjs"
-                ]
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "Provider normalizer and registry for Prism PHP — custom providers, error categorization, tool call sanitization, caching strategy",
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
             "name": "paragonie/sodium_compat",
             "version": "v2.5.0",
             "source": {
@@ -31628,85 +31525,6 @@
                 }
             ],
             "time": "2025-12-27T19:41:33+00:00"
-        },
-        {
-            "name": "prism-php/prism",
-            "version": "v0.100.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/prism-php/prism.git",
-                "reference": "5d6cc65b80b19cf3f22744703ac0c727b68cdca8"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/prism-php/prism/zipball/5d6cc65b80b19cf3f22744703ac0c727b68cdca8",
-                "reference": "5d6cc65b80b19cf3f22744703ac0c727b68cdca8",
-                "shasum": ""
-            },
-            "require": {
-                "ext-fileinfo": "*",
-                "laravel/framework": "^11.0|^12.0|^13.0",
-                "php": "^8.2"
-            },
-            "require-dev": {
-                "brianium/paratest": "^7.8.4",
-                "laravel/mcp": "^0.6.0",
-                "laravel/pint": "^1.14",
-                "mockery/mockery": "^1.6",
-                "orchestra/testbench": "^9|^10|^11",
-                "pestphp/pest": "^3.0|^4.0",
-                "pestphp/pest-plugin-arch": "^3.0|^4.0",
-                "pestphp/pest-plugin-laravel": "^3.0|^4.0",
-                "phpstan/extension-installer": "^1.3",
-                "phpstan/phpdoc-parser": "^2.0",
-                "phpstan/phpstan": "2.1.34",
-                "phpstan/phpstan-deprecation-rules": "^2.0",
-                "projektgopher/whisky": "^0.7.0",
-                "rector/rector": "2.3.3",
-                "spatie/laravel-ray": "^1.39",
-                "symplify/rule-doc-generator-contracts": "^11.2"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "aliases": {
-                        "PrismServer": "Prism\\Prism\\Facades\\PrismServer"
-                    },
-                    "providers": [
-                        "Prism\\Prism\\PrismServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "files": [
-                    "src/helpers.php"
-                ],
-                "psr-4": {
-                    "Prism\\Prism\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "TJ Miller",
-                    "email": "hello@echolabs.dev"
-                }
-            ],
-            "description": "A powerful Laravel package for integrating Large Language Models (LLMs) into your applications.",
-            "support": {
-                "issues": "https://github.com/prism-php/prism/issues",
-                "source": "https://github.com/prism-php/prism/tree/v0.100.1"
-            },
-            "funding": [
-                {
-                    "url": "https://github.com/sixlive",
-                    "type": "github"
-                }
-            ],
-            "time": "2026-03-20T20:37:17+00:00"
         },
         {
             "name": "psr/clock",
@@ -38751,7 +38569,6 @@
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
-        "opencompany/prism-codex": 20,
         "opencompanyapp/astronomy-bundle": 20,
         "opencompanyapp/integration-aircall": 20,
         "opencompanyapp/integration-bundle": 20,
@@ -38769,8 +38586,7 @@
         "opencompanyapp/integration-trustmrr": 20,
         "opencompanyapp/integration-typst": 20,
         "opencompanyapp/integration-vegalite": 20,
-        "opencompanyapp/integration-worldbank": 20,
-        "opencompanyapp/prism-relay": 20
+        "opencompanyapp/integration-worldbank": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

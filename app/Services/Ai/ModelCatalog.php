@@ -2,13 +2,20 @@
 
 namespace App\Services\Ai;
 
+use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\IntegrationSetting;
-use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
+/**
+ * Workspace-aware model list helper backed by the app-owned catalog.
+ *
+ * Catalog model lists are defaults for UI choices and analytics metadata only.
+ * Runtime resolution still accepts arbitrary model IDs for known providers so a
+ * workspace can adopt a newly released model before the committed catalog moves.
+ */
 class ModelCatalog
 {
     public function __construct(
-        private RelayRegistry $registry,
+        private AiCatalog $catalog,
         private ProviderCatalog $providers,
     ) {}
 
@@ -17,19 +24,21 @@ class ModelCatalog
      */
     public function modelsForProvider(string $provider, ?string $workspaceId = null): array
     {
-        $canonical = $this->registry->canonicalProvider($provider) ?? $provider;
+        $canonical = $this->catalog->canonicalProvider($provider) ?? $provider;
         $setting = $this->setting($canonical, $workspaceId);
         $stored = $setting?->getConfigValue('models', []);
         if (is_array($stored) && $stored !== []) {
-            return $stored;
+            return array_map('strval', $stored);
         }
 
-        $definition = $this->registry->provider($canonical) ?? [];
+        $info = $this->catalog->provider($canonical);
+        if ($info === null) {
+            return [];
+        }
+
         $models = [];
-        foreach (($definition['models'] ?? []) as $modelId => $meta) {
-            $models[$modelId] = is_array($meta)
-                ? (string) ($meta['label'] ?? $meta['name'] ?? $this->formatModelName((string) $modelId))
-                : (string) $meta;
+        foreach ($info->models as $model) {
+            $models[$model->id] = $model->label;
         }
 
         return $models;
@@ -37,16 +46,14 @@ class ModelCatalog
 
     public function defaultModel(string $provider, ?string $workspaceId = null): string
     {
-        $canonical = $this->registry->canonicalProvider($provider) ?? $provider;
+        $canonical = $this->catalog->canonicalProvider($provider) ?? $provider;
         $setting = $this->setting($canonical, $workspaceId);
         $stored = $setting?->getConfigValue('models', []);
         if (is_array($stored) && $stored !== []) {
             return (string) array_key_first($stored);
         }
 
-        $definition = $this->registry->provider($canonical) ?? [];
-
-        return (string) ($definition['default_model'] ?? array_key_first($definition['models'] ?? []) ?? 'default');
+        return $this->catalog->defaultModel($canonical);
     }
 
     /**
@@ -87,7 +94,7 @@ class ModelCatalog
                 'name' => $provider['name'] ?? $provider['id'],
                 'icon' => $provider['icon'] ?? 'ph:brain',
                 'configured' => (bool) ($provider['configured'] ?? false),
-                'source' => $provider['source'] ?? 'relay',
+                'source' => $provider['source'] ?? 'catalog',
                 'models' => collect($this->modelsForProvider($provider['id'], $workspaceId))
                     ->map(fn (string $name, string $id) => ['id' => $id, 'name' => $name])
                     ->values()
@@ -110,13 +117,5 @@ class ModelCatalog
         }
 
         return $query->first();
-    }
-
-    private function formatModelName(string $modelId): string
-    {
-        $name = preg_replace('/-\d{8}$/', '', $modelId) ?: $modelId;
-        $name = str_replace(['-', '_', '/'], [' ', ' ', ' / '], $name);
-
-        return ucwords($name);
     }
 }

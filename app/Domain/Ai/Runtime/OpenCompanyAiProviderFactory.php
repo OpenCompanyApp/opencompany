@@ -1,11 +1,14 @@
 <?php
 
-namespace App\Ai\Providers;
+namespace App\Domain\Ai\Runtime;
 
 use App\Ai\Gateways\CachingTextGateway;
 use App\Ai\Gateways\CodexTextGateway;
-use App\Ai\Gateways\ModelRouterTextGateway;
 use App\Ai\Gateways\UnsupportedTextGateway;
+use App\Ai\Providers\CohereTextProvider;
+use App\Domain\Ai\Catalog\AiCatalog;
+use App\Domain\Ai\Catalog\ProviderInfo;
+use App\Domain\Ai\Codex\CodexOAuthService;
 use Illuminate\Contracts\Events\Dispatcher;
 use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Gateway\Anthropic\AnthropicGateway;
@@ -20,13 +23,19 @@ use Laravel\Ai\Providers\OllamaProvider;
 use Laravel\Ai\Providers\OpenAiProvider;
 use Laravel\Ai\Providers\OpenRouterProvider;
 use Laravel\Ai\Providers\XaiProvider;
-use OpenCompany\PrismCodex\CodexOAuthService;
-use OpenCompany\PrismRelay\Registry\RelayRegistry;
 
-class RelayAiProviderFactory
+/**
+ * Builds Laravel AI text providers from OpenCompany's app-owned catalog.
+ *
+ * The catalog defines canonical provider IDs and transport drivers. The factory
+ * maps those durable transport names to Laravel AI provider implementations and
+ * keeps cache decoration centralized so call sites do not know about gateway
+ * quirks.
+ */
+class OpenCompanyAiProviderFactory
 {
     public function __construct(
-        private readonly RelayRegistry $registry,
+        private readonly AiCatalog $catalog,
         private readonly Dispatcher $events,
     ) {}
 
@@ -35,31 +44,24 @@ class RelayAiProviderFactory
      */
     public function create(string $name, array $config): TextProvider
     {
-        $canonical = $this->registry->canonicalProvider($name) ?? $name;
-        $providerDefinition = $this->registry->provider($canonical) ?? [];
-        $url = $this->filledString($config['url'] ?? null)
-            ?? $this->filledString($providerDefinition['url'] ?? null);
-        $driver = $this->registry->laravelAiDriver($canonical, $url);
-        if ($canonical === 'cohere') {
-            $driver = 'cohere';
-        }
+        $provider = $this->catalog->provider($name);
+        $canonical = $provider?->id ?? $name;
 
-        return $this->createAnonymous($canonical, $driver, $providerDefinition, array_merge($config, [
-            'name' => $config['name'] ?? $name,
+        return $this->createAnonymous($canonical, $provider, array_merge($config, [
+            'name' => $config['name'] ?? $canonical,
         ]));
     }
 
     /**
-     * @param  array<string, mixed>  $providerDefinition
      * @param  array<string, mixed>  $config
      */
     public function createAnonymous(
         string $providerName,
-        ?string $driver,
-        array $providerDefinition,
+        ?ProviderInfo $providerInfo,
         array $config,
     ): TextProvider {
-        $config = $this->normalizeConfig($providerName, $driver, $providerDefinition, $config);
+        $config = $this->normalizeConfig($providerName, $providerInfo, $config);
+        $driver = $this->laravelDriver($providerInfo, $config);
 
         $provider = match ($driver) {
             'anthropic' => new AnthropicProvider(
@@ -72,7 +74,7 @@ class RelayAiProviderFactory
                 $config,
                 $this->events,
             ))->useTextGateway(new CodexTextGateway($this->events, app(CodexOAuthService::class))),
-            'cohere' => new CohereRelayProvider($config, $this->events),
+            'cohere' => new CohereTextProvider($config, $this->events),
             'gemini' => new GeminiProvider(
                 new GeminiGateway($this->events),
                 $config,
@@ -86,14 +88,13 @@ class RelayAiProviderFactory
                 $config,
                 $this->events,
             ),
-            'openrouter' => new OpenRouterProvider($config, $this->events),
-            'xai' => new XaiProvider($config, $this->events),
-            'model-router' => (new OpenRouterProvider($config, $this->events))->useTextGateway(
-                new ModelRouterTextGateway($this, $providerName, $providerDefinition, $config),
+            'openrouter' => (new OpenRouterProvider($config, $this->events))->useTextGateway(
+                new OpenRouterBillingGateway($this->events),
             ),
+            'xai' => new XaiProvider($config, $this->events),
             'deepseek' => new DeepSeekProvider($config, $this->events),
             default => (new OpenRouterProvider($config, $this->events))->useTextGateway(
-                new UnsupportedTextGateway($providerName, $this->registry->driver($providerName)),
+                new UnsupportedTextGateway($providerName, $providerInfo?->driver ?? 'unknown'),
             ),
         };
 
@@ -110,36 +111,48 @@ class RelayAiProviderFactory
     }
 
     /**
-     * @param  array<string, mixed>  $providerDefinition
      * @param  array<string, mixed>  $config
      * @return array<string, mixed>
      */
-    private function normalizeConfig(
-        string $providerName,
-        ?string $driver,
-        array $providerDefinition,
-        array $config,
-    ): array {
+    private function normalizeConfig(string $providerName, ?ProviderInfo $providerInfo, array $config): array
+    {
         $url = $this->filledString($config['url'] ?? null)
-            ?? $this->filledString($providerDefinition['url'] ?? null);
+            ?? $this->filledString($providerInfo?->defaultUrl);
 
-        $normalized = array_merge($providerDefinition, $config, [
+        return array_filter([
+            ...$config,
             'name' => $config['name'] ?? $providerName,
+            // The Laravel AI driver value doubles as the provider-option key.
+            // Keep it canonical so cache and per-provider options resolve.
             'driver' => $providerName,
             'key' => $config['key'] ?? $config['api_key'] ?? '',
             'url' => $url,
-            'relay_driver' => $this->registry->driver($providerName),
-        ]);
+            'api_format' => $providerInfo?->apiFormat,
+            'default_model' => $providerInfo?->defaultModel,
+        ], static fn (mixed $value): bool => $value !== null && $value !== '');
+    }
 
-        if (isset($providerDefinition['version']) && ! isset($normalized['version'])) {
-            $normalized['version'] = $providerDefinition['version'];
-        }
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    private function laravelDriver(?ProviderInfo $providerInfo, array $config): ?string
+    {
+        $transport = $providerInfo?->driver ?? (string) ($config['transport'] ?? $config['provider_driver'] ?? '');
 
-        if (isset($providerDefinition['anthropic_beta']) && ! isset($normalized['anthropic_beta'])) {
-            $normalized['anthropic_beta'] = $providerDefinition['anthropic_beta'];
-        }
-
-        return array_filter($normalized, static fn (mixed $value): bool => $value !== null && $value !== '');
+        return match ($transport) {
+            'anthropic' => 'anthropic',
+            'codex' => 'codex',
+            'cohere' => 'cohere',
+            'gemini' => 'gemini',
+            'groq' => 'groq',
+            'mistral' => 'mistral',
+            'ollama' => 'ollama',
+            'openai' => 'openai',
+            'openrouter' => 'openrouter',
+            'xai' => 'xai',
+            'deepseek', 'openai_compat', 'openai-compatible' => 'deepseek',
+            default => null,
+        };
     }
 
     private function filledString(mixed $value): ?string

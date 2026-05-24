@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Ai\Gateways\CachingTextGateway;
-use App\Ai\Gateways\UnsupportedTextGateway;
+use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\IntegrationSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,12 +15,10 @@ use Laravel\Ai\Gateway\DeepSeek\DeepSeekGateway;
 use Laravel\Ai\Gateway\OpenAi\OpenAiGateway;
 use Laravel\Ai\Providers\DeepSeekProvider;
 use Laravel\Ai\Providers\OpenAiProvider;
-use Laravel\Ai\Providers\Provider;
-use OpenCompany\PrismRelay\Registry\RelayRegistry;
 use Tests\TestCase;
 
 /**
- * Verifies provider/model resolution across relay registry and workspace config.
+ * Verifies provider/model resolution across the AI catalog and workspace config.
  */
 class DynamicProviderResolverTest extends TestCase
 {
@@ -36,7 +34,7 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_resolves_standard_provider(): void
     {
-        config(['prism.providers.anthropic.api_key' => 'test-key']);
+        config(['ai.providers.anthropic.api_key' => 'test-key']);
 
         $agent = User::factory()->create([
             'type' => 'agent',
@@ -51,7 +49,7 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_resolves_openai_provider(): void
     {
-        config(['prism.providers.openai.api_key' => 'test-key']);
+        config(['ai.providers.openai.api_key' => 'test-key']);
 
         $agent = User::factory()->create([
             'type' => 'agent',
@@ -72,10 +70,10 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_resolves_z_provider_with_integration(): void
     {
-        $registry = app(RelayRegistry::class);
+        $catalog = app(AiCatalog::class);
         $providerName = 'z';
-        $model = (string) ($registry->provider($providerName)['default_model'] ?? 'default');
-        $url = $registry->url($providerName);
+        $model = $catalog->defaultModel($providerName);
+        $url = $catalog->provider($providerName)?->defaultUrl;
 
         IntegrationSetting::create([
             'id' => 'int-1',
@@ -101,8 +99,8 @@ class DynamicProviderResolverTest extends TestCase
         $this->assertNotNull(config("ai.providers.{$providerName}"));
         $this->assertEquals($providerName, config("ai.providers.{$providerName}.driver"));
         $this->assertEquals('test-api-key', config("ai.providers.{$providerName}.key"));
-        $this->assertEquals('test-api-key', config("prism.providers.{$providerName}.api_key"));
-        $this->assertEquals($url, config("prism.providers.{$providerName}.url"));
+        $this->assertEquals('test-api-key', config("ai.providers.{$providerName}.api_key"));
+        $this->assertEquals($url, config("ai.providers.{$providerName}.url"));
 
         $provider = app(AiManager::class)->textProvider($providerName);
 
@@ -113,7 +111,7 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_legacy_glm_coding_brain_resolves_to_current_glm_provider(): void
     {
-        $registry = app(RelayRegistry::class);
+        $catalog = app(AiCatalog::class);
 
         IntegrationSetting::create([
             'id' => 'int-1',
@@ -122,7 +120,7 @@ class DynamicProviderResolverTest extends TestCase
             'workspace_id' => $this->workspace->id,
             'config' => [
                 'api_key' => 'test-api-key',
-                'url' => $registry->url('z'),
+                'url' => $catalog->provider('z')?->defaultUrl,
             ],
         ]);
 
@@ -140,9 +138,9 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_throws_for_unconfigured_z_provider(): void
     {
-        $registry = app(RelayRegistry::class);
+        $catalog = app(AiCatalog::class);
         $providerName = 'z-api';
-        $model = (string) ($registry->provider($providerName)['default_model'] ?? 'default');
+        $model = $catalog->defaultModel($providerName);
 
         $agent = User::factory()->create([
             'type' => 'agent',
@@ -170,9 +168,9 @@ class DynamicProviderResolverTest extends TestCase
 
     public function test_defaults_to_z_when_no_brain(): void
     {
-        $registry = app(RelayRegistry::class);
+        $catalog = app(AiCatalog::class);
         $defaultProvider = (string) config('ai.default_for_agents');
-        $defaultModel = (string) ($registry->provider($defaultProvider)['default_model'] ?? 'default');
+        $defaultModel = $catalog->defaultModel($defaultProvider);
 
         IntegrationSetting::create([
             'id' => 'int-1',
@@ -181,7 +179,7 @@ class DynamicProviderResolverTest extends TestCase
             'workspace_id' => $this->workspace->id,
             'config' => [
                 'api_key' => 'test-key',
-                'url' => $registry->url($defaultProvider),
+                'url' => $catalog->provider($defaultProvider)?->defaultUrl,
             ],
         ]);
 
@@ -196,11 +194,11 @@ class DynamicProviderResolverTest extends TestCase
         $this->assertEquals($defaultModel, $result['model']);
     }
 
-    public function test_all_relay_registry_providers_are_registered_with_laravel_ai(): void
+    public function test_all_catalog_providers_are_registered_with_laravel_ai(): void
     {
         $manager = app(AiManager::class);
 
-        foreach (app(RelayRegistry::class)->registrationNames() as $providerName) {
+        foreach (app(AiCatalog::class)->registrationNames() as $providerName) {
             $provider = $manager->textProvider($providerName);
 
             $this->assertInstanceOf(TextProvider::class, $provider, "Provider [{$providerName}] was not registered.");
@@ -208,43 +206,35 @@ class DynamicProviderResolverTest extends TestCase
         }
     }
 
-    public function test_supported_relay_registry_providers_are_available_in_integration_catalog(): void
+    public function test_catalog_providers_are_available_in_integration_catalog(): void
     {
         $available = IntegrationSetting::getAvailableIntegrations();
-        $registry = app(RelayRegistry::class);
 
-        foreach ($registry->canonicalProviders() as $providerName) {
-            $driver = $registry->driver($providerName);
-            $url = $registry->url($providerName);
-
-            if (! $registry->laravelAiRuntimeSupported($providerName, $url)) {
-                $this->assertArrayNotHasKey($providerName, $available, "Unsupported provider [{$providerName}] should not be enableable.");
-
-                continue;
+        foreach (app(AiCatalog::class)->providers() as $provider) {
+            if ($provider->authMode === 'oauth') {
+                $this->assertArrayHasKey($provider->id, $available, "OAuth provider [{$provider->id}] should remain visible for its dedicated auth flow.");
+            } else {
+                $this->assertArrayHasKey($provider->id, $available, "Provider [{$provider->id}] is missing from integrations.");
+                $this->assertSame('ai-models', $available[$provider->id]['category'] ?? null);
             }
-
-            $this->assertArrayHasKey($providerName, $available, "Provider [{$providerName}] is missing from integrations.");
-            $this->assertSame('ai-models', $available[$providerName]['category'] ?? null);
         }
     }
 
-    public function test_blank_registry_urls_do_not_override_gateway_defaults(): void
+    public function test_catalog_default_urls_are_registered_with_gateway_config(): void
     {
         $provider = app(AiManager::class)->textProvider('cohere');
 
-        $this->assertInstanceOf(Provider::class, $provider);
-        $this->assertArrayNotHasKey('url', $provider->additionalConfiguration());
+        $this->assertSame('https://api.cohere.com/v2', $provider->additionalConfiguration()['url'] ?? null);
     }
 
-    public function test_generated_openai_compatible_provider_uses_laravel_ai_gateway(): void
+    public function test_openai_compatible_catalog_provider_uses_laravel_ai_gateway(): void
     {
-        $registry = app(RelayRegistry::class);
         $providerName = 'mimo';
 
         config(['ai.providers.mimo' => [
             'driver' => $providerName,
             'key' => 'test-key',
-            'url' => $registry->url($providerName),
+            'url' => app(AiCatalog::class)->provider($providerName)?->defaultUrl,
         ]]);
 
         $provider = app(AiManager::class)->textProvider($providerName);
@@ -252,21 +242,5 @@ class DynamicProviderResolverTest extends TestCase
         $this->assertInstanceOf(DeepSeekProvider::class, $provider);
         $this->assertInstanceOf(CachingTextGateway::class, $provider->textGateway());
         $this->assertInstanceOf(DeepSeekGateway::class, $provider->textGateway()->inner());
-    }
-
-    public function test_opencode_go_provider_is_registered_without_prism_gateway(): void
-    {
-        $provider = app(AiManager::class)->textProvider('opencode-go');
-
-        $this->assertInstanceOf(CachingTextGateway::class, $provider->textGateway());
-        $this->assertInstanceOf(DeepSeekGateway::class, $provider->textGateway()->inner());
-    }
-
-    public function test_unsupported_transport_provider_keeps_clear_runtime_error(): void
-    {
-        $provider = app(AiManager::class)->textProvider('custom');
-
-        $this->assertInstanceOf(CachingTextGateway::class, $provider->textGateway());
-        $this->assertInstanceOf(UnsupportedTextGateway::class, $provider->textGateway()->inner());
     }
 }
