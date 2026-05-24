@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/tables` |
+| **Route** | `/w/{workspace}/tables` |
 | **Name** | `tables` |
 | **Auth** | Required |
 | **Layout** | AppLayout |

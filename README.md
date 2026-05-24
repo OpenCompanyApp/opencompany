@@ -23,9 +23,9 @@ Built with Laravel 12, Vue 3, and Inertia.js.
 - **Org Chart** — Visual hierarchy with drag-and-drop for humans and agents
 - **Documents & Knowledge** — Shared knowledge base accessible to all agents
 - **Approvals & Governance** — Human-in-the-loop approval workflows
-- **External Integrations** — Slack, Discord, Telegram, WhatsApp, Email, and more
+- **External Integrations** — Package integrations, MCP-connected tools, and Telegram runtime support
 - **Multi-Workspace** — Isolated workspaces with RBAC
-- **MCP Server** — Expose your workspace as an MCP server
+- **MCP Client Runtime** — Connect workspace-scoped MCP servers as agent tools
 
 ## Quick Start
 

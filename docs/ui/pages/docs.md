@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/docs` |
+| **Route** | `/w/{workspace}/docs` |
 | **Name** | `docs` |
 | **Auth** | Required |
 | **Layout** | AppLayout |
@@ -32,7 +32,7 @@
 | │ Doc    │ |  │ bold, italic, underline, headings, insert   │      |
 | │ Tree   │ |  ├─────────────────────────────────────────────┤      |
 | │ Items  │ |  │                                             │      |
-| │        │ |  │ DocViewerContent                            │      |
+| │        │ |  │ TipTapEditor                                │      |
 | │  Folder│ |  │ (rendered markdown / editable content)      │      |
 | │   Doc  │ |  │                                             │      |
 | │   Doc  │ |  │                                             │      |
@@ -60,7 +60,7 @@ Floating Actions (desktop, bottom-right):
 | `DocTreeItemRow` | `Components/docs/doc-tree/DocTreeItemRow.vue` | Inner row rendering for tree items |
 | `DocViewer` | `Components/docs/DocViewer.vue` | Main document viewer with header, toolbar, content, TOC, footer |
 | `DocViewerHeader` | `Components/docs/doc-viewer/DocViewerHeader.vue` | Title, author, timestamps, star/pin/lock, edit/share actions |
-| `DocViewerContent` | `Components/docs/doc-viewer/DocViewerContent.vue` | Rendered document content, editable mode, section tracking |
+| `TipTapEditor` | `Components/docs/TipTapEditor.vue` | Rich document content editor/viewer with slash commands and bubble menu |
 | `CodeBlock` | `Components/docs/doc-viewer/CodeBlock.vue` | Syntax-highlighted code blocks within documents |
 | `CommentThread` | `Components/docs/CommentThread.vue` | Single comment with reply form, resolve/unresolve, delete |
 | `DocumentDiffViewer` | `Components/docs/DocumentDiffViewer.vue` | Fullscreen modal for side-by-side version comparison |
@@ -79,7 +79,7 @@ Floating Actions (desktop, bottom-right):
 - **Stats**: header shows document count and folder count
 
 ### Document Viewing & Editing
-- **View mode**: renders document content via `DocViewerContent` with optional table of contents sidebar
+- **View mode**: renders document content through `DocViewer` and the embedded `TipTapEditor`
 - **Edit mode**: triggered from header, shows a rich formatting toolbar (bold, italic, underline, strikethrough, code, headings, links, images, tables, code blocks, quotes, dividers)
 - **Save/Cancel**: save button disabled until changes detected; cancel discards edits
 - **Footer stats**: word count, character count, estimated read time
@@ -143,7 +143,7 @@ Floating Actions (desktop, bottom-right):
 | `resources/js/Components/docs/doc-tree/DocTreeItemRow.vue` | Tree item row |
 | `resources/js/Components/docs/DocViewer.vue` | Main document viewer |
 | `resources/js/Components/docs/doc-viewer/DocViewerHeader.vue` | Viewer header bar |
-| `resources/js/Components/docs/doc-viewer/DocViewerContent.vue` | Viewer content area |
+| `resources/js/Components/docs/TipTapEditor.vue` | Viewer/editor content area |
 | `resources/js/Components/docs/doc-viewer/CodeBlock.vue` | Code block rendering |
 | `resources/js/Components/docs/CommentThread.vue` | Comment with replies |
 | `resources/js/Components/docs/DocumentDiffViewer.vue` | Version diff modal |

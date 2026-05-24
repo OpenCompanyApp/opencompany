@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/activity` |
+| **Route** | `/w/{workspace}/activity` |
 | **Name** | `activity` |
 | **Auth** | Required (`auth`, `verified`) |
 | **Layout** | AppLayout |

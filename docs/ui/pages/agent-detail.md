@@ -1,6 +1,6 @@
 # Agent Detail
 
-> Full profile and management page for a single AI agent, with 8 tabbed sections covering identity, tasks, configuration, memory, and settings.
+> Full profile and management page for a single AI agent, with tabbed sections covering identity, tasks, capabilities, activity, and settings.
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/agent/{id}` |
+| **Route** | `/w/{workspace}/agent/{id}` |
 | **Name** | `agent.show` |
 | **Auth** | Required |
 | **Layout** | AppLayout |
@@ -27,8 +27,8 @@
 │  │  14x14    Status label                                     │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                                                                  │
-│  ┌──────┬───────┬─────────────┬──────────────┬──────────┐       │
-│  │ Over │ Tasks │ Personality │ Instructions │ Capab... │ ...   │
+│  ┌──────────┬───────┬──────────┬──────────────┬──────────┐      │
+│  │ Overview │ Tasks │ Identity │ Capabilities │ Activity │ ...  │
 │  └──────┴───────┴─────────────┴──────────────┴──────────┘       │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐  │
@@ -94,15 +94,15 @@
 │  ...                                                           │
 └────────────────────────────────────────────────────────────────┘
 
-Clicking a task opens TaskDetailDrawer (right-side panel, 480px)
+Clicking a task navigates to `/tasks/{id}`.
 ```
 
-### Tab: Personality / Instructions
+### Tab: Identity
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  Personality / Instructions   [Unsaved changes]  [Save]        │
-│  Define behavior guidelines...                                 │
+│  Identity Files                  [Unsaved changes]  [Save]     │
+│  Edit agent prompt and memory identity documents...            │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ [Edit] [Preview]                                         │  │
 │  ├──────────────────────────────────────────────────────────┤  │
@@ -209,12 +209,9 @@ Clicking a task opens TaskDetailDrawer (right-side panel, 480px)
 | Component | Purpose |
 |-----------|---------|
 | `AgentIdentityCard` | Summary card with avatar, name, type badge, status indicator, and stats row (efficiency, tasks, sessions) |
-| `AgentPersonalityEditor` | Markdown editor with Edit/Preview toggle for personality guidelines; tracks unsaved changes |
-| `AgentInstructionsEditor` | Markdown editor with Edit/Preview toggle for operating instructions; identical layout to personality editor |
+| `AgentIdentityFiles` | Edits prompt and identity files for the agent |
 | `AgentCapabilities` | Lists agent tools with enabled/disabled status, approval badges, and editable tool notes section |
-| `AgentMemoryView` | Displays current session context usage bar, persistent memory entries list, and "Add Memory" modal |
 | `AgentSettingsPanel` | Behavior mode selector (autonomous/supervised/strict), session reset policy, and danger zone actions |
-| `TaskDetailDrawer` | Right-side slide-over drawer (480px) showing task metadata, step timeline, result/error, and action buttons |
 | `StatusBadge` | Agent status badge with full variant support; renders `sleeping`, `awaiting_approval`, `awaiting_delegation` statuses with appropriate icons and tooltips |
 | `SharedSkeleton` | Placeholder shimmer used during loading state |
 | `Icon` | Shared Iconify wrapper using Phosphor icons (`ph:` prefix) |
@@ -228,7 +225,7 @@ Clicking a task opens TaskDetailDrawer (right-side panel, 480px)
 - **Message button** links to `/messages/{agentId}` (redirects to unified chat)
 
 ### Tab Switching
-- 8 tabs: Overview, Tasks, Personality, Instructions, Capabilities, Memory, Activity, Settings
+- 6 tabs: Overview, Tasks, Identity, Capabilities, Activity, Settings
 - Pill-style tab buttons with active state (dark bg, white text)
 - Tabs horizontally scrollable with `overflow-x-auto`
 
@@ -260,7 +257,7 @@ Clicking a task opens TaskDetailDrawer (right-side panel, 480px)
 ### Agent Tasks
 - Fetched via `useApi().fetchAgentTasks({ agentId })`
 - Each task card shows status badge, type label, title, description, and step progress
-- Clicking a task opens `TaskDetailDrawer`
+- Clicking a task navigates to the task detail route
 - Task statuses: pending, active, paused, completed, failed, cancelled
 - Task types: ticket, request, analysis, content, research, custom
 - Tasks created via delegation show their source (`agent_delegation`, `agent_ask`, `agent_notify`)
@@ -276,11 +273,10 @@ The `StatusBadge` component renders the full set of agent statuses:
 
 Status badges appear in the agent header next to the agent name, and support multiple variants (filled, soft, outline, ghost, dot-only, minimal) with rich tooltips including last activity and current task info.
 
-### Personality & Instructions Editors
-- Markdown content stored as string, rendered via `marked` library
-- Unsaved changes indicator (amber text)
-- Save button appears only when changes detected
-- Last updated timestamp shown below editor
+### Identity Files
+- Agent identity and prompt documents load from the backend identity endpoint
+- Editing a file saves through `updateAgentIdentityFile`
+- The identity tab replaces the older separate personality/instructions editor split
 
 ### Capabilities Management
 - Read-only list of tool capabilities with enabled/disabled and approval-required badges
@@ -295,13 +291,6 @@ Status badges appear in the agent header next to the agent name, and support mul
 - The `contact_agent` tool appears in the Capabilities tab tool list with icon `ph:users-three`
 - Delegated tasks create a parent-child relationship visible in the task tree view on the Tasks page
 - The `ExecutionTrace` component shows `contact_agent` tool calls with the `ph:users-three` icon
-
-### Memory Management
-- Current session displays: start time, message count, context token usage bar
-- Context usage shows percentage and warning when above 80%
-- "New Session" and "View History" buttons
-- Persistent memory entries listed with delete-on-hover icon
-- "Add Memory" opens a modal with content textarea and category select (note, fact, preference, context)
 
 ### Settings
 - Behavior mode: autonomous, supervised, strict (three toggle buttons)
@@ -319,7 +308,6 @@ Status badges appear in the agent header next to the agent name, and support mul
 | **Not Found** | Centered robot icon, "Agent not found" heading and description |
 | **Empty Tasks** | Centered check-square icon, "No tasks assigned to this agent" text |
 | **Empty Activity** | Centered activity icon, "No activity recorded" text |
-| **Empty Memory** | Brain icon, "No persistent memories" with hint text |
 | **Empty Capabilities** | Wrench icon, "No capabilities configured" text |
 
 ---
@@ -328,8 +316,8 @@ Status badges appear in the agent header next to the agent name, and support mul
 
 | Breakpoint | Changes |
 |------------|---------|
-| **Desktop** | `max-w-4xl` centered content with `p-6` padding; TaskDetailDrawer is 480px wide |
-| **Mobile** | Content fills width; tabs scroll horizontally; TaskDetailDrawer is full-width |
+| **Desktop** | `max-w-4xl` centered content with `p-6` padding |
+| **Mobile** | Content fills width; tabs scroll horizontally |
 
 ---
 
@@ -337,8 +325,10 @@ Status badges appear in the agent header next to the agent name, and support mul
 
 | Endpoint | Method | Trigger |
 |----------|--------|---------|
-| Agent detail | Mock/simulated | `onMounted`, `watch(props.id)` |
-| `/api/agent-tasks?agentId={id}` | GET | After agent data loads |
+| `/api/agents/{id}` | GET | `onMounted`, `watch(props.id)` |
+| `/api/agents/{id}/identity` | GET | After agent data loads |
+| `/api/agents/{id}/identity/{fileType}` | PUT | Saving identity files |
+| `/api/tasks?agentId={id}` | GET | After agent data loads |
 
 ---
 
@@ -348,10 +338,7 @@ Status badges appear in the agent header next to the agent name, and support mul
 |------|---------|
 | `resources/js/Pages/Agent/Show.vue` | Page component with tabs, header, and data orchestration |
 | `resources/js/Components/agents/AgentIdentityCard.vue` | Agent summary card with avatar and stats |
-| `resources/js/Components/agents/AgentPersonalityEditor.vue` | Markdown editor for personality config |
-| `resources/js/Components/agents/AgentInstructionsEditor.vue` | Markdown editor for instructions config |
+| `resources/js/Components/agents/AgentIdentityFiles.vue` | Identity and prompt document editor |
 | `resources/js/Components/agents/AgentCapabilities.vue` | Capabilities list with tool notes |
-| `resources/js/Components/agents/AgentMemoryView.vue` | Session info and persistent memory management |
 | `resources/js/Components/agents/AgentSettingsPanel.vue` | Behavior mode, reset policy, danger zone |
-| `resources/js/Components/tasks/TaskDetailDrawer.vue` | Slide-over drawer for task detail with step timeline |
 | `resources/js/composables/useApi.ts` | API composable providing `fetchAgentTasks` |

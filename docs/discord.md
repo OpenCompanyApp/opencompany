@@ -1,5 +1,7 @@
 # Discord Integration
 
+Status: Proposal / not implemented in the current codebase. The current app has Telegram runtime code, but no tracked Discord service, sidecar, webhook controller, config modal, listener, or approval job yet.
+
 Bidirectional message bridge between Discord and OpenCompany. Agents can respond to Discord users, forward messages, and handle approval workflows with interactive buttons.
 
 ## Agent Modes

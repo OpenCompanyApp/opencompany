@@ -4,6 +4,8 @@
 
 **Source**: `inspiration/opencode/packages/opencode/src/plugin/codex.ts` (625 lines — the entire implementation)
 
+**OpenCompany status**: Implemented app-locally in `app/Domain/Ai/Codex`, `config/codex.php`, and `CodexTextGateway`. This research remains useful for protocol context, but the current runtime does not depend on a Prism-era Codex package.
+
 ---
 
 ## Summary

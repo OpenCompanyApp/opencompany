@@ -56,4 +56,4 @@ $response = Ai::agent()
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT - see the package source repository license.

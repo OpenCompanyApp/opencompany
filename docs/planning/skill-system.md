@@ -1,5 +1,7 @@
 # Skill System
 
+Status: Planning. The files listed in this document describe a proposed skill system and are not current tracked implementation unless they exist in the worktree.
+
 ## Overview
 
 Skills are **reusable prompt templates** that teach agents how to perform specific tasks. They are behavioral instructions — not executable code (that's what tools are for).

@@ -3,6 +3,8 @@
 > Read-only comparison of `/Users/rutger/Projects/kosmokrator` and `/Users/rutger/Sites/opencompany`.
 > Purpose: identify KosmoKrator runtime capabilities that should influence OpenCompany's agent, integration, model, MCP, and orchestration architecture.
 
+Status: Historical comparison. Provider/model ownership recommendations that mention Prism Relay were superseded on 2026-05-24 by the app-owned OpenCompany AI Runtime described in `ai-provider-runtime-architecture.md`.
+
 ## Executive Summary
 
 KosmoKrator is technologically ahead as a reusable agent runtime. OpenCompany is stronger as a product system.
@@ -188,7 +190,7 @@ Priority: `P1`
 
 ### 6. Provider And Model Catalog
 
-KosmoKrator has a stronger provider/model abstraction. It combines prism-relay metadata, relay registry data, discovered model inventory, pricing, context windows, capabilities, auth modes, and provider/model UI options.
+KosmoKrator had a stronger provider/model abstraction at the time of this audit. OpenCompany now has an app-owned catalog/runtime layer with discovered model inventory, pricing, context windows, capabilities, auth modes, and provider/model UI options.
 
 OpenCompany currently has provider resolution and settings logic, but too much model/provider behavior is scattered between `DynamicProviderResolver`, integration settings, relay-backed Laravel AI drivers, and integration controller branches.
 
@@ -196,7 +198,7 @@ Recommended OpenCompany direction:
 
 - Add `App\Services\Ai\ProviderCatalog`.
 - Add `App\Services\Ai\ModelCatalog`.
-- Back them with `opencompanyapp/prism-relay` metadata and workspace integration settings.
+- Back them with app-owned AI catalog metadata and workspace integration settings.
 - Remove duplicated provider/model lists and capability assumptions from controllers.
 - Use this catalog for admin UI, agent brain config, model testing, provider fallback, prompt budget, pricing display, and live diagnostics.
 
@@ -314,8 +316,6 @@ Shared/provider runtime layer
   McpRuntime
 
 Shared packages
-  prism-relay
-  prism-codex
   integration-core
   integration packages
 ```
@@ -326,7 +326,7 @@ Where behavior belongs:
 | --- | --- |
 | Workspace membership, tasks, channels, docs, approvals | OpenCompany app |
 | Runtime assembly and agent run lifecycle | OpenCompany runtime service |
-| Provider metadata, model metadata, pricing, context windows | `prism-relay` plus OpenCompany catalog adapter |
+| Provider metadata, model metadata, pricing, context windows | OpenCompany app-owned AI runtime catalog |
 | Integration tool contracts and package docs | `integration-core` / integration packages |
 | Integration enablement and credentials | OpenCompany workspace DB |
 | Integration execution and testing | OpenCompany integration runtime |
@@ -428,15 +428,15 @@ Responsibilities:
 
 | Service | Responsibility |
 | --- | --- |
-| `ProviderCatalog` | Normalize provider metadata from `prism-relay`, workspace settings, app config, OAuth providers, and configured local providers |
+| `ProviderCatalog` | Normalize provider metadata from app-owned AI catalog data, workspace settings, app config, OAuth providers, and configured local providers |
 | `ModelCatalog` | Normalize model list, default model, context window, modalities, pricing, and capability metadata |
-| `ProviderConfigResolver` | Produce Laravel AI and Prism config for a workspace/provider |
+| `ProviderConfigResolver` | Produce Laravel AI provider config for a workspace/provider |
 | `ModelConnectionTester` | Run provider/model probes with structured diagnostics |
 
 Implementation steps:
 
-1. Wrap `OpenCompany\PrismRelay\Registry\RelayRegistry` behind `ProviderCatalog`.
-   - Keep relay as metadata source of truth.
+1. Wrap app-owned AI catalog metadata behind `ProviderCatalog`.
+   - Keep `app/Domain/Ai/Catalog` as metadata source of truth.
    - Add OpenCompany workspace setting overlay.
    - Add app/env fallback overlay.
 
@@ -746,7 +746,7 @@ Exit criteria:
 - Prefer adapters around existing services before replacing behavior.
 - Keep workspace scoping explicit in every runtime service.
 - Do not move OpenCompany product ownership into shared packages.
-- Move provider/model metadata toward `prism-relay` where the data is generic.
+- Keep provider/model metadata in the app-owned AI runtime unless a future non-Prism shared package is explicitly introduced.
 - Move integration contract behavior toward `integration-core` or package providers where generic.
 - Keep credentials and enablement in OpenCompany's database.
 - Add tests before deleting old branches from controllers or jobs.

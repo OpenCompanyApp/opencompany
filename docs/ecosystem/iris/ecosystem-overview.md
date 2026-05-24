@@ -2,6 +2,8 @@
 
 Audit date: 2026-04-03
 
+Status: Historical ecosystem audit. OpenCompany no longer uses Prism, Prism Relay, or Prism Codex as runtime dependencies; current OpenCompany AI ownership is app-local.
+
 This document summarizes how Iris appears to fit into the broader
 OpenCompany/KosmoKrator/token-commerce plan based on the current local docs and
 code in:
@@ -19,7 +21,7 @@ The intended architecture is not "Iris as just a proxy."
 
 The intended architecture is:
 
-- `prism-relay` = shared provider/model normalization library
+- app-owned OpenCompany AI Runtime = current OpenCompany provider/model normalization layer
 - `Iris` = deployed inference proxy and settlement layer
 - `OpenCompany` = team collaboration product
 - `KosmoKrator` = open-source agent client
@@ -186,10 +188,10 @@ settlement.
 
 ### Exists today
 
-- `prism-relay` as a real shared package
+- app-owned OpenCompany AI Runtime as the current OpenCompany provider/model layer
 - Iris as the beginning of the standalone proxy/settlement service
 - KosmoKrator using relay heavily in runtime
-- OpenCompany using Prism and provider abstractions
+- OpenCompany using app-owned AI runtime abstractions
 - internal docs that clearly define the service split
 
 ### Planned or partial

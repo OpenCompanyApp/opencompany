@@ -2,6 +2,8 @@
 
 Audit date: 2026-04-03
 
+Status: Historical Iris audit. OpenCompany no longer uses Prism, Prism Relay, or Prism Codex as runtime dependencies; current OpenCompany AI ownership is app-local.
+
 This note captures the remaining gaps in Iris after the Prism + `prism-relay`
 integration and the bundled-only relay registry mode.
 

@@ -16,7 +16,7 @@ All phases are built and operational. Key files:
 | 3 | SaveMemory + RecallMemory tools | `app/Agents/Tools/Memory/SaveMemory.php`, `RecallMemory.php` |
 | 4 | Conversation compaction | `app/Services/Memory/ConversationCompactionService.php`, `app/Jobs/CompactConversationJob.php`, `app/Models/ConversationSummary.php` |
 | 5 | Pre-compaction memory flush | `app/Services/Memory/MemoryFlushService.php` (hooked into `AgentRespondJob`) |
-| 6 | Hybrid search (BM25 + vector) | `app/Services/Memory/HybridSearchService.php`, tsvector column on `document_chunks` |
+| 6 | Hybrid search (full-text + vector) | `app/Services/Memory/DocumentIndexingService.php`, tsvector column on `document_chunks` |
 
 Bonus services (not in original plan): `TokenEstimator`, `ModelContextRegistry`, `MemoryScopeGuard`, `RerankingService` (cross-encoder reranking via Ollama).
 

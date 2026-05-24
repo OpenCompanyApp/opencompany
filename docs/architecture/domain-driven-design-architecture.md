@@ -14,7 +14,7 @@ The target architecture should optimize for:
 - Clear workspace and security boundaries.
 - Small use-case classes instead of workflow-heavy controllers and jobs.
 - Context-owned invariants around agent creation, permissions, approvals, memory scope, task lifecycle, and integration access.
-- Package boundaries that keep provider, bridge, registry, and integration-runtime behavior out of app-local code unless the behavior is OpenCompany-specific.
+- Package boundaries that keep generic integration-runtime behavior out of app-local code while keeping OpenCompany's AI runtime, provider catalog, gateway, cost accounting, and Codex OAuth app-owned.
 - A migration path that can happen one context at a time without changing the database first.
 
 ## Current Shape
@@ -50,7 +50,7 @@ The data model already shows natural domains:
 - Work execution: `tasks`, `task_steps`, task sources, automation runs, delegation parent/child tasks.
 - Lists/project tracking: `list_items`, list statuses, list comments, collaborators.
 - Knowledge and memory: `documents`, document versions/comments/attachments, `document_chunks`, `embedding_cache`, `conversation_summaries`.
-- Integrations and external runtime: `integration_settings`, `mcp_servers`, `prism_api_keys`, package catalogs.
+- Integrations and external runtime: `integration_settings`, `mcp_servers`, `ai_gateway_api_keys`, package catalogs, AI runtime catalog metadata, and LLM usage events.
 - Workspace resources: `workspace_files`, `workspace_disks`, calendar, tables.
 
 ## Architecture Recommendation
@@ -695,13 +695,13 @@ OpenCompany app owns:
   shared credential capability metadata
   generated catalog/provider metadata
 
-tmp/prism-relay owns:
+OpenCompany AI runtime owns:
   provider transport selection
-  relay/provider registry metadata
-  model/provider driver behavior
-
-tmp/prism-codex owns:
-  Codex auth/runtime package behavior
+  provider/model catalog metadata consumed by the app
+  prompt cache policy metadata
+  Codex OAuth/token storage
+  AI Gateway API keys and OpenAI-compatible gateway endpoints
+  LLM usage and cost accounting
 
 tmp/chatogrator owns:
   reusable chat adapter abstractions
@@ -712,9 +712,9 @@ App-local integration code should be anti-corruption/adaptation code, not a seco
 
 Do not extract OpenCompany domain contexts into new packages as a roadmap goal. The default destination for OpenCompany product behavior is the app-local modular monolith. Move code out of the app only when ownership is already clear:
 
-- Provider package schemas, tool definitions, credential fields, shared credential metadata, and generated catalog behavior belong in `../integrations`.
+- Provider package schemas, tool definitions, credential fields, shared credential metadata, and generated integration package behavior belong in `../integrations`.
 - Reusable chat adapter abstractions and platform message normalization that are not OpenCompany-specific belong in `tmp/chatogrator`.
-- Provider transport selection, provider registry metadata, model routing metadata, and relay driver behavior belong in `tmp/prism-relay`.
+- Provider transport selection, provider registry metadata, model routing metadata, prompt-cache policy, Codex OAuth, and gateway behavior belong in OpenCompany's app-owned AI runtime unless a future non-Prism sibling package is explicitly introduced.
 - Everything else should stay in `app/Domain` until there is concrete evidence that another existing package owns it.
 
 ## Suggested Dependency Rules
@@ -923,7 +923,7 @@ Do not create new packages as part of the DDD migration. Keep contexts in `app/D
 
 - Move generic integration metadata/tool behavior to `../integrations`.
 - Move reusable chat adapter behavior to `tmp/chatogrator`.
-- Move provider transport or relay registry behavior to `tmp/prism-relay`.
+- Keep provider transport, provider/model catalog, prompt-cache policy, gateway behavior, Codex auth, and usage accounting in the app-owned AI runtime.
 
 Everything else stays app-local. In particular, do not extract workspace governance, product-specific approvals, OpenCompany-specific agent identity, agent lifecycle, or app runtime orchestration into generic packages unless a concrete existing package already owns that concern.
 

@@ -1,6 +1,6 @@
 # KosmoKrator Runtime Alignment Checklist
 
-> Implementation checklist for aligning OpenCompany's context, compaction, pruning, and prompt-caching runtime with the reusable parts of KosmoKrator and `prism-relay`.
+> Historical implementation checklist for aligning OpenCompany's context, compaction, pruning, and prompt-caching runtime with reusable KosmoKrator ideas. AI provider/runtime ownership was superseded on 2026-05-24 by the app-owned OpenCompany AI Runtime in `docs/architecture/ai-provider-runtime-architecture.md`.
 
 ## Status
 
@@ -16,9 +16,9 @@ Phases 1-5 are largely complete. Remaining open items are tracked in the [OpenCo
 
 ## Completed work
 
-### Phase 1 — Relay-Backed Context Windows
-- Refactored `ModelContextRegistry` as relay-backed adapter
-- Reads defaults from `OpenCompany\PrismRelay\Meta\ProviderMeta`
+### Phase 1 - Catalog-Backed Context Windows
+- Refactored `ModelContextRegistry` as catalog-backed adapter
+- Reads defaults from app-owned `AiCatalog`
 - `AppSetting` overrides as top-priority layer
 - Callers pass provider + model
 - Tests: relay exact match, admin override precedence, unknown model fallback
@@ -37,13 +37,13 @@ Phases 1-5 are largely complete. Remaining open items are tracked in the [OpenCo
 - Failure counting / circuit breaker
 - Durable memory extraction from summaries
 
-### Phase 5 — Prompt Cache Planning (partial)
+### Phase 5 - Prompt Cache Planning (partial)
 - Prompt splitting in `OpenCompanyAgent`
-- Extended Laravel AI Prism for multiple system prompts
-- Split prompts fed to `Relay::planPromptCache()`
+- Split stable/volatile prompts are preserved for gateway/cache policy handling
+- Provider cache options are read from app-owned catalog metadata
 
 ## Notes
 
 - Prompt splitting alone is not the same as provider-side prompt caching.
-- `prism-relay` contains the planner/orchestrator; OpenCompany mainly needs to use it on its real request path.
+- Provider-side prompt caching is app-owned metadata and gateway behavior now, not Prism Relay behavior.
 - OpenCompany pruning rules are based on OpenCompany tools, not KosmoKrator shell tools.

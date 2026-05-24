@@ -103,4 +103,4 @@ TickTick operates as Dida365 in China. To use this integration with Dida365, cha
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT - see the package source repository license.

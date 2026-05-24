@@ -206,4 +206,4 @@ $registry->get('celestial');   // Get a specific provider
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT - see the package source repository license.

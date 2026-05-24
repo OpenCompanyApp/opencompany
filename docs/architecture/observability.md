@@ -3,6 +3,8 @@
 > **Admin-Only** - All observability features require administrator authentication.
 >
 > This document defines the observability strategy for monitoring, debugging, and improving the OpenCompany application.
+>
+> Status: Proposal / implementation plan. File paths in this document describe planned observability components unless the file exists in the current worktree.
 
 ---
 

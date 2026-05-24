@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/automation` |
+| **Route** | `/w/{workspace}/automation` |
 | **Name** | `automation` |
 | **Auth** | Required |
 | **Layout** | AppLayout |

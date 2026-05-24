@@ -3,18 +3,20 @@
 > Full list of what OpenCompany should reuse, adapt, or avoid from the `kosmokrator` repo.
 > Scope: compare `/Users/rutger/Sites/opencompany` against `/Users/rutger/Sites/kosmokrator` and identify practical reuse opportunities.
 
+Status: Historical audit. Provider/model metadata and prompt-cache recommendations that mention Prism packages were superseded on 2026-05-24 by the app-owned OpenCompany AI Runtime in `ai-provider-runtime-architecture.md`.
+
 ---
 
 ## Executive Summary
 
-OpenCompany and KosmoKrator already share the correct low-level foundation:
+At the time of this audit, OpenCompany and KosmoKrator shared this low-level foundation:
 
 - `prism-php/prism`
 - `opencompanyapp/prism-relay`
 - `opencompany/prism-codex`
 - `opencompanyapp/integration-core`
 
-That means the main reuse opportunity is **agent runtime infrastructure**, not UI or shell code.
+The current OpenCompany direction keeps integration-core reuse, but AI provider/runtime ownership is now app-owned instead of Prism package-owned.
 
 The strongest reusable areas from KosmoKrator are:
 
@@ -79,30 +81,29 @@ Key files:
 
 These are already shared and should remain the main cross-repo seam.
 
-### 1. Prism / relay / integration core
+### 1. Historical Prism / relay / integration core baseline
 
-Both repos depend on:
+At the time of the audit, both repos depended on:
 
 - `prism-php/prism`
 - `opencompanyapp/prism-relay`
 - `opencompany/prism-codex`
 - `opencompanyapp/integration-core`
 
-Why this matters:
+Why this mattered:
 
-- LLM provider support should converge here, not inside either app
 - Tool contracts should converge here, not inside Laravel-only or Symfony-only abstractions
-- Model metadata should become shared here
+- LLM provider support and model metadata no longer converge through Prism packages for OpenCompany
 
 Current issue:
 
-- OpenCompany still keeps provider metadata in `config/integrations.php`
+- OpenCompany keeps provider metadata in the app-owned AI catalog and `config/ai.php`
 - KosmoKrator keeps richer model/provider metadata in `config/models.yaml`, `config/prism.yaml`, and `src/LLM/ProviderCatalog.php`
 
 Recommendation:
 
-- Move provider and model metadata ownership into `prism-relay`
-- Make both repos consume the same metadata source
+- Keep OpenCompany provider and model metadata in `app/Domain/Ai/Catalog`
+- Revisit shared ownership only through a future non-Prism package if both repos need the same catalog source
 
 Priority: `P0`
 
@@ -275,7 +276,7 @@ KosmoKrator adds a fuller context pipeline:
 - `src/Agent/ContextBudget.php` centralises warning, auto-compact, and blocking thresholds
 - `src/LLM/PromptFrameBuilder.php` is wired into `PrismService`
 
-`prism-relay` already provides the cache-planning layer:
+OpenCompany now owns provider cache policy metadata in `App\Ai\Gateways\PromptCachePolicy` and `App\Domain\Ai\Catalog\AiCatalog`. The historical relay cache-planning layer was:
 
 - `src/Relay.php`
 - `src/Caching/PromptCachePlanner.php`
@@ -284,16 +285,16 @@ KosmoKrator adds a fuller context pipeline:
 
 ### What OpenCompany should change now
 
-#### 7. Replace `ModelContextRegistry` with relay-backed metadata
+#### 7. Replace `ModelContextRegistry` with catalog-backed metadata
 
 Current problem:
 
-- OpenCompany keeps a separate context-window registry in `app/Services/Memory/ModelContextRegistry.php`
-- `prism-relay` already knows model context windows via `ProviderMeta::contextWindow()`
+- OpenCompany keeps fallback context-window data in `config/memory.php`
+- The app-owned `AiCatalog` knows provider/model context windows when provider metadata is available
 
 Recommendation:
 
-- Make `ModelContextRegistry` a thin adapter over `OpenCompany\\PrismRelay\\Meta\\ProviderMeta`
+- Make `ModelContextRegistry` a thin adapter over app-owned `AiCatalog`
 - Keep `AppSetting` overrides on top
 - Remove most of the duplicated built-in model registry over time
 
@@ -385,11 +386,11 @@ Why:
 
 Priority: `P1`
 
-#### 11. Wire prompt caching through `prism-relay`, not just prompt splitting
+#### 11. Wire prompt caching through app-owned policy metadata, not just prompt splitting
 
-**Status: DONE** — Resolved via `CachingPrismGateway` in `prism-relay/src/Bridge/`.
+**Status: Superseded** - OpenCompany no longer uses Prism Relay. Prompt cache support now lives in `PromptCachePolicy` and catalog metadata.
 
-OpenCompany now uses `CachingPrismGateway` (extends `PrismGateway`) for all AI SDK drivers. Before each `prompt()` call, a `SystemPromptBag` with split `[stable, volatile]` prompts is bound in the container. The gateway reads the bag and calls `Relay::planPromptCache()` to annotate system prompts and messages with provider-specific cache control (Anthropic ephemeral, Gemini dedicated, OpenAI auto, OpenRouter ephemeral). No `laravel/ai` vendor patches required.
+OpenCompany keeps stable/volatile prompt framing in `OpenCompanyAgent` and applies provider-specific cache options through app-owned runtime/catalog metadata. No Prism Relay or `laravel/ai` vendor patch is required.
 
 Priority: `P0` — ~~resolved~~
 
@@ -418,13 +419,13 @@ Priority: `P0`
 2. Introduce a shared `ContextBudget` service and move all threshold math there.
 3. Add OpenCompany-specific micro-pruning for old read-tool outputs.
 4. Improve compaction with a plan object, failure handling, and memory extraction.
-5. Wire real provider prompt caching through `prism-relay` at the Laravel AI / Prism gateway layer.
+5. Wire real provider prompt caching through app-owned cache policy metadata at the Laravel AI gateway layer.
 
 ### Summary judgment
 
 For OpenCompany:
 
-- `prism-relay` should become the source of truth for model context windows and prompt-cache planning
+- `app/Domain/Ai/Catalog` should remain the OpenCompany source of truth for model context windows and prompt-cache metadata
 - KosmoKrator should inform the context-budget, pruning, and compaction architecture
 - The exact pruning heuristics must be rewritten around OpenCompany's read tools and multi-channel/task workflow
 
@@ -808,8 +809,8 @@ This is the full list in one place.
 
 ### Phase 1
 
-- Consolidate provider/model metadata into `prism-relay`
-- Make OpenCompany consume shared provider and model definitions
+- Consolidate provider/model metadata into `app/Domain/Ai/Catalog`
+- Make OpenCompany consume app-owned provider and model definitions
 - Port prompt-frame splitting into OpenCompany's agent pipeline
 
 ### Phase 2
@@ -873,7 +874,7 @@ Expected outcome:
 
 Start immediately after Phase 1A:
 
-- move toward shared provider/model metadata ownership in `prism-relay`
+- move toward app-owned provider/model metadata in `app/Domain/Ai/Catalog`
 - reduce duplication between:
   - `config/integrations.php`
   - `app/Services/Memory/ModelContextRegistry.php`

@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/workload` |
+| **Route** | `/w/{workspace}/workload` |
 | **Name** | `workload` |
 | **Auth** | Required (`auth`, `verified`) |
 | **Layout** | AppLayout |

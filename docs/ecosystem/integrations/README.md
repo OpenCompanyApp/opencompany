@@ -70,12 +70,12 @@ worldbank/          World Bank economic indicators for 200+ countries
 | [exchangerate](exchangerate/) | 5 | None | Data | 340+ currency conversions (fiat, crypto, metals) |
 | [google](google/) | 117 | OAuth | Productivity | Calendar, Gmail, Drive, Sheets, Docs, Forms, Contacts, Tasks, Analytics, Search Console |
 | [mermaid](mermaid/) | 1 | None | Rendering | Flowcharts, sequences, Gantt, class diagrams → PNG |
-| [plantuml](plantuml/) | 1 | None | Rendering | UML class, sequence, activity, component, state → PNG |
+| plantuml | 1 | None | Rendering | UML class, sequence, activity, component, state → PNG |
 | [plausible](plausible/) | 8 | API key | Analytics | Stats, realtime visitors, site and goal management |
 | [ticktick](ticktick/) | 9 | OAuth | Productivity | Projects, tasks, time tracking (TickTick and Dida365) |
 | [trustmrr](trustmrr/) | 2 | API key | Data | Verified startup revenue, MRR, growth, acquisitions |
-| [typst](typst/) | 1 | None | Rendering | Reports, invoices, proposals → PDF |
-| [vegalite](vegalite/) | 1 | None | Rendering | Bar, line, scatter, heatmap, boxplot charts → PNG |
+| typst | 1 | None | Rendering | Reports, invoices, proposals → PDF |
+| vegalite | 1 | None | Rendering | Bar, line, scatter, heatmap, boxplot charts → PNG |
 | [worldbank](worldbank/) | 6 | None | Data | GDP, inflation, population for 200+ countries |
 
 ## Installation

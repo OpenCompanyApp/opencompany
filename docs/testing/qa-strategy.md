@@ -11,7 +11,7 @@
 Three commits that restructured how integrations are organized, shared, and loaded.
 
 - **Commit `4cffd75`** — ToolRegistry decomposed into 15 `BuiltInToolProvider` classes. New `integration-core` package with shared contracts. 13 integration packages consolidated into monorepo. Lua docs for 6 integrations.
-- **Commit `24e2cc8`** — Lua doc generation and LuaBridge moved to shared `integration-core`. `OpenCompanyLuaToolInvoker` for dual dispatch. PrismRelay replaces hardcoded provider registration.
+- **Commit `24e2cc8`** - Lua doc generation and LuaBridge moved to shared `integration-core`. This older note predates the app-owned AI runtime that replaced Prism-era provider registration.
 - **Commit `df74cb3`** — Monorepo moved from `tmp/integrations/` to `../integrations/`.
 
 ### 2. File Management System (Mar 1–2)
@@ -75,7 +75,7 @@ Fixed file forwarding to external platforms.
 Multi-account integration settings and additional refinements.
 
 - `IntegrationSetting` model: multi-account support migration
-- `DynamicProviderResolver`, `GlmPrismGateway`: provider resolution updates
+- `DynamicProviderResolver`, `OpenCompanyAiProviderFactory`, `PromptCachePolicy`: provider resolution and runtime updates
 - `ToolRegistry`: further refinements
 - `McpServerRegistrar`, `McpToolProvider`: MCP tool registration updates
 - `AgentChatService`, `IntegrationController`, `AgentController`: service updates

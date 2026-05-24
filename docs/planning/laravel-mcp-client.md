@@ -1,5 +1,7 @@
 # Extract `laravel-mcp-client` Package
 
+Status: Planning. Current app code has evolved to include `McpRuntime`, `McpToolCatalog`, and domain service `App\Domain\Integrations\Application\ManageMcpServers`; file move tables below are extraction guidance, not a current code inventory.
+
 ## Context
 
 The app has a working MCP (Model Context Protocol) client in `app/Services/Mcp/` (~504 LOC, 5 files) that bridges remote MCP servers into the Laravel AI tool ecosystem. MCP is the emerging standard for AI tool integrations (Anthropic, GitHub, Slack, etc.). No Laravel package exists for this. Extracting it lets any Laravel AI app connect to MCP servers as native tools.
@@ -127,7 +129,7 @@ class McpServerData implements McpServer
 | `app/Providers/AppServiceProvider.php` | Update `McpServerRegistrar` import to package namespace. Pass query result: `McpServerRegistrar::registerAll($registry, McpServer::where('enabled', true)->whereNotNull('discovered_tools')->get())` |
 | `app/Http/Controllers/Api/McpServerController.php` | Update imports from `App\Services\Mcp\*` → `OpenCompany\McpClient\*` |
 | `app/Jobs/RefreshMcpToolsJob.php` | Update `McpClient` import |
-| `app/Agents/Tools/Workspace/ManageMcpServer.php` | Update imports |
+| `app/Domain/Integrations/Application/ManageMcpServers.php` and workspace MCP tools | Update imports after extraction |
 
 ---
 

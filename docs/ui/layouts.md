@@ -188,7 +188,7 @@ Used by **Tasks** and **Lists** pages. The main content area shows a list or boa
 | Element | Details |
 |---------|---------|
 | Task list | `flex-1 overflow-auto p-4 md:p-6`, stacked cards with `space-y-3` |
-| Detail drawer | `TaskDetailDrawer` -- custom `Transition` component, `w-full md:w-[480px]`, `fixed inset-y-0 right-0 z-50` |
+| Task detail | Dedicated `/tasks/{id}` page via `resources/js/Pages/Tasks/Show.vue` |
 | Filters | Inline toggle group (`bg-neutral-100 rounded-lg p-1`), options: All / Pending / Active / Completed |
 | Create modal | Standard `Modal` component with form |
 
@@ -610,15 +610,14 @@ Right Slideover                         Left Slideover
 
 ### Custom Drawers
 
-Some pages use custom `Transition` wrappers instead of the Slideover component for more control. The `TaskDetailDrawer` is a notable example:
+Some pages use custom `Transition` wrappers instead of the Slideover component for more control. Prefer the shared slideover for secondary panels and a dedicated route when the detail surface is substantial.
 
 | Property | Value |
 |----------|-------|
-| Component | `resources/js/Components/tasks/TaskDetailDrawer.vue` |
-| Width | `w-full md:w-[480px]` |
-| Position | `fixed inset-y-0 right-0 z-50` |
-| Animation | Custom Vue `Transition` with `translate-x-full` enter/leave |
-| Border | `border-l border-neutral-200 dark:border-neutral-700 shadow-xl` |
+| Shared component | `resources/js/Components/shared/Slideover.vue` |
+| Dedicated task detail | `resources/js/Pages/Tasks/Show.vue` |
+| Animation | Shared slideover transitions or local Vue `Transition` classes |
+| Border | `border-l border-neutral-200 dark:border-neutral-700 shadow-xl` when a right panel is used |
 
 ### Usage Guidelines
 

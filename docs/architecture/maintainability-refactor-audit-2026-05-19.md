@@ -10,7 +10,7 @@ The goal is not pure DDD. The useful target for this Laravel app is a pragmatic 
 - Jobs bind queue/workspace context and delegate immediately.
 - Domain application services own use cases and invariants.
 - Domain value objects own small risky concepts.
-- Package-owned integration/runtime behavior stays in `../integrations`, `tmp/prism-relay`, or other package sources instead of being patched into `app/`.
+- Package-owned integration behavior stays in `../integrations`; OpenCompany-specific AI runtime behavior stays in `app/Domain/Ai`, `app/Ai`, and `config/ai.php`.
 
 ## Current Structure
 
@@ -184,7 +184,7 @@ Why: external channels are likely to multiply, and provider fan-out is a classic
 4. Extract setting danger actions and diagnostics.
 5. Split `ToolRegistry` along catalog/normalization/wrapping responsibilities.
 6. Introduce read models for endpoints that currently leak model persistence shape.
-7. Revisit provider/package boundaries only when behavior is generic enough for `../integrations` or `tmp/prism-relay`.
+7. Revisit package boundaries only when integration behavior is generic enough for `../integrations`; do not move the app-owned AI runtime back behind Prism-era packages.
 
 ## Validation Expectations
 

@@ -116,4 +116,4 @@ echo $service->lunarEclipse('2025-09-07');
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT - see the package source repository license.

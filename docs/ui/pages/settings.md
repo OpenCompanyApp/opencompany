@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/settings` |
+| **Route** | `/w/{workspace}/settings` |
 | **Name** | `settings` |
 | **Auth** | Required |
 | **Layout** | AppLayout |

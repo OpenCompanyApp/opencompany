@@ -11,13 +11,12 @@ Making agents full community participants — not just chatbots.
 | Phase 3: External channel discovery | **Done** (monitored channels) | Not started (OC-44) |
 | Phase 4: Message search | **Done** | Done (DB-level) |
 
-**Key implementation files (Telegram — complete):**
-- `app/Listeners/SyncToTelegram.php` — Consolidated listener handling message send, edit, delete, pin, and reaction sync
+**Key implementation files (Telegram - current tracked code):**
 - `app/Events/MessageEdited.php`, `MessageDeleted.php`, `MessagePinned.php`, `MessageReactionAdded.php` — Sync events
 - `app/Services/TelegramService.php` — Platform API methods (edit, delete, pin, react)
-- `app/Agents/Tools/Chat/ManageMessage.php` — Agent tool with edit action + sync indicator
+- `app/Agents/Tools/Chat/EditMessage.php`, `DeleteMessage.php`, `PinMessage.php`, `AddMessageReaction.php`, `RemoveMessageReaction.php` — Agent tools for message mutations
 - `app/Agents/Tools/Chat/SearchMessages.php` — Full-text message search tool
-- `app/Agents/Tools/Chat/DiscoverExternalChannels.php` — Browse external platform channels
+- `app/Agents/Tools/Chat/ListExternalChannels.php`, `JoinExternalChannel.php`, `LeaveExternalChannel.php` — Browse and manage external platform channel membership
 - `database/migrations/2026_02_14_200001_add_external_message_id_to_messages_table.php` — External ID tracking
 
 **What's left:** Discord sync listener (`SyncToDiscord`), Discord channel discovery via REST API, Discord webhook controller for inbound events. Tracked as OC-44 in Plane.

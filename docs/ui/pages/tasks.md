@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/tasks` |
+| **Route** | `/w/{workspace}/tasks` |
 | **Name** | `tasks` |
 | **Auth** | Required |
 | **Layout** | AppLayout |

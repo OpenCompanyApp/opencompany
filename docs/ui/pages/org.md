@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/org` |
+| **Route** | `/w/{workspace}/org` |
 | **Name** | `org` |
 | **Auth** | Required |
 | **Layout** | AppLayout |

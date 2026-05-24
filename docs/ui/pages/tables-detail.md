@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/tables/{id}` |
+| **Route** | `/w/{workspace}/tables/{id}` |
 | **Name** | `tables.show` |
 | **Auth** | Required |
 | **Layout** | AppLayout |
@@ -103,7 +103,7 @@ Column header dropdown:
 | `TableHeader` | Header with back link, icon picker dropdown, inline-editable name and description inputs, import/export dropdowns, settings button, and more-options menu (duplicate, delete) |
 | `TableGrid` | Spreadsheet-style table with sticky header, row checkboxes, sortable columns, inline-editable cells via `TableCell`, add-row/add-column buttons, and delete confirmations |
 | `TableCell` | Polymorphic cell renderer handling 8 column types: text, number, date, checkbox, select, multiselect, URL, email -- each with inline editing |
-| `TableTabs` | Standalone view tab bar (not used directly in Show.vue, but available); view switching, filter/hide/sort controls |
+| `TableCalendar`, `TableGallery`, `TableKanban` | Alternate table views rendered alongside the grid depending on selected view type |
 | `ColumnTypeModal` | Modal for adding or editing a column: name input, type grid selector (8 types), select/multiselect option editor, required toggle, type-change warning |
 | `ConfirmDialog` | Shared confirmation dialog used for row deletion, bulk deletion, and table deletion |
 | `SearchInput` | Shared search input component with icon |
@@ -221,7 +221,9 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 | `resources/js/Components/tables/TableHeader.vue` | Header with back link, inline-editable name/description, icon picker, import/export, and more-options menu |
 | `resources/js/Components/tables/TableGrid.vue` | Spreadsheet grid with sticky header, checkboxes, sortable columns, inline cells, and row/column CRUD |
 | `resources/js/Components/tables/TableCell.vue` | Polymorphic cell renderer for 8 column types with inline editing |
-| `resources/js/Components/tables/TableTabs.vue` | Standalone view tab bar component with filter/hide/sort controls |
+| `resources/js/Components/tables/TableCalendar.vue` | Calendar-style table view |
+| `resources/js/Components/tables/TableGallery.vue` | Gallery-style table view |
+| `resources/js/Components/tables/TableKanban.vue` | Kanban-style table view |
 | `resources/js/Components/tables/ColumnTypeModal.vue` | Modal for adding/editing columns with type grid, option editor, and required toggle |
 | `resources/js/Components/tables/TableCreateModal.vue` | Modal for creating new tables (used on list page, not here) |
 | `resources/js/Components/shared/ConfirmDialog.vue` | Reusable confirmation dialog |

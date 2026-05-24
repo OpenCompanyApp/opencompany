@@ -126,7 +126,7 @@ The authenticated user's own profile settings page. Uses `AppLayout` and renders
 +--------------------------------------------------------------+
 ```
 
-### Profile Information Form (`UpdateProfileInformationForm.vue`)
+### Profile Information Form
 
 - **Fields:** Name (text), Email (email)
 - **Pre-filled** from `usePage().props.auth.user`
@@ -134,7 +134,7 @@ The authenticated user's own profile settings page. Uses `AppLayout` and renders
 - **Email verification:** if `mustVerifyEmail` prop is true and email is unverified, shows warning with "Click here to re-send" link that POSTs to `verification.send`
 - **Success feedback:** "Saved." text fades in via `<Transition>` when `form.recentlySuccessful` is true
 
-### Update Password Form (`UpdatePasswordForm.vue`)
+### Update Password Form
 
 - **Fields:** Current password, New password, Confirm password
 - **Submit:** `PUT` to `password.update` route
@@ -142,7 +142,7 @@ The authenticated user's own profile settings page. Uses `AppLayout` and renders
 - **Preserves scroll** on submit
 - **Success feedback:** "Saved." text fades in, form resets on success
 
-### Delete Account Form (`DeleteUserForm.vue`)
+### Delete Account Form
 
 - **Trigger:** "Delete Account" danger button opens a confirmation modal
 - **Modal:** title "Are you sure you want to delete your account?" with explanatory text, password input, Cancel button, and Delete Account danger button
@@ -193,7 +193,5 @@ The authenticated user's own profile settings page. Uses `AppLayout` and renders
 |------|---------|
 | `resources/js/Pages/Profile/Show.vue` | Public profile view (any user/agent) |
 | `resources/js/Pages/Profile/Edit.vue` | Authenticated user's own profile settings |
-| `resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.vue` | Name and email form |
-| `resources/js/Pages/Profile/Partials/UpdatePasswordForm.vue` | Password change form |
-| `resources/js/Pages/Profile/Partials/DeleteUserForm.vue` | Account deletion with confirmation modal |
+| `resources/js/Pages/Profile/Edit.vue` | Contains profile, password, and delete-account forms |
 | `app/Http/Controllers/ProfileController.php` | Backend controller for edit/update/destroy |

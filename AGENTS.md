@@ -45,8 +45,8 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 - Provider transport behavior, model metadata, prompt caching, cost accounting, Codex OAuth, embeddings, and the OpenAI-compatible gateway are app-owned unless they clearly belong in `../integrations`.
 - Inspect sibling package source before patching integration-runtime behavior. In this workspace, integration package code may be path-based or symlinked into `vendor/`.
 - Common package sources:
-- `../integrations/core`
-- `../integrations/packages/*`
+  - `../integrations/core`
+  - `../integrations/packages/*`
 - Do not patch `vendor/` for durable fixes.
 - Avoid hardcoding provider IDs, model IDs, API formats, URLs, capabilities, auth modes, or runtime support lists outside the app-owned provider/model catalogs or config.
 

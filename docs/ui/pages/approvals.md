@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/approvals` |
+| **Route** | `/w/{workspace}/approvals` |
 | **Name** | `approvals` |
 | **Auth** | Required (`auth`, `verified`) |
 | **Layout** | AppLayout |

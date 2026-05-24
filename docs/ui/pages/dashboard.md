@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/` (alias: `/dashboard`) |
+| **Route** | `/w/{workspace}/` (alias: `/w/{workspace}/dashboard`) |
 | **Name** | `dashboard` |
 | **Auth** | Required (`auth`, `verified`) |
 | **Layout** | AppLayout |

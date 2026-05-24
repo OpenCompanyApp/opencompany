@@ -24,7 +24,8 @@
 | [runtime-alignment-implementation-audit.md](architecture/runtime-alignment-implementation-audit.md) | Post-implementation audit — findings now tracked as Plane issues (OC-1 through OC-6) | Reviewing audit results and fix status |
 | [integrations-catalog-branch-audit-2026-05-10.md](architecture/integrations-catalog-branch-audit-2026-05-10.md) | Branch audit of integrations catalog, multi-account OAuth, UI wiring, and validation gaps | Reviewing current integration work before fixing or shipping |
 | [pest-browser-testing-implementation-plan-2026-05-10.md](architecture/pest-browser-testing-implementation-plan-2026-05-10.md) | Pest browser testing rollout plan with Playwright, local/CI scope, and first integration UI coverage | Planning browser-test implementation |
-| [ai-tool-strategy.md](strategy/ai-tool-strategy.md) | AI tool ecosystem strategy — package publishing, MCP export, missing tool analysis, Fair Code growth | Planning tool ecosystem, evaluating new tool integrations |
+| [documentation.md](documentation.md) | Product documentation outline and information architecture | Updating user-facing docs or navigation |
+| [ai-providers.md](ai-providers.md) | AI provider inventory and implementation priority using the current OpenCompany AI Runtime | Evaluating provider support or adding model integrations |
 
 ## Planning & Implementation
 
@@ -35,23 +36,6 @@
 | [external-channel-sync.md](external-channel-sync.md) | Bidirectional sync design for Telegram/Discord — message tracking, edit/pin/react sync, channel discovery **(Telegram: Done, Discord: Not started)** | Working on external platform integration |
 | [discord.md](discord.md) | Discord integration documentation — architecture, sidecar, configuration | Setting up or debugging Discord integration |
 | [codex-subscription-auth.md](planning/codex-subscription-auth.md) | Codex subscription authentication planning | Working on Codex integration |
-
-## Strategy & Business
-
-| Document | What it covers | Read when... |
-|----------|---------------|--------------|
-| [masterplan.md](strategy/masterplan.md) | Original vision: "Slack for Autonomous Organizations" — raw brainstorming notes | Understanding the big picture and product thesis |
-| [business-strategy.md](strategy/business-strategy.md) | Open-core model, pricing tiers, go-to-market roadmap, competitive positioning | Making business decisions |
-| [enterprise-security.md](strategy/enterprise-security.md) | Enterprise security and governance strategy — SSO, RBAC, audit, compliance | Planning enterprise features |
-| [emergent.md](strategy/emergent.md) | Non-obvious insights, gaps, risks, and opportunities from codebase audit | Product planning, prioritization, risk assessment |
-
-## Website & Marketing
-
-| Document | What it covers | Read when... |
-|----------|---------------|--------------|
-| [features.md](website/features.md) | Complete feature list for the marketing website | Updating marketing claims, checking feature coverage |
-| [enterprise.md](website/enterprise.md) | Enterprise marketing page content — security, compliance, SLAs | Targeting enterprise customers |
-| [landing-page.md](website/landing-page.md) | Landing page copy, hero section, and messaging | Updating the website |
 
 ## Testing & QA
 
@@ -64,14 +48,6 @@
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
 | [charts.md](tools/charts.md) | Visualization tools reference — render_svg, render_vegalite, render_mermaid, render_plantuml, render_typst | Using or extending visualization tools |
-
-## Research
-
-| Document | What it covers | Read when... |
-|----------|---------------|--------------|
-| [openai-frontier-analysis.md](research/openai-frontier-analysis.md) | Deep analysis of OpenAI's Frontier platform (Feb 2026) — threat assessment | Competitive intelligence, positioning decisions |
-
----
 
 ## UI/UX
 

@@ -29,7 +29,7 @@ The official first-party Laravel AI SDK (`laravel/ai`) provides a unified API fo
 - Queue support (`->queue()`)
 - Provider failover (`provider: ['anthropic', 'openai']`)
 - Comprehensive testing: `Agent::fake()`, `assertPrompted()`, `preventStrayPrompts()`
-- MCP companion package (`laravel/mcp`)
+- MCP client/server behavior is app-owned today; `laravel/mcp` is not installed in `composer.json`
 - Providers: OpenAI, Anthropic, Gemini, Groq, xAI, Cohere, Jina, ElevenLabs
 
 **Feature Matrix:**
@@ -41,7 +41,7 @@ The official first-party Laravel AI SDK (`laravel/ai`) provides a unified API fo
 | Tool/Function Calling | `Tool` contract with `JsonSchema` |
 | Conversation Persistence | Built-in `RemembersConversations` trait |
 | RAG Support | Built-in `SimilaritySearch` tool + pgvector integration |
-| MCP Support | Official `laravel/mcp` companion package |
+| MCP Support | App-owned MCP client/runtime in `app/Services/Mcp` |
 | Streaming | `->stream()`, SSE, Vercel AI protocol, WebSocket broadcasting |
 | Structured Output | `HasStructuredOutput` contract with `JsonSchema` |
 | Testing | Comprehensive fakes + assertions per feature type |
@@ -107,8 +107,7 @@ See [Laravel AI SDK Strategy](./laravel-ai-sdk.md) for full integration details.
 # Laravel AI SDK (official first-party)
 composer require laravel/ai
 
-# Laravel MCP (expose app as MCP server)
-composer require laravel/mcp
+# MCP runtime is currently app-owned; no laravel/mcp package is installed.
 ```
 
 ---

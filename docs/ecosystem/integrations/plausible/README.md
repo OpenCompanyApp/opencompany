@@ -129,4 +129,4 @@ $service->createGoal('example.com', ['goal_type' => 'event', 'event_name' => 'Si
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT - see the package source repository license.

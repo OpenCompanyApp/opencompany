@@ -2,6 +2,8 @@
 
 > Comprehensive strategy for integrating the official Laravel AI SDK into OpenCompany's agent system.
 
+Status: Historical strategy with many implemented sections. For current provider/model catalog, Codex auth, AI Gateway, prompt-cache, and cost-ledger architecture, use `ai-provider-runtime-architecture.md`.
+
 ---
 
 ## Table of Contents
@@ -48,7 +50,7 @@ The Laravel AI SDK (`laravel/ai`) is the **official first-party** AI integration
 | **Feature scope** | Text + tools + streaming | Full multimodal: text, image, audio, TTS, STT, embeddings, reranking, vector stores |
 | **Agent pattern** | Fluent builder (`Prism::text()`) | Class-based agents with contracts + attributes |
 | **Testing** | Basic mocking | Comprehensive fakes + assertions per feature |
-| **MCP support** | Via separate Prism Relay package | Official `laravel/mcp` companion package |
+| **MCP support** | Via separate Prism Relay package | App-owned MCP client/runtime today; `laravel/mcp` remains a future option |
 | **Conversation persistence** | Via separate Converse Prism package | Built-in `RemembersConversations` trait |
 | **Queue/streaming** | Manual implementation | Native `->queue()`, `->stream()`, `->broadcastOnQueue()` |
 | **Artisan generators** | None | `make:agent`, `make:tool`, `make:mcp-server`, `make:mcp-tool` |
@@ -63,7 +65,7 @@ The Laravel AI SDK (`laravel/ai`) is the **official first-party** AI integration
 6. **Streaming + Broadcasting**: `->stream()` returns SSE, `->broadcastOnQueue()` pushes to Reverb
 7. **Comprehensive testing**: `Agent::fake()`, `Image::fake()`, `Embeddings::fake()` with assertion helpers
 8. **Provider failover**: `provider: ['anthropic', 'openai']` - automatic fallback
-9. **MCP companion**: `laravel/mcp` for exposing OpenCompany as an MCP server
+9. **MCP runtime**: OpenCompany currently owns MCP client/runtime code in `app/Services/Mcp`; `laravel/mcp` remains a future server option
 
 ---
 
@@ -111,7 +113,7 @@ The Laravel AI SDK (`laravel/ai`) is the **official first-party** AI integration
 |  +-------------------------------------------+|
 |                                                |
 |  +-------------------------------------------+|
-|  |         Laravel MCP (laravel/mcp)         ||
+|  |         OpenCompany MCP Runtime          ||
 |  |                                           ||
 |  |  OpenCompanyServer                        ||
 |  |    - Tools: search, create, query         ||
@@ -952,7 +954,7 @@ The SDK includes built-in embedding caching:
 
 ## MCP Server
 
-> **Package**: `laravel/mcp`
+> **Current status**: OpenCompany has an app-owned MCP client/runtime in `app/Services/Mcp`. The `laravel/mcp` package is not installed in `composer.json`; the server notes below remain a future option.
 
 The MCP (Model Context Protocol) server allows external AI clients (Claude Code, GitHub Copilot, Cursor, etc.) to interact with OpenCompany.
 
@@ -1161,20 +1163,20 @@ protected function setUp(): void
 13. Create `ExecuteAgentTask` job
 14. Wire into `TaskController::start()`
 15. Add task broadcast channel for progress
-16. Update Tasks.vue and TaskDetailDrawer.vue
+16. Update `Tasks.vue` and `Tasks/Show.vue`
 
-### Phase 4: Remove Prism
+### Phase 4: Remove Prism - complete
 
-17. Delete `config/prism.php`
-18. Remove Prism registration from `AppServiceProvider`
-19. Delete `TestGlmPing` command
-20. `composer remove prism-php/prism`
+17. `config/prism.php` removed
+18. Prism registration removed from `AppServiceProvider`
+19. Prism package dependencies removed
+20. AI runtime ownership moved to `app/Domain/Ai`, `app/Ai`, and `config/ai.php`
 
 ### Phase 5: Advanced Features
 
 21. Embeddings + pgvector (requires PostgreSQL migration)
 22. `SimilaritySearch` tool (enabled per agent via capabilities)
-23. `laravel/mcp` server installation
+23. Decide whether to keep app-owned MCP runtime only or add `laravel/mcp` server support
 24. Multimodal: image generation, audio, transcription
 25. Audio/transcription support
 

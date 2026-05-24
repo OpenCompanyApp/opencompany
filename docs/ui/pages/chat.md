@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/chat` |
+| **Route** | `/w/{workspace}/chat` |
 | **Name** | `chat` |
 | **Auth** | Required (`auth`, `verified`) |
 | **Layout** | AppLayout |

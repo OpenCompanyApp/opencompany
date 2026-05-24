@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/integrations` |
+| **Route** | `/w/{workspace}/integrations` |
 | **Name** | `integrations` |
 | **Auth** | Required |
 | **Layout** | AppLayout |
@@ -75,7 +75,11 @@
 | Component | Path | Purpose |
 |-----------|------|---------|
 | `IntegrationCard` | `Components/integrations/IntegrationCard.vue` | Card for each integration in the library grid |
-| `GlmConfigModal` | `Components/integrations/GlmConfigModal.vue` | Configuration modal for GLM AI model integrations |
+| `ProviderConfigModal` | `Components/integrations/ProviderConfigModal.vue` | Configuration modal for standard AI model providers |
+| `CodexConfigModal` | `Components/integrations/CodexConfigModal.vue` | OAuth configuration modal for Codex |
+| `DynamicConfigModal` | `Components/integrations/DynamicConfigModal.vue` | Metadata-driven configuration modal for package integrations |
+| `AiGatewayConfigModal` | `Components/integrations/AiGatewayConfigModal.vue` | API key and model access modal for the OpenCompany AI Gateway |
+| `McpConfigModal` | `Components/integrations/McpConfigModal.vue` | Configuration modal for MCP servers |
 | `SearchInput` | `Components/shared/SearchInput.vue` | Clearable search input for library filtering |
 | `Modal` | `Components/shared/Modal.vue` | Shared modal for webhook creation/editing |
 | `Icon` | `Components/shared/Icon.vue` | Phosphor icon wrapper |
@@ -112,12 +116,12 @@
 - **Search**: `SearchInput` filters across all categories by name and description
 - **Categories**: AI Models, Communication, Developer Tools, Productivity, Data & APIs
 - **Cards**: 2-column grid (`md:grid-cols-2`); each `IntegrationCard` shows icon, name, description, "Popular" badge, and install/configure/uninstall actions
-- **Install flow**: clicking "Install" on GLM integrations opens `GlmConfigModal`; other integrations toggle installed state directly
+- **Install flow**: provider integrations open `ProviderConfigModal`, Codex opens `CodexConfigModal`, package integrations open `DynamicConfigModal`, MCP suggestions open `McpConfigModal`, and the gateway opens `AiGatewayConfigModal`.
 - **Configure**: gear icon on installed integrations opens configuration
 - **Uninstall**: trash icon sets `installed` to false
 - **Empty search**: magnifying glass icon with "No integrations found" message
 
-### GLM Configuration Modal
+### Provider Configuration Modal
 - Fields: API Key (password/text toggle), API URL, Default Model (dropdown)
 - "Test Connection" button sends POST to `/api/integrations/{id}/test`
 - Test result shown as success (green) or error (red) banner
@@ -139,8 +143,8 @@
 | **Empty API keys** | Key icon, "No API keys" text, hint to generate one |
 | **Empty services** | Plugs icon, "No connected services" text, link to Library tab |
 | **Empty search** | Magnifying glass, "No integrations found for ..." message |
-| **GLM testing** | "Test Connection" button shows loading state; result appears below |
-| **GLM saving** | "Save Configuration" button shows loading spinner |
+| **Provider testing** | "Test Connection" button shows loading state; result appears below |
+| **Provider saving** | "Save Configuration" button shows loading spinner |
 
 ---
 
@@ -159,6 +163,10 @@
 |------|---------|
 | `resources/js/Pages/Integrations.vue` | Page component with tabs, webhook/key management, library |
 | `resources/js/Components/integrations/IntegrationCard.vue` | Integration card with install/configure/uninstall |
-| `resources/js/Components/integrations/GlmConfigModal.vue` | GLM AI model configuration modal |
+| `resources/js/Components/integrations/ProviderConfigModal.vue` | AI provider configuration modal |
+| `resources/js/Components/integrations/CodexConfigModal.vue` | Codex OAuth configuration modal |
+| `resources/js/Components/integrations/DynamicConfigModal.vue` | Package integration configuration modal |
+| `resources/js/Components/integrations/AiGatewayConfigModal.vue` | OpenCompany AI Gateway configuration modal |
+| `resources/js/Components/integrations/McpConfigModal.vue` | MCP server configuration modal |
 | `resources/js/Components/shared/SearchInput.vue` | Search input with clear button |
 | `resources/js/Components/shared/Modal.vue` | Shared modal dialog |
