@@ -8,27 +8,45 @@
     "repositories": [
         {
             "type": "path",
-            "url": "../integrations/catalog"
+            "url": "../integrations/catalog",
+            "options": {
+                "symlink": false
+            }
         },
         {
             "type": "path",
-            "url": "../integrations/bundle"
+            "url": "../integrations/bundle",
+            "options": {
+                "symlink": false
+            }
         },
         {
             "type": "path",
-            "url": "../integrations/core"
+            "url": "../integrations/core",
+            "options": {
+                "symlink": false
+            }
         },
         {
             "type": "path",
-            "url": "../integrations/packages/*"
+            "url": "../integrations/packages/*",
+            "options": {
+                "symlink": false
+            }
         },
         {
             "type": "path",
-            "url": "tmp/astronomy-bundle-php"
+            "url": "tmp/astronomy-bundle-php",
+            "options": {
+                "symlink": false
+            }
         },
         {
             "type": "path",
             "url": "tmp/chatogrator",
+            "options": {
+                "symlink": false
+            },
             "canonical": false
         },
         {

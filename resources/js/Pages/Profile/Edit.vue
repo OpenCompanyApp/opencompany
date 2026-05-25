@@ -290,7 +290,7 @@ defineProps<{
   status?: string
 }>()
 
-const user = (usePage().props as {
+const user = (usePage().props as unknown as {
   auth: { user: { name: string; email: string; email_verified_at?: string } }
 }).auth.user
 const { workspaceRouteParams } = useWorkspace()

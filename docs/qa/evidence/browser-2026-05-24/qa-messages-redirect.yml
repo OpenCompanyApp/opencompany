@@ -1,0 +1,60 @@
+- generic [ref=e32] [box=0,0,0,0]:
+  - generic [ref=e33] [box=0,0,1440,1000]:
+    - complementary [ref=e34] [box=0,0,240,1000]:
+      - generic [ref=e36] [box=8,12,224,44]:
+        - button "Default" [ref=e37] [box=8,12,135,44]:
+          - img [ref=e39] [box=27,25,18,18]
+          - generic [ref=e41] [box=60,24,49,20]: Default
+          - img [ref=e42] [box=117,27,14,14]
+        - button [ref=e44] [box=202,19,30,30]:
+          - img [ref=e45] [box=208,25,18,18]
+      - navigation [ref=e47] [box=0,64,240,797]:
+        - link "Dashboard" [ref=e49] [cursor=pointer] [box=8,68,224,36]:
+          - /url: /w/default
+          - img [ref=e50] [box=20,77,18,18]
+          - generic [ref=e52] [box=48,76,172,20]: Dashboard
+        - generic [ref=e54] [box=8,125,224,150]:
+          - link "Tasks" [ref=e55] [cursor=pointer] [box=8,125,224,36]:
+            - /url: /w/default/tasks
+          - link "Approvals 3" [ref=e59] [cursor=pointer] [box=8,163,224,36]:
+            - /url: /w/default/approvals
+          - link "Organization" [ref=e64] [cursor=pointer] [box=8,201,224,36]:
+            - /url: /w/default/org
+          - link "Automation" [ref=e68] [cursor=pointer] [box=8,239,224,36]:
+            - /url: /w/default/automation
+        - generic [ref=e73] [box=8,296,224,226]:
+          - link "Chat 15" [ref=e74] [cursor=pointer] [box=8,296,224,36]:
+            - /url: /w/default/chat
+          - link "Docs" [ref=e79] [cursor=pointer] [box=8,334,224,36]:
+            - /url: /w/default/docs
+          - link "Files" [ref=e83] [cursor=pointer] [box=8,372,224,36]:
+            - /url: /w/default/files
+          - link "Tables" [ref=e87] [cursor=pointer] [box=8,410,224,36]:
+            - /url: /w/default/tables
+          - link "Calendar" [ref=e91] [cursor=pointer] [box=8,448,224,36]:
+            - /url: /w/default/calendar
+          - link "Lists" [ref=e95] [cursor=pointer] [box=8,486,224,36]:
+            - /url: /w/default/lists
+        - generic [ref=e99] [box=8,534,224,385]:
+          - generic [ref=e100] [box=8,534,224,28]
+          - generic [ref=e109] [box=8,566,224,353]
+      - generic [ref=e181] [box=0,861,240,139]:
+        - generic [ref=e182] [box=0,861,240,74]:
+          - link "Integrations" [ref=e183] [cursor=pointer] [box=8,861,224,36]:
+            - /url: /w/default/integrations
+          - link "Settings" [ref=e187] [cursor=pointer] [box=8,899,224,36]:
+            - /url: /w/default/settings
+        - generic [ref=e192] [box=12,946,216,44]:
+          - button "Rutger" [ref=e194] [cursor=pointer] [box=4,946,44,44]
+          - generic [ref=e198] [box=52,958,96,20]: OpenCompany
+    - main [ref=e199] [box=240,0,1200,1000]:
+      - generic [ref=e202] [box=240,0,1200,1000]:
+        - complementary [ref=e203] [box=240,0,64,1000]:
+          - button "New assistant chat" [ref=e207] [box=252,12,36,36]
+          - generic [ref=e211] [box=248,81,39,1508]
+        - generic [ref=e393] [box=304,0,1136,1000]:
+          - generic [ref=e394] [box=304,0,1136,56]
+          - generic [ref=e412] [box=304,56,1136,760]
+          - generic [ref=e1648] [box=488,816,768,184]
+  - region "Notifications (F8)" [box=0,1000,1440,0]:
+    - list [box=1424,984,0,0]

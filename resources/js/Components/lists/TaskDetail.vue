@@ -485,6 +485,7 @@ const submittingComment = ref(false)
 
 const priorityClasses: Record<Priority, string> = {
   low: 'bg-neutral-500/20 text-neutral-400',
+  normal: 'bg-neutral-500/20 text-neutral-400',
   medium: 'bg-blue-500/20 text-blue-400',
   high: 'bg-amber-500/20 text-amber-400',
   urgent: 'bg-red-500/20 text-red-400',
@@ -492,6 +493,7 @@ const priorityClasses: Record<Priority, string> = {
 
 const priorityDots: Record<Priority, string> = {
   low: 'bg-neutral-400',
+  normal: 'bg-neutral-400',
   medium: 'bg-blue-400',
   high: 'bg-amber-400',
   urgent: 'bg-red-400',

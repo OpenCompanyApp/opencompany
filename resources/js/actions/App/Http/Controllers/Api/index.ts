@@ -1,6 +1,7 @@
 import ChatWebhookController from './ChatWebhookController'
 import TelegramWebhookController from './TelegramWebhookController'
 import IncomingIntegrationWebhookController from './IncomingIntegrationWebhookController'
+import TelegramMiniAppController from './TelegramMiniAppController'
 import AiGateway from './AiGateway'
 import InvitationController from './InvitationController'
 import WorkspaceController from './WorkspaceController'
@@ -46,6 +47,7 @@ import CodexAuthController from './CodexAuthController'
 import WorkspaceMemberController from './WorkspaceMemberController'
 import SettingController from './SettingController'
 import IntegrationWebhookController from './IntegrationWebhookController'
+import TelegramOperationsController from './TelegramOperationsController'
 import McpServerController from './McpServerController'
 import AiGatewayController from './AiGatewayController'
 
@@ -53,6 +55,7 @@ const Api = {
     ChatWebhookController: Object.assign(ChatWebhookController, ChatWebhookController),
     TelegramWebhookController: Object.assign(TelegramWebhookController, TelegramWebhookController),
     IncomingIntegrationWebhookController: Object.assign(IncomingIntegrationWebhookController, IncomingIntegrationWebhookController),
+    TelegramMiniAppController: Object.assign(TelegramMiniAppController, TelegramMiniAppController),
     AiGateway: Object.assign(AiGateway, AiGateway),
     InvitationController: Object.assign(InvitationController, InvitationController),
     WorkspaceController: Object.assign(WorkspaceController, WorkspaceController),
@@ -98,6 +101,7 @@ const Api = {
     WorkspaceMemberController: Object.assign(WorkspaceMemberController, WorkspaceMemberController),
     SettingController: Object.assign(SettingController, SettingController),
     IntegrationWebhookController: Object.assign(IntegrationWebhookController, IntegrationWebhookController),
+    TelegramOperationsController: Object.assign(TelegramOperationsController, TelegramOperationsController),
     McpServerController: Object.assign(McpServerController, McpServerController),
     AiGatewayController: Object.assign(AiGatewayController, AiGatewayController),
 }

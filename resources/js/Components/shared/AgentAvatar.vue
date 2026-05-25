@@ -385,7 +385,7 @@ const AvatarContent = () => {
     ]),
 
     // Status dot — static indicator for non-working states
-    props.showStatus && props.user.type !== 'agent' && h('div', {
+    props.showStatus && h('div', {
       class: [
         'absolute rounded-full border-white',
         dotSizes[props.size],

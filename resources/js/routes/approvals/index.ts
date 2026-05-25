@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
-* @see routes/web.php:124
+* @see routes/web.php:146
 * @route '/w/{workspace_slug}/approvals/{id}'
 */
 export const show = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -14,7 +14,7 @@ show.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:124
+* @see routes/web.php:146
 * @route '/w/{workspace_slug}/approvals/{id}'
 */
 show.url = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions) => {
@@ -39,7 +39,7 @@ show.url = (args: { workspace_slug: string | number, id: string | number } | [wo
 }
 
 /**
-* @see routes/web.php:124
+* @see routes/web.php:146
 * @route '/w/{workspace_slug}/approvals/{id}'
 */
 show.get = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -48,7 +48,7 @@ show.get = (args: { workspace_slug: string | number, id: string | number } | [wo
 })
 
 /**
-* @see routes/web.php:124
+* @see routes/web.php:146
 * @route '/w/{workspace_slug}/approvals/{id}'
 */
 show.head = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'head'> => ({

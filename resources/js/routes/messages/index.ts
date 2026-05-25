@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
-* @see routes/web.php:199
+* @see routes/web.php:221
 * @route '/w/{workspace_slug}/messages'
 */
 export const index = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -14,7 +14,7 @@ index.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:199
+* @see routes/web.php:221
 * @route '/w/{workspace_slug}/messages'
 */
 index.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -40,7 +40,7 @@ index.url = (args: { workspace_slug: string | number } | [workspace_slug: string
 }
 
 /**
-* @see routes/web.php:199
+* @see routes/web.php:221
 * @route '/w/{workspace_slug}/messages'
 */
 index.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -49,7 +49,7 @@ index.get = (args: { workspace_slug: string | number } | [workspace_slug: string
 })
 
 /**
-* @see routes/web.php:199
+* @see routes/web.php:221
 * @route '/w/{workspace_slug}/messages'
 */
 index.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -58,7 +58,7 @@ index.head = (args: { workspace_slug: string | number } | [workspace_slug: strin
 })
 
 /**
-* @see routes/web.php:205
+* @see routes/web.php:227
 * @route '/w/{workspace_slug}/messages/{id}'
 */
 export const show = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -72,7 +72,7 @@ show.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:205
+* @see routes/web.php:227
 * @route '/w/{workspace_slug}/messages/{id}'
 */
 show.url = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions) => {
@@ -97,7 +97,7 @@ show.url = (args: { workspace_slug: string | number, id: string | number } | [wo
 }
 
 /**
-* @see routes/web.php:205
+* @see routes/web.php:227
 * @route '/w/{workspace_slug}/messages/{id}'
 */
 show.get = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -106,7 +106,7 @@ show.get = (args: { workspace_slug: string | number, id: string | number } | [wo
 })
 
 /**
-* @see routes/web.php:205
+* @see routes/web.php:227
 * @route '/w/{workspace_slug}/messages/{id}'
 */
 show.head = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'head'> => ({

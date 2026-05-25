@@ -10,6 +10,8 @@ use App\Domain\Ai\Codex\Stores\EloquentCodexTokenStore;
 use App\Domain\Ai\Runtime\OpenCompanyAiProviderFactory;
 use App\Domain\Ai\Runtime\OpenCompanyAiProviderRegistrar;
 use App\Domain\Ai\Usage\OpenRouterGenerationStore;
+use App\Domain\Chat\Telegram\Application\TelegramNotificationRouter;
+use App\Events\TaskUpdated;
 use App\Models\ApprovalRequest;
 use App\Models\Document;
 use App\Observers\ApprovalRequestObserver;
@@ -22,6 +24,7 @@ use App\Services\IntegrationSettingCredentialResolver;
 use App\Services\Mcp\McpServerRegistrar;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
@@ -84,6 +87,8 @@ class AppServiceProvider extends ServiceProvider
         // Observers
         ApprovalRequest::observe(ApprovalRequestObserver::class);
         Document::observe(DocumentObserver::class);
+
+        Event::listen(TaskUpdated::class, [TelegramNotificationRouter::class, 'handleTaskUpdated']);
 
         // Disable JSON wrapping for API resources
         JsonResource::withoutWrapping();

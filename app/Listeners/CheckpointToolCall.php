@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Agents\OpenCompanyAgent;
+use App\Events\TaskUpdated;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Memory\OutputTruncator;
@@ -126,6 +127,7 @@ class CheckpointToolCall
             );
             $step->start();
             $step->complete();
+            safeBroadcast(new TaskUpdated($task->fresh(['steps']) ?? $task, 'progress'), 'task tool progress');
         } catch (\Throwable $e) {
             Log::warning('CheckpointToolCall: failed to save checkpoint', [
                 'tool' => method_exists($event->tool, 'name')

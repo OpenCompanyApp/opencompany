@@ -83,6 +83,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import type { AgentTask, TaskStep } from '@/types'
 import { useHighlight } from '@/composables/useHighlight'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { displayToolName } from '@/utils/toolDisplay'
 
 const props = defineProps<{
   tasks?: AgentTask[]
@@ -153,22 +154,6 @@ const stepIconClasses = (step: TaskStep) => [
       ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
       : 'bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300',
 ]
-
-const humanizeToolName = (value: unknown) => {
-  if (typeof value !== 'string' || value.length === 0) return 'Tool'
-
-  return value
-    .replace(/[_-]+/g, ' ')
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, char => char.toUpperCase())
-}
-
-const displayToolName = (metadata: Record<string, unknown>) =>
-  typeof metadata.tool_name === 'string' && metadata.tool_name.length > 0
-    ? metadata.tool_name
-    : humanizeToolName(metadata.tool)
 
 const stepDescription = (step: TaskStep) => {
   if (!step.metadata?.tool) return step.description

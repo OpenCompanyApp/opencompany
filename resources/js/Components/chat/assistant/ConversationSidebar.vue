@@ -59,6 +59,7 @@
           type="button"
           :class="conversationClasses(conversation.id === selectedChannel?.id)"
           :title="conversation.title"
+          :aria-label="conversationAriaLabel(conversation)"
           @click="$emit('select', conversation.channel)"
         >
           <div :class="avatarFrameClasses(conversation.kind)">
@@ -158,6 +159,14 @@ const filteredConversations = computed(() => {
   )
 })
 
+const duplicateTitleCounts = computed(() => {
+  const counts = new Map<string, number>()
+  for (const conversation of conversations.value) {
+    counts.set(conversation.title, (counts.get(conversation.title) ?? 0) + 1)
+  }
+  return counts
+})
+
 const preferredAgentId = computed(() => {
   const currentAgent = props.selectedChannel?.members?.find(member => member.type === 'agent')
   const preferred = currentAgent ?? props.agents.find(agent => agent.status !== 'offline') ?? props.agents[0]
@@ -166,6 +175,24 @@ const preferredAgentId = computed(() => {
 
 const newChat = () => {
   if (preferredAgentId.value) emit('newAgentChat', preferredAgentId.value)
+}
+
+const conversationAriaLabel = (conversation: any) => {
+  const base = conversation.kind === 'agent'
+    ? `Assistant chat with ${conversation.title}`
+    : conversation.kind === 'dm'
+      ? `Direct message with ${conversation.title}`
+      : `Channel ${conversation.title}`
+
+  if ((duplicateTitleCounts.value.get(conversation.title) ?? 0) <= 1) return base
+
+  const suffix = [
+    conversation.preview,
+    conversation.time ? `updated ${conversation.time} ago` : null,
+    `id ${conversation.id.slice(0, 8)}`,
+  ].filter(Boolean).join(', ')
+
+  return `${base}, ${suffix}`
 }
 
 const sidebarClasses = computed(() => [

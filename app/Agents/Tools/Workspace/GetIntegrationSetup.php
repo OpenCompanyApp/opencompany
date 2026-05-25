@@ -4,12 +4,22 @@ namespace App\Agents\Tools\Workspace;
 
 use App\Models\User;
 use App\Services\Integrations\ConfigSchemaNormalizer;
+use App\Services\Integrations\IntegrationConfigResolver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
+/**
+ * Describes the setup contract for an integration before credentials are saved.
+ *
+ * Package-owned integrations expose their schema through the integration
+ * registry. Telegram is intentionally handled as an app-owned chat integration:
+ * its tools and package metadata may exist, but the workspace setup surface must
+ * describe OpenCompany's Telegram runtime and webhook, not Chatogrator/package
+ * credentials.
+ */
 class GetIntegrationSetup implements Tool
 {
     public function __construct(
@@ -25,12 +35,16 @@ class GetIntegrationSetup implements Tool
     {
         try {
             $integrationId = $request['integrationId'] ?? null;
-            if (!$integrationId) {
+            if (! $integrationId) {
                 return 'integrationId is required.';
             }
 
+            if ($integrationId === 'telegram') {
+                return $this->telegramSetup();
+            }
+
             $provider = $this->findConfigurableProvider($integrationId);
-            if (!$provider) {
+            if (! $provider) {
                 return "No configurable integration found for '{$integrationId}'. This action is for dynamic integrations from packages.";
             }
 
@@ -44,7 +58,7 @@ class GetIntegrationSetup implements Tool
                     'key' => $field['key'],
                     'type' => $field['type'],
                     'label' => $field['label'],
-                    'required' => !empty($field['required']) ?: null,
+                    'required' => ! empty($field['required']) ?: null,
                     'default' => isset($field['default']) && $field['default'] !== '' && $field['default'] !== [] ? $field['default'] : null,
                     'placeholder' => $field['placeholder'] ?? null,
                 ]))->values()->toArray(),
@@ -52,6 +66,30 @@ class GetIntegrationSetup implements Tool
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";
         }
+    }
+
+    private function telegramSetup(): string
+    {
+        $info = config('chat_integrations.telegram', []);
+        $configFields = $info['config_fields'] ?? [];
+        $webhookUrl = rtrim((string) config('app.url'), '/').'/api/webhooks/chat/telegram';
+
+        return json_encode([
+            'id' => 'telegram',
+            'name' => $info['name'] ?? 'Telegram',
+            'runtime' => 'opencompany_chat',
+            'domain' => 'chat',
+            'webhookUrl' => $webhookUrl,
+            'webhookTool' => 'setup_integration_webhook',
+            'fields' => collect(IntegrationConfigResolver::buildStaticConfigSchema($configFields))->map(fn ($field) => array_filter([
+                'key' => $field['key'],
+                'type' => $field['type'],
+                'label' => $field['label'],
+                'required' => ! empty($field['required']) ?: null,
+                'placeholder' => $field['placeholder'] ?? null,
+                'hint' => $field['hint'] ?? null,
+            ]))->values()->toArray(),
+        ], JSON_PRETTY_PRINT);
     }
 
     private function findConfigurableProvider(string $id): ?ConfigurableIntegration

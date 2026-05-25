@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Chat\Telegram\Application\TelegramSetupService;
 use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Models\Workspace;
@@ -11,49 +12,63 @@ use Illuminate\Console\Command;
 
 class TelegramSync extends Command
 {
-    protected $signature = 'telegram:sync';
+    protected $signature = 'telegram:sync {--skip-metadata : Skip command/menu/profile metadata sync and only refresh the profile photo}';
+
     protected $description = 'Sync Telegram bot commands and profile photo with the configured agent avatar';
 
-    public function handle(TelegramService $telegram, AgentAvatarService $avatarService): int
+    public function handle(TelegramService $telegram, TelegramSetupService $setup, AgentAvatarService $avatarService): int
     {
-        if (!app()->bound('currentWorkspace')) {
+        if (! app()->bound('currentWorkspace')) {
             $workspace = Workspace::first();
             if ($workspace) {
                 app()->instance('currentWorkspace', $workspace);
             }
         }
 
-        if (!$telegram->isConfigured()) {
+        if (! $telegram->isConfigured()) {
             $this->components->warn('Telegram not configured, skipping.');
+
             return self::SUCCESS;
         }
 
-        // 1. Register bot commands
-        try {
-            $telegram->setMyCommands();
-            $this->components->info('Bot commands registered.');
-        } catch (\Throwable $e) {
-            $this->components->error("Failed to register commands: {$e->getMessage()}");
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
+        if (! $setting) {
+            $this->components->warn('Telegram integration setting not found, skipping.');
+
+            return self::SUCCESS;
         }
 
-        // 2. Sync profile photo from agent avatar
-        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
+        if (! $this->option('skip-metadata')) {
+            // Keep command/profile metadata in the app-owned Telegram setup
+            // layer so CLI repair uses the same scoped command menu as web
+            // setup.
+            try {
+                $result = $setup->syncBotCommandsAndProfile($setting);
+                $this->components->info('Bot commands and profile metadata synced: '.implode(', ', $result['commands']['scopes'] ?? []));
+            } catch (\Throwable $e) {
+                $this->components->error("Failed to sync commands/profile metadata: {$e->getMessage()}");
+            }
+        }
+
         $agentId = $setting?->getConfigValue('default_agent_id');
 
-        if (!$agentId) {
+        if (! $agentId) {
             $this->components->warn('No default agent configured, skipping avatar sync.');
+
             return self::SUCCESS;
         }
 
         $agent = User::find($agentId);
-        if (!$agent) {
+        if (! $agent) {
             $this->components->warn("Agent {$agentId} not found, skipping avatar sync.");
+
             return self::SUCCESS;
         }
 
         $jpegPath = $avatarService->toJpeg($agent);
-        if (!$jpegPath) {
+        if (! $jpegPath) {
             $this->components->warn("Could not convert avatar for {$agent->name} to JPEG.");
+
             return self::SUCCESS;
         }
 

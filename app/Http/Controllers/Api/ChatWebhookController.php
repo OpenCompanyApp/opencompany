@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Chat\Telegram\Application\TelegramWebhookPipeline;
 use App\Models\IntegrationSetting;
 use App\Models\Workspace;
 use App\Services\Chat\ChatManager;
@@ -32,6 +33,10 @@ class ChatWebhookController
         app()->instance('currentWorkspace', $workspace);
 
         try {
+            if ($adapter === 'telegram') {
+                return app(TelegramWebhookPipeline::class)->handle($request, $workspace);
+            }
+
             $chat = app(ChatManager::class)->forWorkspace($workspace);
 
             return $chat->handleWebhook($adapter, $request);

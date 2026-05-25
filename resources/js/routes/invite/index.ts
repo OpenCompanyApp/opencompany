@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
-* @see routes/web.php:38
+* @see routes/web.php:60
 * @route '/invite/{token}'
 */
 export const accept = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -14,7 +14,7 @@ accept.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:38
+* @see routes/web.php:60
 * @route '/invite/{token}'
 */
 accept.url = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -40,7 +40,7 @@ accept.url = (args: { token: string | number } | [token: string | number ] | str
 }
 
 /**
-* @see routes/web.php:38
+* @see routes/web.php:60
 * @route '/invite/{token}'
 */
 accept.get = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -49,7 +49,7 @@ accept.get = (args: { token: string | number } | [token: string | number ] | str
 })
 
 /**
-* @see routes/web.php:38
+* @see routes/web.php:60
 * @route '/invite/{token}'
 */
 accept.head = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({

@@ -14,6 +14,16 @@ class IntegrationWebhookControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_authenticated_workspace_admin_can_list_empty_webhooks(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->getJson('/api/integration-webhooks')
+            ->assertOk()
+            ->assertExactJson(['data' => []]);
+    }
+
     public function test_workspace_webhooks_can_be_created_listed_updated_deleted_and_triggered(): void
     {
         $user = User::factory()->create();

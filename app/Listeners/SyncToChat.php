@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Domain\Chat\Telegram\Application\TelegramOutboundSync;
 use App\Events\MessageDeleted;
 use App\Events\MessageEdited;
 use App\Events\MessagePinned;
@@ -10,6 +11,7 @@ use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\WorkspaceFile;
 use App\Services\Chat\ChatManager;
+use App\Services\Chat\ChatProviderCapabilities;
 use App\Services\FileSystemService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -70,6 +72,16 @@ class SyncToChat implements ShouldQueue
             return;
         }
 
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->sendMessage($message);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'send_messages')) {
+            return;
+        }
+
         $adapter = $this->getAdapter($channel);
         if (! $adapter) {
             return;
@@ -124,6 +136,16 @@ class SyncToChat implements ShouldQueue
         }
 
         $channel = $message->channel;
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->editMessage($message);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'edit_messages')) {
+            return;
+        }
+
         $adapter = $this->getAdapter($channel);
         if (! $adapter) {
             return;
@@ -152,6 +174,16 @@ class SyncToChat implements ShouldQueue
         }
 
         $channel = $message->channel;
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->deleteMessage($message);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'delete_messages')) {
+            return;
+        }
+
         $adapter = $this->getAdapter($channel);
         if (! $adapter) {
             return;
@@ -179,6 +211,16 @@ class SyncToChat implements ShouldQueue
         }
 
         $channel = $message->channel;
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->pinMessage($message);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'pin_messages')) {
+            return;
+        }
+
         $adapter = $this->getAdapter($channel);
         if (! $adapter) {
             return;
@@ -206,6 +248,16 @@ class SyncToChat implements ShouldQueue
         }
 
         $channel = $message->channel;
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->addReaction($message, $event->emoji);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'reactions')) {
+            return;
+        }
+
         $adapter = $this->getAdapter($channel);
         if (! $adapter) {
             return;
@@ -288,6 +340,10 @@ class SyncToChat implements ShouldQueue
      */
     private function sendInlineImages($adapter, string $threadId, string $content): array
     {
+        if (! app(ChatProviderCapabilities::class)->supports($adapter->name(), 'files')) {
+            return [];
+        }
+
         $sentUrls = [];
 
         // Workspace-file links require authenticated app storage access, so the
@@ -375,6 +431,10 @@ class SyncToChat implements ShouldQueue
      */
     private function sendAttachmentImages($adapter, string $threadId, Message $message, array $alreadySentUrls): void
     {
+        if (! app(ChatProviderCapabilities::class)->supports($adapter->name(), 'files')) {
+            return;
+        }
+
         foreach ($message->attachments as $attachment) {
             $mime = $attachment->mime_type ?? '';
             if (! str_starts_with($mime, 'image/') && $mime !== 'application/pdf') {

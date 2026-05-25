@@ -18,8 +18,10 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Ai\ModelCatalog;
 use App\Services\Ai\ProviderCatalog;
+use App\Services\Integrations\IntegrationAccountResolver;
 use App\Services\Integrations\IntegrationConnectionTester;
 use App\Services\Integrations\IntegrationDirectory;
+use App\Services\Integrations\IntegrationIdentity;
 use App\Services\Mcp\McpRuntime;
 use App\Services\Mcp\McpServerRegistrar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,10 +38,11 @@ class RuntimeServiceLayerTest extends TestCase
     public function test_integration_directory_contains_public_worldbank_package(): void
     {
         $entries = collect(app(IntegrationDirectory::class)->all());
-        $worldbank = $entries->firstWhere('id', 'worldbank');
+        $worldbank = $entries->firstWhere('id', IntegrationIdentity::forPackage('worldbank'));
 
         $this->assertNotNull($worldbank);
-        $this->assertSame('worldbank', $worldbank['id']);
+        $this->assertSame(IntegrationIdentity::forPackage('worldbank'), $worldbank['id']);
+        $this->assertSame('worldbank', $worldbank['configId']);
         $this->assertTrue($worldbank['configured']);
     }
 
@@ -68,7 +71,7 @@ class RuntimeServiceLayerTest extends TestCase
 
     public function test_shared_integration_credentials_are_resolved_from_package_metadata(): void
     {
-        $group = app(\App\Services\Integrations\IntegrationAccountResolver::class)
+        $group = app(IntegrationAccountResolver::class)
             ->sharedCredentialGroup('gmail');
 
         $this->assertContains('gmail', $group['integration_ids']);

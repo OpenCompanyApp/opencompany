@@ -1,0 +1,59 @@
+- generic [ref=e3] [box=0,0,0,0]:
+  - generic [ref=e4] [box=0,0,1440,1000]:
+    - complementary [ref=e5] [box=0,0,240,1000]:
+      - generic [ref=e7] [box=8,12,224,44]:
+        - button "Test" [ref=e8] [box=8,12,113,44]:
+          - img [ref=e10] [box=27,25,18,18]
+          - generic [ref=e12] [box=60,24,27,20]: Test
+          - img [ref=e13] [box=95,27,14,14]
+        - button [ref=e15] [box=202,19,30,30]:
+          - img [ref=e16] [box=208,25,18,18]
+      - navigation [ref=e18] [box=0,64,240,797]:
+        - link "Dashboard" [ref=e20] [cursor=pointer] [box=8,68,224,36]:
+          - /url: /w/test
+          - img [ref=e21] [box=20,77,18,18]
+          - generic [ref=e23] [box=48,76,172,20]: Dashboard
+        - generic [ref=e25] [box=8,125,224,150]:
+          - link "Tasks" [ref=e26] [cursor=pointer] [box=8,125,224,36]:
+            - /url: /w/test/tasks
+          - link "Approvals 3" [ref=e30] [cursor=pointer] [box=8,163,224,36]:
+            - /url: /w/test/approvals
+          - link "Organization" [ref=e35] [cursor=pointer] [box=8,201,224,36]:
+            - /url: /w/test/org
+          - link "Automation" [ref=e39] [cursor=pointer] [box=8,239,224,36]:
+            - /url: /w/test/automation
+        - generic [ref=e44] [box=8,296,224,226]:
+          - link "Chat 15" [ref=e45] [cursor=pointer] [box=8,296,224,36]:
+            - /url: /w/test/chat
+          - link "Docs" [ref=e50] [cursor=pointer] [box=8,334,224,36]:
+            - /url: /w/test/docs
+          - link "Files" [ref=e54] [cursor=pointer] [box=8,372,224,36]:
+            - /url: /w/test/files
+          - link "Tables" [ref=e58] [cursor=pointer] [box=8,410,224,36]:
+            - /url: /w/test/tables
+          - link "Calendar" [ref=e62] [cursor=pointer] [box=8,448,224,36]:
+            - /url: /w/test/calendar
+          - link "Lists" [ref=e66] [cursor=pointer] [box=8,486,224,36]:
+            - /url: /w/test/lists
+        - generic [ref=e71] [box=8,534,224,28]:
+          - button "Agents" [expanded] [ref=e72] [box=20,534,174,28]
+          - button "Spawn new agent" [ref=e76] [box=198,537,22,22]
+      - generic [ref=e79] [box=0,861,240,139]:
+        - generic [ref=e80] [box=0,861,240,74]:
+          - link "Integrations" [ref=e81] [cursor=pointer] [box=8,861,224,36]:
+            - /url: /w/test/integrations
+          - link "Settings" [ref=e85] [cursor=pointer] [box=8,899,224,36]:
+            - /url: /w/test/settings
+        - generic [ref=e90] [box=12,946,216,44]:
+          - button "Rutger" [ref=e92] [cursor=pointer] [box=4,946,44,44]
+          - generic [ref=e96] [box=52,958,96,20]: OpenCompany
+    - main [ref=e97] [box=240,0,1200,1000]:
+      - generic [ref=e99] [box=264,0,1152,1000]:
+        - generic [ref=e100] [box=288,24,1104,52]:
+          - generic [ref=e101] [box=288,24,1104,28]
+          - paragraph [ref=e110] [box=288,56,1104,20]: Connect external services and manage API access
+        - generic [ref=e111] [box=288,100,1104,876]:
+          - navigation [ref=e112] [box=288,100,208,876]
+          - main [ref=e137] [box=520,100,872,876]
+  - region "Notifications (F8)" [box=0,1000,1440,0]:
+    - list [box=1424,984,0,0]

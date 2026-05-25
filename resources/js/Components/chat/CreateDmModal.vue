@@ -116,7 +116,7 @@ async function startDm(user: User) {
   creating.value = true
   try {
     const response = await createDirectMessage(currentUserId.value, user.id)
-    const dm = response.data ?? response
+    const dm = response.data
     const channelId = dm.channel_id ?? dm.channel?.id ?? dm.id
     emit('dm-created', channelId)
     emit('update:open', false)

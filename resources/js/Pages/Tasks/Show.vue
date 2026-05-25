@@ -300,7 +300,7 @@
             <Icon name="ph:code" class="w-4 h-4 text-violet-500" />
             Script
           </h3>
-          <pre class="text-xs bg-neutral-900 rounded-lg p-4 overflow-x-auto border border-neutral-700 max-h-64 overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlight(task.description, 'lua')" /></pre>
+          <pre class="text-xs rounded-lg p-4 overflow-x-auto border max-h-64 overflow-y-auto bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"><code class="hljs oc-syntax whitespace-pre-wrap break-words" v-html="highlight(task.description, 'lua')" /></pre>
           <button
             v-if="ctx.automation_id"
             class="mt-2 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
@@ -367,10 +367,10 @@
             <Icon name="ph:terminal" class="w-4 h-4 text-green-500" />
             Output
           </h3>
-          <pre v-if="task.result?.output" class="text-xs bg-neutral-900 text-green-400 rounded-lg p-4 overflow-x-auto border border-neutral-700 max-h-[32rem] overflow-y-auto font-mono whitespace-pre-wrap break-words">{{ task.result.output }}</pre>
+          <pre v-if="task.result?.output" class="text-xs rounded-lg p-4 overflow-x-auto border max-h-[32rem] overflow-y-auto font-mono whitespace-pre-wrap break-words bg-white text-emerald-700 border-neutral-200 dark:bg-neutral-950 dark:text-green-400 dark:border-neutral-800">{{ task.result.output }}</pre>
           <div v-if="task.result?.return_value" class="mt-3">
             <span class="text-xs text-neutral-500 dark:text-neutral-400">Return value</span>
-            <pre class="mt-1 text-xs bg-neutral-900 text-neutral-300 rounded-lg p-4 overflow-x-auto border border-neutral-700 font-mono whitespace-pre-wrap break-words">{{ typeof task.result.return_value === 'string' ? task.result.return_value : JSON.stringify(task.result.return_value, null, 2) }}</pre>
+            <pre class="mt-1 text-xs rounded-lg p-4 overflow-x-auto border font-mono whitespace-pre-wrap break-words bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800">{{ typeof task.result.return_value === 'string' ? task.result.return_value : JSON.stringify(task.result.return_value, null, 2) }}</pre>
           </div>
         </div>
 
@@ -399,7 +399,7 @@
             </div>
           </div>
           <!-- Raw: syntax-highlighted markdown source -->
-          <pre v-if="outputViewMode === 'raw'" class="text-xs bg-neutral-900 rounded-lg p-4 overflow-x-auto border border-neutral-700 max-h-[32rem] overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlight(task.result.response, 'markdown')" /></pre>
+          <pre v-if="outputViewMode === 'raw'" class="text-xs rounded-lg p-4 overflow-x-auto border max-h-[32rem] overflow-y-auto bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"><code class="hljs oc-syntax whitespace-pre-wrap break-words" v-html="highlight(task.result.response, 'markdown')" /></pre>
           <!-- Preview: rendered markdown -->
           <div v-else class="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 max-h-[32rem] overflow-y-auto">
             <div class="prose prose-sm prose-neutral dark:prose-invert max-w-none" v-html="renderMarkdown(task.result.response)" />
@@ -464,12 +464,12 @@
             <!-- System Prompt -->
             <div v-if="ctx.system_prompt">
               <button
-                class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                class="w-full flex flex-wrap items-center gap-2 px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors sm:flex-nowrap sm:gap-3"
                 @click="toggleContext('system_prompt')"
               >
                 <Icon name="ph:scroll" class="w-4 h-4 text-neutral-400 shrink-0" />
-                <span class="flex-1 text-sm text-neutral-900 dark:text-white">System Prompt</span>
-                <span class="text-xs text-neutral-400 tabular-nums font-mono shrink-0">{{ tb ? formatTokens(tb.system_prompt.total) + ' tokens' : ctx.system_prompt.length.toLocaleString() + ' chars' }}</span>
+                <span class="min-w-0 flex-1 text-sm text-neutral-900 dark:text-white">System Prompt</span>
+                <span class="min-w-0 text-xs text-neutral-400 tabular-nums font-mono sm:shrink-0">{{ tb ? formatTokens(tb.system_prompt.total) + ' tokens' : ctx.system_prompt.length.toLocaleString() + ' chars' }}</span>
                 <Icon :name="expandedContext.has('system_prompt') ? 'ph:caret-up' : 'ph:caret-down'" class="w-4 h-4 text-neutral-400 shrink-0" />
               </button>
               <div v-if="expandedContext.has('system_prompt')" class="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-700/50">
@@ -512,7 +512,7 @@
                     </button>
                   </div>
                 </div>
-                <pre v-if="systemPromptViewMode === 'raw'" class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-96 overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlight(ctx.system_prompt!, 'markdown')" /></pre>
+                <pre v-if="systemPromptViewMode === 'raw'" class="text-xs rounded-md p-3 overflow-x-auto border max-h-96 overflow-y-auto bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"><code class="hljs oc-syntax whitespace-pre-wrap break-words" v-html="highlight(ctx.system_prompt!, 'markdown')" /></pre>
                 <div v-else class="bg-white dark:bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-200 dark:border-neutral-700 max-h-96 overflow-y-auto prose prose-sm prose-neutral dark:prose-invert max-w-none" v-html="renderMarkdown(ctx.system_prompt!)" />
               </div>
             </div>
@@ -520,12 +520,12 @@
             <!-- Conversation Messages -->
             <div v-if="ctx.messages?.length">
               <button
-                class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                class="w-full flex flex-wrap items-center gap-2 px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors sm:flex-nowrap sm:gap-3"
                 @click="toggleContext('messages')"
               >
                 <Icon name="ph:chat-dots" class="w-4 h-4 text-neutral-400 shrink-0" />
-                <span class="flex-1 text-sm text-neutral-900 dark:text-white">Conversation History</span>
-                <span class="text-xs text-neutral-400 tabular-nums font-mono shrink-0">{{ ctx.messages.length }} messages{{ tb ? ' · ' + formatTokens(tb.messages.total) + ' tokens' : '' }}</span>
+                <span class="min-w-0 flex-1 text-sm text-neutral-900 dark:text-white">Conversation History</span>
+                <span class="min-w-0 text-xs text-neutral-400 tabular-nums font-mono sm:shrink-0">{{ ctx.messages.length }} messages{{ tb ? ' · ' + formatTokens(tb.messages.total) + ' tokens' : '' }}</span>
                 <Icon :name="expandedContext.has('messages') ? 'ph:caret-up' : 'ph:caret-down'" class="w-4 h-4 text-neutral-400 shrink-0" />
               </button>
               <div v-if="expandedContext.has('messages')" class="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-700/50 space-y-2 max-h-96 overflow-y-auto">
@@ -552,12 +552,12 @@
             <!-- Available Tools -->
             <div v-if="ctx.tools?.length">
               <button
-                class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                class="w-full flex flex-wrap items-center gap-2 px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors sm:flex-nowrap sm:gap-3"
                 @click="toggleContext('tools')"
               >
                 <Icon name="ph:wrench" class="w-4 h-4 text-neutral-400 shrink-0" />
-                <span class="flex-1 text-sm text-neutral-900 dark:text-white">Available Tools</span>
-                <span class="text-xs text-neutral-400 tabular-nums font-mono shrink-0">{{ ctx.tools.length }} tools</span>
+                <span class="min-w-0 flex-1 text-sm text-neutral-900 dark:text-white">Available Tools</span>
+                <span class="min-w-0 text-xs text-neutral-400 tabular-nums font-mono sm:shrink-0">{{ ctx.tools.length }} tools</span>
                 <Icon :name="expandedContext.has('tools') ? 'ph:caret-up' : 'ph:caret-down'" class="w-4 h-4 text-neutral-400 shrink-0" />
               </button>
               <div v-if="expandedContext.has('tools')" class="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-700/50">
@@ -579,8 +579,10 @@
         <div class="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-neutral-700">
           <div class="flex items-center gap-2">
             <button
-              v-if="task.channelId"
-              class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+              class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+              :class="backingChannelId ? 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800' : 'text-neutral-400 dark:text-neutral-600'"
+              :disabled="!backingChannelId"
+              :title="backingChannelId ? 'Open the chat that created this task' : 'No backing chat is attached to this task'"
               @click="goToChannel"
             >
               <Icon name="ph:chat-circle" class="w-4 h-4" />
@@ -704,6 +706,9 @@ const systemPromptViewMode = ref<'raw' | 'preview'>('raw')
 
 const loading = ref(true)
 const task = ref<AgentTask | null>(null)
+const backingChannelId = computed(() =>
+  task.value?.channelId ?? (task.value as any)?.channel_id ?? task.value?.channel?.id ?? null
+)
 
 // Context panel expand state
 const expandedContext = ref(new Set<string>())
@@ -1056,8 +1061,8 @@ const copyToClipboard = async (text: string, field = 'id') => {
 const goBack = () => window.history.back()
 
 const goToChannel = () => {
-  if (task.value?.channelId) {
-    router.visit(chatUrl({ query: { channel: task.value.channelId } }))
+  if (backingChannelId.value) {
+    router.visit(chatUrl({ query: { channel: backingChannelId.value } }))
   }
 }
 

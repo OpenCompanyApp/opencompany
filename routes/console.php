@@ -1,8 +1,8 @@
 <?php
 
+use App\Jobs\RefreshMcpToolsJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -13,17 +13,19 @@ Schedule::command('agent:resume-waiting')->everyMinute();
 
 Schedule::command('automation:run-due')->everyMinute();
 
-Schedule::job(new \App\Jobs\RefreshMcpToolsJob)->hourly();
+Schedule::command('telegram:send-digests')->everyMinute();
+
+Schedule::job(new RefreshMcpToolsJob)->hourly();
 
 Schedule::command('telescope:prune --hours=24')->daily();
 
 Schedule::call(function () {
     $dir = storage_path('app/public/charts');
-    if (!is_dir($dir)) {
+    if (! is_dir($dir)) {
         return;
     }
     $cutoff = now()->subDays(7)->getTimestamp();
-    foreach (glob($dir . '/*.png') as $file) {
+    foreach (glob($dir.'/*.png') as $file) {
         if (filemtime($file) < $cutoff) {
             unlink($file);
         }
@@ -32,11 +34,11 @@ Schedule::call(function () {
 
 Schedule::call(function () {
     $dir = storage_path('app/public/svg');
-    if (!is_dir($dir)) {
+    if (! is_dir($dir)) {
         return;
     }
     $cutoff = now()->subDays(7)->getTimestamp();
-    foreach (glob($dir . '/*.png') as $file) {
+    foreach (glob($dir.'/*.png') as $file) {
         if (filemtime($file) < $cutoff) {
             unlink($file);
         }

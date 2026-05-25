@@ -174,6 +174,7 @@ export const agentIcons: Record<AgentType, string> = {
   researcher: 'ph:magnifying-glass-fill',
   coder: 'ph:terminal-fill',
   coordinator: 'ph:calendar-fill',
+  system: 'ph:gear-six-fill',
 }
 
 // Agent background colors - all neutral gray
@@ -185,6 +186,7 @@ export const agentBgColors: Record<AgentType, string> = {
   researcher: 'bg-neutral-600',
   coder: 'bg-neutral-600',
   coordinator: 'bg-neutral-600',
+  system: 'bg-neutral-600',
 }
 
 // Agent background colors for soft variant - all neutral
@@ -196,6 +198,7 @@ export const agentSoftBgColors: Record<AgentType, string> = {
   researcher: 'bg-neutral-100',
   coder: 'bg-neutral-100',
   coordinator: 'bg-neutral-100',
+  system: 'bg-neutral-100',
 }
 
 // Agent text colors for soft variant - all neutral
@@ -207,6 +210,7 @@ export const agentSoftTextColors: Record<AgentType, string> = {
   researcher: 'text-neutral-600',
   coder: 'text-neutral-600',
   coordinator: 'text-neutral-600',
+  system: 'text-neutral-600',
 }
 
 // Agent border colors for outline variant - all neutral
@@ -218,6 +222,7 @@ export const agentBorderColors: Record<AgentType, string> = {
   researcher: 'border-neutral-400',
   coder: 'border-neutral-400',
   coordinator: 'border-neutral-400',
+  system: 'border-neutral-400',
 }
 
 // Status colors

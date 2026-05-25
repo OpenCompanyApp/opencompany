@@ -1,24 +1,47 @@
+# syntax=docker/dockerfile:1.6
+
+ARG RUNTIME_PLATFORM=linux/amd64
+
 # --- Stage 1: Composer dependencies ---
-FROM composer:2 AS composer
+FROM --platform=$RUNTIME_PLATFORM composer:2 AS composer
 WORKDIR /app
 COPY composer.json composer.lock ./
+# Composer resolves OpenCompany integration packages from path repositories.
+# The Docker build supplies the sibling integrations repo as a named context:
+# docker build --build-context integrations=../integrations -t opencompany .
+COPY --from=integrations / /integrations
+COPY tmp/astronomy-bundle-php ./tmp/astronomy-bundle-php
 RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
 
-# --- Stage 2: Node asset build ---
-FROM node:20-alpine AS assets
+# --- Stage 2: Generate Wayfinder sources with the production PHP runtime ---
+FROM --platform=$RUNTIME_PLATFORM dunglas/frankenphp:1-php8.4 AS wayfinder
+WORKDIR /app
+RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini
+COPY . .
+COPY --from=composer /app/vendor ./vendor
+RUN rm -f bootstrap/cache/*.php \
+    && php artisan route:clear \
+    && php artisan wayfinder:generate
+
+# --- Stage 3: Node asset build ---
+FROM node:22-alpine AS assets
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 COPY --from=composer /app/vendor ./vendor
-RUN npm run build
+COPY --from=wayfinder /app/resources/js/actions ./resources/js/actions
+COPY --from=wayfinder /app/resources/js/routes ./resources/js/routes
+COPY --from=wayfinder /app/resources/js/wayfinder ./resources/js/wayfinder
+RUN WAYFINDER_SKIP_GENERATE=true npm run build
 
-# --- Stage 3: Production image ---
-FROM dunglas/frankenphp:1-php8.4
+# --- Stage 4: Production image ---
+FROM --platform=$RUNTIME_PLATFORM dunglas/frankenphp:1-php8.4
 
 # System deps + PHP extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
+    libstdc++6 \
     supervisor \
     curl \
     # Rendering tools

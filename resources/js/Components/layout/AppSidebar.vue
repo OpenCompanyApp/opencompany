@@ -215,9 +215,9 @@ type SidebarVariant = 'default' | 'floating' | 'minimal'
 interface SidebarAgent {
   id: string
   name: string
-  status?: 'online' | 'busy' | 'idle' | 'offline'
+  status?: string
   currentTask?: string
-  isAI: boolean
+  isAI?: boolean
 }
 
 // Props

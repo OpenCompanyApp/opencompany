@@ -27,10 +27,10 @@ use App\Http\Controllers\Api\DocumentCommentController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\FileController;
+use App\Http\Controllers\Api\IncomingIntegrationWebhookController;
 use App\Http\Controllers\Api\IntegrationCatalogController;
 use App\Http\Controllers\Api\IntegrationController;
 use App\Http\Controllers\Api\IntegrationWebhookController;
-use App\Http\Controllers\Api\IncomingIntegrationWebhookController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\ListItemCommentController;
 use App\Http\Controllers\Api\ListItemController;
@@ -44,6 +44,8 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\TelegramMiniAppController;
+use App\Http\Controllers\Api\TelegramOperationsController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\TokenAnalyticsController;
 use App\Http\Controllers\Api\ToolCatalogController;
@@ -57,8 +59,12 @@ use Illuminate\Support\Facades\Route;
 
 // ─── Webhooks (external, no auth, no workspace) ───────────────────
 Route::post('/webhooks/chat/{adapter}', ChatWebhookController::class);
-Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']); // Legacy, kept during migration
+Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']); // Retired legacy endpoint; use /webhooks/chat/telegram
 Route::post('/webhooks/{webhook}', IncomingIntegrationWebhookController::class);
+Route::post('/telegram/mini-app/workspaces', [TelegramMiniAppController::class, 'workspaces']);
+Route::post('/telegram/mini-app/session', [TelegramMiniAppController::class, 'session']);
+Route::post('/telegram/mini-app/panel', [TelegramMiniAppController::class, 'panel']);
+Route::post('/telegram/mini-app/action', [TelegramMiniAppController::class, 'action']);
 
 // OpenCompany AI Gateway (external, workspace resolved from bearer API key)
 Route::prefix('/ai-gateway/v1')->middleware(AuthenticateAiGateway::class)->group(function () {
@@ -383,6 +389,14 @@ Route::middleware('resolve.workspace')->group(function () {
         Route::post('/integrations/{id}/disconnect', [IntegrationController::class, 'disconnect']);
         Route::post('/integrations/{id}/fetch-models', [IntegrationController::class, 'fetchModels']);
         Route::post('/integrations/{id}/setup-webhook', [IntegrationController::class, 'setupWebhook']);
+        Route::post('/integrations/telegram/health-check', [IntegrationController::class, 'telegramHealthCheck']);
+        Route::post('/integrations/telegram/sync-bot-profile', [IntegrationController::class, 'syncTelegramBotProfile']);
+        Route::post('/integrations/telegram/test-send', [IntegrationController::class, 'sendTelegramTestMessage']);
+        Route::post('/integrations/telegram/rotate-secret', [IntegrationController::class, 'rotateTelegramWebhookSecret']);
+        Route::get('/integrations/telegram/operations', [TelegramOperationsController::class, 'index']);
+        Route::post('/integrations/telegram/operations/repair', [TelegramOperationsController::class, 'repair']);
+        Route::post('/integrations/telegram/receipts/{receiptId}/replay', [TelegramOperationsController::class, 'replayReceipt']);
+        Route::post('/integrations/telegram/deliveries/{deliveryId}/retry', [TelegramOperationsController::class, 'retryDelivery']);
         Route::get('/integrations/{id}/accounts', [IntegrationController::class, 'listAccounts']);
         Route::post('/integrations/{id}/accounts', [IntegrationController::class, 'createAccount']);
         Route::put('/integrations/{id}/accounts/{alias}', [IntegrationController::class, 'updateAccount']);

@@ -47,6 +47,14 @@ class IntegrationDirectory
                 continue;
             }
 
+            if ($provider->appName() === 'telegram') {
+                // Telegram chat setup is app-owned and already represented by
+                // the static chat descriptor. The generic Telegram package can
+                // still provide tools, but it must not create a second settings
+                // card with a different credential schema.
+                continue;
+            }
+
             $integrations[] = $this->configurableProviderDescriptor(
                 $provider,
                 $settings->get($provider->appName())

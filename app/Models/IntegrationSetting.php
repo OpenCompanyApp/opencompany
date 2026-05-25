@@ -196,6 +196,10 @@ class IntegrationSetting extends Model
      */
     private function requiredCredentialKeys(): array
     {
+        if ($this->integration_id === 'telegram') {
+            return ['api_key'];
+        }
+
         try {
             if (! app()->bound(ToolProviderRegistry::class)) {
                 return [];

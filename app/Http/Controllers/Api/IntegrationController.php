@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Chat\Telegram\Application\TelegramSetupService;
 use App\Domain\Integrations\Application\ManageIntegrationSettings;
 use App\Http\Controllers\Controller;
 use App\Models\IntegrationSetting;
+use App\Models\TelegramConversation;
+use App\Models\TelegramDelivery;
+use App\Models\TelegramIntegrationProfile;
+use App\Models\UserExternalIdentity;
 use App\Services\Ai\ModelCatalog;
 use App\Services\Ai\ModelRuntimeCatalog;
 use App\Services\Integrations\IntegrationAccountResolver;
@@ -12,9 +17,9 @@ use App\Services\Integrations\IntegrationConfigResolver;
 use App\Services\Integrations\IntegrationConnectionTester;
 use App\Services\Integrations\IntegrationDirectory;
 use App\Services\Integrations\IntegrationIdentity;
+use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -208,49 +213,168 @@ class IntegrationController extends Controller
             $setting->save();
         }
 
-        // Telegram sends this secret back in the webhook header. Generate once
-        // and reuse it so existing webhook registrations remain valid.
-        $webhookSecret = $setting->getConfigValue('webhook_secret');
-        if (! $webhookSecret) {
-            $webhookSecret = Str::random(64);
-            $setting->setConfigValue('webhook_secret', $webhookSecret);
-            $setting->save();
-        }
-
-        $appUrl = config('app.url');
-        $webhookUrl = rtrim($appUrl, '/').'/api/webhooks/chat/telegram';
-
         try {
-            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/setWebhook", [
-                'url' => $webhookUrl,
-                'secret_token' => $webhookSecret,
-                'allowed_updates' => json_encode(['message', 'callback_query']),
-            ]);
-
-            $data = $response->json();
-
-            if ($response->successful() && ($data['ok'] ?? false)) {
-                // Persist webhook status for UI diagnostics only. Telegram is
-                // still the source of truth for actual webhook registration.
-                $setting->setConfigValue('webhook_active', true);
-                $setting->save();
-
-                return response()->json([
-                    'success' => true,
-                    'webhookUrl' => $webhookUrl,
-                ]);
-            }
-
-            return response()->json([
-                'success' => false,
-                'error' => $data['description'] ?? 'Failed to set webhook',
-            ], 400);
+            return response()->json(app(TelegramSetupService::class)->setupWebhook($setting, $apiKey));
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Refresh the Telegram Bot API health snapshot without changing webhook
+     * registration. This gives the web admin surface a safe "check now" action
+     * that updates the persisted profile while keeping the raw token and webhook
+     * secret out of the response.
+     */
+    public function telegramHealthCheck(): JsonResponse
+    {
+        $setting = $this->telegramSetting();
+
+        try {
+            $result = app(TelegramSetupService::class)->health($setting);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => Str::limit($e->getMessage(), 300),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => $result['status'] ?? null,
+            'bot' => $result['bot'] ?? null,
+            'webhook' => $result['webhook'] ?? null,
+            'profile' => $this->serializeTelegramProfile($result['profile'] ?? null),
+        ]);
+    }
+
+    /**
+     * Republish Telegram-native command scopes, BotFather-visible profile
+     * metadata, and the default menu button while leaving the current webhook URL
+     * and secret untouched.
+     */
+    public function syncTelegramBotProfile(): JsonResponse
+    {
+        $setting = $this->telegramSetting();
+
+        try {
+            $result = app(TelegramSetupService::class)->syncBotCommandsAndProfile($setting);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => Str::limit($e->getMessage(), 300),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'commands' => $result['commands'] ?? null,
+            'profile_sync' => $result['profile_sync'] ?? null,
+            'profile' => $this->serializeTelegramProfile($result['profile'] ?? null),
+        ]);
+    }
+
+    /**
+     * Send a constrained test message to the signed-in admin's linked Telegram
+     * account, or to an already-observed private Telegram conversation in this
+     * workspace. This intentionally refuses arbitrary chat IDs so the setup UI
+     * cannot be abused as a raw Bot API sender.
+     */
+    public function sendTelegramTestMessage(Request $request): JsonResponse
+    {
+        $setting = $this->telegramSetting();
+        $target = $this->telegramTestTarget($request, $setting);
+
+        if (! $target) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No linked Telegram identity or private Telegram conversation is available for a test send.',
+            ], 422);
+        }
+
+        $text = 'OpenCompany Telegram test '.now()->format('Y-m-d H:i:s T');
+        $delivery = TelegramDelivery::create([
+            'id' => Str::uuid()->toString(),
+            'workspace_id' => $setting->workspace_id,
+            'integration_setting_id' => $setting->id,
+            'chat_id' => $target['chat_id'],
+            'topic_id' => $target['topic_id'],
+            'direct_messages_topic_id' => $target['direct_messages_topic_id'],
+            'parse_mode' => 'HTML',
+            'renderer_version' => 'telegram-admin-test-send:v1',
+            'status' => 'pending',
+            'request_payload' => [
+                'method' => 'sendMessage',
+                'text' => $text,
+                'target' => $target['kind'],
+            ],
+        ]);
+
+        try {
+            $result = app(TelegramService::class)->sendMessage(
+                $target['chat_id'],
+                htmlspecialchars($text, ENT_QUOTES, 'UTF-8'),
+                messageThreadId: TelegramService::messageThreadIdForTopic($target['topic_id']),
+                directMessagesTopicId: TelegramService::directMessagesTopicId($target['direct_messages_topic_id']),
+            );
+
+            $delivery->update([
+                'status' => 'sent',
+                'telegram_message_id' => isset($result['message_id']) ? (string) $result['message_id'] : null,
+                'response_payload' => $result,
+                'attempts' => 1,
+                'sent_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            $delivery->update([
+                'status' => 'failed',
+                'provider_error_code' => $e::class,
+                'provider_error_message' => Str::limit($e->getMessage(), 2000),
+                'attempts' => 1,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => Str::limit($e->getMessage(), 300),
+                'delivery' => $this->serializeTelegramDelivery($delivery->fresh()),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'target' => $target['label'],
+            'delivery' => $this->serializeTelegramDelivery($delivery->fresh()),
+        ]);
+    }
+
+    /**
+     * Rotate the webhook proof secret and re-register the live Telegram webhook.
+     * The raw secret is deliberately not returned; admins only see the stable
+     * fingerprint and current webhook/profile state.
+     */
+    public function rotateTelegramWebhookSecret(): JsonResponse
+    {
+        $setting = $this->telegramSetting();
+
+        try {
+            $result = app(TelegramSetupService::class)->rotateWebhookSecret($setting);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => Str::limit($e->getMessage(), 300),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'rotated' => true,
+            'secretFingerprint' => $result['secretFingerprint'] ?? null,
+            'webhookUrl' => $result['webhookUrl'] ?? null,
+            'profile' => $this->serializeTelegramProfile($result['profile'] ?? null),
+        ]);
     }
 
     /**
@@ -301,6 +425,112 @@ class IntegrationController extends Controller
     public function externalIdentities(Request $request): JsonResponse
     {
         return response()->json($this->settings->externalIdentities($request->input('provider')));
+    }
+
+    private function telegramSetting(): IntegrationSetting
+    {
+        return IntegrationSetting::forWorkspace()
+            ->where('integration_id', 'telegram')
+            ->where('enabled', true)
+            ->firstOrFail();
+    }
+
+    /**
+     * @return array{kind: string, label: string, chat_id: string, topic_id: ?string, direct_messages_topic_id: ?string}|null
+     */
+    private function telegramTestTarget(Request $request, IntegrationSetting $setting): ?array
+    {
+        $user = $request->user();
+
+        if ($user) {
+            $identity = UserExternalIdentity::query()
+                ->where('provider', 'telegram')
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($identity) {
+                $conversation = TelegramConversation::where('workspace_id', $setting->workspace_id)
+                    ->where('integration_setting_id', $setting->id)
+                    ->where('chat_type', 'private')
+                    ->where('chat_id', $identity->external_id)
+                    ->first();
+
+                return [
+                    'kind' => 'linked_identity',
+                    'label' => $identity->display_name ?: 'linked Telegram identity',
+                    'chat_id' => $identity->external_id,
+                    'topic_id' => $conversation?->topic_id,
+                    'direct_messages_topic_id' => $conversation?->direct_messages_topic_id,
+                ];
+            }
+        }
+
+        $conversation = TelegramConversation::where('workspace_id', $setting->workspace_id)
+            ->where('integration_setting_id', $setting->id)
+            ->where('chat_type', 'private')
+            ->latest('last_seen_at')
+            ->latest()
+            ->first();
+
+        if (! $conversation) {
+            return null;
+        }
+
+        return [
+            'kind' => 'recent_private_conversation',
+            'label' => $conversation->title ?: 'recent private conversation',
+            'chat_id' => $conversation->chat_id,
+            'topic_id' => $conversation->topic_id,
+            'direct_messages_topic_id' => $conversation->direct_messages_topic_id,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function serializeTelegramDelivery(?TelegramDelivery $delivery): ?array
+    {
+        if (! $delivery) {
+            return null;
+        }
+
+        return [
+            'id' => $delivery->id,
+            'chat_id' => $delivery->chat_id,
+            'telegram_message_id' => $delivery->telegram_message_id,
+            'renderer_version' => $delivery->renderer_version,
+            'status' => $delivery->status,
+            'provider_error_code' => $delivery->provider_error_code,
+            'provider_error_message' => $delivery->provider_error_message,
+            'attempts' => $delivery->attempts,
+            'sent_at' => $delivery->sent_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function serializeTelegramProfile(mixed $profile): ?array
+    {
+        if (! $profile instanceof TelegramIntegrationProfile) {
+            return null;
+        }
+
+        return [
+            'id' => $profile->id,
+            'bot_id' => $profile->bot_id,
+            'bot_username' => $profile->bot_username,
+            'webhook_url' => $profile->webhook_url,
+            'allowed_updates' => $profile->allowed_updates,
+            'command_sync_status' => $profile->command_sync_status,
+            'profile_sync_status' => $profile->profile_sync_status,
+            'health_status' => $profile->health_status,
+            'last_health_error' => $profile->last_health_error,
+            'pending_update_count' => $profile->pending_update_count,
+            'last_health_checked_at' => $profile->last_health_checked_at?->toIso8601String(),
+            'webhook_secret_fingerprint' => $profile->webhook_secret_fingerprint,
+            'capabilities' => $profile->capabilities,
+        ];
     }
 
     /**

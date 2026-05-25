@@ -1,9 +1,23 @@
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import editorWorkerUrl from 'monaco-editor/esm/vs/editor/editor.worker?url'
+
+let editorWorkerBlobUrl: string | null = null
+
+const monacoWorkerUrl = () => {
+  if (editorWorkerBlobUrl) return editorWorkerBlobUrl
+
+  // Valet serves the app from opencompany.test while Vite serves modules from
+  // its dev origin. Wrapping the worker import in a same-origin blob avoids the
+  // browser rejecting Monaco's worker constructor during local development.
+  const workerSource = `import ${JSON.stringify(editorWorkerUrl)};`
+  editorWorkerBlobUrl = URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' }))
+
+  return editorWorkerBlobUrl
+}
 
 // Must be set BEFORE monaco-editor is imported — it checks this on load
 self.MonacoEnvironment = {
   getWorker() {
-    return new editorWorker()
+    return new Worker(monacoWorkerUrl(), { type: 'module', name: 'monaco-editor-worker' })
   },
 }
 

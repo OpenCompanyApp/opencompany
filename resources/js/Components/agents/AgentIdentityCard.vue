@@ -72,6 +72,7 @@ const agentColors: Record<AgentType, string> = {
   researcher: 'bg-amber-100 dark:bg-amber-900/30',
   coder: 'bg-indigo-100 dark:bg-indigo-900/30',
   coordinator: 'bg-teal-100 dark:bg-teal-900/30',
+  system: 'bg-neutral-100 dark:bg-neutral-900/30',
 }
 
 const agentBgColor = computed(() => {

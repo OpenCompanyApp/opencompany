@@ -294,7 +294,11 @@ const handleClick = (event: MouseEvent) => {
 
 const toggleExpanded = () => {
   isExpanded.value = !isExpanded.value
-  emit(isExpanded.value ? 'expand' : 'collapse')
+  if (isExpanded.value) {
+    emit('expand')
+  } else {
+    emit('collapse')
+  }
 }
 
 defineExpose({

@@ -156,7 +156,7 @@ interface DocumentVersion {
   versionNumber: number
   changeDescription: string | null
   createdAt: Date
-  author?: { id: string; name: string; type: string }
+  author?: { id: string; name: string; type?: string }
 }
 
 interface DiffLine {

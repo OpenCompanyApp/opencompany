@@ -2,10 +2,12 @@
 
 namespace App\Domain\AgentRuntime\Application;
 
+use App\Agents\Support\MessageAttachmentContext;
 use App\Agents\Runtime\AgentRunBuilder;
 use App\Agents\Runtime\AgentRunFailed;
 use App\Agents\Runtime\AgentRunOptions;
 use App\Domain\Ai\Usage\UsageRecorder;
+use App\Domain\Chat\Telegram\Application\TelegramNotificationRouter;
 use App\Events\AgentStatusUpdated;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
@@ -70,6 +72,7 @@ class RespondToChatMessage
         private ResolveChatResponseTask $tasks,
         private DetectDeliveredChatResponse $deliveredResponses,
         private DeliverAgentMessage $messageDelivery,
+        private MessageAttachmentContext $attachmentContext,
     ) {}
 
     /**
@@ -123,7 +126,7 @@ class RespondToChatMessage
             return;
         }
 
-        safeBroadcast(new TaskUpdated($task, 'started'), 'task started');
+        $this->emitTaskUpdated($task, 'started', 'task started');
 
         $responseDelivered = false;
         $llmStep = null;
@@ -173,6 +176,8 @@ class RespondToChatMessage
             }
 
             $llmStep->start();
+            $this->emitTaskUpdated($task->fresh(['steps']) ?? $task, 'progress', 'task progress');
+
             $runResult = $agentRun->stream(
                 $this->buildPromptWithThreadContext($this->userMessage),
                 fn (StreamEvent $event) => $this->broadcastChatStreamEvent($event),
@@ -338,7 +343,7 @@ class RespondToChatMessage
                 $this->handleDelegationCallback($task, $responseText);
             }
 
-            safeBroadcast(new TaskUpdated($task, 'completed'), 'task completed');
+            $this->emitTaskUpdated($task, 'completed', 'task completed');
 
             Log::info('Agent responded', [
                 'agent' => $this->agent->name,
@@ -389,7 +394,7 @@ class RespondToChatMessage
                 $retryStep = $task->addStep("Retrying after provider error: {$e->getMessage()}", 'action');
                 $retryStep->start();
                 $retryStep->complete();
-                safeBroadcast(new TaskUpdated($task, 'retrying'), 'task retrying');
+                $this->emitTaskUpdated($task, 'retrying', 'task retrying');
 
                 throw $e;
             }
@@ -411,7 +416,7 @@ class RespondToChatMessage
                 $this->handleDelegationCallback($task, "Error: {$this->agent->name} failed to complete the task: {$e->getMessage()}");
             }
 
-            safeBroadcast(new TaskUpdated($task, 'failed'), 'task failed');
+            $this->emitTaskUpdated($task, 'failed', 'task failed');
 
             // Only notify user of error on the final attempt (avoid error + retry double message)
             if ($this->attempts() >= $this->tries) {
@@ -453,6 +458,22 @@ class RespondToChatMessage
                 'channel' => $this->channelId,
                 'task' => $this->taskId,
                 'type' => $type,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function emitTaskUpdated(Task $task, string $action, string $label): void
+    {
+        $event = new TaskUpdated($task, $action);
+
+        try {
+            app(TelegramNotificationRouter::class)->handleTaskUpdated($event);
+        } catch (\Throwable $e) {
+            Log::warning("Failed to route {$label}", [
+                'agent' => $this->agent->name,
+                'channel' => $this->channelId,
+                'task' => $task->id,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -609,13 +630,13 @@ class RespondToChatMessage
      */
     private function buildPromptWithThreadContext(Message $message): string
     {
-        $prompt = $message->content;
+        $prompt = $this->messageContentWithAttachments($message);
 
         if (! $message->reply_to_id) {
             return $prompt;
         }
 
-        $parent = $message->replyTo()->with('author')->first();
+        $parent = $message->replyTo()->with(['author', 'attachments'])->first();
         if (! $parent) {
             return $prompt;
         }
@@ -625,6 +646,18 @@ class RespondToChatMessage
         $content = Str::limit($parent->content, 500);
 
         return "[Replying to {$authorName}'s message from {$time}: \"{$content}\"]\n\n{$prompt}";
+    }
+
+    private function messageContentWithAttachments(Message $message): string
+    {
+        $channel = $message->relationLoaded('channel') ? $message->channel : $message->channel()->first();
+        $workspaceId = (string) ($channel?->workspace_id ?? $this->agent->workspace_id);
+        $parts = array_filter([
+            trim((string) $message->content),
+            $this->attachmentContext->textForMessage($message, $workspaceId),
+        ]);
+
+        return trim(implode("\n\n", $parts));
     }
 
     /**

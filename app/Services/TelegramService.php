@@ -2,13 +2,25 @@
 
 namespace App\Services;
 
+use App\Domain\Chat\Telegram\Application\TelegramRateLimitException;
+use App\Domain\Chat\Telegram\Application\TelegramSetupService;
 use App\Models\IntegrationSetting;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Low-level Telegram Bot API transport for OpenCompany-owned chat features.
+ *
+ * This service owns HTTP calls, configured Bot API base URLs, upload/download
+ * helpers, and transport-level fallbacks. It deliberately does not decide
+ * workspace authorization, command routing, callback policy, or renderer shape;
+ * those belong to the app-owned Telegram domain under `Domain\Chat\Telegram`.
+ */
 class TelegramService
 {
-    private const BASE_URL = 'https://api.telegram.org/bot';
+    private const DEFAULT_BASE_URL = 'https://api.telegram.org';
+
     private const MAX_MESSAGE_LENGTH = 4096;
 
     private ?string $botToken;
@@ -22,17 +34,43 @@ class TelegramService
         $this->botToken = $setting?->getConfigValue('api_key');
     }
 
+    public static function messageThreadIdForTopic(?string $topicId): ?int
+    {
+        if ($topicId === null || $topicId === '' || $topicId === '1' || ! ctype_digit($topicId)) {
+            return null;
+        }
+
+        return (int) $topicId;
+    }
+
+    public static function directMessagesTopicId(?string $topicId): ?int
+    {
+        if ($topicId === null || $topicId === '' || ! ctype_digit($topicId)) {
+            return null;
+        }
+
+        return (int) $topicId;
+    }
+
     /**
      * Send a text message to a Telegram chat.
      *
-     * @param array<string, mixed>|null $replyMarkup
+     * @param  array<string, mixed>|null  $replyMarkup
      * @return array<string, mixed>
      */
-    public function sendMessage(string $chatId, string $text, ?array $replyMarkup = null, ?int $replyToMessageId = null): array
-    {
+    public function sendMessage(
+        string $chatId,
+        string $text,
+        ?array $replyMarkup = null,
+        ?int $replyToMessageId = null,
+        ?int $messageThreadId = null,
+        ?int $directMessagesTopicId = null,
+        bool $disableNotification = false,
+        bool $disableLinkPreview = true,
+    ): array {
         // Split long messages
         if (strlen($text) > self::MAX_MESSAGE_LENGTH && $replyMarkup === null) {
-            return $this->sendLongMessage($chatId, $text, $replyToMessageId);
+            return $this->sendLongMessage($chatId, $text, $replyToMessageId, $messageThreadId, $directMessagesTopicId, $disableNotification, $disableLinkPreview);
         }
 
         $params = [
@@ -52,22 +90,113 @@ class TelegramService
             ]);
         }
 
+        if ($messageThreadId) {
+            $params['message_thread_id'] = $messageThreadId;
+        }
+
+        if ($directMessagesTopicId) {
+            $params['direct_messages_topic_id'] = $directMessagesTopicId;
+        }
+
+        if ($disableNotification) {
+            $params['disable_notification'] = true;
+        }
+
+        $this->applyTextMessageOptions($params, $disableLinkPreview);
+
         try {
             return $this->request('sendMessage', $params);
         } catch (\RuntimeException $e) {
-            if (!$replyMarkup && str_contains($e->getMessage(), "can't parse entities")) {
-                $params['text'] = strip_tags($params['text']);
-                unset($params['parse_mode']);
-                return $this->request('sendMessage', $params);
+            if ($this->isParseModeFailure($e)) {
+                return $this->plainTextFallback('sendMessage', $params);
             }
+
             throw $e;
         }
     }
 
     /**
+     * Stream an ephemeral partial message in a private Telegram chat.
+     *
+     * Telegram drafts are temporary previews and are not chat history. Callers
+     * must still send or edit a durable final message after the agent response is
+     * ready. An empty text intentionally renders Telegram's native "Thinking..."
+     * placeholder on Bot API versions that support it.
+     *
+     * @return array<string, mixed>
+     */
+    public function sendMessageDraft(
+        string $chatId,
+        int $draftId,
+        string $text = '',
+        ?int $messageThreadId = null,
+    ): array {
+        $params = [
+            'chat_id' => $chatId,
+            'draft_id' => $draftId,
+            'text' => substr($text, 0, self::MAX_MESSAGE_LENGTH),
+            'parse_mode' => 'HTML',
+        ];
+
+        if ($messageThreadId) {
+            $params['message_thread_id'] = $messageThreadId;
+        }
+
+        return $this->request('sendMessageDraft', $params);
+    }
+
+    /**
+     * Reply to a Telegram guest-mode query with a prepared inline result.
+     *
+     * Guest messages may originate from chats where the bot is not a member, so
+     * they are not normal workspace lanes and must not use sendMessage. The Bot
+     * API expects an InlineQueryResult payload, which OpenCompany constrains to a
+     * plain text article response until guest workflows have explicit identity and
+     * permission contracts.
+     *
+     * @return array<string, mixed>
+     */
+    public function answerGuestQuery(string $guestQueryId, string $text, ?string $title = null): array
+    {
+        return $this->request('answerGuestQuery', [
+            'guest_query_id' => $guestQueryId,
+            'result' => json_encode([
+                'type' => 'article',
+                'id' => 'opencompany-guest-reply',
+                'title' => $title ?: 'OpenCompany',
+                'input_message_content' => [
+                    'message_text' => substr($text, 0, self::MAX_MESSAGE_LENGTH),
+                    'parse_mode' => 'HTML',
+                ],
+            ]),
+        ]);
+    }
+
+    /**
+     * Answer a Telegram inline-mode query with OpenCompany launcher results.
+     *
+     * Inline mode is an external launcher surface rather than a normal chat lane:
+     * the user invokes the bot from another chat, Telegram expects an immediate
+     * result list, and no workspace mutation should happen until the user chooses
+     * a result or follows a deep link back into an authenticated OpenCompany flow.
+     *
+     * @param  list<array<string, mixed>>  $results
+     * @return array<string, mixed>
+     */
+    public function answerInlineQuery(string $inlineQueryId, array $results, int $cacheTime = 0, bool $isPersonal = true): array
+    {
+        return $this->request('answerInlineQuery', [
+            'inline_query_id' => $inlineQueryId,
+            'results' => json_encode($results),
+            'cache_time' => $cacheTime,
+            'is_personal' => $isPersonal,
+        ]);
+    }
+
+    /**
      * Edit an existing message's text.
      *
-     * @param array<string, mixed>|null $replyMarkup
+     * @param  array<string, mixed>|null  $replyMarkup
      * @return array<string, mixed>
      */
     public function editMessageText(string $chatId, int $messageId, string $text, ?array $replyMarkup = null): array
@@ -83,7 +212,25 @@ class TelegramService
             $params['reply_markup'] = json_encode($replyMarkup);
         }
 
-        return $this->request('editMessageText', $params);
+        $this->applyTextMessageOptions($params);
+
+        try {
+            return $this->request('editMessageText', $params);
+        } catch (\RuntimeException $e) {
+            if ($this->isMessageNotModified($e)) {
+                return [
+                    'message_id' => $messageId,
+                    '_opencompany_noop' => true,
+                    '_opencompany_noop_reason' => 'message_not_modified',
+                ];
+            }
+
+            if ($this->isParseModeFailure($e)) {
+                return $this->plainTextFallback('editMessageText', $params);
+            }
+
+            throw $e;
+        }
     }
 
     /**
@@ -114,7 +261,7 @@ class TelegramService
         return $this->request('setWebhook', [
             'url' => $url,
             'secret_token' => $secretToken,
-            'allowed_updates' => json_encode(['message', 'callback_query']),
+            'allowed_updates' => json_encode(app(TelegramSetupService::class)->allowedUpdates()),
         ]);
     }
 
@@ -139,16 +286,66 @@ class TelegramService
     }
 
     /**
+     * Get the current Telegram webhook registration.
+     *
+     * @return array<string, mixed>
+     */
+    public function getWebhookInfo(): array
+    {
+        return $this->request('getWebhookInfo');
+    }
+
+    /**
+     * Resolve Telegram file metadata before downloading the actual bytes.
+     *
+     * Telegram update payloads contain file IDs, not stable download URLs. The
+     * Bot API requires a getFile call for each file so OpenCompany can capture
+     * the provider path, size, and unique file identity in its own file metadata.
+     *
+     * @return array<string, mixed>
+     */
+    public function getFile(string $fileId): array
+    {
+        return $this->request('getFile', [
+            'file_id' => $fileId,
+        ]);
+    }
+
+    /**
+     * Download raw bytes for a file_path returned by getFile.
+     */
+    public function downloadFile(string $filePath): string
+    {
+        if (! $this->botToken) {
+            throw new \RuntimeException('Telegram bot token is not configured.');
+        }
+
+        $response = Http::timeout(30)->get($this->botApiFileUrl($filePath));
+
+        if (! $response->successful()) {
+            throw new \RuntimeException('Telegram file download failed with HTTP '.$response->status());
+        }
+
+        return $response->body();
+    }
+
+    /**
      * Send a chat action (e.g. "typing") to show the bot is working.
      *
      * @return array<string, mixed>
      */
-    public function sendChatAction(string $chatId, string $action = 'typing'): array
+    public function sendChatAction(string $chatId, string $action = 'typing', ?int $messageThreadId = null): array
     {
-        return $this->request('sendChatAction', [
+        $params = [
             'chat_id' => $chatId,
             'action' => $action,
-        ]);
+        ];
+
+        if ($messageThreadId) {
+            $params['message_thread_id'] = $messageThreadId;
+        }
+
+        return $this->request('sendChatAction', $params);
     }
 
     /**
@@ -156,17 +353,17 @@ class TelegramService
      *
      * @return array<string, mixed>
      */
-    public function sendPhoto(string $chatId, string $filePath, ?string $caption = null): array
+    public function sendPhoto(string $chatId, string $filePath, ?string $caption = null, ?int $directMessagesTopicId = null): array
     {
-        if (!$this->botToken) {
+        if (! $this->botToken) {
             throw new \RuntimeException('Telegram bot token is not configured.');
         }
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             throw new \RuntimeException("Photo file not found: {$filePath}");
         }
 
-        $url = self::BASE_URL . $this->botToken . '/sendPhoto';
+        $url = $this->botApiUrl('sendPhoto');
 
         try {
             $request = Http::timeout(30)
@@ -176,18 +373,19 @@ class TelegramService
             if ($caption) {
                 $params['caption'] = substr($caption, 0, 1024);
             }
+            if ($directMessagesTopicId) {
+                $params['direct_messages_topic_id'] = $directMessagesTopicId;
+            }
 
             $response = $request->post($url, $params);
             $data = $response->json();
 
-            if (!$response->successful() || !($data['ok'] ?? false)) {
-                $errorDescription = $data['description'] ?? 'Unknown Telegram API error';
-                Log::error('Telegram sendPhoto error', ['error' => $errorDescription]);
-                throw new \RuntimeException("Telegram API error: {$errorDescription}");
+            if (! $response->successful() || ! ($data['ok'] ?? false)) {
+                $this->throwTelegramApiException('sendPhoto', is_array($data) ? $data : null, $response->status(), $params);
             }
 
             return $data['result'] ?? [];
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             Log::error('Telegram sendPhoto connection error', ['error' => $e->getMessage()]);
             throw new \RuntimeException("Failed to connect to Telegram API: {$e->getMessage()}");
         }
@@ -199,17 +397,17 @@ class TelegramService
      *
      * @return array<string, mixed>
      */
-    public function sendDocument(string $chatId, string $filePath, ?string $caption = null): array
+    public function sendDocument(string $chatId, string $filePath, ?string $caption = null, ?int $directMessagesTopicId = null): array
     {
-        if (!$this->botToken) {
+        if (! $this->botToken) {
             throw new \RuntimeException('Telegram bot token is not configured.');
         }
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             throw new \RuntimeException("Document file not found: {$filePath}");
         }
 
-        $url = self::BASE_URL . $this->botToken . '/sendDocument';
+        $url = $this->botApiUrl('sendDocument');
 
         try {
             $request = Http::timeout(30)
@@ -219,18 +417,19 @@ class TelegramService
             if ($caption) {
                 $params['caption'] = substr($caption, 0, 1024);
             }
+            if ($directMessagesTopicId) {
+                $params['direct_messages_topic_id'] = $directMessagesTopicId;
+            }
 
             $response = $request->post($url, $params);
             $data = $response->json();
 
-            if (!$response->successful() || !($data['ok'] ?? false)) {
-                $errorDescription = $data['description'] ?? 'Unknown Telegram API error';
-                Log::error('Telegram sendDocument error', ['error' => $errorDescription]);
-                throw new \RuntimeException("Telegram API error: {$errorDescription}");
+            if (! $response->successful() || ! ($data['ok'] ?? false)) {
+                $this->throwTelegramApiException('sendDocument', is_array($data) ? $data : null, $response->status(), $params);
             }
 
             return $data['result'] ?? [];
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             Log::error('Telegram sendDocument connection error', ['error' => $e->getMessage()]);
             throw new \RuntimeException("Failed to connect to Telegram API: {$e->getMessage()}");
         }
@@ -285,11 +484,7 @@ class TelegramService
     public function setMyCommands(): array
     {
         return $this->request('setMyCommands', [
-            'commands' => json_encode([
-                ['command' => 'start', 'description' => 'Get started and show your user ID'],
-                ['command' => 'status', 'description' => 'Show workspace and agent status'],
-                ['command' => 'compact', 'description' => 'Compact conversation memory'],
-            ]),
+            'commands' => json_encode(app(TelegramSetupService::class)->commands()),
         ]);
     }
 
@@ -301,15 +496,15 @@ class TelegramService
      */
     public function setMyProfilePhoto(string $filePath): array
     {
-        if (!$this->botToken) {
+        if (! $this->botToken) {
             throw new \RuntimeException('Telegram bot token is not configured.');
         }
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             throw new \RuntimeException("Photo file not found: {$filePath}");
         }
 
-        $url = self::BASE_URL . $this->botToken . '/setMyProfilePhoto';
+        $url = $this->botApiUrl('setMyProfilePhoto');
 
         try {
             $response = Http::timeout(30)
@@ -323,15 +518,14 @@ class TelegramService
 
             $data = $response->json();
 
-            if (!$response->successful() || !($data['ok'] ?? false)) {
-                $errorDescription = $data['description'] ?? 'Unknown Telegram API error';
-                Log::error('Telegram setMyProfilePhoto error', ['error' => $errorDescription]);
-                throw new \RuntimeException("Telegram API error: {$errorDescription}");
+            if (! $response->successful() || ! ($data['ok'] ?? false)) {
+                $this->throwTelegramApiException('setMyProfilePhoto', is_array($data) ? $data : null, $response->status());
             }
 
             $result = $data['result'] ?? true;
+
             return is_array($result) ? $result : ['ok' => $result];
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             Log::error('Telegram setMyProfilePhoto connection error', ['error' => $e->getMessage()]);
             throw new \RuntimeException("Failed to connect to Telegram API: {$e->getMessage()}");
         }
@@ -342,7 +536,7 @@ class TelegramService
      */
     public function isConfigured(): bool
     {
-        return !empty($this->botToken);
+        return ! empty($this->botToken);
     }
 
     /**
@@ -356,8 +550,9 @@ class TelegramService
 
         // 1. Extract fenced code blocks (with optional language tag, newline optional)
         $text = preg_replace_callback('/```(?:\w*)\n?(.*?)```/s', function ($m) use (&$protected) {
-            $id = "\x00BLK" . count($protected) . "\x00";
-            $protected[$id] = '<pre>' . htmlspecialchars(trim($m[1]), ENT_QUOTES, 'UTF-8') . '</pre>';
+            $id = "\x00BLK".count($protected)."\x00";
+            $protected[$id] = '<pre>'.htmlspecialchars(trim($m[1]), ENT_QUOTES, 'UTF-8').'</pre>';
+
             return $id;
         }, $markdown);
 
@@ -366,15 +561,17 @@ class TelegramService
 
         // 3. Convert markdown tables to pre-formatted text
         $text = preg_replace_callback('/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/m', function ($m) use (&$protected) {
-            $id = "\x00BLK" . count($protected) . "\x00";
-            $protected[$id] = '<pre>' . htmlspecialchars(self::formatTable($m[0]), ENT_QUOTES, 'UTF-8') . '</pre>';
+            $id = "\x00BLK".count($protected)."\x00";
+            $protected[$id] = '<pre>'.htmlspecialchars(self::formatTable($m[0]), ENT_QUOTES, 'UTF-8').'</pre>';
+
             return $id;
         }, $text);
 
         // 4. Extract inline code
         $text = preg_replace_callback('/`([^`]+)`/', function ($m) use (&$protected) {
-            $id = "\x00BLK" . count($protected) . "\x00";
-            $protected[$id] = '<code>' . htmlspecialchars($m[1], ENT_QUOTES, 'UTF-8') . '</code>';
+            $id = "\x00BLK".count($protected)."\x00";
+            $protected[$id] = '<code>'.htmlspecialchars($m[1], ENT_QUOTES, 'UTF-8').'</code>';
+
             return $id;
         }, $text);
 
@@ -443,7 +640,7 @@ class TelegramService
         $currentWidth = self::visualWidth($text);
         $padding = $targetWidth - $currentWidth;
 
-        return $padding > 0 ? $text . str_repeat(' ', $padding) : $text;
+        return $padding > 0 ? $text.str_repeat(' ', $padding) : $text;
     }
 
     /**
@@ -503,15 +700,22 @@ class TelegramService
      *
      * @return array<string, mixed>
      */
-    private function sendLongMessage(string $chatId, string $text, ?int $replyToMessageId = null): array
-    {
+    private function sendLongMessage(
+        string $chatId,
+        string $text,
+        ?int $replyToMessageId = null,
+        ?int $messageThreadId = null,
+        ?int $directMessagesTopicId = null,
+        bool $disableNotification = false,
+        bool $disableLinkPreview = true,
+    ): array {
         $chunks = $this->splitAtLineBoundaries($text, self::MAX_MESSAGE_LENGTH);
         $lastResult = [];
 
         foreach ($chunks as $i => $chunk) {
             // Only reply-thread the first chunk
             $replyId = $i === 0 ? $replyToMessageId : null;
-            $lastResult = $this->sendChunk($chatId, $chunk, $replyId);
+            $lastResult = $this->sendChunk($chatId, $chunk, $replyId, $messageThreadId, $directMessagesTopicId, $disableNotification, $disableLinkPreview);
         }
 
         return $lastResult;
@@ -522,8 +726,15 @@ class TelegramService
      *
      * @return array<string, mixed>
      */
-    private function sendChunk(string $chatId, string $text, ?int $replyToMessageId = null): array
-    {
+    private function sendChunk(
+        string $chatId,
+        string $text,
+        ?int $replyToMessageId = null,
+        ?int $messageThreadId = null,
+        ?int $directMessagesTopicId = null,
+        bool $disableNotification = false,
+        bool $disableLinkPreview = true,
+    ): array {
         $params = [
             'chat_id' => $chatId,
             'text' => $text,
@@ -537,16 +748,84 @@ class TelegramService
             ]);
         }
 
+        if ($messageThreadId) {
+            $params['message_thread_id'] = $messageThreadId;
+        }
+
+        if ($directMessagesTopicId) {
+            $params['direct_messages_topic_id'] = $directMessagesTopicId;
+        }
+
+        if ($disableNotification) {
+            $params['disable_notification'] = true;
+        }
+
+        $this->applyTextMessageOptions($params, $disableLinkPreview);
+
         try {
             return $this->request('sendMessage', $params);
         } catch (\RuntimeException $e) {
-            if (str_contains($e->getMessage(), "can't parse entities")) {
-                $params['text'] = strip_tags($text);
-                unset($params['parse_mode']);
-                return $this->request('sendMessage', $params);
+            if ($this->isParseModeFailure($e)) {
+                return $this->plainTextFallback('sendMessage', $params);
             }
+
             throw $e;
         }
+    }
+
+    private function isParseModeFailure(\RuntimeException $e): bool
+    {
+        return str_contains($e->getMessage(), "can't parse entities");
+    }
+
+    private function isMessageNotModified(\RuntimeException $e): bool
+    {
+        return str_contains(strtolower($e->getMessage()), 'message is not modified');
+    }
+
+    /**
+     * Apply shared Bot API text-message options.
+     *
+     * Operational OpenCompany cards include web URLs for fallback access, but
+     * Telegram's automatic preview cards make task/run bubbles noisy and push
+     * action buttons off screen. LinkPreviewOptions is the current Bot API
+     * surface for suppressing those previews while still keeping links tappable.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    private function applyTextMessageOptions(array &$params, bool $disableLinkPreview = true): void
+    {
+        if (! $disableLinkPreview) {
+            return;
+        }
+
+        $params['link_preview_options'] = json_encode(['is_disabled' => true]);
+    }
+
+    /**
+     * Retry a text delivery without parse mode while preserving transport hints.
+     *
+     * Telegram formatting is fragile: one malformed entity can reject the whole
+     * message. Buttons, reply targets, topics, silent mode, and direct-message
+     * topic routing are independent of parse mode, so the fallback strips only
+     * formatting tags and keeps the rest of the send parameters intact.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private function plainTextFallback(string $method, array $params): array
+    {
+        $params['text'] = html_entity_decode(
+            strip_tags((string) ($params['text'] ?? '')),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8',
+        );
+        unset($params['parse_mode']);
+
+        return [
+            ...$this->request($method, $params),
+            '_opencompany_parse_mode_fallback' => true,
+        ];
     }
 
     /**
@@ -575,7 +854,7 @@ class TelegramService
 
             if ($isPre) {
                 // Never split a <pre> block — flush current and add as its own chunk if needed
-                if (strlen($current . $segment) <= $maxLength) {
+                if (strlen($current.$segment) <= $maxLength) {
                     $current .= $segment;
                 } else {
                     if ($current !== '') {
@@ -589,7 +868,7 @@ class TelegramService
                 // Regular text — split at line boundaries
                 $lines = explode("\n", $segment);
                 foreach ($lines as $line) {
-                    $candidate = $current === '' ? $line : $current . "\n" . $line;
+                    $candidate = $current === '' ? $line : $current."\n".$line;
 
                     if (strlen($candidate) > $maxLength) {
                         if ($current !== '') {
@@ -617,38 +896,115 @@ class TelegramService
     /**
      * Make an HTTP request to the Telegram Bot API.
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
     private function request(string $method, array $params = []): array
     {
-        if (!$this->botToken) {
+        if (! $this->botToken) {
             throw new \RuntimeException('Telegram bot token is not configured.');
         }
 
-        $url = self::BASE_URL . $this->botToken . '/' . $method;
+        $url = $this->botApiUrl($method);
 
         try {
             $response = Http::timeout(10)->post($url, $params);
 
             $data = $response->json();
 
-            if (!$response->successful() || !($data['ok'] ?? false)) {
-                $errorDescription = $data['description'] ?? 'Unknown Telegram API error';
-                Log::error("Telegram API error: {$method}", [
-                    'error' => $errorDescription,
-                    'params' => array_diff_key($params, ['text' => true]),
-                ]);
-                throw new \RuntimeException("Telegram API error: {$errorDescription}");
+            if (! $response->successful() || ! ($data['ok'] ?? false)) {
+                $this->throwTelegramApiException($method, is_array($data) ? $data : null, $response->status(), $params);
             }
 
             $result = $data['result'] ?? [];
+
             return is_array($result) ? $result : ['ok' => $result];
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             Log::error("Telegram API connection error: {$method}", [
                 'error' => $e->getMessage(),
             ]);
             throw new \RuntimeException("Failed to connect to Telegram API: {$e->getMessage()}");
         }
+    }
+
+    /**
+     * Convert Bot API error payloads into typed exceptions with operator-safe
+     * metadata. Multipart upload methods cannot reuse request(), so they share
+     * this classifier with normal JSON-form Bot API methods.
+     *
+     * @param  array<string, mixed>|null  $data
+     * @param  array<string, mixed>  $params
+     */
+    private function throwTelegramApiException(string $method, ?array $data, int $status, array $params = []): never
+    {
+        $errorDescription = is_array($data) ? (string) ($data['description'] ?? 'Unknown Telegram API error') : 'Unknown Telegram API error';
+        $errorCode = is_array($data) ? (int) ($data['error_code'] ?? $status) : $status;
+        $parameters = is_array($data['parameters'] ?? null) ? $data['parameters'] : [];
+        $retryAfter = (int) ($parameters['retry_after'] ?? 0);
+
+        if ($method === 'editMessageText' && str_contains($errorDescription, 'message is not modified')) {
+            throw new \RuntimeException("Telegram API error: {$errorDescription}");
+        }
+
+        Log::error("Telegram API error: {$method}", [
+            'error' => $errorDescription,
+            'error_code' => $errorCode,
+            'retry_after' => $retryAfter ?: null,
+            'params' => array_diff_key($params, ['text' => true, 'caption' => true]),
+        ]);
+
+        if ($errorCode === 429 || $retryAfter > 0) {
+            throw new TelegramRateLimitException(
+                max(1, $retryAfter),
+                "Telegram API rate limit: {$errorDescription}",
+            );
+        }
+
+        throw new \RuntimeException("Telegram API error: {$errorDescription}");
+    }
+
+    /**
+     * Build the JSON/multipart Bot API endpoint for the configured transport.
+     *
+     * OpenCompany defaults to Telegram's hosted Bot API, but local Bot API
+     * servers use the same "/bot{token}/{method}" path on a different origin.
+     * Keeping URL construction centralized prevents upload, webhook, and normal
+     * form requests from accidentally drifting apart.
+     */
+    private function botApiUrl(string $method): string
+    {
+        return $this->botApiBaseUrl().'/bot'.$this->botToken.'/'.ltrim($method, '/');
+    }
+
+    /**
+     * Build the file download endpoint for a getFile file_path.
+     *
+     * Telegram file downloads are a separate URL namespace from method calls.
+     * Operators may split that namespace onto a different host; otherwise it
+     * follows the method base URL with "/file" appended.
+     */
+    private function botApiFileUrl(string $filePath): string
+    {
+        $baseUrl = config('telegram.bot_api_file_base_url');
+
+        if (! is_string($baseUrl) || trim($baseUrl) === '') {
+            $baseUrl = $this->botApiBaseUrl().'/file';
+        }
+
+        return rtrim($baseUrl, '/').'/bot'.$this->botToken.'/'.ltrim($filePath, '/');
+    }
+
+    /**
+     * Resolve and normalize the configured Bot API origin.
+     */
+    private function botApiBaseUrl(): string
+    {
+        $baseUrl = config('telegram.bot_api_base_url', self::DEFAULT_BASE_URL);
+
+        if (! is_string($baseUrl) || trim($baseUrl) === '') {
+            $baseUrl = self::DEFAULT_BASE_URL;
+        }
+
+        return rtrim($baseUrl, '/');
     }
 }

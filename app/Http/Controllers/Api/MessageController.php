@@ -14,6 +14,7 @@ use App\Models\MessageReaction;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentChatService;
+use App\Services\Chat\DirectMessageResolver;
 use App\Services\Memory\ConversationCompactionService;
 use App\Services\Memory\MemoryFlushService;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +32,10 @@ use Illuminate\Support\Str;
  */
 class MessageController extends Controller
 {
+    public function __construct(
+        private readonly DirectMessageResolver $directMessages,
+    ) {}
+
     /**
      * @return Collection<int, Message>
      */
@@ -57,13 +62,15 @@ class MessageController extends Controller
 
     public function store(Request $request): Message
     {
+        $channel = Channel::forWorkspace()->findOrFail($request->input('channelId'));
+
         // Message validation currently happens at route/client level; this
         // endpoint assumes channelId/content are present and then performs the
         // runtime side effects below.
         $message = Message::create([
             'id' => Str::uuid()->toString(),
             'content' => $request->input('content'),
-            'channel_id' => $request->input('channelId'),
+            'channel_id' => $channel->id,
             'author_id' => auth()->id(),
             'reply_to_id' => $request->input('replyToId'),
             'timestamp' => now(),
@@ -77,8 +84,7 @@ class MessageController extends Controller
         }
 
         // Update channel's last_message_at
-        Channel::where('id', $request->input('channelId'))
-            ->update(['last_message_at' => now()]);
+        $channel->update(['last_message_at' => now()]);
 
         // Broadcast user's message
         broadcast(new MessageSent($message))->toOthers();
@@ -97,14 +103,15 @@ class MessageController extends Controller
     {
         // Only DMs auto-trigger the other participant. Mentions in group-style
         // channels are handled separately below.
-        $channel = Channel::find($message->channel_id);
+        $channel = Channel::forWorkspace()->find($message->channel_id);
         if (! $channel || $channel->type !== 'dm') {
             return;
         }
 
-        // DirectMessage identifies the other participant; channel membership
-        // alone is not enough because old DMs can include bookkeeping members.
-        $dm = DirectMessage::where('channel_id', $message->channel_id)->first();
+        // DirectMessage identifies the other participant. The resolver can
+        // repair the browser-observed orphan DM case, but only when membership
+        // is unambiguous and workspace-scoped.
+        $dm = $this->directMessages->resolveAgentDmForMessage($channel, $message);
         if (! $dm) {
             return;
         }

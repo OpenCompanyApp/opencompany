@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
 /**
-* @see routes/web.php:50
+* @see routes/web.php:72
 * @route '/create-workspace'
 */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -14,7 +14,7 @@ create.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:50
+* @see routes/web.php:72
 * @route '/create-workspace'
 */
 create.url = (options?: RouteQueryOptions) => {
@@ -22,7 +22,7 @@ create.url = (options?: RouteQueryOptions) => {
 }
 
 /**
-* @see routes/web.php:50
+* @see routes/web.php:72
 * @route '/create-workspace'
 */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -31,7 +31,7 @@ create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 
 /**
-* @see routes/web.php:50
+* @see routes/web.php:72
 * @route '/create-workspace'
 */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

@@ -20,6 +20,10 @@
         :workspace-status-loading="workspaceStatusLoading"
         :workspace-status-error="workspaceStatusError"
         :workspace-status-last-refreshed-at="workspaceStatusLastRefreshedAt"
+        :composer-error="composerError"
+        v-model:composer-draft="composerDraft"
+        :composer-focus-request-key="composerFocusRequestKey"
+        :empty-state-notice="emptyStateNotice"
         @select-channel="selectChannel"
         @new-agent-chat="startNewAssistantChat"
         @create-channel="showCreateChannelModal = true"
@@ -29,6 +33,7 @@
         @stop="handleStopResponse"
         @compact="handleCompactCommand"
         @status="handleStatusCommand"
+        @prefill="handleSuggestedPrompt"
         @refresh="refreshAssistantRuntime"
         @refresh-status="refreshWorkspaceStatusPanel"
         @close-status="statusPanelOpen = false"
@@ -87,6 +92,16 @@ interface Thread {
   replies: Message[]
 }
 
+interface CompactChannelResponse {
+  message?: string
+  results?: Array<{
+    agent: string
+    messages_summarized: number
+    tokens_before: number
+    tokens_after: number
+  }>
+}
+
 const activeThread = ref<Thread | null>(null)
 const showAddMemberModal = ref(false)
 const showCreateChannelModal = ref(false)
@@ -103,6 +118,11 @@ const workspaceStatus = ref<WorkspaceStatus | null>(null)
 const workspaceStatusLoading = ref(false)
 const workspaceStatusError = ref<string | null>(null)
 const workspaceStatusLastRefreshedAt = ref<Date | null>(null)
+const composerError = ref<string | null>(null)
+const composerDraft = ref('')
+const composerFocusRequestKey = ref(0)
+const invalidAgentSelection = ref<string | null>(null)
+const agentsLoaded = ref(false)
 let runtimePoll: number | null = null
 
 // Channels data
@@ -142,6 +162,7 @@ const refreshAgents = async () => {
   const result = fetchAgents()
   await result.promise
   agents.value = result.data.value ?? []
+  agentsLoaded.value = true
   if (!selectedAgentId.value && agents.value.length > 0) {
     selectedAgentId.value = agents.value[0].id
   }
@@ -168,6 +189,52 @@ const agentsData = computed<User[]>(() => {
 const isAssistantChannel = (channel: Channel | null | undefined): channel is Channel =>
   Boolean(channel?.type === 'dm' && channel.members?.some(member => member.type === 'agent'))
 
+const isWorkspaceAgentId = (agentId: string | null | undefined): agentId is string =>
+  Boolean(agentId && agents.value.some(agent => agent.id === agentId))
+
+const clearAgentQueryParam = () => {
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('agent')) return
+
+  url.searchParams.delete('agent')
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
+const markInvalidAgentSelection = (agentId: string) => {
+  invalidAgentSelection.value = agentId
+  composerError.value = null
+  selectedAgentId.value = ''
+  selectedChannel.value = null
+  draftingNewAssistantChat.value = true
+  clearAgentQueryParam()
+}
+
+const emptyStateNotice = computed(() =>
+  invalidAgentSelection.value ? 'Agent not available in this workspace.' : null
+)
+
+const channelFromDmResponse = (response: any): Channel | undefined => {
+  const channelId = response?.data?.channelId ?? response?.data?.channel_id
+  if (!channelId) return undefined
+
+  return channelsData.value.find(channel => channel.id === channelId)
+}
+
+const findDmChannelForUser = (userId: string): Channel | undefined =>
+  channelsData.value.find(channel =>
+    channel.type === 'dm' && channel.members?.some(member => member.id === userId)
+  )
+
+const resolveDmChannel = async (userId: string): Promise<Channel | undefined> => {
+  const response = await fetchDm(userId)
+  await refreshChannels()
+
+  // Trust the API's canonical channel id first. Membership-based lookup is only
+  // a fallback for older response shapes and prevents orphan DMs from winning
+  // when a cached duplicate happens to appear earlier in the sidebar payload.
+  return channelFromDmResponse(response) ?? findDmChannelForUser(userId)
+}
+
 const channelApprovals = computed(() => {
   const channelId = selectedChannel.value?.id
   if (!channelId) return []
@@ -182,49 +249,38 @@ const channelApprovals = computed(() => {
 const selectedChannel = ref<Channel | null>(null)
 
 // Initialize with first channel or from query
-watch(channelsData, async (newChannels) => {
+watch([channelsData, agentsLoaded], async ([newChannels, loaded]) => {
+  if (!loaded) return
+
+  const url = new URL(window.location.href)
+  const agentUserId = url.searchParams.get('agent')
+
+  if (agentUserId && !isWorkspaceAgentId(agentUserId)) {
+    markInvalidAgentSelection(agentUserId)
+    return
+  }
+
   if (!selectedChannel.value && !draftingNewAssistantChat.value && newChannels.length > 0) {
-    const url = new URL(window.location.href)
     const channelId = url.searchParams.get('channel')
     const dmUserId = url.searchParams.get('dm')
-    const agentUserId = url.searchParams.get('agent')
 
     let found: Channel | undefined
 
     // Check for dm parameter first - find DM channel with this user
     if (agentUserId) {
       selectedAgentId.value = agentUserId
-      found = newChannels.find(c =>
-        c.type === 'dm' && c.members?.some(m => m.id === agentUserId)
-      )
-      if (!found) {
-        try {
-          await fetchDm(agentUserId)
-          await refreshChannels()
-          found = channelsData.value.find(c =>
-            c.type === 'dm' && c.members?.some(m => m.id === agentUserId)
-          )
-        } catch (e) {
-          console.error('Failed to create agent DM:', e)
-        }
+      try {
+        found = await resolveDmChannel(agentUserId)
+      } catch (e) {
+        console.error('Failed to create agent DM:', e)
       }
     }
 
     if (!found && dmUserId) {
-      found = newChannels.find(c =>
-        c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
-      )
-      // Auto-create DM if it doesn't exist yet
-      if (!found) {
-        try {
-          await fetchDm(dmUserId)
-          await refreshChannels()
-          found = channelsData.value.find(c =>
-            c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
-          )
-        } catch (e) {
-          console.error('Failed to create DM:', e)
-        }
+      try {
+        found = await resolveDmChannel(dmUserId)
+      } catch (e) {
+        console.error('Failed to create DM:', e)
       }
     }
 
@@ -248,29 +304,25 @@ watch(() => {
     agentUserId: url.searchParams.get('agent')
   }
 }, async ({ channelId, dmUserId, agentUserId }) => {
-  if (channelsData.value.length === 0) return
+  if (channelsData.value.length === 0 || !agentsLoaded.value) return
 
   if (agentUserId) {
+    if (!isWorkspaceAgentId(agentUserId)) {
+      markInvalidAgentSelection(agentUserId)
+      return
+    }
+
     await openAgentChat(agentUserId)
     return
   }
 
   // Handle dm parameter - find DM channel with this user
   if (dmUserId) {
-    let found = channelsData.value.find(c =>
-      c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
-    )
-    // Auto-create DM if it doesn't exist yet
-    if (!found) {
-      try {
-        await fetchDm(dmUserId)
-        await refreshChannels()
-        found = channelsData.value.find(c =>
-          c.type === 'dm' && c.members?.some(m => m.id === dmUserId)
-        )
-      } catch (e) {
-        console.error('Failed to create DM:', e)
-      }
+    let found: Channel | undefined
+    try {
+      found = await resolveDmChannel(dmUserId)
+    } catch (e) {
+      console.error('Failed to create DM:', e)
     }
     if (found) {
       selectedChannel.value = found
@@ -382,26 +434,28 @@ const channelMessages = computed<Message[]>(() => {
 // Get first few members as viewers
 const selectChannel = async (channel: Channel) => {
   draftingNewAssistantChat.value = false
+  composerError.value = null
+  invalidAgentSelection.value = null
   selectedChannel.value = channel
 }
 
 const openAgentChat = async (agentId: string) => {
+  if (!isWorkspaceAgentId(agentId)) {
+    markInvalidAgentSelection(agentId)
+    return
+  }
+
   draftingNewAssistantChat.value = false
   selectedAgentId.value = agentId
-  let channel = channelsData.value.find(c =>
-    c.type === 'dm' && c.members?.some(m => m.id === agentId)
-  )
+  composerError.value = null
+  invalidAgentSelection.value = null
+  let channel: Channel | undefined
 
-  if (!channel) {
-    try {
-      await fetchDm(agentId)
-      await refreshChannels()
-      channel = channelsData.value.find(c =>
-        c.type === 'dm' && c.members?.some(m => m.id === agentId)
-      )
-    } catch (e) {
-      console.error('Failed to open agent chat:', e)
-    }
+  try {
+    channel = await resolveDmChannel(agentId)
+  } catch (e) {
+    console.error('Failed to open agent chat:', e)
+    composerError.value = 'Could not open that assistant chat. Try again.'
   }
 
   selectedChannel.value = channel ?? null
@@ -412,7 +466,15 @@ const startNewAssistantChat = (agentId: string) => {
   // button visibly reset to a draft state instead of reselecting the current DM.
   draftingNewAssistantChat.value = true
   selectedAgentId.value = agentId
+  invalidAgentSelection.value = null
   selectedChannel.value = null
+  composerFocusRequestKey.value++
+}
+
+const handleSuggestedPrompt = (prompt: string) => {
+  composerDraft.value = prompt
+  composerError.value = null
+  composerFocusRequestKey.value++
 }
 
 interface MessageAttachment {
@@ -427,17 +489,23 @@ interface MessageAttachment {
 }
 
 const handleSendMessage = async (content: string, attachments?: MessageAttachment[]) => {
-  if (!selectedChannel.value) return
+  if (!selectedChannel.value) {
+    composerError.value = 'Choose a conversation before sending.'
+    return
+  }
+
+  composerError.value = null
 
   // Intercept /compact command
   if (content.trim() === '/compact') {
     try {
       const { data } = await compactChannel(selectedChannel.value.id)
-      const resultText = data.results
-        ? data.results.map((r: any) =>
+      const compactResult = data as CompactChannelResponse
+      const resultText = compactResult.results
+        ? compactResult.results?.map(r =>
             `**${r.agent}**: ${r.messages_summarized} messages compacted (${r.tokens_before} → ${r.tokens_after} tokens)`
           ).join('\n')
-        : data.message
+        : compactResult.message
       messages.value = [...messages.value, {
         id: `system-${Date.now()}`,
         content: `🗜️ ${resultText}`,
@@ -488,6 +556,7 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
       attachmentIds = await Promise.all(uploadPromises)
     } catch (error) {
       console.error('Failed to upload attachments:', error)
+      composerError.value = 'Attachment upload failed. Try again.'
       return
     }
   }
@@ -519,6 +588,7 @@ const handleSendMessage = async (content: string, attachments?: MessageAttachmen
   } catch (error) {
     messages.value = messages.value.filter(m => m.id !== tempId)
     console.error('Failed to send message:', error)
+    composerError.value = 'Message failed to send. Try again.'
   }
 }
 
@@ -527,16 +597,34 @@ const handleUnifiedSend = async (content: string, attachments?: ComposerAttachme
     await openAgentChat(selectedAgentId.value)
   }
 
+  if (!selectedChannel.value) {
+    composerError.value = 'Could not open an assistant chat for this message.'
+    return
+  }
+
   await handleSendMessage(content, attachments as MessageAttachment[] | undefined)
   await refreshAssistantRuntime()
 }
 
 const handleCompactCommand = () => handleUnifiedSend('/compact', [])
-const handleStatusCommand = () => openStatusPanel()
+const handleStatusCommand = () => {
+  if (statusPanelOpen.value) {
+    statusPanelOpen.value = false
+    return
+  }
+
+  openStatusPanel()
+}
 
 const openStatusPanel = async () => {
   statusPanelOpen.value = true
   await refreshWorkspaceStatusPanel()
+}
+
+const handleGlobalKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && statusPanelOpen.value) {
+    statusPanelOpen.value = false
+  }
 }
 
 const refreshWorkspaceStatusPanel = async () => {
@@ -666,26 +754,15 @@ const handleMemberClick = (member: User) => {
 }
 
 const handleMemberMessage = async (member: User) => {
-  // Find existing DM channel with this member
-  const existingDm = channelsData.value.find(c =>
-    c.type === 'dm' && c.members?.some(m => m.id === member.id)
-  )
-  if (existingDm) {
-    selectedChannel.value = existingDm
-    return
-  }
-  // No existing DM — create one via API, refresh channels, then select
   try {
-    const response = await fetchDm(member.id)
-    await refreshChannels()
-    const newDm = channelsData.value.find(c =>
-      c.type === 'dm' && c.members?.some(m => m.id === member.id)
-    )
+    const newDm = await resolveDmChannel(member.id)
     if (newDm) {
+      composerError.value = null
       selectedChannel.value = newDm
     }
   } catch (e) {
     console.error('Failed to open DM:', e)
+    composerError.value = 'Could not open that direct message. Try again.'
   }
 }
 
@@ -830,6 +907,7 @@ const handleStreamError = ({ channelId, event }: { channelId: string; event: Str
 onMounted(async () => {
   // Fetch initial data
   await Promise.all([refreshChannels(), refreshAgents()])
+  window.addEventListener('keydown', handleGlobalKeydown)
 
   // Initialize typing indicator
   initTyping()
@@ -888,6 +966,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
   unsubscribeMessage?.()
   unsubscribeStreamStart?.()
   unsubscribeStreamDelta?.()

@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../wayfinder'
 /**
 * @see \OpenCompany\Integrations\TickTick\TickTickOAuthController::authorize
-* @see Users/rutger/Sites/integrations/packages/ticktick/src/TickTickOAuthController.php:18
+* @see vendor/opencompanyapp/integration-ticktick/src/TickTickOAuthController.php:18
 * @route '/api/integrations/ticktick/oauth/authorize'
 */
 export const authorize = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ authorize.definition = {
 
 /**
 * @see \OpenCompany\Integrations\TickTick\TickTickOAuthController::authorize
-* @see Users/rutger/Sites/integrations/packages/ticktick/src/TickTickOAuthController.php:18
+* @see vendor/opencompanyapp/integration-ticktick/src/TickTickOAuthController.php:18
 * @route '/api/integrations/ticktick/oauth/authorize'
 */
 authorize.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ authorize.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \OpenCompany\Integrations\TickTick\TickTickOAuthController::authorize
-* @see Users/rutger/Sites/integrations/packages/ticktick/src/TickTickOAuthController.php:18
+* @see vendor/opencompanyapp/integration-ticktick/src/TickTickOAuthController.php:18
 * @route '/api/integrations/ticktick/oauth/authorize'
 */
 authorize.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ authorize.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \OpenCompany\Integrations\TickTick\TickTickOAuthController::authorize
-* @see Users/rutger/Sites/integrations/packages/ticktick/src/TickTickOAuthController.php:18
+* @see vendor/opencompanyapp/integration-ticktick/src/TickTickOAuthController.php:18
 * @route '/api/integrations/ticktick/oauth/authorize'
 */
 authorize.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ authorize.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \OpenCompany\Integrations\TickTick\TickTickOAuthController::callback
-* @see Users/rutger/Sites/integrations/packages/ticktick/src/TickTickOAuthController.php:63
+* @see vendor/opencompanyapp/integration-ticktick/src/TickTickOAuthController.php:63
 * @route '/api/integrations/ticktick/oauth/callback'
 */
 export const callback = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -60,7 +60,7 @@ callback.definition = {
 
 /**
 * @see \OpenCompany\Integrations\TickTick\TickTickOAuthController::callback
-* @see Users/rutger/Sites/integrations/packages/ticktick/src/TickTickOAuthController.php:63
+* @see vendor/opencompanyapp/integration-ticktick/src/TickTickOAuthController.php:63
 * @route '/api/integrations/ticktick/oauth/callback'
 */
 callback.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ callback.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \OpenCompany\Integrations\TickTick\TickTickOAuthController::callback
-* @see Users/rutger/Sites/integrations/packages/ticktick/src/TickTickOAuthController.php:63
+* @see vendor/opencompanyapp/integration-ticktick/src/TickTickOAuthController.php:63
 * @route '/api/integrations/ticktick/oauth/callback'
 */
 callback.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -79,7 +79,7 @@ callback.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \OpenCompany\Integrations\TickTick\TickTickOAuthController::callback
-* @see Users/rutger/Sites/integrations/packages/ticktick/src/TickTickOAuthController.php:63
+* @see vendor/opencompanyapp/integration-ticktick/src/TickTickOAuthController.php:63
 * @route '/api/integrations/ticktick/oauth/callback'
 */
 callback.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

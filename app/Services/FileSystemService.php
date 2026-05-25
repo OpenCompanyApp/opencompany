@@ -164,6 +164,51 @@ class FileSystemService
     }
 
     /**
+     * Write externally fetched bytes into the workspace file tree.
+     *
+     * Unlike uploadFile(), this path is used by trusted server-side importers
+     * such as Telegram media capture where there is no UploadedFile instance.
+     * The caller still supplies the workspace, destination folder, owner, MIME
+     * type, and provenance metadata so the resulting WorkspaceFile remains
+     * inspectable and permission-scoped like a normal upload.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    public function writeBinaryFile(
+        string $workspaceId,
+        ?string $parentId,
+        string $name,
+        string $contents,
+        string $ownerId,
+        ?string $mimeType = null,
+        ?string $diskId = null,
+        array $metadata = [],
+    ): WorkspaceFile {
+        $this->validateParentFolder($workspaceId, $parentId);
+
+        $extension = pathinfo($name, PATHINFO_EXTENSION) ?: 'bin';
+        $workspaceDisk = $this->resolveWorkspaceDisk($workspaceId, $diskId);
+        $filesystem = $workspaceDisk->buildFilesystem();
+        $storagePath = $this->generateStoragePath($workspaceId, $extension);
+        $filesystem->put($storagePath, $contents);
+
+        return WorkspaceFile::create([
+            'id' => Str::uuid()->toString(),
+            'workspace_id' => $workspaceId,
+            'parent_id' => $parentId,
+            'name' => $name,
+            'is_folder' => false,
+            'storage_disk' => $workspaceDisk->driver,
+            'workspace_disk_id' => $workspaceDisk->id,
+            'storage_path' => $storagePath,
+            'mime_type' => $mimeType ?? $this->guessMimeType($extension),
+            'size' => strlen($contents),
+            'owner_id' => $ownerId,
+            'metadata' => $metadata,
+        ]);
+    }
+
+    /**
      * Write text content as a file.
      */
     public function writeFile(
@@ -313,7 +358,7 @@ class FileSystemService
         }
 
         $file->update([
-            'parent_id' => $newParentId ?? $file->parent_id,
+            'parent_id' => $newParentId,
             'name' => $newName ?? $file->name,
         ]);
 

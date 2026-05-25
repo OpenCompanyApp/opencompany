@@ -1,0 +1,141 @@
+- generic [ref=e3] [box=0,0,0,0]:
+  - generic [ref=e4] [box=0,0,1440,1000]:
+    - complementary [ref=e5] [box=0,0,240,1000]:
+      - generic [ref=e7] [box=8,12,224,44]:
+        - button "Default" [ref=e8] [box=8,12,135,44]:
+          - img [ref=e10] [box=27,25,18,18]
+          - generic [ref=e12] [box=60,24,49,20]: Default
+          - img [ref=e13] [box=117,27,14,14]
+        - button [ref=e15] [box=202,19,30,30]:
+          - img [ref=e16] [box=208,25,18,18]
+      - navigation [ref=e18] [box=0,64,240,797]:
+        - link "Dashboard" [ref=e20] [cursor=pointer] [box=8,68,224,36]:
+          - /url: /w/default
+          - img [ref=e21] [box=20,77,18,18]
+          - generic [ref=e23] [box=48,76,172,20]: Dashboard
+        - generic [ref=e25] [box=8,125,224,150]:
+          - link "Tasks" [ref=e26] [cursor=pointer] [box=8,125,224,36]:
+            - /url: /w/default/tasks
+            - img [ref=e27] [box=20,134,18,18]
+            - generic [ref=e29] [box=48,133,172,20]: Tasks
+          - link "Approvals 3" [ref=e30] [cursor=pointer] [box=8,163,224,36]:
+            - /url: /w/default/approvals
+            - img [ref=e31] [box=20,172,18,18]
+            - generic [ref=e33] [box=48,171,144,20]: Approvals
+            - generic [ref=e34] [box=202,171,18,20]: "3"
+          - link "Organization" [ref=e35] [cursor=pointer] [box=8,201,224,36]:
+            - /url: /w/default/org
+            - img [ref=e36] [box=20,210,18,18]
+            - generic [ref=e38] [box=48,209,172,20]: Organization
+          - link "Automation" [ref=e39] [cursor=pointer] [box=8,239,224,36]:
+            - /url: /w/default/automation
+            - img [ref=e40] [box=20,248,18,18]
+            - generic [ref=e42] [box=48,247,172,20]: Automation
+        - generic [ref=e44] [box=8,296,224,226]:
+          - link "Chat 15" [ref=e45] [cursor=pointer] [box=8,296,224,36]:
+            - /url: /w/default/chat
+            - img [ref=e46] [box=20,305,18,18]
+            - generic [ref=e48] [box=48,304,137,20]: Chat
+            - generic [ref=e49] [box=195,304,25,20]: "15"
+          - link "Docs" [ref=e50] [cursor=pointer] [box=8,334,224,36]:
+            - /url: /w/default/docs
+            - img [ref=e51] [box=20,343,18,18]
+            - generic [ref=e53] [box=48,342,172,20]: Docs
+          - link "Files" [ref=e54] [cursor=pointer] [box=8,372,224,36]:
+            - /url: /w/default/files
+            - img [ref=e55] [box=20,381,18,18]
+            - generic [ref=e57] [box=48,380,172,20]: Files
+          - link "Tables" [ref=e58] [cursor=pointer] [box=8,410,224,36]:
+            - /url: /w/default/tables
+            - img [ref=e59] [box=20,419,18,18]
+            - generic [ref=e61] [box=48,418,172,20]: Tables
+          - link "Calendar" [ref=e62] [cursor=pointer] [box=8,448,224,36]:
+            - /url: /w/default/calendar
+            - img [ref=e63] [box=20,457,18,18]
+            - generic [ref=e65] [box=48,456,172,20]: Calendar
+          - link "Lists" [ref=e66] [cursor=pointer] [box=8,486,224,36]:
+            - /url: /w/default/lists
+            - img [ref=e67] [box=20,495,18,18]
+            - generic [ref=e69] [box=48,494,172,20]: Lists
+        - generic [ref=e70] [box=8,534,224,385]:
+          - generic [ref=e71] [box=8,534,224,28]:
+            - button "Agents" [expanded] [ref=e72] [box=20,534,174,28]
+            - button "Spawn new agent" [ref=e76] [box=198,537,22,22]
+          - generic [ref=e80] [box=8,566,224,353]:
+            - link "Atlas Atlas manager" [ref=e81] [cursor=pointer] [box=8,566,224,43]:
+              - /url: /w/default/agent/a1
+            - link "Echo Echo writer" [ref=e90] [cursor=pointer] [box=8,611,224,43]:
+              - /url: /w/default/agent/a2
+            - link "Logic Logic coder" [ref=e99] [cursor=pointer] [box=8,657,224,43]:
+              - /url: /w/default/agent/a5
+            - link "Miles Flatley" [ref=e108] [cursor=pointer] [box=8,702,224,36]:
+              - /url: /w/default/agent/h24488
+            - link "Nexus Nexus coordinator" [ref=e116] [cursor=pointer] [box=8,740,224,43]:
+              - /url: /w/default/agent/a7
+            - link "Nova Nova analyst" [ref=e125] [cursor=pointer] [box=8,785,224,43]:
+              - /url: /w/default/agent/a3
+            - link "Pixel Pixel creative" [ref=e134] [cursor=pointer] [box=8,830,224,43]:
+              - /url: /w/default/agent/a4
+            - link "Scout Scout researcher" [ref=e143] [cursor=pointer] [box=8,876,224,43]:
+              - /url: /w/default/agent/a6
+      - generic [ref=e152] [box=0,861,240,139]:
+        - generic [ref=e153] [box=0,861,240,74]:
+          - link "Integrations" [ref=e154] [cursor=pointer] [box=8,861,224,36]:
+            - /url: /w/default/integrations
+            - img [ref=e155] [box=20,870,18,18]
+            - generic [ref=e157] [box=48,869,83,20]: Integrations
+          - link "Settings" [ref=e158] [cursor=pointer] [box=8,899,224,36]:
+            - /url: /w/default/settings
+            - img [ref=e159] [box=20,908,18,18]
+            - generic [ref=e161] [box=48,907,54,20]: Settings
+        - generic [ref=e163] [box=12,946,216,44]:
+          - button "Rutger" [ref=e165] [cursor=pointer] [box=4,946,44,44]:
+            - img "Rutger" [ref=e167] [box=12,954,28,28]
+          - generic [ref=e169] [box=52,958,96,20]: OpenCompany
+    - main [ref=e170] [box=240,0,1200,1000]:
+      - generic [ref=e173] [box=240,0,1200,1000]:
+        - complementary [ref=e174] [box=240,0,64,1000]:
+          - button "New assistant chat" [ref=e178] [box=252,12,36,36]:
+            - img [ref=e179] [box=262,22,16,16]
+          - generic [ref=e182] [box=248,81,39,1564]:
+            - button "Atlas" [ref=e183] [box=248,81,39,52]
+            - button "Atlas" [ref=e190] [box=248,137,39,52]
+            - button "Atlas" [ref=e197] [box=248,193,39,52]
+            - button "Atlas" [ref=e204] [box=248,249,39,52]
+            - button "Atlas" [ref=e211] [box=248,305,39,52]
+            - button "Atlas" [ref=e218] [box=248,361,39,52]
+            - button "Atlas" [ref=e225] [box=248,417,39,52]
+            - button "Atlas" [ref=e232] [box=248,473,39,52]
+            - button "Atlas" [ref=e239] [box=248,529,39,52]
+            - button "Nexus" [ref=e246] [box=248,585,39,52]
+            - button "Echo" [ref=e253] [box=248,641,39,52]
+            - button "Logic" [ref=e260] [box=248,697,39,52]
+            - button "Echo" [ref=e267] [box=248,753,39,52]
+            - button "Nexus" [ref=e274] [box=248,809,39,52]
+            - button "Nova" [ref=e281] [box=248,865,39,52]
+            - button "Scout" [ref=e288] [box=248,921,39,52]
+            - button "Atlas" [ref=e295] [box=248,977,39,52]
+            - button "Nova" [ref=e302] [box=248,1033,39,52]
+            - button "Atlas" [ref=e309] [box=248,1089,39,52]
+            - button "Echo" [ref=e316] [box=248,1145,39,52]
+            - button "Atlas" [ref=e323] [box=248,1201,39,52]
+            - button "Atlas" [ref=e330] [box=248,1257,39,52]
+            - button "R" [ref=e337] [box=248,1313,39,52]
+            - button "TM" [ref=e340] [box=248,1369,39,52]
+            - button "TM" [ref=e343] [box=248,1425,39,52]
+            - button "Echo" [ref=e346] [box=248,1481,39,52]
+            - button "Atlas" [ref=e353] [box=248,1537,39,52]
+            - button "Atlas" [ref=e360] [box=248,1593,39,52]
+        - generic [ref=e367] [box=304,0,1136,1000]:
+          - generic [ref=e368] [box=304,0,1136,56]:
+            - generic [ref=e369] [box=320,10,180,36]
+            - button "Refresh" [ref=e380] [box=1328,10,97,36]
+          - generic [ref=e385] [box=488,56,768,712]:
+            - img [ref=e387] [box=860,348,24,24]
+            - heading "Start the conversation" [level=2] [ref=e389] [box=737,400,270,32]
+            - paragraph [ref=e390] [box=648,440,448,48]: Messages, files, and replies stay in this same OpenCompany chat surface.
+          - generic [ref=e392] [box=504,840,736,136]:
+            - textbox "Message this DM..." [ref=e393] [box=505,841,734,80]
+            - generic [ref=e394] [box=505,927,734,48]
+  - region "Notifications (F8)" [box=0,1000,1440,0]:
+    - list [box=1424,984,0,0]

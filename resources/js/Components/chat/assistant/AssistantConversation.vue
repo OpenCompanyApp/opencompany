@@ -37,8 +37,9 @@
         <EmptyState
           :agents="agents"
           :selected-agent-id="selectedAgentId"
+          :notice="emptyStateNotice"
           @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
-          @prompt="sendSuggestedPrompt"
+          @prompt="prefillSuggestedPrompt"
         />
       </div>
 
@@ -47,8 +48,9 @@
           <EmptyState
             :agents="agents"
             :selected-agent-id="agent?.id ?? selectedAgentId"
+            :notice="emptyStateNotice"
             @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
-            @prompt="sendSuggestedPrompt"
+            @prompt="prefillSuggestedPrompt"
           />
         </div>
         <div v-else-if="messages.length === 0 && !hasRuntimeActivity" class="mx-auto flex min-h-[calc(100vh-18rem)] max-w-3xl flex-col items-center justify-center px-4 py-10 text-center">
@@ -133,9 +135,13 @@
       :disabled="!channel && !selectedAgentId"
       :running="isRunning"
       :placeholder="composerPlaceholder"
+      :error="composerError"
       :show-agent-picker="!channel || isAssistantChannel"
       :show-ai-actions="!channel || isAssistantChannel"
+      :model-value="composerDraft"
+      :focus-request-key="composerFocusRequestKey"
       @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
+      @update:model-value="$emit('update:composerDraft', $event)"
       @send="(content, attachments) => $emit('send', content, attachments)"
       @stop="$emit('stop')"
       @compact="$emit('compact')"
@@ -174,6 +180,10 @@ const props = defineProps<{
   workspaceStatusLoading?: boolean
   workspaceStatusError?: string | null
   workspaceStatusLastRefreshedAt?: Date | string | null
+  composerError?: string | null
+  composerDraft?: string
+  composerFocusRequestKey?: number
+  emptyStateNotice?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -182,11 +192,13 @@ const emit = defineEmits<{
   stop: []
   compact: []
   status: []
+  prefill: [prompt: string]
   refresh: []
   refreshStatus: []
   closeStatus: []
   toggleSidebar: []
   'update:selectedAgentId': [agentId: string]
+  'update:composerDraft': [value: string]
   approval: [id: string, status: 'approved' | 'rejected']
 }>()
 
@@ -300,8 +312,8 @@ watch(() => props.messages.length, () => {
   })
 })
 
-const sendSuggestedPrompt = (prompt: string) => {
-  emit('send', prompt, [])
+const prefillSuggestedPrompt = (prompt: string) => {
+  emit('prefill', prompt)
 }
 
 const respond = (id: string, status: 'approved' | 'rejected') => {

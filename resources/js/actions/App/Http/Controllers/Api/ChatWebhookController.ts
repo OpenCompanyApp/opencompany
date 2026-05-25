@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\ChatWebhookController::__invoke
-* @see app/Http/Controllers/Api/ChatWebhookController.php:22
+* @see app/Http/Controllers/Api/ChatWebhookController.php:23
 * @route '/api/webhooks/chat/{adapter}'
 */
 const ChatWebhookController = (args: { adapter: string | number } | [adapter: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ ChatWebhookController.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ChatWebhookController::__invoke
-* @see app/Http/Controllers/Api/ChatWebhookController.php:22
+* @see app/Http/Controllers/Api/ChatWebhookController.php:23
 * @route '/api/webhooks/chat/{adapter}'
 */
 ChatWebhookController.url = (args: { adapter: string | number } | [adapter: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ ChatWebhookController.url = (args: { adapter: string | number } | [adapter: stri
 
 /**
 * @see \App\Http\Controllers\Api\ChatWebhookController::__invoke
-* @see app/Http/Controllers/Api/ChatWebhookController.php:22
+* @see app/Http/Controllers/Api/ChatWebhookController.php:23
 * @route '/api/webhooks/chat/{adapter}'
 */
 ChatWebhookController.post = (args: { adapter: string | number } | [adapter: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({

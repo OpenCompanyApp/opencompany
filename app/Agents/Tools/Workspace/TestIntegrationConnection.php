@@ -29,8 +29,12 @@ class TestIntegrationConnection implements AiTool
     {
         try {
             $integrationId = $request['integrationId'] ?? null;
-            if (!$integrationId) {
+            if (! $integrationId) {
                 return 'integrationId is required.';
+            }
+
+            if ($integrationId === 'telegram') {
+                return $this->testAppOwnedTelegram();
             }
 
             // Check dynamic providers first
@@ -44,7 +48,7 @@ class TestIntegrationConnection implements AiTool
 
                 return $result['success']
                     ? ($result['message'] ?? 'Connection OK.')
-                    : 'Connection failed: ' . ($result['error'] ?? 'unknown error');
+                    : 'Connection failed: '.($result['error'] ?? 'unknown error');
             }
 
             $packageProvider = app(ToolProviderRegistry::class)->get($integrationId);
@@ -54,26 +58,22 @@ class TestIntegrationConnection implements AiTool
 
             // Static providers
             $available = IntegrationSetting::getAvailableIntegrations();
-            if (!isset($available[$integrationId])) {
+            if (! isset($available[$integrationId])) {
                 return "Integration not found: {$integrationId}";
             }
 
             $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
             $apiKey = $setting?->getConfigValue('api_key');
 
-            if (!$apiKey) {
+            if (! $apiKey) {
                 return "No API key configured for {$integrationId}. Set it first with update_integration_config.";
-            }
-
-            if ($integrationId === 'telegram') {
-                return $this->testTelegram($apiKey);
             }
 
             // OpenAI-compatible chat-completions providers
             $url = $setting->getConfigValue('url') ?? ($available[$integrationId]['default_url'] ?? '');
             $model = $setting->getConfigValue('default_model') ?? array_key_first($available[$integrationId]['models'] ?? []);
 
-            if (!$url || !$model) {
+            if (! $url || ! $model) {
                 return "URL or model not configured for {$integrationId}.";
             }
 
@@ -111,7 +111,7 @@ class TestIntegrationConnection implements AiTool
 
             return $result->succeeded()
                 ? "Connection OK. {$integrationId} requires no API key; {$name} responded."
-                : 'Connection failed: ' . ($result->error ?? 'unknown error');
+                : 'Connection failed: '.($result->error ?? 'unknown error');
         }
 
         return "Connection OK. {$integrationId} is registered and requires no API key.";
@@ -129,25 +129,40 @@ class TestIntegrationConnection implements AiTool
         return false;
     }
 
+    private function testAppOwnedTelegram(): string
+    {
+        $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
+        $apiKey = $setting?->getConfigValue('api_key')
+            ?: $setting?->getConfigValue('access_token');
+
+        if (! $apiKey) {
+            return 'No Telegram bot token configured. Set it first with update_integration_config.';
+        }
+
+        return $this->testTelegram((string) $apiKey);
+    }
+
     private function testTelegram(string $apiKey): string
     {
-        $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/getMe");
+        $baseUrl = rtrim((string) config('telegram.bot_api_base_url', 'https://api.telegram.org'), '/');
+        $response = Http::timeout(10)->post("{$baseUrl}/bot{$apiKey}/getMe");
         $data = $response->json();
 
         if ($response->successful() && ($data['ok'] ?? false)) {
             $result = $data['result'];
+
             return "Telegram connection OK. Bot: {$result['first_name']} (@{$result['username']})";
         }
 
-        return 'Telegram connection failed: ' . ($data['description'] ?? 'unknown error');
+        return 'Telegram connection failed: '.($data['description'] ?? 'unknown error');
     }
 
     private function testChatCompletion(string $apiKey, string $url, string $model): string
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
+            'Authorization' => 'Bearer '.$apiKey,
             'Content-Type' => 'application/json',
-        ])->timeout(30)->post($url . '/chat/completions', [
+        ])->timeout(30)->post($url.'/chat/completions', [
             'model' => $model,
             'messages' => [
                 ['role' => 'user', 'content' => 'Reply with "OK" to confirm the API works.'],
@@ -160,6 +175,7 @@ class TestIntegrationConnection implements AiTool
         }
 
         $error = $response->json('error.message') ?? $response->body();
+
         return "Connection failed: {$error}";
     }
 

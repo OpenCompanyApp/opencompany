@@ -1,0 +1,526 @@
+- generic [ref=e32] [box=0,0,0,0]:
+  - generic [ref=e33] [box=0,0,1440,1000]:
+    - complementary [ref=e34] [box=0,0,240,1000]:
+      - generic [ref=e36] [box=8,12,224,44]:
+        - button "Default" [ref=e37] [box=8,12,135,44]:
+          - img [ref=e39] [box=27,25,18,18]
+          - generic [ref=e41] [box=60,24,49,20]: Default
+          - img [ref=e42] [box=117,27,14,14]
+        - button [ref=e44] [box=202,19,30,30]:
+          - img [ref=e45] [box=208,25,18,18]
+      - navigation [ref=e47] [box=0,64,240,797]:
+        - link "Dashboard" [ref=e49] [cursor=pointer] [box=8,68,224,36]:
+          - /url: /w/default
+          - img [ref=e50] [box=20,77,18,18]
+          - generic [ref=e52] [box=48,76,172,20]: Dashboard
+        - generic [ref=e54] [box=8,125,224,150]:
+          - link "Tasks" [ref=e55] [cursor=pointer] [box=8,125,224,36]:
+            - /url: /w/default/tasks
+            - img [ref=e56] [box=20,134,18,18]
+            - generic [ref=e58] [box=48,133,172,20]: Tasks
+          - link "Approvals 3" [ref=e59] [cursor=pointer] [box=8,163,224,36]:
+            - /url: /w/default/approvals
+            - img [ref=e60] [box=20,172,18,18]
+            - generic [ref=e62] [box=48,171,144,20]: Approvals
+            - generic [ref=e63] [box=202,171,18,20]: "3"
+          - link "Organization" [ref=e64] [cursor=pointer] [box=8,201,224,36]:
+            - /url: /w/default/org
+            - img [ref=e65] [box=20,210,18,18]
+            - generic [ref=e67] [box=48,209,172,20]: Organization
+          - link "Automation" [ref=e68] [cursor=pointer] [box=8,239,224,36]:
+            - /url: /w/default/automation
+            - img [ref=e69] [box=20,248,18,18]
+            - generic [ref=e71] [box=48,247,172,20]: Automation
+        - generic [ref=e73] [box=8,296,224,226]:
+          - link "Chat 15" [ref=e74] [cursor=pointer] [box=8,296,224,36]:
+            - /url: /w/default/chat
+            - img [ref=e75] [box=20,305,18,18]
+            - generic [ref=e77] [box=48,304,137,20]: Chat
+            - generic [ref=e78] [box=195,304,25,20]: "15"
+          - link "Docs" [ref=e79] [cursor=pointer] [box=8,334,224,36]:
+            - /url: /w/default/docs
+            - img [ref=e80] [box=20,343,18,18]
+            - generic [ref=e82] [box=48,342,172,20]: Docs
+          - link "Files" [ref=e83] [cursor=pointer] [box=8,372,224,36]:
+            - /url: /w/default/files
+            - img [ref=e84] [box=20,381,18,18]
+            - generic [ref=e86] [box=48,380,172,20]: Files
+          - link "Tables" [ref=e87] [cursor=pointer] [box=8,410,224,36]:
+            - /url: /w/default/tables
+            - img [ref=e88] [box=20,419,18,18]
+            - generic [ref=e90] [box=48,418,172,20]: Tables
+          - link "Calendar" [ref=e91] [cursor=pointer] [box=8,448,224,36]:
+            - /url: /w/default/calendar
+            - img [ref=e92] [box=20,457,18,18]
+            - generic [ref=e94] [box=48,456,172,20]: Calendar
+          - link "Lists" [ref=e95] [cursor=pointer] [box=8,486,224,36]:
+            - /url: /w/default/lists
+            - img [ref=e96] [box=20,495,18,18]
+            - generic [ref=e98] [box=48,494,172,20]: Lists
+        - generic [ref=e99] [box=8,534,224,385]:
+          - generic [ref=e100] [box=8,534,224,28]:
+            - button "Agents" [expanded] [ref=e101] [box=20,534,174,28]:
+              - img [ref=e102] [box=20,542,12,12]
+              - generic [ref=e104] [box=40,540,40,16]: Agents
+            - button "Spawn new agent" [ref=e105] [box=198,537,22,22]:
+              - img [ref=e106] [box=202,541,14,14]
+          - generic [ref=e109] [box=8,566,224,353]:
+            - link "Atlas Atlas manager" [ref=e110] [cursor=pointer] [box=8,566,224,43]:
+              - /url: /w/default/agent/a1
+              - img "Atlas" [ref=e114] [box=20,576,24,24]
+              - generic [ref=e116] [box=52,572,168,31]:
+                - generic [ref=e117] [box=52,572,168,18]: Atlas
+                - generic [ref=e118] [box=52,590,168,14]: manager
+            - link "Echo Echo writer" [ref=e119] [cursor=pointer] [box=8,611,224,43]:
+              - /url: /w/default/agent/a2
+              - img "Echo" [ref=e123] [box=20,621,24,24]
+              - generic [ref=e125] [box=52,617,168,31]:
+                - generic [ref=e126] [box=52,617,168,18]: Echo
+                - generic [ref=e127] [box=52,635,168,14]: writer
+            - link "Logic Logic coder" [ref=e128] [cursor=pointer] [box=8,657,224,43]:
+              - /url: /w/default/agent/a5
+              - img "Logic" [ref=e132] [box=20,666,24,24]
+              - generic [ref=e134] [box=52,663,168,31]:
+                - generic [ref=e135] [box=52,663,168,18]: Logic
+                - generic [ref=e136] [box=52,680,168,14]: coder
+            - link "Miles Flatley" [ref=e137] [cursor=pointer] [box=8,702,224,36]:
+              - /url: /w/default/agent/h24488
+              - generic [ref=e144] [box=52,711,168,18]: Miles Flatley
+            - link "Nexus Nexus coordinator" [ref=e145] [cursor=pointer] [box=8,740,224,43]:
+              - /url: /w/default/agent/a7
+              - img "Nexus" [ref=e149] [box=20,749,24,24]
+              - generic [ref=e151] [box=52,746,168,31]:
+                - generic [ref=e152] [box=52,746,168,18]: Nexus
+                - generic [ref=e153] [box=52,763,168,14]: coordinator
+            - link "Nova Nova analyst" [ref=e154] [cursor=pointer] [box=8,785,224,43]:
+              - /url: /w/default/agent/a3
+              - img "Nova" [ref=e158] [box=20,795,24,24]
+              - generic [ref=e160] [box=52,791,168,31]:
+                - generic [ref=e161] [box=52,791,168,18]: Nova
+                - generic [ref=e162] [box=52,809,168,14]: analyst
+            - link "Pixel Pixel creative" [ref=e163] [cursor=pointer] [box=8,830,224,43]:
+              - /url: /w/default/agent/a4
+              - img "Pixel" [ref=e167] [box=20,840,24,24]
+              - generic [ref=e169] [box=52,836,168,31]:
+                - generic [ref=e170] [box=52,836,168,18]: Pixel
+                - generic [ref=e171] [box=52,854,168,14]: creative
+            - link "Scout Scout researcher" [ref=e172] [cursor=pointer] [box=8,876,224,43]:
+              - /url: /w/default/agent/a6
+              - img "Scout" [ref=e176] [box=20,885,24,24]
+              - generic [ref=e178] [box=52,882,168,31]:
+                - generic [ref=e179] [box=52,882,168,18]: Scout
+                - generic [ref=e180] [box=52,899,168,14]: researcher
+      - generic [ref=e181] [box=0,861,240,139]:
+        - generic [ref=e182] [box=0,861,240,74]:
+          - link "Integrations" [ref=e183] [cursor=pointer] [box=8,861,224,36]:
+            - /url: /w/default/integrations
+            - img [ref=e184] [box=20,870,18,18]
+            - generic [ref=e186] [box=48,869,83,20]: Integrations
+          - link "Settings" [ref=e187] [cursor=pointer] [box=8,899,224,36]:
+            - /url: /w/default/settings
+            - img [ref=e188] [box=20,908,18,18]
+            - generic [ref=e190] [box=48,907,54,20]: Settings
+        - generic [ref=e192] [box=12,946,216,44]:
+          - button "Rutger" [ref=e194] [cursor=pointer] [box=4,946,44,44]:
+            - img "Rutger" [ref=e196] [box=12,954,28,28]
+          - generic [ref=e198] [box=52,958,96,20]: OpenCompany
+    - main [ref=e199] [box=240,0,1200,1000]:
+      - generic [ref=e202] [box=240,0,1200,1000]:
+        - complementary [ref=e203] [box=240,0,64,1000]:
+          - button "New assistant chat" [ref=e207] [box=252,12,36,36]:
+            - img [ref=e208] [box=262,22,16,16]
+          - generic [ref=e211] [box=248,81,39,1508]:
+            - button "Atlas" [ref=e212] [box=248,81,39,52]:
+              - img "Atlas" [ref=e217] [box=252,91,32,32]
+            - button "Atlas" [ref=e219] [box=248,137,39,52]:
+              - img "Atlas" [ref=e224] [box=252,147,32,32]
+            - button "Atlas" [ref=e226] [box=248,193,39,52]:
+              - img "Atlas" [ref=e231] [box=252,203,32,32]
+            - button "Atlas" [ref=e233] [box=248,249,39,52]:
+              - img "Atlas" [ref=e238] [box=252,259,32,32]
+            - button "Atlas" [ref=e240] [box=248,305,39,52]:
+              - img "Atlas" [ref=e245] [box=252,315,32,32]
+            - button "Atlas" [ref=e247] [box=248,361,39,52]:
+              - img "Atlas" [ref=e252] [box=252,371,32,32]
+            - button "Atlas" [ref=e254] [box=248,417,39,52]:
+              - img "Atlas" [ref=e259] [box=252,427,32,32]
+            - button "Atlas" [ref=e261] [box=248,473,39,52]:
+              - img "Atlas" [ref=e266] [box=252,483,32,32]
+            - button "Atlas" [ref=e268] [box=248,529,39,52]:
+              - img "Atlas" [ref=e273] [box=252,539,32,32]
+            - button "Nexus" [ref=e275] [box=248,585,39,52]:
+              - img "Nexus" [ref=e280] [box=252,595,32,32]
+            - button "Echo" [ref=e282] [box=248,641,39,52]:
+              - img "Echo" [ref=e287] [box=252,651,32,32]
+            - button "Logic" [ref=e289] [box=248,697,39,52]:
+              - img "Logic" [ref=e294] [box=252,707,32,32]
+            - button "Echo" [ref=e296] [box=248,753,39,52]:
+              - img "Echo" [ref=e301] [box=252,763,32,32]
+            - button "Nexus" [ref=e303] [box=248,809,39,52]:
+              - img "Nexus" [ref=e308] [box=252,819,32,32]
+            - button "Nova" [ref=e310] [box=248,865,39,52]:
+              - img "Nova" [ref=e315] [box=252,875,32,32]
+            - button "Scout" [ref=e317] [box=248,921,39,52]:
+              - img "Scout" [ref=e322] [box=252,931,32,32]
+            - button "Atlas" [ref=e324] [box=248,977,39,52]:
+              - img "Atlas" [ref=e329] [box=252,987,32,32]
+            - button "Nova" [ref=e331] [box=248,1033,39,52]:
+              - img "Nova" [ref=e336] [box=252,1043,32,32]
+            - button "Atlas" [ref=e338] [box=248,1089,39,52]:
+              - img "Atlas" [ref=e343] [box=252,1099,32,32]
+            - button "Echo" [ref=e345] [box=248,1145,39,52]:
+              - img "Echo" [ref=e350] [box=252,1155,32,32]
+            - button "Atlas" [ref=e352] [box=248,1201,39,52]:
+              - img "Atlas" [ref=e357] [box=252,1211,32,32]
+            - button "Atlas" [ref=e359] [box=248,1257,39,52]:
+              - img "Atlas" [ref=e364] [box=252,1267,32,32]
+            - button "TM" [ref=e366] [box=248,1313,39,52]:
+              - generic [ref=e368] [box=259,1331,18,16]: TM
+            - button "TM" [ref=e369] [box=248,1369,39,52]:
+              - generic [ref=e371] [box=259,1387,18,16]: TM
+            - button "Echo" [ref=e372] [box=248,1425,39,52]:
+              - img "Echo" [ref=e377] [box=252,1435,32,32]
+            - button "Atlas" [ref=e379] [box=248,1481,39,52]:
+              - img "Atlas" [ref=e384] [box=252,1491,32,32]
+            - button "Atlas" [ref=e386] [box=248,1537,39,52]:
+              - img "Atlas" [ref=e391] [box=252,1547,32,32]
+        - generic [ref=e393] [box=304,0,1136,1000]:
+          - generic [ref=e394] [box=304,0,1136,56]:
+            - generic [ref=e395] [box=320,10,276,36]:
+              - button "Show conversations" [ref=e396] [box=320,10,36,36]:
+                - img [ref=e397] [box=328,18,20,20]
+              - img "Atlas" [ref=e402] [box=368,12,32,32]
+              - generic [ref=e404] [box=412,10,184,36]:
+                - heading "Chat with Atlas" [level=1] [ref=e405] [box=412,10,184,20]
+                - paragraph [ref=e406] [box=412,30,184,16]: idle · workspace-aware assistant
+            - button "Refresh" [ref=e408] [box=1328,10,97,36]:
+              - img [ref=e409] [box=1340,20,16,16]
+              - generic [ref=e411] [box=1362,18,51,20]: Refresh
+          - generic [ref=e412] [box=304,56,1136,760]:
+            - article [ref=e413] [box=304,-19540,1128,160]:
+              - generic [ref=e414] [box=484,-19540,768,160]:
+                - generic [ref=e415] [box=500,-19518,32,32]: "Y"
+                - generic [ref=e416] [box=544,-19520,692,120]
+            - article [ref=e426] [box=304,-19380,1128,257]:
+              - generic [ref=e427] [box=484,-19380,768,257]:
+                - img "Nova" [ref=e431] [box=500,-19360,40,40]
+                - generic [ref=e433] [box=552,-19360,684,217]
+            - article [ref=e449] [box=304,-19123,1128,662]:
+              - generic [ref=e450] [box=484,-19123,768,662]:
+                - img "Atlas" [ref=e454] [box=500,-19103,40,40]
+                - generic [ref=e456] [box=552,-19103,684,622]
+            - article [ref=e483] [box=304,-18461,1128,336]:
+              - generic [ref=e484] [box=484,-18461,768,336]:
+                - img "Atlas" [ref=e488] [box=500,-18441,40,40]
+                - generic [ref=e490] [box=552,-18441,684,296]
+            - article [ref=e514] [box=304,-18125,1128,136]:
+              - generic [ref=e515] [box=484,-18125,768,136]:
+                - generic [ref=e516] [box=500,-18103,32,32]: "Y"
+                - generic [ref=e517] [box=544,-18105,692,96]
+            - article [ref=e527] [box=304,-17989,1128,176]:
+              - generic [ref=e528] [box=484,-17989,768,176]:
+                - img "Atlas" [ref=e532] [box=500,-17969,40,40]
+                - generic [ref=e534] [box=552,-17969,684,136]
+            - article [ref=e552] [box=304,-17812,1128,136]:
+              - generic [ref=e553] [box=484,-17812,768,136]:
+                - generic [ref=e554] [box=500,-17790,32,32]: "Y"
+                - generic [ref=e555] [box=544,-17792,692,96]
+            - article [ref=e565] [box=304,-17676,1128,176]:
+              - generic [ref=e566] [box=484,-17676,768,176]:
+                - img "Atlas" [ref=e570] [box=500,-17656,40,40]
+                - generic [ref=e572] [box=552,-17656,684,136]
+            - article [ref=e590] [box=304,-17500,1128,136]:
+              - generic [ref=e591] [box=484,-17500,768,136]:
+                - generic [ref=e592] [box=500,-17478,32,32]: "Y"
+                - generic [ref=e593] [box=544,-17480,692,96]
+            - article [ref=e603] [box=304,-17364,1128,176]:
+              - generic [ref=e604] [box=484,-17364,768,176]:
+                - img "Atlas" [ref=e608] [box=500,-17344,40,40]
+                - generic [ref=e610] [box=552,-17344,684,136]
+            - article [ref=e628] [box=304,-17187,1128,136]:
+              - generic [ref=e629] [box=484,-17187,768,136]:
+                - generic [ref=e630] [box=500,-17165,32,32]: "Y"
+                - generic [ref=e631] [box=544,-17167,692,96]
+            - article [ref=e641] [box=304,-17051,1128,176]:
+              - generic [ref=e642] [box=484,-17051,768,176]:
+                - img "Atlas" [ref=e646] [box=500,-17031,40,40]
+                - generic [ref=e648] [box=552,-17031,684,136]
+            - article [ref=e666] [box=304,-16875,1128,136]:
+              - generic [ref=e667] [box=484,-16875,768,136]:
+                - generic [ref=e668] [box=500,-16853,32,32]: "Y"
+                - generic [ref=e669] [box=544,-16855,692,96]
+            - article [ref=e679] [box=304,-16739,1128,137]:
+              - generic [ref=e680] [box=484,-16739,768,137]:
+                - img "Atlas" [ref=e684] [box=500,-16719,40,40]
+                - generic [ref=e686] [box=552,-16719,684,97]
+            - article [ref=e702] [box=304,-16602,1128,136]:
+              - generic [ref=e703] [box=484,-16602,768,136]:
+                - generic [ref=e704] [box=500,-16580,32,32]: "Y"
+                - generic [ref=e705] [box=544,-16582,692,96]
+            - article [ref=e715] [box=304,-16466,1128,386]:
+              - generic [ref=e716] [box=484,-16466,768,386]:
+                - img "Atlas" [ref=e720] [box=500,-16446,40,40]
+                - generic [ref=e722] [box=552,-16446,684,346]
+            - article [ref=e744] [box=304,-16080,1128,136]:
+              - generic [ref=e745] [box=484,-16080,768,136]:
+                - generic [ref=e746] [box=500,-16058,32,32]: "Y"
+                - generic [ref=e747] [box=544,-16060,692,96]
+            - article [ref=e757] [box=304,-15944,1128,160]:
+              - generic [ref=e758] [box=484,-15944,768,160]:
+                - generic [ref=e759] [box=500,-15922,32,32]: "Y"
+                - generic [ref=e760] [box=544,-15924,692,120]
+            - article [ref=e770] [box=304,-15784,1128,386]:
+              - generic [ref=e771] [box=484,-15784,768,386]:
+                - img "Atlas" [ref=e775] [box=500,-15764,40,40]
+                - generic [ref=e777] [box=552,-15764,684,346]
+            - article [ref=e799] [box=304,-15397,1128,248]:
+              - generic [ref=e800] [box=484,-15397,768,248]:
+                - img "Atlas" [ref=e804] [box=500,-15377,40,40]
+                - generic [ref=e806] [box=552,-15377,684,208]
+            - article [ref=e824] [box=304,-15149,1128,137]:
+              - generic [ref=e825] [box=484,-15149,768,137]:
+                - img "Atlas" [ref=e829] [box=500,-15129,40,40]
+                - generic [ref=e831] [box=552,-15129,684,97]
+            - article [ref=e847] [box=304,-15012,1128,136]:
+              - generic [ref=e848] [box=484,-15012,768,136]:
+                - generic [ref=e849] [box=500,-14990,32,32]: "Y"
+                - generic [ref=e850] [box=544,-14992,692,96]
+            - article [ref=e860] [box=304,-14876,1128,137]:
+              - generic [ref=e861] [box=484,-14876,768,137]:
+                - img "Atlas" [ref=e865] [box=500,-14856,40,40]
+                - generic [ref=e867] [box=552,-14856,684,97]
+            - article [ref=e883] [box=304,-14740,1128,208]:
+              - generic [ref=e884] [box=484,-14740,768,208]:
+                - generic [ref=e885] [box=500,-14718,32,32]: "Y"
+                - generic [ref=e886] [box=544,-14720,692,168]
+            - article [ref=e896] [box=304,-14532,1128,599]:
+              - generic [ref=e897] [box=484,-14532,768,599]:
+                - img "Atlas" [ref=e901] [box=500,-14512,40,40]
+                - generic [ref=e903] [box=552,-14512,684,559]
+            - article [ref=e953] [box=304,-13933,1128,184]:
+              - generic [ref=e954] [box=484,-13933,768,184]:
+                - generic [ref=e955] [box=500,-13911,32,32]: "Y"
+                - generic [ref=e956] [box=544,-13913,692,144]
+            - article [ref=e966] [box=304,-13749,1128,237]:
+              - generic [ref=e967] [box=484,-13749,768,237]:
+                - img "Atlas" [ref=e971] [box=500,-13729,40,40]
+                - generic [ref=e973] [box=552,-13729,684,197]
+            - article [ref=e994] [box=304,-13513,1128,136]:
+              - generic [ref=e995] [box=484,-13513,768,136]:
+                - generic [ref=e996] [box=500,-13491,32,32]: "Y"
+                - generic [ref=e997] [box=544,-13493,692,96]
+            - article [ref=e1007] [box=304,-13377,1128,137]:
+              - generic [ref=e1008] [box=484,-13377,768,137]:
+                - img "Atlas" [ref=e1012] [box=500,-13357,40,40]
+                - generic [ref=e1014] [box=552,-13357,684,97]
+            - article [ref=e1030] [box=304,-13240,1128,136]:
+              - generic [ref=e1031] [box=484,-13240,768,136]:
+                - generic [ref=e1032] [box=500,-13218,32,32]: "Y"
+                - generic [ref=e1033] [box=544,-13220,692,96]
+            - article [ref=e1043] [box=304,-13104,1128,200]:
+              - generic [ref=e1044] [box=484,-13104,768,200]:
+                - img "Atlas" [ref=e1048] [box=500,-13084,40,40]
+                - generic [ref=e1050] [box=552,-13084,684,160]
+            - article [ref=e1068] [box=304,-12904,1128,160]:
+              - generic [ref=e1069] [box=484,-12904,768,160]:
+                - generic [ref=e1070] [box=500,-12882,32,32]: "Y"
+                - generic [ref=e1071] [box=544,-12884,692,120]
+            - article [ref=e1081] [box=304,-12744,1128,176]:
+              - generic [ref=e1082] [box=484,-12744,768,176]:
+                - img "Atlas" [ref=e1086] [box=500,-12724,40,40]
+                - generic [ref=e1088] [box=552,-12724,684,136]
+            - article [ref=e1106] [box=304,-12567,1128,136]:
+              - generic [ref=e1107] [box=484,-12567,768,136]:
+                - generic [ref=e1108] [box=500,-12545,32,32]: "Y"
+                - generic [ref=e1109] [box=544,-12547,692,96]
+            - article [ref=e1119] [box=304,-12431,1128,136]:
+              - generic [ref=e1120] [box=484,-12431,768,136]:
+                - generic [ref=e1121] [box=500,-12409,32,32]: "Y"
+                - generic [ref=e1122] [box=544,-12411,692,96]
+            - generic [ref=e1670] [box=500,-12283,736,424]:
+              - generic [ref=e1671] [box=501,-12282,734,60]:
+                - button "Run completed 4 runtime steps" [ref=e1672] [box=517,-12270,662,36]
+                - link "Open task details" [ref=e1682] [cursor=pointer] [box=1187,-12268,32,32]:
+                  - /url: /w/default/tasks/a33d1a1a-7970-4683-87fd-acb60ad83cd1
+              - generic [ref=e1686] [box=517,-12209,702,337]:
+                - generic [ref=e1688] [box=530,-12196,676,30]
+                - generic [ref=e1697] [box=530,-12132,676,65]
+                - generic [ref=e1709] [box=530,-12033,676,65]
+                - generic [ref=e1721] [box=530,-11934,676,49]
+            - article [ref=e1132] [box=304,-11848,1128,176]:
+              - generic [ref=e1133] [box=484,-11848,768,176]:
+                - img "Atlas" [ref=e1137] [box=500,-11828,40,40]
+                - generic [ref=e1139] [box=552,-11828,684,136]
+            - article [ref=e1158] [box=304,-11671,1128,136]:
+              - generic [ref=e1159] [box=484,-11671,768,136]:
+                - generic [ref=e1160] [box=500,-11649,32,32]: "Y"
+                - generic [ref=e1161] [box=544,-11651,692,96]
+            - generic [ref=e1730] [box=500,-11523,736,849]:
+              - generic [ref=e1731] [box=501,-11522,734,60]:
+                - button "Run completed 9 runtime steps" [ref=e1732] [box=517,-11510,662,36]
+                - link "Open task details" [ref=e1742] [cursor=pointer] [box=1187,-11508,32,32]:
+                  - /url: /w/default/tasks/dadf31ab-7153-4f76-874b-ed4cfb1b8f60
+              - generic [ref=e1746] [box=517,-11449,702,762]:
+                - generic [ref=e1748] [box=530,-11436,676,30]
+                - generic [ref=e1757] [box=530,-11372,676,49]
+                - generic [ref=e1766] [box=530,-11290,676,30]
+                - generic [ref=e1775] [box=530,-11226,676,65]
+                - generic [ref=e1787] [box=530,-11127,676,65]
+                - generic [ref=e1799] [box=530,-11028,676,65]
+                - generic [ref=e1811] [box=530,-10929,676,65]
+                - generic [ref=e1823] [box=530,-10830,676,65]
+                - generic [ref=e1835] [box=530,-10731,676,30]
+            - article [ref=e1171] [box=304,-10663,1128,809]:
+              - generic [ref=e1172] [box=484,-10663,768,809]:
+                - img "Atlas" [ref=e1176] [box=500,-10643,40,40]
+                - generic [ref=e1178] [box=552,-10643,684,769]
+            - article [ref=e1263] [box=304,-9853,1128,136]:
+              - generic [ref=e1264] [box=484,-9853,768,136]:
+                - generic [ref=e1265] [box=500,-9831,32,32]: "Y"
+                - generic [ref=e1266] [box=544,-9833,692,96]
+            - generic [ref=e1844] [box=500,-9705,736,995]:
+              - generic [ref=e1845] [box=501,-9704,734,60]:
+                - button "Run completed 11 runtime steps" [ref=e1846] [box=517,-9692,662,36]
+                - link "Open task details" [ref=e1856] [cursor=pointer] [box=1187,-9690,32,32]:
+                  - /url: /w/default/tasks/4dd4c001-c3b1-4281-9e60-e9600c839009
+              - generic [ref=e1860] [box=517,-9631,702,908]:
+                - generic [ref=e1862] [box=530,-9618,676,30]
+                - generic [ref=e1871] [box=530,-9554,676,49]
+                - generic [ref=e1880] [box=530,-9472,676,30]
+                - generic [ref=e1889] [box=530,-9408,676,49]
+                - generic [ref=e1898] [box=530,-9325,676,30]
+                - generic [ref=e1907] [box=530,-9261,676,65]
+                - generic [ref=e1919] [box=530,-9162,676,65]
+                - generic [ref=e1931] [box=530,-9063,676,65]
+                - generic [ref=e1943] [box=530,-8964,676,65]
+                - generic [ref=e1955] [box=530,-8865,676,65]
+                - generic [ref=e1967] [box=530,-8766,676,30]
+            - article [ref=e1276] [box=304,-8698,1128,136]:
+              - generic [ref=e1277] [box=484,-8698,768,136]:
+                - generic [ref=e1278] [box=500,-8676,32,32]: "Y"
+                - generic [ref=e1279] [box=544,-8678,692,96]
+            - generic [ref=e1976] [box=500,-8550,736,900]:
+              - generic [ref=e1977] [box=501,-8549,734,60]:
+                - button "Run completed 9 runtime steps" [ref=e1978] [box=517,-8537,662,36]
+                - link "Open task details" [ref=e1988] [cursor=pointer] [box=1187,-8535,32,32]:
+                  - /url: /w/default/tasks/fec1b613-4d12-44fe-968b-7c86e94dde00
+              - generic [ref=e1992] [box=517,-8476,702,813]:
+                - generic [ref=e1994] [box=530,-8463,676,30]
+                - generic [ref=e2003] [box=530,-8399,676,65]
+                - generic [ref=e2015] [box=530,-8300,676,65]
+                - generic [ref=e2027] [box=530,-8201,676,65]
+                - generic [ref=e2039] [box=530,-8102,676,65]
+                - generic [ref=e2051] [box=530,-8003,676,65]
+                - generic [ref=e2063] [box=530,-7904,676,65]
+                - generic [ref=e2075] [box=530,-7805,676,65]
+                - generic [ref=e2087] [box=530,-7706,676,30]
+            - article [ref=e1289] [box=304,-7638,1128,893]:
+              - generic [ref=e1290] [box=484,-7638,768,893]:
+                - img "Atlas" [ref=e1294] [box=500,-7618,40,40]
+                - generic [ref=e1296] [box=552,-7618,684,853]
+            - article [ref=e1326] [box=304,-6745,1128,1410]:
+              - generic [ref=e1327] [box=484,-6745,768,1410]:
+                - img "Atlas" [ref=e1331] [box=500,-6725,40,40]
+                - generic [ref=e1333] [box=552,-6725,684,1370]
+            - article [ref=e1358] [box=304,-5335,1128,512]:
+              - generic [ref=e1359] [box=484,-5335,768,512]:
+                - generic [ref=e1360] [box=500,-5313,32,32]: "Y"
+                - generic [ref=e1361] [box=544,-5315,692,472]
+            - generic [ref=e2096] [box=500,-4811,736,1736]:
+              - generic [ref=e2097] [box=501,-4810,734,60]:
+                - button "Run completed 17 runtime steps" [ref=e2098] [box=517,-4798,662,36]
+                - link "Open task details" [ref=e2108] [cursor=pointer] [box=1187,-4796,32,32]:
+                  - /url: /w/default/tasks/0575fdb2-7ce5-4137-802e-5633cfaf3c98
+              - generic [ref=e2112] [box=517,-4737,702,1649]:
+                - generic [ref=e2114] [box=530,-4724,676,30]
+                - generic [ref=e2123] [box=530,-4660,676,65]
+                - generic [ref=e2135] [box=530,-4561,676,65]
+                - generic [ref=e2147] [box=530,-4462,676,65]
+                - generic [ref=e2159] [box=530,-4363,676,65]
+                - generic [ref=e2171] [box=530,-4264,676,65]
+                - generic [ref=e2183] [box=530,-4165,676,65]
+                - generic [ref=e2195] [box=530,-4066,676,65]
+                - generic [ref=e2207] [box=530,-3967,676,65]
+                - generic [ref=e2219] [box=530,-3868,676,65]
+                - generic [ref=e2231] [box=530,-3769,676,65]
+                - generic [ref=e2243] [box=530,-3670,676,65]
+                - generic [ref=e2255] [box=530,-3571,676,65]
+                - generic [ref=e2267] [box=530,-3472,676,65]
+                - generic [ref=e2279] [box=530,-3373,676,65]
+                - generic [ref=e2291] [box=530,-3274,676,109]
+                - generic [ref=e2300] [box=530,-3132,676,30]
+            - article [ref=e1384] [box=304,-3064,1128,1298]:
+              - generic [ref=e1385] [box=484,-3064,768,1298]:
+                - img "Atlas" [ref=e1389] [box=500,-3044,40,40]
+                - generic [ref=e1391] [box=552,-3044,684,1258]
+            - article [ref=e1509] [box=304,-1765,1128,536]:
+              - generic [ref=e1510] [box=484,-1765,768,536]:
+                - generic [ref=e1511] [box=500,-1743,32,32]: "Y"
+                - generic [ref=e1512] [box=544,-1745,692,496]
+            - generic [ref=e2309] [box=500,-1217,736,904]:
+              - generic [ref=e2310] [box=501,-1216,734,60]:
+                - button "Run completed 9 runtime steps" [ref=e2311] [box=517,-1204,662,36]
+                - link "Open task details" [ref=e2321] [cursor=pointer] [box=1187,-1202,32,32]:
+                  - /url: /w/default/tasks/b92af4e0-28e5-4ba9-b718-1fae6cff7d9b
+              - generic [ref=e2325] [box=517,-1143,702,817]:
+                - generic [ref=e2327] [box=530,-1130,676,30]
+                - generic [ref=e2336] [box=530,-1066,676,65]
+                - generic [ref=e2348] [box=530,-967,676,65]
+                - generic [ref=e2360] [box=530,-868,676,65]
+                - generic [ref=e2372] [box=530,-769,676,65]
+                - generic [ref=e2384] [box=530,-670,676,65]
+                - generic [ref=e2396] [box=530,-571,676,69]
+                - generic [ref=e2405] [box=530,-469,676,65]
+                - generic [ref=e2417] [box=530,-370,676,30]
+            - article [ref=e1535] [box=304,-302,1128,224]:
+              - generic [ref=e1536] [box=484,-302,768,224]:
+                - img "Atlas" [ref=e1540] [box=500,-282,40,40]
+                - generic [ref=e1542] [box=552,-282,684,184]
+            - article [ref=e1560] [box=304,-77,1128,136]:
+              - generic [ref=e1561] [box=484,-77,768,136]:
+                - generic [ref=e1562] [box=500,-55,32,32]: "Y"
+                - generic [ref=e1563] [box=544,-57,692,96]
+            - generic [ref=e2426] [box=500,71,736,702]:
+              - generic [ref=e2427] [box=501,72,734,60]:
+                - button "Run completed 7 runtime steps" [ref=e2428] [box=517,84,662,36]
+                - link "Open task details" [ref=e2438] [cursor=pointer] [box=1187,86,32,32]:
+                  - /url: /w/default/tasks/06777d96-75b8-45d3-a82d-5369fa329cc8
+              - generic [ref=e2442] [box=517,145,702,615]:
+                - generic [ref=e2444] [box=530,158,676,30]
+                - generic [ref=e2453] [box=530,222,676,65]
+                - generic [ref=e2465] [box=530,321,676,65]
+                - generic [ref=e2477] [box=530,420,676,65]
+                - generic [ref=e2489] [box=530,519,676,65]
+                - generic [ref=e2501] [box=530,618,676,65]
+                - generic [ref=e2513] [box=530,717,676,30]
+            - article [ref=e1573] [box=304,785,1128,484]:
+              - generic [ref=e1574] [box=484,785,768,484]:
+                - img "Atlas" [ref=e1578] [box=500,805,40,40]
+                - generic [ref=e1580] [box=552,805,684,444]
+            - article [ref=e1612] [box=304,1269,1128,136]:
+              - generic [ref=e1613] [box=484,1269,768,136]:
+                - generic [ref=e1614] [box=500,1291,32,32]: "Y"
+                - generic [ref=e1615] [box=544,1289,692,96]
+            - generic [ref=e2522] [box=500,1417,736,405]:
+              - generic [ref=e2523] [box=501,1418,734,60]:
+                - button "Run completed 4 runtime steps" [ref=e2524] [box=517,1430,662,36]
+                - link "Open task details" [ref=e2534] [cursor=pointer] [box=1187,1432,32,32]:
+                  - /url: /w/default/tasks/dd18c6e8-d9ec-4abd-9a1c-c22aab3405b4
+              - generic [ref=e2538] [box=517,1491,702,318]:
+                - generic [ref=e2540] [box=530,1504,676,30]
+                - generic [ref=e2549] [box=530,1568,676,65]
+                - generic [ref=e2561] [box=530,1667,676,65]
+                - generic [ref=e2573] [box=530,1766,676,30]
+            - article [ref=e1625] [box=304,1834,1128,137]:
+              - generic [ref=e1626] [box=484,1834,768,137]:
+                - img "Atlas" [ref=e1630] [box=500,1854,40,40]
+                - generic [ref=e1632] [box=552,1854,684,97]
+          - generic [ref=e1648] [box=488,816,768,184]:
+            - generic [ref=e1649] [box=504,816,736,136]:
+              - textbox "Ask Atlas..." [ref=e1650] [box=505,817,734,80]
+              - generic [ref=e1651] [box=505,903,734,48]:
+                - generic [ref=e1652] [box=517,903,243,36]
+                - button "Send message" [disabled] [ref=e1665] [box=1191,903,36,36]
+            - paragraph [ref=e1668] [box=504,960,736,16]: OpenCompany can use tools and may ask for approval before making changes.
+  - region "Notifications (F8)" [box=0,1000,1440,0]:
+    - list [box=1424,984,0,0]

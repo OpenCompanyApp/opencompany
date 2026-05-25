@@ -149,12 +149,12 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 interface Comment {
   id: string
-  author: User
+  author?: User
   content: string
   createdAt: Date
   replies?: {
     id: string
-    author: User
+    author?: User
     content: string
   }[]
 }

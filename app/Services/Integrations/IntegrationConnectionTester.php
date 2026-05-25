@@ -31,6 +31,11 @@ class IntegrationConnectionTester
     public function test(Request $request, string $id): IntegrationConnectionTestResult
     {
         $id = IntegrationIdentity::rawId($id);
+
+        if ($id === 'telegram') {
+            return $this->testAppOwnedTelegramChat($request);
+        }
+
         $provider = $this->configResolver->findConfigurableProvider($id);
         if ($provider) {
             $config = $request->all();
@@ -124,17 +129,7 @@ class IntegrationConnectionTester
     {
         try {
             if ($id === 'telegram') {
-                $apiKey = $request->input('apiKey') ?: $request->input('bot_token');
-                if (! $apiKey || str_contains((string) $apiKey, '*')) {
-                    $apiKey = $this->accounts->findSetting($id, $this->accounts->accountFromRequest($request))?->getConfigValue('api_key');
-                }
-
-                if ($apiKey) {
-                    $telegram = $this->testTelegram((string) $apiKey);
-                    if (! $telegram->success) {
-                        return $telegram;
-                    }
-                }
+                return $this->testAppOwnedTelegramChat($request);
             }
 
             $available = IntegrationSetting::getAvailableIntegrations();
@@ -266,14 +261,42 @@ class IntegrationConnectionTester
         return false;
     }
 
-    private function testTelegram(string $apiKey): IntegrationConnectionTestResult
+    private function testAppOwnedTelegramChat(Request $request): IntegrationConnectionTestResult
     {
-        $response = Http::timeout(10)->post("https://api.telegram.org/bot{$apiKey}/getMe");
+        $apiKey = $request->input('apiKey')
+            ?: $request->input('api_key')
+            ?: $request->input('bot_token')
+            ?: $request->input('accessToken')
+            ?: $request->input('access_token');
+
+        if (! $apiKey || str_contains((string) $apiKey, '*')) {
+            $setting = $this->accounts->findSetting('telegram', $this->accounts->accountFromRequest($request));
+            $apiKey = $setting?->getConfigValue('api_key')
+                ?: $setting?->getConfigValue('access_token');
+        }
+
+        if (! $apiKey) {
+            return new IntegrationConnectionTestResult(false, error: 'Bot token is required', status: 400);
+        }
+
+        $baseUrl = $request->input('url') ?: config('telegram.bot_api_base_url', 'https://api.telegram.org');
+
+        // Telegram no longer asks Chatogrator for an adapter. The app-owned chat
+        // domain validates the Bot API token here, while webhook health and setup
+        // diagnostics live in Domain\Chat\Telegram.
+        return $this->testTelegram((string) $apiKey, (string) $baseUrl);
+    }
+
+    private function testTelegram(string $apiKey, string $baseUrl = 'https://api.telegram.org'): IntegrationConnectionTestResult
+    {
+        $response = Http::timeout(10)->post(rtrim($baseUrl, '/')."/bot{$apiKey}/getMe");
         $data = $response->json();
 
         if ($response->successful() && ($data['ok'] ?? false)) {
             $result = $data['result'] ?? [];
-            $setting = $this->accounts->findSetting('telegram');
+            $setting = app()->bound('currentWorkspace')
+                ? $this->accounts->findSetting('telegram')
+                : null;
             if ($setting) {
                 $setting->setConfigValue('bot_username', $result['username'] ?? '');
                 $setting->save();

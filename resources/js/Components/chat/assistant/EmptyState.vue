@@ -7,6 +7,12 @@
     <p class="mx-auto mt-2 max-w-lg text-sm leading-6 text-neutral-500 dark:text-neutral-400">
       Ask an agent to reason through work, use approved tools, inspect workspace data, or prepare the next action.
     </p>
+    <p
+      v-if="notice"
+      class="mx-auto mt-3 max-w-lg rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-200"
+    >
+      {{ notice }}
+    </p>
 
     <div v-if="agents.length" class="mx-auto mt-5 flex max-w-sm justify-center">
       <AgentSelector
@@ -44,6 +50,7 @@ import type { User } from '@/types'
 defineProps<{
   agents: User[]
   selectedAgentId?: string
+  notice?: string | null
 }>()
 
 defineEmits<{

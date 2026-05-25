@@ -232,6 +232,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { logout } from '@/routes'
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Popover from '@/Components/shared/Popover.vue'
@@ -509,7 +510,7 @@ const handleSignOut = async () => {
   })
 
   if (confirmed) {
-    router.post('/logout')
+    router.post(logout.url())
   }
 }
 </script>

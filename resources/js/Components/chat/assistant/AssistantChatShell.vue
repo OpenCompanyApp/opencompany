@@ -32,16 +32,22 @@
       :workspace-status-loading="workspaceStatusLoading"
       :workspace-status-error="workspaceStatusError"
       :workspace-status-last-refreshed-at="workspaceStatusLastRefreshedAt"
+      :composer-error="composerError"
+      :composer-draft="composerDraft"
+      :composer-focus-request-key="composerFocusRequestKey"
+      :empty-state-notice="emptyStateNotice"
       @send="(content, attachments) => $emit('send', content, attachments)"
       @retry="$emit('retry', $event)"
       @stop="$emit('stop')"
       @compact="$emit('compact')"
       @status="$emit('status')"
+      @prefill="(prompt) => $emit('prefill', prompt)"
       @refresh="$emit('refresh')"
       @refresh-status="$emit('refreshStatus')"
       @close-status="$emit('closeStatus')"
       @toggle-sidebar="handleConversationSidebarToggle"
       @update:selected-agent-id="$emit('update:selectedAgentId', $event)"
+      @update:composer-draft="$emit('update:composerDraft', $event)"
       @approval="(id, status) => $emit('approval', id, status)"
     />
 
@@ -106,6 +112,10 @@ const props = defineProps<{
   workspaceStatusLoading?: boolean
   workspaceStatusError?: string | null
   workspaceStatusLastRefreshedAt?: Date | string | null
+  composerError?: string | null
+  composerDraft?: string
+  composerFocusRequestKey?: number
+  emptyStateNotice?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -118,10 +128,12 @@ const emit = defineEmits<{
   stop: []
   compact: []
   status: []
+  prefill: [prompt: string]
   refresh: []
   refreshStatus: []
   closeStatus: []
   'update:selectedAgentId': [agentId: string]
+  'update:composerDraft': [value: string]
   approval: [id: string, status: 'approved' | 'rejected']
 }>()
 

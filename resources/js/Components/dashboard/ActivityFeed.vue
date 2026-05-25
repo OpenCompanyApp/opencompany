@@ -20,7 +20,7 @@
           <p class="text-sm text-neutral-900 dark:text-white">
             <span class="font-medium">{{ activity.actor.name }}</span>
             <span class="text-neutral-500 dark:text-neutral-400">{{ getActionText(activity) }}</span>
-            <span v-if="activity.target" class="font-medium"> {{ activity.target.name }}</span>
+            <span v-if="activity.target" class="font-medium"> {{ typeof activity.target === 'string' ? activity.target : activity.target.name }}</span>
           </p>
           <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
             {{ formatRelativeTime(activity.timestamp) }}

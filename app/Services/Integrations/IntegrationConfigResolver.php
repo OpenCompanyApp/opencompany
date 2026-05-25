@@ -93,6 +93,10 @@ class IntegrationConfigResolver
     public function findConfigurableProvider(string $id): ?ConfigurableIntegration
     {
         $id = IntegrationIdentity::rawId($id);
+        if ($id === 'telegram') {
+            return null;
+        }
+
         $provider = $this->registry->get($id);
 
         return $provider instanceof ConfigurableIntegration ? $provider : null;

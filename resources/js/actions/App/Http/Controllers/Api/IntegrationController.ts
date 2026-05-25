@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::index
-* @see app/Http/Controllers/Api/IntegrationController.php:36
+* @see app/Http/Controllers/Api/IntegrationController.php:41
 * @route '/api/integrations'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::index
-* @see app/Http/Controllers/Api/IntegrationController.php:36
+* @see app/Http/Controllers/Api/IntegrationController.php:41
 * @route '/api/integrations'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::index
-* @see app/Http/Controllers/Api/IntegrationController.php:36
+* @see app/Http/Controllers/Api/IntegrationController.php:41
 * @route '/api/integrations'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::index
-* @see app/Http/Controllers/Api/IntegrationController.php:36
+* @see app/Http/Controllers/Api/IntegrationController.php:41
 * @route '/api/integrations'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::enabledModels
-* @see app/Http/Controllers/Api/IntegrationController.php:309
+* @see app/Http/Controllers/Api/IntegrationController.php:539
 * @route '/api/integrations/models'
 */
 export const enabledModels = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -60,7 +60,7 @@ enabledModels.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::enabledModels
-* @see app/Http/Controllers/Api/IntegrationController.php:309
+* @see app/Http/Controllers/Api/IntegrationController.php:539
 * @route '/api/integrations/models'
 */
 enabledModels.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ enabledModels.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::enabledModels
-* @see app/Http/Controllers/Api/IntegrationController.php:309
+* @see app/Http/Controllers/Api/IntegrationController.php:539
 * @route '/api/integrations/models'
 */
 enabledModels.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -79,7 +79,7 @@ enabledModels.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::enabledModels
-* @see app/Http/Controllers/Api/IntegrationController.php:309
+* @see app/Http/Controllers/Api/IntegrationController.php:539
 * @route '/api/integrations/models'
 */
 enabledModels.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -89,7 +89,7 @@ enabledModels.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => (
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::allProviders
-* @see app/Http/Controllers/Api/IntegrationController.php:320
+* @see app/Http/Controllers/Api/IntegrationController.php:550
 * @route '/api/integrations/all-providers'
 */
 export const allProviders = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -104,7 +104,7 @@ allProviders.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::allProviders
-* @see app/Http/Controllers/Api/IntegrationController.php:320
+* @see app/Http/Controllers/Api/IntegrationController.php:550
 * @route '/api/integrations/all-providers'
 */
 allProviders.url = (options?: RouteQueryOptions) => {
@@ -113,7 +113,7 @@ allProviders.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::allProviders
-* @see app/Http/Controllers/Api/IntegrationController.php:320
+* @see app/Http/Controllers/Api/IntegrationController.php:550
 * @route '/api/integrations/all-providers'
 */
 allProviders.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -123,7 +123,7 @@ allProviders.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::allProviders
-* @see app/Http/Controllers/Api/IntegrationController.php:320
+* @see app/Http/Controllers/Api/IntegrationController.php:550
 * @route '/api/integrations/all-providers'
 */
 allProviders.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -133,7 +133,7 @@ allProviders.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::embeddingModels
-* @see app/Http/Controllers/Api/IntegrationController.php:328
+* @see app/Http/Controllers/Api/IntegrationController.php:558
 * @route '/api/integrations/embedding-models'
 */
 export const embeddingModels = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -148,7 +148,7 @@ embeddingModels.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::embeddingModels
-* @see app/Http/Controllers/Api/IntegrationController.php:328
+* @see app/Http/Controllers/Api/IntegrationController.php:558
 * @route '/api/integrations/embedding-models'
 */
 embeddingModels.url = (options?: RouteQueryOptions) => {
@@ -157,7 +157,7 @@ embeddingModels.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::embeddingModels
-* @see app/Http/Controllers/Api/IntegrationController.php:328
+* @see app/Http/Controllers/Api/IntegrationController.php:558
 * @route '/api/integrations/embedding-models'
 */
 embeddingModels.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -167,7 +167,7 @@ embeddingModels.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::embeddingModels
-* @see app/Http/Controllers/Api/IntegrationController.php:328
+* @see app/Http/Controllers/Api/IntegrationController.php:558
 * @route '/api/integrations/embedding-models'
 */
 embeddingModels.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -177,7 +177,7 @@ embeddingModels.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::rerankingModels
-* @see app/Http/Controllers/Api/IntegrationController.php:336
+* @see app/Http/Controllers/Api/IntegrationController.php:566
 * @route '/api/integrations/reranking-models'
 */
 export const rerankingModels = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -192,7 +192,7 @@ rerankingModels.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::rerankingModels
-* @see app/Http/Controllers/Api/IntegrationController.php:336
+* @see app/Http/Controllers/Api/IntegrationController.php:566
 * @route '/api/integrations/reranking-models'
 */
 rerankingModels.url = (options?: RouteQueryOptions) => {
@@ -201,7 +201,7 @@ rerankingModels.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::rerankingModels
-* @see app/Http/Controllers/Api/IntegrationController.php:336
+* @see app/Http/Controllers/Api/IntegrationController.php:566
 * @route '/api/integrations/reranking-models'
 */
 rerankingModels.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -211,7 +211,7 @@ rerankingModels.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::rerankingModels
-* @see app/Http/Controllers/Api/IntegrationController.php:336
+* @see app/Http/Controllers/Api/IntegrationController.php:566
 * @route '/api/integrations/reranking-models'
 */
 rerankingModels.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -221,7 +221,7 @@ rerankingModels.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::showAiProviderConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:92
+* @see app/Http/Controllers/Api/IntegrationController.php:97
 * @route '/api/ai/providers/{id}/config'
 */
 export const showAiProviderConfig = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -236,7 +236,7 @@ showAiProviderConfig.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::showAiProviderConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:92
+* @see app/Http/Controllers/Api/IntegrationController.php:97
 * @route '/api/ai/providers/{id}/config'
 */
 showAiProviderConfig.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -263,7 +263,7 @@ showAiProviderConfig.url = (args: { id: string | number } | [id: string | number
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::showAiProviderConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:92
+* @see app/Http/Controllers/Api/IntegrationController.php:97
 * @route '/api/ai/providers/{id}/config'
 */
 showAiProviderConfig.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -273,7 +273,7 @@ showAiProviderConfig.get = (args: { id: string | number } | [id: string | number
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::showAiProviderConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:92
+* @see app/Http/Controllers/Api/IntegrationController.php:97
 * @route '/api/ai/providers/{id}/config'
 */
 showAiProviderConfig.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -283,7 +283,7 @@ showAiProviderConfig.head = (args: { id: string | number } | [id: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::updateAiProviderConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:109
+* @see app/Http/Controllers/Api/IntegrationController.php:114
 * @route '/api/ai/providers/{id}/config'
 */
 export const updateAiProviderConfig = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -298,7 +298,7 @@ updateAiProviderConfig.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::updateAiProviderConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:109
+* @see app/Http/Controllers/Api/IntegrationController.php:114
 * @route '/api/ai/providers/{id}/config'
 */
 updateAiProviderConfig.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -325,7 +325,7 @@ updateAiProviderConfig.url = (args: { id: string | number } | [id: string | numb
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::updateAiProviderConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:109
+* @see app/Http/Controllers/Api/IntegrationController.php:114
 * @route '/api/ai/providers/{id}/config'
 */
 updateAiProviderConfig.put = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -335,7 +335,7 @@ updateAiProviderConfig.put = (args: { id: string | number } | [id: string | numb
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::testAiProviderConnection
-* @see app/Http/Controllers/Api/IntegrationController.php:148
+* @see app/Http/Controllers/Api/IntegrationController.php:153
 * @route '/api/ai/providers/{id}/test'
 */
 export const testAiProviderConnection = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -350,7 +350,7 @@ testAiProviderConnection.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::testAiProviderConnection
-* @see app/Http/Controllers/Api/IntegrationController.php:148
+* @see app/Http/Controllers/Api/IntegrationController.php:153
 * @route '/api/ai/providers/{id}/test'
 */
 testAiProviderConnection.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -377,7 +377,7 @@ testAiProviderConnection.url = (args: { id: string | number } | [id: string | nu
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::testAiProviderConnection
-* @see app/Http/Controllers/Api/IntegrationController.php:148
+* @see app/Http/Controllers/Api/IntegrationController.php:153
 * @route '/api/ai/providers/{id}/test'
 */
 testAiProviderConnection.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -387,7 +387,7 @@ testAiProviderConnection.post = (args: { id: string | number } | [id: string | n
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::fetchModels
-* @see app/Http/Controllers/Api/IntegrationController.php:362
+* @see app/Http/Controllers/Api/IntegrationController.php:592
 * @route '/api/ai/providers/{id}/fetch-models'
 */
 const fetchModels48ccd281c1ab96a10992ce5add21fba3 = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -402,7 +402,7 @@ fetchModels48ccd281c1ab96a10992ce5add21fba3.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::fetchModels
-* @see app/Http/Controllers/Api/IntegrationController.php:362
+* @see app/Http/Controllers/Api/IntegrationController.php:592
 * @route '/api/ai/providers/{id}/fetch-models'
 */
 fetchModels48ccd281c1ab96a10992ce5add21fba3.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -429,7 +429,7 @@ fetchModels48ccd281c1ab96a10992ce5add21fba3.url = (args: { id: string | number }
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::fetchModels
-* @see app/Http/Controllers/Api/IntegrationController.php:362
+* @see app/Http/Controllers/Api/IntegrationController.php:592
 * @route '/api/ai/providers/{id}/fetch-models'
 */
 fetchModels48ccd281c1ab96a10992ce5add21fba3.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -439,7 +439,7 @@ fetchModels48ccd281c1ab96a10992ce5add21fba3.post = (args: { id: string | number 
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::fetchModels
-* @see app/Http/Controllers/Api/IntegrationController.php:362
+* @see app/Http/Controllers/Api/IntegrationController.php:592
 * @route '/api/integrations/{id}/fetch-models'
 */
 const fetchModels6d99e0501fcbf1902765d26b2ad9836d = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -454,7 +454,7 @@ fetchModels6d99e0501fcbf1902765d26b2ad9836d.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::fetchModels
-* @see app/Http/Controllers/Api/IntegrationController.php:362
+* @see app/Http/Controllers/Api/IntegrationController.php:592
 * @route '/api/integrations/{id}/fetch-models'
 */
 fetchModels6d99e0501fcbf1902765d26b2ad9836d.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -481,7 +481,7 @@ fetchModels6d99e0501fcbf1902765d26b2ad9836d.url = (args: { id: string | number }
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::fetchModels
-* @see app/Http/Controllers/Api/IntegrationController.php:362
+* @see app/Http/Controllers/Api/IntegrationController.php:592
 * @route '/api/integrations/{id}/fetch-models'
 */
 fetchModels6d99e0501fcbf1902765d26b2ad9836d.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -501,7 +501,7 @@ export const fetchModels = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::externalIdentities
-* @see app/Http/Controllers/Api/IntegrationController.php:301
+* @see app/Http/Controllers/Api/IntegrationController.php:425
 * @route '/api/integrations/external-identities'
 */
 export const externalIdentities = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -516,7 +516,7 @@ externalIdentities.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::externalIdentities
-* @see app/Http/Controllers/Api/IntegrationController.php:301
+* @see app/Http/Controllers/Api/IntegrationController.php:425
 * @route '/api/integrations/external-identities'
 */
 externalIdentities.url = (options?: RouteQueryOptions) => {
@@ -525,7 +525,7 @@ externalIdentities.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::externalIdentities
-* @see app/Http/Controllers/Api/IntegrationController.php:301
+* @see app/Http/Controllers/Api/IntegrationController.php:425
 * @route '/api/integrations/external-identities'
 */
 externalIdentities.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -535,7 +535,7 @@ externalIdentities.get = (options?: RouteQueryOptions): RouteDefinition<'get'> =
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::externalIdentities
-* @see app/Http/Controllers/Api/IntegrationController.php:301
+* @see app/Http/Controllers/Api/IntegrationController.php:425
 * @route '/api/integrations/external-identities'
 */
 externalIdentities.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -545,7 +545,7 @@ externalIdentities.head = (options?: RouteQueryOptions): RouteDefinition<'head'>
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::linkExternalUser
-* @see app/Http/Controllers/Api/IntegrationController.php:259
+* @see app/Http/Controllers/Api/IntegrationController.php:383
 * @route '/api/integrations/link-user'
 */
 export const linkExternalUser = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -560,7 +560,7 @@ linkExternalUser.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::linkExternalUser
-* @see app/Http/Controllers/Api/IntegrationController.php:259
+* @see app/Http/Controllers/Api/IntegrationController.php:383
 * @route '/api/integrations/link-user'
 */
 linkExternalUser.url = (options?: RouteQueryOptions) => {
@@ -569,7 +569,7 @@ linkExternalUser.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::linkExternalUser
-* @see app/Http/Controllers/Api/IntegrationController.php:259
+* @see app/Http/Controllers/Api/IntegrationController.php:383
 * @route '/api/integrations/link-user'
 */
 linkExternalUser.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -579,7 +579,7 @@ linkExternalUser.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::unlinkExternalUser
-* @see app/Http/Controllers/Api/IntegrationController.php:291
+* @see app/Http/Controllers/Api/IntegrationController.php:415
 * @route '/api/integrations/link-user/{identityId}'
 */
 export const unlinkExternalUser = (args: { identityId: string | number } | [identityId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -594,7 +594,7 @@ unlinkExternalUser.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::unlinkExternalUser
-* @see app/Http/Controllers/Api/IntegrationController.php:291
+* @see app/Http/Controllers/Api/IntegrationController.php:415
 * @route '/api/integrations/link-user/{identityId}'
 */
 unlinkExternalUser.url = (args: { identityId: string | number } | [identityId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -621,7 +621,7 @@ unlinkExternalUser.url = (args: { identityId: string | number } | [identityId: s
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::unlinkExternalUser
-* @see app/Http/Controllers/Api/IntegrationController.php:291
+* @see app/Http/Controllers/Api/IntegrationController.php:415
 * @route '/api/integrations/link-user/{identityId}'
 */
 unlinkExternalUser.delete = (args: { identityId: string | number } | [identityId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -631,7 +631,7 @@ unlinkExternalUser.delete = (args: { identityId: string | number } | [identityId
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::showConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:44
+* @see app/Http/Controllers/Api/IntegrationController.php:49
 * @route '/api/integrations/{id}/config'
 */
 export const showConfig = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -646,7 +646,7 @@ showConfig.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::showConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:44
+* @see app/Http/Controllers/Api/IntegrationController.php:49
 * @route '/api/integrations/{id}/config'
 */
 showConfig.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -673,7 +673,7 @@ showConfig.url = (args: { id: string | number } | [id: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::showConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:44
+* @see app/Http/Controllers/Api/IntegrationController.php:49
 * @route '/api/integrations/{id}/config'
 */
 showConfig.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -683,7 +683,7 @@ showConfig.get = (args: { id: string | number } | [id: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::showConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:44
+* @see app/Http/Controllers/Api/IntegrationController.php:49
 * @route '/api/integrations/{id}/config'
 */
 showConfig.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -693,7 +693,7 @@ showConfig.head = (args: { id: string | number } | [id: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::updateConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:61
+* @see app/Http/Controllers/Api/IntegrationController.php:66
 * @route '/api/integrations/{id}/config'
 */
 export const updateConfig = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -708,7 +708,7 @@ updateConfig.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::updateConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:61
+* @see app/Http/Controllers/Api/IntegrationController.php:66
 * @route '/api/integrations/{id}/config'
 */
 updateConfig.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -735,7 +735,7 @@ updateConfig.url = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::updateConfig
-* @see app/Http/Controllers/Api/IntegrationController.php:61
+* @see app/Http/Controllers/Api/IntegrationController.php:66
 * @route '/api/integrations/{id}/config'
 */
 updateConfig.put = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -745,7 +745,7 @@ updateConfig.put = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::toggle
-* @see app/Http/Controllers/Api/IntegrationController.php:123
+* @see app/Http/Controllers/Api/IntegrationController.php:128
 * @route '/api/integrations/{id}/toggle'
 */
 export const toggle = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -760,7 +760,7 @@ toggle.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::toggle
-* @see app/Http/Controllers/Api/IntegrationController.php:123
+* @see app/Http/Controllers/Api/IntegrationController.php:128
 * @route '/api/integrations/{id}/toggle'
 */
 toggle.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -787,7 +787,7 @@ toggle.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::toggle
-* @see app/Http/Controllers/Api/IntegrationController.php:123
+* @see app/Http/Controllers/Api/IntegrationController.php:128
 * @route '/api/integrations/{id}/toggle'
 */
 toggle.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -797,7 +797,7 @@ toggle.post = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::testConnection
-* @see app/Http/Controllers/Api/IntegrationController.php:137
+* @see app/Http/Controllers/Api/IntegrationController.php:142
 * @route '/api/integrations/{id}/test'
 */
 export const testConnection = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -812,7 +812,7 @@ testConnection.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::testConnection
-* @see app/Http/Controllers/Api/IntegrationController.php:137
+* @see app/Http/Controllers/Api/IntegrationController.php:142
 * @route '/api/integrations/{id}/test'
 */
 testConnection.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -839,7 +839,7 @@ testConnection.url = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::testConnection
-* @see app/Http/Controllers/Api/IntegrationController.php:137
+* @see app/Http/Controllers/Api/IntegrationController.php:142
 * @route '/api/integrations/{id}/test'
 */
 testConnection.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -849,7 +849,7 @@ testConnection.post = (args: { id: string | number } | [id: string | number ] | 
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::disconnect
-* @see app/Http/Controllers/Api/IntegrationController.php:158
+* @see app/Http/Controllers/Api/IntegrationController.php:163
 * @route '/api/integrations/{id}/disconnect'
 */
 export const disconnect = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -864,7 +864,7 @@ disconnect.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::disconnect
-* @see app/Http/Controllers/Api/IntegrationController.php:158
+* @see app/Http/Controllers/Api/IntegrationController.php:163
 * @route '/api/integrations/{id}/disconnect'
 */
 disconnect.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -891,7 +891,7 @@ disconnect.url = (args: { id: string | number } | [id: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::disconnect
-* @see app/Http/Controllers/Api/IntegrationController.php:158
+* @see app/Http/Controllers/Api/IntegrationController.php:163
 * @route '/api/integrations/{id}/disconnect'
 */
 disconnect.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -901,7 +901,7 @@ disconnect.post = (args: { id: string | number } | [id: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::setupWebhook
-* @see app/Http/Controllers/Api/IntegrationController.php:175
+* @see app/Http/Controllers/Api/IntegrationController.php:180
 * @route '/api/integrations/{id}/setup-webhook'
 */
 export const setupWebhook = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -916,7 +916,7 @@ setupWebhook.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::setupWebhook
-* @see app/Http/Controllers/Api/IntegrationController.php:175
+* @see app/Http/Controllers/Api/IntegrationController.php:180
 * @route '/api/integrations/{id}/setup-webhook'
 */
 setupWebhook.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -943,7 +943,7 @@ setupWebhook.url = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::setupWebhook
-* @see app/Http/Controllers/Api/IntegrationController.php:175
+* @see app/Http/Controllers/Api/IntegrationController.php:180
 * @route '/api/integrations/{id}/setup-webhook'
 */
 setupWebhook.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -952,8 +952,144 @@ setupWebhook.post = (args: { id: string | number } | [id: string | number ] | st
 })
 
 /**
+* @see \App\Http\Controllers\Api\IntegrationController::telegramHealthCheck
+* @see app/Http/Controllers/Api/IntegrationController.php:232
+* @route '/api/integrations/telegram/health-check'
+*/
+export const telegramHealthCheck = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: telegramHealthCheck.url(options),
+    method: 'post',
+})
+
+telegramHealthCheck.definition = {
+    methods: ["post"],
+    url: '/api/integrations/telegram/health-check',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::telegramHealthCheck
+* @see app/Http/Controllers/Api/IntegrationController.php:232
+* @route '/api/integrations/telegram/health-check'
+*/
+telegramHealthCheck.url = (options?: RouteQueryOptions) => {
+    return telegramHealthCheck.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::telegramHealthCheck
+* @see app/Http/Controllers/Api/IntegrationController.php:232
+* @route '/api/integrations/telegram/health-check'
+*/
+telegramHealthCheck.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: telegramHealthCheck.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::syncTelegramBotProfile
+* @see app/Http/Controllers/Api/IntegrationController.php:259
+* @route '/api/integrations/telegram/sync-bot-profile'
+*/
+export const syncTelegramBotProfile = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: syncTelegramBotProfile.url(options),
+    method: 'post',
+})
+
+syncTelegramBotProfile.definition = {
+    methods: ["post"],
+    url: '/api/integrations/telegram/sync-bot-profile',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::syncTelegramBotProfile
+* @see app/Http/Controllers/Api/IntegrationController.php:259
+* @route '/api/integrations/telegram/sync-bot-profile'
+*/
+syncTelegramBotProfile.url = (options?: RouteQueryOptions) => {
+    return syncTelegramBotProfile.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::syncTelegramBotProfile
+* @see app/Http/Controllers/Api/IntegrationController.php:259
+* @route '/api/integrations/telegram/sync-bot-profile'
+*/
+syncTelegramBotProfile.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: syncTelegramBotProfile.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::sendTelegramTestMessage
+* @see app/Http/Controllers/Api/IntegrationController.php:286
+* @route '/api/integrations/telegram/test-send'
+*/
+export const sendTelegramTestMessage = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: sendTelegramTestMessage.url(options),
+    method: 'post',
+})
+
+sendTelegramTestMessage.definition = {
+    methods: ["post"],
+    url: '/api/integrations/telegram/test-send',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::sendTelegramTestMessage
+* @see app/Http/Controllers/Api/IntegrationController.php:286
+* @route '/api/integrations/telegram/test-send'
+*/
+sendTelegramTestMessage.url = (options?: RouteQueryOptions) => {
+    return sendTelegramTestMessage.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::sendTelegramTestMessage
+* @see app/Http/Controllers/Api/IntegrationController.php:286
+* @route '/api/integrations/telegram/test-send'
+*/
+sendTelegramTestMessage.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: sendTelegramTestMessage.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::rotateTelegramWebhookSecret
+* @see app/Http/Controllers/Api/IntegrationController.php:358
+* @route '/api/integrations/telegram/rotate-secret'
+*/
+export const rotateTelegramWebhookSecret = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: rotateTelegramWebhookSecret.url(options),
+    method: 'post',
+})
+
+rotateTelegramWebhookSecret.definition = {
+    methods: ["post"],
+    url: '/api/integrations/telegram/rotate-secret',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::rotateTelegramWebhookSecret
+* @see app/Http/Controllers/Api/IntegrationController.php:358
+* @route '/api/integrations/telegram/rotate-secret'
+*/
+rotateTelegramWebhookSecret.url = (options?: RouteQueryOptions) => {
+    return rotateTelegramWebhookSecret.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Api\IntegrationController::rotateTelegramWebhookSecret
+* @see app/Http/Controllers/Api/IntegrationController.php:358
+* @route '/api/integrations/telegram/rotate-secret'
+*/
+rotateTelegramWebhookSecret.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: rotateTelegramWebhookSecret.url(options),
+    method: 'post',
+})
+
+/**
 * @see \App\Http\Controllers\Api\IntegrationController::listAccounts
-* @see app/Http/Controllers/Api/IntegrationController.php:403
+* @see app/Http/Controllers/Api/IntegrationController.php:633
 * @route '/api/integrations/{id}/accounts'
 */
 export const listAccounts = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -968,7 +1104,7 @@ listAccounts.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::listAccounts
-* @see app/Http/Controllers/Api/IntegrationController.php:403
+* @see app/Http/Controllers/Api/IntegrationController.php:633
 * @route '/api/integrations/{id}/accounts'
 */
 listAccounts.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -995,7 +1131,7 @@ listAccounts.url = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::listAccounts
-* @see app/Http/Controllers/Api/IntegrationController.php:403
+* @see app/Http/Controllers/Api/IntegrationController.php:633
 * @route '/api/integrations/{id}/accounts'
 */
 listAccounts.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -1005,7 +1141,7 @@ listAccounts.get = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::listAccounts
-* @see app/Http/Controllers/Api/IntegrationController.php:403
+* @see app/Http/Controllers/Api/IntegrationController.php:633
 * @route '/api/integrations/{id}/accounts'
 */
 listAccounts.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -1015,7 +1151,7 @@ listAccounts.head = (args: { id: string | number } | [id: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::createAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:411
+* @see app/Http/Controllers/Api/IntegrationController.php:641
 * @route '/api/integrations/{id}/accounts'
 */
 export const createAccount = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -1030,7 +1166,7 @@ createAccount.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::createAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:411
+* @see app/Http/Controllers/Api/IntegrationController.php:641
 * @route '/api/integrations/{id}/accounts'
 */
 createAccount.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -1057,7 +1193,7 @@ createAccount.url = (args: { id: string | number } | [id: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::createAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:411
+* @see app/Http/Controllers/Api/IntegrationController.php:641
 * @route '/api/integrations/{id}/accounts'
 */
 createAccount.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -1067,7 +1203,7 @@ createAccount.post = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::updateAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:440
+* @see app/Http/Controllers/Api/IntegrationController.php:670
 * @route '/api/integrations/{id}/accounts/{alias}'
 */
 export const updateAccount = (args: { id: string | number, alias: string | number } | [id: string | number, alias: string | number ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -1082,7 +1218,7 @@ updateAccount.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::updateAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:440
+* @see app/Http/Controllers/Api/IntegrationController.php:670
 * @route '/api/integrations/{id}/accounts/{alias}'
 */
 updateAccount.url = (args: { id: string | number, alias: string | number } | [id: string | number, alias: string | number ], options?: RouteQueryOptions) => {
@@ -1108,7 +1244,7 @@ updateAccount.url = (args: { id: string | number, alias: string | number } | [id
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::updateAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:440
+* @see app/Http/Controllers/Api/IntegrationController.php:670
 * @route '/api/integrations/{id}/accounts/{alias}'
 */
 updateAccount.put = (args: { id: string | number, alias: string | number } | [id: string | number, alias: string | number ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -1118,7 +1254,7 @@ updateAccount.put = (args: { id: string | number, alias: string | number } | [id
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::deleteAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:452
+* @see app/Http/Controllers/Api/IntegrationController.php:682
 * @route '/api/integrations/{id}/accounts/{alias}'
 */
 export const deleteAccount = (args: { id: string | number, alias: string | number } | [id: string | number, alias: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -1133,7 +1269,7 @@ deleteAccount.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::deleteAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:452
+* @see app/Http/Controllers/Api/IntegrationController.php:682
 * @route '/api/integrations/{id}/accounts/{alias}'
 */
 deleteAccount.url = (args: { id: string | number, alias: string | number } | [id: string | number, alias: string | number ], options?: RouteQueryOptions) => {
@@ -1159,7 +1295,7 @@ deleteAccount.url = (args: { id: string | number, alias: string | number } | [id
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::deleteAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:452
+* @see app/Http/Controllers/Api/IntegrationController.php:682
 * @route '/api/integrations/{id}/accounts/{alias}'
 */
 deleteAccount.delete = (args: { id: string | number, alias: string | number } | [id: string | number, alias: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -1169,7 +1305,7 @@ deleteAccount.delete = (args: { id: string | number, alias: string | number } | 
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::setDefaultAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:469
+* @see app/Http/Controllers/Api/IntegrationController.php:699
 * @route '/api/integrations/{id}/accounts/{alias}/default'
 */
 export const setDefaultAccount = (args: { id: string | number, alias: string | number } | [id: string | number, alias: string | number ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -1184,7 +1320,7 @@ setDefaultAccount.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::setDefaultAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:469
+* @see app/Http/Controllers/Api/IntegrationController.php:699
 * @route '/api/integrations/{id}/accounts/{alias}/default'
 */
 setDefaultAccount.url = (args: { id: string | number, alias: string | number } | [id: string | number, alias: string | number ], options?: RouteQueryOptions) => {
@@ -1210,7 +1346,7 @@ setDefaultAccount.url = (args: { id: string | number, alias: string | number } |
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::setDefaultAccount
-* @see app/Http/Controllers/Api/IntegrationController.php:469
+* @see app/Http/Controllers/Api/IntegrationController.php:699
 * @route '/api/integrations/{id}/accounts/{alias}/default'
 */
 setDefaultAccount.post = (args: { id: string | number, alias: string | number } | [id: string | number, alias: string | number ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -1220,7 +1356,7 @@ setDefaultAccount.post = (args: { id: string | number, alias: string | number } 
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::ollamaModelStatus
-* @see app/Http/Controllers/Api/IntegrationController.php:344
+* @see app/Http/Controllers/Api/IntegrationController.php:574
 * @route '/api/integrations/ollama/status'
 */
 export const ollamaModelStatus = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -1235,7 +1371,7 @@ ollamaModelStatus.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::ollamaModelStatus
-* @see app/Http/Controllers/Api/IntegrationController.php:344
+* @see app/Http/Controllers/Api/IntegrationController.php:574
 * @route '/api/integrations/ollama/status'
 */
 ollamaModelStatus.url = (options?: RouteQueryOptions) => {
@@ -1244,7 +1380,7 @@ ollamaModelStatus.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::ollamaModelStatus
-* @see app/Http/Controllers/Api/IntegrationController.php:344
+* @see app/Http/Controllers/Api/IntegrationController.php:574
 * @route '/api/integrations/ollama/status'
 */
 ollamaModelStatus.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -1254,7 +1390,7 @@ ollamaModelStatus.get = (options?: RouteQueryOptions): RouteDefinition<'get'> =>
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::ollamaModelStatus
-* @see app/Http/Controllers/Api/IntegrationController.php:344
+* @see app/Http/Controllers/Api/IntegrationController.php:574
 * @route '/api/integrations/ollama/status'
 */
 ollamaModelStatus.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -1264,7 +1400,7 @@ ollamaModelStatus.head = (options?: RouteQueryOptions): RouteDefinition<'head'> 
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::ollamaPullModel
-* @see app/Http/Controllers/Api/IntegrationController.php:352
+* @see app/Http/Controllers/Api/IntegrationController.php:582
 * @route '/api/integrations/ollama/pull'
 */
 export const ollamaPullModel = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -1279,7 +1415,7 @@ ollamaPullModel.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::ollamaPullModel
-* @see app/Http/Controllers/Api/IntegrationController.php:352
+* @see app/Http/Controllers/Api/IntegrationController.php:582
 * @route '/api/integrations/ollama/pull'
 */
 ollamaPullModel.url = (options?: RouteQueryOptions) => {
@@ -1288,7 +1424,7 @@ ollamaPullModel.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\IntegrationController::ollamaPullModel
-* @see app/Http/Controllers/Api/IntegrationController.php:352
+* @see app/Http/Controllers/Api/IntegrationController.php:582
 * @route '/api/integrations/ollama/pull'
 */
 ollamaPullModel.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -1296,6 +1432,6 @@ ollamaPullModel.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =>
     method: 'post',
 })
 
-const IntegrationController = { index, enabledModels, allProviders, embeddingModels, rerankingModels, showAiProviderConfig, updateAiProviderConfig, testAiProviderConnection, fetchModels, externalIdentities, linkExternalUser, unlinkExternalUser, showConfig, updateConfig, toggle, testConnection, disconnect, setupWebhook, listAccounts, createAccount, updateAccount, deleteAccount, setDefaultAccount, ollamaModelStatus, ollamaPullModel }
+const IntegrationController = { index, enabledModels, allProviders, embeddingModels, rerankingModels, showAiProviderConfig, updateAiProviderConfig, testAiProviderConnection, fetchModels, externalIdentities, linkExternalUser, unlinkExternalUser, showConfig, updateConfig, toggle, testConnection, disconnect, setupWebhook, telegramHealthCheck, syncTelegramBotProfile, sendTelegramTestMessage, rotateTelegramWebhookSecret, listAccounts, createAccount, updateAccount, deleteAccount, setDefaultAccount, ollamaModelStatus, ollamaPullModel }
 
 export default IntegrationController

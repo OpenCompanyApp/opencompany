@@ -210,19 +210,19 @@ interface ExtendedDocument extends Document {
   documentType?: string
   tags?: string[]
   path?: string
-  createdAt?: Date
+  createdAt: Date
   color?: string | null
   icon?: string | null
 }
 
 interface DropEvent {
-  item: Document
-  target: Document
+  item: ExtendedDocument
+  target: ExtendedDocument
   position: DropPosition
 }
 
 interface ContextMenuEvent {
-  item: Document
+  item: ExtendedDocument
   event: MouseEvent
   position: { x: number; y: number }
 }
@@ -295,36 +295,22 @@ const props = withDefaults(defineProps<{
   collapseAll: false,
 })
 
-const emit = defineEmits<{
-  /** Item selected (click on document) */
-  select: [doc: Document]
-  /** Item selection toggled (checkbox) */
-  'toggle-select': [doc: Document]
-  /** Folder expanded */
-  expand: [doc: Document]
-  /** Folder collapsed */
-  collapse: [doc: Document]
-  /** Star toggled */
-  star: [doc: Document]
-  /** Pin toggled */
-  pin: [doc: Document]
-  /** Duplicate requested */
-  duplicate: [doc: Document]
-  /** Delete requested */
-  delete: [doc: Document]
-  /** Rename requested */
-  rename: [doc: Document]
-  /** Inline rename submitted */
-  'rename-submit': [payload: { item: Document; title: string }]
-  /** Create child document in folder */
-  'create-child': [doc: Document]
-  /** Move requested */
-  move: [doc: Document]
-  /** Item dropped */
-  drop: [event: DropEvent]
-  /** Context menu opened */
-  'context-menu': [event: ContextMenuEvent]
-}>()
+const emit = defineEmits([
+  'select',
+  'toggle-select',
+  'expand',
+  'collapse',
+  'star',
+  'pin',
+  'duplicate',
+  'delete',
+  'rename',
+  'rename-submit',
+  'create-child',
+  'move',
+  'drop',
+  'context-menu',
+])
 
 // ============================================================================
 // State
@@ -542,7 +528,7 @@ const handleDrop = (event: DragEvent) => {
   const data = event.dataTransfer?.getData('application/json')
   if (data) {
     try {
-      const droppedItem = JSON.parse(data) as Document
+      const droppedItem = JSON.parse(data) as ExtendedDocument
 
       // Don't drop on self
       if (droppedItem.id === props.item.id) return
@@ -564,7 +550,7 @@ const handleDrop = (event: DragEvent) => {
   dropPosition.value = null
 }
 
-const isDescendant = (potentialChild: Document, potentialParent: Document): boolean => {
+const isDescendant = (potentialChild: ExtendedDocument, potentialParent: ExtendedDocument): boolean => {
   let current = potentialChild
   while (current.parentId) {
     if (current.parentId === potentialParent.id) return true

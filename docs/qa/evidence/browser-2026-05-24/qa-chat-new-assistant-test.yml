@@ -1,0 +1,119 @@
+- generic [ref=e3] [box=0,0,0,0]:
+  - generic [ref=e4] [box=0,0,1440,1000]:
+    - complementary [ref=e5] [box=0,0,240,1000]:
+      - generic [ref=e7] [box=8,12,224,44]:
+        - button "Test" [ref=e8] [box=8,12,113,44]:
+          - img [ref=e10] [box=27,25,18,18]
+          - generic [ref=e12] [box=60,24,27,20]: Test
+          - img [ref=e13] [box=95,27,14,14]
+        - button [ref=e15] [box=202,19,30,30]:
+          - img [ref=e16] [box=208,25,18,18]
+      - navigation [ref=e18] [box=0,64,240,797]:
+        - link "Dashboard" [ref=e20] [cursor=pointer] [box=8,68,224,36]:
+          - /url: /w/test
+          - img [ref=e21] [box=20,77,18,18]
+          - generic [ref=e23] [box=48,76,172,20]: Dashboard
+        - generic [ref=e25] [box=8,125,224,150]:
+          - link "Tasks" [ref=e26] [cursor=pointer] [box=8,125,224,36]:
+            - /url: /w/test/tasks
+            - img [ref=e27] [box=20,134,18,18]
+            - generic [ref=e29] [box=48,133,172,20]: Tasks
+          - link "Approvals 3" [ref=e30] [cursor=pointer] [box=8,163,224,36]:
+            - /url: /w/test/approvals
+            - img [ref=e31] [box=20,172,18,18]
+            - generic [ref=e33] [box=48,171,144,20]: Approvals
+            - generic [ref=e34] [box=202,171,18,20]: "3"
+          - link "Organization" [ref=e35] [cursor=pointer] [box=8,201,224,36]:
+            - /url: /w/test/org
+            - img [ref=e36] [box=20,210,18,18]
+            - generic [ref=e38] [box=48,209,172,20]: Organization
+          - link "Automation" [ref=e39] [cursor=pointer] [box=8,239,224,36]:
+            - /url: /w/test/automation
+            - img [ref=e40] [box=20,248,18,18]
+            - generic [ref=e42] [box=48,247,172,20]: Automation
+        - generic [ref=e44] [box=8,296,224,226]:
+          - link "Chat 15" [ref=e45] [cursor=pointer] [box=8,296,224,36]:
+            - /url: /w/test/chat
+            - img [ref=e46] [box=20,305,18,18]
+            - generic [ref=e48] [box=48,304,137,20]: Chat
+            - generic [ref=e49] [box=195,304,25,20]: "15"
+          - link "Docs" [ref=e50] [cursor=pointer] [box=8,334,224,36]:
+            - /url: /w/test/docs
+            - img [ref=e51] [box=20,343,18,18]
+            - generic [ref=e53] [box=48,342,172,20]: Docs
+          - link "Files" [ref=e54] [cursor=pointer] [box=8,372,224,36]:
+            - /url: /w/test/files
+            - img [ref=e55] [box=20,381,18,18]
+            - generic [ref=e57] [box=48,380,172,20]: Files
+          - link "Tables" [ref=e58] [cursor=pointer] [box=8,410,224,36]:
+            - /url: /w/test/tables
+            - img [ref=e59] [box=20,419,18,18]
+            - generic [ref=e61] [box=48,418,172,20]: Tables
+          - link "Calendar" [ref=e62] [cursor=pointer] [box=8,448,224,36]:
+            - /url: /w/test/calendar
+            - img [ref=e63] [box=20,457,18,18]
+            - generic [ref=e65] [box=48,456,172,20]: Calendar
+          - link "Lists" [ref=e66] [cursor=pointer] [box=8,486,224,36]:
+            - /url: /w/test/lists
+            - img [ref=e67] [box=20,495,18,18]
+            - generic [ref=e69] [box=48,494,172,20]: Lists
+        - generic [ref=e71] [box=8,534,224,28]:
+          - button "Agents" [expanded] [ref=e72] [box=20,534,174,28]:
+            - img [ref=e73] [box=20,542,12,12]
+            - generic [ref=e75] [box=40,540,40,16]: Agents
+          - button "Spawn new agent" [ref=e76] [box=198,537,22,22]:
+            - img [ref=e77] [box=202,541,14,14]
+      - generic [ref=e79] [box=0,861,240,139]:
+        - generic [ref=e80] [box=0,861,240,74]:
+          - link "Integrations" [ref=e81] [cursor=pointer] [box=8,861,224,36]:
+            - /url: /w/test/integrations
+            - img [ref=e82] [box=20,870,18,18]
+            - generic [ref=e84] [box=48,869,83,20]: Integrations
+          - link "Settings" [ref=e85] [cursor=pointer] [box=8,899,224,36]:
+            - /url: /w/test/settings
+            - img [ref=e86] [box=20,908,18,18]
+            - generic [ref=e88] [box=48,907,54,20]: Settings
+        - generic [ref=e90] [box=12,946,216,44]:
+          - button "Rutger" [ref=e92] [cursor=pointer] [box=4,946,44,44]:
+            - img "Rutger" [ref=e94] [box=12,954,28,28]
+          - generic [ref=e96] [box=52,958,96,20]: OpenCompany
+    - main [ref=e97] [box=240,0,1200,1000]:
+      - generic [ref=e100] [box=240,0,1200,1000]:
+        - complementary [ref=e101] [box=240,0,64,1000]:
+          - button "New assistant chat" [active] [ref=e105] [box=252,12,36,36]:
+            - img [ref=e106] [box=262,22,16,16]
+          - generic [ref=e109] [box=248,81,47,164]:
+            - button "Atlas" [ref=e110] [box=248,81,47,52]:
+              - img "Atlas" [ref=e115] [box=256,91,32,32]
+            - button "Automation" [ref=e117] [box=248,137,47,52]
+            - button "general" [ref=e124] [box=248,193,47,52]:
+              - img [ref=e126] [box=264,211,16,16]
+        - generic [ref=e128] [box=304,0,1136,1000]:
+          - generic [ref=e129] [box=304,0,1136,56]:
+            - generic [ref=e130] [box=320,10,276,36]:
+              - button "Show conversations" [ref=e131] [box=320,10,36,36]
+              - img "Atlas" [ref=e137] [box=368,12,32,32]
+              - generic [ref=e139] [box=412,10,184,36]
+            - button "Refresh" [ref=e143] [box=1328,10,97,36]:
+              - img [ref=e144] [box=1340,20,16,16]
+              - generic [ref=e146] [box=1362,18,51,20]: Refresh
+          - generic [ref=e252] [box=504,158,736,556]:
+            - img [ref=e254] [box=858,172,28,28]
+            - heading "How can OpenCompany help?" [level=2] [ref=e256] [box=504,234,736,32]
+            - paragraph [ref=e257] [box=616,274,512,48]: Ask an agent to reason through work, use approved tools, inspect workspace data, or prepare the next action.
+            - button "Choose agent" [ref=e259] [box=779,342,186,40]:
+              - img "Atlas" [ref=e263] [box=790,350,24,24]
+              - generic [ref=e265] [box=822,347,110,30]
+              - img [ref=e268] [box=940,355,14,14]
+            - generic [ref=e270] [box=504,414,736,300]:
+              - button "Plan a task Break down a workspace goal and identify the next concrete action." [ref=e271] [box=504,414,364,146]
+              - button "Use tools Ask an agent to inspect data or call an integration with approval gates." [ref=e277] [box=876,414,364,146]
+              - button "Review approvals Summarize pending approvals and the risk of approving them." [ref=e283] [box=504,568,364,146]
+              - button "Think through context Use workspace context and memory before producing a recommendation." [ref=e289] [box=876,568,364,146]
+          - generic [ref=e192] [box=488,816,768,184]:
+            - generic [ref=e193] [box=504,816,736,136]:
+              - textbox "Ask Atlas..." [ref=e194] [box=505,817,734,80]
+              - generic [ref=e195] [box=505,903,734,48]
+            - paragraph [ref=e212] [box=504,960,736,16]: OpenCompany can use tools and may ask for approval before making changes.
+  - region "Notifications (F8)" [box=0,1000,1440,0]:
+    - list [box=1424,984,0,0]

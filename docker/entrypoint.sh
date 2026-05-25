@@ -33,8 +33,10 @@ export QUEUE_WORKERS="${QUEUE_WORKERS:-5}"
 # Cache config with runtime env vars
 php /app/artisan config:cache
 
-# Run migrations
-php /app/artisan migrate --force --isolated
+# Run migrations. The self-hosted compose stack uses the database cache driver,
+# so first boot cannot rely on migration isolation locks before cache_locks
+# exists.
+php /app/artisan migrate --force
 
 # Sync Telegram bot commands + profile photo (if configured)
 php /app/artisan telegram:sync --quiet 2>/dev/null || true

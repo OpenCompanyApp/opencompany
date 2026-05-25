@@ -277,7 +277,14 @@
             <section class="mb-8">
               <h2 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">Connected Services</h2>
 
-              <div v-if="connectedServices.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+              <div
+                v-if="integrationStatusError"
+                class="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/70 dark:bg-red-950/30 dark:text-red-300"
+              >
+                {{ integrationStatusError }}
+              </div>
+
+              <div v-if="!integrationStatusError && connectedServices.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
                 <IntegrationCard
                   v-for="service in installedIntegrations"
                   :key="service.id"
@@ -288,7 +295,7 @@
                 />
               </div>
 
-              <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center mb-6">
+              <div v-else-if="!integrationStatusError" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center mb-6">
                 <Icon name="ph:plugs-connected" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">No connected services</p>
                 <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
@@ -298,6 +305,169 @@
                   </button>
                   to connect integrations
                 </p>
+              </div>
+            </section>
+
+            <!-- Telegram Agent Shell -->
+            <section v-if="telegramIntegrationInstalled" class="mb-8">
+              <div class="flex flex-col gap-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h2 class="text-sm font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                      <Icon name="ph:telegram-logo" class="w-4 h-4 text-sky-500" />
+                      Telegram agent shell
+                    </h2>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      Health, command sync, webhook repair, and delivery operations for the agent-first Telegram bot.
+                    </p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60"
+                      :disabled="telegramAction !== null"
+                      @click="runTelegramHealthCheck"
+                    >
+                      <Icon :name="telegramAction === 'health' ? 'ph:circle-notch' : 'ph:pulse'" class="w-3.5 h-3.5" :class="{ 'animate-spin': telegramAction === 'health' }" />
+                      Health
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60"
+                      :disabled="telegramAction !== null"
+                      @click="syncTelegramBotProfile"
+                    >
+                      <Icon :name="telegramAction === 'sync' ? 'ph:circle-notch' : 'ph:arrows-clockwise'" class="w-3.5 h-3.5" :class="{ 'animate-spin': telegramAction === 'sync' }" />
+                      Sync bot UX
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60"
+                      :disabled="telegramAction !== null"
+                      @click="sendTelegramTest"
+                    >
+                      <Icon :name="telegramAction === 'test' ? 'ph:circle-notch' : 'ph:paper-plane-tilt'" class="w-3.5 h-3.5" :class="{ 'animate-spin': telegramAction === 'test' }" />
+                      Test send
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60"
+                      :disabled="telegramAction !== null"
+                      @click="setupTelegramWebhook"
+                    >
+                      <Icon :name="telegramAction === 'webhook' ? 'ph:circle-notch' : 'ph:webhooks-logo'" class="w-3.5 h-3.5" :class="{ 'animate-spin': telegramAction === 'webhook' }" />
+                      Reset webhook
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60"
+                      :disabled="telegramAction !== null"
+                      @click="rotateTelegramSecret"
+                    >
+                      <Icon :name="telegramAction === 'rotate' ? 'ph:circle-notch' : 'ph:key'" class="w-3.5 h-3.5" :class="{ 'animate-spin': telegramAction === 'rotate' }" />
+                      Rotate secret
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60"
+                      :disabled="telegramAction !== null"
+                      @click="repairTelegramLocalState"
+                    >
+                      <Icon :name="telegramAction === 'repair' ? 'ph:circle-notch' : 'ph:wrench'" class="w-3.5 h-3.5" :class="{ 'animate-spin': telegramAction === 'repair' }" />
+                      Repair local state
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="telegramError" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800/70 dark:bg-red-950/30 dark:text-red-300">
+                  {{ telegramError }}
+                </div>
+                <div v-if="telegramNotice" class="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700 dark:border-green-800/70 dark:bg-green-950/30 dark:text-green-300">
+                  {{ telegramNotice }}
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  <div
+                    v-for="stat in telegramStats"
+                    :key="stat.label"
+                    class="rounded-md border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/40 px-3 py-2"
+                  >
+                    <p class="text-[11px] text-neutral-500 dark:text-neutral-400">{{ stat.label }}</p>
+                    <p class="mt-1 text-sm font-medium text-neutral-900 dark:text-white">{{ stat.value }}</p>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  <div class="rounded-md border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
+                    <div class="px-3 py-2 flex items-center justify-between">
+                      <p class="text-xs font-medium text-neutral-900 dark:text-white">Delivery queue</p>
+                      <button
+                        type="button"
+                        class="text-[11px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                        @click="loadTelegramOperations"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                    <div v-if="telegramDeliveryLogs.length" class="divide-y divide-neutral-100 dark:divide-neutral-800">
+                      <div v-for="delivery in telegramDeliveryLogs" :key="delivery.id" class="px-3 py-2 flex items-center gap-3">
+                        <div class="min-w-0 flex-1">
+                          <p class="text-xs font-medium text-neutral-900 dark:text-white truncate">
+                            {{ delivery.method || 'sendMessage' }} · {{ delivery.status }}
+                          </p>
+                          <p class="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
+                            Chat {{ delivery.chat_id }}{{ delivery.telegram_message_id ? ` · message ${delivery.telegram_message_id}` : '' }}
+                          </p>
+                        </div>
+                        <button
+                          v-if="delivery.status === 'failed'"
+                          type="button"
+                          class="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60"
+                          :disabled="telegramAction !== null"
+                          @click="retryTelegramDelivery(delivery.id)"
+                        >
+                          <Icon name="ph:arrow-clockwise" class="w-3 h-3" />
+                          Retry
+                        </button>
+                      </div>
+                    </div>
+                    <p v-else class="px-3 py-5 text-xs text-neutral-500 dark:text-neutral-400 text-center">
+                      No recent Telegram deliveries.
+                    </p>
+                  </div>
+
+                  <div class="rounded-md border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
+                    <div class="px-3 py-2 flex items-center justify-between">
+                      <p class="text-xs font-medium text-neutral-900 dark:text-white">Webhook receipts</p>
+                      <span class="text-[11px] text-neutral-500 dark:text-neutral-400">{{ telegramReceiptLogs.length }}</span>
+                    </div>
+                    <div v-if="telegramReceiptLogs.length" class="divide-y divide-neutral-100 dark:divide-neutral-800">
+                      <div v-for="receipt in telegramReceiptLogs" :key="receipt.id" class="px-3 py-2 flex items-center gap-3">
+                        <div class="min-w-0 flex-1">
+                          <p class="text-xs font-medium text-neutral-900 dark:text-white truncate">
+                            {{ receipt.update_type || 'update' }} · {{ receipt.status }}
+                          </p>
+                          <p class="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
+                            Update {{ receipt.update_id }}{{ receipt.retry_count ? ` · ${receipt.retry_count} retries` : '' }}
+                          </p>
+                        </div>
+                        <button
+                          v-if="receipt.status === 'failed'"
+                          type="button"
+                          class="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60"
+                          :disabled="telegramAction !== null"
+                          @click="replayTelegramReceipt(receipt.id)"
+                        >
+                          <Icon name="ph:play" class="w-3 h-3" />
+                          Replay
+                        </button>
+                      </div>
+                    </div>
+                    <p v-else class="px-3 py-5 text-xs text-neutral-500 dark:text-neutral-400 text-center">
+                      No recent Telegram webhook receipts.
+                    </p>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -315,7 +485,14 @@
                 </button>
               </div>
 
-              <div v-if="webhooks.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
+              <div
+                v-if="webhooksError"
+                class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/70 dark:bg-red-950/30 dark:text-red-300"
+              >
+                {{ webhooksError }}
+              </div>
+
+              <div v-else-if="webhooks.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
                 <div
                   v-for="webhook in webhooks"
                   :key="webhook.id"
@@ -385,7 +562,14 @@
                 </button>
               </div>
 
-              <div v-if="apiKeys.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
+              <div
+                v-if="apiKeysError"
+                class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/70 dark:bg-red-950/30 dark:text-red-300"
+              >
+                {{ apiKeysError }}
+              </div>
+
+              <div v-else-if="apiKeys.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
                 <div
                   v-for="key in apiKeys"
                   :key="key.id"
@@ -644,9 +828,20 @@ import { apiKeys as aiGatewayApiKeys, deleteApiKey } from '@/actions/App/Http/Co
 import { index as integrationCatalogIndex } from '@/actions/App/Http/Controllers/Api/IntegrationCatalogController'
 import {
   index as integrationsIndex,
+  rotateTelegramWebhookSecret,
+  sendTelegramTestMessage,
   showConfig as showIntegrationConfig,
+  setupWebhook as setupIntegrationWebhook,
+  syncTelegramBotProfile as syncTelegramBotProfileAction,
+  telegramHealthCheck,
   toggle as toggleIntegration,
 } from '@/actions/App/Http/Controllers/Api/IntegrationController'
+import {
+  index as telegramOperationsIndex,
+  repair as repairTelegramOperations,
+  replayReceipt as replayTelegramReceiptAction,
+  retryDelivery as retryTelegramDeliveryAction,
+} from '@/actions/App/Http/Controllers/Api/TelegramOperationsController'
 import {
   destroy as destroyIntegrationWebhook,
   index as integrationWebhooksIndex,
@@ -677,6 +872,14 @@ const searchQuery = ref(initialQuery.get('q') || '')
 const catalogLoading = ref(false)
 const catalogError = ref<string | null>(null)
 const catalogAvailable = ref<boolean | null>(null)
+const integrationStatusError = ref<string | null>(null)
+const apiKeysError = ref<string | null>(null)
+const webhooksError = ref<string | null>(null)
+const telegramError = ref<string | null>(null)
+const telegramNotice = ref<string | null>(null)
+const telegramAction = ref<'health' | 'sync' | 'test' | 'webhook' | 'rotate' | 'repair' | 'retry' | 'replay' | null>(null)
+const telegramOperations = ref<TelegramOperations | null>(null)
+const telegramProfile = ref<Record<string, any> | null>(null)
 const catalogMeta = reactive({
   page: 0,
   perPage: 50,
@@ -723,6 +926,15 @@ interface IntegrationCategory {
   integrations: Integration[]
 }
 
+interface TelegramOperations {
+  metrics?: Record<string, any>
+  logs?: {
+    receipts?: Record<string, any>[]
+    deliveries?: Record<string, any>[]
+  }
+  repairCandidates?: Record<string, any>
+}
+
 // Webhook state
 const showWebhookModal = ref(false)
 const webhookEditingId = ref<string | null>(null)
@@ -764,6 +976,9 @@ onMounted(async () => {
 
 const loadCatalogThenStatus = async () => {
   await loadIntegrationStatus()
+  if (telegramIntegrationInstalled.value) {
+    await loadTelegramOperations()
+  }
   await loadIntegrationCatalog({
     reset: true,
     search: searchQuery.value.trim(),
@@ -921,6 +1136,8 @@ const loadMoreCatalog = () => {
 }
 
 const loadApiKeys = async () => {
+  apiKeysError.value = null
+
   try {
     const { data } = await wayfinderRequest<any[]>(aiGatewayApiKeys())
     apiKeys.value = data.map((key: any) => ({
@@ -932,6 +1149,7 @@ const loadApiKeys = async () => {
     }))
   } catch (error) {
     console.error('Failed to load API keys:', error)
+    apiKeysError.value = 'Could not load API keys. Refresh the page or try again later.'
   }
 }
 
@@ -954,6 +1172,8 @@ const formatRelativeDate = (dateStr: string): string => {
 }
 
 const loadIntegrationStatus = async () => {
+  integrationStatusError.value = null
+
   try {
     const response = await wayfinderRequest<any[]>(integrationsIndex())
     if (response.status === 200) {
@@ -1016,6 +1236,7 @@ const loadIntegrationStatus = async () => {
     }
   } catch (error) {
     console.error('Failed to load integration status:', error)
+    integrationStatusError.value = 'Could not load connected services. Refresh the page or try again later.'
   }
 }
 
@@ -1262,6 +1483,36 @@ const installedCount = computed(() => {
   return connectedServices.value.length
 })
 
+const telegramIntegrationInstalled = computed(() => {
+  return installedIntegrations.value.some(integration => integrationApiId(integration) === 'telegram')
+})
+
+const telegramMetrics = computed(() => telegramOperations.value?.metrics || {})
+
+const telegramDeliveryLogs = computed(() => telegramOperations.value?.logs?.deliveries || [])
+
+const telegramReceiptLogs = computed(() => telegramOperations.value?.logs?.receipts || [])
+
+const telegramRepairCount = computed(() => {
+  const candidates = telegramOperations.value?.repairCandidates || {}
+  let count = 0
+  for (const value of Object.values(candidates)) {
+    if (Array.isArray(value)) {
+      count += value.length
+    } else if (value) {
+      count += 1
+    }
+  }
+  return count
+})
+
+const telegramStats = computed(() => [
+  { label: 'Health', value: telegramProfile.value?.health_status || (telegramMetrics.value.stale_health_profile ? 'stale' : 'unknown') },
+  { label: 'Failed receipts', value: telegramMetrics.value.failed_receipts_24h ?? 0 },
+  { label: 'Failed deliveries', value: telegramMetrics.value.failed_deliveries_24h ?? 0 },
+  { label: 'Repair candidates', value: telegramRepairCount.value },
+])
+
 // Computed - Search results
 const searchResults = computed(() => {
   if (!searchQuery.value) return []
@@ -1310,11 +1561,15 @@ const closeWebhookModal = () => {
 }
 
 const loadWebhooks = async () => {
+  webhooksError.value = null
+
   try {
     const { data } = await wayfinderRequest<{ data?: Webhook[] }>(integrationWebhooksIndex())
     webhooks.value = data.data || []
   } catch (error) {
     console.error('Failed to load webhooks:', error)
+    webhooks.value = []
+    webhooksError.value = 'Could not load webhooks. Refresh the page or try again later.'
   }
 }
 
@@ -1357,6 +1612,115 @@ const saveWebhook = async () => {
     console.error('Failed to save webhook:', error)
   }
 }
+
+const resetTelegramMessages = () => {
+  telegramError.value = null
+  telegramNotice.value = null
+}
+
+const loadTelegramOperations = async () => {
+  if (!telegramIntegrationInstalled.value) return
+
+  try {
+    const { data } = await wayfinderRequest<TelegramOperations & { success?: boolean }>(telegramOperationsIndex({
+      query: { limit: 5 },
+    }))
+    telegramOperations.value = data
+  } catch (error) {
+    console.error('Failed to load Telegram operations:', error)
+    telegramError.value = 'Could not load Telegram operations.'
+  }
+}
+
+const runTelegramAction = async (
+  action: typeof telegramAction.value,
+  handler: () => Promise<string>,
+) => {
+  if (!action || telegramAction.value) return
+
+  telegramAction.value = action
+  resetTelegramMessages()
+  try {
+    telegramNotice.value = await handler()
+    await loadTelegramOperations()
+  } catch (error: any) {
+    console.error(`Telegram ${action} action failed:`, error)
+    telegramError.value = error.response?.data?.error || error.message || 'Telegram action failed.'
+  } finally {
+    telegramAction.value = null
+  }
+}
+
+const runTelegramHealthCheck = () => runTelegramAction('health', async () => {
+  const { data } = await wayfinderRequest<any>(telegramHealthCheck())
+  telegramProfile.value = data.profile || null
+
+  return `Telegram health is ${data.status || data.profile?.health_status || 'unknown'}.`
+})
+
+const syncTelegramBotProfile = () => runTelegramAction('sync', async () => {
+  const { data } = await wayfinderRequest<any>(syncTelegramBotProfileAction())
+  telegramProfile.value = data.profile || null
+  const commandStatus = data.commands?.status || data.profile?.command_sync_status || 'synced'
+  const profileStatus = data.profile_sync?.status || data.profile?.profile_sync_status || 'synced'
+
+  return `Telegram commands ${commandStatus}; profile ${profileStatus}.`
+})
+
+const sendTelegramTest = () => runTelegramAction('test', async () => {
+  const { data } = await wayfinderRequest<any>(sendTelegramTestMessage())
+
+  return data.target ? `Telegram test sent to ${data.target}.` : 'Telegram test sent.'
+})
+
+const setupTelegramWebhook = () => runTelegramAction('webhook', async () => {
+  if (!window.confirm('Reset the live Telegram webhook to this OpenCompany URL?')) {
+    return 'Telegram webhook reset cancelled.'
+  }
+
+  const { data } = await wayfinderRequest<any>(setupIntegrationWebhook('telegram'))
+  telegramProfile.value = data.profile || null
+
+  return data.webhookUrl ? `Telegram webhook reset to ${data.webhookUrl}.` : 'Telegram webhook reset.'
+})
+
+const rotateTelegramSecret = () => runTelegramAction('rotate', async () => {
+  if (!window.confirm('Rotate the live Telegram webhook secret and re-register the webhook now?')) {
+    return 'Telegram webhook secret rotation cancelled.'
+  }
+
+  const { data } = await wayfinderRequest<any>(rotateTelegramWebhookSecret())
+  telegramProfile.value = data.profile || null
+
+  return 'Telegram webhook secret rotated and registered.'
+})
+
+const repairTelegramLocalState = () => runTelegramAction('repair', async () => {
+  const { data } = await wayfinderRequest<any>(repairTelegramOperations(), {
+    data: {
+      actions: ['expire_interactions', 'repair_conversations'],
+    },
+  })
+  telegramOperations.value = {
+    metrics: data.metrics,
+    repairCandidates: data.repairCandidates,
+    logs: telegramOperations.value?.logs,
+  }
+
+  return 'Telegram local state repair completed.'
+})
+
+const retryTelegramDelivery = (deliveryId: string) => runTelegramAction('retry', async () => {
+  await wayfinderRequest<any>(retryTelegramDeliveryAction(deliveryId))
+
+  return 'Telegram delivery retried.'
+})
+
+const replayTelegramReceipt = (receiptId: string) => runTelegramAction('replay', async () => {
+  await wayfinderRequest<any>(replayTelegramReceiptAction(receiptId))
+
+  return 'Telegram webhook receipt replayed.'
+})
 
 // API Key handlers
 const generateApiKey = () => {

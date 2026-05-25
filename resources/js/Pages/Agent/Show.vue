@@ -422,7 +422,7 @@ import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
 import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask } from '@/types'
 
-const { agentUrl, memberUrl, messageUrl, taskUrl } = useWorkspace()
+const { agentUrl, dashboardUrl, memberUrl, messageUrl, taskUrl } = useWorkspace()
 
 const { fetchAgentDetail, fetchAgentIdentityFiles, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions, updateAgentFileFolderPermissions, updateAgentIntegrations } = useApi()
 
@@ -482,6 +482,7 @@ const agentColors: Record<AgentType, string> = {
   researcher: 'bg-amber-100 dark:bg-amber-900/30',
   coder: 'bg-indigo-100 dark:bg-indigo-900/30',
   coordinator: 'bg-teal-100 dark:bg-teal-900/30',
+  system: 'bg-neutral-100 dark:bg-neutral-900/30',
 }
 
 const agentBgColor = computed(() => {
@@ -760,7 +761,7 @@ const deleteAgentHandler = async () => {
   if (!confirm('Are you sure you want to delete this agent?')) return
   try {
     await deleteAgentApi(props.id)
-    window.location.href = '/'
+    window.location.href = dashboardUrl()
   } catch (e) {
     console.error('Failed to delete agent:', e)
   }

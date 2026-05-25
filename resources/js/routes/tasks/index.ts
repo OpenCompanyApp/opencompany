@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
-* @see routes/web.php:90
+* @see routes/web.php:112
 * @route '/w/{workspace_slug}/tasks/analytics'
 */
 export const analytics = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -14,7 +14,7 @@ analytics.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:90
+* @see routes/web.php:112
 * @route '/w/{workspace_slug}/tasks/analytics'
 */
 analytics.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -40,7 +40,7 @@ analytics.url = (args: { workspace_slug: string | number } | [workspace_slug: st
 }
 
 /**
-* @see routes/web.php:90
+* @see routes/web.php:112
 * @route '/w/{workspace_slug}/tasks/analytics'
 */
 analytics.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -49,7 +49,7 @@ analytics.get = (args: { workspace_slug: string | number } | [workspace_slug: st
 })
 
 /**
-* @see routes/web.php:90
+* @see routes/web.php:112
 * @route '/w/{workspace_slug}/tasks/analytics'
 */
 analytics.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -58,7 +58,7 @@ analytics.head = (args: { workspace_slug: string | number } | [workspace_slug: s
 })
 
 /**
-* @see routes/web.php:94
+* @see routes/web.php:116
 * @route '/w/{workspace_slug}/tasks/{id}'
 */
 export const show = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -72,7 +72,7 @@ show.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:94
+* @see routes/web.php:116
 * @route '/w/{workspace_slug}/tasks/{id}'
 */
 show.url = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions) => {
@@ -97,7 +97,7 @@ show.url = (args: { workspace_slug: string | number, id: string | number } | [wo
 }
 
 /**
-* @see routes/web.php:94
+* @see routes/web.php:116
 * @route '/w/{workspace_slug}/tasks/{id}'
 */
 show.get = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -106,7 +106,7 @@ show.get = (args: { workspace_slug: string | number, id: string | number } | [wo
 })
 
 /**
-* @see routes/web.php:94
+* @see routes/web.php:116
 * @route '/w/{workspace_slug}/tasks/{id}'
 */
 show.head = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'head'> => ({

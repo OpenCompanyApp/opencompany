@@ -1,0 +1,35 @@
+{
+  "value": "QA rollback test message 2026-05-24 18:59",
+  "buttons": [
+    {
+      "text": "",
+      "disabled": false,
+      "aria": null,
+      "title": "leadership"
+    },
+    {
+      "text": "",
+      "disabled": false,
+      "aria": null,
+      "title": "Show conversations"
+    },
+    {
+      "text": "Refresh",
+      "disabled": false,
+      "aria": null,
+      "title": ""
+    },
+    {
+      "text": "",
+      "disabled": false,
+      "aria": null,
+      "title": "Attach files"
+    },
+    {
+      "text": "",
+      "disabled": false,
+      "aria": null,
+      "title": "Send message"
+    }
+  ]
+}

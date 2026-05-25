@@ -155,6 +155,7 @@ import { computed } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import type { AgentTask, ApprovalRequest, Channel, TaskStep, User } from '@/types'
+import { humanizeToolName } from '@/utils/toolDisplay'
 
 interface StatusAgent {
   id: string
@@ -458,14 +459,4 @@ const toolName = (step: TaskStep): string | null => {
   return typeof value === 'string' && value.length > 0 ? value : null
 }
 
-const humanizeToolName = (value: string | null) => {
-  if (!value) return 'None'
-
-  return value
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, letter => letter.toUpperCase())
-}
 </script>

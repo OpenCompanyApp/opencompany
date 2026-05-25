@@ -54,7 +54,7 @@
           </span>
           <span class="w-px h-4 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
           <a
-            :href="developerToolsRoute(workspaceRouteParams())"
+            :href="developerToolsRoute(workspaceRouteParams()).url"
             target="_blank"
             class="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors shrink-0"
           >

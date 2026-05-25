@@ -1,5 +1,5 @@
 <template>
-  <DialogRoot v-model:open="isOpen">
+  <DialogRoot :open="isOpen" @update:open="handleOpenChange">
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
       <DialogContent
@@ -89,11 +89,16 @@ withDefaults(defineProps<{
   closeOnEscape: true,
 })
 
-defineEmits<{
+const emit = defineEmits<{
   close: []
 }>()
 
 const isOpen = defineModel<boolean>('open', { default: false })
+
+const handleOpenChange = (open: boolean) => {
+  isOpen.value = open
+  if (!open) emit('close')
+}
 
 const sizeClasses: Record<ModalSize, string> = {
   sm: 'max-w-sm',

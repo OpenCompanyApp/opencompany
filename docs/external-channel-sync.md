@@ -13,8 +13,9 @@ Making agents full community participants — not just chatbots.
 
 **Key implementation files (current tracked code):**
 - `app/Events/MessageEdited.php`, `MessageDeleted.php`, `MessagePinned.php`, `MessageReactionAdded.php` — Sync events
-- `app/Listeners/SyncToChat.php` — Consolidated outbound listener for send, edit, delete, pin, and reaction sync through chat adapters
-- `app/Services/Chat/ChatAdapterFactory.php` — Maps `IntegrationSetting` rows to Telegram, Slack, Discord, Teams, Google Chat, GitHub, and Linear Chatogrator adapters
+- `app/Listeners/SyncToChat.php` — Consolidated outbound listener for send, edit, delete, pin, file, and reaction sync through chat adapters when the provider capability matrix allows it
+- `app/Services/Chat/ChatProviderCapabilities.php` — App-owned provider capability matrix for send/edit/delete/pin/react/files/typing/history/modals/topics/Mini App surfaces
+- `app/Services/Chat/ChatAdapterFactory.php` — Maps `IntegrationSetting` rows to Slack, Discord, Teams, Google Chat, GitHub, and Linear Chatogrator adapters; Telegram is app-owned under `app/Domain/Chat/Telegram`
 - `app/Http/Controllers/Api/ChatWebhookController.php` — Generic `/api/webhooks/chat/{adapter}` webhook entrypoint with proof-backed workspace resolution
 - `app/Services/TelegramService.php` — Legacy/direct Telegram helpers still used by Telegram-specific commands and flows
 - `app/Agents/Tools/Chat/EditMessage.php`, `DeleteMessage.php`, `PinMessage.php`, `AddMessageReaction.php`, `RemoveMessageReaction.php` — Agent tools for message mutations
@@ -27,7 +28,8 @@ app-specific path. Slack, Discord, Teams, Google Chat, GitHub, and Linear have
 Chatogrator adapter and proof-backed webhook-resolution plumbing, but each
 provider still needs verification for inbound events, outbound action parity,
 channel discovery, provider-specific signature/auth handling, and UI setup
-before broad marketing claims.
+before broad marketing claims. GitHub and Linear are treated as webhook-backed
+comment surfaces until their live posting/mutation adapters are proven.
 
 ---
 
@@ -60,17 +62,35 @@ before broad marketing claims.
      ┌────────▼───────┐ ┌─────▼──────┐  ┌──────▼──────┐
      │   Telegram      │ │   Slack    │  │ Discord/    │
      │                 │ │            │  │ Teams/etc   │
-     │  SyncToChat.php │ │SyncToChat  │  │SyncToChat   │
-     │  via adapter    │ │via adapter │  │via adapter  │
+     │ app-owned Chat  │ │SyncToChat  │  │SyncToChat   │
+     │ Telegram layer  │ │via adapter │  │via adapter  │
      │  (most mature)  │ │(verify)    │  │(verify)     │
      └─────────────────┘ └────────────┘  └─────────────┘
 ```
 
 **Key principles:**
 - Agent tools stay **provider-agnostic** — they work on workspace models (Message, Channel, Reaction)
-- The **sync layer** handles platform specifics through `SyncToChat` and the selected Chatogrator adapter
+- The **sync layer** handles platform specifics through `SyncToChat`, `ChatProviderCapabilities`, and either the selected Chatogrator adapter or Telegram's app-owned layer
 - Adding a new platform should mean adding/validating one adapter and webhook-resolution path, not changing agent tools
 - The workspace is **source of truth** — external platforms are bidirectional mirrors
+
+## Provider Capability Matrix
+
+The current runtime exposes provider capabilities through
+`app/Services/Chat/ChatProviderCapabilities.php`. This prevents the shared
+adapter interface from becoming a false promise: a method may exist in PHP while
+the provider, adapter, or OpenCompany product surface does not actually support
+it.
+
+| Provider | Owner | Send | Edit/Delete | Pin | Reactions | Files | Typing | History | Discovery | Modals/Ephemerals | Telegram-native surfaces |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Telegram | OpenCompany `Domain\Chat\Telegram` | yes | yes | yes | yes | yes | yes | no | no | no | topics, private topics, direct-message topics, drafts, Mini App, business updates, guest updates behind `telegram.guest_mode_enabled` |
+| Slack | Chatogrator | yes | yes | yes | yes | yes | no generic typing | yes | yes | yes | none |
+| Discord | Chatogrator | yes | yes | yes | yes | not proven | yes | yes | yes | buttons only | none |
+| Teams | Chatogrator | yes | yes | no | no | not proven | yes | yes | no | no | none |
+| Google Chat | Chatogrator | yes | no | no | no | no | no | no | no | no | none |
+| GitHub comments | Chatogrator proof only | no | no | no | no | no | no | no | no | no | none |
+| Linear comments | Chatogrator proof only | no | no | no | no | no | no | no | no | no | none |
 
 ---
 

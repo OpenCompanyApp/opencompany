@@ -14,7 +14,7 @@ import { destroy as logout } from '@/actions/App/Http/Controllers/Auth/Authentic
 const showingNavigationDropdown = ref(false);
 const page = usePage();
 const { workspaceRouteParams } = useWorkspace();
-const authUser = (page.props as { auth: { user: { name: string; email: string } } }).auth.user;
+const authUser = (page.props as unknown as { auth: { user: { name: string; email: string } } }).auth.user;
 const dashboardUrl = () => dashboard.url(workspaceRouteParams());
 const profileUrl = () => editProfile.url(workspaceRouteParams());
 const logoutUrl = () => logout.url();

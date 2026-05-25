@@ -7,7 +7,7 @@ tool/runtime surfaces such as `app/Agents/Tools/Lua`,
 `app/Services/LuaBridge.php`, `app/Services/LuaSandboxService.php`,
 `routes/api.php` `/api/lua/execute`, integration package Lua docs, and scheduled
 script automations through `RunScriptAutomationJob` and
-`ExecuteScriptAutomation`. Endpoint/webhook triggers, dashboard builders, and
+`ExecuteScriptAutomation`. Endpoint/webhook triggers, artifact builders, and
 the historical `generate_lua_script` tool below remain design targets unless
 backed by current tool or integration code.
 

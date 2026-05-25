@@ -6,10 +6,12 @@ Status: Package strategy / planning with partial app adoption. OpenCompany
 currently installs `opencompany/chatogrator` v1.2.0 and uses app-owned
 workspace routing at `POST /api/webhooks/chat/{adapter}`. The package's own
 routes are moved to `internal/chatogrator/webhooks` so they do not bypass
-OpenCompany workspace resolution. Current app wiring maps Telegram, Slack,
-Discord, Teams, Google Chat, GitHub chat, and Linear chat settings through
+OpenCompany workspace resolution. Current app wiring maps Slack, Discord, Teams,
+Google Chat, GitHub chat, and Linear chat settings through
 `App\Services\Chat\ChatAdapterFactory`; provider behavior still depends on the
-installed Chatogrator adapter and credentials for that workspace.
+installed Chatogrator adapter and credentials for that workspace. Telegram is
+the exception: it is configured in the chat catalog but its runtime is app-owned
+under `App\Domain\Chat\Telegram`.
 
 A standalone, open-source package that lets any Laravel developer build multi-platform chat bots with a single unified API. Write bot logic once, deploy to Slack, Discord, Microsoft Teams, Google Chat, GitHub, and Linear.
 
@@ -33,8 +35,9 @@ hands normalized requests to Chatogrator:
   registers enabled workspace adapters, and caches the runtime until settings
   change.
 - `App\Services\Chat\ChatAdapterFactory` maps `IntegrationSetting` rows to
-  Chatogrator adapters for Telegram, Slack, Discord, Teams, Google Chat,
-  GitHub chat, and Linear chat.
+  Chatogrator adapters for Slack, Discord, Teams, Google Chat, GitHub chat, and
+  Linear chat. Telegram returns no Chatogrator adapter because OpenCompany owns
+  the Telegram runtime under `App\Domain\Chat\Telegram`.
 - `App\Listeners\SyncToChat` handles outbound sync through the selected
   Chatogrator adapter when the adapter supports the requested action.
 
@@ -774,10 +777,12 @@ In OpenCompany this package route is not the public workspace-aware route.
 OpenCompany exposes `POST /api/webhooks/chat/{adapter}` through its own
 `ChatWebhookController`, resolves the workspace from adapter-specific payload
 plus provider proof where available, binds `currentWorkspace`, and then calls
-Chatogrator. Current proof handling includes Telegram's secret token, Slack's
+Chatogrator for generic providers. Current proof handling includes Slack's
 signed request, Discord Ed25519 or gateway/webhook secret, Teams secret/password,
 and a generic `X-Webhook-Secret`/`secret` fallback for adapters without a
-first-class verifier yet.
+first-class verifier yet. Telegram also uses the public
+`/api/webhooks/chat/telegram` path, but the controller dispatches it to the
+app-owned Telegram pipeline after verifying Telegram's secret token.
 
 Config (`chatogrator.php`):
 

@@ -235,8 +235,10 @@ class ManageIntegrationSettings
 
     private function mergeTelegramShadowUser(User $user, string $externalId): void
     {
-        $shadowEmail = "telegram-{$externalId}@external.opencompany";
-        $shadow = User::where('email', $shadowEmail)
+        $shadow = User::where(function ($query) use ($externalId) {
+            $query->where('email', 'like', "telegram-%-{$externalId}@external.opencompany")
+                ->orWhere('email', "telegram-{$externalId}@external.opencompany");
+        })
             ->where('id', '!=', $user->id)
             ->first();
 

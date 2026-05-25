@@ -427,7 +427,7 @@ import PresenceRow from '@/Components/shared/PresenceRow.vue'
 // ============================================================================
 
 type HeaderSize = 'sm' | 'md' | 'lg'
-type SaveStatus = 'saving' | 'saved' | 'error' | null
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | null
 type DocumentType = 'document' | 'markdown' | 'code' | 'spreadsheet' | 'presentation'
 
 interface Breadcrumb {

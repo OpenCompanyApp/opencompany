@@ -135,9 +135,9 @@
 import { ref } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
-import axios from 'axios'
 import { accept } from '@/actions/App/Http/Controllers/Api/InvitationController'
 import { dashboard, home } from '@/routes'
+import { wayfinderRequest } from '@/utils/wayfinder'
 
 interface Invitation {
   id: string
@@ -170,7 +170,7 @@ const handleAccept = async () => {
   error.value = ''
 
   try {
-    await axios.request(accept(props.token))
+    await wayfinderRequest(accept(props.token))
     router.visit(dashboard(props.invitation.workspace.slug))
   } catch (e: any) {
     error.value = e?.response?.data?.message || 'Failed to accept invitation'
@@ -186,14 +186,16 @@ const handleAcceptWithAccount = async () => {
   error.value = ''
 
   try {
-    await axios.request({
-      ...accept(props.token),
-      data: {
-        name: form.value.name.trim(),
-        password: form.value.password,
-        password_confirmation: form.value.password_confirmation,
+    await wayfinderRequest(
+      accept(props.token),
+      {
+        data: {
+          name: form.value.name.trim(),
+          password: form.value.password,
+          password_confirmation: form.value.password_confirmation,
+        },
       },
-    })
+    )
     router.visit(dashboard(props.invitation.workspace.slug))
   } catch (e: any) {
     const data = e?.response?.data

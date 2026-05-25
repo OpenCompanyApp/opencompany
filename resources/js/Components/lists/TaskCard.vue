@@ -585,6 +585,7 @@ const variantClasses: Record<CardVariant, string> = {
 // Priority styling
 const priorityClasses: Record<Priority, string> = {
   low: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
+  normal: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
   medium: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
   high: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
   urgent: 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300',
@@ -592,6 +593,7 @@ const priorityClasses: Record<Priority, string> = {
 
 const priorityColorMap: Record<Priority, string> = {
   low: 'bg-neutral-300',
+  normal: 'bg-neutral-400',
   medium: 'bg-neutral-400',
   high: 'bg-neutral-500',
   urgent: 'bg-neutral-600',
@@ -599,6 +601,7 @@ const priorityColorMap: Record<Priority, string> = {
 
 const priorityDotClasses: Record<Priority, string> = {
   low: 'bg-neutral-400',
+  normal: 'bg-neutral-500',
   medium: 'bg-neutral-500',
   high: 'bg-neutral-600',
   urgent: 'bg-neutral-700',
@@ -606,6 +609,7 @@ const priorityDotClasses: Record<Priority, string> = {
 
 const priorityLabels: Record<Priority, string> = {
   low: 'Low',
+  normal: 'Normal',
   medium: 'Medium',
   high: 'High',
   urgent: 'Urgent',
@@ -677,7 +681,7 @@ const formatDate = (date: Date) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-const formatDueDate = (date: Date) => {
+const formatDueDate = (date: Date | string) => {
   const d = new Date(date)
   const now = new Date()
   const diffTime = d.getTime() - now.getTime()

@@ -6,7 +6,11 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
     plugins: [
-        wayfinder(),
+        wayfinder({
+            command: process.env.WAYFINDER_SKIP_GENERATE === 'true'
+                ? 'node -e ""'
+                : 'php artisan wayfinder:generate',
+        }),
         tailwindcss(),
         laravel({
             input: 'resources/js/app.ts',

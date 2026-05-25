@@ -38,6 +38,14 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 - Prefer wrapper components over native elements when equivalents already exist.
 - Dark mode exists and should not be broken.
 
+## Routing
+
+- Frontend route generation is owned by Laravel Wayfinder, not Ziggy.
+- Generated frontend route/action sources live in `resources/js/routes`, `resources/js/actions`, and `resources/js/wayfinder`.
+- Run `npm run wayfinder:generate` after changing Laravel routes or controller actions that are called from Vue.
+- Prefer generated route/action imports and helpers from `resources/js/composables/useWorkspace.ts` over string-built URLs.
+- Docker builds generate Wayfinder sources in a PHP stage, then run Vite with `WAYFINDER_SKIP_GENERATE=true` in the Node stage.
+
 ## Runtime Ownership
 
 - OpenCompany owns its AI runtime in `app/Domain/Ai`, `app/Ai`, `config/ai.php`, and the provider/model catalogs.

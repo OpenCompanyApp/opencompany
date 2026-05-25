@@ -21,19 +21,24 @@ class GetIntegrationConfig implements Tool
     {
         try {
             $integrationId = $request['integrationId'] ?? null;
-            if (!$integrationId) {
+            if (! $integrationId) {
                 return 'integrationId is required.';
             }
 
-            // Check dynamic providers first
-            $provider = app(ToolProviderRegistry::class)->get($integrationId);
+            // Telegram is app-owned under Domain\Chat\Telegram even though the
+            // integrations workspace also contains a generic Telegram package for
+            // tool/runtime use. Do not let package metadata shadow the bot config
+            // that powers the OpenCompany Telegram chat runtime.
+            $provider = $integrationId === 'telegram'
+                ? null
+                : app(ToolProviderRegistry::class)->get($integrationId);
             if ($provider instanceof ConfigurableIntegration) {
                 return $this->getDynamicIntegrationConfig($integrationId, $provider);
             }
 
             // Static providers
             $available = IntegrationSetting::getAvailableIntegrations();
-            if (!isset($available[$integrationId])) {
+            if (! isset($available[$integrationId])) {
                 $allIds = array_keys($available);
                 foreach (app(ToolProviderRegistry::class)->all() as $p) {
                     if ($p instanceof ConfigurableIntegration) {
@@ -41,10 +46,10 @@ class GetIntegrationConfig implements Tool
                     }
                 }
 
-                return "Integration not found: {$integrationId}. Available: " . implode(', ', $allIds);
+                return "Integration not found: {$integrationId}. Available: ".implode(', ', $allIds);
             }
 
-            /** @var \App\Models\IntegrationSetting|null $setting */
+            /** @var IntegrationSetting|null $setting */
             $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
             $info = $available[$integrationId];
 
@@ -64,7 +69,7 @@ class GetIntegrationConfig implements Tool
             } else {
                 $result['url'] = $setting?->getConfigValue('url') ?? ($info['default_url'] ?? null);
                 $result['defaultModel'] = $setting?->getConfigValue('default_model');
-                if (!empty($info['models'])) {
+                if (! empty($info['models'])) {
                     $result['availableModels'] = array_keys($info['models']);
                 }
             }
@@ -79,7 +84,7 @@ class GetIntegrationConfig implements Tool
     {
         $meta = $provider->integrationMeta();
         $schema = ConfigSchemaNormalizer::normalize($provider->configSchema());
-        /** @var \App\Models\IntegrationSetting|null $setting */
+        /** @var IntegrationSetting|null $setting */
         $setting = IntegrationSetting::forWorkspace()->where('integration_id', $integrationId)->first();
         $config = $setting ? $setting->config : [];
 

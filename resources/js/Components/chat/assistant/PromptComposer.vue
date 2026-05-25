@@ -90,14 +90,17 @@
       </div>
     </div>
 
-    <p v-if="showAiActions" class="mt-2 px-2 text-center text-xs text-neutral-400 dark:text-neutral-500">
+    <p v-if="error" class="mt-2 px-2 text-center text-xs font-medium text-red-600 dark:text-red-400">
+      {{ error }}
+    </p>
+    <p v-else-if="showAiActions" class="mt-2 px-2 text-center text-xs text-neutral-400 dark:text-neutral-500">
       OpenCompany can use tools and may ask for approval before making changes.
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 import type { User } from '@/types'
 
@@ -115,8 +118,11 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   running?: boolean
   placeholder?: string
+  error?: string | null
   showAgentPicker?: boolean
   showAiActions?: boolean
+  modelValue?: string
+  focusRequestKey?: number
 }>(), {
   disabled: false,
   running: false,
@@ -131,9 +137,10 @@ const emit = defineEmits<{
   compact: []
   status: []
   'update:selectedAgentId': [agentId: string]
+  'update:modelValue': [value: string]
 }>()
 
-const prompt = ref('')
+const prompt = ref(props.modelValue ?? '')
 const attachments = ref<ComposerAttachment[]>([])
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -163,6 +170,25 @@ const send = () => {
   if (fileInput.value) fileInput.value.value = ''
   nextTick(resize)
 }
+
+watch(() => props.modelValue, (value) => {
+  const nextValue = value ?? ''
+  if (nextValue === prompt.value) return
+
+  prompt.value = nextValue
+  nextTick(resize)
+})
+
+watch(prompt, (value) => {
+  emit('update:modelValue', value)
+})
+
+watch(() => props.focusRequestKey, () => {
+  nextTick(() => {
+    textarea.value?.focus()
+    resize()
+  })
+})
 
 const handleFileSelect = (event: Event) => {
   const files = Array.from((event.target as HTMLInputElement).files ?? [])

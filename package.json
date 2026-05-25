@@ -7,6 +7,7 @@
         "build:typecheck": "vue-tsc && vite build",
         "ngrok:prepare": "rm -f public/hot && vite build",
         "ngrok:check-assets": "node scripts/check-ngrok-assets.mjs",
+        "wayfinder:generate": "php artisan route:clear && php artisan wayfinder:generate",
         "typecheck": "vue-tsc --noEmit",
         "dev": "vite"
     },

@@ -2,15 +2,16 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Chat\Telegram\Application\TelegramSetupService;
 use App\Models\IntegrationSetting;
 use App\Models\Workspace;
 use App\Services\TelegramService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Str;
 
 class TelegramSetWebhook extends Command
 {
     protected $signature = 'telegram:set-webhook {--remove : Remove the webhook instead of setting it}';
+
     protected $description = 'Register the Telegram webhook URL';
 
     public function handle(): int
@@ -22,47 +23,48 @@ class TelegramSetWebhook extends Command
 
         $telegram = app(TelegramService::class);
 
-        if (!$telegram->isConfigured()) {
+        if (! $telegram->isConfigured()) {
             $this->error('Telegram bot token is not configured. Set it in Integrations first.');
+
             return self::FAILURE;
         }
 
         if ($this->option('remove')) {
-            $result = $telegram->deleteWebhook();
+            $telegram->deleteWebhook();
             $this->info('Webhook removed successfully.');
+
             return self::SUCCESS;
         }
 
-        // Ensure webhook_secret exists
         $setting = IntegrationSetting::forWorkspace()->where('integration_id', 'telegram')->first();
-        $webhookSecret = $setting->getConfigValue('webhook_secret');
+        if (! $setting) {
+            $this->error('Telegram integration setting not found.');
 
-        if (!$webhookSecret) {
-            $webhookSecret = Str::random(64);
-            $setting->setConfigValue('webhook_secret', $webhookSecret);
-            $setting->save();
-            $this->info('Generated new webhook secret.');
+            return self::FAILURE;
         }
 
-        $appUrl = config('app.url');
-        $webhookUrl = rtrim($appUrl, '/') . '/api/webhooks/chat/telegram';
-
+        $webhookUrl = rtrim((string) config('app.url'), '/').'/api/webhooks/chat/telegram';
         $this->info("Setting webhook to: {$webhookUrl}");
 
         try {
-            $result = $telegram->setWebhook($webhookUrl, $webhookSecret);
+            $result = app(TelegramSetupService::class)->setupWebhook($setting);
+            $profile = $result['profile'];
+
             $this->info('Webhook set successfully!');
             $this->table(['Key', 'Value'], [
-                ['URL', $webhookUrl],
-                ['Secret', substr($webhookSecret, 0, 8) . '...'],
+                ['URL', $result['webhookUrl']],
+                ['Bot', '@'.($result['bot']['username'] ?? 'unknown')],
+                ['Health', $profile->health_status],
+                ['Commands', $profile->command_sync_status],
+                ['Profile', $profile->profile_sync_status],
             ]);
 
-            // Sync bot commands + profile photo
-            $this->call('telegram:sync');
+            $this->call('telegram:sync', ['--skip-metadata' => true]);
 
             return self::SUCCESS;
         } catch (\Throwable $e) {
             $this->error("Failed to set webhook: {$e->getMessage()}");
+
             return self::FAILURE;
         }
     }

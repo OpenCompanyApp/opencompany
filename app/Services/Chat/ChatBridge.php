@@ -37,6 +37,15 @@ class ChatBridge
         $adapter = $thread->adapter;
         $adapterName = $adapter->name();
 
+        if ($this->isAppOwnedProvider($adapterName)) {
+            Log::warning('Ignoring app-owned chat provider event in Chatogrator bridge', [
+                'provider' => $adapterName,
+                'workspace_id' => $workspaceId,
+            ]);
+
+            return;
+        }
+
         // The allowlist check happens before creating channels/messages so an
         // unauthorized external user cannot populate workspace history.
         if (! $this->isUserAllowed($adapterName, $chatMessage->author->userId, $workspaceId)) {
@@ -118,10 +127,13 @@ class ChatBridge
         // Agent responses run through the normal queue/task path so external
         // chat behaves like in-app chat for memory, approvals, and retries.
         if ($agent) {
-            try {
-                $thread->startTyping();
-            } catch (\Throwable) {
-                // Non-critical
+            if (app(ChatProviderCapabilities::class)->supports($adapterName, 'typing')) {
+                try {
+                    $thread->startTyping();
+                } catch (\Throwable) {
+                    // Typing indicators are transient provider UX and must not
+                    // block the durable OpenCompany message or queued task.
+                }
             }
 
             $task = Task::createPending($internalMessage, $agent, $channel->id);
@@ -134,6 +146,16 @@ class ChatBridge
      */
     public function handleAction(object $event, string $workspaceId): void
     {
+        $adapterName = isset($event->adapter) ? $event->adapter->name() : null;
+        if ($adapterName && $this->isAppOwnedProvider($adapterName)) {
+            Log::warning('Ignoring app-owned chat provider action in Chatogrator bridge', [
+                'provider' => $adapterName,
+                'workspace_id' => $workspaceId,
+            ]);
+
+            return;
+        }
+
         $actionId = $event->actionId ?? '';
         $value = $event->value ?? '';
 
@@ -150,6 +172,16 @@ class ChatBridge
      */
     public function handleSlashCommand(object $event, string $workspaceId): void
     {
+        $adapterName = isset($event->adapter) ? $event->adapter->name() : null;
+        if ($adapterName && $this->isAppOwnedProvider($adapterName)) {
+            Log::warning('Ignoring app-owned chat provider command in Chatogrator bridge', [
+                'provider' => $adapterName,
+                'workspace_id' => $workspaceId,
+            ]);
+
+            return;
+        }
+
         $command = $event->command ?? '';
 
         match ($command) {
@@ -351,7 +383,6 @@ class ChatBridge
     private function resolveExternalId(string $adapter, array $decoded): string
     {
         return match ($adapter) {
-            'telegram' => $decoded['chatId'] ?? '',
             'slack' => $decoded['channel'] ?? '',
             'discord' => $decoded['channelId'] ?? $decoded['channel'] ?? '',
             'teams' => $decoded['conversationId'] ?? '',
@@ -425,8 +456,7 @@ class ChatBridge
             return true;
         }
 
-        $allowed = $setting->getConfigValue('allowed_users', [])
-            ?: $setting->getConfigValue('allowed_telegram_users', []);
+        $allowed = $setting->getConfigValue('allowed_users', []);
 
         if (empty($allowed)) {
             return true;
@@ -436,5 +466,10 @@ class ChatBridge
         // through local users here; unlinked users still need to be rejected
         // before local identity creation.
         return in_array($userId, $allowed);
+    }
+
+    private function isAppOwnedProvider(string $provider): bool
+    {
+        return $provider === 'telegram';
     }
 }

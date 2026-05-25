@@ -385,6 +385,11 @@ interface StaticDoc {
   content: string
 }
 
+type ToolCatalogResponse = AppGroup[] | {
+  groups?: AppGroup[]
+  staticDocs?: StaticDoc[]
+}
+
 interface SidebarItem {
   id: string
   label: string
@@ -562,7 +567,7 @@ const sidebarButtonClass = (id: string, dimmed = false) => [
 
 onMounted(async () => {
   try {
-    const { data } = await wayfinderRequest(toolCatalogIndex())
+    const { data } = await wayfinderRequest<ToolCatalogResponse>(toolCatalogIndex())
 
     // Handle both old (array) and new (object) response shapes
     if (Array.isArray(data)) {

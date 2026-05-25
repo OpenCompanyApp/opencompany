@@ -9,7 +9,6 @@ use OpenCompany\Chatogrator\Adapters\GoogleChat\GoogleChatAdapter;
 use OpenCompany\Chatogrator\Adapters\Linear\LinearAdapter;
 use OpenCompany\Chatogrator\Adapters\Slack\SlackAdapter;
 use OpenCompany\Chatogrator\Adapters\Teams\TeamsAdapter;
-use OpenCompany\Chatogrator\Adapters\Telegram\TelegramAdapter;
 use OpenCompany\Chatogrator\Contracts\Adapter;
 
 /**
@@ -24,12 +23,11 @@ class ChatAdapterFactory
     public static function create(IntegrationSetting $setting): ?Adapter
     {
         return match ($setting->integration_id) {
-            'telegram' => TelegramAdapter::fromConfig([
-                'bot_token' => $setting->getConfigValue('api_key'),
-                'webhook_secret' => $setting->getConfigValue('webhook_secret'),
-                'bot_user_id' => $setting->getConfigValue('bot_user_id'),
-                'bot_username' => $setting->getConfigValue('bot_username'),
-            ]),
+            // Telegram is intentionally app-owned under Domain\Chat\Telegram
+            // because OpenCompany's desired Telegram UX depends on workspace
+            // lanes, approvals, durable receipts, and delivery records that are
+            // not reusable Chatogrator provider behavior.
+            'telegram' => null,
             'slack' => SlackAdapter::fromConfig([
                 'bot_token' => $setting->getConfigValue('api_key'),
                 'signing_secret' => $setting->getConfigValue('signing_secret'),

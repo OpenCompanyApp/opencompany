@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\MessageController::compact
-* @see app/Http/Controllers/Api/MessageController.php:184
+* @see app/Http/Controllers/Api/MessageController.php:191
 * @route '/api/channels/{id}/compact'
 */
 export const compact = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ compact.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::compact
-* @see app/Http/Controllers/Api/MessageController.php:184
+* @see app/Http/Controllers/Api/MessageController.php:191
 * @route '/api/channels/{id}/compact'
 */
 compact.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ compact.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::compact
-* @see app/Http/Controllers/Api/MessageController.php:184
+* @see app/Http/Controllers/Api/MessageController.php:191
 * @route '/api/channels/{id}/compact'
 */
 compact.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -53,7 +53,7 @@ compact.post = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::index
-* @see app/Http/Controllers/Api/MessageController.php:37
+* @see app/Http/Controllers/Api/MessageController.php:42
 * @route '/api/messages'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -68,7 +68,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::index
-* @see app/Http/Controllers/Api/MessageController.php:37
+* @see app/Http/Controllers/Api/MessageController.php:42
 * @route '/api/messages'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -77,7 +77,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::index
-* @see app/Http/Controllers/Api/MessageController.php:37
+* @see app/Http/Controllers/Api/MessageController.php:42
 * @route '/api/messages'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -87,7 +87,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::index
-* @see app/Http/Controllers/Api/MessageController.php:37
+* @see app/Http/Controllers/Api/MessageController.php:42
 * @route '/api/messages'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -97,7 +97,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::store
-* @see app/Http/Controllers/Api/MessageController.php:58
+* @see app/Http/Controllers/Api/MessageController.php:63
 * @route '/api/messages'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -112,7 +112,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::store
-* @see app/Http/Controllers/Api/MessageController.php:58
+* @see app/Http/Controllers/Api/MessageController.php:63
 * @route '/api/messages'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -121,7 +121,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::store
-* @see app/Http/Controllers/Api/MessageController.php:58
+* @see app/Http/Controllers/Api/MessageController.php:63
 * @route '/api/messages'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -131,7 +131,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::destroy
-* @see app/Http/Controllers/Api/MessageController.php:260
+* @see app/Http/Controllers/Api/MessageController.php:267
 * @route '/api/messages/{id}'
 */
 export const destroy = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -146,7 +146,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::destroy
-* @see app/Http/Controllers/Api/MessageController.php:260
+* @see app/Http/Controllers/Api/MessageController.php:267
 * @route '/api/messages/{id}'
 */
 destroy.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -173,7 +173,7 @@ destroy.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::destroy
-* @see app/Http/Controllers/Api/MessageController.php:260
+* @see app/Http/Controllers/Api/MessageController.php:267
 * @route '/api/messages/{id}'
 */
 destroy.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -183,7 +183,7 @@ destroy.delete = (args: { id: string | number } | [id: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::uploadAttachment
-* @see app/Http/Controllers/Api/MessageController.php:326
+* @see app/Http/Controllers/Api/MessageController.php:333
 * @route '/api/messages/attachments'
 */
 export const uploadAttachment = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -198,7 +198,7 @@ uploadAttachment.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::uploadAttachment
-* @see app/Http/Controllers/Api/MessageController.php:326
+* @see app/Http/Controllers/Api/MessageController.php:333
 * @route '/api/messages/attachments'
 */
 uploadAttachment.url = (options?: RouteQueryOptions) => {
@@ -207,7 +207,7 @@ uploadAttachment.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::uploadAttachment
-* @see app/Http/Controllers/Api/MessageController.php:326
+* @see app/Http/Controllers/Api/MessageController.php:333
 * @route '/api/messages/attachments'
 */
 uploadAttachment.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -217,7 +217,7 @@ uploadAttachment.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::addReaction
-* @see app/Http/Controllers/Api/MessageController.php:269
+* @see app/Http/Controllers/Api/MessageController.php:276
 * @route '/api/messages/{id}/reactions'
 */
 export const addReaction = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -232,7 +232,7 @@ addReaction.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::addReaction
-* @see app/Http/Controllers/Api/MessageController.php:269
+* @see app/Http/Controllers/Api/MessageController.php:276
 * @route '/api/messages/{id}/reactions'
 */
 addReaction.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -259,7 +259,7 @@ addReaction.url = (args: { id: string | number } | [id: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::addReaction
-* @see app/Http/Controllers/Api/MessageController.php:269
+* @see app/Http/Controllers/Api/MessageController.php:276
 * @route '/api/messages/{id}/reactions'
 */
 addReaction.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -269,7 +269,7 @@ addReaction.post = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::removeReaction
-* @see app/Http/Controllers/Api/MessageController.php:284
+* @see app/Http/Controllers/Api/MessageController.php:291
 * @route '/api/messages/{messageId}/reactions/{reactionId}'
 */
 export const removeReaction = (args: { messageId: string | number, reactionId: string | number } | [messageId: string | number, reactionId: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -284,7 +284,7 @@ removeReaction.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::removeReaction
-* @see app/Http/Controllers/Api/MessageController.php:284
+* @see app/Http/Controllers/Api/MessageController.php:291
 * @route '/api/messages/{messageId}/reactions/{reactionId}'
 */
 removeReaction.url = (args: { messageId: string | number, reactionId: string | number } | [messageId: string | number, reactionId: string | number ], options?: RouteQueryOptions) => {
@@ -310,7 +310,7 @@ removeReaction.url = (args: { messageId: string | number, reactionId: string | n
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::removeReaction
-* @see app/Http/Controllers/Api/MessageController.php:284
+* @see app/Http/Controllers/Api/MessageController.php:291
 * @route '/api/messages/{messageId}/reactions/{reactionId}'
 */
 removeReaction.delete = (args: { messageId: string | number, reactionId: string | number } | [messageId: string | number, reactionId: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -320,7 +320,7 @@ removeReaction.delete = (args: { messageId: string | number, reactionId: string 
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::thread
-* @see app/Http/Controllers/Api/MessageController.php:296
+* @see app/Http/Controllers/Api/MessageController.php:303
 * @route '/api/messages/{id}/thread'
 */
 export const thread = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -335,7 +335,7 @@ thread.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::thread
-* @see app/Http/Controllers/Api/MessageController.php:296
+* @see app/Http/Controllers/Api/MessageController.php:303
 * @route '/api/messages/{id}/thread'
 */
 thread.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -362,7 +362,7 @@ thread.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::thread
-* @see app/Http/Controllers/Api/MessageController.php:296
+* @see app/Http/Controllers/Api/MessageController.php:303
 * @route '/api/messages/{id}/thread'
 */
 thread.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -372,7 +372,7 @@ thread.get = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::thread
-* @see app/Http/Controllers/Api/MessageController.php:296
+* @see app/Http/Controllers/Api/MessageController.php:303
 * @route '/api/messages/{id}/thread'
 */
 thread.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -382,7 +382,7 @@ thread.head = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::pin
-* @see app/Http/Controllers/Api/MessageController.php:313
+* @see app/Http/Controllers/Api/MessageController.php:320
 * @route '/api/messages/{id}/pin'
 */
 export const pin = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -397,7 +397,7 @@ pin.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::pin
-* @see app/Http/Controllers/Api/MessageController.php:313
+* @see app/Http/Controllers/Api/MessageController.php:320
 * @route '/api/messages/{id}/pin'
 */
 pin.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -424,7 +424,7 @@ pin.url = (args: { id: string | number } | [id: string | number ] | string | num
 
 /**
 * @see \App\Http\Controllers\Api\MessageController::pin
-* @see app/Http/Controllers/Api/MessageController.php:313
+* @see app/Http/Controllers/Api/MessageController.php:320
 * @route '/api/messages/{id}/pin'
 */
 pin.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({

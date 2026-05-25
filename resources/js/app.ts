@@ -22,7 +22,7 @@ createInertiaApp({
         );
 
         // Use AppLayout for all pages except Welcome and Auth pages
-        const excludedPages = ['Welcome', 'Auth/Login', 'Auth/Register', 'Auth/ForgotPassword', 'Auth/ResetPassword', 'Auth/VerifyEmail', 'Auth/ConfirmPassword', 'Workspace/Setup'];
+        const excludedPages = ['Welcome', 'Auth/Login', 'Auth/Register', 'Auth/ForgotPassword', 'Auth/ResetPassword', 'Auth/VerifyEmail', 'Auth/ConfirmPassword', 'Workspace/Setup', 'Telegram/MiniApp'];
         if (!excludedPages.includes(name)) {
             page.default.layout = page.default.layout || AppLayout;
         }

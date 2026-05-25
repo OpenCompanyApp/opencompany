@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\DmController::show
-* @see app/Http/Controllers/Api/DmController.php:22
+* @see app/Http/Controllers/Api/DmController.php:28
 * @route '/api/dm/{userId}'
 */
 export const show = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DmController::show
-* @see app/Http/Controllers/Api/DmController.php:22
+* @see app/Http/Controllers/Api/DmController.php:28
 * @route '/api/dm/{userId}'
 */
 show.url = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ show.url = (args: { userId: string | number } | [userId: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\DmController::show
-* @see app/Http/Controllers/Api/DmController.php:22
+* @see app/Http/Controllers/Api/DmController.php:28
 * @route '/api/dm/{userId}'
 */
 show.get = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -53,7 +53,7 @@ show.get = (args: { userId: string | number } | [userId: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\DmController::show
-* @see app/Http/Controllers/Api/DmController.php:22
+* @see app/Http/Controllers/Api/DmController.php:28
 * @route '/api/dm/{userId}'
 */
 show.head = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -63,7 +63,7 @@ show.head = (args: { userId: string | number } | [userId: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\DmController::store
-* @see app/Http/Controllers/Api/DmController.php:106
+* @see app/Http/Controllers/Api/DmController.php:79
 * @route '/api/dm/{userId}'
 */
 export const store = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -78,7 +78,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DmController::store
-* @see app/Http/Controllers/Api/DmController.php:106
+* @see app/Http/Controllers/Api/DmController.php:79
 * @route '/api/dm/{userId}'
 */
 store.url = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -105,7 +105,7 @@ store.url = (args: { userId: string | number } | [userId: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\DmController::store
-* @see app/Http/Controllers/Api/DmController.php:106
+* @see app/Http/Controllers/Api/DmController.php:79
 * @route '/api/dm/{userId}'
 */
 store.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -115,7 +115,7 @@ store.post = (args: { userId: string | number } | [userId: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Api\DmController::markRead
-* @see app/Http/Controllers/Api/DmController.php:172
+* @see app/Http/Controllers/Api/DmController.php:133
 * @route '/api/dm/{userId}/read'
 */
 export const markRead = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -130,7 +130,7 @@ markRead.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DmController::markRead
-* @see app/Http/Controllers/Api/DmController.php:172
+* @see app/Http/Controllers/Api/DmController.php:133
 * @route '/api/dm/{userId}/read'
 */
 markRead.url = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -157,7 +157,7 @@ markRead.url = (args: { userId: string | number } | [userId: string | number ] |
 
 /**
 * @see \App\Http\Controllers\Api\DmController::markRead
-* @see app/Http/Controllers/Api/DmController.php:172
+* @see app/Http/Controllers/Api/DmController.php:133
 * @route '/api/dm/{userId}/read'
 */
 markRead.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
