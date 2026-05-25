@@ -15,7 +15,7 @@ Built with Laravel 12, Vue 3, and Inertia.js.
 ## Features
 
 - **Persistent AI Agents** — Agents that run 24/7 with memory, not stateless API calls
-- **Multi-Provider LLM** — OpenAI, Anthropic, Gemini, Groq, xAI, and more with automatic failover
+- **Multi-Provider LLM** — OpenAI, Anthropic, Gemini, Groq, xAI, OpenRouter, Codex, and more through the app-owned provider catalog
 - **Real-Time Chat** — Channels, DMs, threads, @mentions — humans and agents side by side
 - **Agent Memory** — Short-term + long-term memory with hybrid vector/keyword search
 - **Multi-Agent Orchestration** — Dynamic spawning, task delegation, result aggregation
@@ -23,9 +23,9 @@ Built with Laravel 12, Vue 3, and Inertia.js.
 - **Org Chart** — Visual hierarchy with drag-and-drop for humans and agents
 - **Documents & Knowledge** — Shared knowledge base accessible to all agents
 - **Approvals & Governance** — Human-in-the-loop approval workflows
-- **External Integrations** — Slack, Discord, Telegram, WhatsApp, Email, and more
+- **External Integrations** — Package integrations, MCP-connected tools, and Telegram runtime support
 - **Multi-Workspace** — Isolated workspaces with RBAC
-- **MCP Server** — Expose your workspace as an MCP server
+- **MCP Client Runtime** — Connect workspace-scoped MCP servers as agent tools
 
 ## Quick Start
 
@@ -41,25 +41,31 @@ composer setup
 composer dev
 ```
 
-> Requires PHP 8.2+, Node.js 20+, and PostgreSQL with [pgvector](https://github.com/pgvector/pgvector).
+> Requires PHP 8.4+, Node.js 20+, and PostgreSQL with [pgvector](https://github.com/pgvector/pgvector).
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Laravel 12, PHP 8.2+ |
+| Backend | Laravel 12, PHP 8.4+ |
 | Frontend | Vue 3, Inertia.js, Tailwind CSS v4 |
-| AI | Laravel AI SDK, Prism (multi-provider) |
+| AI | OpenCompany AI Runtime on Laravel AI SDK |
 | Real-time | Laravel Reverb (WebSockets) |
 | Memory | PostgreSQL + pgvector |
 | UI | Reka UI (headless primitives) |
 
 ## License
 
-OpenCompany is fair-code licensed under the [Sustainable Use License](LICENSE.md).
+OpenCompany is source-available under the [Business Source License 1.1](LICENSE.md).
 
-- **Self-hosting**: Free for internal and personal use
-- **Enterprise**: [Contact us](mailto:enterprise@opencompany.app) for SSO, audit logging, and white-labeling ([Enterprise License](LICENSE_EE.md))
+- **Allowed without a separate commercial agreement**: internal self-hosting, affiliate internal use, and single-customer managed operation under the Additional Use Grant in [LICENSE.md](LICENSE.md)
+- **Commercial features**: some premium capabilities may require a commercial agreement and valid license key; see [LICENSE_EE.md](LICENSE_EE.md)
+- **Commercial / hosted use outside the Additional Use Grant**: [Contact us](mailto:enterprise@opencompany.app)
+
+See also:
+
+- [Licensing FAQ](LICENSING.md)
+- [Commercial Use](COMMERCIAL_USE.md)
 
 ## Star History
 

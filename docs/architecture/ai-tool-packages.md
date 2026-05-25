@@ -2,6 +2,8 @@
 
 > How OpenCompany's AI tools are built as standalone Composer packages that any Laravel AI SDK app can install.
 
+Status: Historical architecture reference. The package family has since moved from `ai-tool-*` naming and Laravel-AI-specific tool contracts to framework-agnostic `opencompanyapp/integration-*` packages built on `opencompanyapp/integration-core`; use `docs/ecosystem/integrations/README.md` for the current package authoring guide and `config/integration_catalog.php` / `composer.json` for this app's installed package set.
+
 ## Overview
 
 OpenCompany's agent tools follow a plugin architecture inspired by n8n community nodes. Instead of a monolithic tool registry where every integration lives inside the app, external integrations are extracted into independent Composer packages:

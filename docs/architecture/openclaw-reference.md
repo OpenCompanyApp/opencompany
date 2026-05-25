@@ -2,6 +2,8 @@
 
 A comprehensive technical breakdown of how OpenClaw handles agents, subagents, memory systems (short-term and long-term), and skills.
 
+Status: External reference/research. Describes OpenClaw, not the current OpenCompany implementation.
+
 ---
 
 ## Table of Contents

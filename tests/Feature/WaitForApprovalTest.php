@@ -11,6 +11,9 @@ use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers the wait-for-approval tool and persisted agent waiting state.
+ */
 class WaitForApprovalTest extends TestCase
 {
     use RefreshDatabase;
@@ -102,7 +105,7 @@ class WaitForApprovalTest extends TestCase
     {
         $tool = new WaitForApproval($this->agent);
 
-        $schema = $tool->schema(new JsonSchemaTypeFactory());
+        $schema = $tool->schema(new JsonSchemaTypeFactory);
 
         $this->assertArrayHasKey('approvalId', $schema);
 

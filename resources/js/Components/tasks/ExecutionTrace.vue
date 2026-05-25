@@ -39,7 +39,7 @@
 
           <!-- Description -->
           <span class="flex-1 text-sm text-neutral-900 dark:text-white truncate">
-            {{ step.description }}
+            {{ stepDescription(step) }}
           </span>
 
           <!-- Bridge call tool group icons (LuaExec only) -->
@@ -73,9 +73,9 @@
           <!-- Lua Execute: dedicated rendering with Monaco + output + bridge calls -->
           <LuaExecutionDetail
             v-if="step.metadata?.tool === 'LuaExec'"
-            :code="String(step.metadata.arguments?.code ?? '')"
+            :code="String(stepArguments(step).code ?? '')"
             :result="String(step.metadata.result ?? '')"
-            :lua-meta="step.metadata.lua_meta"
+            :lua-meta="stepLuaMeta(step)"
           />
 
           <!-- Generic tool rendering -->
@@ -83,14 +83,26 @@
             <!-- Tool Arguments -->
             <div v-if="step.metadata?.arguments">
               <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 block">Arguments</label>
-              <pre class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-48 overflow-y-auto"><code class="hljs" v-html="highlightJson(step.metadata.arguments)" /></pre>
+              <dl
+                v-if="friendlyToolFields(step).length"
+                class="mb-2 grid gap-2 rounded-md border border-neutral-200 bg-white p-3 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+              >
+                <div v-for="field in friendlyToolFields(step)" :key="field.label" class="grid gap-1 sm:grid-cols-[8rem_1fr]">
+                  <dt class="font-medium text-neutral-500 dark:text-neutral-400">{{ field.label }}</dt>
+                  <dd class="min-w-0 whitespace-pre-wrap break-words text-neutral-900 dark:text-neutral-100">{{ field.value }}</dd>
+                </div>
+              </dl>
+              <details :open="!friendlyToolFields(step).length">
+                <summary class="cursor-pointer text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white">Raw</summary>
+                <pre class="mt-2 text-xs rounded-md p-3 overflow-x-auto border max-h-48 overflow-y-auto bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"><code class="hljs oc-syntax" v-html="highlightJson(step.metadata.arguments)" /></pre>
+              </details>
             </div>
 
             <!-- Tool Result -->
             <div v-if="step.metadata?.result !== undefined && step.metadata?.result !== null">
               <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 block">Result</label>
               <!-- JSON result -->
-              <pre v-if="isJsonResult(step.metadata.result)" class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-64 overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlightResult(step.metadata.result)" /></pre>
+              <pre v-if="isJsonResult(step.metadata.result)" class="text-xs rounded-md p-3 overflow-x-auto border max-h-64 overflow-y-auto bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"><code class="hljs oc-syntax whitespace-pre-wrap break-words" v-html="highlightResult(step.metadata.result)" /></pre>
               <!-- Markdown/text result with raw/preview toggle -->
               <template v-else>
                 <div class="flex justify-end mb-1.5">
@@ -107,7 +119,7 @@
                     >Preview</button>
                   </div>
                 </div>
-                <pre v-if="resultViewModes[step.id] !== 'preview'" class="text-xs bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-700 max-h-64 overflow-y-auto"><code class="hljs whitespace-pre-wrap break-words" v-html="highlight(String(step.metadata.result), 'markdown')" /></pre>
+                <pre v-if="resultViewModes[step.id] !== 'preview'" class="text-xs rounded-md p-3 overflow-x-auto border max-h-64 overflow-y-auto bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"><code class="hljs oc-syntax whitespace-pre-wrap break-words" v-html="highlight(String(step.metadata.result), 'markdown')" /></pre>
                 <div v-else class="text-xs bg-white dark:bg-neutral-900 rounded-md p-3 overflow-x-auto border border-neutral-200 dark:border-neutral-700 max-h-64 overflow-y-auto prose prose-sm prose-neutral dark:prose-invert max-w-none" v-html="renderMarkdown(String(step.metadata.result))" />
               </template>
             </div>
@@ -129,6 +141,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import LuaExecutionDetail from '@/Components/tasks/LuaExecutionDetail.vue'
 import { useHighlight } from '@/composables/useHighlight'
 import { useMarkdown } from '@/composables/useMarkdown'
+import { displayToolName } from '@/utils/toolDisplay'
 
 const props = defineProps<{
   steps: TaskStep[]
@@ -140,6 +153,23 @@ const { renderMarkdown } = useMarkdown()
 const copied = ref(false)
 const expandedSteps = ref(new Set<string>())
 const resultViewModes = reactive<Record<string, 'raw' | 'preview'>>({})
+
+const stepArguments = (step: TaskStep): Record<string, unknown> => {
+  return (step.metadata?.arguments ?? {}) as Record<string, unknown>
+}
+
+const stepDescription = (step: TaskStep) => {
+  if (!step.metadata?.tool) return step.description
+
+  return step.description.replace(
+    /^Used tool:\s+\S+$/,
+    `Used tool: ${displayToolName(step.metadata)}`,
+  )
+}
+
+const stepLuaMeta = (step: TaskStep): any => {
+  return step.metadata?.lua_meta ?? null
+}
 
 const toggleStep = (id: string) => {
   if (expandedSteps.value.has(id)) {
@@ -153,7 +183,7 @@ const copyTraceMarkdown = async () => {
   const lines: string[] = ['## Execution Trace\n']
   props.steps.forEach((step, i) => {
     const dur = stepDuration(step)
-    lines.push(`${i + 1}. **[${step.status}]** ${step.description}${dur ? ` (${dur})` : ''}`)
+    lines.push(`${i + 1}. **[${step.status}]** ${stepDescription(step)}${dur ? ` (${dur})` : ''}`)
     if (step.metadata?.arguments) {
       lines.push(`   - Arguments: \`${JSON.stringify(step.metadata.arguments)}\``)
     }
@@ -171,6 +201,38 @@ const copyTraceMarkdown = async () => {
 const hasExpandableContent = (step: TaskStep): boolean => {
   return !!(step.metadata?.arguments || step.metadata?.result !== undefined && step.metadata?.result !== null)
 }
+
+type FriendlyField = {
+  label: string
+  value: string
+}
+
+const friendlyToolFields = (step: TaskStep): FriendlyField[] => {
+  const tool = step.metadata?.tool
+  const args = stepArguments(step)
+
+  if (tool === 'UpdateTask') {
+    return friendlyFields(args, ['taskId', 'title', 'description'])
+  }
+
+  if (tool === 'SetTaskStatus') {
+    return friendlyFields(args, ['taskId', 'status'])
+  }
+
+  if (tool === 'CreateTask' || tool === 'CreateTaskStep') {
+    return friendlyFields(args, ['taskId', 'title', 'description', 'status', 'priority'])
+  }
+
+  return []
+}
+
+const friendlyFields = (args: Record<string, unknown>, keys: string[]): FriendlyField[] =>
+  keys
+    .filter(key => args[key] !== undefined && args[key] !== null && args[key] !== '')
+    .map(key => ({
+      label: key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/\b\w/g, letter => letter.toUpperCase()),
+      value: typeof args[key] === 'string' ? args[key] : formatJson(args[key]),
+    }))
 
 const GROUP_ICONS: Record<string, string> = {
   docs: 'ph:file-text', tables: 'ph:table', chat: 'ph:chat-circle',

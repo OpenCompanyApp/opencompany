@@ -8,8 +8,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | These define the external chat platforms that can be connected to
-    | workspaces via the Chatogrator package. Each platform uses the Adapter
-    | pattern from Chatogrator for unified message handling.
+    | workspaces. Most providers use the Chatogrator adapter pattern for unified
+    | message handling; Telegram is configured here but its runtime is app-owned
+    | under Domain\Chat\Telegram.
     |
     | Note: These are separate from AI model integrations in config/integrations.php.
     | A GitHub chat adapter (for PR comment conversations) is distinct from a
@@ -28,7 +29,7 @@ return [
             'bot_username' => ['label' => 'Bot Username', 'type' => 'text'],
             'bot_user_id' => ['label' => 'Bot User ID', 'type' => 'text'],
             'default_agent_id' => ['label' => 'Default Agent', 'type' => 'agent_select'],
-            'allowed_users' => ['label' => 'Allowed User IDs', 'type' => 'array'],
+            'allowed_telegram_users' => ['label' => 'Allowed User IDs', 'type' => 'array'],
         ],
     ],
 

@@ -165,7 +165,7 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  click: [cost: number]
+  click: [cost: number | string]
 }>()
 
 // Currency symbols

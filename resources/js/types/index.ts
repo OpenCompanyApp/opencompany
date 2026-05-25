@@ -1,12 +1,12 @@
-export type AgentStatus = 'idle' | 'working' | 'offline' | 'paused' | 'online' | 'busy' | 'awaiting_approval' | 'sleeping' | 'awaiting_delegation'
+export type AgentStatus = string
 export type UserStatus = 'online' | 'away' | 'busy' | 'dnd' | 'offline'
 export type PresenceStatus = 'online' | 'away' | 'busy' | 'offline'
 export type ListItemStatus = string
-export type TaskStatus = 'pending' | 'active' | 'paused' | 'completed' | 'failed' | 'cancelled'
+export type TaskStatus = string
 export type TaskType = 'ticket' | 'request' | 'analysis' | 'content' | 'research' | 'custom'
 export type TaskStepType = 'action' | 'decision' | 'approval' | 'sub_task' | 'message'
-export type TaskStepStatus = 'pending' | 'in_progress' | 'completed' | 'skipped'
-export type EntityType = 'human' | 'agent'
+export type TaskStepStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'failed'
+export type EntityType = string
 export type AgentType = 'manager' | 'writer' | 'analyst' | 'creative' | 'researcher' | 'coder' | 'coordinator' | 'system'
 export type ChannelType = 'public' | 'private' | 'dm' | 'external'
 export type ExternalChannelProvider = 'telegram' | 'slack'
@@ -26,14 +26,15 @@ export interface User {
   name: string
   avatar?: string
   email?: string
-  type: EntityType
-  agentType?: AgentType
-  status?: AgentStatus
+  type?: EntityType
+  agentType?: AgentType | string
+  status?: AgentStatus | string
   presence?: PresenceStatus
   lastSeenAt?: Date
   currentTask?: string
   activityLog?: ActivityStep[]
   isAgent?: boolean
+  isAI?: boolean
   awaitingApprovalId?: string
   mustWaitForApproval?: boolean
   brain?: string
@@ -44,7 +45,7 @@ export interface User {
 export interface ActivityStep {
   id: string
   description: string
-  status: 'completed' | 'in_progress' | 'pending'
+  status: TaskStepStatus
   startedAt: Date
   completedAt?: Date
 }
@@ -87,6 +88,8 @@ export interface Attachment {
   type: string
   size: number
   url: string
+  original_name?: string
+  mime_type?: string
 }
 
 export interface CodeBlock {
@@ -178,6 +181,14 @@ export interface ListItem {
   completedAt?: Date
   dueDate?: string
   channelId?: string
+  type?: string
+  labels?: Array<{ id: string; name: string; color: string }>
+  progress?: number
+  subtasks?: Array<{ id?: string; title?: string; completed: boolean }>
+  commentsCount?: number
+  attachmentsCount?: number
+  completedBy?: User
+  isAIWorking?: boolean
 }
 
 // Legacy alias for backwards compatibility
@@ -219,6 +230,7 @@ export interface AgentTask {
   agentId?: string
   requester?: User
   requesterId: string
+  triggerMessageId?: string
   channel?: Channel
   channelId?: string
   project?: { id: string; name: string }
@@ -257,6 +269,7 @@ export interface Document {
   title: string
   content: string
   contentFormat?: 'markdown' | 'html'
+  content_format?: 'markdown' | 'html'
   updatedAt: Date
   createdAt: Date
   author: User
@@ -272,7 +285,7 @@ export interface Activity {
   id: string
   type: ActivityType
   description: string
-  actor: User
+  actor?: User
   timestamp: Date
   metadata?: Record<string, unknown>
   target?: User | string

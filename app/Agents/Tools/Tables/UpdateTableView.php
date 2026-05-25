@@ -8,6 +8,12 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Updates a saved view belonging to a workspace-owned table.
+ *
+ * View records inherit tenant boundaries from their parent table, so the lookup
+ * must always verify that relationship before applying changes.
+ */
 class UpdateTableView implements Tool
 {
     public function __construct(
@@ -50,8 +56,11 @@ class UpdateTableView implements Tool
     public function handle(Request $request): string
     {
         try {
-            $view = DataTableView::findOrFail($request['viewId']);
+            $view = DataTableView::whereHas('table', fn ($query) => $query->forWorkspace())
+                ->findOrFail($request['viewId']);
 
+            // Preserve absent fields. Agents often send only the part of the
+            // saved view they intend to change.
             if (isset($request['name'])) {
                 $view->name = $request['name'];
             }

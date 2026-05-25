@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, type HTMLAttributes } from 'vue'
 import { Icon as IconifyIcon } from '@iconify/vue'
 
 interface Props {
   name?: string
   icon?: string
-  class?: string | string[] | (string | false | undefined)[]
+  class?: HTMLAttributes['class']
 }
 
 const props = defineProps<Props>()

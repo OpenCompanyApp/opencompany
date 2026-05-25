@@ -3,12 +3,12 @@
 namespace App\Services\Memory;
 
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Ai\Agents\OneShotTextAgent;
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Reranking;
 use Laravel\Ai\Responses\Data\RankedDocument;
-use Prism\Prism\Facades\Prism;
 
 class RerankingService
 {
@@ -22,9 +22,7 @@ class RerankingService
      * When reranking is disabled, returns documents in original order
      * with synthetic descending scores so callers never need conditional logic.
      *
-     * @param  string  $query
      * @param  array<int, string>  $documents
-     * @param  int|null  $topK
      * @return array<int, array{index: int, document: string, score: float}>
      */
     public function rerank(string $query, array $documents, ?int $topK = null): array
@@ -61,7 +59,7 @@ class RerankingService
             ])->all();
         }
 
-        // All other providers: LLM-based reranking via Prism chat
+        // All other providers: LLM-based reranking through Laravel AI.
         return $this->rerankWithLlm($query, $documents, $provider, $model, $topK);
     }
 
@@ -76,7 +74,7 @@ class RerankingService
      */
     private function rerankWithOllama(string $query, array $documents, string $model, int $topK): array
     {
-        $url = config('prism.providers.ollama.url', 'http://localhost:11434');
+        $url = config('ai.providers.ollama.url', 'http://localhost:11434');
 
         // Quick connectivity check to avoid N slow timeouts
         try {
@@ -129,10 +127,10 @@ class RerankingService
     }
 
     /**
-     * Rerank using any LLM provider via Prism's chat API.
+     * Rerank using any LLM provider via Laravel AI.
      *
      * Uses the same pointwise relevance prompt as rerankWithOllama(),
-     * but routes through Prism + DynamicProviderResolver so any configured
+     * but routes through DynamicProviderResolver so any configured
      * AI provider (OpenAI, Anthropic, OpenRouter, etc.) can be used.
      *
      * @param  array<int, string>  $documents
@@ -143,8 +141,8 @@ class RerankingService
         $systemPrompt = 'Judge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".';
 
         try {
-            $workspace = app('currentWorkspace');
-            if ($workspace) {
+            $workspace = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
+            if ($workspace !== null) {
                 $this->providerResolver->setWorkspaceId($workspace->id);
             }
             $resolved = $this->providerResolver->resolveFromParts($provider, $model);
@@ -152,6 +150,7 @@ class RerankingService
             Log::warning('LLM reranking provider resolution failed, falling back to passthrough', [
                 'provider' => $provider, 'model' => $model, 'error' => $e->getMessage(),
             ]);
+
             return $this->passThrough($documents);
         }
 
@@ -161,13 +160,11 @@ class RerankingService
             $userMessage = "<Instruct>: Given a web search query, retrieve relevant passages that answer the query\n<Query>: {$query}\n<Document>: {$doc}";
 
             try {
-                $response = Prism::text()
-                    ->using($resolved['provider'], $resolved['model'])
-                    ->withSystemPrompt($systemPrompt)
-                    ->withPrompt($userMessage)
-                    ->withMaxTokens(2)
-                    ->usingTemperature(0)
-                    ->asText();
+                $response = (new OneShotTextAgent(
+                    instructions: $systemPrompt,
+                    maxTokens: 2,
+                    temperature: 0,
+                ))->prompt($userMessage, provider: $resolved['provider'], model: $resolved['model']);
 
                 $answer = strtolower(trim($response->text));
                 $score = str_starts_with($answer, 'yes') ? 1.0 : (str_starts_with($answer, 'no') ? 0.0 : 0.5);

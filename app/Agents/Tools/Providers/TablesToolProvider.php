@@ -23,7 +23,14 @@ use App\Agents\Tools\Tables\UpdateTableColumn;
 use App\Agents\Tools\Tables\UpdateTableRow;
 use App\Agents\Tools\Tables\UpdateTableView;
 use App\Models\User;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers structured-table tools.
+ *
+ * Tables expose schema, row, and saved-view operations from one provider so
+ * permissions and Lua docs present table work as a single capability group.
+ */
 class TablesToolProvider implements BuiltInToolProvider
 {
     public function groupName(): string
@@ -190,8 +197,10 @@ class TablesToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // Table tools share the same constructor and each tool performs its own
+        // table/view/row validation inside the current workspace.
         return new $class($agent);
     }
 }

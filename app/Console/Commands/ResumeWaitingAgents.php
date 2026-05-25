@@ -7,6 +7,12 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Scheduler command that wakes agents after a wait/sleep period expires.
+ *
+ * Wait tools persist sleeping state on the agent record; this command converts
+ * elapsed sleepers back to idle and broadcasts status changes to clients.
+ */
 class ResumeWaitingAgents extends Command
 {
     protected $signature = 'agent:resume-waiting';
@@ -21,6 +27,8 @@ class ResumeWaitingAgents extends Command
             ->get();
 
         foreach ($agents as $agent) {
+            // Clear both timing and reason together so the UI never displays an
+            // idle agent with stale sleep metadata.
             $agent->update([
                 'sleeping_until' => null,
                 'sleeping_reason' => null,

@@ -5,19 +5,19 @@
       <div class="flex items-center gap-1">
         <span class="text-lg font-semibold text-neutral-900 dark:text-white">Tasks</span>
         <Link
-          :href="workspacePath('/workload')"
+          :href="workload(workspaceRouteParams())"
           class="ml-1 px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
         >
           Workload
         </Link>
         <Link
-          :href="workspacePath('/activity')"
+          :href="activity(workspaceRouteParams())"
           class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
         >
           Activity
         </Link>
         <Link
-          :href="workspacePath('/tasks/analytics')"
+          :href="taskAnalytics(workspaceRouteParams())"
           class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
         >
           Analytics
@@ -286,6 +286,8 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { activity, workload } from '@/routes'
+import { analytics as taskAnalytics, show as showTaskRoute } from '@/routes/tasks'
 import type { AgentTask, TaskStatus, User } from '@/types'
 import type { PaginatedResponse } from '@/composables/useApi'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
@@ -295,7 +297,7 @@ import SearchInput from '@/Components/shared/SearchInput.vue'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
 
-const { workspacePath } = useWorkspace()
+const { workspaceRouteParams } = useWorkspace()
 const {
   fetchAgentTasks,
   fetchAgents,
@@ -560,7 +562,7 @@ const timeAgo = (date: Date | string) => {
 }
 
 const openTaskDetail = (task: AgentTask) => {
-  router.visit(workspacePath(`/tasks/${task.id}`))
+  router.visit(showTaskRoute(workspaceRouteParams({ id: task.id })))
 }
 
 onUnmounted(() => unsubTask())

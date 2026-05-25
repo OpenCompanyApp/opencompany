@@ -37,6 +37,7 @@ const iconSizeClasses: Record<string, string> = {
   lg: 'w-6 h-6',
 }
 
+// Color keys match workspace.color values from the backend setup/profile API.
 const colorBgMap: Record<string, string> = {
   neutral: 'bg-neutral-500',
   blue: 'bg-blue-500',

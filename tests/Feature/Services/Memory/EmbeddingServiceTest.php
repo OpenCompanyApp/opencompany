@@ -2,15 +2,12 @@
 
 namespace Tests\Feature\Services\Memory;
 
+use App\Domain\Ai\Embeddings\EmbeddingClient;
 use App\Models\AppSetting;
 use App\Models\EmbeddingCache;
 use App\Services\Memory\EmbeddingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Prism\Prism\Embeddings\Response as EmbeddingResponse;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\ValueObjects\Embedding;
-use Prism\Prism\ValueObjects\EmbeddingsUsage;
-use Prism\Prism\ValueObjects\Meta;
+use Mockery;
 use Tests\TestCase;
 
 class EmbeddingServiceTest extends TestCase
@@ -25,25 +22,21 @@ class EmbeddingServiceTest extends TestCase
         $this->service = app(EmbeddingService::class);
     }
 
-    private function fakeEmbeddingResponse(array $embedding): EmbeddingResponse
-    {
-        return new EmbeddingResponse(
-            embeddings: [new Embedding($embedding)],
-            usage: new EmbeddingsUsage(tokens: 10),
-            meta: new Meta(id: 'test-id', model: 'test-model'),
-        );
-    }
-
-    public function test_embed_calls_prism_and_returns_vector(): void
+    public function test_embed_calls_embedding_client_and_returns_vector(): void
     {
         $fakeEmbedding = array_fill(0, 1536, 0.1);
 
-        Prism::fake([
-            $this->fakeEmbeddingResponse($fakeEmbedding),
-        ]);
-
+        config(['memory.embedding.testing_fallback' => false]);
         config(['memory.embedding.provider' => 'openai']);
         config(['memory.embedding.model' => 'text-embedding-3-small']);
+
+        $client = Mockery::mock(EmbeddingClient::class);
+        $client->shouldReceive('embed')
+            ->once()
+            ->with('openai', 'text-embedding-3-small', 'Hello world', $this->workspace->id)
+            ->andReturn($fakeEmbedding);
+        $this->app->instance(EmbeddingClient::class, $client);
+        $this->service = app(EmbeddingService::class);
 
         $result = $this->service->embed('Hello world');
 
@@ -71,8 +64,10 @@ class EmbeddingServiceTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        // Prism::fake with no responses — if called, it would throw
-        Prism::fake([]);
+        $client = Mockery::mock(EmbeddingClient::class);
+        $client->shouldNotReceive('embed');
+        $this->app->instance(EmbeddingClient::class, $client);
+        $this->service = app(EmbeddingService::class);
 
         $result = $this->service->embed('cached text');
 
@@ -97,10 +92,15 @@ class EmbeddingServiceTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        // Only the uncached text should trigger an API call
-        Prism::fake([
-            $this->fakeEmbeddingResponse($freshEmbedding),
-        ]);
+        config(['memory.embedding.testing_fallback' => false]);
+
+        $client = Mockery::mock(EmbeddingClient::class);
+        $client->shouldReceive('embedMany')
+            ->once()
+            ->with('openai', 'text-embedding-3-small', ['new text'], $this->workspace->id)
+            ->andReturn([$freshEmbedding]);
+        $this->app->instance(EmbeddingClient::class, $client);
+        $this->service = app(EmbeddingService::class);
 
         $results = $this->service->embedBatch(['already cached', 'new text']);
 
@@ -111,14 +111,8 @@ class EmbeddingServiceTest extends TestCase
 
     public function test_provider_resolution_reads_app_setting_first(): void
     {
-        $fakeEmbedding = array_fill(0, 1536, 0.2);
-
         // Set via AppSetting (should take precedence over config)
         AppSetting::setValue('memory_embedding_model', 'ollama:snowflake-arctic-embed2', 'memory');
-
-        Prism::fake([
-            $this->fakeEmbeddingResponse($fakeEmbedding),
-        ]);
 
         $result = $this->service->embed('test text');
 
@@ -143,11 +137,16 @@ class EmbeddingServiceTest extends TestCase
     {
         config(['memory.embedding.provider' => 'openai']);
         config(['memory.embedding.model' => 'text-embedding-3-small']);
+        config(['memory.embedding.testing_fallback' => false]);
 
-        // Fake with an empty array — Prism will throw when no responses are available
-        Prism::fake([]);
+        $client = Mockery::mock(EmbeddingClient::class);
+        $client->shouldReceive('embed')
+            ->once()
+            ->andThrow(new \RuntimeException('Embedding failed'));
+        $this->app->instance(EmbeddingClient::class, $client);
+        $this->service = app(EmbeddingService::class);
 
-        $this->expectException(\Throwable::class);
+        $this->expectException(\RuntimeException::class);
 
         $this->service->embed('should fail');
     }

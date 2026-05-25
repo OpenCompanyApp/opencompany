@@ -18,11 +18,13 @@ import { usePresence } from '@/composables/usePresence'
 import { useChannelListener } from '@/composables/useRealtime'
 import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { chat, dashboard, docs, integrations, settings, tasks } from '@/routes'
+import { show as showAgentRoute } from '@/routes/agent'
 import type { AgentStatus } from '@/types'
 
 useKeyboardShortcuts()
 const { isOpen: commandPaletteOpen } = useCommandPalette()
-const { workspacePath, workspace, isAdmin } = useWorkspace()
+const { workspace, isAdmin, workspaceRouteParams } = useWorkspace()
 
 const sidebarCollapsed = ref(false)
 const mobileMenuOpen = ref(false)
@@ -98,20 +100,20 @@ const handlePaletteAction = (type: string) => {
       showSpawnModal.value = true
       break
     case 'new-task':
-      router.visit(workspacePath('/tasks?action=new'))
+      router.visit(tasks(workspaceRouteParams(), { query: { action: 'new' } }))
       break
     case 'new-channel':
-      router.visit(workspacePath('/chat?action=new-channel'))
+      router.visit(chat(workspaceRouteParams(), { query: { action: 'new-channel' } }))
       break
     case 'new-document':
-      router.visit(workspacePath('/docs?action=new'))
+      router.visit(docs(workspaceRouteParams(), { query: { action: 'new' } }))
       break
   }
 }
 
 const handleAgentSpawned = async (agent: { id: string }) => {
   await refreshAgents()
-  router.visit(workspacePath(`/agent/${agent.id}`))
+  router.visit(showAgentRoute(workspaceRouteParams({ id: agent.id })))
 }
 
 // Initialize presence tracking
@@ -127,7 +129,7 @@ onUnmounted(() => {
 
 // Check if a path is active
 const isActive = (path: string): boolean => {
-  if (path === workspacePath('/')) return page.url === workspacePath('/')
+  if (path === dashboard.url(workspaceRouteParams())) return page.url === dashboard.url(workspaceRouteParams())
   return page.url.startsWith(path)
 }
 </script>
@@ -145,7 +147,7 @@ const isActive = (path: string): boolean => {
             <Icon name="ph:list" class="w-6 h-6 text-neutral-700 dark:text-neutral-200" />
           </button>
 
-          <Link :href="workspacePath('/')" class="flex items-center gap-2">
+          <Link :href="dashboard(workspaceRouteParams())" class="flex items-center gap-2">
             <WorkspaceIcon
               :icon="workspace?.icon"
               :color="workspace?.color"
@@ -171,7 +173,7 @@ const isActive = (path: string): boolean => {
         <Slideover v-model:open="mobileMenuOpen" side="left" size="sm" :show-close="false">
           <template #header>
             <div class="flex items-center justify-between w-full">
-              <Link :href="workspacePath('/')" class="flex items-center gap-2.5" @click="mobileMenuOpen = false">
+              <Link :href="dashboard(workspaceRouteParams())" class="flex items-center gap-2.5" @click="mobileMenuOpen = false">
                 <WorkspaceIcon
                   :icon="workspace?.icon"
                   :color="workspace?.color"
@@ -201,30 +203,30 @@ const isActive = (path: string): boolean => {
               <div class="mt-auto border-t border-neutral-200 dark:border-neutral-700 px-2 py-2 space-y-0.5">
                 <Link
                   v-if="isAdmin"
-                  :href="workspacePath('/integrations')"
+                  :href="integrations(workspaceRouteParams())"
                   :class="[
                     'flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors',
-                    isActive(workspacePath('/integrations'))
+                    isActive(integrations.url(workspaceRouteParams()))
                       ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
                       : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
                   ]"
                   @click="mobileMenuOpen = false"
                 >
-                  <Icon :name="isActive(workspacePath('/integrations')) ? 'ph:plugs-connected-fill' : 'ph:plugs-connected'" class="w-[18px] h-[18px]" />
+                  <Icon :name="isActive(integrations.url(workspaceRouteParams())) ? 'ph:plugs-connected-fill' : 'ph:plugs-connected'" class="w-[18px] h-[18px]" />
                   <span class="text-sm">Integrations</span>
                 </Link>
                 <Link
                   v-if="isAdmin"
-                  :href="workspacePath('/settings')"
+                  :href="settings(workspaceRouteParams())"
                   :class="[
                     'flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors',
-                    isActive(workspacePath('/settings'))
+                    isActive(settings.url(workspaceRouteParams()))
                       ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
                       : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
                   ]"
                   @click="mobileMenuOpen = false"
                 >
-                  <Icon :name="isActive(workspacePath('/settings')) ? 'ph:gear-fill' : 'ph:gear'" class="w-[18px] h-[18px]" />
+                  <Icon :name="isActive(settings.url(workspaceRouteParams())) ? 'ph:gear-fill' : 'ph:gear'" class="w-[18px] h-[18px]" />
                   <span class="text-sm">Settings</span>
                 </Link>
               </div>

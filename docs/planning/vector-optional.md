@@ -1,7 +1,7 @@
 # Making Embeddings Optional — Implementation Plan
 
 Date: 2026-04-07
-Status: Planning
+Status: Planning. Current code still requires embeddings on the write path: `DocumentIndexingService::index()` calls `EmbeddingService::embedBatch()`, `document_chunks.embedding` is non-null in the base migration, and `pgvector` remains a composer dependency.
 Related: Identity + Memory Refactor, Dream/VFS doc
 
 ---
@@ -323,8 +323,8 @@ For workspaces starting fresh without embeddings:
 
 ## Relationship to Other Planning Docs
 
-- **Dream/VFS doc** — VFS tools (`grep_files`, `glob_files`) become more important when embeddings are disabled. They fill the gap for exact-lookup and browsing retrieval.
-- **Memory refactor** — The refactor adds `topic`, `peer` collections. These get chunked and FTS-indexed regardless of embeddings. Search degrades gracefully.
+- **Dream/VFS doc** — Proposed unix-style VFS tools (`grep`, `glob`, `head`) become more important when embeddings are disabled. Current app file tools already provide path-based list/read/search operations, but not the exact unix-style tools in that plan.
+- **Memory refactor** — The refactor has landed and added topic, peer, log, and core memory structure. These get chunked and FTS-indexed under the current observer/indexing flow, but writes still fail if embedding generation fails before chunk storage.
 - **Temporal decay** (from Dream doc) — Still applies to FTS results via the same scoring mechanism.
 
-The recommended order: ship this embedding toggle first (1 day), then VFS tools, then the memory refactor lands, then Dream consolidation.
+The recommended order from the current baseline: ship this embedding toggle first, then add unix-style VFS retrieval tools if needed, then Dream consolidation.

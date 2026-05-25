@@ -54,7 +54,7 @@
               <Link
                 v-for="ws in workspaces"
                 :key="ws.id"
-                :href="`/w/${ws.slug}`"
+                :href="dashboard.url(ws.slug)"
                 :class="[
                   'flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors',
                   ws.slug === workspace?.slug
@@ -71,7 +71,7 @@
               <template v-if="isAdmin">
                 <div class="my-1.5 mx-2 border-t border-neutral-200 dark:border-neutral-700" />
                 <Link
-                  href="/create-workspace"
+                  :href="createWorkspaceRoute()"
                   class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/50 hover:text-neutral-900 dark:hover:text-white transition-colors"
                   @click="switcherOpen = false"
                 >
@@ -143,36 +143,36 @@
       <div :class="['space-y-0.5', collapsed ? 'px-2' : 'px-2']">
         <Link
           v-if="isAdmin"
-          :href="workspacePath('/integrations')"
+          :href="integrationsUrl()"
           :class="[
             'group flex items-center rounded-lg transition-colors duration-150 outline-none',
             collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-            isActive(workspacePath('/integrations'))
+            isActive(integrationsUrl())
               ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
               : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
             'focus-visible:ring-1 focus-visible:ring-neutral-400',
           ]"
         >
           <Icon
-            :name="isActive(workspacePath('/integrations')) ? 'ph:plugs-connected-fill' : 'ph:plugs-connected'"
+            :name="isActive(integrationsUrl()) ? 'ph:plugs-connected-fill' : 'ph:plugs-connected'"
             class="w-[18px] h-[18px] shrink-0"
           />
           <span v-if="!collapsed" class="text-sm truncate">Integrations</span>
         </Link>
         <Link
           v-if="isAdmin"
-          :href="workspacePath('/settings')"
+          :href="settingsUrl()"
           :class="[
             'group flex items-center rounded-lg transition-colors duration-150 outline-none',
             collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-            isActive(workspacePath('/settings'))
+            isActive(settingsUrl())
               ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
               : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300',
             'focus-visible:ring-1 focus-visible:ring-neutral-400',
           ]"
         >
           <Icon
-            :name="isActive(workspacePath('/settings')) ? 'ph:gear-fill' : 'ph:gear'"
+            :name="isActive(settingsUrl()) ? 'ph:gear-fill' : 'ph:gear'"
             class="w-[18px] h-[18px] shrink-0"
           />
           <span v-if="!collapsed" class="text-sm truncate">Settings</span>
@@ -206,6 +206,8 @@ import Icon from '@/Components/shared/Icon.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
 import WorkspaceIcon from '@/Components/shared/WorkspaceIcon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { dashboard } from '@/routes'
+import { create as createWorkspaceRoute } from '@/routes/workspace'
 
 // Types
 type SidebarVariant = 'default' | 'floating' | 'minimal'
@@ -213,9 +215,9 @@ type SidebarVariant = 'default' | 'floating' | 'minimal'
 interface SidebarAgent {
   id: string
   name: string
-  status?: 'online' | 'busy' | 'idle' | 'offline'
+  status?: string
   currentTask?: string
-  isAI: boolean
+  isAI?: boolean
 }
 
 // Props
@@ -236,7 +238,7 @@ const collapsed = defineModel<boolean>('collapsed', { default: false })
 
 const className = computed(() => props.class)
 const page = usePage()
-const { workspacePath, isAdmin, workspace, workspaces } = useWorkspace()
+const { integrationsUrl, isAdmin, settingsUrl, workspace, workspaces } = useWorkspace()
 
 const switcherOpen = ref(false)
 

@@ -45,11 +45,14 @@ const props = defineProps<{
 
 const selectedIndex = ref(0)
 
+// Reset keyboard focus whenever filtering changes the visible command set.
 watch(() => props.items, () => {
   selectedIndex.value = 0
 })
 
 const selectItem = (index: number) => {
+  // TipTap can call this from keyboard or mouse handlers; guard against stale
+  // indexes when the command list changes mid-interaction.
   const item = props.items[index]
   if (item) {
     props.command(item)
@@ -58,6 +61,7 @@ const selectItem = (index: number) => {
 
 const onKeyDown = (event: KeyboardEvent): boolean => {
   if (event.key === 'ArrowUp') {
+    // Wrap navigation so the popup behaves like a native command palette.
     selectedIndex.value = (selectedIndex.value + props.items.length - 1) % props.items.length
     return true
   }

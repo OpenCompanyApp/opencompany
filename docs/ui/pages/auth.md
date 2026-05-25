@@ -94,7 +94,7 @@ All authentication pages share a centered card layout on a textured background.
 - **Remember me:** Checkbox using shared `Checkbox` component
 - **Forgot password link:** shown conditionally via `canResetPassword` prop; links to `password.request` route
 - **Status message:** displays green success text (e.g. after password reset)
-- **Submit:** POSTs to `login` route; resets password field on finish
+- **Submit:** Uses the generated authenticated-session `store()` action for the `login` route; resets password field on finish
 - **Footer:** link to registration page
 - **Props:** `canResetPassword` (boolean), `status` (string)
 
@@ -138,7 +138,7 @@ All authentication pages share a centered card layout on a textured background.
 ### Features
 
 - **Form fields:** Name (autofocus), Email, Password, Confirm password
-- **Submit:** POSTs to `register` route; resets password + confirmation on finish
+- **Submit:** Uses the generated registered-user `store()` action for the `register` route; resets password + confirmation on finish
 - **Footer:** link to login page
 - **No props** -- all data is form-local
 
@@ -173,7 +173,7 @@ All authentication pages share a centered card layout on a textured background.
 - **Description text:** explanatory paragraph below heading
 - **Form fields:** Email (autofocus, autocomplete=username)
 - **Status message:** displays green success text after link is sent
-- **Submit:** POSTs to `password.email` route
+- **Submit:** Uses the generated `password.email` route helper
 - **Footer:** "Back to login" link
 - **Props:** `status` (string)
 
@@ -212,7 +212,7 @@ All authentication pages share a centered card layout on a textured background.
 
 - **Form fields:** Email (pre-filled from props, autofocus), New password, Confirm password
 - **Hidden field:** token (from URL parameter, stored in form data)
-- **Submit:** POSTs to `password.store` route; resets password fields on finish
+- **Submit:** Uses the generated `password.store` route helper; resets password fields on finish
 - **No footer** -- no additional navigation links
 - **Props:** `email` (string), `token` (string)
 
@@ -241,8 +241,8 @@ All authentication pages share a centered card layout on a textured background.
 
 - **Description text:** explains verification requirement
 - **Success message:** "A new verification link has been sent" shown when `status === 'verification-link-sent'`
-- **Submit:** POSTs to `verification.send` route (throttled to 6 requests per minute)
-- **Footer:** "Log out" link (POST to `logout` route via Inertia `method="post"`)
+- **Submit:** Uses the generated `verification.send` route helper (throttled to 6 requests per minute)
+- **Footer:** "Log out" link uses the generated authenticated-session `destroy()` action via Inertia `method="post"`
 - **No form fields** -- only a resend button
 - **Props:** `status` (string)
 
@@ -273,7 +273,7 @@ All authentication pages share a centered card layout on a textured background.
 
 - **Description text:** explains this is a secure area
 - **Form fields:** Password (autofocus, autocomplete=current-password)
-- **Submit:** POSTs to `password.confirm` route; resets form on finish
+- **Submit:** Uses the generated confirmable-password `store()` action for the `password.confirm` route; resets form on finish
 - **No footer** -- no additional navigation links
 - **No props** -- all data is form-local
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ApplicationLogo from '@/Components/ApplicationLogo.vue'
 import { Link } from '@inertiajs/vue3'
+import { home } from '@/routes'
 </script>
 
 <template>
@@ -23,7 +24,7 @@ import { Link } from '@inertiajs/vue3'
     />
 
     <!-- Logo -->
-    <Link href="/" class="relative z-10 mb-8">
+    <Link :href="home.url()" class="relative z-10 mb-8">
       <ApplicationLogo />
     </Link>
 

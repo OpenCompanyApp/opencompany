@@ -99,7 +99,7 @@
                     <p class="text-neutral-600 dark:text-neutral-400">
                       Your email address is unverified.
                       <Link
-                        :href="route('verification.send')"
+                        :href="sendVerificationEmail()"
                         method="post"
                         as="button"
                         class="text-neutral-900 dark:text-white underline hover:no-underline"
@@ -278,6 +278,10 @@ import SettingsField from '@/Components/settings/SettingsField.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import { useColorMode } from '@/composables/useColorMode'
+import { useWorkspace } from '@/composables/useWorkspace'
+import { destroy as destroyProfile, update as updateProfile } from '@/routes/profile'
+import { update as updatePassword } from '@/routes/password'
+import { send as sendVerificationEmail } from '@/routes/verification'
 
 type ColorMode = 'light' | 'dark' | 'system'
 
@@ -286,7 +290,10 @@ defineProps<{
   status?: string
 }>()
 
-const user = usePage().props.auth.user as { name: string; email: string; email_verified_at?: string }
+const user = (usePage().props as unknown as {
+  auth: { user: { name: string; email: string; email_verified_at?: string } }
+}).auth.user
+const { workspaceRouteParams } = useWorkspace()
 
 // --- Sidebar sections ---
 const sections = [
@@ -305,7 +312,7 @@ const profileForm = useForm({
 })
 
 const submitProfile = () => {
-  profileForm.patch(route('profile.update'), {
+  profileForm.submit(updateProfile(workspaceRouteParams()), {
     preserveScroll: true,
   })
 }
@@ -321,7 +328,7 @@ const passwordForm = useForm({
 })
 
 const submitPassword = () => {
-  passwordForm.put(route('password.update'), {
+  passwordForm.submit(updatePassword(), {
     preserveScroll: true,
     onSuccess: () => {
       passwordForm.reset()
@@ -357,7 +364,7 @@ const deleteForm = useForm({
 })
 
 const deleteAccount = () => {
-  deleteForm.delete(route('profile.destroy'), {
+  deleteForm.submit(destroyProfile(workspaceRouteParams()), {
     preserveScroll: true,
     onSuccess: () => closeDeletionModal(),
     onError: () => deletePasswordInput.value?.focus(),

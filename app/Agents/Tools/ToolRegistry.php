@@ -2,20 +2,37 @@
 
 namespace App\Agents\Tools;
 
+use App\Agents\Runtime\Permissions\OpenCompanyPermissionEvaluator;
+use App\Agents\Runtime\Permissions\PermissionDecision;
 use App\Agents\Tools\Providers\BuiltInToolProvider;
 use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\AgentPermissionService;
+use App\Services\Integrations\IntegrationCatalog;
+use App\Services\LuaApiDocGenerator;
+use Illuminate\JsonSchema\JsonSchemaTypeFactory;
+use Illuminate\Support\Str;
+use Laravel\Ai\Contracts\Tool;
+use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
+/**
+ * Builds the agent-visible tool catalog from built-ins, packages, and MCP.
+ *
+ * The registry is the boundary between model-visible tool names and the PHP
+ * classes that execute them. It also applies OpenCompany permission wrapping,
+ * so comments in this file should preserve which metadata is for display,
+ * which metadata is for permission checks, and which metadata comes from
+ * package-owned providers.
+ */
 class ToolRegistry
 {
     /**
      * App groups that remain as direct AI tools.
      * Everything else is accessible only via lua_exec (code-first approach).
      */
-    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua'];
+    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua', 'web'];
 
     /**
      * Apps that are external integrations (can be toggled per agent).
@@ -41,13 +58,18 @@ class ToolRegistry
     /** @var array<string, string>|null Cached merged integration logos */
     private ?array $effectiveIntegrationLogos = null;
 
+    /** @var array<string, array<string, mixed>>|null Cached package catalog tools */
+    private ?array $catalogTools = null;
+
+    /** @var array<string, array<string, mixed>>|null Shared package catalog tool index */
+    private static ?array $sharedCatalogTools = null;
+
     private ?string $currentChannelId = null;
 
     private ?string $currentTaskId = null;
 
     public function __construct(
         private AgentPermissionService $permissionService,
-        private ToolProviderRegistry $providerRegistry,
     ) {}
 
     /**
@@ -86,17 +108,26 @@ class ToolRegistry
         if ($this->effectiveToolMap === null) {
             $this->effectiveToolMap = [];
 
-            // Built-in providers
+            // Built-in providers are app-owned and may expose direct Laravel AI
+            // tools or Lua-only tools depending on DIRECT_TOOL_GROUPS.
             foreach ($this->builtInProviders as $provider) {
                 foreach ($provider->tools() as $slug => $meta) {
-                    $this->effectiveToolMap[$slug] = $meta;
+                    $normalized = $this->normalizeToolMeta($slug, $meta);
+                    if ($normalized !== null) {
+                        $this->effectiveToolMap[$slug] = $normalized;
+                    }
                 }
             }
 
-            // External integration providers
-            foreach ($this->providerRegistry->all() as $provider) {
+            // Package/MCP providers own their tool schemas. OpenCompany only
+            // normalizes enough metadata to display, permission, and instantiate
+            // them consistently with built-in tools.
+            foreach ($this->integrationProviders() as $provider) {
                 foreach ($provider->tools() as $slug => $meta) {
-                    $this->effectiveToolMap[$slug] = $meta;
+                    $normalized = $this->normalizeToolMeta($slug, $meta);
+                    if ($normalized !== null) {
+                        $this->effectiveToolMap[$slug] = $normalized;
+                    }
                 }
             }
         }
@@ -121,12 +152,12 @@ class ToolRegistry
             }
 
             // External integration providers
-            foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($this->integrationProviders() as $provider) {
                 $meta = $provider->appMeta();
                 $this->effectiveAppGroups[$provider->appName()] = [
                     'tools' => array_keys($provider->tools()),
-                    'label' => $meta['label'],
-                    'description' => $meta['description'],
+                    'label' => $meta['label'] ?? Str::headline($provider->appName()),
+                    'description' => $meta['description'] ?? '',
                 ];
             }
         }
@@ -139,7 +170,7 @@ class ToolRegistry
     {
         if ($this->effectiveIntegrationApps === null) {
             $this->effectiveIntegrationApps = self::INTEGRATION_APPS;
-            foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($this->integrationProviders() as $provider) {
                 if ($provider->isIntegration() && ! in_array($provider->appName(), $this->effectiveIntegrationApps)) {
                     $this->effectiveIntegrationApps[] = $provider->appName();
                 }
@@ -161,9 +192,9 @@ class ToolRegistry
             }
 
             // External integration providers
-            foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($this->integrationProviders() as $provider) {
                 $meta = $provider->appMeta();
-                $this->effectiveAppIcons[$provider->appName()] = $meta['icon'];
+                $this->effectiveAppIcons[$provider->appName()] = $meta['icon'] ?? 'ph:puzzle-piece';
             }
         }
 
@@ -175,7 +206,7 @@ class ToolRegistry
     {
         if ($this->effectiveIntegrationLogos === null) {
             $this->effectiveIntegrationLogos = [];
-            foreach ($this->providerRegistry->all() as $provider) {
+            foreach ($this->integrationProviders() as $provider) {
                 $meta = $provider->appMeta();
                 if (isset($meta['logo'])) {
                     $this->effectiveIntegrationLogos[$provider->appName()] = $meta['logo'];
@@ -193,13 +224,34 @@ class ToolRegistry
      */
     public function getIconByClassName(string $className): string
     {
+        return $this->getToolMetaByClassName($className)['icon'];
+    }
+
+    /**
+     * Look up a tool's display metadata by its class basename.
+     *
+     * Checkpointed tool events expose the runtime tool class name rather than
+     * the registry slug, so runtime timelines use this helper to keep labels
+     * aligned with the catalog without persisting package-owned implementation
+     * details in the UI.
+     *
+     * @return array{icon: string, name: string}
+     */
+    public function getToolMetaByClassName(string $className): array
+    {
         foreach ($this->getEffectiveToolMap() as $meta) {
             if (class_basename($meta['class']) === $className) {
-                return $meta['icon'] ?? 'ph:wrench';
+                return [
+                    'icon' => $meta['icon'] ?? 'ph:wrench',
+                    'name' => $meta['name'] ?? Str::headline($className),
+                ];
             }
         }
 
-        return 'ph:wrench';
+        return [
+            'icon' => 'ph:wrench',
+            'name' => Str::headline($className),
+        ];
     }
 
     /**
@@ -218,13 +270,18 @@ class ToolRegistry
         ];
     }
 
+    public function getToolTypeBySlug(string $slug): ?string
+    {
+        return $this->getEffectiveToolMap()[$slug]['type'] ?? null;
+    }
+
     // ─── Tool filtering and instantiation ──────────────────────────────────
 
     /**
      * Get tools available for a given agent, filtered by permissions.
      * Tools requiring approval are wrapped in ApprovalWrappedTool.
      *
-     * @return array<\Laravel\Ai\Contracts\Tool>
+     * @return array<Tool>
      */
     public function getToolsForAgent(User $agent): array
     {
@@ -245,17 +302,15 @@ class ToolRegistry
                 continue;
             }
 
-            $result = $this->permissionService->resolveToolPermission(
-                $agent, $slug, $meta['type']
-            );
+            $result = $this->evaluateToolPermission($agent, $slug, $meta);
 
-            if (! $result['allowed']) {
+            if ($result->decision === 'deny') {
                 continue;
             }
 
             $tool = $this->instantiateTool($meta['class'], $agent, $slug);
 
-            if ($result['requires_approval']) {
+            if ($result->decision === 'approval_required') {
                 $tool = new ApprovalWrappedTool($tool, $agent, $slug, $meta);
             }
 
@@ -288,8 +343,8 @@ class ToolRegistry
                 continue;
             }
 
-            $result = $this->permissionService->resolveToolPermission($agent, $slug, $meta['type']);
-            if ($result['allowed']) {
+            $result = $this->evaluateToolPermission($agent, $slug, $meta);
+            if ($result->decision !== 'deny') {
                 $slugs[] = $slug;
             }
         }
@@ -320,9 +375,7 @@ class ToolRegistry
                 continue;
             }
 
-            $permission = $this->permissionService->resolveToolPermission(
-                $agent, $slug, $meta['type']
-            );
+            $permission = $this->evaluateToolPermission($agent, $slug, $meta);
 
             $result[] = [
                 'id' => $slug,
@@ -332,8 +385,8 @@ class ToolRegistry
                 'icon' => $meta['icon'],
                 'app' => $app,
                 'isIntegration' => $isIntegration,
-                'enabled' => $permission['allowed'],
-                'requiresApproval' => $permission['requires_approval'],
+                'enabled' => $permission->decision !== 'deny',
+                'requiresApproval' => $permission->decision === 'approval_required',
             ];
         }
 
@@ -387,7 +440,7 @@ class ToolRegistry
      */
     public function getToolCatalog(User $agent): array
     {
-        $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory;
+        $factory = new JsonSchemaTypeFactory;
         $builtIn = [];
         $integrations = [];
 
@@ -409,6 +462,15 @@ class ToolRegistry
                     'icon' => $meta['icon'],
                     'parameters' => [],
                 ];
+
+                $catalogTool = $isIntegration ? $this->catalogToolDefinition($slug) : null;
+                if ($catalogTool !== null) {
+                    $toolData['fullDescription'] = (string) ($catalogTool['description'] ?? $meta['description']);
+                    $toolData['parameters'] = $this->normalizeCatalogParameters($catalogTool['parameters'] ?? []);
+                    $tools[] = $toolData;
+
+                    continue;
+                }
 
                 // Extract schema by instantiating the tool
                 try {
@@ -503,13 +565,13 @@ class ToolRegistry
     /**
      * Instantiate a specific tool by slug (for post-approval execution).
      */
-    public function instantiateToolBySlug(string $slug, User $agent): \OpenCompany\IntegrationCore\Contracts\Tool|\Laravel\Ai\Contracts\Tool|null
+    public function instantiateToolBySlug(string $slug, User $agent, ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|Tool|null
     {
         if (! isset($this->getEffectiveToolMap()[$slug])) {
             return null;
         }
 
-        return $this->instantiateTool($this->getEffectiveToolMap()[$slug]['class'], $agent, $slug);
+        return $this->instantiateTool($this->getEffectiveToolMap()[$slug]['class'], $agent, $slug, $account);
     }
 
     /**
@@ -539,12 +601,10 @@ class ToolRegistry
                 if (! isset($this->getEffectiveToolMap()[$slug])) {
                     continue;
                 }
-                $result = $this->permissionService->resolveToolPermission(
-                    $agent, $slug, $this->getEffectiveToolMap()[$slug]['type']
-                );
-                if ($result['allowed']) {
+                $result = $this->evaluateToolPermission($agent, $slug, $this->getEffectiveToolMap()[$slug]);
+                if ($result->decision !== 'deny') {
                     $hasAllowed = true;
-                    if ($result['requires_approval']) {
+                    if ($result->decision === 'approval_required') {
                         $hasApproval = true;
                     }
                 }
@@ -564,8 +624,10 @@ class ToolRegistry
         $lines[] = '';
         $lines[] = 'All data operations and integrations are available through lua_exec.';
         $lines[] = 'Always call lua_read_doc(namespace) before writing code to look up function names and parameters.';
+        $lines[] = 'Do not assume raw upstream API response shapes; integrations may normalize names and structure.';
+        $lines[] = 'If docs do not make the return shape clear, inspect with a minimal lua_exec call before writing multi-step logic.';
         $lines[] = '';
-        $lines[] = app(\App\Services\LuaApiDocGenerator::class)->getNamespaceSummary($agent);
+        $lines[] = app(LuaApiDocGenerator::class)->getNamespaceSummary($agent);
 
         return implode("\n", $lines);
     }
@@ -573,7 +635,7 @@ class ToolRegistry
     /**
      * Instantiate a tool class via its provider.
      */
-    private function instantiateTool(string $class, User $agent, string $slug = ''): \OpenCompany\IntegrationCore\Contracts\Tool|\Laravel\Ai\Contracts\Tool
+    private function instantiateTool(string $class, User $agent, string $slug = '', ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|Tool
     {
         $context = [
             'channel_id' => $this->currentChannelId,
@@ -581,20 +643,7 @@ class ToolRegistry
             'tool_registry' => $this,
         ];
 
-        // Check external integration providers first
-        foreach ($this->providerRegistry->all() as $provider) {
-            foreach ($provider->tools() as $toolSlug => $meta) {
-                if ($meta['class'] === $class && ($slug === '' || $toolSlug === $slug)) {
-                    return $provider->createTool($class, [
-                        'agent' => $agent,
-                        'timezone' => AppSetting::getValue('org_timezone', 'UTC'),
-                        'tool_slug' => $toolSlug,
-                    ]);
-                }
-            }
-        }
-
-        // Check built-in providers
+        // Resolve built-in slugs directly before scanning the large integration registry.
         $appLookup = $this->buildAppLookup();
         $appName = $appLookup[$slug] ?? null;
 
@@ -602,16 +651,148 @@ class ToolRegistry
             return $this->builtInProviders[$appName]->createTool($class, $agent, $context);
         }
 
+        // Check external integration providers
+        foreach ($this->integrationProviders() as $provider) {
+            foreach ($provider->tools() as $toolSlug => $meta) {
+                $normalized = $this->normalizeToolMeta($toolSlug, $meta);
+                if ($normalized === null) {
+                    continue;
+                }
+
+                if ($normalized['class'] === $class && ($slug === '' || $toolSlug === $slug)) {
+                    return $provider->createTool($class, [
+                        'agent' => $agent,
+                        'timezone' => AppSetting::getValue('org_timezone', 'UTC'),
+                        'tool_slug' => $toolSlug,
+                        'account' => $account,
+                    ]);
+                }
+            }
+        }
+
         // Fallback: search all built-in providers by class
         foreach ($this->builtInProviders as $provider) {
             foreach ($provider->tools() as $toolSlug => $meta) {
-                if ($meta['class'] === $class) {
+                $normalized = $this->normalizeToolMeta($toolSlug, $meta);
+                if ($normalized !== null && $normalized['class'] === $class) {
                     return $provider->createTool($class, $agent, $context);
                 }
             }
         }
 
         throw new \RuntimeException("Unknown tool class: {$class}");
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function evaluateToolPermission(User $agent, string $slug, array $meta): PermissionDecision
+    {
+        return app(OpenCompanyPermissionEvaluator::class)->evaluate($agent, $slug, [
+            'channel_id' => $this->currentChannelId,
+            'task_id' => $this->currentTaskId,
+        ], $meta);
+    }
+
+    /**
+     * @return array{class: string, name: string, description: string, type: string, icon: string}|null
+     */
+    private function normalizeToolMeta(mixed $slug, mixed $meta): ?array
+    {
+        $slug = (string) $slug;
+
+        if (is_string($meta)) {
+            $meta = ['class' => $meta];
+        }
+
+        if (! is_array($meta) || ! is_string($meta['class'] ?? null) || $meta['class'] === '') {
+            return null;
+        }
+
+        $catalogTool = $this->catalogToolDefinition($slug);
+
+        return array_merge($meta, [
+            'class' => $meta['class'],
+            'name' => (string) ($meta['name'] ?? $catalogTool['name'] ?? Str::headline(str_replace('_', ' ', $slug))),
+            'description' => (string) ($meta['description'] ?? $catalogTool['description'] ?? ''),
+            'type' => (string) ($meta['type'] ?? $catalogTool['type'] ?? 'action'),
+            'icon' => (string) ($meta['icon'] ?? $catalogTool['icon'] ?? 'ph:wrench'),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function catalogToolDefinition(string $slug): ?array
+    {
+        return $this->catalogTools()[$slug] ?? null;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function catalogTools(): array
+    {
+        if ($this->catalogTools !== null) {
+            return $this->catalogTools;
+        }
+
+        if (self::$sharedCatalogTools !== null) {
+            return $this->catalogTools = self::$sharedCatalogTools;
+        }
+
+        self::$sharedCatalogTools = [];
+
+        foreach (app(IntegrationCatalog::class)->all() as $integration) {
+            foreach (($integration['tools'] ?? []) as $tool) {
+                if (! is_array($tool)) {
+                    continue;
+                }
+
+                $toolSlug = $tool['slug'] ?? $tool['function_name'] ?? null;
+
+                if (is_string($toolSlug) && $toolSlug !== '') {
+                    self::$sharedCatalogTools[$toolSlug] = $tool;
+                }
+            }
+        }
+
+        return $this->catalogTools = self::$sharedCatalogTools;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeCatalogParameters(mixed $parameters): array
+    {
+        if (! is_array($parameters)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($parameters as $name => $definition) {
+            if (! is_array($definition)) {
+                continue;
+            }
+
+            if (array_is_list($parameters)) {
+                $parameterName = $definition['name'] ?? $definition['key'] ?? null;
+            } else {
+                $parameterName = $definition['name'] ?? $name;
+            }
+
+            if (! is_string($parameterName) || $parameterName === '') {
+                continue;
+            }
+
+            $definition['name'] = $parameterName;
+            $definition['type'] = $definition['type'] ?? 'string';
+            $definition['required'] = (bool) ($definition['required'] ?? false);
+            $normalized[] = $definition;
+        }
+
+        return $normalized;
     }
 
     /**
@@ -629,5 +810,19 @@ class ToolRegistry
         }
 
         return $lookup;
+    }
+
+    /**
+     * @return array<string, ToolProvider>
+     */
+    private function integrationProviders(): array
+    {
+        $registryClass = ToolProviderRegistry::class;
+
+        if (! class_exists($registryClass) || ! app()->bound($registryClass)) {
+            return [];
+        }
+
+        return app($registryClass)->all();
     }
 }

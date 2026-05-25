@@ -95,7 +95,7 @@
         <div class="text-center">
           <Icon name="ph:warning" class="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
           <p class="text-neutral-500 dark:text-neutral-400">Table not found</p>
-          <Link :href="workspacePath('/tables')" class="text-sm text-neutral-900 dark:text-white hover:underline mt-2 inline-block">
+          <Link :href="tablesUrl()" class="text-sm text-neutral-900 dark:text-white hover:underline mt-2 inline-block">
             Back to Tables
           </Link>
         </div>
@@ -199,7 +199,31 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
-import { apiFetch } from '@/utils/apiFetch'
+import {
+  destroy as destroyTableColumn,
+  store as storeTableColumn,
+  update as updateTableColumn,
+} from '@/actions/App/Http/Controllers/Api/DataTableColumnController'
+import {
+  duplicate as duplicateDataTable,
+  destroy as destroyDataTable,
+  exportMethod as exportDataTable,
+  importMethod as importDataTable,
+  show as showDataTable,
+  update as updateDataTable,
+} from '@/actions/App/Http/Controllers/Api/DataTableController'
+import {
+  bulkDelete as bulkDeleteRows,
+  destroy as destroyTableRow,
+  index as tableRowsIndex,
+  store as storeTableRow,
+  update as updateTableRow,
+} from '@/actions/App/Http/Controllers/Api/DataTableRowController'
+import {
+  index as tableViewsIndex,
+  store as storeTableView,
+  update as updateTableView,
+} from '@/actions/App/Http/Controllers/Api/DataTableViewController'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import Button from '@/Components/shared/Button.vue'
@@ -212,9 +236,10 @@ import TableKanban from '@/Components/tables/TableKanban.vue'
 import TableGallery from '@/Components/tables/TableGallery.vue'
 import TableCalendar from '@/Components/tables/TableCalendar.vue'
 import ColumnTypeModal from '@/Components/tables/ColumnTypeModal.vue'
+import { wayfinderFetch } from '@/utils/wayfinder'
 import type { DataTable, DataTableRow, DataTableColumn, DataTableView, DataTableViewType, DataTableViewConfig } from '@/types'
 
-const { workspacePath } = useWorkspace()
+const { tablesUrl, tableUrl } = useWorkspace()
 
 const props = defineProps<{
   tableId: string
@@ -281,9 +306,9 @@ const fetchTable = async () => {
   loading.value = true
   try {
     const [tableResponse, rowsResponse, viewsResponse] = await Promise.all([
-      apiFetch(`/api/tables/${props.tableId}`),
-      apiFetch(`/api/tables/${props.tableId}/rows`),
-      apiFetch(`/api/tables/${props.tableId}/views`),
+      wayfinderFetch(showDataTable(props.tableId)),
+      wayfinderFetch(tableRowsIndex(props.tableId)),
+      wayfinderFetch(tableViewsIndex(props.tableId)),
     ])
     table.value = await tableResponse.json()
     rows.value = await rowsResponse.json()
@@ -314,8 +339,7 @@ const fetchTable = async () => {
 const handleUpdateName = async (name: string) => {
   if (!table.value) return
   try {
-    await apiFetch(`/api/tables/${props.tableId}`, {
-      method: 'PATCH',
+    await wayfinderFetch(updateDataTable(props.tableId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     })
@@ -328,8 +352,7 @@ const handleUpdateName = async (name: string) => {
 const handleUpdateDescription = async (description: string) => {
   if (!table.value) return
   try {
-    await apiFetch(`/api/tables/${props.tableId}`, {
-      method: 'PATCH',
+    await wayfinderFetch(updateDataTable(props.tableId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description }),
     })
@@ -342,8 +365,7 @@ const handleUpdateDescription = async (description: string) => {
 const handleUpdateIcon = async (icon: string) => {
   if (!table.value) return
   try {
-    await apiFetch(`/api/tables/${props.tableId}`, {
-      method: 'PATCH',
+    await wayfinderFetch(updateDataTable(props.tableId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ icon }),
     })
@@ -358,7 +380,7 @@ const handleExport = async (format: 'csv' | 'json') => {
   if (!table.value) return
 
   try {
-    const response = await apiFetch(`/api/tables/${props.tableId}/export?format=${format}`)
+    const response = await wayfinderFetch(exportDataTable(props.tableId, { query: { format } }))
     const blob = await response.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -379,8 +401,7 @@ const handleImport = async (file: File, format: 'csv' | 'json') => {
   formData.append('format', format)
 
   try {
-    const response = await apiFetch(`/api/tables/${props.tableId}/import`, {
-      method: 'POST',
+    const response = await wayfinderFetch(importDataTable(props.tableId), {
       body: formData,
     })
     const result = await response.json()
@@ -414,8 +435,7 @@ const handleAddView = async (type: DataTableViewType) => {
   const name = `${type.charAt(0).toUpperCase() + type.slice(1)} View`
 
   try {
-    const response = await apiFetch(`/api/tables/${props.tableId}/views`, {
-      method: 'POST',
+    const response = await wayfinderFetch(storeTableView(props.tableId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, type, config }),
     })
@@ -443,8 +463,7 @@ const handleRenameView = async (viewId: string) => {
   const newName = window.prompt('Rename view', view.name)
   if (!newName || newName === view.name) return
   try {
-    await apiFetch(`/api/tables/${props.tableId}/views/${viewId}`, {
-      method: 'PATCH',
+    await wayfinderFetch(updateTableView({ tableId: props.tableId, viewId }), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newName }),
     })
@@ -475,8 +494,7 @@ const handleViewConfigChange = async (viewId: string, config: DataTableViewConfi
   // Persist to backend for server-side views
   if (!viewId.startsWith('view-') && !viewId.startsWith('default-')) {
     try {
-      await apiFetch(`/api/tables/${props.tableId}/views/${viewId}`, {
-        method: 'PATCH',
+      await wayfinderFetch(updateTableView({ tableId: props.tableId, viewId }), {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: view.config }),
       })
@@ -497,8 +515,8 @@ const handleDeleteView = (viewId: string) => {
 // Table deletion
 const handleDeleteTable = async () => {
   try {
-    await apiFetch(`/api/tables/${props.tableId}`, { method: 'DELETE' })
-    router.visit(workspacePath('/tables'))
+    await wayfinderFetch(destroyDataTable(props.tableId))
+    router.visit(tablesUrl())
   } catch (error) {
     console.error('Failed to delete table:', error)
   }
@@ -507,11 +525,9 @@ const handleDeleteTable = async () => {
 const handleDuplicateTable = async () => {
   if (!table.value) return
   try {
-    const response = await apiFetch(`/api/tables/${props.tableId}/duplicate`, {
-      method: 'POST',
-    })
+    const response = await wayfinderFetch(duplicateDataTable(props.tableId))
     const newTable = await response.json()
-    router.visit(workspacePath(`/tables/${newTable.id}`))
+    router.visit(tableUrl(newTable.id))
   } catch (error) {
     console.error('Failed to duplicate table:', error)
   }
@@ -535,8 +551,7 @@ const handleAddRow = async () => {
   }
 
   try {
-    const response = await apiFetch(`/api/tables/${props.tableId}/rows`, {
-      method: 'POST',
+    const response = await wayfinderFetch(storeTableRow(props.tableId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data }),
     })
@@ -553,8 +568,7 @@ const handleUpdateCell = async (rowId: string, columnId: string, value: unknown)
     if (!row) return
 
     const newData = { ...row.data, [columnId]: value }
-    await apiFetch(`/api/tables/${props.tableId}/rows/${rowId}`, {
-      method: 'PATCH',
+    await wayfinderFetch(updateTableRow({ tableId: props.tableId, rowId }), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: newData }),
     })
@@ -566,9 +580,7 @@ const handleUpdateCell = async (rowId: string, columnId: string, value: unknown)
 
 const handleDeleteRow = async (rowId: string) => {
   try {
-    await apiFetch(`/api/tables/${props.tableId}/rows/${rowId}`, {
-      method: 'DELETE',
-    })
+    await wayfinderFetch(destroyTableRow({ tableId: props.tableId, rowId }))
     rows.value = rows.value.filter((r) => r.id !== rowId)
   } catch (error) {
     console.error('Failed to delete row:', error)
@@ -578,8 +590,7 @@ const handleDeleteRow = async (rowId: string) => {
 // Column handlers
 const handleAddColumn = async (columnData: { name: string; type: string; options?: Record<string, unknown>; required?: boolean }) => {
   try {
-    const response = await apiFetch(`/api/tables/${props.tableId}/columns`, {
-      method: 'POST',
+    const response = await wayfinderFetch(storeTableColumn(props.tableId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(columnData),
     })
@@ -602,8 +613,10 @@ const handleSaveColumnEdit = async (columnData: { name: string; type: string; op
   if (!columnToEdit.value) return
 
   try {
-    await apiFetch(`/api/tables/${props.tableId}/columns/${columnToEdit.value.id}`, {
-      method: 'PATCH',
+    await wayfinderFetch(updateTableColumn({
+      tableId: props.tableId,
+      columnId: columnToEdit.value.id,
+    }), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(columnData),
     })
@@ -624,8 +637,7 @@ const handleSaveColumnEdit = async (columnData: { name: string; type: string; op
 
 const handleUpdateColumn = async (columnId: string, updates: Partial<DataTableColumn>) => {
   try {
-    await apiFetch(`/api/tables/${props.tableId}/columns/${columnId}`, {
-      method: 'PATCH',
+    await wayfinderFetch(updateTableColumn({ tableId: props.tableId, columnId }), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     })
@@ -642,9 +654,7 @@ const handleUpdateColumn = async (columnId: string, updates: Partial<DataTableCo
 
 const handleDeleteColumn = async (columnId: string) => {
   try {
-    await apiFetch(`/api/tables/${props.tableId}/columns/${columnId}`, {
-      method: 'DELETE',
-    })
+    await wayfinderFetch(destroyTableColumn({ tableId: props.tableId, columnId }))
     if (table.value) {
       table.value.columns = table.value.columns?.filter((c) => c.id !== columnId)
     }
@@ -664,8 +674,7 @@ const confirmBulkDelete = () => {
 
 const handleBulkDelete = async () => {
   try {
-    await apiFetch(`/api/tables/${props.tableId}/rows/bulk-delete`, {
-      method: 'POST',
+    await wayfinderFetch(bulkDeleteRows(props.tableId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rowIds: selectedRowIds.value }),
     })

@@ -6,20 +6,20 @@
         <div class="flex items-center gap-3 md:gap-4">
           <div class="flex items-center gap-1">
             <Link
-              :href="workspacePath('/tasks')"
+              :href="tasks(workspaceRouteParams())"
               class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               Tasks
             </Link>
             <Link
-              :href="workspacePath('/workload')"
+              :href="workload(workspaceRouteParams())"
               class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               Workload
             </Link>
             <span class="text-xl font-bold text-neutral-900 dark:text-white">Activity</span>
             <Link
-              :href="workspacePath('/tasks/analytics')"
+              :href="taskAnalytics(workspaceRouteParams())"
               class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               Analytics
@@ -104,10 +104,10 @@
           <!-- Activity Items -->
           <div class="space-y-4">
             <component
-              :is="activity.url ? Link : 'div'"
+              :is="activityHref(activity.url) ? Link : 'div'"
               v-for="activity in activities"
               :key="activity.id"
-              :href="activity.url ? workspacePath(activity.url) : undefined"
+              :href="activityHref(activity.url)"
               class="relative flex gap-4 group"
             >
               <!-- Timeline dot -->
@@ -200,6 +200,10 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { chat, tasks, workload } from '@/routes'
+import { show as showAgentRoute } from '@/routes/agent'
+import { show as showApprovalRoute } from '@/routes/approvals'
+import { analytics as taskAnalytics, show as showTaskRoute } from '@/routes/tasks'
 import type { User, Activity } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
 import { useApi } from '@/composables/useApi'
@@ -218,9 +222,34 @@ interface ExtendedActivity extends Activity {
   }
 }
 
-const { workspacePath } = useWorkspace()
+const { workspaceRouteParams } = useWorkspace()
 const { fetchActivities, fetchUsers } = useApi()
 const { on } = useRealtime()
+
+function activityHref(url?: string | null) {
+  if (!url) return undefined
+
+  const [path] = url.split('?')
+  const [, resource, id] = path.split('/')
+
+  if (resource === 'chat' && id) {
+    return chat(workspaceRouteParams(), { query: { channel: id } })
+  }
+
+  if (resource === 'approvals' && id) {
+    return showApprovalRoute(workspaceRouteParams({ id }))
+  }
+
+  if (resource === 'agent' && id) {
+    return showAgentRoute(workspaceRouteParams({ id }))
+  }
+
+  if (resource === 'tasks' && id) {
+    return showTaskRoute(workspaceRouteParams({ id }))
+  }
+
+  return undefined
+}
 
 const activityTypes = [
   { value: '', label: 'All' },

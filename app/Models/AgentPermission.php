@@ -2,13 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Persisted permission rule for one agent and one scoped resource.
+ *
+ * scope_type names the resource family (`tool`, `channel`, `folder`,
+ * `file_folder`, `integration`, `agent`); scope_key stores the concrete slug or
+ * ID. AgentPermissionService combines these rows with behavior_mode defaults.
+ */
 class AgentPermission extends Model
 {
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -37,7 +45,7 @@ class AgentPermission extends Model
     // Scopes
 
     /**
-     * @param Builder<static> $query
+     * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeForAgent(Builder $query, string $agentId): Builder
@@ -46,7 +54,7 @@ class AgentPermission extends Model
     }
 
     /**
-     * @param Builder<static> $query
+     * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeTools(Builder $query): Builder
@@ -55,7 +63,7 @@ class AgentPermission extends Model
     }
 
     /**
-     * @param Builder<static> $query
+     * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeChannels(Builder $query): Builder
@@ -64,7 +72,7 @@ class AgentPermission extends Model
     }
 
     /**
-     * @param Builder<static> $query
+     * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeFolders(Builder $query): Builder
@@ -73,7 +81,7 @@ class AgentPermission extends Model
     }
 
     /**
-     * @param Builder<static> $query
+     * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeIntegrations(Builder $query): Builder
@@ -82,7 +90,7 @@ class AgentPermission extends Model
     }
 
     /**
-     * @param Builder<static> $query
+     * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeAllowed(Builder $query): Builder
@@ -91,7 +99,7 @@ class AgentPermission extends Model
     }
 
     /**
-     * @param Builder<static> $query
+     * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeDenied(Builder $query): Builder

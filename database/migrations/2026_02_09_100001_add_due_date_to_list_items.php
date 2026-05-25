@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // due_date supports lightweight kanban planning without forcing an item
+        // to become a full task.
         Schema::table('list_items', function (Blueprint $table) {
             $table->date('due_date')->nullable()->after('completed_at');
         });

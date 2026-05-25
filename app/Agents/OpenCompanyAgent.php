@@ -4,28 +4,47 @@ namespace App\Agents;
 
 use App\Agents\Conversations\ChannelConversationLoader;
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Agents\Runtime\Subagents\GenericSubagent;
+use App\Agents\Runtime\Subagents\OrchestrateSubagents;
 use App\Agents\Tools\ToolRegistry;
+use App\Ai\Contracts\HasSystemPrompts;
 use App\Models\AppSetting;
 use App\Models\Channel;
 use App\Models\Task;
 use App\Models\TaskStep;
 use App\Models\User;
 use App\Services\AgentDocumentService;
+use App\Services\Memory\ContextPruner;
+use App\Services\Memory\PromptFrameBuilder;
+use App\Services\Memory\ToolResultDeduplicator;
+use Illuminate\Support\Str;
+use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
-use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Promptable;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
-use Illuminate\Support\Str;
 
+/**
+ * Main runtime implementation for an OpenCompany workspace agent.
+ *
+ * This class assembles model-visible identity, channel context, memory context,
+ * provider/model resolution, and available tools for one agent. Keep durable
+ * identity content in identity documents and runtime-specific behavior in the
+ * helper services injected here; avoid turning this into a static prompt blob.
+ */
 #[MaxTokens(16_384)]
-class OpenCompanyAgent implements Agent, HasTools, Conversational
+class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTools
 {
     use Promptable;
+
+    /**
+     * @var array<string, mixed>|null
+     */
+    private ?array $promptFrameCache = null;
 
     /** @var array<string, mixed> */
     private array $resolvedProvider;
@@ -39,6 +58,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         private ChannelConversationLoader $conversationLoader,
         private DynamicProviderResolver $providerResolver,
         private ToolRegistry $toolRegistry,
+        private PromptFrameBuilder $promptFrameBuilder,
+        private ToolResultDeduplicator $toolResultDeduplicator,
+        private ContextPruner $contextPruner,
         private ?string $taskId = null,
     ) {
         $this->resolvedProvider = $this->providerResolver->resolve($this->agent);
@@ -79,11 +101,51 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
     /**
      * Get the instructions (system prompt) for this agent.
      *
-     * Assembles from identity files in the same order as AgentChatService.
+     * Returns the full concatenated prompt (stable + volatile). When a
+     * SystemPromptBag is bound, the Laravel AI gateway decorator uses the split
+     * prompts from the bag for cache-friendly framing.
      */
     public function instructions(): string
     {
-        return implode('', array_column($this->buildSections(), 'content'));
+        return $this->promptFrame()['full_prompt'];
+    }
+
+    /**
+     * Get the full instruction set before stable/volatile splitting.
+     */
+    public function fullInstructions(): string
+    {
+        return $this->promptFrame()['full_prompt'];
+    }
+
+    /**
+     * Get the volatile runtime context that should travel with the user prompt.
+     */
+    public function volatilePromptContext(): string
+    {
+        return $this->promptFrame()['volatile_prompt'];
+    }
+
+    /**
+     * Runtime context now travels as additional system prompts via the gateway,
+     * so the user prompt should remain unchanged.
+     */
+    public function preparePrompt(string $prompt): string
+    {
+        return $prompt;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function systemPrompts(): array
+    {
+        $frame = $this->promptFrame();
+
+        return array_values(array_filter([
+            trim($frame['stable_prompt']),
+            trim($frame['volatile_prompt']),
+        ], fn (string $prompt) => $prompt !== ''));
     }
 
     /**
@@ -94,10 +156,30 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
      */
     public function instructionsBreakdown(): array
     {
-        return array_values(array_map(
-            fn (array $s) => ['label' => $s['label'], 'chars' => mb_strlen($s['content'])],
-            $this->buildSections(),
-        ));
+        return $this->promptFrame()['stable_breakdown'];
+    }
+
+    /**
+     * @return array<int, array{label: string, chars: int}>
+     */
+    public function volatileInstructionsBreakdown(): array
+    {
+        return $this->promptFrame()['volatile_breakdown'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function promptFrame(): array
+    {
+        if ($this->promptFrameCache !== null) {
+            return $this->promptFrameCache;
+        }
+
+        // Prompt frames are immutable for a single agent instance. Cache them so
+        // instructions(), volatilePromptContext(), and diagnostics all describe
+        // the same model-visible sections for this run.
+        return $this->promptFrameCache = $this->promptFrameBuilder->splitSections($this->buildSections());
     }
 
     /**
@@ -130,10 +212,12 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             $header .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
             $sections[] = ['label' => 'Header', 'content' => $header];
 
-            // Identity files: IDENTITY + INSTRUCTIONS (always loaded)
+            // IDENTITY and INSTRUCTIONS are stable agent-authored documents and
+            // should always be included when present, independent of channel
+            // privacy. They define who the agent is, not conversation memory.
             foreach (['IDENTITY', 'INSTRUCTIONS'] as $type) {
                 $file = $identityFiles->firstWhere('title', "{$type}.md");
-                if ($file && !empty(trim($file->content))) {
+                if ($file && ! empty(trim($file->content))) {
                     $sections[] = ['label' => "{$type}.md", 'content' => "## {$type}.md\n\n{$file->content}\n\n"];
                 }
             }
@@ -143,16 +227,16 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             $isPrivateChannel = $channel && in_array($channel->type, ['dm', 'agent', 'external']);
 
             if ($isPrivateChannel) {
-                // MEMORY.md (core knowledge + index)
+                // MEMORY.md and peer cards can contain private operational
+                // context. Keep them out of public channels unless the channel
+                // semantics explicitly indicate a private agent/user context.
                 $memoryFile = $identityFiles->firstWhere('title', 'MEMORY.md');
-                if ($memoryFile && !empty(trim($memoryFile->content))) {
+                if ($memoryFile && ! empty(trim($memoryFile->content))) {
                     $sections[] = ['label' => 'MEMORY.md', 'content' => "## MEMORY.md\n\n{$memoryFile->content}\n\n"];
                 }
 
-                // Inject peer cards for channel participants
                 $this->injectPeerCards($sections, $channel);
 
-                // Memory system instructions
                 $sections[] = ['label' => 'Memory System', 'content' => $this->buildMemoryPrompt()];
             }
         }
@@ -173,9 +257,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             $sections[] = ['label' => 'Current Task', 'content' => $taskContext];
         }
 
-        $apps = $this->toolRegistry->getAppCatalog($this->agent) . "\n\n";
+        $apps = $this->toolRegistry->getAppCatalog($this->agent)."\n\n";
         $apps .= "To generate images/PDFs: use lua_exec with app.svg, app.integrations.mermaid, app.integrations.plantuml, app.integrations.vegalite, or app.integrations.typst. NEVER fabricate image/document URLs.\n";
-        if (!$identityFiles->isEmpty()) {
+        if (! $identityFiles->isEmpty()) {
             $apps .= "Tools marked with * require approval.\n";
         }
         $sections[] = ['label' => 'Apps', 'content' => $apps];
@@ -228,7 +312,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
      */
     public function messages(): iterable
     {
-        $messages = $this->conversationLoader->load($this->channelId, $this->agent, $this->instructions());
+        $messages = $this->conversationLoader->load($this->channelId, $this->agent, $this->fullInstructions());
 
         if ($this->resumeFromTaskId) {
             $messages = $this->injectCheckpointedSteps($messages);
@@ -289,7 +373,9 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
             );
         }
 
-        return $messages;
+        $deduplicated = $this->toolResultDeduplicator->deduplicate($messages)['messages'];
+
+        return $this->contextPruner->prune($deduplicated)['messages'];
     }
 
     /**
@@ -300,7 +386,30 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         $this->toolRegistry->setChannelContext($this->channelId);
         $this->toolRegistry->setTaskContext($this->taskId);
 
-        return $this->toolRegistry->getToolsForAgent($this->agent);
+        return [
+            ...$this->toolRegistry->getToolsForAgent($this->agent),
+            OrchestrateSubagents::for($this->agent, $this->channelId, $this->taskId),
+            ...$this->genericSubagents(),
+        ];
+    }
+
+    /**
+     * @return list<GenericSubagent>
+     */
+    private function genericSubagents(): array
+    {
+        return User::query()
+            ->where('workspace_id', $this->agent->workspace_id)
+            ->where('type', 'agent')
+            ->where(fn ($query) => $query->whereNull('agent_type')->orWhere('agent_type', '!=', 'system'))
+            ->where('id', '!=', $this->agent->id)
+            ->orderBy('name')
+            ->orderBy('id')
+            ->limit((int) config('agents.subagents.max_tools', 8))
+            ->get()
+            ->map(fn (User $agent) => GenericSubagent::for($agent, $this->channelId, $this->taskId))
+            ->values()
+            ->all();
     }
 
     /**
@@ -324,7 +433,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
      */
     public function timeout(): int
     {
-        return (int) config('prism.request_timeout', 600);
+        return (int) config('ai.request_timeout', 600);
     }
 
     /**
@@ -333,7 +442,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
     private function buildChannelContext(): string
     {
         $channel = Channel::with('users')->find($this->channelId);
-        if (!$channel) {
+        if (! $channel) {
             return '';
         }
 
@@ -347,8 +456,8 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
 
         // List channel members
         $members = $channel->users->pluck('name')->toArray();
-        if (!empty($members)) {
-            $prompt .= "Channel members: " . implode(', ', $members) . "\n";
+        if (! empty($members)) {
+            $prompt .= 'Channel members: '.implode(', ', $members)."\n";
         }
 
         $prompt .= "\nYour response text is sent directly to this channel — you do NOT need to use send_channel_message or read_recent_messages for the current conversation. Use those tools only to interact with OTHER channels.\n\n";
@@ -361,12 +470,12 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
      */
     private function buildTaskContext(): string
     {
-        if (!$this->taskId) {
+        if (! $this->taskId) {
             return '';
         }
 
         $task = Task::with('steps')->find($this->taskId);
-        if (!$task) {
+        if (! $task) {
             return '';
         }
 
@@ -381,7 +490,7 @@ class OpenCompanyAgent implements Agent, HasTools, Conversational
         if ($task->steps->isNotEmpty()) {
             $prompt .= "\nSteps:\n";
             foreach ($task->steps as $step) {
-                /** @var \App\Models\TaskStep $step */
+                /** @var TaskStep $step */
                 $prompt .= "- [{$step->status}] {$step->description}\n";
             }
         }

@@ -1,6 +1,11 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\TelescopeServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\TelescopeServiceProvider::class,
+    // AppServiceProvider wires first-party runtime services; Telescope stays
+    // explicit so local observability can be toggled without provider discovery.
+    AppServiceProvider::class,
+    TelescopeServiceProvider::class,
 ];

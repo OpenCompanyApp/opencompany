@@ -4,14 +4,17 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { HTMLAttributes } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 
 const props = defineProps<{
   mimeType?: string
   isFolder?: boolean
-  class?: string
+  class?: HTMLAttributes['class']
 }>()
 
+// Prefer MIME type over filename extension because workspace files may be
+// renamed without changing their stored content type.
 const iconName = computed(() => {
   if (props.isFolder) return 'ph:folder-fill'
 

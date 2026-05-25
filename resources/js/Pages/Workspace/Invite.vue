@@ -22,7 +22,7 @@
               You're already a member of <strong>{{ invitation.workspace.name }}</strong>.
             </p>
             <Link
-              :href="`/w/${invitation.workspace.slug}`"
+              :href="dashboard(invitation.workspace.slug)"
               class="inline-flex px-4 py-2 text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
             >
               Go to workspace
@@ -135,7 +135,9 @@
 import { ref } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
-import axios from 'axios'
+import { accept } from '@/actions/App/Http/Controllers/Api/InvitationController'
+import { dashboard, home } from '@/routes'
+import { wayfinderRequest } from '@/utils/wayfinder'
 
 interface Invitation {
   id: string
@@ -168,8 +170,8 @@ const handleAccept = async () => {
   error.value = ''
 
   try {
-    await axios.post(`/api/invitations/${props.token}/accept`)
-    router.visit(`/w/${props.invitation.workspace.slug}`)
+    await wayfinderRequest(accept(props.token))
+    router.visit(dashboard(props.invitation.workspace.slug))
   } catch (e: any) {
     error.value = e?.response?.data?.message || 'Failed to accept invitation'
   } finally {
@@ -184,12 +186,17 @@ const handleAcceptWithAccount = async () => {
   error.value = ''
 
   try {
-    await axios.post(`/api/invitations/${props.token}/accept`, {
-      name: form.value.name.trim(),
-      password: form.value.password,
-      password_confirmation: form.value.password_confirmation,
-    })
-    router.visit(`/w/${props.invitation.workspace.slug}`)
+    await wayfinderRequest(
+      accept(props.token),
+      {
+        data: {
+          name: form.value.name.trim(),
+          password: form.value.password,
+          password_confirmation: form.value.password_confirmation,
+        },
+      },
+    )
+    router.visit(dashboard(props.invitation.workspace.slug))
   } catch (e: any) {
     const data = e?.response?.data
     error.value = data?.message || Object.values(data?.errors || {}).flat().join(', ') || 'Failed to create account'
@@ -199,6 +206,6 @@ const handleAcceptWithAccount = async () => {
 }
 
 const handleDecline = () => {
-  router.visit('/')
+  router.visit(home())
 }
 </script>

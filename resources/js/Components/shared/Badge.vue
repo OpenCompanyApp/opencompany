@@ -135,7 +135,7 @@ import { computed } from 'vue'
 import Icon from './Icon.vue'
 import Tooltip from './Tooltip.vue'
 
-type BadgeVariant = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info'
+type BadgeVariant = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | 'subtle' | 'soft'
 type BadgeStyle = 'soft' | 'solid' | 'outline' | 'ghost'
 type BadgeSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 type BadgeShape = 'rounded' | 'pill' | 'square'
@@ -259,6 +259,18 @@ const variantClasses: Record<BadgeVariant, Record<BadgeStyle, string>> = {
     outline: 'border border-blue-500 text-blue-700 dark:text-blue-400',
     ghost: 'text-blue-700 dark:text-blue-400',
   },
+  subtle: {
+    soft: 'bg-neutral-50 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300',
+    solid: 'bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100',
+    outline: 'border border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300',
+    ghost: 'text-neutral-600 dark:text-neutral-300',
+  },
+  soft: {
+    soft: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200',
+    solid: 'bg-neutral-300 text-neutral-900 dark:bg-neutral-600 dark:text-white',
+    outline: 'border border-neutral-300 text-neutral-700 dark:border-neutral-600 dark:text-neutral-200',
+    ghost: 'text-neutral-700 dark:text-neutral-200',
+  },
 }
 
 // Dot sizes
@@ -288,6 +300,8 @@ const dotColorClasses: Record<BadgeVariant, string> = {
   warning: 'bg-amber-500',
   error: 'bg-red-500',
   info: 'bg-blue-500',
+  subtle: 'bg-neutral-300 dark:bg-neutral-600',
+  soft: 'bg-neutral-400 dark:bg-neutral-500',
 }
 
 // Safe variant lookup with fallback

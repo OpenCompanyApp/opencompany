@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // keep_history controls whether scheduled automation runs leave durable
+        // chat/task history behind.
         Schema::table('scheduled_automations', function (Blueprint $table) {
             $table->boolean('keep_history')->default(true)->after('channel_id');
         });

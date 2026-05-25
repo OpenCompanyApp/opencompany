@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Channels are the root conversation container. Workspace scoping is
+        // added by later migrations as multi-workspace support evolved.
         Schema::create('channels', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('name');

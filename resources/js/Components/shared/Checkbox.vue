@@ -14,6 +14,8 @@ withDefaults(defineProps<{
 })
 
 const checked = defineModel<boolean>('checked', { default: false })
+// Generate a stable-enough ID per component instance when the caller does not
+// provide one, preserving label click behavior.
 const checkboxId = `checkbox-${Math.random().toString(36).substring(2, 9)}`
 </script>
 

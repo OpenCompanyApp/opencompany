@@ -9,9 +9,9 @@
 | Component | Choice | Reason |
 |-----------|--------|--------|
 | **Agent SDK** | **Laravel AI SDK (`laravel/ai`)** | Official first-party Laravel package, class-based agents, tool contracts, testing |
-| **LLM Provider Layer** | **Prism (`prism-php/prism`)** | Multi-provider LLM execution (OpenAI, Anthropic, Ollama, DeepSeek, Mistral), embeddings, streaming |
+| **LLM Provider Layer** | **OpenCompany AI Runtime + Laravel AI SDK** | App-owned provider catalog, workspace credential resolution, embeddings, gateway access, usage/cost ledger |
 
-> **Note (Feb 2026):** Both packages are used together. `laravel/ai` provides the agent SDK (Agent class, Tool contract, conversation persistence). `prism-php/prism` provides the underlying LLM provider layer (provider registration, embeddings, direct text generation for services like ConversationCompactionService and EmbeddingService). Custom provider gateways (`CodexPrismGateway`, `GlmPrismGateway`) extend Prism for self-hosted models.
+> **Update (May 2026):** OpenCompany owns the provider runtime in `app/Domain/Ai`. `laravel/ai` remains the agent/provider execution framework, while provider catalog metadata, workspace credentials, Codex auth, embeddings, OpenAI-compatible gateway access, and usage/cost accounting are app-owned.
 
 ---
 
@@ -27,9 +27,9 @@ The official first-party Laravel AI SDK (`laravel/ai`) provides a unified API fo
 - Built-in conversation persistence via `RemembersConversations` trait
 - Native streaming + broadcasting (`->stream()`, `->broadcastOnQueue()`)
 - Queue support (`->queue()`)
-- Provider failover (`provider: ['anthropic', 'openai']`)
+- Provider failover capability when a caller supplies a failover chain (`provider: ['anthropic', 'openai']`)
 - Comprehensive testing: `Agent::fake()`, `assertPrompted()`, `preventStrayPrompts()`
-- MCP companion package (`laravel/mcp`)
+- MCP client/server behavior is app-owned today; `laravel/mcp` is not installed in `composer.json`
 - Providers: OpenAI, Anthropic, Gemini, Groq, xAI, Cohere, Jina, ElevenLabs
 
 **Feature Matrix:**
@@ -41,7 +41,7 @@ The official first-party Laravel AI SDK (`laravel/ai`) provides a unified API fo
 | Tool/Function Calling | `Tool` contract with `JsonSchema` |
 | Conversation Persistence | Built-in `RemembersConversations` trait |
 | RAG Support | Built-in `SimilaritySearch` tool + pgvector integration |
-| MCP Support | Official `laravel/mcp` companion package |
+| MCP Support | App-owned MCP client/runtime in `app/Services/Mcp` |
 | Streaming | `->stream()`, SSE, Vercel AI protocol, WebSocket broadcasting |
 | Structured Output | `HasStructuredOutput` contract with `JsonSchema` |
 | Testing | Comprehensive fakes + assertions per feature type |
@@ -107,8 +107,7 @@ See [Laravel AI SDK Strategy](./laravel-ai-sdk.md) for full integration details.
 # Laravel AI SDK (official first-party)
 composer require laravel/ai
 
-# Laravel MCP (expose app as MCP server)
-composer require laravel/mcp
+# MCP runtime is currently app-owned; no laravel/mcp package is installed.
 ```
 
 ---

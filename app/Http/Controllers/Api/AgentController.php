@@ -2,29 +2,31 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Agents\Tools\ToolRegistry;
+use App\Agents\Providers\AgentBrainValidator;
+use App\Domain\Agents\Application\CreateAgent;
+use App\Domain\Agents\Application\CreateAgentInput;
+use App\Domain\Agents\Application\DeleteAgent;
+use App\Domain\Agents\Application\Queries\AgentDetailQuery;
+use App\Domain\Agents\Application\UpdateAgentProfile;
+use App\Domain\Knowledge\Application\ReadAgentPromptDocuments;
+use App\Domain\Knowledge\Application\UpdateAgentIdentityFile;
 use App\Http\Controllers\Controller;
-use App\Models\Channel;
-use App\Models\ChannelMember;
-use App\Models\DirectMessage;
-use App\Models\IntegrationSetting;
-use App\Models\Task;
 use App\Models\User;
-use OpenCompany\PrismCodex\CodexTokenStore;
-use App\Services\AgentAvatarService;
-use App\Services\AgentDocumentService;
-use App\Services\AgentPermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
+use InvalidArgumentException;
 
+/**
+ * API surface for creating and managing workspace agents.
+ *
+ * Agent records are runtime identities, not just profile rows. Creating one also
+ * creates its identity document tree, avatar, default DM channel, and initial
+ * channel membership, so this controller keeps those side effects together.
+ */
 class AgentController extends Controller
 {
-    public function __construct(
-        private AgentDocumentService $agentDocumentService,
-        private AgentAvatarService $agentAvatarService,
-    ) {}
+    public function __construct(private AgentBrainValidator $brainValidator) {}
 
     /**
      * List all agents
@@ -42,7 +44,7 @@ class AgentController extends Controller
     /**
      * Create a new agent
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, CreateAgent $createAgent): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -58,246 +60,34 @@ class AgentController extends Controller
             'identity.MEMORY' => 'nullable|string',
         ]);
 
-        // Validate brain format (provider:model)
-        if (!str_contains($validated['brain'], ':')) {
+        try {
+            $agent = $createAgent->handle(
+                workspace(),
+                $request->user(),
+                CreateAgentInput::fromValidated($validated),
+            );
+        } catch (InvalidArgumentException $e) {
             return response()->json([
-                'error' => 'Invalid brain format. Expected "provider:model" (e.g., "glm:glm-4.7")',
+                'error' => $e->getMessage(),
+                'example' => $this->brainValidator->example(),
             ], 422);
         }
 
-        [$provider] = explode(':', $validated['brain'], 2);
-
-        // Standard providers use .env keys; only check IntegrationSetting for custom providers
-        $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama'];
-
-        if (!in_array($provider, $standardProviders)) {
-            $integration = IntegrationSetting::forWorkspace()
-                ->where('integration_id', $provider)
-                ->where('enabled', true)
-                ->first();
-
-            if (!$integration) {
-                return response()->json([
-                    'error' => "AI model provider '{$provider}' is not configured or enabled. Please configure it in Integrations.",
-                ], 422);
-            }
-        }
-
-        // Create the agent user
-        $agent = User::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => workspace()->id,
-            'name' => $validated['name'],
-            'type' => 'agent',
-            'agent_type' => $validated['agentType'],
-            'brain' => $validated['brain'],
-            'status' => 'idle',
-            'presence' => 'online',
-            'is_ephemeral' => $validated['isEphemeral'] ?? false,
-            'current_task' => $validated['task'] ?? null,
-            'manager_id' => $validated['managerId'] ?? $request->user()->id,
-        ]);
-
-        // Create the document structure for this agent
-        $identityContent = $validated['identity'] ?? [];
-        $agentFolder = $this->agentDocumentService->createAgentDocumentStructure($agent, $identityContent);
-
-        // Store the folder reference
-        $agent->update(['docs_folder_id' => $agentFolder->id]);
-
-        // Generate procedural avatar
-        $this->agentAvatarService->generate($agent);
-
-        // Create DM channel between creator and agent
-        $creatorId = $request->user()->id;
-        $creator = User::find($creatorId);
-        $dmChannel = Channel::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => workspace()->id,
-            'name' => 'DM: ' . ($creator->name ?? 'User') . ' ↔ ' . $agent->name,
-            'type' => 'dm',
-            'is_ephemeral' => false,
-        ]);
-
-        ChannelMember::create([
-            'channel_id' => $dmChannel->id,
-            'user_id' => $creatorId,
-        ]);
-        ChannelMember::create([
-            'channel_id' => $dmChannel->id,
-            'user_id' => $agent->id,
-        ]);
-
-        // Create the DirectMessage record (required for agent response pipeline)
-        DirectMessage::create([
-            'id' => Str::uuid()->toString(),
-            'user1_id' => $creatorId,
-            'user2_id' => $agent->id,
-            'channel_id' => $dmChannel->id,
-        ]);
-
-        // Add agent to #general channel by default
-        $generalChannel = Channel::forWorkspace()->where('name', 'general')->first();
-        if ($generalChannel) {
-            ChannelMember::create([
-                'channel_id' => $generalChannel->id,
-                'user_id' => $agent->id,
-            ]);
-        }
-
-        return response()->json($agent->fresh(), 201);
+        return response()->json($agent, 201);
     }
 
     /**
      * Get a specific agent with enriched detail data
      */
-    public function show(string $id): JsonResponse
+    public function show(string $id, AgentDetailQuery $query): JsonResponse
     {
-        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
-
-        // Load identity files and map by type
-        $identityFiles = $this->agentDocumentService->getIdentityFiles($agent);
-        $filesByType = [];
-        foreach ($identityFiles as $file) {
-            $type = strtoupper(str_replace('.md', '', $file->title));
-            $filesByType[$type] = [
-                'content' => $file->content ?? '',
-                'updatedAt' => $file->updated_at,
-            ];
-        }
-
-        // Parse IDENTITY.md for structured identity info
-        $identity = $this->parseIdentityContent(
-            $filesByType['IDENTITY']['content'] ?? '',
-            $agent
-        );
-
-        // Task stats
-        /** @var object{total: int, completed: int}|null $taskStats */
-        $taskStats = Task::where('agent_id', $agent->id)
-            ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
-            ->first();
-
-        // Recent tasks
-        $recentTasks = Task::where('agent_id', $agent->id)
-            ->with(['requester', 'steps'])
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        // Capabilities from ToolRegistry (permission-aware)
-        $toolRegistry = app(ToolRegistry::class);
-        $capabilities = $toolRegistry->getAllToolsMeta($agent);
-
-        // Channel and folder permissions
-        $channelPermissions = $agent->channelPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
-        $folderPermissions = $agent->folderPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
-        $fileFolderPermissions = $agent->fileFolderPermissions()->where('permission', 'allow')->pluck('scope_key')->values();
-
-        // Agent's channel memberships (for the UI checklist)
-        $agentChannels = $agent->channels()->get(['channels.id', 'channels.name', 'channels.type']);
-
-        // Document folders (for the UI checklist)
-        $documentFolders = \App\Models\Document::forWorkspace()
-            ->where('is_folder', true)
-            ->whereNull('parent_id')
-            ->orderBy('title')
-            ->get(['id', 'title']);
-
-        // File system folder tree (for the UI checklist)
-        $fileFolders = app(\App\Services\FileSystemService::class)
-            ->getFolderTree(workspace()->id);
-
-        return response()->json([
-            'id' => $agent->id,
-            'name' => $agent->name,
-            'avatar' => $agent->avatar,
-            'type' => $agent->type,
-            'agentType' => $agent->agent_type,
-            'status' => $agent->status,
-            'presence' => $agent->presence,
-            'brain' => $agent->brain,
-            'currentTask' => $agent->current_task,
-            'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
-            'mustWaitForApproval' => $agent->must_wait_for_approval ?? false,
-            'awaitingApprovalId' => $agent->awaiting_approval_id,
-            'managerId' => $agent->manager_id,
-            'manager' => $agent->manager ? [
-                'id' => $agent->manager->id,
-                'name' => $agent->manager->name,
-                'type' => $agent->manager->type,
-                'agentType' => $agent->manager->agent_type,
-                'avatar' => $agent->manager->avatar,
-            ] : null,
-            'directReports' => $agent->directReports()
-                ->select('id', 'name', 'type', 'agent_type', 'status', 'avatar')
-                ->get(),
-            'sleepingUntil' => $agent->sleeping_until,
-            'sleepingReason' => $agent->sleeping_reason,
-            'awaitingDelegationIds' => $agent->awaiting_delegation_ids,
-            'identity' => $identity,
-            'capabilities' => $capabilities,
-            'appGroups' => $toolRegistry->getAppGroupsMeta(),
-            'enabledIntegrations' => app(AgentPermissionService::class)->getEnabledIntegrations($agent),
-            'channelPermissions' => $channelPermissions,
-            'folderPermissions' => $folderPermissions,
-            'fileFolderPermissions' => $fileFolderPermissions,
-            'agentChannels' => $agentChannels,
-            'documentFolders' => $documentFolders,
-            'fileFolders' => $fileFolders,
-            'stats' => [
-                'tasksCompleted' => (int) ($taskStats->completed ?? 0),
-                'totalTasks' => (int) ($taskStats->total ?? 0),
-                'efficiency' => $taskStats->total > 0
-                    ? (int) round(($taskStats->completed / $taskStats->total) * 100)
-                    : 0,
-                'totalSessions' => 0,
-            ],
-            'tasks' => $recentTasks,
-        ]);
-    }
-
-    /**
-     * Parse IDENTITY.md content to extract structured identity data
-     *
-     * @return array<string, mixed>
-     */
-    private function parseIdentityContent(string $content, User $agent): array
-    {
-        $identity = [
-            'name' => $agent->name,
-            'emoji' => '🤖',
-            'type' => $agent->agent_type ?? 'coder',
-            'description' => '',
-        ];
-
-        if (!$content) {
-            return $identity;
-        }
-
-        foreach (explode("\n", $content) as $line) {
-            $line = trim($line);
-            // Match "- **Key**: Value" or "Key: Value"
-            if (preg_match('/^(?:-\s*\*\*|\*\*|#+\s*)?(\w+)(?:\*\*)?\s*:\s*(.+)$/i', $line, $matches)) {
-                $key = strtolower(trim($matches[1]));
-                $value = trim($matches[2]);
-                match ($key) {
-                    'name' => $identity['name'] = $value,
-                    'emoji' => $identity['emoji'] = $value,
-                    'type' => $identity['type'] = strtolower($value),
-                    'description', 'vibe' => $identity['description'] = $value,
-                    default => null,
-                };
-            }
-        }
-
-        return $identity;
+        return response()->json($query->handle(workspace(), $id));
     }
 
     /**
      * Update an agent
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(Request $request, string $id, UpdateAgentProfile $updateAgent): JsonResponse
     {
         $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
@@ -313,47 +103,14 @@ class AgentController extends Controller
             'sleepingReason' => 'sometimes|nullable|string|max:500',
         ]);
 
-        // If updating brain, validate the format and integration
-        if (isset($validated['brain'])) {
-            if (!str_contains($validated['brain'], ':')) {
-                return response()->json([
-                    'error' => 'Invalid brain format. Expected "provider:model"',
-                ], 422);
-            }
-
-            [$provider] = explode(':', $validated['brain'], 2);
-            $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama'];
-
-            if (!in_array($provider, $standardProviders)) {
-                $integration = IntegrationSetting::forWorkspace()
-                    ->where('integration_id', $provider)
-                    ->where('enabled', true)
-                    ->first();
-
-                // Codex uses OAuth tokens, not IntegrationSetting
-                if (!$integration && $provider === 'codex') {
-                    $integration = CodexTokenStore::current() !== null;
-                }
-
-                if (!$integration) {
-                    return response()->json([
-                        'error' => "AI model provider '{$provider}' is not configured or enabled.",
-                    ], 422);
-                }
-            }
+        try {
+            $agent = $updateAgent->handle(workspace(), $agent, $validated);
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'example' => $this->brainValidator->example(),
+            ], 422);
         }
-
-        $agent->update([
-            'name' => $validated['name'] ?? $agent->name,
-            'brain' => $validated['brain'] ?? $agent->brain,
-            'status' => $validated['status'] ?? $agent->status,
-            'current_task' => $validated['currentTask'] ?? $agent->current_task,
-            'behavior_mode' => $validated['behaviorMode'] ?? $agent->behavior_mode,
-            'must_wait_for_approval' => $validated['mustWaitForApproval'] ?? $agent->must_wait_for_approval,
-            'manager_id' => array_key_exists('managerId', $validated) ? $validated['managerId'] : $agent->manager_id,
-            'sleeping_until' => array_key_exists('sleepingUntil', $validated) ? $validated['sleepingUntil'] : $agent->sleeping_until,
-            'sleeping_reason' => array_key_exists('sleepingReason', $validated) ? $validated['sleepingReason'] : $agent->sleeping_reason,
-        ]);
 
         return response()->json($agent);
     }
@@ -361,11 +118,10 @@ class AgentController extends Controller
     /**
      * Delete an agent
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteAgent $deleteAgent): JsonResponse
     {
         $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
-        $this->agentDocumentService->deleteAgentDocumentStructure($agent);
-        $agent->delete();
+        $deleteAgent->handle($agent);
 
         return response()->json(['success' => true]);
     }
@@ -373,10 +129,10 @@ class AgentController extends Controller
     /**
      * Get identity files for an agent
      */
-    public function identityFiles(string $id): JsonResponse
+    public function identityFiles(string $id, ReadAgentPromptDocuments $promptDocuments): JsonResponse
     {
         $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
-        $files = $this->agentDocumentService->getIdentityFiles($agent);
+        $files = $promptDocuments->handle($agent);
 
         return response()->json($files->map(function ($file) {
             return [
@@ -392,7 +148,7 @@ class AgentController extends Controller
     /**
      * Update an identity file for an agent
      */
-    public function updateIdentityFile(Request $request, string $id, string $fileType): JsonResponse
+    public function updateIdentityFile(Request $request, string $id, string $fileType, UpdateAgentIdentityFile $updateIdentityFile): JsonResponse
     {
         $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
 
@@ -400,22 +156,19 @@ class AgentController extends Controller
             'content' => 'required|string',
         ]);
 
-        $allowedTypes = app(AgentDocumentService::class)->getIdentityFileTypes();
-        $normalizedType = strtoupper($fileType);
-
-        if (!in_array($normalizedType, $allowedTypes)) {
+        try {
+            $file = $updateIdentityFile->handle(
+                $agent,
+                $fileType,
+                $validated['content']
+            );
+        } catch (InvalidArgumentException $e) {
             return response()->json([
-                'error' => "Invalid file type '{$fileType}'. Allowed: " . implode(', ', $allowedTypes),
+                'error' => $e->getMessage(),
             ], 422);
         }
 
-        $file = $this->agentDocumentService->updateIdentityFile(
-            $agent,
-            $normalizedType,
-            $validated['content']
-        );
-
-        if (!$file) {
+        if (! $file) {
             return response()->json(['error' => 'Identity file not found'], 404);
         }
 

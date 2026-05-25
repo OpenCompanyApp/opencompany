@@ -4,70 +4,36 @@ namespace App\Services;
 
 use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
-use Laravel\Ai\Tools\Request;
+use App\Services\Integrations\IntegrationRuntime;
 use OpenCompany\IntegrationCore\Contracts\LuaToolInvoker;
-use OpenCompany\IntegrationCore\Contracts\Tool as IntegrationTool;
 
+/**
+ * Routes Lua bridge calls into OpenCompany's integration runtime.
+ *
+ * Lua scripts should not instantiate tools directly. This invoker keeps Lua
+ * calls on the same permission, account-alias, and result-normalization path as
+ * agent SDK tool calls.
+ */
 class OpenCompanyLuaToolInvoker implements LuaToolInvoker
 {
     public function __construct(
         private User $agent,
         private ToolRegistry $registry,
+        private ?IntegrationRuntime $runtime = null,
     ) {}
 
-    public function invoke(string $toolSlug, array $args): mixed
+    public function invoke(string $toolSlug, array $args, ?string $account = null): mixed
     {
-        $tool = $this->registry->instantiateToolBySlug($toolSlug, $this->agent);
+        $runtime = $this->runtime ?? new IntegrationRuntime($this->registry);
 
-        if ($tool === null) {
-            throw new \RuntimeException("Tool not available: {$toolSlug}");
-        }
-
-        if ($tool instanceof IntegrationTool) {
-            $toolResult = $tool->execute($args);
-
-            if (! $toolResult->succeeded()) {
-                throw new \RuntimeException($toolResult->error ?? "Tool failed: {$toolSlug}");
-            }
-
-            return $toolResult->data;
-        }
-
-        $request = new Request($this->snakeToCamel($args));
-        $rawResult = $tool->handle($request);
-
-        if (! is_string($rawResult)) {
-            return $rawResult;
-        }
-
-        $trimmed = ltrim($rawResult);
-        if (($trimmed[0] ?? '') !== '{' && ($trimmed[0] ?? '') !== '[') {
-            return $rawResult;
-        }
-
-        $decoded = json_decode($rawResult, true);
-
-        return $decoded ?? $rawResult;
+        // IntegrationRuntime handles permission evaluation and package/MCP
+        // dispatch. Do not bypass it here just because Lua already resolved a
+        // function name to a tool slug.
+        return $runtime->call($this->agent, $toolSlug, $args, $account);
     }
 
     public function getToolMeta(string $toolSlug): array
     {
         return $this->registry->getToolMetaBySlug($toolSlug);
-    }
-
-    /**
-     * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
-     */
-    private function snakeToCamel(array $params): array
-    {
-        $converted = [];
-
-        foreach ($params as $key => $value) {
-            $camelKey = lcfirst(str_replace('_', '', ucwords((string) $key, '_')));
-            $converted[$camelKey] = $value;
-        }
-
-        return $converted;
     }
 }

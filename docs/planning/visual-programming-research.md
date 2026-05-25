@@ -2,6 +2,8 @@
 
 Research into visual programming options that could complement the existing Lua scripting system. The goal is to offer an alternative way to build automations and workflows — especially for users who aren't comfortable writing code.
 
+Status: Research / planning. This is a product-direction survey, not current implementation documentation.
+
 ## Requirements
 
 - Embeddable in a web app (Vue 3 / TypeScript stack)

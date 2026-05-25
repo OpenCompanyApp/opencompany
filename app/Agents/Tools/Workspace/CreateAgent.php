@@ -2,14 +2,15 @@
 
 namespace App\Agents\Tools\Workspace;
 
+use App\Agents\Providers\AgentBrainValidator;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\ChannelMember;
-use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Services\AgentAvatarService;
 use App\Services\AgentDocumentService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use InvalidArgumentException;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
@@ -20,6 +21,7 @@ class CreateAgent implements Tool
         private User $agent,
         private AgentDocumentService $agentDocumentService,
         private AgentAvatarService $agentAvatarService,
+        private AgentBrainValidator $brainValidator,
     ) {}
 
     public function description(): string
@@ -38,21 +40,10 @@ class CreateAgent implements Tool
                 return 'Required: name, agentType, brain.';
             }
 
-            if (!str_contains($brain, ':')) {
-                return 'Invalid brain format. Expected "provider:model" (e.g., "anthropic:claude-sonnet-4-5-20250929").';
-            }
-
-            [$provider] = explode(':', $brain, 2);
-            $standardProviders = ['anthropic', 'openai', 'gemini', 'groq', 'xai', 'openrouter', 'deepseek', 'mistral', 'ollama'];
-
-            if (!in_array($provider, $standardProviders)) {
-                $integration = IntegrationSetting::where('integration_id', $provider)
-                    ->where('enabled', true)
-                    ->first();
-
-                if (!$integration) {
-                    return "AI model provider '{$provider}' is not configured or enabled.";
-                }
+            try {
+                $this->brainValidator->validate($brain, $this->agent->workspace_id ?? workspace()->id);
+            } catch (InvalidArgumentException $e) {
+                return "{$e->getMessage()} Example: {$this->brainValidator->example()}.";
             }
 
             // Spawn approval for non-autonomous agents
@@ -152,7 +143,7 @@ class CreateAgent implements Tool
                 ->required(),
             'brain' => $schema
                 ->string()
-                ->description('AI model in "provider:model" format (e.g., "anthropic:claude-sonnet-4-5-20250929").')
+                ->description('AI model in "provider:model" format.')
                 ->required(),
             'behavior' => $schema
                 ->string()

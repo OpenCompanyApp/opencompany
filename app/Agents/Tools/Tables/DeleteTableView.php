@@ -8,6 +8,12 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Deletes a saved view from a workspace-owned table.
+ *
+ * Views do not have their own workspace_id, so every lookup must cross through
+ * the parent table before mutating the view.
+ */
 class DeleteTableView implements Tool
 {
     public function __construct(
@@ -32,7 +38,8 @@ class DeleteTableView implements Tool
     public function handle(Request $request): string
     {
         try {
-            $view = DataTableView::findOrFail($request['viewId']);
+            $view = DataTableView::whereHas('table', fn ($query) => $query->forWorkspace())
+                ->findOrFail($request['viewId']);
             $name = $view->name;
             $view->delete();
 

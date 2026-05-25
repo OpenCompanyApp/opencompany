@@ -6,8 +6,78 @@
     :icon="meta?.icon || 'ph:gear'"
     size="md"
   >
-    <form class="space-y-5" @submit.prevent="handleSave">
+    <form class="space-y-5" data-test="dynamic-config-form" @submit.prevent="handleSave">
+      <div class="space-y-2">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <label class="block text-sm font-medium text-neutral-900 dark:text-white">
+              Integration Account
+            </label>
+            <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Add named accounts when one integration needs more than one inbox, API key, or external workspace.
+            </p>
+          </div>
+          <span
+            v-if="selectedAccountInfo?.is_default"
+            class="text-[11px] px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+          >
+            Default
+          </span>
+        </div>
+        <div class="flex gap-2">
+          <select
+            v-model="selectedAccount"
+            data-test="integration-account-select"
+            class="flex-1 min-w-0 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
+            @change="loadConfig"
+          >
+            <option value="">Default account</option>
+            <option v-for="account in namedAccounts" :key="account.alias" :value="account.alias">
+              {{ account.alias }}{{ account.is_default ? ' (default)' : '' }}
+            </option>
+          </select>
+          <Button
+            v-if="selectedAccount"
+            type="button"
+            variant="secondary"
+            size="sm"
+            @click="setDefaultAccount"
+          >
+            Make Default
+          </Button>
+        </div>
+        <div class="flex gap-2">
+          <input
+            v-model="newAccountAlias"
+            data-test="integration-new-account"
+            type="text"
+            placeholder="Account name"
+            class="flex-1 min-w-0 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
+            @keydown.enter.prevent="createAccount"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            :disabled="!newAccountAlias.trim()"
+            @click="createAccount"
+          >
+            Add
+          </Button>
+        </div>
+        <p v-if="!newAccountAlias.trim()" class="text-[11px] text-neutral-400 dark:text-neutral-500">
+          Enter a short label to add another account; the existing default account remains unchanged.
+        </p>
+      </div>
+
       <!-- Dynamic Fields -->
+      <div v-if="hasOAuthFields" class="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 px-3 py-2">
+        <p class="text-xs font-medium text-neutral-700 dark:text-neutral-300">OAuth app configuration</p>
+        <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+          Client credentials are shared by this integration; connected account tokens stay scoped to the selected account above.
+        </p>
+      </div>
+
       <div v-for="field in schema" :key="field.key" v-show="isFieldVisible(field)" class="space-y-2">
         <label class="block text-sm font-medium text-neutral-900 dark:text-white">
           {{ field.label }}
@@ -17,6 +87,8 @@
         <div v-if="field.type === 'secret'" class="relative">
           <input
             v-model="formValues[field.key]"
+            :data-test="`integration-field-${field.key}`"
+            :name="field.key"
             :type="showSecrets[field.key] ? 'text' : 'password'"
             :placeholder="field.placeholder || ''"
             class="w-full px-4 py-2.5 pr-10 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors font-mono text-sm"
@@ -34,6 +106,8 @@
         <input
           v-else-if="field.type === 'url'"
           v-model="formValues[field.key]"
+          :data-test="`integration-field-${field.key}`"
+          :name="field.key"
           type="text"
           :placeholder="field.placeholder || ''"
           class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
@@ -43,6 +117,8 @@
         <input
           v-else-if="field.type === 'text'"
           v-model="formValues[field.key]"
+          :data-test="`integration-field-${field.key}`"
+          :name="field.key"
           type="text"
           :placeholder="field.placeholder || ''"
           class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
@@ -52,6 +128,8 @@
         <select
           v-else-if="field.type === 'select'"
           v-model="formValues[field.key]"
+          :data-test="`integration-field-${field.key}`"
+          :name="field.key"
           class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
         >
           <option v-for="(optLabel, optValue) in field.options" :key="optValue" :value="optValue">
@@ -81,6 +159,8 @@
           <div class="flex gap-2 mt-1.5">
             <input
               v-model="listInputs[field.key]"
+              :data-test="`integration-field-${field.key}`"
+              :name="field.key"
               type="text"
               :placeholder="field.item_placeholder || 'Add item...'"
               class="flex-1 px-4 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm font-mono"
@@ -106,7 +186,7 @@
               <Icon name="ph:check-circle-fill" class="w-4 h-4 text-green-500" />
               <span class="text-sm font-medium text-green-700 dark:text-green-400">Connected</span>
             </div>
-            <Button type="button" variant="ghost" size="sm" @click="disconnectOAuth(field)">
+            <Button type="button" variant="danger" size="sm" @click="disconnectOAuth(field)">
               Disconnect
             </Button>
           </div>
@@ -216,6 +296,7 @@
         </Button>
         <Button
           variant="primary"
+          data-test="save-integration-config"
           :loading="isSaving"
           :disabled="!hasRequiredFields"
           @click="handleSave"
@@ -229,10 +310,19 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
-import { apiFetch } from '@/utils/apiFetch'
+import {
+  createAccount as createIntegrationAccount,
+  disconnect,
+  listAccounts,
+  setDefaultAccount as setDefaultIntegrationAccount,
+  showConfig,
+  testConnection as testIntegrationConnection,
+  updateConfig,
+} from '@/actions/App/Http/Controllers/Api/IntegrationController'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import { wayfinderFetch } from '@/utils/wayfinder'
 
 interface ConfigField {
   key: string
@@ -263,6 +353,13 @@ interface IntegrationMeta {
   docs_url?: string
 }
 
+interface Account {
+  alias: string
+  is_default: boolean
+  enabled: boolean
+  configured: boolean
+}
+
 const props = defineProps<{
   integrationId: string
   schema: ConfigField[]
@@ -279,6 +376,9 @@ const emit = defineEmits<{
 const formValues = reactive<Record<string, any>>({})
 const listInputs = reactive<Record<string, string>>({})
 const showSecrets = reactive<Record<string, boolean>>({})
+const accounts = ref<Account[]>([])
+const selectedAccount = ref('')
+const newAccountAlias = ref('')
 
 // UI state
 const isTesting = ref(false)
@@ -288,6 +388,18 @@ const resultMessage = ref<{ success: boolean; message: string } | null>(null)
 // OAuth helpers
 const origin = window.location.origin
 const copied = ref<string | null>(null)
+
+const namedAccounts = computed(() => accounts.value.filter(account => account.alias))
+const selectedAccountInfo = computed(() => {
+  return accounts.value.find(account => account.alias === selectedAccount.value)
+    || accounts.value.find(account => account.is_default)
+    || null
+})
+const hasOAuthFields = computed(() => props.schema.some(field => field.type === 'oauth_connect'))
+
+const accountRouteOptions = () => {
+  return selectedAccount.value ? { query: { account: selectedAccount.value } } : undefined
+}
 
 const copyToClipboard = async (text: string, key: string) => {
   try {
@@ -317,6 +429,16 @@ const fullRedirectUri = (field: ConfigField): string => {
   return origin + (field.redirect_uri || '')
 }
 
+const oauthAuthorizeUrl = (field: ConfigField): string => {
+  const authorizeUrl = field.authorize_url || ''
+  if (!selectedAccount.value) {
+    return authorizeUrl
+  }
+
+  const separator = authorizeUrl.includes('?') ? '&' : '?'
+  return `${authorizeUrl}${separator}account=${encodeURIComponent(selectedAccount.value)}`
+}
+
 const connectOAuth = async (field: ConfigField) => {
   isSaving.value = true
   try {
@@ -325,13 +447,12 @@ const connectOAuth = async (field: ConfigField) => {
       if (f.type === 'oauth_connect') continue
       payload[f.key] = formValues[f.key]
     }
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
-      method: 'PUT',
+    const response = await wayfinderFetch(updateConfig(props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
     })
     if (response.ok) {
-      window.location.href = field.authorize_url || ''
+      window.location.href = oauthAuthorizeUrl(field)
     } else {
       const error = await response.json()
       resultMessage.value = { success: false, message: error.error || 'Failed to save before connecting' }
@@ -344,8 +465,13 @@ const connectOAuth = async (field: ConfigField) => {
 }
 
 const disconnectOAuth = async (field: ConfigField) => {
+  const accountLabel = selectedAccount.value || 'default account'
+  if (!window.confirm(`Disconnect ${props.meta?.name || props.integrationId} from the ${accountLabel}?`)) {
+    return
+  }
+
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/disconnect`, { method: 'POST' })
+    const response = await wayfinderFetch(disconnect(props.integrationId, accountRouteOptions()))
     if (response.ok) {
       formValues[field.key] = ''
     }
@@ -376,10 +502,18 @@ const hasRequiredFields = computed(() => {
 
 // Initialize form values from schema defaults
 const initForm = () => {
+  for (const key of Object.keys(formValues)) {
+    delete formValues[key]
+  }
+  for (const key of Object.keys(showSecrets)) {
+    delete showSecrets[key]
+  }
+  for (const key of Object.keys(listInputs)) {
+    delete listInputs[key]
+  }
+
   for (const field of props.schema) {
-    if (!(field.key in formValues)) {
-      formValues[field.key] = field.default ?? (field.type === 'string_list' ? [] : '')
-    }
+    formValues[field.key] = field.default ?? (field.type === 'string_list' ? [] : '')
     if (field.type === 'secret') {
       showSecrets[field.key] = false
     }
@@ -394,13 +528,28 @@ watch(isOpen, async (open) => {
   if (open) {
     resultMessage.value = null
     initForm()
+    await loadAccounts()
     await loadConfig()
   }
 }, { immediate: true })
 
+const loadAccounts = async () => {
+  try {
+    const response = await wayfinderFetch(listAccounts(props.integrationId))
+    if (!response.ok) return
+
+    const data = await response.json()
+    accounts.value = data.accounts || []
+    const defaultAccount = accounts.value.find(account => account.is_default)
+    selectedAccount.value = defaultAccount?.alias || ''
+  } catch (error) {
+    console.error('Failed to load accounts:', error)
+  }
+}
+
 const loadConfig = async () => {
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`)
+    const response = await wayfinderFetch(showConfig(props.integrationId, accountRouteOptions()))
     if (response.ok) {
       const data = await response.json()
       for (const field of props.schema) {
@@ -411,6 +560,50 @@ const loadConfig = async () => {
     }
   } catch (error) {
     console.error('Failed to load config:', error)
+  }
+}
+
+const createAccount = async () => {
+  const alias = newAccountAlias.value.trim().toLowerCase()
+  if (!alias) return
+
+  try {
+    const response = await wayfinderFetch(createIntegrationAccount(props.integrationId), {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias, config: {} }),
+    })
+
+    const data = await response.json()
+    if (!response.ok) {
+      resultMessage.value = { success: false, message: data.error || 'Failed to create account' }
+      return
+    }
+
+    newAccountAlias.value = ''
+    selectedAccount.value = data.alias || alias
+    await loadAccounts()
+    selectedAccount.value = data.alias || alias
+    await loadConfig()
+  } catch (error) {
+    resultMessage.value = { success: false, message: 'Failed to create account.' }
+  }
+}
+
+const setDefaultAccount = async () => {
+  if (!selectedAccount.value) return
+
+  try {
+    const response = await wayfinderFetch(setDefaultIntegrationAccount({
+      id: props.integrationId,
+      alias: selectedAccount.value,
+    }))
+
+    if (response.ok) {
+      await loadAccounts()
+      selectedAccount.value = selectedAccountInfo.value?.alias || selectedAccount.value
+    }
+  } catch (error) {
+    resultMessage.value = { success: false, message: 'Failed to update default account.' }
   }
 }
 
@@ -441,10 +634,9 @@ const testConnection = async () => {
       payload[field.key] = formValues[field.key]
     }
 
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/test`, {
-      method: 'POST',
+    const response = await wayfinderFetch(testIntegrationConnection(props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
     })
 
     const data = await response.json()
@@ -472,10 +664,9 @@ const handleSave = async () => {
       payload[field.key] = formValues[field.key]
     }
 
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
-      method: 'PUT',
+    const response = await wayfinderFetch(updateConfig(props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
     })
 
     if (response.ok) {

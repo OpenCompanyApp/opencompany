@@ -9,6 +9,12 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Adds a column to a workspace-owned data table.
+ *
+ * Column order is append-only here: reorder operations are handled by
+ * ReorderTableColumns so agents have one obvious tool for each operation.
+ */
 class AddTableColumn implements Tool
 {
     public function __construct(
@@ -17,46 +23,48 @@ class AddTableColumn implements Tool
 
     public function description(): string
     {
-        return "Add a new column to an existing data table.";
+        return 'Add a new column to an existing data table.';
     }
 
     public function schema(JsonSchema $schema): array
     {
         return [
-            "tableId" => $schema
+            'tableId' => $schema
                 ->string()
-                ->description("The UUID of the table.")
+                ->description('The UUID of the table.')
                 ->required(),
-            "name" => $schema
+            'name' => $schema
                 ->string()
-                ->description("The name of the column.")
+                ->description('The name of the column.')
                 ->required(),
-            "columnType" => $schema
+            'columnType' => $schema
                 ->string()
-                ->description("The column type: text, number, date, select, multiselect, checkbox, url, email, user, or attachment."),
-            "columnOptions" => $schema
+                ->description('The column type: text, number, date, select, multiselect, checkbox, url, email, user, or attachment.'),
+            'columnOptions' => $schema
                 ->object()
-                ->description("Column options configuration (e.g. select choices)."),
-            "required" => $schema
+                ->description('Column options configuration (e.g. select choices).'),
+            'required' => $schema
                 ->boolean()
-                ->description("Whether the column is required."),
+                ->description('Whether the column is required.'),
         ];
     }
 
     public function handle(Request $request): string
     {
         try {
-            $table = DataTable::forWorkspace()->findOrFail($request["tableId"]);
+            $table = DataTable::forWorkspace()->findOrFail($request['tableId']);
 
-            $maxOrder = $table->columns()->max("order") ?? -1;
+            // New columns are appended after the current maximum order instead
+            // of relying on database insertion order.
+            $maxOrder = $table->columns()->max('order') ?? -1;
 
             $column = DataTableColumn::create([
-                "table_id" => $table->id,
-                "name" => $request["name"],
-                "type" => $request["columnType"] ?? "text",
-                "options" => $request["columnOptions"] ?? null,
-                "order" => $maxOrder + 1,
-                "required" => $request["required"] ?? false,
+                'table_id' => $table->id,
+                'name' => $request['name'],
+                'type' => $request['columnType'] ?? 'text',
+                'options' => $request['columnOptions'] ?? null,
+                'order' => $maxOrder + 1,
+                'required' => $request['required'] ?? false,
             ]);
 
             return "Column {$column->name} added.";

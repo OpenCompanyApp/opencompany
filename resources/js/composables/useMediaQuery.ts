@@ -4,6 +4,8 @@ export function useMediaQuery(query: string) {
   const matches = ref(false)
   let mediaQuery: MediaQueryList | null = null
 
+  // Browser media queries are only available after mount during client-side
+  // execution; SSR/import-time code should see the default false value.
   const update = () => {
     matches.value = mediaQuery?.matches ?? false
   }

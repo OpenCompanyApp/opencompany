@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Automation rules connect a task/event trigger to an action payload,
+        // optionally using a task template as the action seed.
         Schema::create('task_automation_rules', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('name');

@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Reactions are unique per user/message/emoji so repeated clicks remain
+        // idempotent at the database layer.
         Schema::create('message_reactions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('message_id');

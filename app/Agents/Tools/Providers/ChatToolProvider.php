@@ -18,7 +18,15 @@ use App\Agents\Tools\Chat\SearchMessages;
 use App\Agents\Tools\Chat\SendChannelMessage;
 use App\Models\User;
 use App\Services\AgentPermissionService;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers channel messaging tools.
+ *
+ * Chat tools are permission-sensitive because they can cross public, private,
+ * direct-message, and external-provider channels. The permission service is
+ * therefore injected into every concrete chat tool.
+ */
 class ChatToolProvider implements BuiltInToolProvider
 {
     public function __construct(
@@ -147,8 +155,10 @@ class ChatToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // The registry already selected a known class from tools(); constructor
+        // injection stays uniform across chat tools.
         return new $class($agent, $this->permissionService);
     }
 }

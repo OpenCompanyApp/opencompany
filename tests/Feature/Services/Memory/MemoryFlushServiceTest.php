@@ -2,20 +2,20 @@
 
 namespace Tests\Feature\Services\Memory;
 
+use App\Ai\Agents\OneShotTextAgent;
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Agents\OpenCompanyAgent;
 use App\Jobs\IndexDocumentJob;
 use App\Models\Channel;
 use App\Models\ConversationSummary;
 use App\Models\User;
 use App\Services\Memory\ConversationCompactionService;
+use App\Services\Memory\ContextBudget;
 use App\Services\Memory\MemoryFlushService;
-use App\Services\Memory\ModelContextRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Messages\UserMessage;
 use Mockery;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\Testing\TextResponseFake;
 use Tests\TestCase;
 
 class MemoryFlushServiceTest extends TestCase
@@ -35,6 +35,7 @@ class MemoryFlushServiceTest extends TestCase
         parent::setUp();
 
         Bus::fake([IndexDocumentJob::class]);
+        config(['memory.compaction.memory_extraction.enabled' => false]);
 
         $this->agent = User::factory()->agent()->create([
             'name' => 'flush-agent',
@@ -50,22 +51,20 @@ class MemoryFlushServiceTest extends TestCase
             ->andReturn(['provider' => 'openai', 'model' => 'gpt-4o']);
         $resolver->shouldReceive('resolveFromParts')
             ->andReturn(['provider' => 'openai', 'model' => 'gpt-4o']);
+        $resolver->shouldReceive('setWorkspaceId')
+            ->andReturn($resolver);
 
-        $this->compactionService = new ConversationCompactionService(
-            app(ModelContextRegistry::class),
-            $resolver,
-        );
-
-        $this->service = new MemoryFlushService(
-            $this->compactionService,
-            app(ModelContextRegistry::class),
-            $resolver,
-        );
+        $this->app->instance(DynamicProviderResolver::class, $resolver);
+        $this->compactionService = app(ConversationCompactionService::class);
+        $this->service = app(MemoryFlushService::class);
     }
 
     /**
      * Helper: create messages that produce a specific approximate token count.
      * Each word ≈ 1.3 tokens.
+     */
+    /**
+     * @return array<int, UserMessage>
      */
     private function makeMessagesWithTokens(int $targetTokens): array
     {
@@ -222,10 +221,8 @@ class MemoryFlushServiceTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        // Fake the LLM call that flush() makes
-        Prism::fake([
-            TextResponseFake::make()->withText('[FLUSH_COMPLETE]'),
-        ]);
+        // Fake the agent prompt that flush() makes.
+        OpenCompanyAgent::fake(['[FLUSH_COMPLETE]']);
 
         $this->service->flush($this->channel->id, $this->agent);
 
@@ -240,9 +237,7 @@ class MemoryFlushServiceTest extends TestCase
     {
         $this->assertEquals(0, ConversationSummary::count());
 
-        Prism::fake([
-            TextResponseFake::make()->withText('[FLUSH_COMPLETE]'),
-        ]);
+        OpenCompanyAgent::fake(['[FLUSH_COMPLETE]']);
 
         $this->service->flush($this->channel->id, $this->agent);
 
@@ -280,9 +275,7 @@ class MemoryFlushServiceTest extends TestCase
             'workspace_id' => $this->workspace->id,
         ]);
 
-        Prism::fake([
-            TextResponseFake::make()->withText('New compacted summary.'),
-        ]);
+        OneShotTextAgent::fake(['New compacted summary.']);
 
         $summary = $this->compactionService->compact($this->channel->id, $this->agent);
 

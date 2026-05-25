@@ -2,6 +2,7 @@
 
 namespace App\Services\Memory;
 
+use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\Log;
 
@@ -12,31 +13,35 @@ class ModelContextRegistry
      */
     private const LEVENSHTEIN_MAX_DISTANCE = 5;
 
+    public function __construct(
+        private AiCatalog $catalog,
+    ) {}
+
     /**
      * Get the context window size (in tokens) for a given model.
      *
      * Lookup order:
      * 1. User overrides from AppSetting (admin-configurable)
-     * 2. Built-in registry: exact match, then longest prefix match
-     * 3. Levenshtein fuzzy match (closest known model within distance threshold)
-     * 4. Default (conservative 32K)
+     * 2. App-owned provider metadata when a provider is known
+     * 3. Local fallback registry: exact match, then longest prefix match
+     * 4. Levenshtein fuzzy match (closest known model within distance threshold)
+     * 5. Default (conservative 32K)
      */
-    public function getContextWindow(string $model): int
+    public function getContextWindow(string $model, ?string $provider = null): int
     {
         $overrides = $this->getUserOverrides();
+        $exactOverride = $this->exactOverride($overrides, $model, $provider);
+
+        if ($exactOverride !== null) {
+            return $exactOverride;
+        }
+
+        $catalogModel = $provider !== null ? $this->catalog->model($provider, $model) : null;
+        if ($catalogModel !== null) {
+            return $catalogModel->contextWindow;
+        }
+
         $builtIn = config('memory.context_windows.models', []);
-
-        // 1. User overrides — exact match takes highest priority
-        if (isset($overrides[$model])) {
-            return (int) $overrides[$model];
-        }
-
-        // 2a. Built-in exact match
-        if (isset($builtIn[$model])) {
-            return $builtIn[$model];
-        }
-
-        // 2b. Longest prefix match across both built-in and user overrides
         $allModels = array_merge($builtIn, $overrides);
         $prefixResult = $this->longestPrefixMatch($model, $allModels);
         if ($prefixResult !== null) {
@@ -105,6 +110,7 @@ class ModelContextRegistry
             Log::info("ModelContextRegistry: fuzzy match for '{$model}' (distance {$closestDist})", [
                 'context_window' => $closestWindow,
             ]);
+
             return $closestWindow;
         }
 
@@ -125,5 +131,21 @@ class ModelContextRegistry
         }
 
         return is_array($value) ? $value : [];
+    }
+
+    /**
+     * @param  array<string, int>  $overrides
+     */
+    private function exactOverride(array $overrides, string $model, ?string $provider): ?int
+    {
+        if ($provider !== null && isset($overrides["{$provider}:{$model}"])) {
+            return (int) $overrides["{$provider}:{$model}"];
+        }
+
+        if (isset($overrides[$model])) {
+            return (int) $overrides[$model];
+        }
+
+        return null;
     }
 }

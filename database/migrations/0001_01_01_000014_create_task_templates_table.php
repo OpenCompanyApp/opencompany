@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Templates capture default task fields used by automation rules and
+        // repeatable workflows.
         Schema::create('task_templates', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('name');

@@ -11,6 +11,8 @@ return new class extends Migration
     {
         $isPgsql = DB::getDriverName() === 'pgsql';
 
+        // PostgreSQL can store vectors natively; other test/dev databases keep a
+        // serialized text fallback so migrations still run.
         Schema::create('embedding_cache', function (Blueprint $table) use ($isPgsql) {
             $table->string('id', 64)->primary();
             $table->string('provider', 50);

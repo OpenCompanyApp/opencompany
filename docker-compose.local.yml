@@ -6,7 +6,10 @@
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      additional_contexts:
+        integrations: ../integrations
     platform: linux/amd64
     ports:
       - "8000:8000"
@@ -23,11 +26,9 @@ services:
       DB_DATABASE: opencompany
       DB_USERNAME: opencompany
       DB_PASSWORD: opencompany
-      REDIS_HOST: valkey
-      REDIS_PORT: 6379
-      CACHE_STORE: redis
-      SESSION_DRIVER: redis
-      QUEUE_CONNECTION: redis
+      CACHE_STORE: database
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
       BROADCAST_CONNECTION: reverb
       REVERB_HOST: localhost
       REVERB_PORT: 8080
@@ -41,8 +42,6 @@ services:
       - storage:/app/storage
     depends_on:
       postgres:
-        condition: service_healthy
-      valkey:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/up"]
@@ -70,21 +69,6 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  valkey:
-    image: valkey/valkey:8-alpine
-    ports:
-      - "6379:6379"
-    command: valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - valkeydata:/data
-    healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
 volumes:
   pgdata:
-  valkeydata:
   storage:

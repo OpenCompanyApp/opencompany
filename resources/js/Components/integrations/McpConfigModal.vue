@@ -278,10 +278,19 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
-import axios from 'axios'
+import {
+  destroy,
+  discoverTools,
+  show,
+  store,
+  testConnection as testSavedConnection,
+  testNewConnection,
+  update,
+} from '@/actions/App/Http/Controllers/Api/McpServerController'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import { wayfinderRequest } from '@/utils/wayfinder'
 
 interface McpTool {
   name: string
@@ -357,7 +366,7 @@ const loadServer = async () => {
   if (!props.serverId) return
 
   try {
-    const { data } = await axios.get(`/api/mcp-servers/${props.serverId}`)
+    const { data } = await wayfinderRequest<any>(show(props.serverId))
     form.name = data.name || ''
     form.url = data.url || ''
     form.auth_type = data.auth_type || 'none'
@@ -398,10 +407,6 @@ const testConnection = async () => {
   resultMessage.value = null
 
   try {
-    const endpoint = props.serverId
-      ? `/api/mcp-servers/${props.serverId}/test`
-      : '/api/mcp-servers/test-new'
-
     const payload: Record<string, any> = {
       url: form.url,
       auth_type: form.auth_type,
@@ -416,7 +421,10 @@ const testConnection = async () => {
       payload.auth_config_override = buildAuthConfig()
     }
 
-    const { data } = await axios.post(endpoint, payload)
+    const { data } = await wayfinderRequest<any>(
+      props.serverId ? testSavedConnection(props.serverId) : testNewConnection(),
+      { data: payload },
+    )
     resultMessage.value = {
       success: data.success ?? true,
       message: data.success ? (data.message || 'Connection successful') : (data.error || data.message || 'Connection failed'),
@@ -438,7 +446,7 @@ const refreshTools = async () => {
   resultMessage.value = null
 
   try {
-    const { data } = await axios.post(`/api/mcp-servers/${props.serverId}/discover`)
+    const { data } = await wayfinderRequest<any>(discoverTools(props.serverId))
     discoveredTools.value = (data.tools || data.discovered_tools || []).map((t: any) => ({
       name: t.name,
       description: t.description,
@@ -473,14 +481,10 @@ const handleSave = async () => {
       enabled: form.enabled,
     }
 
-    const url = props.serverId
-      ? `/api/mcp-servers/${props.serverId}`
-      : '/api/mcp-servers'
-
     if (props.serverId) {
-      await axios.patch(url, payload)
+      await wayfinderRequest(update(props.serverId), { data: payload })
     } else {
-      await axios.post(url, payload)
+      await wayfinderRequest(store(), { data: payload })
     }
 
     emit('saved')
@@ -503,7 +507,7 @@ const handleDelete = async () => {
   isDeleting.value = true
 
   try {
-    await axios.delete(`/api/mcp-servers/${props.serverId}`)
+    await wayfinderRequest(destroy(props.serverId))
     emit('deleted')
     isOpen.value = false
   } catch (error: any) {

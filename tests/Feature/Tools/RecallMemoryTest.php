@@ -44,7 +44,7 @@ class RecallMemoryTest extends TestCase
         $indexer = Mockery::mock(DocumentIndexingService::class);
         // RecallMemory searches across topic, peer, and memory collections
         $indexer->shouldReceive('search')
-            ->andReturn($results);
+            ->andReturnUsing(fn (...$args) => ($args[1] ?? null) === 'memory' ? $results : collect());
 
         return $indexer;
     }

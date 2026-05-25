@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/` (alias: `/dashboard`) |
+| **Route** | `/w/{workspace}/` (alias: `/w/{workspace}/dashboard`) |
 | **Name** | `dashboard` |
 | **Auth** | Required (`auth`, `verified`) |
 | **Layout** | AppLayout |
@@ -43,7 +43,7 @@
 |  | Recent Activity list with avatars,            |  | Quick     |  |
 |  | actor names, action text, timestamps.         |  | Actions   |  |
 |  | Shows up to 8 items.                          |  |           |  |
-|  | "View all" link to /activity                  |  | Working   |  |
+|  | "View all" link to Activity                   |  | Working   |  |
 |  |                                               |  | Agents    |  |
 |  +----------------------------------------------+  +-----------+  |
 |                                                                    |
@@ -57,7 +57,7 @@
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| `PendingApprovals` | `Components/dashboard/PendingApprovals.vue` | Displays up to 3 pending approval requests with approve/reject actions. Links to `/approvals` when more exist. |
+| `PendingApprovals` | `Components/dashboard/PendingApprovals.vue` | Displays up to 3 pending approval requests with approve/reject actions. Links through the generated approvals route helper when more exist. |
 | `PendingApprovalItem` | `Components/dashboard/PendingApprovalItem.vue` | Individual approval row rendered inside PendingApprovals. |
 | `StatsOverview` | `Components/dashboard/StatsOverview.vue` | 4-card stat grid showing agents online, tasks completed, total messages, and total agents. Uses `Stats` type. |
 | `ActivityFeed` | `Components/dashboard/ActivityFeed.vue` | Scrollable list of recent activities (up to 8). Each row shows an `AgentAvatar`, actor name, action verb, target, and relative timestamp. |
@@ -84,10 +84,10 @@ All API calls use the `useApi()` composable.
 ## Features & Interactions
 
 ### Quick Actions
-- **New channel**: Navigates to `/chat` via `router.visit`
+- **New channel**: Navigates through the generated chat route helper.
 - **Spawn agent**: Opens `SpawnAgentModal`; on success refreshes agents, activities, and stats
-- **Create task**: Navigates to `/tasks`
-- **New document**: Navigates to `/docs`
+- **Create task**: Navigates through the generated tasks route helper.
+- **New document**: Navigates through the generated docs route helper.
 
 ### Pending Approvals
 - Conditionally rendered only when there are pending approvals
@@ -96,11 +96,11 @@ All API calls use the `useApi()` composable.
 
 ### Activity Feed
 - Shows 8 most recent activities with avatar, actor name, action verb, optional target, and relative timestamp
-- "View all" link navigates to `/activity`
+- "View all" link navigates to the workspace Activity page.
 
 ### Working Agents
 - Displays up to 5 agents with `status === 'working'`
-- Each agent row links to `/agent/{id}`
+- Each agent row links through the generated agent route helper
 - Empty state shows moon icon with "All agents idle"
 
 ---

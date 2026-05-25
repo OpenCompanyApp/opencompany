@@ -4,7 +4,7 @@
       <!-- Left: Back + Table Info -->
       <div class="flex items-center gap-3 min-w-0">
         <Link
-          :href="workspacePath('/tables')"
+          :href="tablesUrl()"
           class="shrink-0 p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
         >
           <Icon name="ph:arrow-left" class="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
@@ -80,7 +80,7 @@ import Button from '@/Components/shared/Button.vue'
 import DropdownMenu from '@/Components/shared/DropdownMenu.vue'
 import type { DataTable } from '@/types'
 
-const { workspacePath } = useWorkspace()
+const { tablesUrl } = useWorkspace()
 
 const props = defineProps<{
   table: DataTable

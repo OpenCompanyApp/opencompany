@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Attachments store immutable upload metadata for messages; file bytes
+        // live on storage and are referenced by URL.
         Schema::create('message_attachments', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('message_id');

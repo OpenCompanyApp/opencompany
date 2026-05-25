@@ -3,18 +3,21 @@
 namespace Tests\Feature\Tools;
 
 use App\Agents\Tools\Memory\EditMemory;
+use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
-use App\Models\DocumentChunk;
 use App\Models\User;
 use App\Services\AgentDocumentService;
 use App\Services\Memory\DocumentIndexingService;
 use App\Services\Memory\MemoryScopeGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Ai\Tools\Request;
 use Mockery;
 use Tests\TestCase;
 
+/**
+ * Covers memory editing against document-backed long-term memory files.
+ */
 class EditMemoryTest extends TestCase
 {
     use RefreshDatabase;
@@ -24,6 +27,9 @@ class EditMemoryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Bus::fake([IndexDocumentJob::class]);
+
         $this->agent = User::factory()->agent()->create(['name' => 'test-agent']);
     }
 
@@ -60,7 +66,7 @@ class EditMemoryTest extends TestCase
             'content' => 'Updated Vue 3 migration guide.',
         ]));
 
-        $this->assertStringContainsString("updated", $result);
+        $this->assertStringContainsString('updated', $result);
 
         $file = $docService->getMemoryTopicFile($this->agent, 'vue3-migration');
         $this->assertEquals('Updated Vue 3 migration guide.', $file->content);

@@ -4,6 +4,7 @@ namespace App\Agents\Tools\Workspace;
 
 use App\Models\IntegrationSetting;
 use App\Models\User;
+use App\Services\Integrations\ConfigSchemaNormalizer;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -26,15 +27,19 @@ class UpdateIntegrationConfig implements Tool
     {
         try {
             $integrationId = $request['integrationId'] ?? null;
-            if (!$integrationId) {
+            if (! $integrationId) {
                 return 'integrationId is required.';
             }
 
-            // Check dynamic providers first, then static
-            $provider = $this->findConfigurableProvider($integrationId);
+            // Telegram chat is app-owned. The generic Telegram package may still
+            // exist for tool/runtime use, but workspace bot setup must keep using
+            // OpenCompany's static Telegram config shape.
+            $provider = $integrationId === 'telegram'
+                ? null
+                : $this->findConfigurableProvider($integrationId);
             $available = IntegrationSetting::getAvailableIntegrations();
 
-            if (!$provider && !isset($available[$integrationId])) {
+            if (! $provider && ! isset($available[$integrationId])) {
                 $allIds = array_keys($available);
                 foreach (app(ToolProviderRegistry::class)->all() as $p) {
                     if ($p instanceof ConfigurableIntegration) {
@@ -42,11 +47,11 @@ class UpdateIntegrationConfig implements Tool
                     }
                 }
 
-                return "Integration not found: {$integrationId}. Available: " . implode(', ', $allIds);
+                return "Integration not found: {$integrationId}. Available: ".implode(', ', $allIds);
             }
 
             $setting = IntegrationSetting::forWorkspace()->firstOrNew(['integration_id' => $integrationId, 'workspace_id' => workspace()->id]);
-            if (!$setting->id) {
+            if (! $setting->id) {
                 $setting->id = Str::uuid()->toString();
             }
 
@@ -54,7 +59,7 @@ class UpdateIntegrationConfig implements Tool
 
             if ($provider) {
                 // Dynamic provider — iterate config schema
-                foreach ($provider->configSchema() as $field) {
+                foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                     $key = $field['key'];
                     $value = $request[$key] ?? null;
 
@@ -85,8 +90,16 @@ class UpdateIntegrationConfig implements Tool
                 }
             } else {
                 // Static provider — existing logic
-                if (!empty($request['apiKey']) && !str_contains($request['apiKey'], '*')) {
-                    $config['api_key'] = $request['apiKey'];
+                $apiKey = $request['apiKey']
+                    ?? $request['api_key']
+                    ?? $request['botToken']
+                    ?? $request['bot_token']
+                    ?? $request['accessToken']
+                    ?? $request['access_token']
+                    ?? null;
+
+                if (! empty($apiKey) && ! str_contains((string) $apiKey, '*')) {
+                    $config['api_key'] = $apiKey;
                 }
 
                 if (isset($request['url'])) {
@@ -127,32 +140,32 @@ class UpdateIntegrationConfig implements Tool
 
             // Build response
             $name = $provider ? $provider->integrationMeta()['name'] : ($available[$integrationId]['name'] ?? $integrationId);
-            $info = "Integration '{$name}' updated. Enabled: " . ($setting->enabled ? 'yes' : 'no') . '.';
+            $info = "Integration '{$name}' updated. Enabled: ".($setting->enabled ? 'yes' : 'no').'.';
 
             if ($provider) {
                 // Show stored fields from schema (mask secrets)
-                foreach ($provider->configSchema() as $field) {
+                foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
                     $stored = $config[$field['key']] ?? null;
                     if ($stored === null || $stored === '' || $stored === []) {
                         continue;
                     }
                     if ($field['type'] === 'secret') {
-                        $info .= " {$field['label']}: " . $setting->getMaskedValue($field['key']) . '.';
+                        $info .= " {$field['label']}: ".$setting->getMaskedValue($field['key']).'.';
                     } elseif ($field['type'] === 'string_list') {
-                        $info .= " {$field['label']}: " . implode(', ', $stored) . '.';
+                        $info .= " {$field['label']}: ".implode(', ', $stored).'.';
                     } else {
                         $info .= " {$field['label']}: {$stored}.";
                     }
                 }
             } else {
                 $maskedKey = $setting->getMaskedApiKey();
-                $info .= " API Key: {$maskedKey}. Configured: " . ($setting->hasValidConfig() ? 'yes' : 'no') . '.';
+                $info .= " API Key: {$maskedKey}. Configured: ".($setting->hasValidConfig() ? 'yes' : 'no').'.';
 
                 if ($integrationId === 'telegram') {
                     $allowedUsers = $config['allowed_telegram_users'] ?? [];
                     $defaultAgent = $config['default_agent_id'] ?? 'none';
                     $notifyChat = $config['notify_chat_id'] ?? 'none';
-                    $info .= " Default agent: {$defaultAgent}. Notify chat: {$notifyChat}. Allowed users: " . (empty($allowedUsers) ? 'all (unrestricted)' : implode(', ', $allowedUsers)) . '.';
+                    $info .= " Default agent: {$defaultAgent}. Notify chat: {$notifyChat}. Allowed users: ".(empty($allowedUsers) ? 'all (unrestricted)' : implode(', ', $allowedUsers)).'.';
                 }
             }
 
@@ -175,7 +188,7 @@ class UpdateIntegrationConfig implements Tool
         return [
             'integrationId' => $schema
                 ->string()
-                ->description('Integration ID (e.g., "telegram", "glm", "plausible"). Includes both static and dynamic package-provided integrations.')
+                ->description('Integration ID (e.g., "telegram", "z", "plausible"). Includes both static and dynamic package-provided integrations.')
                 ->required(),
             'apiKey' => $schema
                 ->string()

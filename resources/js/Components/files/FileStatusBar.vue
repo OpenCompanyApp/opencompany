@@ -17,6 +17,8 @@ const props = defineProps<{
   selectedCount: number
 }>()
 
+// Keep status text derived from counts so parent views only pass state, not
+// localized label fragments.
 const itemLabel = computed(() => {
   if (props.totalItems === 0) return 'Empty folder'
   return `${props.totalItems} item${props.totalItems !== 1 ? 's' : ''}`

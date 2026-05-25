@@ -2,11 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Models\Concerns\BelongsToWorkspace;
 
 /**
+ * Workspace-configured remote MCP server and its discovered tool cache.
+ *
+ * The URL and auth_config are encrypted because they can contain internal
+ * endpoints or bearer tokens. discovered_tools is treated as cached metadata
+ * used to build local OpenCompany tool slugs and permission entries.
+ *
  * @property array<int, array<string, mixed>>|null $discovered_tools
  * @property array<string, mixed>|null $auth_config
  * @property array<string, string>|null $headers
@@ -19,9 +26,10 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property string|null $description
  * @property string $name
  * @property string $slug
- * @property \Carbon\Carbon|null $tools_discovered_at
- * @property \Carbon\Carbon|null $created_at
- * @property \Carbon\Carbon|null $updated_at
+ * @property string $account_alias
+ * @property Carbon|null $tools_discovered_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class McpServer extends Model
 {
@@ -36,6 +44,7 @@ class McpServer extends Model
         'workspace_id',
         'name',
         'slug',
+        'account_alias',
         'url',
         'auth_type',
         'auth_config',
@@ -63,6 +72,25 @@ class McpServer extends Model
     }
 
     /**
+     * Get all non-default account aliases for an MCP server slug in the current workspace.
+     *
+     * @return list<string>
+     */
+    public static function getAccountsFor(string $slug): array
+    {
+        try {
+            return static::forWorkspace()
+                ->where('slug', $slug)
+                ->where('account_alias', '!=', '')
+                ->pluck('account_alias')
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
      * Get prefixed tool slugs from cached discovered tools.
      *
      * @return array<int, string>
@@ -71,7 +99,9 @@ class McpServer extends Model
     {
         $slugs = [];
         foreach ($this->discovered_tools ?? [] as $tool) {
-            $slugs[] = 'mcp_' . $this->slug . '__' . Str::snake($tool['name']);
+            // Keep this normalization aligned with McpToolProvider and
+            // McpPermissionEvaluator or stored permissions will stop matching.
+            $slugs[] = 'mcp_'.$this->slug.'__'.Str::snake(str_replace('-', '_', $tool['name']));
         }
 
         return $slugs;
@@ -82,7 +112,7 @@ class McpServer extends Model
      */
     public function isToolDiscoveryStale(): bool
     {
-        if (!$this->tools_discovered_at) {
+        if (! $this->tools_discovered_at) {
             return true;
         }
 
@@ -99,7 +129,7 @@ class McpServer extends Model
         $config = $this->auth_config ?? [];
 
         return match ($this->auth_type) {
-            'bearer' => ['Authorization' => 'Bearer ' . ($config['token'] ?? '')],
+            'bearer' => ['Authorization' => 'Bearer '.($config['token'] ?? '')],
             'header' => [($config['header_name'] ?? 'Authorization') => ($config['header_value'] ?? '')],
             default => [],
         };
@@ -117,10 +147,10 @@ class McpServer extends Model
             default => null,
         };
 
-        if (!$value || strlen($value) < 8) {
+        if (! $value || strlen($value) < 8) {
             return $value ? '****' : null;
         }
 
-        return substr($value, 0, 4) . '***' . substr($value, -4);
+        return substr($value, 0, 4).'***'.substr($value, -4);
     }
 }

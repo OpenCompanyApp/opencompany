@@ -16,7 +16,9 @@ class ToolRegistryTest extends TestCase
     use RefreshDatabase;
 
     private ToolRegistry $registry;
+
     private User $agent;
+
     private int $baseToolCount;
 
     protected function setUp(): void
@@ -180,5 +182,14 @@ class ToolRegistryTest extends TestCase
         $tool = $this->registry->instantiateToolBySlug('nonexistent', $this->agent);
 
         $this->assertNull($tool);
+    }
+
+    public function test_app_catalog_includes_lua_docs_first_guidance(): void
+    {
+        $catalog = $this->registry->getAppCatalog($this->agent);
+
+        $this->assertStringContainsString('Always call lua_read_doc(namespace) before writing code', $catalog);
+        $this->assertStringContainsString('Do not assume raw upstream API response shapes', $catalog);
+        $this->assertStringContainsString('inspect with a minimal lua_exec call before writing multi-step logic', $catalog);
     }
 }

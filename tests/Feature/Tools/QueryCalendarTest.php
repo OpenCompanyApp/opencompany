@@ -11,6 +11,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers calendar read/query tools and date filtering.
+ */
 class QueryCalendarTest extends TestCase
 {
     use RefreshDatabase;

@@ -8,6 +8,12 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Lists saved views for a workspace-owned table.
+ *
+ * Views are returned with their structured configuration so agents can inspect
+ * existing filters/sorts before creating or updating another view.
+ */
 class ListTableViews implements Tool
 {
     public function __construct(
@@ -34,6 +40,8 @@ class ListTableViews implements Tool
         try {
             $table = DataTable::forWorkspace()->findOrFail($request['tableId']);
 
+            // Order by creation time to match the user's mental model of saved
+            // views in the UI sidebar.
             $views = $table->views()->orderBy('created_at')->get();
 
             return json_encode($views->map(fn ($v) => [

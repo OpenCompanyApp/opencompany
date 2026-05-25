@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use App\Models\Concerns\BelongsToWorkspace;
 
 class AppSetting extends Model
 {
@@ -48,7 +48,7 @@ class AppSetting extends Model
      * For split config keys (separate provider + model keys):
      *   resolveProviderModel('memory_embedding_model', 'memory.embedding.provider', 'memory.embedding.model')
      *
-     * @return array{0: string, 1: string}  [provider, model]
+     * @return array{0: string, 1: string} [provider, model]
      */
     public static function resolveProviderModel(string $settingKey, string $configKey, ?string $configModelKey = null): array
     {
@@ -98,7 +98,7 @@ class AppSetting extends Model
     /**
      * Batch upsert settings for a category.
      *
-     * @param array<string, mixed> $settings
+     * @param  array<string, mixed>  $settings
      */
     public static function setMany(array $settings, string $category): void
     {
@@ -157,6 +157,23 @@ class AppSetting extends Model
                 'memory_reranking_enabled' => config('memory.reranking.enabled', true),
                 'memory_reranking_model' => config('memory.reranking.provider').':'.config('memory.reranking.model'),
                 'model_context_windows' => [],
+            ],
+            'web' => [
+                'web_search_default_provider' => config('web.search.default_provider', 'tavily'),
+                'web_search_fallback_providers' => config('web.search.fallback_providers', []),
+                'web_fetch_default_provider' => config('web.fetch.default_provider', 'direct'),
+                'web_fetch_fallback_providers' => config('web.fetch.fallback_providers', ['jina']),
+                'web_fetch_allow_external' => config('web.fetch.allow_external', false),
+                'web_cache_ttl_seconds' => config('web.cache.ttl_seconds', 900),
+                'web_search_max_results' => config('web.search.max_results', 8),
+                'web_fetch_max_chars' => config('web.fetch.max_chars', 12000),
+                'web_fetch_max_bytes' => config('web.fetch.max_bytes', 10485760),
+                'web_fetch_allowed_private_hosts' => config('web.fetch.allowed_private_hosts', []),
+                'web_allowed_domains' => [],
+                'web_blocked_domains' => [],
+                'web_language' => null,
+                'web_country' => null,
+                'web_recency' => null,
             ],
         ];
     }

@@ -1,6 +1,8 @@
 const getCsrfToken = () =>
   document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
 
+// Small fetch wrapper for API calls made outside Inertia forms. It applies the
+// headers Laravel expects and converts non-2xx responses into thrown errors.
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const headers = new Headers(options.headers)
   if (!headers.has('X-CSRF-TOKEN')) {

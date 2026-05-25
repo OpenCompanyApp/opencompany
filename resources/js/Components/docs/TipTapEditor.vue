@@ -20,7 +20,7 @@
 <script setup lang="ts">
 import { watch, onBeforeUnmount } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
-import { BubbleMenu } from '@tiptap/extension-bubble-menu'
+import { BubbleMenu } from '@tiptap/vue-3/menus'
 import { useTipTapEditor } from '@/composables/useTipTapEditor'
 import { marked } from 'marked'
 import BubbleMenuBar from './tiptap/BubbleMenuBar.vue'
@@ -67,7 +67,7 @@ watch(() => props.content, (newContent) => {
   // Only update if content actually differs (prevents cursor jump)
   const currentHtml = editor.value.getHTML()
   if (currentHtml !== html) {
-    editor.value.commands.setContent(html, false)
+    editor.value.commands.setContent(html, { emitUpdate: false })
   }
 })
 

@@ -7,7 +7,7 @@
           <div>
             <div class="flex items-center gap-3">
               <Link
-                :href="workspacePath('/integrations')"
+                :href="integrationsUrl()"
                 class="text-sm text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
               >
                 <Icon name="ph:arrow-left" class="w-4 h-4" />
@@ -337,12 +337,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import axios from 'axios'
+import { index as toolCatalogIndex } from '@/actions/App/Http/Controllers/Api/ToolCatalogController'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useMarkdown } from '@/composables/useMarkdown'
+import { wayfinderRequest } from '@/utils/wayfinder'
 
-const { workspacePath } = useWorkspace()
+const { integrationsUrl } = useWorkspace()
 const { renderMarkdown } = useMarkdown()
 
 interface ToolParameter {
@@ -382,6 +383,11 @@ interface StaticDoc {
   slug: string
   title: string
   content: string
+}
+
+type ToolCatalogResponse = AppGroup[] | {
+  groups?: AppGroup[]
+  staticDocs?: StaticDoc[]
 }
 
 interface SidebarItem {
@@ -561,7 +567,7 @@ const sidebarButtonClass = (id: string, dimmed = false) => [
 
 onMounted(async () => {
   try {
-    const { data } = await axios.get('/api/tools/catalog')
+    const { data } = await wayfinderRequest<ToolCatalogResponse>(toolCatalogIndex())
 
     // Handle both old (array) and new (object) response shapes
     if (Array.isArray(data)) {

@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Custom board statuses require a free-form slug instead of the initial
+        // fixed backlog/in_progress/done enum.
         Schema::table('list_items', function (Blueprint $table) {
             $table->string('status', 50)->default('backlog')->change();
         });

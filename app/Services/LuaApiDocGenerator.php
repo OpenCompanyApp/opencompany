@@ -3,29 +3,46 @@
 namespace App\Services;
 
 use App\Agents\Tools\ToolRegistry;
+use App\Models\McpServer;
 use App\Models\User;
-use OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder;
-use OpenCompany\IntegrationCore\Lua\LuaDocRenderer;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
 
 class LuaApiDocGenerator
 {
-    /** @var array<string, array{description: string, functions: array}>|null */
+    /**
+     * @var array<string, array{
+     *     description: string,
+     *     functions: array<int, array{
+     *         name: string,
+     *         description: string,
+     *         fullDescription: string,
+     *         parameters: array<int, array<string, mixed>>,
+     *         sourceToolSlug: string
+     *     }>
+     * }>|null
+     */
     private ?array $cachedNamespaces = null;
 
     private ?User $cachedAgent = null;
 
     public function __construct(
         private ToolRegistry $registry,
-        private ToolProviderRegistry $providerRegistry,
-        private LuaCatalogBuilder $catalogBuilder,
-        private LuaDocRenderer $docRenderer,
     ) {}
 
     public function generateNamespaceIndex(User $agent, ?string $filterNamespace = null): string
     {
-        return $this->docRenderer->generateNamespaceIndex(
-            $this->buildNamespaces($agent),
+        $renderer = $this->docRenderer();
+
+        if ($renderer === null) {
+            return $this->getNamespaceSummary($agent);
+        }
+
+        $namespaces = $filterNamespace !== null && str_ends_with($filterNamespace, '.default')
+            ? $this->buildNamespaces($agent)
+            : $this->buildVisibleNamespaces($agent);
+
+        return $renderer->generateNamespaceIndex(
+            $namespaces,
             $this->getStaticPageContents(),
             $filterNamespace,
         );
@@ -33,7 +50,13 @@ class LuaApiDocGenerator
 
     public function generateNamespaceDocs(string $namespace, User $agent): string
     {
-        return $this->docRenderer->generateNamespaceDocs(
+        $renderer = $this->docRenderer();
+
+        if ($renderer === null) {
+            return $this->getProviderLuaDocs($namespace) ?? "No Lua docs available for namespace '{$namespace}'.";
+        }
+
+        return $renderer->generateNamespaceDocs(
             $namespace,
             $this->buildNamespaces($agent),
             fn (string $ns) => $this->getProviderLuaDocs($ns),
@@ -42,7 +65,13 @@ class LuaApiDocGenerator
 
     public function generateFunctionDocs(string $namespace, string $function, User $agent): string
     {
-        return $this->docRenderer->generateFunctionDocs(
+        $renderer = $this->docRenderer();
+
+        if ($renderer === null) {
+            return "Lua docs renderer unavailable for {$namespace}.{$function}.";
+        }
+
+        return $renderer->generateFunctionDocs(
             $namespace,
             $function,
             $this->buildNamespaces($agent),
@@ -51,16 +80,31 @@ class LuaApiDocGenerator
 
     public function search(string $query, User $agent, int $limit = 10): string
     {
-        return $this->docRenderer->search(
+        $renderer = $this->docRenderer();
+
+        if ($renderer === null) {
+            return $this->getNamespaceSummary($agent);
+        }
+
+        return $renderer->search(
             $query,
-            $this->buildNamespaces($agent),
+            $this->buildVisibleNamespaces($agent),
             $this->getStaticPageContents(),
             $limit,
         );
     }
 
     /**
-     * @return array<string, array{description: string, functions: array}>
+     * @return array<string, array{
+     *     description: string,
+     *     functions: array<int, array{
+     *         name: string,
+     *         description: string,
+     *         fullDescription: string,
+     *         parameters: array<int, array<string, mixed>>,
+     *         sourceToolSlug: string
+     *     }>
+     * }>
      */
     private function buildNamespaces(User $agent): array
     {
@@ -68,10 +112,39 @@ class LuaApiDocGenerator
             return $this->cachedNamespaces;
         }
 
-        $this->cachedNamespaces = $this->catalogBuilder->buildNamespaces(
-            $this->registry->getToolCatalog($agent),
-            ['tasks', 'system', 'lua'],
-        );
+        $builder = $this->catalogBuilder();
+        $catalog = $this->registry->getToolCatalog($agent);
+
+        if (app()->bound(CredentialResolver::class)) {
+            $credentialResolver = app(CredentialResolver::class);
+
+            // Inject account aliases for multi-account integrations and MCP servers.
+            foreach ($catalog as &$app) {
+                $appName = $app['name'] ?? '';
+                if ($appName === '' || empty($app['isIntegration'])) {
+                    continue;
+                }
+
+                if (str_starts_with($appName, 'mcp_')) {
+                    $mcpSlug = substr($appName, 4);
+                    $accounts = McpServer::getAccountsFor($mcpSlug);
+                } else {
+                    $accounts = $credentialResolver->getAccounts($appName);
+                }
+
+                if ($accounts !== []) {
+                    $app['accounts'] = $accounts;
+                }
+            }
+            unset($app);
+        }
+
+        $this->cachedNamespaces = $builder !== null
+            ? $builder->buildNamespaces(
+                $catalog,
+                ['tasks', 'system', 'lua'],
+            )
+            : [];
         $this->cachedAgent = $agent;
 
         return $this->cachedNamespaces;
@@ -82,7 +155,11 @@ class LuaApiDocGenerator
      */
     public function buildFunctionMap(User $agent): array
     {
-        return $this->catalogBuilder->buildFunctionMap($this->buildNamespaces($agent));
+        $builder = $this->catalogBuilder();
+
+        return $builder !== null
+            ? $builder->buildFunctionMap($this->buildNamespaces($agent))
+            : [];
     }
 
     /**
@@ -90,7 +167,23 @@ class LuaApiDocGenerator
      */
     public function buildParameterMap(User $agent): array
     {
-        return $this->catalogBuilder->buildParameterMap($this->buildNamespaces($agent));
+        $builder = $this->catalogBuilder();
+
+        return $builder !== null
+            ? $builder->buildParameterMap($this->buildNamespaces($agent))
+            : [];
+    }
+
+    /**
+     * @return array<string, string> path => accountAlias (only for multi-account function paths)
+     */
+    public function buildAccountMap(User $agent): array
+    {
+        $builder = $this->catalogBuilder();
+
+        return $builder !== null
+            ? $builder->buildAccountMap($this->buildNamespaces($agent))
+            : [];
     }
 
     /**
@@ -98,8 +191,14 @@ class LuaApiDocGenerator
      */
     public function getAvailablePages(User $agent): array
     {
-        return $this->docRenderer->getAvailablePages(
-            $this->buildNamespaces($agent),
+        $renderer = $this->docRenderer();
+
+        if ($renderer === null) {
+            return array_keys($this->getStaticPageContents());
+        }
+
+        return $renderer->getAvailablePages(
+            $this->buildVisibleNamespaces($agent),
             $this->getStaticPageContents(),
         );
     }
@@ -110,11 +209,22 @@ class LuaApiDocGenerator
      */
     private function getProviderLuaDocs(string $namespace): ?string
     {
+        $providerRegistry = $this->providerRegistry();
+
+        if ($providerRegistry === null) {
+            return null;
+        }
+
         $appName = str_starts_with($namespace, 'integrations.')
             ? substr($namespace, strlen('integrations.'))
             : $namespace;
 
-        $provider = $this->providerRegistry->get($appName);
+        // Strip account segment for multi-account namespaces (e.g., "clickup.work" → "clickup")
+        if ($providerRegistry->get($appName) === null && str_contains($appName, '.')) {
+            $appName = explode('.', $appName, 2)[0];
+        }
+
+        $provider = $providerRegistry->get($appName);
         if ($provider === null) {
             return null;
         }
@@ -130,7 +240,16 @@ class LuaApiDocGenerator
     }
 
     /**
-     * @return array<string, array{description: string, functions: array}>
+     * @return array<string, array{
+     *     description: string,
+     *     functions: array<int, array{
+     *         name: string,
+     *         description: string,
+     *         fullDescription: string,
+     *         parameters: array<int, array<string, mixed>>,
+     *         sourceToolSlug: string
+     *     }>
+     * }>
      */
     public function getNamespacesForCatalog(User $agent): array
     {
@@ -173,7 +292,90 @@ class LuaApiDocGenerator
 
     public function getNamespaceSummary(User $agent): string
     {
-        return $this->docRenderer->getNamespaceSummary($this->buildNamespaces($agent));
+        $renderer = $this->docRenderer();
+        $namespaces = $this->buildVisibleNamespaceSummary();
+
+        if ($renderer === null) {
+            $namespaces = array_keys($namespaces);
+
+            if ($namespaces === []) {
+                return 'No external Lua API namespaces are available in this workspace.';
+            }
+
+            return "Available Lua namespaces:\n- ".implode("\n- ", $namespaces);
+        }
+
+        return $renderer->getNamespaceSummary($namespaces);
+    }
+
+    /**
+     * Build namespace names for prompt summaries without instantiating every
+     * integration tool. Full docs still use buildNamespaces().
+     *
+     * @return array<string, array{description: string, functions: array<int, array{name: string, description: string, fullDescription: string, parameters: array<int, array<string, mixed>>, sourceToolSlug: string}>}>
+     */
+    private function buildVisibleNamespaceSummary(): array
+    {
+        $namespaces = [];
+
+        foreach ($this->registry->getAppGroupsMeta() as $app) {
+            $appName = (string) ($app['name'] ?? '');
+
+            if ($appName === '' || in_array($appName, ['tasks', 'system', 'lua'], true)) {
+                continue;
+            }
+
+            $namespace = ! empty($app['isIntegration'])
+                ? "integrations.{$appName}"
+                : $appName;
+
+            $namespaces[$namespace] = [
+                'description' => (string) ($app['description'] ?? ''),
+                'functions' => [],
+            ];
+        }
+
+        uksort($namespaces, function (string $a, string $b): int {
+            $aWeight = str_starts_with($a, 'mcp.') ? 2 : (str_starts_with($a, 'integrations.') ? 1 : 0);
+            $bWeight = str_starts_with($b, 'mcp.') ? 2 : (str_starts_with($b, 'integrations.') ? 1 : 0);
+
+            return $aWeight <=> $bWeight ?: strcmp($a, $b);
+        });
+
+        return $namespaces;
+    }
+
+    /**
+     * Hide redundant ".default" aliases from discovery surfaces while keeping
+     * them available for explicit lookups and runtime execution.
+     *
+     * @return array<string, array{
+     *     description: string,
+     *     functions: array<int, array{
+     *         name: string,
+     *         description: string,
+     *         fullDescription: string,
+     *         parameters: array<int, array<string, mixed>>,
+     *         sourceToolSlug: string
+     *     }>
+     * }>
+     */
+    private function buildVisibleNamespaces(User $agent): array
+    {
+        $namespaces = $this->buildNamespaces($agent);
+
+        foreach (array_keys($namespaces) as $namespace) {
+            if (! str_ends_with($namespace, '.default')) {
+                continue;
+            }
+
+            $base = substr($namespace, 0, -strlen('.default'));
+            if ($base !== '' && array_key_exists($base, $namespaces)) {
+                unset($namespaces[$namespace]);
+            }
+        }
+
+        return $namespaces;
     }
 
     /**
@@ -188,7 +390,7 @@ class LuaApiDocGenerator
         }
 
         $pages = [];
-        foreach (glob($dir . '/*.md') ?: [] as $file) {
+        foreach (glob($dir.'/*.md') ?: [] as $file) {
             $slug = pathinfo($file, PATHINFO_FILENAME);
             $pages[ltrim($slug, '_')] = $file;
         }
@@ -231,6 +433,43 @@ class LuaApiDocGenerator
      */
     private function deriveFunctionName(string $toolName, string $appName): string
     {
-        return $this->catalogBuilder->deriveFunctionName($toolName, $appName);
+        $builder = $this->catalogBuilder();
+
+        return $builder !== null
+            ? $builder->deriveFunctionName($toolName, $appName)
+            : $toolName;
+    }
+
+    private function providerRegistry(): ?object
+    {
+        $class = \OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class;
+
+        if (! class_exists($class) || ! app()->bound($class)) {
+            return null;
+        }
+
+        return app($class);
+    }
+
+    private function catalogBuilder(): ?object
+    {
+        $class = \OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder::class;
+
+        if (! class_exists($class) || ! app()->bound($class)) {
+            return null;
+        }
+
+        return app($class);
+    }
+
+    private function docRenderer(): ?object
+    {
+        $class = \OpenCompany\IntegrationCore\Lua\LuaDocRenderer::class;
+
+        if (! class_exists($class) || ! app()->bound($class)) {
+            return null;
+        }
+
+        return app($class);
     }
 }

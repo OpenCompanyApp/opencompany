@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Domain\Chat\Telegram\Application\TelegramOutboundSync;
 use App\Events\MessageDeleted;
 use App\Events\MessageEdited;
 use App\Events\MessagePinned;
@@ -10,14 +11,24 @@ use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\WorkspaceFile;
 use App\Services\Chat\ChatManager;
+use App\Services\Chat\ChatProviderCapabilities;
 use App\Services\FileSystemService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use OpenCompany\Chatogrator\Contracts\Adapter;
 use OpenCompany\Chatogrator\Messages\FileUpload;
 use OpenCompany\Chatogrator\Messages\PostableMessage;
 
+/**
+ * Mirrors OpenCompany message events back to configured external chat channels.
+ *
+ * Outbound sync is deliberately conservative: it uses a per-message lock, avoids
+ * retries after external calls, and skips messages that originated from external
+ * adapters. Those guards prevent duplicate posts when providers accept a message
+ * but the local worker crashes before recording the external message ID.
+ */
 class SyncToChat implements ShouldQueue
 {
     use InteractsWithQueue;
@@ -36,25 +47,38 @@ class SyncToChat implements ShouldQueue
     {
         $message = $event->message;
 
-        // Prevent duplicate external sends (e.g. if event fires twice)
+        // Prevent duplicate external sends when the same Laravel event is
+        // dispatched twice or multiple workers race the same message.
         $lock = Cache::lock("sync_chat:{$message->id}", 300);
         if (! $lock->get()) {
             return;
         }
 
-        // Double-check: refresh from DB to catch concurrent sends
+        // Refresh after the lock to catch a send completed by another worker
+        // before this job acquired the lock.
         $message->refresh();
         if ($message->external_message_id) {
             return;
         }
 
-        // Skip messages originating from external platforms (echo prevention)
+        // Echo prevention: inbound external messages are already visible on the
+        // provider, and internal system/delegation prompts should not leak back.
         if ($this->isFromExternal($message)) {
             return;
         }
 
         $channel = $message->channel;
         if (! $this->isExternalChannel($channel)) {
+            return;
+        }
+
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->sendMessage($message);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'send_messages')) {
             return;
         }
 
@@ -67,11 +91,14 @@ class SyncToChat implements ShouldQueue
         $authorName = $message->author->name ?? 'System';
 
         try {
-            // Send chart/attachment images first
+            // Send files before text so generated charts/documents are present
+            // in the external thread even if the text body later needs links
+            // stripped to avoid duplicate file previews.
             $sentImagePaths = $this->sendInlineImages($adapter, $threadId, $message->content);
             $this->sendAttachmentImages($adapter, $threadId, $message, $sentImagePaths);
 
-            // Strip sent file links from text content
+            // Strip links for files we already uploaded. External chat clients
+            // often preview bare links, which would duplicate the uploaded file.
             $textContent = $message->content;
             foreach ($sentImagePaths as $sentUrl) {
                 $escaped = preg_quote($sentUrl, '/');
@@ -109,6 +136,16 @@ class SyncToChat implements ShouldQueue
         }
 
         $channel = $message->channel;
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->editMessage($message);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'edit_messages')) {
+            return;
+        }
+
         $adapter = $this->getAdapter($channel);
         if (! $adapter) {
             return;
@@ -137,6 +174,16 @@ class SyncToChat implements ShouldQueue
         }
 
         $channel = $message->channel;
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->deleteMessage($message);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'delete_messages')) {
+            return;
+        }
+
         $adapter = $this->getAdapter($channel);
         if (! $adapter) {
             return;
@@ -164,6 +211,16 @@ class SyncToChat implements ShouldQueue
         }
 
         $channel = $message->channel;
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->pinMessage($message);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'pin_messages')) {
+            return;
+        }
+
         $adapter = $this->getAdapter($channel);
         if (! $adapter) {
             return;
@@ -191,6 +248,16 @@ class SyncToChat implements ShouldQueue
         }
 
         $channel = $message->channel;
+        if ($channel->external_provider === 'telegram') {
+            app(TelegramOutboundSync::class)->addReaction($message, $event->emoji);
+
+            return;
+        }
+
+        if (! app(ChatProviderCapabilities::class)->supports($channel->external_provider, 'reactions')) {
+            return;
+        }
+
         $adapter = $this->getAdapter($channel);
         if (! $adapter) {
             return;
@@ -213,7 +280,7 @@ class SyncToChat implements ShouldQueue
 
     // ── Helpers ─────────────────────────────────────────────────────
 
-    private function getAdapter($channel): ?\OpenCompany\Chatogrator\Contracts\Adapter
+    private function getAdapter($channel): ?Adapter
     {
         try {
             $chat = app(ChatManager::class)->forWorkspace($channel->workspace_id);
@@ -226,12 +293,12 @@ class SyncToChat implements ShouldQueue
 
     private function resolveThreadId($channel): string
     {
-        // Use stored thread_id from external_config if available
+        // Prefer the stored adapter thread ID. Reconstructed IDs are a fallback
+        // for older channels created before thread_id was persisted.
         if (! empty($channel->external_config['thread_id'])) {
             return $channel->external_config['thread_id'];
         }
 
-        // Reconstruct from provider + external_id
         return match ($channel->external_provider) {
             'telegram' => "telegram:{$channel->external_id}",
             'slack' => "slack:{$channel->external_id}:",
@@ -252,6 +319,9 @@ class SyncToChat implements ShouldQueue
     {
         $channel = $message->channel;
 
+        // source stores the origin adapter for inbound messages. The additional
+        // internal sources are model/runtime prompts that should never be posted
+        // as user-visible chat replies.
         return $message->source === $channel?->external_provider
             || $message->source === 'delegation_result'
             || $message->source === 'automation_prompt';
@@ -270,9 +340,15 @@ class SyncToChat implements ShouldQueue
      */
     private function sendInlineImages($adapter, string $threadId, string $content): array
     {
+        if (! app(ChatProviderCapabilities::class)->supports($adapter->name(), 'files')) {
+            return [];
+        }
+
         $sentUrls = [];
 
-        // Phase 1: Workspace files — any /api/files/{uuid}/download URL in any format
+        // Workspace-file links require authenticated app storage access, so the
+        // listener reads bytes locally and uploads the file to the external
+        // adapter instead of sending an inaccessible URL.
         if (preg_match_all('#/api/files/([0-9a-f-]+)/download#', $content, $uuidMatches)) {
             $fileIds = array_unique($uuidMatches[1]);
 
@@ -311,7 +387,9 @@ class SyncToChat implements ShouldQueue
             }
         }
 
-        // Phase 2: Legacy public storage — image embeds only
+        // Public storage paths are legacy generated artifacts. They can be sent
+        // directly from disk, but keep them separate from workspace-file links
+        // because they do not go through FileSystemService permissions.
         if (preg_match_all('/!\[([^\]]*)\]\((\/storage\/[^)]+)\)/', $content, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
                 $alt = $match[1];
@@ -353,6 +431,10 @@ class SyncToChat implements ShouldQueue
      */
     private function sendAttachmentImages($adapter, string $threadId, Message $message, array $alreadySentUrls): void
     {
+        if (! app(ChatProviderCapabilities::class)->supports($adapter->name(), 'files')) {
+            return;
+        }
+
         foreach ($message->attachments as $attachment) {
             $mime = $attachment->mime_type ?? '';
             if (! str_starts_with($mime, 'image/') && $mime !== 'application/pdf') {
@@ -366,7 +448,8 @@ class SyncToChat implements ShouldQueue
             }
 
             try {
-                // Workspace file: /api/files/{id}/download
+                // Workspace attachments use the same upload path as inline
+                // links; skip if an inline reference already uploaded it.
                 if (preg_match('#^/api/files/([^/]+)/download#', $url, $fileMatch)) {
                     $file = WorkspaceFile::find($fileMatch[1]);
                     if (! $file) {
@@ -394,7 +477,9 @@ class SyncToChat implements ShouldQueue
                     continue;
                 }
 
-                // Legacy public storage: /storage/...
+                // Legacy public storage attachments are sent from disk so
+                // external users can view generated artifacts without local app
+                // authentication.
                 if (str_starts_with($url, '/storage/')) {
                     $relativePath = str_replace('/storage/', '', $url);
                     $filePath = storage_path('app/public/'.$relativePath);

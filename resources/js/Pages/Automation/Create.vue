@@ -54,7 +54,7 @@
           </span>
           <span class="w-px h-4 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
           <a
-            :href="workspacePath('/developer/tools')"
+            :href="developerToolsRoute(workspaceRouteParams()).url"
             target="_blank"
             class="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors shrink-0"
           >
@@ -163,8 +163,10 @@ import CronBuilder from '@/Components/automation/CronBuilder.vue'
 import MonacoEditor from '@/Components/developer/MonacoEditor.vue'
 import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { automation } from '@/routes'
+import { tools as developerToolsRoute } from '@/routes/developer'
 
-const { workspacePath } = useWorkspace()
+const { workspaceRouteParams } = useWorkspace()
 const { createAutomation, fetchAgents } = useApi()
 const { data: agentsData } = fetchAgents()
 const agents = computed<User[]>(() => agentsData.value ?? [])
@@ -223,7 +225,7 @@ const isValid = computed(() => {
 })
 
 function goBack() {
-  router.visit(workspacePath('/automation'))
+  router.visit(automation(workspaceRouteParams()))
 }
 
 async function handleSave() {
@@ -240,7 +242,7 @@ async function handleSave() {
       timezone: form.value.timezone,
       keepHistory: form.value.keepHistory,
     })
-    router.visit(workspacePath('/automation'))
+    router.visit(automation(workspaceRouteParams()))
   } finally {
     saving.value = false
   }

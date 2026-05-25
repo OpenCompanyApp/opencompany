@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/approvals` |
+| **Route** | `/w/{workspace}/approvals` |
 | **Name** | `approvals` |
 | **Auth** | Required (`auth`, `verified`) |
 | **Layout** | AppLayout |
@@ -69,9 +69,9 @@ The page is self-contained with no child components.
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `GET /api/approvals` | fetch | Load all approval requests |
-| `PATCH /api/approvals/{id}` | fetch | Update approval status (body: `{ status, respondedById }`) |
+| `PATCH /api/approvals/{id}` | fetch | Update approval status (body: `{ status }`); the backend records `responded_by_id` from `auth()->id()` |
 
-API calls use raw `fetch()` directly, not the `useApi()` composable.
+API calls go through `useApi()` as `fetchApprovals()` and `respondToApproval()`.
 
 ---
 
@@ -87,7 +87,7 @@ API calls use raw `fetch()` directly, not the `useApi()` composable.
 - **Pending items**: Show "Approve" and "Reject" buttons on the right side
 - Buttons disable while processing (`processing` ref tracks current approval ID)
 - On action: calls `PATCH /api/approvals/{id}`, then re-fetches all approvals
-- Responder is hardcoded as `h1` (current user)
+- The responder is resolved server-side from the authenticated user; the page does not send a responder ID
 
 ### Approval Row Content
 - Title (bold), requester name, relative timestamp

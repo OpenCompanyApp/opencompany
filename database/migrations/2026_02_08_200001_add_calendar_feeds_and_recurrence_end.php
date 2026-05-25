@@ -8,10 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // recurrence_end caps recurring events without changing the recurrence
+        // rule format already stored on calendar_events.
         Schema::table('calendar_events', function (Blueprint $table) {
             $table->dateTime('recurrence_end')->nullable()->after('recurrence_rule');
         });
 
+        // Calendar feed tokens allow read-only external calendar subscriptions
+        // without exposing the user's normal session credentials.
         Schema::create('calendar_feeds', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('user_id');

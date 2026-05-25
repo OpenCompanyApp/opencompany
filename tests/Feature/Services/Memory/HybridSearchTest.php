@@ -12,11 +12,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Prism\Prism\Embeddings\Response as EmbeddingResponse;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\ValueObjects\Embedding;
-use Prism\Prism\ValueObjects\EmbeddingsUsage;
-use Prism\Prism\ValueObjects\Meta;
 use Tests\TestCase;
 
 class HybridSearchTest extends TestCase
@@ -45,19 +40,6 @@ class HybridSearchTest extends TestCase
         }
     }
 
-    private function fakeEmbeddingResponse(int $count = 1): void
-    {
-        $responses = [];
-        for ($i = 0; $i < $count; $i++) {
-            $responses[] = new EmbeddingResponse(
-                embeddings: [new Embedding(array_fill(0, 1536, 0.1 * ($i + 1)))],
-                usage: new EmbeddingsUsage(tokens: 10),
-                meta: new Meta(id: 'test', model: 'test'),
-            );
-        }
-        Prism::fake($responses);
-    }
-
     private function createDocument(string $title, string $content): Document
     {
         return Document::create([
@@ -77,7 +59,6 @@ class HybridSearchTest extends TestCase
         $this->requiresPostgres();
 
         $doc = $this->createDocument('Dark Mode', 'User preferences for dark mode in the editor.');
-        $this->fakeEmbeddingResponse(2);
         $this->service->index($doc);
 
         $results = $this->service->search('dark mode');
@@ -91,10 +72,8 @@ class HybridSearchTest extends TestCase
         $this->requiresPostgres();
 
         $doc = $this->createDocument('Deployment Guide', 'Deploy the application using Docker containers.');
-        $this->fakeEmbeddingResponse(1); // Only for indexing
         $this->service->index($doc);
 
-        // Search without faked embedding — embedding will fail, FTS should take over
         $results = $this->service->search('Docker containers');
 
         $this->assertGreaterThanOrEqual(1, $results->count());
@@ -110,7 +89,6 @@ class HybridSearchTest extends TestCase
         $doc1 = $this->createDocument('Exact Match', 'Project planning with detailed roadmap for the team.');
         $doc2 = $this->createDocument('Semantic Only', 'Strategic vision and long-term goals discussed.');
 
-        $this->fakeEmbeddingResponse(3);
         $this->service->index($doc1);
         $this->service->index($doc2);
 
@@ -126,7 +104,6 @@ class HybridSearchTest extends TestCase
         $this->requiresPostgres();
 
         $doc = $this->createDocument('API Design', 'REST API design patterns and best practices.');
-        $this->fakeEmbeddingResponse(2);
         $this->service->index($doc);
 
         config(['memory.search.hybrid_weights.semantic' => 0.7]);
@@ -165,15 +142,9 @@ class HybridSearchTest extends TestCase
 
         $doc1 = $this->createDocument('Agent Memory', 'Agent-specific memory about deployment workflow.');
         $doc2 = $this->createDocument('General Doc', 'General document about deployment best practices.');
-
-        $this->fakeEmbeddingResponse(2);
         $this->service->index($doc1, 'memory', $agent->id);
         $this->service->index($doc2, 'general');
-
-        $this->fakeEmbeddingResponse(1);
         $memoryResults = $this->service->search('deployment', 'memory', $agent->id);
-
-        $this->fakeEmbeddingResponse(1);
         $generalResults = $this->service->search('deployment', 'general');
 
         foreach ($memoryResults as $chunk) {
@@ -194,7 +165,6 @@ class HybridSearchTest extends TestCase
         $this->requiresPostgres();
 
         $doc = $this->createDocument('Trigger Test', 'The PostgreSQL trigger should populate the search vector automatically.');
-        $this->fakeEmbeddingResponse(1);
         $this->service->index($doc);
 
         $chunk = DocumentChunk::where('document_id', $doc->id)->first();
@@ -215,8 +185,6 @@ class HybridSearchTest extends TestCase
 
         $doc1 = $this->createDocument('Score Test A', 'Machine learning algorithms for classification tasks.');
         $doc2 = $this->createDocument('Score Test B', 'Machine learning models and deep neural networks.');
-
-        $this->fakeEmbeddingResponse(3);
         $this->service->index($doc1);
         $this->service->index($doc2);
 

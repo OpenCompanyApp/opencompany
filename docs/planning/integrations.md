@@ -2,6 +2,8 @@
 
 > The complete integration roadmap for making AI agents genuinely useful for real business operations.
 
+Status: Roadmap / planning. The current-state table is code-checked against `config/ai.php`, `config/integrations.php`, `config/chat_integrations.php`, the installed `opencompanyapp/integration-*` packages in `composer.json`/`composer.lock`, the generated integration catalog exposed through `IntegrationCatalog`, and the MCP runtime in `app/Services/Mcp`. Items in the roadmap sections are proposed until there is corresponding app or package code.
+
 ---
 
 ## Why Integrations Matter
@@ -12,18 +14,19 @@ Integrations are what transform OpenCompany from an internal collaboration tool 
 
 ---
 
-## Current State (February 2026)
+## Current State (May 2026)
 
-| Category | Built & Working | Listed in UI (Not Built) |
-|----------|----------------|--------------------------|
-| AI Models | Anthropic, OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, Ollama, OpenRouter, MiniMax, Kimi, GLM, Codex | — |
-| Communication | Telegram | Slack, Discord, Teams, Matrix |
-| Analytics | Plausible, Google Analytics, Google Search Console | — |
-| Productivity | Google Calendar, Google Drive, Google Docs, Google Sheets, Google Contacts, Google Forms, Google Tasks, Gmail, ClickUp, TickTick | Notion, Trello, Obsidian |
-| Developer | — | GitHub, GitLab, Linear, Jira |
-| Visualization | Mermaid, Typst, PlantUML, Vega-Lite, SVG | — |
-| Data & APIs | Webhooks (partial) | Email SMTP, REST API |
-| MCP Servers | DeepWiki, Context7, Cloudflare Docs, Exa Search | — |
+| Category | Built / runnable in current app | Catalog-listed or planned |
+|----------|-------------------------------|---------------------------|
+| AI Models | Anthropic, OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, Ollama, OpenRouter, Perplexity, MiniMax, Kimi, Z.AI, Codex | Additional model IDs are accepted for known providers when configured |
+| Communication | Chat platform settings exist for Telegram, Slack, Discord, Teams, Google Chat, GitHub chat, and Linear chat. Slack, Discord, Teams, Google Chat, GitHub chat, and Linear chat flow through Chatogrator adapters at `/api/webhooks/chat/{adapter}`. Telegram uses the same public chat webhook namespace but is app-owned under `App\Domain\Chat\Telegram`, with `/api/webhooks/telegram` retained only as a non-mutating migration endpoint. | Provider-specific hardening, setup UX, gateway workers, and interaction coverage remain per-adapter work where the package/app code does not yet support the full provider surface. Telegram-specific richness belongs in the app-owned Chat domain rather than the generic package bridge. |
+| Package Catalog | `composer.lock` currently installs 585 `opencompanyapp/integration-*` packages plus `opencompany/chatogrator` v1.2.0. The generated package catalog currently exposes 591 integrations and 41,493 tools through `IntegrationCatalog`, with 595 providers registered in `ToolProviderRegistry`. | Catalog entries are discoverable metadata until the corresponding package/runtime support, credentials, and workspace configuration make them executable. |
+| Analytics | Plausible, Google Analytics, Google Search Console | Broader catalog analytics integrations remain catalog/planning unless installed |
+| Productivity | Google Calendar, Google Drive, Google Docs, Google Sheets, Google Contacts, Google Forms, Google Tasks, Gmail, ClickUp, TickTick | Notion, Trello, Obsidian and similar catalog entries remain future package/runtime work unless installed |
+| Developer | Remote MCP servers and catalog/package discovery | GitHub, GitLab, Linear, Jira app-specific runtimes remain planned unless backed by installed packages or MCP servers |
+| Visualization | Mermaid, Typst, PlantUML, Vega-Lite, SVG | Additional rendering packages are catalog/planning unless installed |
+| Data & APIs | Webhooks (partial), Celestial, CoinGecko, ExchangeRate, TrustMRR, World Bank, Aircall | REST/API catalog entries remain catalog/planning unless installed |
+| MCP Servers | Workspace-configured remote MCP servers with discovery cache | Example servers such as DeepWiki, Context7, Cloudflare Docs, and Exa depend on workspace configuration |
 
 ---
 
@@ -555,15 +558,22 @@ Zero-code integration through the MCP config modal. The `McpServer` model discov
 **Best for:** Services that already expose an MCP endpoint, or for Phase 3 long-tail coverage.
 
 ### Pattern 4: Webhook + REST API
-For services that push data via webhooks. The existing webhook system receives events and routes them to agents/channels/tasks.
+For services that push data via webhooks. The current generic webhook backend
+creates workspace-owned endpoints, verifies per-webhook secrets, and records
+receipt diagnostics (`last_triggered_at`, `call_count`, and encrypted
+`last_payload`). Delivery into agents, channels, or tasks still needs an
+explicit processor per workflow.
 
 **Best for:** Stripe webhooks, GitHub webhooks, Shopify webhooks.
 
-### Pattern 5: Lua Scripting Bridge (Planned)
-Lightweight deterministic automations that call integration APIs via `oc.integrations.query()` and `oc.http.post()` at zero token cost.
+### Pattern 5: Lua Scripting Bridge (Partial / Current)
+Lightweight deterministic automations that call integration APIs through the
+current `app.*` Lua bridge and script-automation runtime at zero token cost.
+The older `oc.integrations.query()` / `oc.http.post()` examples are roadmap
+syntax unless backed by a current Lua bridge function.
 
 **Best for:** Simple routing, status sync, conditional notifications.
 
 ---
 
-*Last Updated: February 2026*
+*Last Updated: May 2026*

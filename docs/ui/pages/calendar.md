@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/calendar` |
+| **Route** | `/w/{workspace}/calendar` |
 | **Name** | `calendar` |
 | **Auth** | Required |
 | **Layout** | AppLayout |

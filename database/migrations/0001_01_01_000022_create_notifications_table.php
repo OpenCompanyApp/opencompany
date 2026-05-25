@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Notifications are user-targeted records with optional action links and
+        // actor metadata for inbox-style UI.
         Schema::create('notifications', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->enum('type', ['approval', 'task', 'message', 'agent', 'system', 'mention']);

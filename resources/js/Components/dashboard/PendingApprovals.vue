@@ -25,7 +25,7 @@
     <!-- Show more -->
     <Link
       v-if="approvals.length > 3"
-      :href="workspacePath('/approvals')"
+      :href="approvalsUrl()"
       class="block px-4 py-2 text-xs text-center text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 border-t border-neutral-100 dark:border-neutral-800"
     >
       View all {{ approvals.length }} approvals
@@ -39,7 +39,7 @@ import type { ApprovalRequest } from '@/types'
 import PendingApprovalItem from '@/Components/dashboard/PendingApprovalItem.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 
-const { workspacePath } = useWorkspace()
+const { approvalsUrl } = useWorkspace()
 
 defineProps<{
   approvals: ApprovalRequest[]

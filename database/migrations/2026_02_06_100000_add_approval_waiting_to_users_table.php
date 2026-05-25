@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Agents waiting on a human decision persist the approval ID so queues
+        // and webhook callbacks can resume the correct run.
         Schema::table('users', function (Blueprint $table) {
             $table->string('awaiting_approval_id')->nullable()->after('behavior_mode');
             $table->boolean('must_wait_for_approval')->default(false)->after('awaiting_approval_id');

@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Tenant boundary for OpenCompany data.
+ *
+ * Human users join through workspace_members, while agents belong directly via
+ * users.workspace_id. Most app queries should scope through this model or the
+ * BelongsToWorkspace trait to avoid cross-workspace data leaks.
+ */
 class Workspace extends Model
 {
     use HasUuids;

@@ -6,6 +6,9 @@ use App\Models\User;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 
+/**
+ * Browser smoke coverage for pages that must keep rendering in Dusk.
+ */
 class ScreenshotTest extends DuskTestCase
 {
     public function test_screenshot_all_pages(): void

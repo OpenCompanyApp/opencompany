@@ -22,7 +22,7 @@ class LuaExec implements Tool
 
     public function description(): string
     {
-        return 'Execute Lua code with app.* namespace access. All app.* functions are pre-loaded — do NOT use require(). Always use lua_read_doc first to look up function names and parameters. Use print() or dump() for output (tables are auto-serialized).';
+        return 'Execute Lua code with app.* namespace access. All app.* functions are pre-loaded; do not use require(). Read the relevant docs with lua_read_doc before calling app.* functions, do not assume raw upstream API shapes, and inspect with a minimal call first when return shape is unclear. Use print() or dump() for output (tables are auto-serialized).';
     }
 
     public function handle(Request $request): string
@@ -57,16 +57,16 @@ class LuaExec implements Tool
             }
 
             if ($result->result !== null) {
-                $lines[] = 'Return value: ' . $this->formatResult($result->result);
+                $lines[] = 'Return value: '.$this->formatResult($result->result);
             }
 
             $lines[] = "Execution time: {$result->executionTime}ms";
 
             if ($result->memoryUsage !== null) {
-                $lines[] = 'Memory: ' . $this->formatBytes($result->memoryUsage);
+                $lines[] = 'Memory: '.$this->formatBytes($result->memoryUsage);
             }
 
-            $humanText = empty($lines) ? 'Script executed successfully with no output.' : implode("\n", $lines);
+            $humanText = implode("\n", $lines);
 
             // Prepend structured metadata for the frontend task detail view.
             // Placed first so it survives the 2000-char truncation in logToolSteps.
@@ -97,14 +97,14 @@ class LuaExec implements Tool
     private function formatBytes(int $bytes): string
     {
         if ($bytes >= 1024 * 1024) {
-            return round($bytes / 1024 / 1024, 1) . ' MB';
+            return round($bytes / 1024 / 1024, 1).' MB';
         }
 
         if ($bytes >= 1024) {
-            return round($bytes / 1024, 1) . ' KB';
+            return round($bytes / 1024, 1).' KB';
         }
 
-        return $bytes . ' B';
+        return $bytes.' B';
     }
 
     /** @return array<string, mixed> */

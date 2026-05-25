@@ -27,6 +27,13 @@ class ModelContextRegistryTest extends TestCase
         $this->assertEquals(128_000, $result);
     }
 
+    public function test_provider_aware_lookup_uses_ai_catalog_metadata(): void
+    {
+        $result = $this->registry->getContextWindow('claude-sonnet-4-5-20250929', 'anthropic');
+
+        $this->assertEquals(200_000, $result);
+    }
+
     public function test_prefix_match_returns_longest(): void
     {
         // 'gpt-4o-mini-2024-07-18' starts with 'gpt-4o-mini' (128K) and also 'gpt-4o' (128K)
@@ -56,6 +63,15 @@ class ModelContextRegistryTest extends TestCase
         AppSetting::setValue('model_context_windows', ['my-custom-model' => 64_000], 'memory');
 
         $result = $this->registry->getContextWindow('my-custom-model');
+
+        $this->assertEquals(64_000, $result);
+    }
+
+    public function test_provider_specific_override_takes_precedence(): void
+    {
+        AppSetting::setValue('model_context_windows', ['anthropic:claude-sonnet-4-5-20250929' => 64_000], 'memory');
+
+        $result = $this->registry->getContextWindow('claude-sonnet-4-5-20250929', 'anthropic');
 
         $this->assertEquals(64_000, $result);
     }

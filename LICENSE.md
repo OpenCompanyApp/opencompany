@@ -1,112 +1,97 @@
-# OpenCompany Sustainable Use License
+# Business Source License 1.1
 
-Version 1.1, February 2025
+License text copyright (c) 2024 MariaDB plc, All Rights Reserved.
+"Business Source License" is a trademark of MariaDB plc.
 
-## Acceptance
+## Parameters
 
-By using the software, you agree to all of the terms and conditions below.
+**Licensor:** Ginger Media BV
 
-## Copyright License
+**Licensed Work:** OpenCompany
 
-The licensor grants you a non-exclusive, royalty-free, worldwide, non-sublicensable, non-transferable license to use, copy, distribute, make available, and prepare derivative works of the software, in each case subject to the limitations below.
+**Additional Use Grant:** You may make Production Use of the Licensed Work solely for (i) Your own internal business operations, (ii) the internal business operations of entities that control, are controlled by, or are under common control with You, and (iii) a single customer's internal business operations, where You or Your service providers implement, operate, support, maintain, or manage the Licensed Work exclusively for that customer.
 
-## Limitations
+**Change Date:** The fourth anniversary of the first publicly available distribution of each version of the Licensed Work under this License.
 
-You may use or modify the software only for your own internal business purposes or for non-commercial or personal use.
+**Change License:** GNU General Public License version 3.0 or later.
 
-You may distribute the software or provide it to others only if you do so free of charge for non-commercial purposes.
+## Terms
 
-You may not alter, remove, or obscure any licensing, copyright, or other notices of the licensor in the software. Any use of the licensor's trademarks is subject to applicable law.
+The Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make non-production use of the Licensed Work. The
+Licensor may make an Additional Use Grant, above, permitting limited production
+use.
 
-## Permitted Uses
+Effective on the Change Date, or the fourth anniversary of the first publicly
+available distribution of a specific version of the Licensed Work under this
+License, whichever comes first, the Licensor hereby grants you rights under the
+terms of the Change License, and the rights granted in the paragraph above
+terminate.
 
-The following uses are explicitly permitted under this license:
+If your use of the Licensed Work does not comply with the requirements currently
+in effect as described in this License, you must purchase a commercial license
+from the Licensor, its affiliated entities, or authorized resellers, or you
+must refrain from using the Licensed Work.
 
-1. **Internal Business Use**: Using the software within your organization for your own business operations.
+All copies of the original and modified Licensed Work, and derivative works of
+the Licensed Work, are subject to this License. This License applies separately
+for each version of the Licensed Work and the Change Date may vary for each
+version of the Licensed Work released by Licensor.
 
-2. **Personal Use**: Using the software for personal, non-commercial purposes.
+You must conspicuously display this License on each original or modified copy of
+the Licensed Work. If you receive the Licensed Work in original or modified form
+from a third party, the terms and conditions set forth in this License apply to
+your use of that work.
 
-3. **Self-Hosting**: Deploying and running the software on your own infrastructure or cloud accounts.
+Any use of the Licensed Work in violation of this License will automatically
+terminate your rights under this License for the current and all other versions
+of the Licensed Work.
 
-4. **Modifications**: Modifying the software for your own use, without obligation to share changes.
+This License does not grant you any right in any trademark or logo of Licensor
+or its affiliates (provided that you may use a trademark or logo of Licensor as
+expressly required by this License).
 
-5. **Professional Services**: Offering consulting, implementation, or support services related to the software, including:
-   - Setting up the software on a client's infrastructure
-   - Building workflows, agents, or configurations for clients
-   - Charging fees for your professional services and expertise
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED WORK IS PROVIDED ON AN
+"AS IS" BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS
+OR IMPLIED, INCLUDING (WITHOUT LIMITATION) WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND TITLE.
 
-   In such cases, the client becomes the licensee and must comply with this license for their use of the software.
+MariaDB hereby grants you permission to use this License's text to license your
+works, and to refer to it using the trademark "Business Source License", as
+long as you comply with the Covenants of Licensor below.
 
-6. **Marketplace & Agent Distribution**: Creating, selling, or distributing agents, workflows, templates, integrations, and configurations ("add-ons") built for the software is permitted, provided that:
-   - The add-on does not include or bundle the software itself, in whole or in part.
-   - The buyer or recipient independently holds a valid license for the software.
-   - All marketplace listings and add-on packaging include clear and prominent attribution that the add-on is "Built for OpenCompany" or a substantially similar designation.
-   - The add-on does not circumvent or replicate enterprise features covered by the OpenCompany Enterprise License.
+## Covenants of Licensor
 
-   For clarity, operating a marketplace or storefront that facilitates the sale or distribution of add-ons is permitted under the same conditions. This does not grant the right to host or operate the software on behalf of add-on buyers.
+In consideration of the right to use this License's text and the "Business
+Source License" name and trademark, Licensor covenants to MariaDB, and to all
+other recipients of the licensed work to be provided by Licensor:
 
-   The licensor reserves the right to operate its own marketplace for add-ons. The existence of an official marketplace does not restrict or limit your right to distribute add-ons through independent channels under this section.
+To specify as the Change License the GPL Version 2.0 or any later version, or a
+license that is compatible with GPL Version 2.0 or a later version, where
+"compatible" means that software provided under the Change License can be
+included in a program with software provided under GPL Version 2.0 or a later
+version. Licensor may specify additional Change Licenses without limitation.
 
-## Prohibited Uses
+To either: (a) specify an additional grant of rights to use that does not
+impose any additional restriction on the right granted in this License, as the
+Additional Use Grant; or (b) insert the text "None" as the Additional Use
+Grant, if no such grant is intended. Not to modify this License in any other
+way.
 
-The following uses are prohibited without a separate commercial license:
+## Notice
 
-1. **Hosted Services**: Hosting the software and providing access to third parties as a service, whether paid or free.
+The Business Source License (this document, or the "License") is not an Open
+Source license. However, the Licensed Work will eventually be made available
+under an Open Source License, as stated in this License.
 
-2. **Commercial Distribution**: Selling, licensing, or commercially distributing the software or derivative works. This does not apply to add-ons distributed in accordance with Permitted Use 6 above.
+For more information on the use of the Business Source License generally, please
+visit:
 
-3. **Multi-Tenant Hosting**: Operating a single installation of the software to serve multiple customers or clients.
-
-4. **White-Labeling**: Removing or replacing the software's branding to resell or redistribute as your own product.
-
-5. **Embedding**: Incorporating the software into a commercial product or service where the value derives substantially from the software's functionality.
-
-## Patents
-
-The licensor grants you a license, under any patent claims the licensor can license or becomes able to license, to make, have made, use, sell, offer for sale, import, and have imported the software, in each case subject to the limitations and conditions in this license. This license does not cover any patent claims that you cause to be infringed by modifications or additions to the software.
-
-If you or your company make any written claim that the software infringes or contributes to infringement of any patent, your license for the software granted under these terms ends immediately.
-
-## Notices
-
-You must ensure that anyone who gets a copy of any part of the software from you also gets a copy of these terms.
-
-If you modify the software, you must include in any modified copies of the software a prominent notice stating that you have modified the software.
-
-## No Other Rights
-
-These terms do not imply any licenses other than those expressly granted in these terms.
-
-## Termination
-
-If you use the software in violation of these terms, such use is not licensed, and your license will automatically terminate. If the licensor provides you with a notice of your violation, and you cease all violation of this license within 30 days of your receipt of that notice, your license will be reinstated retroactively. However, if you violate these terms after such reinstatement, any additional violation of these terms will cause your license to terminate automatically and permanently.
-
-## No Liability
-
-AS FAR AS THE LAW ALLOWS, THE SOFTWARE COMES AS IS, WITHOUT ANY WARRANTY OR CONDITION, AND THE LICENSOR WILL NOT BE LIABLE TO YOU FOR ANY DAMAGES ARISING OUT OF THESE TERMS OR THE USE OR NATURE OF THE SOFTWARE, UNDER ANY KIND OF LEGAL CLAIM.
-
-## Definitions
-
-The **licensor** is Ginger Media BV, a company registered in Belgium (VAT: BE0774897861), and its successors and assigns.
-
-The **software** is the software the licensor makes available under these terms, excluding any files or directories that contain ".ee." in their filename or ".ee" in their path, which are subject to the OpenCompany Enterprise License.
-
-**You** refers to the individual or entity agreeing to these terms.
-
-**Your company** is any legal entity, sole proprietorship, or other kind of organization that you work for, plus all organizations that have control over, are under the control of, or are under common control with that organization. Control means ownership of substantially all the assets of an entity, or the power to direct its management and policies by vote, contract, or otherwise. Control can be direct or indirect.
-
-**Your license** is the license granted to you for the software under these terms.
-
-**Add-ons** are agents, workflows, templates, integrations, configurations, and other works that are designed to operate with the software but do not include the software itself, in whole or in part. Add-ons may be distributed under their own license terms, provided that such terms do not conflict with this license.
-
-## Governing Law
-
-This license is governed by the laws of Belgium, without regard to its conflict of laws principles.
+- https://mariadb.com/bsl11/
+- https://mariadb.com/bsl-faq-adopting/
 
 ## Commercial Licensing
 
-For uses not permitted under this license, commercial licenses are available. Visit the project website for more information.
-
----
-
-Copyright (c) 2025 Ginger Media BV. All rights reserved.
+Uses outside the Additional Use Grant require a separate commercial agreement
+with Ginger Media BV. See [LICENSING.md](LICENSING.md) and
+[COMMERCIAL_USE.md](COMMERCIAL_USE.md) for practical guidance.

@@ -122,7 +122,7 @@ return new class extends Migration
             'data_tables',
             'scheduled_automations',
             'mcp_servers',
-            'prism_api_keys',
+            'ai_gateway_api_keys',
             'list_statuses',
             'list_templates',
             'document_chunks',
@@ -142,7 +142,7 @@ return new class extends Migration
                 DB::table($tableName)->whereNull('workspace_id')->update(['workspace_id' => $workspaceId]);
 
                 // Make NOT NULL, add FK + index
-                Schema::table($tableName, function (Blueprint $table) use ($tableName) {
+                Schema::table($tableName, function (Blueprint $table) {
                     $table->uuid('workspace_id')->nullable(false)->change();
                     $table->foreign('workspace_id')->references('id')->on('workspaces')->cascadeOnDelete();
                     $table->index('workspace_id');
@@ -206,7 +206,7 @@ return new class extends Migration
             'channels', 'tasks', 'documents', 'list_items',
             'integration_settings', 'app_settings', 'activities',
             'notifications', 'calendar_events', 'data_tables',
-            'scheduled_automations', 'mcp_servers', 'prism_api_keys',
+            'scheduled_automations', 'mcp_servers', 'ai_gateway_api_keys',
             'list_statuses', 'list_templates', 'document_chunks',
             'conversation_summaries', 'embedding_cache', 'calendar_feeds',
         ];

@@ -13,6 +13,9 @@ use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers kanban/list item query tools across status, assignee, and project filters.
+ */
 class QueryListItemsTest extends TestCase
 {
     use RefreshDatabase;

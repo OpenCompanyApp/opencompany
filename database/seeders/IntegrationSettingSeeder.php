@@ -17,30 +17,31 @@ class IntegrationSettingSeeder extends Seeder
         $workspace = Workspace::where('slug', 'default')->first();
         $workspaceId = $workspace->id;
 
-        $apiKey = env('GLM_API_KEY', '');
-        $codingUrl = env('GLM_URL', 'https://api.z.ai/api/coding/paas/v4');
+        $apiKey = env('ZAI_API_KEY', env('GLM_API_KEY', ''));
+        $codingUrl = env('Z_URL', env('GLM_URL', 'https://api.z.ai/api/coding/paas/v4'));
+        $apiUrl = env('Z_API_URL', 'https://open.bigmodel.cn/api/paas/v4');
 
-        // GLM general (Zhipu AI open platform)
+        // Z.AI general API endpoint.
         IntegrationSetting::create([
             'id' => Str::uuid()->toString(),
-            'integration_id' => 'glm',
+            'integration_id' => 'z-api',
             'config' => [
                 'api_key' => $apiKey,
-                'url' => 'https://open.bigmodel.cn/api/paas/v4',
-                'default_model' => 'glm-4-plus',
+                'url' => $apiUrl,
+                'default_model' => 'glm-5.1',
             ],
             'enabled' => !empty($apiKey),
             'workspace_id' => $workspaceId,
         ]);
 
-        // GLM Coding Plan (z.ai coding endpoint)
+        // Z.AI Coding Plan endpoint.
         IntegrationSetting::create([
             'id' => Str::uuid()->toString(),
-            'integration_id' => 'glm-coding',
+            'integration_id' => 'z',
             'config' => [
                 'api_key' => $apiKey,
                 'url' => $codingUrl,
-                'default_model' => 'glm-4.7',
+                'default_model' => 'glm-5.1',
             ],
             'enabled' => !empty($apiKey),
             'workspace_id' => $workspaceId,

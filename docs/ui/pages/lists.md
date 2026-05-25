@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/lists` |
+| **Route** | `/w/{workspace}/lists` |
 | **Name** | `lists` |
 | **Auth** | Required |
 | **Layout** | AppLayout |

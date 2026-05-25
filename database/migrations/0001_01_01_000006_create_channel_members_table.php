@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Membership controls channel visibility and per-user unread state.
         Schema::create('channel_members', function (Blueprint $table) {
             $table->id();
             $table->string('channel_id');

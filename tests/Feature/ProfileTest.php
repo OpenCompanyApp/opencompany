@@ -6,6 +6,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Covers authenticated profile editing and account deletion behavior.
+ */
 class ProfileTest extends TestCase
 {
     use RefreshDatabase;

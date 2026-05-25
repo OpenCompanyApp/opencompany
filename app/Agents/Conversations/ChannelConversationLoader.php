@@ -2,7 +2,9 @@
 
 namespace App\Agents\Conversations;
 
+use App\Agents\Support\MessageAttachmentContext;
 use App\Jobs\CompactConversationJob;
+use App\Models\Channel;
 use App\Models\ConversationSummary;
 use App\Models\Message;
 use App\Models\User;
@@ -16,6 +18,7 @@ class ChannelConversationLoader
     public function __construct(
         private ConversationCompactionService $compactionService,
         private AgentPermissionService $permissionService,
+        private MessageAttachmentContext $attachmentContext,
     ) {}
 
     /**
@@ -36,6 +39,8 @@ class ChannelConversationLoader
         }
 
         $sdkMessages = [];
+        $channel = Channel::find($channelId);
+        $workspaceId = (string) ($channel?->workspace_id ?? $agent->workspace_id);
 
         // 1. Check for existing conversation summary
         $summary = ConversationSummary::where('channel_id', $channelId)
@@ -60,16 +65,17 @@ class ChannelConversationLoader
             }
         }
 
-        foreach ($query->get() as $message) {
-            if (empty($message->content)) {
+        foreach ($query->with(['author', 'attachments'])->get() as $message) {
+            $content = $this->contentWithAttachments($message, $workspaceId);
+            if ($content === '') {
                 continue;
             }
 
             if ($message->author_id === $agent->id) {
-                $sdkMessages[] = new AssistantMessage($message->content);
+                $sdkMessages[] = new AssistantMessage($content);
             } else {
                 $authorName = $message->author->name ?? 'User';
-                $sdkMessages[] = new UserMessage("[{$authorName}]: {$message->content}");
+                $sdkMessages[] = new UserMessage("[{$authorName}]: {$content}");
             }
         }
 
@@ -79,5 +85,15 @@ class ChannelConversationLoader
         }
 
         return $sdkMessages;
+    }
+
+    private function contentWithAttachments(Message $message, string $workspaceId): string
+    {
+        $parts = array_filter([
+            trim((string) $message->content),
+            $this->attachmentContext->textForMessage($message, $workspaceId),
+        ]);
+
+        return trim(implode("\n\n", $parts));
     }
 }

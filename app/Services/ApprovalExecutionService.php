@@ -9,11 +9,20 @@ use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Task;
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request as ToolRequest;
 
+/**
+ * Applies approval decisions to pending tool/access requests.
+ *
+ * Approval callbacks can arrive from external chat buttons or in-app flows after
+ * the original agent job has paused. This service re-binds workspace context,
+ * executes the approved side effect once, records a message result, and resumes
+ * the waiting agent when appropriate.
+ */
 class ApprovalExecutionService
 {
     public function __construct(
@@ -26,20 +35,22 @@ class ApprovalExecutionService
     public function executeApprovedTool(ApprovalRequest $approval, bool $agentIsWaiting): void
     {
         $context = $approval->tool_execution_context ?? [];
-        /** @var \App\Models\User|null $agent */
+        /** @var User|null $agent */
         $agent = $approval->requester;
         $toolSlug = $context['tool_slug'] ?? null;
 
-        if (!$agent || !$toolSlug) {
+        if (! $agent || ! $toolSlug) {
             return;
         }
 
-        // Bind workspace context so workspace() and forWorkspace() work
+        // Queue and webhook callbacks may not have ResolveWorkspace middleware.
+        // Bind from the requesting agent before instantiating tools that rely on
+        // workspace() or forWorkspace().
         $this->bindWorkspaceContext($agent);
 
         $tool = $this->toolRegistry->instantiateToolBySlug($toolSlug, $agent);
 
-        if (!$tool) {
+        if (! $tool) {
             return;
         }
 
@@ -47,7 +58,8 @@ class ApprovalExecutionService
             $toolRequest = new ToolRequest($context['parameters'] ?? []);
             $result = $tool->handle($toolRequest);
 
-            // Post the result as a message to the channel
+            // Post the result as a normal channel message so the resumed agent
+            // sees the approved side effect in conversation history.
             $channelId = $approval->channel_id ?? ($context['parameters']['channelId'] ?? null);
             if ($channelId) {
                 $channel = Channel::find($channelId);
@@ -61,7 +73,9 @@ class ApprovalExecutionService
                     ]);
                     $channel->update(['last_message_at' => now()]);
 
-                    // Resume agent if it was waiting for this approval
+                    // Resume only the agent that explicitly parked on this
+                    // approval. Non-waiting approvals still execute, but they
+                    // should not create an extra response loop.
                     if ($agentIsWaiting) {
                         $agent->clearAwaitingApproval();
                         $task = Task::createPending($resultMessage, $agent, $channelId);
@@ -87,19 +101,21 @@ class ApprovalExecutionService
     public function executeApprovedAccess(ApprovalRequest $approval, bool $agentIsWaiting): void
     {
         $context = $approval->tool_execution_context ?? [];
-        /** @var \App\Models\User|null $agent */
+        /** @var User|null $agent */
         $agent = $approval->requester;
         $scopeType = $context['scope_type'] ?? null;
         $scopeKey = $context['scope_key'] ?? null;
 
-        if (!$agent || !$scopeType || !$scopeKey) {
+        if (! $agent || ! $scopeType || ! $scopeKey) {
             return;
         }
 
         $this->bindWorkspaceContext($agent);
 
         try {
-            // Remove any existing deny record for this scope
+            // Approval of access reverses a previous deny for the exact scope
+            // before creating the allow record, so future permission resolution
+            // has one clear winning rule.
             AgentPermission::forAgent($agent->id)
                 ->where('scope_type', $scopeType)
                 ->where('scope_key', $scopeKey)
@@ -116,7 +132,8 @@ class ApprovalExecutionService
                 'requires_approval' => false,
             ]);
 
-            // Notify the agent via its last active channel
+            // Notify through the original channel when possible. That message
+            // becomes the prompt that wakes the agent if it was waiting.
             $channelId = $approval->channel_id;
             if ($channelId) {
                 $channel = Channel::find($channelId);
@@ -157,9 +174,9 @@ class ApprovalExecutionService
      */
     public function handleRejectedTool(ApprovalRequest $approval): void
     {
-        /** @var \App\Models\User|null $agent */
+        /** @var User|null $agent */
         $agent = $approval->requester;
-        if (!$agent) {
+        if (! $agent) {
             return;
         }
 
@@ -194,7 +211,7 @@ class ApprovalExecutionService
     /**
      * Bind workspace context from agent so workspace() and forWorkspace() work in queue workers.
      */
-    private function bindWorkspaceContext(\App\Models\User $agent): void
+    private function bindWorkspaceContext(User $agent): void
     {
         if ($agent->workspace_id) {
             $workspace = Workspace::find($agent->workspace_id);

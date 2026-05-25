@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Credit transactions keep a ledger-style history linked to the user,
+        // task, or approval that caused the balance change.
         Schema::create('credit_transactions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->enum('type', ['usage', 'purchase', 'refund', 'bonus']);

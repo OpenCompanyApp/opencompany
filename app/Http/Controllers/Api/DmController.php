@@ -11,53 +11,25 @@ use App\Models\DirectMessage;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Chat\DirectMessageResolver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class DmController extends Controller
 {
+    public function __construct(
+        private readonly DirectMessageResolver $directMessages,
+    ) {}
+
     /**
      * Get or create a DM conversation with a user.
      */
-    public function show(string $userId): \Illuminate\Http\JsonResponse
+    public function show(string $userId): JsonResponse
     {
         $currentUserId = auth()->id();
 
-        // Find or create the DM conversation (scoped to workspace)
-        $dm = DirectMessage::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
-            ->where(function ($outer) use ($currentUserId, $userId) {
-                $outer->where(function ($q) use ($currentUserId, $userId) {
-                    $q->where('user1_id', $currentUserId)->where('user2_id', $userId);
-                })->orWhere(function ($q) use ($currentUserId, $userId) {
-                    $q->where('user1_id', $userId)->where('user2_id', $currentUserId);
-                });
-            })->first();
-
-        if (!$dm) {
-            // Create a new DM conversation
-            $channel = Channel::create([
-                'id' => Str::uuid()->toString(),
-                'name' => 'DM',
-                'type' => 'dm',
-                'workspace_id' => workspace()->id,
-            ]);
-
-            foreach ([$currentUserId, $userId] as $memberId) {
-                ChannelMember::create([
-                    'id' => Str::uuid()->toString(),
-                    'channel_id' => $channel->id,
-                    'user_id' => $memberId,
-                    'role' => 'member',
-                ]);
-            }
-
-            $dm = DirectMessage::create([
-                'id' => Str::uuid()->toString(),
-                'user1_id' => $currentUserId,
-                'user2_id' => $userId,
-                'channel_id' => $channel->id,
-            ]);
-        }
+        $dm = $this->directMessages->getOrCreate($currentUserId, $userId);
 
         $otherUser = User::find($userId);
 
@@ -67,8 +39,9 @@ class DmController extends Controller
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function (Message $msg) {
-                /** @var \App\Models\User $author */
+                /** @var User $author */
                 $author = $msg->author;
+
                 return [
                     'id' => $msg->id,
                     'content' => $msg->content,
@@ -103,24 +76,12 @@ class DmController extends Controller
     /**
      * Send a message in a DM conversation.
      */
-    public function store(Request $request, string $userId): \Illuminate\Http\JsonResponse
+    public function store(Request $request, string $userId): JsonResponse
     {
         $currentUserId = auth()->id();
         $currentUser = auth()->user();
 
-        // Find the DM conversation (scoped to workspace)
-        $dm = DirectMessage::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
-            ->where(function ($outer) use ($currentUserId, $userId) {
-                $outer->where(function ($q) use ($currentUserId, $userId) {
-                    $q->where('user1_id', $currentUserId)->where('user2_id', $userId);
-                })->orWhere(function ($q) use ($currentUserId, $userId) {
-                    $q->where('user1_id', $userId)->where('user2_id', $currentUserId);
-                });
-            })->first();
-
-        if (!$dm) {
-            return response()->json(['error' => 'Conversation not found'], 404);
-        }
+        $dm = $this->directMessages->getOrCreate($currentUserId, $userId);
 
         // Create the message
         $message = Message::create([
@@ -169,7 +130,7 @@ class DmController extends Controller
     /**
      * Mark a DM conversation as read.
      */
-    public function markRead(string $userId): \Illuminate\Http\JsonResponse
+    public function markRead(string $userId): JsonResponse
     {
         $currentUserId = auth()->id();
 
@@ -190,5 +151,4 @@ class DmController extends Controller
 
         return response()->json(['success' => true]);
     }
-
 }

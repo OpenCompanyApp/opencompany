@@ -81,7 +81,7 @@
           <Link
             v-for="approval in filteredApprovals"
             :key="approval.id"
-            :href="workspacePath('/approvals/' + approval.id)"
+            :href="approvalUrl(approval.id)"
             class="block px-4 py-3.5 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
           >
             <div class="flex items-start gap-3">
@@ -165,7 +165,7 @@ import type { ApprovalRequest } from '@/types'
 
 const page = usePage()
 const { fetchApprovals: apiFetchApprovals, respondToApproval } = useApi()
-const { workspacePath } = useWorkspace()
+const { approvalUrl } = useWorkspace()
 const { on } = useRealtime()
 
 const currentUserId = computed(() => (page.props.auth as any)?.user?.id || '')

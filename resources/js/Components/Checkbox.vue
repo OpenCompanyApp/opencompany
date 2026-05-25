@@ -8,6 +8,8 @@ const props = defineProps<{
     value?: any;
 }>();
 
+// Bridge the legacy checked/update:checked contract to native v-model so older
+// Breeze-style forms keep working alongside newer shared controls.
 const proxyChecked = computed({
     get() {
         return props.checked;

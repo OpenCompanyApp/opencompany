@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // flush_count tracks explicit memory flushes separately from automatic
+        // compaction count.
         Schema::table('conversation_summaries', function (Blueprint $table) {
             $table->integer('flush_count')->default(0)->after('compaction_count');
         });

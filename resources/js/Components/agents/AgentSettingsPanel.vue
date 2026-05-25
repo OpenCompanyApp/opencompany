@@ -29,7 +29,7 @@
 
         <div v-else-if="groupedBrains.length === 0" class="text-sm text-neutral-500 dark:text-neutral-400">
           <p>No AI models configured.</p>
-          <Link :href="workspacePath('/integrations')" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
+          <Link :href="integrationsUrl()" class="text-neutral-900 dark:text-white underline hover:no-underline mt-1 inline-block">
             Configure integrations
           </Link>
         </div>
@@ -179,7 +179,7 @@
             <p class="text-xs text-neutral-500 dark:text-neutral-400 capitalize">{{ manager.type === 'agent' ? manager.agentType || 'agent' : 'Human' }}</p>
           </div>
           <Link
-            :href="workspacePath(manager.type === 'agent' ? `/agent/${manager.id}` : `/profile/${manager.id}`)"
+            :href="memberUrl(manager)"
             class="text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
           >
             View
@@ -321,12 +321,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import { apiFetch } from '@/utils/apiFetch'
+import { enabledModels } from '@/actions/App/Http/Controllers/Api/IntegrationController'
+import { index as usersIndex } from '@/actions/App/Http/Controllers/Api/UserController'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
+import { wayfinderFetch } from '@/utils/wayfinder'
 import type { AgentSettings, AgentBehaviorMode } from '@/types'
 
-const { workspacePath } = useWorkspace()
+const { integrationsUrl, memberUrl } = useWorkspace()
 
 interface BrainOption {
   id: string
@@ -428,7 +430,7 @@ onMounted(async () => {
 const loadAvailableBrains = async () => {
   loadingBrains.value = true
   try {
-    const response = await apiFetch('/api/integrations/models')
+    const response = await wayfinderFetch(enabledModels())
     if (response.ok) {
       availableBrains.value = await response.json()
     }
@@ -505,7 +507,7 @@ const updateBehaviorMode = (mode: AgentBehaviorMode) => {
 
 const loadAvailableManagers = async () => {
   try {
-    const response = await apiFetch('/api/users')
+    const response = await wayfinderFetch(usersIndex())
     if (response.ok) {
       const users = await response.json()
       // Exclude the current agent from the manager list

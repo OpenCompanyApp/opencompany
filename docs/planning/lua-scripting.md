@@ -2,9 +2,20 @@
 
 Design document for adding embedded Lua scripting as a lightweight automation runtime, complementing the existing AI agent execution model.
 
+Status: Planning with partial implementation. The current codebase has Lua
+tool/runtime surfaces such as `app/Agents/Tools/Lua`,
+`app/Services/LuaBridge.php`, `app/Services/LuaSandboxService.php`,
+`routes/api.php` `/api/lua/execute`, integration package Lua docs, and scheduled
+script automations through `RunScriptAutomationJob` and
+`ExecuteScriptAutomation`. Endpoint/webhook triggers, artifact builders, and
+the historical `generate_lua_script` tool below remain design targets unless
+backed by current tool or integration code.
+
 ## Problem
 
-Every automation currently spawns a full AI agent — even trivial ones.
+This section records the original cost motivation. Prompt automations still run
+through an agent, but script automations now use the Lua sandbox path and avoid a
+model call for deterministic work.
 
 **Cost of a single scheduled automation run:**
 
@@ -78,8 +89,8 @@ Lua wins on embeddability, sandboxing, and startup cost. Its simplicity also mak
 │  │  │ No fs   │    │                        │  │  │
 │  │  │ No net  │    │ oc.chat.send()         │  │  │
 │  │  │ No os   │    │ oc.tasks.query()       │  │  │
-│  │  │ 5s max  │    │ oc.tasks.update()      │  │  │
-│  │  │ 10MB mem│    │ oc.tables.query()      │  │  │
+│  │  │ 30s max │    │ oc.tasks.update()      │  │  │
+│  │  │ 32MB mem│    │ oc.tables.query()      │  │  │
 │  │  └─────────┘    │ oc.agent.spawn()       │  │  │
 │  │                  │ oc.memory.save()       │  │  │
 │  │                  │ oc.log()               │  │  │
@@ -91,11 +102,11 @@ Lua wins on embeddability, sandboxing, and startup cost. Its simplicity also mak
 ### Execution Model
 
 1. Trigger fires (cron, event, webhook)
-2. `AutomationRouter` checks `script_language` field on the automation
-3. If `"lua"`: dispatches `RunLuaAutomationJob` (lightweight, no agent)
-4. If `"agent"` or null: dispatches existing `RunAutomationJob` (full agent)
+2. `RunAutomationJob` checks `execution_type` on the automation
+3. If `"script"`: dispatches `RunScriptAutomationJob`/`ExecuteScriptAutomation` (lightweight, no agent prompt)
+4. If `"prompt"` or null: runs `ExecutePromptAutomation` through the assigned agent
 5. Lua executes in sandboxed runtime with platform API bindings
-6. Results logged to `automation_execution_log` table
+6. Results are recorded on the automation's `last_result` and associated task output
 
 ### PHP ↔ Lua Bridge
 
@@ -229,6 +240,13 @@ oc.agent.delegate(agentId, {
     priority = "high",
 })
 ```
+
+> Current-runtime note: the namespace examples in this section preserve the
+> original proposed `oc.*` API. Current tool-capable Lua execution routes calls
+> through `app.*` via `LuaBridge`, `OpenCompanyLuaToolInvoker`, and
+> `LuaSandboxService`. Treat `oc.external`, `oc.integrations`, `oc.http`, and
+> `oc.util` as desired future ergonomics unless a matching `app.*` bridge method
+> exists.
 
 ### `oc.external` — External Channels & Platforms
 
@@ -939,7 +957,11 @@ The most powerful pattern: **agents write Lua scripts on behalf of users**. Inst
 
 ### The `generate_lua_script` Tool
 
-A new tool available to agents that creates and deploys Lua automations:
+Historical proposal for a dedicated tool that creates and deploys Lua
+automations. The current app has broader automation tools such as
+`create_automation`/`update_automation` with `executionType: "script"` and a
+`--!strict` script requirement; there is not a separate `generate_lua_script`
+tool in the current tree.
 
 ```php
 class GenerateLuaScript implements Tool
@@ -973,8 +995,8 @@ class GenerateLuaScript implements Tool
         // Deploy
         $automation = Automation::create([
             'name' => $name,
-            'script_language' => 'lua',
-            'script_content' => $code,
+            'execution_type' => 'script',
+            'script' => $code,
             'trigger_type' => $triggerType,
             'trigger_config' => $triggerConfig,
             'created_by_id' => $this->agent->id,
@@ -1022,7 +1044,8 @@ repeatedly.
 - `oc.log(message)` — log output
 - `ctx.*` — trigger context (event data, schedule info, webhooks, secrets)
 
-**Always validate:** Call generate_lua_script which dry-runs before deploying.
+**Always validate:** Test with `lua_exec`, then create or update a script
+automation through the automation tools.
 ```
 
 ### Example Conversation: Agent Writes a Lua Script
@@ -1116,9 +1139,11 @@ Rules:
 
 ## Staged Rollout
 
-### Phase 1: Deterministic PHP Actions (Now)
+### Phase 1: Deterministic PHP Actions (Historical Baseline)
 
-No Lua yet. Wire up the existing `ListAutomationRule` model:
+This was the early staged-rollout plan before the current Lua/script automation
+path landed. `ListAutomationRule` still exists for list-item rules, but the
+current general automation path supports prompt and script execution directly.
 
 - Implement event listeners for `task_created`, `task_completed`, `task_assigned`
 - Build PHP action executors: `CreateTaskAction`, `SendNotificationAction`, `UpdateTaskAction`, `AssignTaskAction`
@@ -1145,18 +1170,21 @@ $shouldFire = $expr->evaluate(
 
 **Effort:** ~1 day. Adds conditional logic to Phase 1 actions.
 
-### Phase 3: Full Lua Runtime (When users need custom logic)
+### Phase 3: Full Lua Runtime (Mostly Implemented For Scheduled Scripts)
 
-The full architecture described in this document:
+The current implementation covers the core scheduled-script path:
 
-- Install `php-lua` PECL extension (or use Process fallback)
-- Build `LuaSandbox` class with API bindings
-- Build `LuaExecutor` job class
-- Add `script_language` and `script_content` columns to automations
-- Build `generate_lua_script` agent tool
-- Add script editor UI (Monaco with Lua syntax highlighting)
+- `LuaSandboxService` executes sandboxed code with `app.*`, JSON, and regex helpers.
+- `LuaBridge` routes `app.*` calls through the same tool/integration runtime used elsewhere.
+- `RunScriptAutomationJob` and `ExecuteScriptAutomation` execute scheduled script automations.
+- Automations use `execution_type = "script"` and the `script` column.
+- The automation create/edit UI uses Monaco with Lua syntax highlighting.
 
-**Effort:** ~1–2 weeks. Full scripting capability.
+Still roadmap:
+
+- Dedicated `generate_lua_script` tool, if it is still useful beyond the current automation tools.
+- Endpoint/webhook trigger execution.
+- Rich script test harness and versioning UI.
 
 ### Phase 4: Agent-Assisted Script Management
 
@@ -1169,6 +1197,11 @@ The full architecture described in this document:
 
 ### Sandbox Constraints
 
+The current implementation uses `LuaSandboxService` backed by `Lua\Sandbox`.
+Default limits are 30 seconds and 32 MB; `lua_exec` callers can pass explicit
+`cpuLimit` and `memoryLimit` options. The example below is a historical sketch,
+not the exact current class.
+
 ```php
 class LuaSandbox
 {
@@ -1180,8 +1213,8 @@ class LuaSandbox
     ];
 
     // Execution limits:
-    private const MAX_EXECUTION_TIME = 5;     // seconds
-    private const MAX_MEMORY = 10_485_760;    // 10MB
+    private const MAX_EXECUTION_TIME = 30;    // seconds
+    private const MAX_MEMORY = 33_554_432;    // 32MB
     private const MAX_OUTPUT_SIZE = 65_536;   // 64KB
     private const MAX_API_CALLS = 50;         // per execution
 
@@ -1224,9 +1257,9 @@ class LuaExecutor
                 duration_ms: $result->durationMs,
             );
         } catch (LuaTimeoutException $e) {
-            return LuaResult::failed("Script exceeded 5-second time limit");
+            return LuaResult::failed("Script exceeded 30-second time limit");
         } catch (LuaMemoryException $e) {
-            return LuaResult::failed("Script exceeded 10MB memory limit");
+            return LuaResult::failed("Script exceeded 32MB memory limit");
         } catch (LuaSyntaxException $e) {
             return LuaResult::failed("Syntax error: " . $e->getMessage());
         } catch (\Throwable $e) {
@@ -1238,7 +1271,18 @@ class LuaExecutor
 
 ## Schema Changes
 
-### New columns on `automations`
+Current scheduled script automations use columns that already exist in the
+current migrations:
+
+- `automations.trigger_type`
+- `automations.execution_type`
+- `automations.script`
+- `automations.last_result`
+
+The SQL below is the older proposal shape and should not be applied literally to
+the current schema.
+
+### Historical proposal: new columns on `automations`
 
 ```sql
 ALTER TABLE automations
@@ -1246,7 +1290,7 @@ ALTER TABLE automations
     ADD COLUMN script_content TEXT DEFAULT NULL;           -- Lua source code
 ```
 
-### New columns on `list_automation_rules`
+### Historical proposal: new columns on `list_automation_rules`
 
 ```sql
 ALTER TABLE list_automation_rules
@@ -1254,7 +1298,7 @@ ALTER TABLE list_automation_rules
     ADD COLUMN script_content TEXT DEFAULT NULL;
 ```
 
-### New table: `automation_execution_log`
+### Historical proposal: `automation_execution_log`
 
 ```sql
 CREATE TABLE automation_execution_log (
@@ -1276,4 +1320,6 @@ CREATE INDEX idx_exec_log_automation ON automation_execution_log(automation_type
 CREATE INDEX idx_exec_log_created ON automation_execution_log(created_at);
 ```
 
-This table replaces the current `last_result` JSON field for detailed execution history, and enables cost comparison dashboards (Lua $0 vs agent $X per run).
+The current app still records compact run state on `automations.last_result` and
+task results. A dedicated execution-log table remains a future analytics/history
+improvement, not the current implementation.

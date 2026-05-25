@@ -7,7 +7,7 @@
           <div class="flex items-center gap-4">
             <!-- Back button -->
             <Link
-              :href="workspacePath('/messages')"
+              :href="messagesUrl()"
               class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
             >
               <Icon name="ph:arrow-left" class="w-5 h-5" />
@@ -23,7 +23,7 @@
               />
               <div>
                 <Link
-                  :href="workspacePath(conversation.otherUser.type === 'agent' ? `/agent/${conversation.otherUser.id}` : `/profile/${conversation.otherUser.id}`)"
+                  :href="memberUrl(conversation.otherUser)"
                   class="font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
                 >
                   {{ conversation.otherUser.name }}
@@ -38,7 +38,7 @@
             <!-- Actions -->
             <div class="flex items-center gap-1">
               <Link
-                :href="workspacePath(conversation?.otherUser.type === 'agent' ? `/agent/${conversation.otherUser.id}` : `/profile/${userId}`)"
+                :href="conversation ? memberUrl(conversation.otherUser) : profileUrl(userId)"
                 class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                 :title="conversation?.otherUser.type === 'agent' ? 'View agent' : 'View profile'"
               >
@@ -163,7 +163,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
-import { apiFetch } from '@/utils/apiFetch'
+import { markRead, show as showDm, store as storeDm } from '@/actions/App/Http/Controllers/Api/DmController'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
@@ -173,16 +173,18 @@ import { useRealtime } from '@/composables/useRealtime'
 import { useHighlight } from '@/composables/useHighlight'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { sanitizeHtml } from '@/utils/sanitize'
+import { wayfinderFetch } from '@/utils/wayfinder'
+import type { AgentStatus, AgentType } from '@/types'
 
-const { workspacePath } = useWorkspace()
+const { memberUrl, messagesUrl, profileUrl } = useWorkspace()
 
 interface User {
   id: string
   name: string
   avatar?: string
   type: 'human' | 'agent'
-  agentType?: string
-  status?: string
+  agentType?: AgentType
+  status?: AgentStatus
 }
 
 interface Message {
@@ -274,13 +276,13 @@ const isSameAuthor = (index: number) => {
 const fetchConversation = async () => {
   loading.value = true
   try {
-    const response = await apiFetch(`/api/dm/${props.userId}`)
+    const response = await wayfinderFetch(showDm(props.userId))
     const data = await response.json()
     conversation.value = data
     messages.value = data.messages
 
     // Mark as read
-    await apiFetch(`/api/dm/${props.userId}/read`, { method: 'POST' })
+    await wayfinderFetch(markRead(props.userId))
 
     // Scroll to bottom
     nextTick(() => {
@@ -301,8 +303,7 @@ const sendMessage = async () => {
   newMessage.value = ''
 
   try {
-    const response = await apiFetch(`/api/dm/${props.userId}`, {
-      method: 'POST',
+    const response = await wayfinderFetch(storeDm(props.userId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     })
@@ -376,7 +377,7 @@ onMounted(() => {
       })
 
       // Mark as read since we're viewing the conversation
-      apiFetch(`/api/dm/${props.userId}/read`, { method: 'POST' })
+      wayfinderFetch(markRead(props.userId))
     }
   })
 

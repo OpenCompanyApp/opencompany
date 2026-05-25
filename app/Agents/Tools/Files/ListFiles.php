@@ -26,7 +26,7 @@ class ListFiles implements Tool
     public function handle(Request $request): string
     {
         try {
-            $path = $request['path'] ?? '/';
+            $path = $this->requestedPath($request);
             $workspaceId = $this->agent->workspace_id;
 
             // Resolve disk
@@ -68,6 +68,7 @@ class ListFiles implements Tool
             return json_encode($items->map(fn (WorkspaceFile $item) => array_filter([
                 'name' => $item->name,
                 'description' => $item->description,
+                'path' => $item->getVirtualPath(),
                 'type' => $item->is_folder ? 'folder' : 'file',
                 'size' => $item->is_folder ? null : $item->size,
                 'mimeType' => $item->mime_type,
@@ -78,6 +79,18 @@ class ListFiles implements Tool
         }
     }
 
+    private function requestedPath(Request $request): string
+    {
+        $path = (string) ($request['path'] ?? $request['folder'] ?? $request['folderPath'] ?? '/');
+        $path = trim($path);
+
+        if ($path === '') {
+            return '/';
+        }
+
+        return str_starts_with($path, '/') ? $path : '/'.$path;
+    }
+
     /** @return array<string, mixed> */
     public function schema(JsonSchema $schema): array
     {
@@ -85,6 +98,9 @@ class ListFiles implements Tool
             'path' => $schema
                 ->string()
                 ->description('Virtual folder path to list (e.g. "/reports"). Defaults to root "/".'),
+            'folder' => $schema
+                ->string()
+                ->description('Alias for path. Accepts names like "Telegram Captures" or full paths like "/Telegram Captures".'),
             'disk' => $schema
                 ->string()
                 ->description('Name or ID of the storage disk. Defaults to workspace default. Use list_disks to see available disks.'),

@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Approval rows represent a human decision point for budget, action,
+        // spawn, or access requests raised by agents.
         Schema::create('approval_requests', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->enum('type', ['budget', 'action', 'spawn', 'access']);

@@ -1,4 +1,5 @@
 <template>
+  <!-- Breadcrumb emits folder IDs only; the file manager owns loading and route state. -->
   <nav class="flex items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400 min-w-0 overflow-x-auto">
     <button
       class="shrink-0 hover:text-neutral-900 dark:hover:text-white transition-colors"

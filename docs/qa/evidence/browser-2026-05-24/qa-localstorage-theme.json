@@ -1,0 +1,7 @@
+{
+  "theme": "light",
+  "color-mode": "dark",
+  "opencompany.chat.sidebarCollapsed": "true",
+  "reka:lua-console": "{\"{\\\"collapsible\\\":false,\\\"defaultSize\\\":30,\\\"minSize\\\":10,\\\"sizeUnit\\\":\\\"%\\\"},{\\\"collapsible\\\":false,\\\"defaultSize\\\":70,\\\"minSize\\\":25,\\\"sizeUnit\\\":\\\"%\\\"}\":{\"expandToSizes\":{},\"layout\":[70,30]}}",
+  "pusherTransportNonTLS": "{\"timestamp\":1779648851556,\"transport\":\"ws\",\"latency\":13,\"cacheSkipCount\":0}"
+}

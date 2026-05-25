@@ -1,6 +1,7 @@
 import { onBeforeUnmount } from 'vue'
-import axios from 'axios'
+import { index as toolCatalogIndex } from '@/actions/App/Http/Controllers/Api/ToolCatalogController'
 import { monaco } from '@/composables/useMonaco'
+import { wayfinderRequest } from '@/utils/wayfinder'
 
 interface CatalogParam {
   name: string
@@ -207,7 +208,7 @@ export function useLuaCompletions() {
 
   // Lazily fetch catalog
   if (!catalogPromise) {
-    catalogPromise = axios.get<CatalogResponse>('/api/tools/catalog')
+    catalogPromise = wayfinderRequest<CatalogResponse>(toolCatalogIndex())
       .then(res => res.data)
       .catch(() => ({ groups: [] }))
   }

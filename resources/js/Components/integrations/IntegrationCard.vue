@@ -1,5 +1,7 @@
 <template>
   <div
+    data-test="integration-card"
+    :data-integration-id="integration.id"
     :class="[
       'flex flex-col p-4 rounded-lg border bg-white dark:bg-neutral-900 transition-colors cursor-pointer',
       integration.installed
@@ -50,8 +52,20 @@
             <Icon name="ph:plugs-connected" class="w-3 h-3" />
             MCP
           </span>
+          <span
+            v-else-if="integration.catalog"
+            class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"
+            title="Catalog integration"
+          >
+            Catalog
+          </span>
         </div>
         <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">{{ integration.description }}</p>
+        <p v-if="integration.catalog" class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-1">
+          <span v-if="integration.toolCount">{{ integration.toolCount }} tool{{ integration.toolCount === 1 ? '' : 's' }}</span>
+          <span v-if="integration.toolCount && integration.packageInstalled === false"> · </span>
+          <span v-if="integration.packageInstalled === false">package not installed</span>
+        </p>
       </div>
     </div>
 
@@ -59,10 +73,11 @@
       <template v-if="!integration.installed">
         <button
           type="button"
+          data-test="integration-card-action"
           class="w-full py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors"
           @click.stop="$emit('install', integration)"
         >
-          Install
+          {{ actionLabel }}
         </button>
       </template>
       <template v-else>
@@ -71,7 +86,9 @@
           Installed
         </span>
         <button
+          v-if="canConfigure"
           type="button"
+          data-test="integration-configure"
           class="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
           title="Configure"
           @click.stop="$emit('configure', integration)"
@@ -80,6 +97,7 @@
         </button>
         <button
           type="button"
+          data-test="integration-uninstall"
           class="p-1 text-neutral-400 hover:text-red-500 transition-colors"
           title="Uninstall"
           @click.stop="$emit('uninstall', integration)"
@@ -92,6 +110,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
 
 export interface Integration {
@@ -100,10 +119,21 @@ export interface Integration {
   icon: string
   description: string
   category?: string
+  configId?: string
+  cardKey?: string
+  entryType?: 'ai_provider' | 'integration' | 'chat' | 'static' | 'mcp'
+  source?: string
   installed: boolean
-  badge?: 'built-in' | 'verified' | 'mcp'
+  badge?: string
+  catalog?: boolean
+  packageInstalled?: boolean
+  configured?: boolean
+  enabled?: boolean
+  runnable?: boolean
+  docsUrl?: string | null
   configurable?: boolean
   type?: 'native' | 'mcp'
+  url?: string
   mcpServerId?: string
   toolCount?: number
   suggestedMcpConfig?: {
@@ -114,7 +144,10 @@ export interface Integration {
   }
 }
 
-defineProps<{
+// IntegrationCard is intentionally action-oriented: installed, configurable,
+// catalog-only, and MCP entries all share the same card shell but emit different
+// page-level actions.
+const props = defineProps<{
   integration: Integration
 }>()
 
@@ -126,6 +159,47 @@ const emit = defineEmits<{
 }>()
 
 const handleClick = () => {
-  // Could open a detail modal in the future
+  // Clicking an uninstalled card starts setup directly; installed cards prefer
+  // configure when there is meaningful configuration to edit.
+  if (!props.integration.installed) {
+    emit('install', props.integration)
+    return
+  }
+
+  if (canConfigure.value) {
+    emit('configure', props.integration)
+    return
+  }
+
+  emit('click', props.integration)
 }
+
+const canConfigure = computed(() => {
+  const integration = props.integration
+
+  // AI providers and Codex have dynamic config screens even when the catalog
+  // metadata does not mark them configurable.
+  return Boolean(
+    integration.configurable
+      || integration.type === 'mcp'
+      || integration.category === 'ai-models'
+      || integration.id === 'codex',
+  )
+})
+
+const actionLabel = computed(() => {
+  const integration = props.integration
+
+  // Catalog entries without installed packages cannot be installed from inside
+  // OpenCompany; route users to docs/catalog instead.
+  if (integration.catalog && integration.packageInstalled === false) {
+    return integration.docsUrl ? 'Docs' : 'Catalog'
+  }
+
+  if (integration.configurable || integration.category === 'ai-models' || integration.id === 'codex') {
+    return 'Configure'
+  }
+
+  return 'Install'
+})
 </script>

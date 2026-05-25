@@ -1,6 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\CalendarFeedController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SetupController;
+use App\Http\Controllers\TelegramLinkController;
+use App\Models\User;
+use App\Models\WorkspaceInvitation;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -20,7 +25,24 @@ Route::get('/welcome', function () {
 })->name('welcome');
 
 // Public calendar feed (no auth — uses token)
-Route::get('/cal/{token}.ics', [\App\Http\Controllers\Api\CalendarFeedController::class, 'feed']);
+Route::get('/cal/{token}.ics', [CalendarFeedController::class, 'feed']);
+
+// Telegram identity linking starts from /link in chat and completes after
+// normal web auth plus a signed, short-lived interaction token.
+Route::get('/telegram/link/{token}', TelegramLinkController::class)
+    ->middleware(['auth', 'verified', 'signed', 'throttle:6,1'])
+    ->name('telegram.link.claim');
+
+// Telegram Mini Apps authenticate through signed Bot API init data inside the
+// page, so this shell stays public while all data and mutations go through
+// /api/telegram/mini-app/* verification endpoints.
+Route::get('/telegram/mini-app', function () {
+    return Inertia::render('Telegram/MiniApp', [
+        'workspaceId' => request()->query('workspace_id'),
+        'initialPanel' => request()->query('panel', 'settings'),
+        'targetId' => request()->query('target_id'),
+    ]);
+})->name('telegram.mini-app');
 
 // First-time setup (outside workspace prefix)
 Route::get('/setup', function () {
@@ -32,11 +54,11 @@ Route::get('/setup', function () {
     return Inertia::render('Workspace/Setup');
 })->name('setup');
 
-Route::post('/setup', [\App\Http\Controllers\SetupController::class, 'store']);
+Route::post('/setup', [SetupController::class, 'store']);
 
 // Invitation acceptance (outside workspace prefix)
 Route::get('/invite/{token}', function (string $token) {
-    $invitation = \App\Models\WorkspaceInvitation::where('token', $token)
+    $invitation = WorkspaceInvitation::where('token', $token)
         ->with(['workspace:id,name,slug', 'inviter:id,name'])
         ->firstOrFail();
 
@@ -212,7 +234,7 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
         // Profile pages
         Route::get('/profile/{id}', function () {
             $id = request()->route('id');
-            $user = \App\Models\User::findOrFail($id);
+            $user = User::findOrFail($id);
             $slug = request()->route('workspace_slug');
             if ($user->type === 'agent') {
                 return redirect("/w/{$slug}/agent/{$id}");

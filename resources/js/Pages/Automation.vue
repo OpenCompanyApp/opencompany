@@ -49,7 +49,7 @@
           :debounce="300"
           class="w-36 lg:w-48 shrink-0"
         />
-        <Button variant="primary" size="sm" icon-left="ph:plus" @click="router.visit(workspacePath('/automation/create'))">
+        <Button variant="primary" size="sm" icon-left="ph:plus" @click="router.visit(createAutomationRoute(workspaceRouteParams()))">
           New
         </Button>
       </div>
@@ -73,7 +73,7 @@
             Schedule agents to run automatically — daily standups, weekly reports,
             hourly monitoring, or anything you can imagine.
           </p>
-          <Button variant="primary" icon-left="ph:plus" @click="router.visit(workspacePath('/automation/create'))">
+          <Button variant="primary" icon-left="ph:plus" @click="router.visit(createAutomationRoute(workspaceRouteParams()))">
             Create your first automation
           </Button>
         </div>
@@ -280,8 +280,9 @@ import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
 import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useToast } from '@/composables/useToast'
+import { create as createAutomationRoute, edit as editAutomationRoute } from '@/routes/automation'
 
-const { workspacePath } = useWorkspace()
+const { workspaceRouteParams } = useWorkspace()
 const { success, error: showError } = useToast()
 const {
   fetchAutomations,
@@ -437,7 +438,7 @@ function toggleActions(id: string) {
 }
 
 function handleEdit(automation: Automation) {
-  router.visit(workspacePath(`/automation/${automation.id}/edit`))
+  router.visit(editAutomationRoute(workspaceRouteParams({ id: automation.id })))
 }
 
 async function handleToggle(automation: Automation) {

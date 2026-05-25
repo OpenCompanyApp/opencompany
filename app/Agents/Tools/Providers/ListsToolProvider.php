@@ -25,7 +25,14 @@ use App\Agents\Tools\Workspace\ListAutomationRules;
 use App\Agents\Tools\Workspace\UpdateAutomationRule;
 use App\Agents\Tools\Workspace\UpdateItemTemplate;
 use App\Models\User;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers kanban/list workflow tools.
+ *
+ * This group spans list items, workflow statuses, rule automation, and item
+ * templates because agents experience those as one operational board surface.
+ */
 class ListsToolProvider implements BuiltInToolProvider
 {
     public function groupName(): string
@@ -206,8 +213,11 @@ class ListsToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // Most list tools need the acting agent for workspace scoping and audit.
+        // Listing automation rules is currently stateless and resolves scope in
+        // the tool itself.
         return match ($class) {
             ListAutomationRules::class => new ListAutomationRules,
             ListAllItems::class,

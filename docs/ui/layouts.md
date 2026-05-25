@@ -99,7 +99,7 @@ The sidebar navigation is defined in `resources/js/Components/layout/SidebarNav.
 
 ### Active State
 
-Active nav items use `bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white` and switch to the `-fill` variant of their icon. Matching is done via `page.url.startsWith(path)`, with Dashboard using an exact match on `/`.
+Active nav items use `bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white` and switch to the `-fill` variant of their icon. Matching is done via `page.url.startsWith(path)`, with Dashboard using an exact match on the workspace dashboard/root URL.
 
 ### Agents Section
 
@@ -188,7 +188,7 @@ Used by **Tasks** and **Lists** pages. The main content area shows a list or boa
 | Element | Details |
 |---------|---------|
 | Task list | `flex-1 overflow-auto p-4 md:p-6`, stacked cards with `space-y-3` |
-| Detail drawer | `TaskDetailDrawer` -- custom `Transition` component, `w-full md:w-[480px]`, `fixed inset-y-0 right-0 z-50` |
+| Task detail | Dedicated `/tasks/{id}` page via `resources/js/Pages/Tasks/Show.vue` |
 | Filters | Inline toggle group (`bg-neutral-100 rounded-lg p-1`), options: All / Pending / Active / Completed |
 | Create modal | Standard `Modal` component with form |
 
@@ -348,11 +348,11 @@ Used by **Dashboard**, **Workload**, and similar pages that display content in r
 
 ## Tabbed Content
 
-Used by the **Agent Detail** page and **Settings**. A header area with tab navigation followed by tab-specific content.
+Used by the **Agent Detail** page. A header area with tab navigation is followed by tab-specific content. Settings uses sidebar section navigation instead of tabs.
 
-**Pages:** `resources/js/Pages/Agent/Show.vue`, `resources/js/Pages/Settings.vue`
+**Pages:** `resources/js/Pages/Agent/Show.vue`
 
-### Agent Detail (8 Tabs)
+### Agent Detail (6 Tabs)
 
 ```
 +------------------------------------------------------------------+
@@ -366,18 +366,16 @@ Used by the **Agent Detail** page and **Settings**. A header area with tab navig
 | | | Avatar |  Status label                                    | |
 | | +--------+                                                   | |
 | |                                                              | |
-| | [Overview] [Tasks] [Personality] [Instructions] ...          | |
+| | [Overview] [Tasks] [Identity] [Capabilities] ...             | |
 | |                                                              | |
 | | +----------------------------------------------------------+| |
 | | |                                                          || |
 | | |  Tab Content (min-h-[500px])                             || |
 | | |                                                          || |
 | | |  Overview: Identity card + current task + activity       || |
-| | |  Tasks: Filtered task list with detail drawer            || |
-| | |  Personality: Markdown editor                            || |
-| | |  Instructions: Markdown editor                           || |
+| | |  Tasks: Filtered task list with task-page links          || |
+| | |  Identity: Identity file editor                          || |
 | | |  Capabilities: Toggle list with approval flags           || |
-| | |  Memory: Session info + memory entries                   || |
 | | |  Activity: Timestamped log with type badges              || |
 | | |  Settings: Behavior mode, cost limit, danger zone        || |
 | | |                                                          || |
@@ -392,18 +390,18 @@ Used by the **Agent Detail** page and **Settings**. A header area with tab navig
 | Active tab | `bg-neutral-900 dark:bg-white text-white dark:text-neutral-900` |
 | Inactive tab | `text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100` |
 | Tabs list | `flex gap-1 mb-6 overflow-x-auto pb-1` (scrollable on mobile) |
-| Tab count | 8: Overview, Tasks, Personality, Instructions, Capabilities, Memory, Activity, Settings |
+| Tab count | 6: Overview, Tasks, Identity, Capabilities, Activity, Settings |
 | Content area | `min-h-[500px]` to prevent layout shift during tab switches |
 
 ### Settings Page
 
-The Settings page does not use tab components but achieves a similar effect with stacked `SettingsSection` components, each containing a collapsible group of fields.
+The Settings page uses sidebar section navigation with `SettingsSection` components inside each section.
 
 ```
 +------------------------------------------------------------------+
 | h-full overflow-y-auto                                           |
 | +--------------------------------------------------------------+ |
-| | max-w-3xl mx-auto p-6                                       | |
+| | max-w-5xl mx-auto p-4 md:p-6                               | |
 | |                                                              | |
 | | Header: "Settings"                                           | |
 | |                                                              | |
@@ -420,14 +418,18 @@ The Settings page does not use tab components but achieves a similar effect with
 | | +----------------------------------------------------------+ | |
 | |                                                              | |
 | | +-- Notifications -----------------------------------------+ | |
-| | | Email, Slack, Daily Summary toggles                      | | |
+| | | Email, Slack flag, Daily Summary toggles                 | | |
+| | +----------------------------------------------------------+ | |
+| |                                                              | |
+| | +-- Memory / Storage / Debug ------------------------------+ | |
+| | | Memory models, disks, diagnostics                        | | |
 | | +----------------------------------------------------------+ | |
 | |                                                              | |
 | | +-- Danger Zone -------------------------------------------+ | |
 | | | Pause All, Reset Memory, Delete Organization             | | |
 | | +----------------------------------------------------------+ | |
 | |                                                              | |
-| |                                     [Save Changes]           | |
+| |                             Section-level save buttons       | |
 | +--------------------------------------------------------------+ |
 +------------------------------------------------------------------+
 ```
@@ -610,15 +612,14 @@ Right Slideover                         Left Slideover
 
 ### Custom Drawers
 
-Some pages use custom `Transition` wrappers instead of the Slideover component for more control. The `TaskDetailDrawer` is a notable example:
+Some pages use custom `Transition` wrappers instead of the Slideover component for more control. Prefer the shared slideover for secondary panels and a dedicated route when the detail surface is substantial.
 
 | Property | Value |
 |----------|-------|
-| Component | `resources/js/Components/tasks/TaskDetailDrawer.vue` |
-| Width | `w-full md:w-[480px]` |
-| Position | `fixed inset-y-0 right-0 z-50` |
-| Animation | Custom Vue `Transition` with `translate-x-full` enter/leave |
-| Border | `border-l border-neutral-200 dark:border-neutral-700 shadow-xl` |
+| Shared component | `resources/js/Components/shared/Slideover.vue` |
+| Dedicated task detail | `resources/js/Pages/Tasks/Show.vue` |
+| Animation | Shared slideover transitions or local Vue `Transition` classes |
+| Border | `border-l border-neutral-200 dark:border-neutral-700 shadow-xl` when a right panel is used |
 
 ### Usage Guidelines
 

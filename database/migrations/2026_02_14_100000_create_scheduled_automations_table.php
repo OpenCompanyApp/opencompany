@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Scheduled automations persist prompt-based recurring jobs before the
+        // later generic automations rename and trigger-type expansion.
         Schema::create('scheduled_automations', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('name');

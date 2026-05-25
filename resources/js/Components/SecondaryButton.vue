@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// SecondaryButton is a low-emphasis command button for legacy/auth surfaces.
+// Newer app screens should prefer the shared Button variant system.
 withDefaults(
     defineProps<{
         type?: 'button' | 'submit' | 'reset';

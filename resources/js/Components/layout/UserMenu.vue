@@ -232,6 +232,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { logout } from '@/routes'
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
 import Icon from '@/Components/shared/Icon.vue'
 import Popover from '@/Components/shared/Popover.vue'
@@ -370,7 +371,7 @@ const quickStatuses: QuickStatus[] = [
 const { isDark, toggleDark } = useColorMode()
 
 // Workspace
-const { workspacePath } = useWorkspace()
+const { settingsUrl, profileEditUrl } = useWorkspace()
 
 // State
 const currentUser = computed<User>(() => props.user)
@@ -454,9 +455,9 @@ const handleMenuAction = (actionId: string) => {
   if (actionId === 'custom-status') {
     customStatusDialogOpen.value = true
   } else if (actionId === 'profile') {
-    router.visit(workspacePath('/profile'))
+    router.visit(profileEditUrl())
   } else if (actionId === 'settings') {
-    router.visit(workspacePath('/settings'))
+    router.visit(settingsUrl())
   }
 }
 
@@ -509,7 +510,7 @@ const handleSignOut = async () => {
   })
 
   if (confirmed) {
-    router.post('/logout')
+    router.post(logout.url())
   }
 }
 </script>

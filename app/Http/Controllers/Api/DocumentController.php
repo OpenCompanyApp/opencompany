@@ -8,16 +8,24 @@ use App\Models\Document;
 use App\Models\DocumentPermission;
 use App\Models\DocumentVersion;
 use App\Services\Memory\DocumentIndexingService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * CRUD and search API for workspace documents.
+ *
+ * Documents include ordinary user content and system-owned agent identity files.
+ * This controller scopes all lookups through the current workspace and delegates
+ * semantic search to the memory index when available.
+ */
 class DocumentController extends Controller
 {
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Document>
+     * @return Collection<int, Document>
      */
-    public function index(): \Illuminate\Database\Eloquent\Collection
+    public function index(): Collection
     {
         $documents = Document::forWorkspace()->with(['author', 'parent', 'permissions.user'])
             ->orderBy('updated_at', 'desc')
@@ -40,6 +48,8 @@ class DocumentController extends Controller
         try {
             $indexer = app(DocumentIndexingService::class);
 
+            // Search all workspace document chunks, including identity/memory
+            // collections, but do not scope by one agent for the general docs UI.
             $chunks = $indexer->search(
                 query: $query,
                 collection: null,
@@ -49,15 +59,19 @@ class DocumentController extends Controller
                 scopeByAgent: false,
             );
         } catch (\Throwable) {
+            // If embeddings or pgvector are unavailable, fall back to simple
+            // database search so the docs UI remains functional.
             $chunks = collect();
         }
 
         if ($chunks->isEmpty()) {
+            // Fallback query stays workspace-scoped and excludes folders because
+            // only document content should appear as text search results.
             return Document::forWorkspace()->with('author')
                 ->where('is_folder', false)
                 ->where(function ($q) use ($query) {
-                    $q->where('title', 'ilike', '%' . $query . '%')
-                      ->orWhere('content', 'ilike', '%' . $query . '%');
+                    $q->where('title', 'ilike', '%'.$query.'%')
+                        ->orWhere('content', 'ilike', '%'.$query.'%');
                 })
                 ->orderBy('updated_at', 'desc')
                 ->limit(10)
@@ -90,6 +104,8 @@ class DocumentController extends Controller
 
     public function store(Request $request): DocumentResource
     {
+        // New documents inherit the current workspace from ResolveWorkspace.
+        // Parent validation is handled by workspace-scoped UI/routes for now.
         $document = Document::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => workspace()->id,
@@ -103,7 +119,8 @@ class DocumentController extends Controller
             'status' => 'draft',
         ]);
 
-        // Add viewer permissions
+        // Permission rows are optional sharing hints; the workspace boundary is
+        // still enforced separately by the query scopes around documents.
         if ($request->input('viewerIds')) {
             foreach ($request->input('viewerIds') as $userId) {
                 DocumentPermission::create([
@@ -115,7 +132,6 @@ class DocumentController extends Controller
             }
         }
 
-        // Add editor permissions
         if ($request->input('editorIds')) {
             foreach ($request->input('editorIds') as $userId) {
                 DocumentPermission::create([
@@ -134,7 +150,8 @@ class DocumentController extends Controller
     {
         $document = Document::forWorkspace()->findOrFail($id);
 
-        // Save version if requested
+        // Version snapshots are explicit so autosaves do not create noisy
+        // history. Capture the previous content before applying updates.
         if ($request->input('saveVersion', false) && $document->content) {
             $lastVersion = DocumentVersion::where('document_id', $id)
                 ->max('version_number') ?? 0;
@@ -164,6 +181,8 @@ class DocumentController extends Controller
         if ($request->has('isPublished')) {
             $data['is_published'] = $request->input('isPublished');
             if ($request->input('isPublished')) {
+                // First publish timestamp is used by readers and audit views;
+                // keep it close to the flag transition.
                 $data['published_at'] = now();
             }
         }
@@ -173,11 +192,13 @@ class DocumentController extends Controller
         return new DocumentResource($document->load(['author', 'parent', 'permissions.user']));
     }
 
-    public function destroy(string $id): \Illuminate\Http\JsonResponse
+    public function destroy(string $id): JsonResponse
     {
         $document = Document::forWorkspace()->findOrFail($id);
 
         if ($document->is_system) {
+            // Agent identity/memory documents can be removed only through
+            // AgentDocumentService, which intentionally clears system guards.
             return response()->json(['error' => 'System documents cannot be deleted.'], 403);
         }
 

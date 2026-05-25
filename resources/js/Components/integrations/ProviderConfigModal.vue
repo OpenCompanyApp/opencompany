@@ -163,10 +163,16 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { apiFetch } from '@/utils/apiFetch'
+import {
+  fetchModels,
+  showAiProviderConfig,
+  testAiProviderConnection,
+  updateAiProviderConfig,
+} from '@/actions/App/Http/Controllers/Api/IntegrationController'
 import Modal from '@/Components/shared/Modal.vue'
 import Button from '@/Components/shared/Button.vue'
 import Icon from '@/Components/shared/Icon.vue'
+import { wayfinderFetch } from '@/utils/wayfinder'
 
 const props = defineProps<{
   integrationId: string
@@ -236,7 +242,7 @@ const loadConfig = async () => {
   enabled.value = false
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`)
+    const response = await wayfinderFetch(showAiProviderConfig(props.integrationId))
     if (response.ok) {
       const data = await response.json()
 
@@ -270,8 +276,7 @@ const refreshModels = async () => {
   fetchResult.value = null
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/fetch-models`, {
-      method: 'POST',
+    const response = await wayfinderFetch(fetchModels['/api/ai/providers/{id}/fetch-models'](props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
     })
     const data = await response.json()
@@ -297,8 +302,7 @@ const testConnection = async () => {
   testResult.value = null
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/test`, {
-      method: 'POST',
+    const response = await wayfinderFetch(testAiProviderConnection(props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         apiKey: apiKey.value,
@@ -334,8 +338,7 @@ const handleSave = async () => {
   isSaving.value = true
 
   try {
-    const response = await apiFetch(`/api/integrations/${props.integrationId}/config`, {
-      method: 'PUT',
+    const response = await wayfinderFetch(updateAiProviderConfig(props.integrationId), {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         apiKey: apiKey.value,

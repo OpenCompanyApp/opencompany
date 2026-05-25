@@ -48,7 +48,7 @@
             />
 
             <Link
-              :href="workspacePath(node.type === 'agent' ? `/agent/${node.id}` : `/profile/${node.id}`)"
+              :href="memberUrl(node)"
               :class="[
                 'font-medium truncate hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors duration-150',
                 depth === 0
@@ -146,7 +146,7 @@ import AgentAvatar from '@/Components/shared/AgentAvatar.vue'
 
 defineOptions({ name: 'TreeNode' })
 
-const { workspacePath } = useWorkspace()
+const { memberUrl } = useWorkspace()
 
 interface OrgNode {
   id: string

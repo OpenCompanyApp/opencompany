@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/tables/{id}` |
+| **Route** | `/w/{workspace}/tables/{id}` |
 | **Name** | `tables.show` |
 | **Auth** | Required |
 | **Layout** | AppLayout |
@@ -54,7 +54,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│ [<- /tables]  [icon picker]  [editable name input]             │
+│ [<- tables route helper]       [icon picker]  [editable name input] │
 │                              [editable description input]      │
 │                                                                │
 │              [Import v]  [Export v]  |  [gear]  [... menu]     │
@@ -103,7 +103,7 @@ Column header dropdown:
 | `TableHeader` | Header with back link, icon picker dropdown, inline-editable name and description inputs, import/export dropdowns, settings button, and more-options menu (duplicate, delete) |
 | `TableGrid` | Spreadsheet-style table with sticky header, row checkboxes, sortable columns, inline-editable cells via `TableCell`, add-row/add-column buttons, and delete confirmations |
 | `TableCell` | Polymorphic cell renderer handling 8 column types: text, number, date, checkbox, select, multiselect, URL, email -- each with inline editing |
-| `TableTabs` | Standalone view tab bar (not used directly in Show.vue, but available); view switching, filter/hide/sort controls |
+| `TableCalendar`, `TableGallery`, `TableKanban` | Alternate table views rendered alongside the grid depending on selected view type |
 | `ColumnTypeModal` | Modal for adding or editing a column: name input, type grid selector (8 types), select/multiselect option editor, required toggle, type-change warning |
 | `ConfirmDialog` | Shared confirmation dialog used for row deletion, bulk deletion, and table deletion |
 | `SearchInput` | Shared search input component with icon |
@@ -117,18 +117,21 @@ Column header dropdown:
 
 ### View Modes
 
-The toolbar supports 4 view types. Views are managed client-side as an array.
+The toolbar supports 4 view types. Views are loaded from
+`GET /api/tables/{tableId}/views`, persisted through the views API, and rendered
+by dedicated components.
 
 | View | Icon | Description |
 |------|------|-------------|
 | **Grid** | `ph:table` | Default spreadsheet view with `TableGrid` component |
-| **Kanban** | `ph:kanban` | Board view (defined in view options, not yet rendered) |
-| **Gallery** | `ph:squares-four` | Card gallery view (defined in view options, not yet rendered) |
-| **Calendar** | `ph:calendar` | Calendar view (defined in view options, not yet rendered) |
+| **Kanban** | `ph:kanban` | Board view rendered by `TableKanban`; prompts for a select/multiselect group column when unconfigured |
+| **Gallery** | `ph:squares-four` | Card gallery rendered by `TableGallery` with editable visible fields |
+| **Calendar** | `ph:calendar` | Month calendar rendered by `TableCalendar`; prompts for a date column when unconfigured |
 
 - Active view highlighted with white bg and shadow
-- "+" button opens dropdown to add Grid, Kanban, Gallery, or Calendar view
-- A default "Grid" view is auto-created if none exist
+- "+" button opens dropdown to add Grid, Kanban, Gallery, or Calendar views via `POST /api/tables/{tableId}/views`
+- A default "Grid" view is created through the views API if none exist
+- View config changes persist through `PATCH /api/tables/{tableId}/views/{viewId}`
 
 ### Inline Cell Editing
 
@@ -160,15 +163,15 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 
 ### Search & Filter
 - `SearchInput` in toolbar filters rows client-side by matching any cell value
-- Filter and sort panel toggles (buttons present, panels not yet implemented)
+- Filter and sort buttons currently toggle local state only; no filter/sort panel is rendered yet
 
 ### Table Header Actions
 - **Name/Description**: Inline editable text inputs, saved on blur via `PATCH /api/tables/{id}`
 - **Icon picker**: Dropdown with 12 icon options, saved via `PATCH /api/tables/{id}`
-- **Import**: Dropdown with CSV and JSON options, triggers hidden file input
-- **Export**: Dropdown with CSV and JSON options, downloads file as blob
-- **Duplicate table**: `POST /api/tables/{id}/duplicate`, navigates to new table
-- **Delete table**: `ConfirmDialog`, then `DELETE /api/tables/{id}`, redirects to `/tables`
+- **Import**: Dropdown with CSV and JSON options, triggers hidden file input and posts to the generated table import route
+- **Export**: Dropdown with CSV and JSON options, opens the generated table export route with a `format` query parameter
+- **Duplicate table**: Posts to the generated duplicate route and navigates to the duplicated table response
+- **Delete table**: `ConfirmDialog`, then `DELETE /api/tables/{id}`, redirects through the generated tables index route helper
 
 ---
 
@@ -200,9 +203,9 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 | `/api/tables/{id}/rows` | GET | `onMounted` -- fetches all rows |
 | `/api/tables/{id}` | PATCH | Inline edit of name, description, or icon |
 | `/api/tables/{id}` | DELETE | Delete table confirmation |
-| `/api/tables/{id}/duplicate` | POST | Duplicate from header menu |
-| `/api/tables/{id}/export?format=csv\|json` | GET | Export button |
-| `/api/tables/{id}/import` | POST | Import file upload (FormData) |
+| `/api/tables/{id}/duplicate` | POST | Frontend call only; no current route in `routes/api.php` |
+| `/api/tables/{id}/export?format=csv\|json` | GET | Frontend call only; no current route in `routes/api.php` |
+| `/api/tables/{id}/import` | POST | Frontend call only; no current route in `routes/api.php` |
 | `/api/tables/{id}/rows` | POST | Add row button |
 | `/api/tables/{id}/rows/{rowId}` | PATCH | Inline cell edit |
 | `/api/tables/{id}/rows/{rowId}` | DELETE | Delete row confirmation |
@@ -210,6 +213,9 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 | `/api/tables/{id}/columns` | POST | Add column modal |
 | `/api/tables/{id}/columns/{colId}` | PATCH | Edit column modal or inline update |
 | `/api/tables/{id}/columns/{colId}` | DELETE | Delete column confirmation |
+| `/api/tables/{id}/columns/reorder` | POST | Registered route; not currently surfaced prominently in the page doc |
+| `/api/tables/{id}/views` | GET/POST | Load and create saved views |
+| `/api/tables/{id}/views/{viewId}` | PATCH/DELETE | Update or delete saved views |
 
 ---
 
@@ -221,7 +227,9 @@ The toolbar supports 4 view types. Views are managed client-side as an array.
 | `resources/js/Components/tables/TableHeader.vue` | Header with back link, inline-editable name/description, icon picker, import/export, and more-options menu |
 | `resources/js/Components/tables/TableGrid.vue` | Spreadsheet grid with sticky header, checkboxes, sortable columns, inline cells, and row/column CRUD |
 | `resources/js/Components/tables/TableCell.vue` | Polymorphic cell renderer for 8 column types with inline editing |
-| `resources/js/Components/tables/TableTabs.vue` | Standalone view tab bar component with filter/hide/sort controls |
+| `resources/js/Components/tables/TableCalendar.vue` | Calendar-style table view |
+| `resources/js/Components/tables/TableGallery.vue` | Gallery-style table view |
+| `resources/js/Components/tables/TableKanban.vue` | Kanban-style table view |
 | `resources/js/Components/tables/ColumnTypeModal.vue` | Modal for adding/editing columns with type grid, option editor, and required toggle |
 | `resources/js/Components/tables/TableCreateModal.vue` | Modal for creating new tables (used on list page, not here) |
 | `resources/js/Components/shared/ConfirmDialog.vue` | Reusable confirmation dialog |

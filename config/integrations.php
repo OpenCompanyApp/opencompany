@@ -109,12 +109,22 @@ return [
         'api_key_url' => 'https://openrouter.ai/keys',
     ],
 
+    'perplexity' => [
+        'category' => 'ai-models',
+        'name' => 'Perplexity',
+        'description' => 'Search-native reasoning models',
+        'icon' => 'ph:compass',
+        'default_url' => 'https://api.perplexity.ai',
+        'api_format' => 'openai_compat',
+        'api_key_url' => 'https://www.perplexity.ai/settings/api',
+    ],
+
     'minimax' => [
         'category' => 'ai-models',
         'name' => 'MiniMax Coding Plan',
         'description' => 'MiniMax coding models via Anthropic-compatible API',
         'icon' => 'ph:cube',
-        'default_url' => \OpenCompany\PrismRelay\Providers\MiniMax::URL,
+        'default_url' => 'https://api.minimax.io/anthropic/v1',
         'api_format' => 'anthropic',
         'api_key_url' => 'https://platform.minimax.io/docs/coding-plan/intro',
     ],
@@ -124,7 +134,7 @@ return [
         'name' => 'MiniMax Coding Plan (CN)',
         'description' => 'MiniMax coding models — China region endpoint',
         'icon' => 'ph:cube',
-        'default_url' => \OpenCompany\PrismRelay\Providers\MiniMaxCn::URL,
+        'default_url' => 'https://api.minimaxi.com/anthropic/v1',
         'api_format' => 'anthropic',
         'api_key_url' => 'https://platform.minimaxi.com/docs/coding-plan/intro',
     ],
@@ -134,7 +144,7 @@ return [
         'name' => 'Kimi (Moonshot AI)',
         'description' => 'Kimi K2 models — large context coding and reasoning',
         'icon' => 'ph:moon-stars',
-        'default_url' => \OpenCompany\PrismRelay\Providers\Kimi::URL,
+        'default_url' => 'https://api.moonshot.ai/v1',
         'api_format' => 'openai_compat',
         'api_key_url' => 'https://platform.moonshot.ai/console',
     ],
@@ -144,27 +154,27 @@ return [
         'name' => 'Kimi Coding Plan',
         'description' => 'Coding-focused Kimi models via Moonshot Coding Plan',
         'icon' => 'ph:code',
-        'default_url' => \OpenCompany\PrismRelay\Providers\KimiCoding::URL,
+        'default_url' => 'https://api.moonshot.ai/v1',
         'api_format' => 'openai_compat',
         'api_key_url' => 'https://platform.moonshot.ai/console',
     ],
 
-    'glm' => [
+    'z-api' => [
         'category' => 'ai-models',
-        'name' => 'GLM (Zhipu AI)',
-        'description' => 'General-purpose Chinese LLM',
+        'name' => 'Z.AI API',
+        'description' => 'Zhipu AI standard API endpoint',
         'icon' => 'ph:brain',
-        'default_url' => \OpenCompany\PrismRelay\Providers\Glm::URL,
+        'default_url' => 'https://open.bigmodel.cn/api/paas/v4',
         'api_format' => 'openai_compat',
         'api_key_url' => 'https://open.bigmodel.cn/',
     ],
 
-    'glm-coding' => [
+    'z' => [
         'category' => 'ai-models',
-        'name' => 'GLM Coding Plan',
-        'description' => 'Specialized coding LLM via Zhipu Coding Plan',
+        'name' => 'Z.AI Coding Plan',
+        'description' => 'Zhipu AI coding-plan endpoint',
         'icon' => 'ph:code',
-        'default_url' => \OpenCompany\PrismRelay\Providers\GlmCoding::URL,
+        'default_url' => 'https://api.z.ai/api/coding/paas/v4',
         'api_format' => 'openai_compat',
         'api_key_url' => 'https://api.z.ai/',
     ],
@@ -180,6 +190,134 @@ return [
         'name' => 'OpenAI Codex',
         'description' => 'Use ChatGPT Pro/Plus subscription for $0 token costs',
         'icon' => 'ph:open-ai-logo',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Web Search / Fetch Providers
+    |--------------------------------------------------------------------------
+    */
+
+    'web.tavily' => [
+        'category' => 'web-providers',
+        'name' => 'Tavily Web',
+        'description' => 'Search and extract web pages through Tavily.',
+        'icon' => 'ph:magnifying-glass',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true, 'hint' => 'Used by web_search and provider-backed web_fetch.'],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.tavily.com'],
+        ],
+    ],
+
+    'web.zai' => [
+        'category' => 'web-providers',
+        'name' => 'Z.AI Web',
+        'description' => 'Z.AI remote MCP search, coding-plan chat search, and reader fetch.',
+        'icon' => 'ph:code',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'remote_url' => ['label' => 'Remote MCP URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.z.ai/api/mcp/web_search_prime/mcp'],
+            'base_url' => ['label' => 'Coding PaaS URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.z.ai/api/coding/paas/v4'],
+        ],
+    ],
+
+    'web.firecrawl' => [
+        'category' => 'web-providers',
+        'name' => 'Firecrawl Web',
+        'description' => 'Search and scrape web pages through Firecrawl.',
+        'icon' => 'ph:flame',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.firecrawl.dev'],
+        ],
+    ],
+
+    'web.exa' => [
+        'category' => 'web-providers',
+        'name' => 'Exa Web',
+        'description' => 'Neural web search and page contents through Exa.',
+        'icon' => 'ph:sparkle',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.exa.ai'],
+        ],
+    ],
+
+    'web.brave' => [
+        'category' => 'web-providers',
+        'name' => 'Brave Search',
+        'description' => 'Search results from Brave Search API.',
+        'icon' => 'ph:compass',
+        'config_fields' => [
+            'api_key' => ['label' => 'Subscription Token', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.search.brave.com'],
+        ],
+    ],
+
+    'web.parallel' => [
+        'category' => 'web-providers',
+        'name' => 'Parallel Web',
+        'description' => 'Search and extract web content through Parallel.',
+        'icon' => 'ph:git-branch',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.parallel.ai'],
+        ],
+    ],
+
+    'web.jina' => [
+        'category' => 'web-providers',
+        'name' => 'Jina Reader',
+        'description' => 'Reader and search endpoints for LLM-friendly web text. API key is optional for free-tier use.',
+        'icon' => 'ph:article',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => false],
+            'search_url' => ['label' => 'Search URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://s.jina.ai'],
+            'reader_url' => ['label' => 'Reader URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://r.jina.ai'],
+        ],
+    ],
+
+    'web.searxng' => [
+        'category' => 'web-providers',
+        'name' => 'SearXNG',
+        'description' => 'Self-hosted metasearch provider.',
+        'icon' => 'ph:binoculars',
+        'config_fields' => [
+            'base_url' => ['label' => 'Base URL', 'type' => 'url', 'required' => true, 'placeholder' => 'https://search.example.com'],
+        ],
+    ],
+
+    'web.perplexity' => [
+        'category' => 'web-providers',
+        'name' => 'Perplexity Search',
+        'description' => 'Search API from Perplexity.',
+        'icon' => 'ph:compass-tool',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.perplexity.ai'],
+        ],
+    ],
+
+    'web.openai_native' => [
+        'category' => 'web-providers',
+        'name' => 'OpenAI Native Web Search',
+        'description' => 'OpenAI Responses API native web search provider.',
+        'icon' => 'ph:open-ai-logo',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.openai.com/v1'],
+        ],
+    ],
+
+    'web.anthropic_native' => [
+        'category' => 'web-providers',
+        'name' => 'Anthropic Native Web Search',
+        'description' => 'Anthropic Messages API native web search provider.',
+        'icon' => 'ph:chat-circle-dots',
+        'config_fields' => [
+            'api_key' => ['label' => 'API Key', 'type' => 'secret', 'required' => true],
+            'base_url' => ['label' => 'API URL', 'type' => 'url', 'required' => false, 'placeholder' => 'https://api.anthropic.com'],
+        ],
     ],
 
     // Chat platform integrations (Telegram, Slack, Discord) have been moved

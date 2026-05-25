@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Route** | `/settings` |
+| **Route** | `/w/{workspace}/settings` |
 | **Name** | `settings` |
 | **Auth** | Required |
 | **Layout** | AppLayout |
@@ -21,7 +21,7 @@
 +--------------------------------------------------------------------+
 | h-full overflow-y-auto                                             |
 | ┌────────────────────────────────────────────────────────────────┐ |
-| │ max-w-3xl mx-auto p-6                                         │ |
+| │ max-w-5xl mx-auto p-4 md:p-6 with sidebar + content pane       │ |
 | │                                                                │ |
 | │ Header: "Settings"                                             │ |
 | │ "Manage your organization and agent configuration"             │ |
@@ -58,7 +58,7 @@
 | │ │ [icon] Notifications                                     │   │ |
 | │ ├──────────────────────────────────────────────────────────┤   │ |
 | │ │  [x] Email Notifications                                │   │ |
-| │ │  [ ] Slack Integration                                   │   │ |
+| │ │  [ ] Slack Integration flag                              │   │ |
 | │ │  [x] Daily Summary                                       │   │ |
 | │ └──────────────────────────────────────────────────────────┘   │ |
 | │                                                                │ |
@@ -72,7 +72,7 @@
 | │ │  Delete Organization                      [Delete]       │   │ |
 | │ └──────────────────────────────────────────────────────────┘   │ |
 | │                                                                │ |
-| │                                    [Save Changes]              │ |
+| │                    Section-level save buttons                  │ |
 | └────────────────────────────────────────────────────────────────┘ |
 +--------------------------------------------------------------------+
 ```
@@ -85,7 +85,7 @@
 |-----------|------|---------|
 | `SettingsSection` | `Components/settings/SettingsSection.vue` | Bordered card section with icon header, title, description, actions slot |
 | `SettingsField` | `Components/settings/SettingsField.vue` | Label + description + input slot + error/hint messages |
-| `SharedButton` (Button) | `Components/shared/Button.vue` | Primary "Save Changes" button |
+| `SaveButton` | `Components/settings/SaveButton.vue` | Section-level save button with saving/saved state |
 | `Modal` | `Components/shared/Modal.vue` | Policy create/edit modal |
 | `Icon` | `Components/shared/Icon.vue` | Phosphor icon wrapper |
 
@@ -118,21 +118,56 @@
 - **Icon**: `ph:bell`
 - **Fields** (all checkboxes):
   - Email Notifications: receive email for approval requests
-  - Slack Integration: send notifications to Slack channel
+  - Slack Integration: stored notification flag; app-local Slack delivery is not wired in the current codebase
   - Daily Summary: receive daily agent activity summary
 
-### 5. Danger Zone
+### 5. Memory
+- **Icon**: `ph:brain`
+- **Component**: `MemorySettings`
+- **Fields**: memory provider/model defaults, compaction, reranking, context
+  window overrides, and related memory runtime settings.
+
+### 6. Web Access
+- **Icon**: `ph:globe`
+- **Component**: `WebAccessSettings`
+- **Fields**:
+  - Search Provider and Search Fallbacks for `web_search`
+  - Fetch Provider and Fetch Fallbacks for `web_fetch`
+  - External Fetch Providers toggle for provider-backed URL extraction
+  - Max Search Results, Max Fetch Characters, Max Fetch Bytes, and Cache TTL
+  - Allowed Domains and Blocked Domains
+  - Country, Language, and Recency hints
+- Provider API keys are configured under Integrations; this section controls
+  workspace web policy and defaults.
+- Runtime note: search result limits, fetch character limits, domain policy,
+  provider defaults/fallbacks, external fetch opt-in, locale/recency hints, and
+  cache TTL are consumed by the web runtime. `web_fetch_max_bytes` is also
+  consumed by `DirectFetchProvider` when a workspace is bound, with
+  `config('web.fetch.max_bytes')` as the fallback.
+
+### 7. Storage
+- **Icon**: `ph:hard-drives`
+- **Component**: `StorageSettings`
+- **Purpose**: storage and disk configuration surface.
+
+### 8. Debug
+- **Icon**: `ph:bug`
+- **Component**: `DebugSettings`
+- **Purpose**: diagnostics and development/debug controls.
+
+### 9. Danger Zone
 - **Icon**: `ph:warning`
+- **Component**: `DangerZoneSettings`
 - **Actions** (each with description and red-styled button):
   - Pause All Agents: immediately pause all running agent tasks
   - Reset Agent Memory: clear all agent memory and learned behaviors
   - Delete Organization: permanently delete organization and all data
 - Separated by subtle dividers (`border-neutral-100`)
 
-### Save Button
-- Right-aligned `SharedButton` with `variant="primary"` and `size="lg"`
-- Floppy disk icon + "Save Changes" text
-- Currently logs settings to console (placeholder implementation)
+### Save Buttons
+- Each settings section exposes its own `SaveButton`
+- Saves call `PATCH /api/settings` through `useApi().updateSettings(category, settings)`
+- Saving and saved states are reflected per category
 
 ---
 
@@ -170,7 +205,7 @@
 | **Default** | All sections rendered with current values; policies listed |
 | **No policies** | Shield icon with "No action policies configured" message and hint |
 | **Policy modal open** | Modal with form fields; title adapts to create/edit mode |
-| **Saving** | Console log (placeholder); no visible loading indicator yet |
+| **Saving** | Category-specific saving state with section-level feedback |
 
 ---
 
@@ -178,7 +213,8 @@
 
 | Breakpoint | Changes |
 |------------|---------|
-| **All sizes** | Single-column layout constrained to `max-w-3xl`; all sections stack vertically; page scrolls vertically |
+| **Mobile** | Horizontal section pills above the content pane |
+| **Desktop** | Left sidebar section navigation with debug and danger actions separated at the bottom |
 
 ---
 
@@ -187,6 +223,14 @@
 | File | Purpose |
 |------|---------|
 | `resources/js/Pages/Settings.vue` | Page component with all settings sections and policy modal |
+| `resources/js/Components/settings/AgentDefaultsSettings.vue` | Agent default behavior controls |
+| `resources/js/Components/settings/PoliciesSettings.vue` | Action policy list and modal entry point |
+| `resources/js/Components/settings/NotificationsSettings.vue` | Notification preferences |
+| `resources/js/Components/settings/MemorySettings.vue` | Memory provider/model and runtime controls |
+| `resources/js/Components/settings/WebAccessSettings.vue` | Web search/fetch provider defaults, policy, limits, and cache controls |
+| `resources/js/Components/settings/StorageSettings.vue` | Storage settings section |
+| `resources/js/Components/settings/DebugSettings.vue` | Debug settings section |
+| `resources/js/Components/settings/DangerZoneSettings.vue` | Destructive organization/runtime actions |
 | `resources/js/Components/settings/SettingsSection.vue` | Reusable section card with icon header and actions slot |
 | `resources/js/Components/settings/SettingsField.vue` | Reusable field wrapper with label, hint, and error display |
 | `resources/js/Components/shared/Button.vue` | Save button |

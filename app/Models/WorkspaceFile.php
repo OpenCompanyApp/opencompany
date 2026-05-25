@@ -7,11 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Workspace file/folder metadata for the virtual file manager.
+ *
+ * The row stores hierarchy and ownership; physical bytes live on the referenced
+ * WorkspaceDisk/storage_path. Agent file tools should authorize against this
+ * metadata before using FileSystemService to read or write bytes.
+ */
 class WorkspaceFile extends Model
 {
     use BelongsToWorkspace;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -87,6 +95,8 @@ class WorkspaceFile extends Model
         $segments = [$this->name];
         $current = $this;
 
+        // Build paths from metadata rather than storage_path. storage_path is an
+        // implementation detail and may not reflect the user-visible folder tree.
         while ($current->parent_id) {
             $current = $current->parent;
             if ($current) {
@@ -96,7 +106,7 @@ class WorkspaceFile extends Model
             }
         }
 
-        return '/' . implode('/', $segments);
+        return '/'.implode('/', $segments);
     }
 
     public function isImage(): bool

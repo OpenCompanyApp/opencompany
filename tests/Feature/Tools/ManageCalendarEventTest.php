@@ -6,12 +6,14 @@ use App\Agents\Tools\Calendar\CreateCalendarEvent;
 use App\Agents\Tools\Calendar\DeleteCalendarEvent;
 use App\Agents\Tools\Calendar\UpdateCalendarEvent;
 use App\Models\CalendarEvent;
-use App\Models\CalendarEventAttendee;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers calendar event create/update/delete and attendee mutation tools.
+ */
 class ManageCalendarEventTest extends TestCase
 {
     use RefreshDatabase;

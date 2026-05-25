@@ -1,12 +1,14 @@
 # Inter-Agent Communication Protocol
 
+Status: Partly implemented. Current code supports `ask`, `delegate`, and `notify` through `ContactAgent`, but `ask` no longer matches the original synchronous design: it creates an `agent_ask` task, records it in `awaiting_delegation_ids`, dispatches `AgentRespondJob`, and returns immediately. Older timeout/depth examples below are historical design notes unless code is added for synchronous inline asks.
+
 ## Overview
 
 This document defines how agents communicate with each other in OpenCompany. The protocol introduces a single new tool — `contact_agent` — and leverages existing infrastructure (DM channels, `AgentRespondJob`, permissions) to enable three communication patterns:
 
 | Pattern | Behavior | Use when... |
 |---------|----------|-------------|
-| **ask** | Synchronous — caller waits, gets response inline | You need an answer right now to continue your work |
+| **ask** | Async question with callback — caller receives the answer when the target task finishes | You need another agent's answer without running a nested inline LLM call |
 | **delegate** | Asynchronous with callback — caller continues, result is pushed back when done | You're handing off a piece of work |
 | **notify** | Fire-and-forget — no response expected | You're sharing a status update or FYI |
 
@@ -31,14 +33,14 @@ Agents can also communicate via **shared channels** using `send_channel_message`
 
 ## The `contact_agent` Tool
 
-A single tool registered in `ToolRegistry` under a new **"agents"** app group. Classified as a `write` tool (meaning supervised/strict agents need approval to use it).
+A single tool registered by `AgentsToolProvider` under the **"agents"** app group. Classified as a `write` tool (meaning supervised/strict agents need approval to use it).
 
 ### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `action` | string | yes | `ask`, `delegate`, or `notify` |
-| `agentId` | string (UUID) | yes | Target agent's UUID. Use `query_workspace(action: "list_agents")` to discover agents. |
+| `agentId` | string (UUID) | yes | Target agent's UUID. Use `list_agents` to discover agents. |
 | `message` | string | yes | The question, task description, or notification to send. |
 | `context` | string | no | Background context the receiving agent needs. Summarize relevant info from your current conversation — the target does NOT see your original thread. |
 | `priority` | string | no | For `delegate` only: `low`, `normal` (default), `high`, `urgent`. |
@@ -46,7 +48,7 @@ A single tool registered in `ToolRegistry` under a new **"agents"** app group. C
 ### Registration
 
 ```php
-// ToolRegistry.php
+// AgentsToolProvider.php
 'contact_agent' => [
     'class' => ContactAgent::class,
     'type' => 'write',
@@ -69,9 +71,9 @@ App group:
 
 ## Communication Patterns
 
-### 1. Ask (Synchronous)
+### 1. Ask (Async Question With Callback)
 
-Agent A sends a question and **waits for the response inline** within the same tool call. The tool invokes Agent B's LLM synchronously and returns B's reply as the tool result.
+Agent A sends a question and receives a callback when Agent B finishes. The tool creates a pending `agent_ask` task for B, links it to A's active parent task when one exists, adds the task id to A's `awaiting_delegation_ids`, posts the request into the DM channel, dispatches `AgentRespondJob`, and returns immediately.
 
 **Flow:**
 
@@ -82,25 +84,23 @@ Agent A (working on task)
   │
   │   ┌─ ContactAgent tool ─────────────────────────────┐
   │   │  1. Find/create DM channel between A and B      │
-  │   │  2. Post request message to DM (source: agent)  │
-  │   │  3. Build OpenCompanyAgent for B with DM context │
-  │   │  4. Call B's LLM synchronously                   │
-  │   │  5. B processes, may use its own tools           │
-  │   │  6. Post B's response to DM channel              │
-  │   │  7. Return B's response text to A                │
+  │   │  2. Create pending agent_ask task for B          │
+  │   │  3. Add task id to A.awaiting_delegation_ids     │
+  │   │  4. Post request message to DM                   │
+  │   │  5. Dispatch AgentRespondJob for B               │
+  │   │  6. Return task id immediately                   │
   │   └─────────────────────────────────────────────────┘
   │
-  ├─ receives: "Response from DataBot: Q4 revenue was $2.4M, up 18% YoY."
+  ├─ receives: "Question sent to DataBot. Their response will be delivered when ready."
   │
-  └─ continues reasoning with that data
+  └─ resumes when the callback injects B's answer
 ```
 
 **Key behaviors:**
 - Works even if B is currently working on something else — agents handle concurrent requests
 - Only blocked if B is `offline`
-- Sleeping agents are woken up for `ask` (it's urgent enough that A is waiting)
-- **Timeout**: 120 seconds. If B's LLM doesn't finish in time, A gets an error string and can decide to retry or fall back to `delegate`
-- **Depth limit**: 3 levels. If A asks B who asks C who asks D, D's `ask` call is rejected with an error suggesting `delegate` instead
+- Sleeping agents are woken up for `ask`
+- Current code does not run synchronous nested LLM calls, so the original 120-second inline ask timeout and nested ask depth-limit design are not current behavior
 
 ### 2. Delegate (Asynchronous with Callback)
 
@@ -435,10 +435,10 @@ AgentPermission: scope_type='agent', scope_key='{archive-uuid}', permission='den
 | **awaiting_approval** | Proceed (concurrent) | Queue job | Post message |
 | **offline** | Error: agent unavailable | Error: agent unavailable | Post message (stored for later) |
 
-### Timeout handling (ask pattern)
+### Timeout handling (historical ask design)
 
 ```
-Agent A calls ask → tool starts 120s timer → Agent B processes...
+Original plan: Agent A calls ask → tool starts 120s timer → Agent B processes...
 
 If B responds within 120s:
   → A gets the response inline, continues working
@@ -448,6 +448,8 @@ If B exceeds 120s:
      Consider using 'delegate' for async processing."
   → A's LLM decides: retry, delegate, try another agent, or proceed without
 ```
+
+Current code dispatches an async `agent_ask` task instead, so timeout/failure handling follows the normal task and `AgentRespondJob` failure path.
 
 ### LLM/processing errors
 
@@ -478,7 +480,7 @@ contact_agent(action: "delegate", agentId: "data-bot", message: "...", priority:
 Explicitly blocked. `contact_agent` returns an error if `agentId` matches the caller.
 
 ### Circular requests (A → B → A)
-The depth counter prevents infinite loops. If A asks B, and B tries to ask A, that's depth 2 (allowed). But A asking B asking A asking B would hit depth 3 limit. Beyond that, the tool returns an error suggesting `delegate`.
+The original synchronous design used a depth counter to prevent infinite loops. Current code does not include that synchronous depth counter because asks and delegations run as separate tasks; loop prevention should be handled through task design, permissions, and future coordination safeguards.
 
 ### Depth limiting
 
@@ -491,13 +493,13 @@ Depth 3: Agent D calls contact_agent(ask) → BLOCKED
           Use 'delegate' for async to avoid nesting."
 ```
 
-Tracked via a static counter in `ContactAgent` that increments/decrements around synchronous calls.
+This is historical design text; `AgentCommunicationService` still exposes depth counters, but current `ContactAgent` does not enforce the synchronous depth-limit flow described above.
 
 ### Concurrent asks to the same agent
 Both proceed. Agents can handle concurrent work. Two different LLM invocations run for Agent B, each in the context of their respective DM channels. No queueing or blocking needed.
 
 ### Agent B uses tools during ask
-Allowed. Agent B has full tool access during a synchronous `ask` invocation, including calling other tools or even doing a nested `ask` (subject to depth limit). The 120s timeout covers the entire round trip including B's tool usage.
+Allowed. Agent B runs through the normal async agent task pipeline and may use permitted tools. There is no synchronous ask timeout around the entire round trip in current code.
 
 ### Dead letter / failed delegations
 If a delegated task fails (B errors out, crashes, etc.), the Task is marked as `failed` by `AgentRespondJob`'s existing error handling. The callback still fires — but with a failure message injected into A's context:
@@ -516,19 +518,19 @@ Agent A resumes and can decide to retry, try a different agent, or inform the hu
 | File | Purpose |
 |------|---------|
 | `app/Agents/Tools/Agents/ContactAgent.php` | The `contact_agent` tool: ask, delegate, notify patterns |
-| `app/Services/AgentCommunicationService.php` | Shared helpers: DM channel management, message formatting, depth tracking |
+| `app/Services/AgentCommunicationService.php` | Shared helpers: DM channel management, message formatting, and legacy depth counters |
 
 ### Modified files
 
 | File | Change |
 |------|--------|
-| `app/Agents/Tools/ToolRegistry.php` | Register `contact_agent` in TOOL_MAP, APP_GROUPS, APP_ICONS, instantiateTool() |
+| `app/Agents/Tools/Providers/AgentsToolProvider.php` | Register `contact_agent` and `list_agents` in the agents app group |
 | `app/Services/AgentPermissionService.php` | Add `canContactAgent()` method with manager hierarchy bypass |
 | `app/Jobs/AgentRespondJob.php` | Delegation callback: on task completion, detect parent task, inject result into parent agent's channel, dispatch new AgentRespondJob for parent agent with same task. Also handle `awaiting_delegation` status in finally block. |
 
-### Database: one migration needed
+### Database/status fields
 
-- Add `awaiting_delegation_ids` (JSON, nullable) to `users` table — tracks pending subtask IDs (similar to `awaiting_approval_id`)
+- `awaiting_delegation_ids` (JSON, nullable) exists on `users` via `2026_02_13_100001_add_awaiting_delegation_ids_to_users_table.php` and tracks pending subtask IDs
 - `AgentPermission.scope_type` — `'agent'` is a new string value (no schema change)
 - `Message.source` — `'agent_contact'` / `'delegation_result'` are new string values (no schema change)
 - `Task.source` — `'agent_delegation'` / `'agent_ask'` are new string values (no schema change)
@@ -538,7 +540,7 @@ Agent A resumes and can decide to retry, try a different agent, or inform the hu
 
 ## Examples
 
-### Example 1: Synchronous Ask — "What's our Q4 revenue?"
+### Example 1: Async Ask — "What's our Q4 revenue?"
 
 **Scenario**: CoordinatorBot is preparing an investor update. It needs revenue data from DataBot.
 
@@ -772,12 +774,12 @@ No polling needed — each result arrives automatically in CoordinatorBot's cont
 **Scenario**: ResearchBot tries to ask DataBot for metrics, but DataBot is slow.
 
 ```javascript
-// First attempt: ask (synchronous)
+// First attempt: ask (async in current code)
 contact_agent({ action: "ask", agentId: "data-bot", message: "What's our MRR trend for the last 6 months?" })
 
-// Result: "Error: DataBot did not respond within 120 seconds. Consider using 'delegate' for async processing."
+// Current result: "Question sent to DataBot. Their response will be delivered when ready."
 
-// ResearchBot's LLM reasons: "DataBot timed out, probably a complex query. Let me delegate instead."
+// ResearchBot can continue and will receive the callback when DataBot finishes.
 
 // Second attempt: delegate (async)
 contact_agent({ action: "delegate", agentId: "data-bot",

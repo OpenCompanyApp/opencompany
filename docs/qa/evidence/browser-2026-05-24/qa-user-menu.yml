@@ -1,0 +1,117 @@
+- generic [box=0,0,1440,1000]:
+  - generic [box=0,0,1440,1000]:
+    - generic [box=0,0,0,0]:
+      - generic [box=0,0,1440,1000]:
+        - complementary [box=0,0,240,1000]:
+          - generic [box=0,0,240,64]:
+            - generic [box=8,12,224,44]:
+              - button [box=8,12,113,44]:
+                - generic [box=20,18,32,32]
+                - generic [box=60,24,27,20]: Test
+                - img [box=95,27,14,14]
+              - button [box=202,19,30,30]:
+                - img [box=208,25,18,18]
+          - navigation [box=0,64,240,797]:
+            - generic [box=8,68,224,36]:
+              - link [box=8,68,224,36]:
+                - /url: /w/test
+                - img [box=20,77,18,18]
+                - generic [box=48,76,172,20]: Dashboard
+            - generic [box=8,125,224,150]:
+              - link [box=8,125,224,36]:
+                - /url: /w/test/tasks
+                - img [box=20,134,18,18]
+                - generic [box=48,133,172,20]: Tasks
+              - link [box=8,163,224,36]:
+                - /url: /w/test/approvals
+                - img [box=20,172,18,18]
+                - generic [box=48,171,144,20]: Approvals
+                - generic [box=202,171,18,20]: "3"
+              - link [box=8,201,224,36]:
+                - /url: /w/test/org
+                - img [box=20,210,18,18]
+                - generic [box=48,209,172,20]: Organization
+              - link [box=8,239,224,36]:
+                - /url: /w/test/automation
+                - img [box=20,248,18,18]
+                - generic [box=48,247,172,20]: Automation
+            - generic [box=8,296,224,226]:
+              - link [box=8,296,224,36]:
+                - /url: /w/test/chat
+                - img [box=20,305,18,18]
+                - generic [box=48,304,137,20]: Chat
+                - generic [box=195,304,25,20]: "15"
+              - link [box=8,334,224,36]:
+                - /url: /w/test/docs
+                - img [box=20,343,18,18]
+                - generic [box=48,342,172,20]: Docs
+              - link [box=8,372,224,36]:
+                - /url: /w/test/files
+                - img [box=20,381,18,18]
+                - generic [box=48,380,172,20]: Files
+              - link [box=8,410,224,36]:
+                - /url: /w/test/tables
+                - img [box=20,419,18,18]
+                - generic [box=48,418,172,20]: Tables
+              - link [box=8,448,224,36]:
+                - /url: /w/test/calendar
+                - img [box=20,457,18,18]
+                - generic [box=48,456,172,20]: Calendar
+              - link [box=8,486,224,36]:
+                - /url: /w/test/lists
+                - img [box=20,495,18,18]
+                - generic [box=48,494,172,20]: Lists
+            - generic [box=8,534,224,28]:
+              - generic [box=8,534,224,28]:
+                - button [expanded] [box=20,534,174,28]
+                - button [box=198,537,22,22]
+          - generic [box=0,861,240,139]:
+            - generic [box=0,861,240,74]:
+              - link [box=8,861,224,36]:
+                - /url: /w/test/integrations
+                - img [box=20,870,18,18]
+                - generic [box=48,869,83,20]: Integrations
+              - link [box=8,899,224,36]:
+                - /url: /w/test/settings
+                - img [box=20,908,18,18]
+                - generic [box=48,907,54,20]: Settings
+            - generic [box=0,935,240,65]:
+              - generic [box=12,946,216,44]:
+                - generic [box=4,946,44,44]
+                - generic [box=52,958,96,20]: OpenCompany
+        - main [box=240,0,1200,1000]:
+          - generic [box=240,0,1200,1000]:
+            - generic [box=240,0,1200,1000]:
+              - generic [box=240,0,1200,1000]:
+                - complementary [box=240,0,64,1000]
+                - generic [box=304,0,1136,1000]
+  - menu "Rutger" [active] [ref=e327] [box=4,628,211,314]:
+    - separator [ref=e329] [box=5,649,209,1]
+    - menuitem "Online" [ref=e330] [cursor=pointer] [box=9,654,201,32]:
+      - img [ref=e331] [box=17,662,16,16]
+      - generic [ref=e333] [box=41,660,137,20]: Online
+      - img [ref=e334] [box=186,662,16,16]
+    - separator [ref=e336] [box=5,690,209,1]
+    - menuitem "Profile" [ref=e337] [cursor=pointer] [box=9,695,201,32]:
+      - img [ref=e338] [box=17,703,16,16]
+      - generic [ref=e340] [box=41,701,161,20]: Profile
+    - menuitem "Settings" [ref=e341] [cursor=pointer] [box=9,727,201,32]:
+      - img [ref=e342] [box=17,735,16,16]
+      - generic [ref=e344] [box=41,733,161,20]: Settings
+    - menuitem "Keyboard shortcuts" [ref=e345] [cursor=pointer] [box=9,759,201,32]:
+      - img [ref=e346] [box=17,767,16,16]
+      - generic [ref=e348] [box=41,765,161,20]: Keyboard shortcuts
+    - menuitem "Notification preferences" [ref=e349] [cursor=pointer] [box=9,791,201,32]:
+      - img [ref=e350] [box=17,799,16,16]
+      - generic [ref=e352] [box=41,797,161,20]: Notification preferences
+    - menuitem "Help & support" [ref=e353] [cursor=pointer] [box=9,823,201,32]:
+      - img [ref=e354] [box=17,831,16,16]
+      - generic [ref=e356] [box=41,829,161,20]: Help & support
+    - separator [ref=e357] [box=5,859,209,1]
+    - menuitem "Dark mode" [ref=e358] [cursor=pointer] [box=9,864,201,32]:
+      - img [ref=e359] [box=17,872,16,16]
+      - generic [ref=e361] [box=41,870,161,20]: Dark mode
+    - separator [ref=e362] [box=5,900,209,1]
+    - menuitem "Sign out" [ref=e363] [cursor=pointer] [box=9,905,201,32]:
+      - img [ref=e364] [box=17,913,16,16]
+      - generic [ref=e366] [box=41,911,161,20]: Sign out

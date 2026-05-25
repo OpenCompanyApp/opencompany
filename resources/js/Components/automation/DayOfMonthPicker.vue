@@ -41,6 +41,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: number[]]
 }>()
 
+// Emit a fresh array for v-model updates so parent forms see reactivity changes
+// even when the same date set is toggled repeatedly.
 function toggle(date: number) {
   const current = [...props.modelValue]
   const idx = current.indexOf(date)
@@ -53,6 +55,8 @@ function toggle(date: number) {
 }
 
 function toggleFirstOfMonth() {
+  // "1st only" is a common monthly automation shortcut; clicking it again
+  // clears the selection instead of leaving an ambiguous mixed state.
   if (props.modelValue.includes(1) && props.modelValue.length === 1) {
     emit('update:modelValue', [])
   } else {

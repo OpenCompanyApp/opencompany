@@ -58,7 +58,7 @@ class UserSeeder extends Seeder
                 'agent_type' => 'manager',
                 'status' => 'working',
                 'current_task' => 'Coordinating team workflow and prioritizing tasks',
-                'brain' => 'glm-coding:glm-4.7',
+                'brain' => 'z:glm-5.1',
                 'behavior_mode' => 'autonomous',
                 'must_wait_for_approval' => false,
             ],

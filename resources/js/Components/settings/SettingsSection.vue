@@ -1,4 +1,5 @@
 <template>
+  <!-- Section shell for settings pages; danger variant changes accenting without changing slot layout. -->
   <section
     class="group/section bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden transition-colors duration-150 hover:border-neutral-300"
     :class="variant === 'danger' && 'hover:border-red-300'"
@@ -45,6 +46,8 @@
 <script setup lang="ts">
 import Icon from '@/Components/shared/Icon.vue'
 
+// Actions live in a named slot so save/test/delete controls can align with the
+// section header without each settings page rebuilding the chrome.
 withDefaults(defineProps<{
   title: string
   icon: string

@@ -4,13 +4,28 @@ namespace App\Agents\Providers;
 
 use App\Models\IntegrationSetting;
 use App\Models\User;
+use App\Services\Ai\ModelCatalog;
+use App\Services\Ai\ProviderCatalog;
+use App\Services\Ai\ProviderConfigResolver;
 use InvalidArgumentException;
-use OpenCompany\PrismRelay\Meta\ProviderMeta;
-use OpenCompany\PrismRelay\RelayManager;
 
+/**
+ * Resolves an agent brain setting into the provider/model pair used by Laravel AI.
+ *
+ * OpenCompany stores user-editable brains as compact strings, while the runtime
+ * needs canonical provider IDs, current model aliases, workspace-scoped
+ * credentials, and provider registration. This resolver keeps that translation
+ * out of the agent class so provider catalog behavior can be tested directly.
+ */
 class DynamicProviderResolver
 {
     private ?string $workspaceId = null;
+
+    public function __construct(
+        private ?ProviderCatalog $providerCatalog = null,
+        private ?ModelCatalog $modelCatalog = null,
+        private ?ProviderConfigResolver $configResolver = null,
+    ) {}
 
     /**
      * Set the workspace ID for scoping IntegrationSetting queries.
@@ -26,7 +41,7 @@ class DynamicProviderResolver
     /**
      * Parse a User's brain field and resolve to SDK provider + model.
      *
-     * Brain format: "provider:model" (e.g. "glm-coding:glm-4.7", "anthropic:claude-sonnet-4-5-20250929")
+     * Brain format: "provider:model".
      *
      * @return array{provider: string, model: string}
      */
@@ -34,7 +49,7 @@ class DynamicProviderResolver
     {
         $this->workspaceId = $agent->workspace_id;
 
-        $brain = $agent->brain ?? 'glm-coding:glm-4.7';
+        $brain = $agent->brain ?? (string) config('ai.default_for_agents', config('ai.default'));
         $parts = explode(':', $brain, 2);
         $providerKey = $parts[0];
         $model = $parts[1] ?? $this->getDefaultModel($providerKey);
@@ -49,153 +64,28 @@ class DynamicProviderResolver
      */
     public function resolveFromParts(string $providerKey, string $model): array
     {
-        // Codex uses ChatGPT subscription OAuth — no API key needed
-        if ($providerKey === 'codex') {
-            $this->registerCodexProvider();
-            return ['provider' => 'codex', 'model' => $model];
+        [$providerKey, $model] = $this->normalizeLegacyBrain($providerKey, $model);
+        $providerKey = $this->providers()->canonicalProvider($providerKey) ?? $providerKey;
+
+        if (! $this->providers()->hasProvider($providerKey)) {
+            throw new InvalidArgumentException("Unknown provider: {$providerKey}");
         }
 
-        // GLM providers use IntegrationSetting for API keys
-        if ($this->isGlmProvider($providerKey)) {
-            $this->registerGlmProvider($providerKey);
-            return ['provider' => $providerKey, 'model' => $model];
-        }
-
-        // Standard providers — check DB for API key, fall back to .env
-        $sdkProvider = $this->mapToSdkProvider($providerKey);
-        if ($sdkProvider) {
-            $this->applyIntegrationConfig($providerKey);
-            return ['provider' => $sdkProvider, 'model' => $model];
-        }
-
-        throw new InvalidArgumentException("Unknown provider: {$providerKey}");
+        return $this->config()->resolve($providerKey, $model, $this->workspaceId);
     }
 
     /**
-     * Check if a provider key is a GLM variant.
+     * @return array{0: string, 1: string}
      */
-    private function isGlmProvider(string $providerKey): bool
+    private function normalizeLegacyBrain(string $providerKey, string $model): array
     {
-        return (new RelayManager)->isRelayProvider($providerKey);
-    }
-
-    /**
-     * Dynamically register a GLM provider in the Prism config.
-     *
-     * GLM uses an OpenAI-compatible API, so we register it as an OpenAI provider
-     * with a custom URL and API key from IntegrationSetting.
-     */
-    private function registerGlmProvider(string $providerKey): void
-    {
-        $integration = IntegrationSetting::where('workspace_id', $this->workspaceId)
-            ->where('integration_id', $providerKey)
-            ->where('enabled', true)
-            ->first();
-
-        if (!$integration) {
-            throw new InvalidArgumentException(
-                "AI provider '{$providerKey}' is not configured. Please enable it in Integrations settings."
-            );
-        }
-
-        if (!$integration->hasValidConfig()) {
-            throw new InvalidArgumentException(
-                "AI provider '{$providerKey}' is not properly configured. Please check the API settings."
-            );
-        }
-
-        $apiKey = $integration->getConfigValue('api_key');
-        $url = $integration->getConfigValue('url') ?? $this->getDefaultGlmUrl($providerKey);
-
-        // Set Prism config for the GLM provider variant (registered via PrismManager::extend)
-        config([
-            "prism.providers.{$providerKey}" => [
-                'api_key' => $apiKey,
-                'url' => $url,
-            ],
-        ]);
-
-        // Register in AI SDK config using our custom driver (registered via AiManager::extend)
-        // This routes through GlmPrismGateway → Prism 'glm' provider → chat/completions
-        config([
-            "ai.providers.{$providerKey}" => [
-                'driver' => $providerKey, // 'glm' or 'glm-coding' — custom drivers
-                'key' => $apiKey,
-            ],
-        ]);
-    }
-
-    /**
-     * Register the Codex provider in AI SDK config.
-     * Codex uses OAuth tokens managed by the prism-codex package.
-     */
-    private function registerCodexProvider(): void
-    {
-        config([
-            'ai.providers.codex' => [
-                'driver' => 'codex',
-                'key' => 'codex-oauth',
-            ],
-        ]);
-    }
-
-    /**
-     * Map a brain provider key to an AI SDK provider name.
-     */
-    private function mapToSdkProvider(string $providerKey): ?string
-    {
-        $map = [
-            'anthropic' => 'anthropic',
-            'openai' => 'openai',
-            'gemini' => 'gemini',
-            'groq' => 'groq',
-            'xai' => 'xai',
-            'openrouter' => 'openrouter',
-            'deepseek' => 'deepseek',
-            'mistral' => 'mistral',
-            'ollama' => 'ollama',
-        ];
-
-        return $map[$providerKey] ?? null;
-    }
-
-    /**
-     * If a provider has an IntegrationSetting with API key, override prism/ai config.
-     * Falls back to .env config silently if no IntegrationSetting exists.
-     */
-    private function applyIntegrationConfig(string $providerKey): void
-    {
-        $integration = IntegrationSetting::where('workspace_id', $this->workspaceId)
-            ->where('integration_id', $providerKey)
-            ->where('enabled', true)
-            ->first();
-
-        if (!$integration || !$integration->hasValidConfig()) {
-            return; // Fall back to .env config
-        }
-
-        $apiKey = $integration->getConfigValue('api_key');
-        $url = $integration->getConfigValue('url');
-
-        $config = ['api_key' => $apiKey];
-        if ($url) {
-            $config['url'] = $url;
-        }
-
-        // Merge into existing prism config (preserves .env values for unset fields)
-        config(["prism.providers.{$providerKey}" => array_merge(
-            config("prism.providers.{$providerKey}", []),
-            $config,
-        )]);
-    }
-
-    /**
-     * Get default URL for a GLM provider.
-     */
-    private function getDefaultGlmUrl(string $providerKey): string
-    {
-        return (new ProviderMeta)->url($providerKey)
-            ?? throw new InvalidArgumentException("Unknown custom provider: {$providerKey}");
+        return match ($providerKey) {
+            // Older Atlas brains used a synthetic provider key for GLM coding.
+            // Keep them working, but route through the current Z.ai provider and
+            // upgrade obsolete GLM 4.x defaults to the supported GLM 5.1 model.
+            'glm-coding' => ['z', str_starts_with($model, 'glm-4.') ? 'glm-5.1' : $model],
+            default => [$providerKey, $model],
+        };
     }
 
     /**
@@ -203,15 +93,30 @@ class DynamicProviderResolver
      */
     private function getDefaultModel(string $providerKey): string
     {
-        // Try DB-stored models first
+        // Workspace settings win over package defaults because teams can expose
+        // a restricted model list or custom aliases from the integrations UI.
         $setting = IntegrationSetting::where('workspace_id', $this->workspaceId)
             ->where('integration_id', $providerKey)->first();
         $models = $setting?->getConfigValue('models', []);
-        if (is_array($models) && !empty($models)) {
+        if (is_array($models) && ! empty($models)) {
             return array_key_first($models);
         }
 
-        // Fall back to prism-relay's provider metadata registry
-        return (new ProviderMeta)->defaultModel($providerKey) ?? 'default';
+        return $this->models()->defaultModel($providerKey, $this->workspaceId);
+    }
+
+    private function providers(): ProviderCatalog
+    {
+        return $this->providerCatalog ??= app(ProviderCatalog::class);
+    }
+
+    private function models(): ModelCatalog
+    {
+        return $this->modelCatalog ??= app(ModelCatalog::class);
+    }
+
+    private function config(): ProviderConfigResolver
+    {
+        return $this->configResolver ??= app(ProviderConfigResolver::class);
     }
 }

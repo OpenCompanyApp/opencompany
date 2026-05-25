@@ -1,0 +1,184 @@
+- generic [ref=e3] [box=0,0,0,0]:
+  - generic [ref=e4] [box=0,0,1440,1000]:
+    - complementary [ref=e5] [box=0,0,64,1000]:
+      - button [ref=e177] [box=12,12,40,40]:
+        - img [ref=e179] [box=25,25,14,14]
+      - button [ref=e182] [box=8,56,48,36]:
+        - img [ref=e183] [box=22,64,20,20]
+      - navigation [ref=e18] [box=0,100,64,744]:
+        - link [ref=e185] [cursor=pointer] [box=8,108,48,34]:
+          - /url: /w/default
+          - img [ref=e21] [box=23,116,18,18]
+        - generic [ref=e25] [box=8,163,48,142]:
+          - link [ref=e186] [cursor=pointer] [box=8,163,48,34]:
+            - /url: /w/default/tasks
+            - img [ref=e27] [box=23,171,18,18]
+          - link [ref=e187] [cursor=pointer] [box=8,199,48,34]:
+            - /url: /w/default/approvals
+            - img [ref=e31] [box=23,207,18,18]
+          - link [ref=e188] [cursor=pointer] [box=8,235,48,34]:
+            - /url: /w/default/org
+            - img [ref=e36] [box=23,243,18,18]
+          - link [ref=e189] [cursor=pointer] [box=8,271,48,34]:
+            - /url: /w/default/automation
+            - img [ref=e40] [box=23,279,18,18]
+        - generic [ref=e44] [box=8,326,48,214]:
+          - link [ref=e190] [cursor=pointer] [box=8,326,48,34]:
+            - /url: /w/default/chat
+            - img [ref=e46] [box=23,334,18,18]
+          - link [ref=e191] [cursor=pointer] [box=8,362,48,34]:
+            - /url: /w/default/docs
+            - img [ref=e51] [box=23,370,18,18]
+          - link [ref=e192] [cursor=pointer] [box=8,398,48,34]:
+            - /url: /w/default/files
+            - img [ref=e55] [box=23,406,18,18]
+          - link [ref=e193] [cursor=pointer] [box=8,434,48,34]:
+            - /url: /w/default/tables
+            - img [ref=e59] [box=23,442,18,18]
+          - link [ref=e194] [cursor=pointer] [box=8,470,48,34]:
+            - /url: /w/default/calendar
+            - img [ref=e63] [box=23,478,18,18]
+          - link [ref=e195] [cursor=pointer] [box=8,506,48,34]:
+            - /url: /w/default/lists
+            - img [ref=e67] [box=23,514,18,18]
+        - generic [ref=e197] [box=8,552,48,353]:
+          - link "Atlas Atlas manager" [ref=e198] [cursor=pointer] [box=8,552,48,43]:
+            - /url: /w/default/agent/a1
+            - img "Atlas" [ref=e202] [box=20,562,24,24]
+            - generic [box=52,558,0,31]:
+              - generic [box=52,558,0,18]: Atlas
+              - generic [box=52,576,0,14]: manager
+          - link "Echo Echo writer" [ref=e204] [cursor=pointer] [box=8,597,48,43]:
+            - /url: /w/default/agent/a2
+            - img "Echo" [ref=e208] [box=20,607,24,24]
+            - generic [box=52,603,0,31]:
+              - generic [box=52,603,0,18]: Echo
+              - generic [box=52,621,0,14]: writer
+          - link "Logic Logic coder" [ref=e210] [cursor=pointer] [box=8,643,48,43]:
+            - /url: /w/default/agent/a5
+            - img "Logic" [ref=e214] [box=20,652,24,24]
+            - generic [box=52,649,0,31]:
+              - generic [box=52,649,0,18]: Logic
+              - generic [box=52,666,0,14]: coder
+          - link "Miles Flatley" [ref=e216] [cursor=pointer] [box=8,688,48,36]:
+            - /url: /w/default/agent/h24488
+            - generic [box=52,697,0,18]:
+              - generic [box=52,697,0,18]: Miles Flatley
+          - link "Nexus Nexus coordinator" [ref=e222] [cursor=pointer] [box=8,726,48,43]:
+            - /url: /w/default/agent/a7
+            - img "Nexus" [ref=e226] [box=20,735,24,24]
+            - generic [box=52,732,0,31]:
+              - generic [box=52,732,0,18]: Nexus
+              - generic [box=52,749,0,14]: coordinator
+          - link "Nova Nova analyst" [ref=e228] [cursor=pointer] [box=8,771,48,43]:
+            - /url: /w/default/agent/a3
+            - img "Nova" [ref=e232] [box=20,781,24,24]
+            - generic [box=52,777,0,31]:
+              - generic [box=52,777,0,18]: Nova
+              - generic [box=52,795,0,14]: analyst
+          - link "Pixel Pixel creative" [ref=e234] [cursor=pointer] [box=8,816,48,43]:
+            - /url: /w/default/agent/a4
+            - img "Pixel" [ref=e238] [box=20,826,24,24]
+            - generic [box=52,822,0,31]:
+              - generic [box=52,822,0,18]: Pixel
+              - generic [box=52,840,0,14]: creative
+          - link "Scout Scout researcher" [ref=e240] [cursor=pointer] [box=8,862,48,43]:
+            - /url: /w/default/agent/a6
+            - img "Scout" [ref=e244] [box=20,871,24,24]
+            - generic [box=52,868,0,31]:
+              - generic [box=52,868,0,18]: Scout
+              - generic [box=52,885,0,14]: researcher
+      - generic [ref=e79] [box=0,844,64,156]:
+        - generic [ref=e80] [box=0,844,64,70]:
+          - link [ref=e246] [cursor=pointer] [box=8,844,48,34]:
+            - /url: /w/default/integrations
+            - img [ref=e82] [box=23,852,18,18]
+          - link [ref=e247] [cursor=pointer] [box=8,880,48,34]:
+            - /url: /w/default/settings
+            - img [ref=e86] [box=23,888,18,18]
+        - generic [ref=e248] [box=8,925,48,65]:
+          - button "Rutger" [ref=e250] [cursor=pointer] [box=10,925,44,44]:
+            - img "Rutger" [ref=e252] [box=18,933,28,28]
+          - generic [ref=e254] [box=25,975,15,15]: OC
+    - main [ref=e97] [box=64,0,1376,1000]:
+      - generic [ref=e100] [box=64,0,1376,1000]:
+        - complementary [ref=e101] [box=64,0,64,1000]:
+          - button "New assistant chat" [ref=e105] [box=76,12,36,36]:
+            - img [ref=e106] [box=86,22,16,16]
+          - generic [ref=e255] [box=72,81,39,1564]:
+            - button "Atlas" [ref=e256] [box=72,81,39,52]:
+              - img "Atlas" [ref=e261] [box=76,91,32,32]
+            - button "Atlas" [ref=e263] [box=72,137,39,52]:
+              - img "Atlas" [ref=e268] [box=76,147,32,32]
+            - button "Atlas" [ref=e270] [box=72,193,39,52]:
+              - img "Atlas" [ref=e275] [box=76,203,32,32]
+            - button "Atlas" [ref=e277] [box=72,249,39,52]:
+              - img "Atlas" [ref=e282] [box=76,259,32,32]
+            - button "Atlas" [ref=e284] [box=72,305,39,52]:
+              - img "Atlas" [ref=e289] [box=76,315,32,32]
+            - button "Atlas" [ref=e291] [box=72,361,39,52]:
+              - img "Atlas" [ref=e296] [box=76,371,32,32]
+            - button "Atlas" [ref=e298] [box=72,417,39,52]:
+              - img "Atlas" [ref=e303] [box=76,427,32,32]
+            - button "Atlas" [ref=e305] [box=72,473,39,52]:
+              - img "Atlas" [ref=e310] [box=76,483,32,32]
+            - button "Atlas" [ref=e312] [box=72,529,39,52]:
+              - img "Atlas" [ref=e317] [box=76,539,32,32]
+            - button "Nexus" [ref=e319] [box=72,585,39,52]:
+              - img "Nexus" [ref=e324] [box=76,595,32,32]
+            - button "Echo" [ref=e326] [box=72,641,39,52]:
+              - img "Echo" [ref=e331] [box=76,651,32,32]
+            - button "Logic" [ref=e333] [box=72,697,39,52]:
+              - img "Logic" [ref=e338] [box=76,707,32,32]
+            - button "Echo" [ref=e340] [box=72,753,39,52]:
+              - img "Echo" [ref=e345] [box=76,763,32,32]
+            - button "Nexus" [ref=e347] [box=72,809,39,52]:
+              - img "Nexus" [ref=e352] [box=76,819,32,32]
+            - button "Nova" [ref=e354] [box=72,865,39,52]:
+              - img "Nova" [ref=e359] [box=76,875,32,32]
+            - button "Scout" [ref=e361] [box=72,921,39,52]:
+              - img "Scout" [ref=e366] [box=76,931,32,32]
+            - button "Atlas" [ref=e368] [box=72,977,39,52]:
+              - img "Atlas" [ref=e373] [box=76,987,32,32]
+            - button "Nova" [ref=e375] [box=72,1033,39,52]:
+              - img "Nova" [ref=e380] [box=76,1043,32,32]
+            - button "Atlas" [ref=e382] [box=72,1089,39,52]:
+              - img "Atlas" [ref=e387] [box=76,1099,32,32]
+            - button "Echo" [ref=e389] [box=72,1145,39,52]:
+              - img "Echo" [ref=e394] [box=76,1155,32,32]
+            - button "Atlas" [ref=e396] [box=72,1201,39,52]:
+              - img "Atlas" [ref=e401] [box=76,1211,32,32]
+            - button "Atlas" [ref=e403] [box=72,1257,39,52]:
+              - img "Atlas" [ref=e408] [box=76,1267,32,32]
+            - button "R" [ref=e410] [box=72,1313,39,52]:
+              - generic [ref=e412] [box=87,1331,8,16]: R
+            - button "TM" [ref=e413] [box=72,1369,39,52]:
+              - generic [ref=e415] [box=83,1387,18,16]: TM
+            - button "TM" [ref=e416] [box=72,1425,39,52]:
+              - generic [ref=e418] [box=83,1443,18,16]: TM
+            - button "Echo" [ref=e419] [box=72,1481,39,52]:
+              - img "Echo" [ref=e424] [box=76,1491,32,32]
+            - button "Atlas" [ref=e426] [box=72,1537,39,52]:
+              - img "Atlas" [ref=e431] [box=76,1547,32,32]
+            - button "Atlas" [ref=e433] [box=72,1593,39,52]:
+              - img "Atlas" [ref=e438] [box=76,1603,32,32]
+        - generic [ref=e109] [box=128,0,1312,1000]:
+          - generic [ref=e110] [box=128,0,1312,56]:
+            - generic [ref=e111] [box=144,10,180,36]:
+              - button "Show conversations" [ref=e112] [box=144,10,36,36]
+              - img [ref=e441] [box=200,20,16,16]
+              - generic [ref=e115] [box=236,10,88,36]
+            - button "Refresh" [ref=e119] [box=1328,10,97,36]:
+              - img [ref=e120] [box=1340,20,16,16]
+              - generic [ref=e122] [box=1362,18,51,20]: Refresh
+          - generic [ref=e444] [box=400,56,768,712]:
+            - img [ref=e446] [box=772,348,24,24]
+            - heading "Start the conversation" [level=2] [ref=e448] [box=649,400,270,32]
+            - paragraph [ref=e449] [box=560,440,448,48]: Messages, files, and replies stay in this same OpenCompany chat surface.
+          - generic [ref=e157] [box=416,840,736,136]:
+            - textbox "Message this DM..." [ref=e450] [box=417,841,734,80]
+            - generic [ref=e159] [box=417,927,734,48]:
+              - button "Attach files" [ref=e161] [box=429,927,36,36]
+              - button "Send message" [disabled] [ref=e173] [box=1103,927,36,36]
+  - region "Notifications (F8)" [box=0,1000,1440,0]:
+    - list [box=1424,984,0,0]

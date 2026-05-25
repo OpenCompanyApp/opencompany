@@ -393,7 +393,22 @@ const emit = defineEmits<{
 }>()
 
 const { toggleDark, isDark } = useColorMode()
-const { workspacePath, isAdmin } = useWorkspace()
+const {
+  activityUrl,
+  approvalsUrl,
+  automationUrl,
+  calendarUrl,
+  chatUrl,
+  dashboardUrl,
+  docsUrl,
+  integrationsUrl,
+  isAdmin,
+  listsUrl,
+  orgUrl,
+  settingsUrl,
+  tablesUrl,
+  tasksUrl,
+} = useWorkspace()
 
 // Size configuration
 const sizeConfig: Record<PaletteSize, SizeConfig> = {
@@ -467,7 +482,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       icon: 'ph:house-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
       shortcut: 'G H',
-      action: () => router.visit(workspacePath('/')),
+      action: () => router.visit(dashboardUrl()),
     },
     {
       id: 'nav-chat',
@@ -476,7 +491,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       icon: 'ph:chat-circle-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
       shortcut: 'G C',
-      action: () => router.visit(workspacePath('/chat')),
+      action: () => router.visit(chatUrl()),
     },
     {
       id: 'nav-tasks',
@@ -485,7 +500,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       icon: 'ph:check-square-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
       shortcut: 'G T',
-      action: () => router.visit(workspacePath('/tasks')),
+      action: () => router.visit(tasksUrl()),
     },
     {
       id: 'nav-docs',
@@ -494,7 +509,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       icon: 'ph:file-text-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
       shortcut: 'G D',
-      action: () => router.visit(workspacePath('/docs')),
+      action: () => router.visit(docsUrl()),
     },
     {
       id: 'nav-approvals',
@@ -503,7 +518,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       icon: 'ph:seal-check-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
       shortcut: 'G A',
-      action: () => router.visit(workspacePath('/approvals')),
+      action: () => router.visit(approvalsUrl()),
     },
     {
       id: 'nav-org',
@@ -512,7 +527,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       icon: 'ph:tree-structure-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
       shortcut: 'G O',
-      action: () => router.visit(workspacePath('/org')),
+      action: () => router.visit(orgUrl()),
     },
     {
       id: 'nav-tables',
@@ -520,7 +535,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       description: 'View and manage tables',
       icon: 'ph:table-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
-      action: () => router.visit(workspacePath('/tables')),
+      action: () => router.visit(tablesUrl()),
     },
     {
       id: 'nav-calendar',
@@ -528,7 +543,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       description: 'View calendar',
       icon: 'ph:calendar-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
-      action: () => router.visit(workspacePath('/calendar')),
+      action: () => router.visit(calendarUrl()),
     },
     {
       id: 'nav-lists',
@@ -536,7 +551,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       description: 'View kanban boards',
       icon: 'ph:kanban-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
-      action: () => router.visit(workspacePath('/lists')),
+      action: () => router.visit(listsUrl()),
     },
     {
       id: 'nav-automation',
@@ -544,7 +559,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       description: 'Manage automations',
       icon: 'ph:lightning-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
-      action: () => router.visit(workspacePath('/automation')),
+      action: () => router.visit(automationUrl()),
     },
     {
       id: 'nav-activity',
@@ -552,7 +567,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
       description: 'View activity feed',
       icon: 'ph:pulse-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
-      action: () => router.visit(workspacePath('/activity')),
+      action: () => router.visit(activityUrl()),
     },
   ]
 
@@ -565,7 +580,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
         description: 'Manage integrations',
         icon: 'ph:plugs-connected-fill',
         iconColor: 'text-neutral-500 dark:text-neutral-300',
-        action: () => router.visit(workspacePath('/integrations')),
+        action: () => router.visit(integrationsUrl()),
       },
       {
         id: 'nav-settings',
@@ -574,7 +589,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
         icon: 'ph:gear-fill',
         iconColor: 'text-neutral-500 dark:text-neutral-300',
         shortcut: 'G S',
-        action: () => router.visit(workspacePath('/settings')),
+        action: () => router.visit(settingsUrl()),
       },
     )
   }
@@ -596,7 +611,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
         icon: 'ph:hash',
         iconColor: 'text-neutral-500 dark:text-neutral-300',
         meta: channel.unreadCount ? `${channel.unreadCount} unread` : undefined,
-        action: () => router.visit(workspacePath(`/chat?channel=${channel.id}`)),
+        action: () => router.visit(chatUrl({ query: { channel: channel.id } })),
       })),
     },
     {
@@ -611,7 +626,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
         avatar: { name: agent.name, isAI: true },
         badge: agent.status,
         badgeVariant: agent.status === 'online' ? 'success' : agent.status === 'busy' ? 'warning' : 'default',
-        action: () => router.visit(workspacePath(`/chat?agent=${agent.id}`)),
+        action: () => router.visit(chatUrl({ query: { agent: agent.id } })),
       })),
     },
     {
@@ -679,7 +694,7 @@ const commandGroups = computed<CommandGroup[]>(() => {
           label: 'Preferences',
           description: 'Open settings panel',
           icon: 'ph:gear-six',
-          action: () => router.visit(workspacePath('/settings')),
+          action: () => router.visit(settingsUrl()),
         }] : []),
       ],
     },

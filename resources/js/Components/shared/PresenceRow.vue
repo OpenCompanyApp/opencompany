@@ -143,7 +143,7 @@ import SharedAgentAvatar from '@/Components/shared/AgentAvatar.vue'
 
 type PresenceRowSize = 'xs' | 'sm' | 'md' | 'lg'
 type PresenceRowVariant = 'default' | 'compact' | 'inline' | 'card'
-type ActivityType = 'typing' | 'editing' | 'viewing' | 'idle'
+type ActivityType = 'typing' | 'editing' | 'viewing' | 'idle' | 'online' | 'away' | 'busy' | 'offline'
 type TooltipSide = 'top' | 'right' | 'bottom' | 'left'
 type AvatarSize = 'xs' | 'sm' | 'md'
 
@@ -264,6 +264,10 @@ const activityIcon = computed(() => {
     editing: 'ph:pencil-simple',
     viewing: 'ph:eye',
     idle: 'ph:moon',
+    online: 'ph:circle',
+    away: 'ph:clock',
+    busy: 'ph:minus-circle',
+    offline: 'ph:circle',
   }
   return icons[props.activityType || 'viewing']
 })
@@ -288,6 +292,10 @@ const getPresenceLabel = (presence: ActivityType): string => {
     editing: 'Editing',
     viewing: 'Viewing',
     idle: 'Idle',
+    online: 'Online',
+    away: 'Away',
+    busy: 'Busy',
+    offline: 'Offline',
   }
   return labels[presence]
 }
@@ -300,6 +308,10 @@ const presenceRingClasses = (presence: ActivityType) => {
     editing: 'border-amber-400',
     viewing: 'border-blue-400',
     idle: 'border-neutral-300',
+    online: 'border-green-400',
+    away: 'border-amber-400',
+    busy: 'border-red-400',
+    offline: 'border-neutral-300',
   }
   return [baseClasses, colorClasses[presence]]
 }
@@ -402,6 +414,10 @@ const activityIconClasses = computed(() => {
     editing: 'text-amber-600',
     viewing: 'text-blue-600',
     idle: 'text-neutral-400 dark:text-neutral-400',
+    online: 'text-green-600',
+    away: 'text-amber-600',
+    busy: 'text-red-600',
+    offline: 'text-neutral-400 dark:text-neutral-400',
   }
   return [baseClasses, colorClasses[props.activityType || 'viewing']]
 })

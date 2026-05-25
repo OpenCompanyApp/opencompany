@@ -8,10 +8,10 @@
 
 | Page | Route | Name | Auth | Layout |
 |------|-------|------|------|--------|
-| **View** | `/profile/{id}` | `profile.show` | Required | None (standalone) |
-| **Edit** | `/profile` | `profile.edit` | Required | AppLayout |
-| **Update** | `PATCH /profile` | `profile.update` | Required | -- |
-| **Delete** | `DELETE /profile` | `profile.destroy` | Required | -- |
+| **View** | `/w/{workspace}/profile/{id}` | `profile.show` | Required | None (standalone) |
+| **Edit** | `/w/{workspace}/profile` | `profile.edit` | Required | AppLayout |
+| **Update** | `PATCH /w/{workspace}/profile` | `profile.update` | Required | -- |
+| **Delete** | `DELETE /w/{workspace}/profile` | `profile.destroy` | Required | -- |
 
 ---
 
@@ -61,7 +61,7 @@ A standalone full-page view for any user or agent profile, loaded by UUID. Fetch
 - **Agent badge** -- colored pill showing agent type (e.g. "manager Agent")
 - **Ephemeral badge** -- amber pill when `isEphemeral` is true
 - **Quick stats** -- completed tasks count in a small card
-- **Action buttons** -- "Send Message" links to `/messages/{id}`; "Manage Agent" links to `/agent/{id}` (agents only); current user (`h1`) does not see "Send Message"
+- **Action buttons** -- "Send Message" links through the generated message route helper, which currently redirects to Chat with `?dm={id}`; "Manage Agent" links through the generated agent route helper (agents only); current user (`h1`) does not see "Send Message"
 - **Tabbed content** -- two tabs: Activity (steps with status icons and timestamps) and Tasks (task list with status badges)
 - **Reactive routing** -- watches `props.id` and re-fetches on change
 
@@ -126,7 +126,7 @@ The authenticated user's own profile settings page. Uses `AppLayout` and renders
 +--------------------------------------------------------------+
 ```
 
-### Profile Information Form (`UpdateProfileInformationForm.vue`)
+### Profile Information Form
 
 - **Fields:** Name (text), Email (email)
 - **Pre-filled** from `usePage().props.auth.user`
@@ -134,7 +134,7 @@ The authenticated user's own profile settings page. Uses `AppLayout` and renders
 - **Email verification:** if `mustVerifyEmail` prop is true and email is unverified, shows warning with "Click here to re-send" link that POSTs to `verification.send`
 - **Success feedback:** "Saved." text fades in via `<Transition>` when `form.recentlySuccessful` is true
 
-### Update Password Form (`UpdatePasswordForm.vue`)
+### Update Password Form
 
 - **Fields:** Current password, New password, Confirm password
 - **Submit:** `PUT` to `password.update` route
@@ -142,7 +142,7 @@ The authenticated user's own profile settings page. Uses `AppLayout` and renders
 - **Preserves scroll** on submit
 - **Success feedback:** "Saved." text fades in, form resets on success
 
-### Delete Account Form (`DeleteUserForm.vue`)
+### Delete Account Form
 
 - **Trigger:** "Delete Account" danger button opens a confirmation modal
 - **Modal:** title "Are you sure you want to delete your account?" with explanatory text, password input, Cancel button, and Delete Account danger button
@@ -193,7 +193,5 @@ The authenticated user's own profile settings page. Uses `AppLayout` and renders
 |------|---------|
 | `resources/js/Pages/Profile/Show.vue` | Public profile view (any user/agent) |
 | `resources/js/Pages/Profile/Edit.vue` | Authenticated user's own profile settings |
-| `resources/js/Pages/Profile/Partials/UpdateProfileInformationForm.vue` | Name and email form |
-| `resources/js/Pages/Profile/Partials/UpdatePasswordForm.vue` | Password change form |
-| `resources/js/Pages/Profile/Partials/DeleteUserForm.vue` | Account deletion with confirmation modal |
+| `resources/js/Pages/Profile/Edit.vue` | Contains profile, password, and delete-account forms |
 | `app/Http/Controllers/ProfileController.php` | Backend controller for edit/update/destroy |

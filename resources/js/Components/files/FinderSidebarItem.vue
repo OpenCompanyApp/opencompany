@@ -57,5 +57,6 @@ defineEmits<{
   select: [folderId: string]
 }>()
 
+// Expand only the first level by default to keep deep storage trees scannable.
 const expanded = ref(props.depth < 1)
 </script>

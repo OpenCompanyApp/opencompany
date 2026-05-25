@@ -14,23 +14,39 @@ use App\Models\MessageReaction;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentChatService;
+use App\Services\Chat\DirectMessageResolver;
 use App\Services\Memory\ConversationCompactionService;
 use App\Services\Memory\MemoryFlushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * API surface for channel messages and message-adjacent actions.
+ *
+ * Message creation is not just persistence: it may broadcast to other clients,
+ * trigger agent jobs, update channel timestamps, attach uploaded files, and
+ * optionally compact agent memory. Keep those side effects visible here.
+ */
 class MessageController extends Controller
 {
+    public function __construct(
+        private readonly DirectMessageResolver $directMessages,
+    ) {}
+
     /**
      * @return Collection<int, Message>
      */
     public function index(Request $request)
     {
-        $query = Message::with(['author', 'reactions.user', 'attachments', 'replyTo.author']);
+        $query = Message::with(['author', 'reactions.user', 'attachments', 'replyTo.author', 'approvalRequest.requester', 'approvalRequest.respondedBy']);
 
         if ($request->has('channelId')) {
+            // Validate channel ownership before returning messages. The message
+            // query itself is channel-scoped, but this makes the workspace check
+            // explicit and keeps missing/foreign channels indistinguishable.
             Channel::forWorkspace()->findOrFail($request->input('channelId'));
             $query->where('channel_id', $request->input('channelId'));
         }
@@ -46,48 +62,57 @@ class MessageController extends Controller
 
     public function store(Request $request): Message
     {
+        $channel = Channel::forWorkspace()->findOrFail($request->input('channelId'));
+
+        // Message validation currently happens at route/client level; this
+        // endpoint assumes channelId/content are present and then performs the
+        // runtime side effects below.
         $message = Message::create([
             'id' => Str::uuid()->toString(),
             'content' => $request->input('content'),
-            'channel_id' => $request->input('channelId'),
+            'channel_id' => $channel->id,
             'author_id' => auth()->id(),
             'reply_to_id' => $request->input('replyToId'),
             'timestamp' => now(),
         ]);
 
-        // Attach any pre-uploaded attachments
+        // Pre-uploaded attachments are created before the message exists. Link
+        // them after insert so they become part of the same chat payload.
         if ($request->input('attachmentIds')) {
             MessageAttachment::whereIn('id', $request->input('attachmentIds'))
                 ->update(['message_id' => $message->id]);
         }
 
         // Update channel's last_message_at
-        Channel::where('id', $request->input('channelId'))
-            ->update(['last_message_at' => now()]);
+        $channel->update(['last_message_at' => now()]);
 
         // Broadcast user's message
         broadcast(new MessageSent($message))->toOthers();
 
-        // Check if this is a DM with an agent and respond
+        // Agent triggering is intentionally after broadcast so the user's own
+        // message is visible before any queued response starts.
         $this->handleAgentResponse($message);
 
         // Check for @mentions of agents in non-DM channels
         $this->handleMentionedAgents($message);
 
-        return $message->load(['author', 'reactions.user', 'attachments', 'replyTo.author']);
+        return $message->load(['author', 'reactions.user', 'attachments', 'replyTo.author', 'approvalRequest.requester', 'approvalRequest.respondedBy']);
     }
 
     private function handleAgentResponse(Message $message): void
     {
-        // Check if this is a DM channel
-        $channel = Channel::find($message->channel_id);
-        if (!$channel || $channel->type !== 'dm') {
+        // Only DMs auto-trigger the other participant. Mentions in group-style
+        // channels are handled separately below.
+        $channel = Channel::forWorkspace()->find($message->channel_id);
+        if (! $channel || $channel->type !== 'dm') {
             return;
         }
 
-        // Find the DirectMessage record
-        $dm = DirectMessage::where('channel_id', $message->channel_id)->first();
-        if (!$dm) {
+        // DirectMessage identifies the other participant. The resolver can
+        // repair the browser-observed orphan DM case, but only when membership
+        // is unambiguous and workspace-scoped.
+        $dm = $this->directMessages->resolveAgentDmForMessage($channel, $message);
+        if (! $dm) {
             return;
         }
 
@@ -99,18 +124,21 @@ class MessageController extends Controller
         $otherUser = User::find($otherUserId);
 
         // Check if other user is an agent
-        if (!$otherUser || $otherUser->type !== 'agent') {
+        if (! $otherUser || $otherUser->type !== 'agent') {
             return;
         }
 
-        // Dispatch async agent response via Laravel AI SDK
+        // Production path: queue the agent job and create a pending task so UI,
+        // retries, and runtime events all have a stable task record.
         if (config('app.agent_async', true)) {
             $task = Task::createPending($message, $otherUser, $message->channel_id);
             AgentRespondJob::dispatch($message, $otherUser, $message->channel_id, $task->id);
+
             return;
         }
 
-        // Sync fallback for development (uses old AgentChatService)
+        // Synchronous fallback exists only for local/dev setups that disable
+        // async agents. It bypasses the newer AgentRun task pipeline.
         $responseText = app(AgentChatService::class)
             ->respond($otherUser, $message->channel_id, $message->content);
 
@@ -133,11 +161,12 @@ class MessageController extends Controller
     private function handleMentionedAgents(Message $message): void
     {
         $channel = Channel::find($message->channel_id);
-        if (!$channel || $channel->type === 'dm') {
+        if (! $channel || $channel->type === 'dm') {
             return; // DMs are handled by handleAgentResponse
         }
 
-        // Find all agents and check if their name is @mentioned
+        // Mentions are name-based and workspace-scoped. Agents never respond to
+        // their own message to avoid immediate self-trigger loops.
         $agents = User::where('type', 'agent')
             ->where('workspace_id', workspace()->id)
             ->get();
@@ -147,8 +176,9 @@ class MessageController extends Controller
                 continue; // Don't respond to own messages
             }
 
-            // Match @AgentName (case-insensitive)
-            if (preg_match('/@' . preg_quote($agent->name, '/') . '\b/i', $message->content)) {
+            // Match @AgentName case-insensitively. This is intentionally simple
+            // until the UI provides durable mention IDs.
+            if (preg_match('/@'.preg_quote($agent->name, '/').'\b/i', $message->content)) {
                 $task = Task::createPending($message, $agent, $message->channel_id);
                 AgentRespondJob::dispatch($message, $agent, $message->channel_id, $task->id);
             }
@@ -172,11 +202,12 @@ class MessageController extends Controller
         $results = [];
 
         foreach ($agents as $agent) {
-            // Flush important memories to daily logs before compacting
+            // Manual compaction first gives each agent one flush opportunity so
+            // durable facts can be saved before older transcript is summarized.
             try {
                 $flusher->flush($channelId, $agent);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Memory flush before compact failed', [
+                Log::warning('Memory flush before compact failed', [
                     'error' => $e->getMessage(),
                     'agent' => $agent->name,
                 ]);
@@ -214,7 +245,7 @@ class MessageController extends Controller
     {
         if ($channel->type === 'dm') {
             $dm = DirectMessage::where('channel_id', $channel->id)->first();
-            if (!$dm) {
+            if (! $dm) {
                 return collect();
             }
 
@@ -223,7 +254,8 @@ class MessageController extends Controller
                 ->get();
         }
 
-        // For external, public, agent channels: find all agent members
+        // For external, public, and agent channels, compact each agent that is a
+        // channel member. This keeps summaries agent-specific.
         $agentIds = ChannelMember::where('channel_id', $channel->id)
             ->pluck('user_id');
 
@@ -311,7 +343,7 @@ class MessageController extends Controller
             'name' => $file->getClientOriginalName(),
             'type' => $file->getMimeType(),
             'size' => $file->getSize(),
-            'url' => '/storage/' . $path,
+            'url' => '/storage/'.$path,
         ]);
 
         return $attachment;

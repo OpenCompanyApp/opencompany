@@ -10,12 +10,12 @@ interface RealtimeEvent {
 type EventHandler = (data: unknown) => void
 
 // Shared state across all instances
-const echoInstance = ref<Echo | null>(null)
+const echoInstance = ref<Echo<any> | null>(null)
 const isConnected = ref(false)
 const handlers = ref<Map<string, Set<EventHandler>>>(new Map())
 
 // Channel subscriptions tracker
-const channelSubscriptions = ref<Map<string, ReturnType<typeof echoInstance.value.channel>>>(new Map())
+const channelSubscriptions = ref<Map<string, any>>(new Map())
 
 export function useRealtime() {
   const connect = () => {
@@ -24,7 +24,7 @@ export function useRealtime() {
 
     // Echo instance should be configured in bootstrap.js or app.ts
     // This assumes Echo is already set up with Pusher or WebSocket driver
-    echoInstance.value = (window as { Echo?: Echo }).Echo || null
+    echoInstance.value = (window as { Echo?: Echo<any> }).Echo || null
 
     if (echoInstance.value) {
       console.log('[Realtime] Echo instance found, monitoring connection...')

@@ -7,27 +7,46 @@ use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Contracts\Tool;
 use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 
+/**
+ * Presents one configured MCP server as an OpenCompany integration provider.
+ *
+ * MCP tool names come from remote servers, while OpenCompany permissions use
+ * stable local slugs. This class owns that translation and must preserve both
+ * names: the local slug for catalogs/permissions and the original remote name
+ * for the eventual JSON-RPC tool call.
+ */
 class McpToolProvider implements ToolProvider
 {
+    /** @var array<string, McpServer>  account_alias => server */
+    private array $accountServers = [];
+
     public function __construct(
         private McpServer $server,
     ) {}
 
+    /**
+     * Register an additional account server for this provider.
+     */
+    public function addAccountServer(string $account, McpServer $server): void
+    {
+        $this->accountServers[$account] = $server;
+    }
+
     public function appName(): string
     {
-        return 'mcp_' . $this->server->slug;
+        return 'mcp_'.$this->server->slug;
     }
 
     public function appMeta(): array
     {
         $toolNames = collect($this->server->discovered_tools ?? [])
             ->pluck('name')
-            ->map(fn ($n) => Str::snake($n))
+            ->map(fn ($n) => Str::snake(str_replace('-', '_', $n)))
             ->implode(', ');
 
         return [
             'label' => $toolNames ?: 'no tools discovered',
-            'description' => $this->server->description ?? 'MCP: ' . $this->server->name,
+            'description' => $this->server->description ?? 'MCP: '.$this->server->name,
             'icon' => $this->server->icon,
         ];
     }
@@ -36,6 +55,9 @@ class McpToolProvider implements ToolProvider
     {
         $tools = [];
         foreach ($this->server->discovered_tools ?? [] as $mcpTool) {
+            // Catalog keys are permission slugs, not remote MCP names. Keep the
+            // original name in metadata so createTool can recover the exact
+            // server-side identifier even when hyphens/case were normalized.
             $slug = $this->toolSlug($mcpTool['name']);
             $tools[$slug] = [
                 'class' => McpProxyTool::class,
@@ -57,32 +79,60 @@ class McpToolProvider implements ToolProvider
     /** @param  array<string, mixed>  $context */
     public function createTool(string $class, array $context = []): Tool
     {
+        $account = $context['account'] ?? null;
+        $server = $this->resolveServer($account);
+
         $toolSlug = $context['tool_slug'] ?? '';
         $mcpToolName = $this->mcpToolNameFromSlug($toolSlug);
-        $mcpToolDef = $this->findToolDef($mcpToolName);
+        $mcpToolDef = $this->findToolDef($mcpToolName, $server);
+
+        // The proxy must call the remote MCP name, not the normalized local
+        // slug. Falling back to the slug keeps manually supplied contexts
+        // debuggable, but discovered tools should always resolve here.
+        $remoteToolName = (string) ($mcpToolDef['name'] ?? $mcpToolName);
 
         return new McpProxyTool(
-            server: $this->server,
-            mcpToolName: $mcpToolName,
+            server: $server,
+            mcpToolName: $remoteToolName,
             mcpToolDescription: $mcpToolDef['description'] ?? '',
             mcpInputSchema: $mcpToolDef['inputSchema'] ?? [],
+            agent: $context['agent'] ?? null,
         );
     }
 
-    /**
-     * Build tool slug: mcp_{server_slug}__{tool_name_snake}
-     */
-    private function toolSlug(string $mcpToolName): string
+    public function luaDocsPath(): ?string
     {
-        return 'mcp_' . $this->server->slug . '__' . Str::snake($mcpToolName);
+        return null;
+    }
+
+    public function credentialFields(): array
+    {
+        return [];
     }
 
     /**
-     * Extract MCP tool name from slug.
+     * Resolve the server for the given account alias.
      */
+    private function resolveServer(?string $account): McpServer
+    {
+        if ($account !== null && $account !== '' && isset($this->accountServers[$account])) {
+            return $this->accountServers[$account];
+        }
+
+        return $this->server;
+    }
+
+    private function toolSlug(string $mcpToolName): string
+    {
+        // Match McpServer::getToolSlugs and McpPermissionEvaluator. If this
+        // normalization changes, update all three places together or existing
+        // workspace permissions will stop matching discovered tools.
+        return 'mcp_'.$this->server->slug.'__'.Str::snake(str_replace('-', '_', $mcpToolName));
+    }
+
     private function mcpToolNameFromSlug(string $slug): string
     {
-        $prefix = 'mcp_' . $this->server->slug . '__';
+        $prefix = 'mcp_'.$this->server->slug.'__';
 
         if (str_starts_with($slug, $prefix)) {
             return substr($slug, strlen($prefix));
@@ -92,24 +142,14 @@ class McpToolProvider implements ToolProvider
     }
 
     /**
-     * Find a tool definition by MCP tool name from cached discovered_tools.
-     *
      * @return array<string, mixed>
      */
-    public function luaDocsPath(): ?string
+    private function findToolDef(string $mcpToolName, ?McpServer $server = null): array
     {
-        return null;
-    }
+        $tools = ($server ?? $this->server)->discovered_tools ?? [];
 
-    public function credentialFields(): array
-    {
-        return []; // MCP servers handle their own credentials
-    }
-
-    private function findToolDef(string $mcpToolName): array
-    {
-        foreach ($this->server->discovered_tools ?? [] as $tool) {
-            if (Str::snake($tool['name']) === $mcpToolName || $tool['name'] === $mcpToolName) {
+        foreach ($tools as $tool) {
+            if (Str::snake(str_replace('-', '_', $tool['name'])) === $mcpToolName || $tool['name'] === $mcpToolName) {
                 return $tool;
             }
         }

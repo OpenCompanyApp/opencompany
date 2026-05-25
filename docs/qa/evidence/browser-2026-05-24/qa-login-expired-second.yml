@@ -1,0 +1,12 @@
+- generic [ref=e3]:
+  - img [ref=e5]
+  - link "OpenCompany" [ref=e8] [cursor=pointer]:
+    - /url: /
+  - generic [ref=e9]:
+    - heading "Welcome back" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]
+      - generic [ref=e16]
+      - generic [ref=e23]
+      - button "Log in" [ref=e29]
+  - paragraph

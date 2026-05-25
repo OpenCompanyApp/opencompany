@@ -2,404 +2,94 @@
 
 namespace App\Services;
 
-use App\Models\AgentPermission;
+use App\Domain\Authorization\Application\AgentPermissionResolver;
 use App\Models\ApprovalRequest;
-use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Models\WorkspaceFile;
-use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
+/**
+ * Backward-compatible facade for agent authorization rules.
+ *
+ * New code should depend on `Domain\Authorization\Application` actions. This
+ * service remains as the app-local compatibility API for existing runtime
+ * checks, tools, and tests while the authorization context is migrated.
+ */
 class AgentPermissionService
 {
-    /**
-     * Tools that should never require approval regardless of behavior_mode or DB settings.
-     * These are system/control-flow tools where requiring approval would be nonsensical
-     * (e.g. wait_for_approval requiring approval creates an infinite loop).
-     */
-    private const APPROVAL_EXEMPT_TOOLS = [
-        'wait_for_approval',
-        'wait',
-        'update_task',
-        'add_task_step',
-        'update_task_step',
-        'set_task_status',
-        'create_task_step',
-        'contact_agent',
-    ];
+    public function __construct(private AgentPermissionResolver $resolver) {}
 
-    public function __construct(
-        private ToolProviderRegistry $providerRegistry,
-    ) {}
     /**
-     * Resolve the final permission for a tool, combining DB permissions with behavior mode.
-     *
-     * Priority: deny → exempt tools → explicit DB record → behavior_mode default.
-     *
      * @return array{allowed: bool, requires_approval: bool}
      */
     public function resolveToolPermission(User $agent, string $toolSlug, string $toolType): array
     {
-        $permission = AgentPermission::forAgent($agent->id)
-            ->tools()
-            ->where('scope_key', $toolSlug)
-            ->first();
-
-        // If explicit deny record exists, tool is not allowed
-        if ($permission && $permission->permission === 'deny') {
-            return ['allowed' => false, 'requires_approval' => false];
-        }
-
-        // System/control-flow tools never require approval
-        if (in_array($toolSlug, self::APPROVAL_EXEMPT_TOOLS)) {
-            return ['allowed' => true, 'requires_approval' => false];
-        }
-
-        // Explicit DB record overrides behavior mode
-        if ($permission) {
-            return [
-                'allowed' => true,
-                'requires_approval' => $permission->requires_approval,
-            ];
-        }
-
-        // No explicit record — fall back to behavior mode defaults
-        return [
-            'allowed' => true,
-            'requires_approval' => $this->behaviorModeRequiresApproval($agent, $toolType),
-        ];
+        return $this->resolver->resolveToolPermission($agent, $toolSlug, $toolType);
     }
 
     /**
-     * Check if an agent can send messages to a specific channel.
-     *
-     * If the agent has ANY channel-scoped permissions, only those channels are allowed.
-     * If the agent has zero channel-scoped permissions, all channels the agent is a member of are allowed.
-     *
      * @return array{allowed: bool, can_request: bool}
      */
     public function canAccessChannel(User $agent, string $channelId): array
     {
-        $channelPerms = AgentPermission::forAgent($agent->id)
-            ->channels()
-            ->allowed()
-            ->pluck('scope_key');
-
-        // No channel restrictions set — allow all member channels
-        if ($channelPerms->isEmpty()) {
-            return ['allowed' => true, 'can_request' => false];
-        }
-
-        if ($channelPerms->contains($channelId)) {
-            return ['allowed' => true, 'can_request' => false];
-        }
-
-        // Channel not in whitelist — agent can request access
-        return ['allowed' => false, 'can_request' => true];
+        return $this->resolver->canAccessChannel($agent, $channelId);
     }
 
     /**
-     * Get the list of channel IDs an agent can access.
-     *
-     * Returns null if unrestricted (no channel permissions set).
-     * Returns array of channel UUIDs if restricted.
-     *
      * @return array<int, string>|null
      */
     public function getAllowedChannelIds(User $agent): ?array
     {
-        $channelPerms = AgentPermission::forAgent($agent->id)
-            ->channels()
-            ->allowed()
-            ->pluck('scope_key');
-
-        if ($channelPerms->isEmpty()) {
-            return null;
-        }
-
-        return $channelPerms->toArray();
+        return $this->resolver->getAllowedChannelIds($agent);
     }
 
     /**
-     * Get the list of document folder IDs an agent can search.
-     *
-     * Returns null if unrestricted (no folder permissions set).
-     * Returns array of folder UUIDs if restricted.
-     *
      * @return array<int, string>|null
      */
     public function getAllowedFolderIds(User $agent): ?array
     {
-        $folderPerms = AgentPermission::forAgent($agent->id)
-            ->folders()
-            ->allowed()
-            ->pluck('scope_key');
-
-        if ($folderPerms->isEmpty()) {
-            return null; // Unrestricted
-        }
-
-        return $folderPerms->toArray();
+        return $this->resolver->getAllowedFolderIds($agent);
     }
 
     /**
-     * Get the list of enabled integrations for an agent.
-     * If no integration records exist, all integrations are enabled (backward-compatible).
-     *
-     * @return string[] List of enabled integration app names
+     * @return string[]
      */
     public function getEnabledIntegrations(User $agent): array
     {
-        $integrationPerms = AgentPermission::forAgent($agent->id)
-            ->where('scope_type', 'integration')
-            ->get();
-
-        // Build full list of all integration app names
-        $allApps = \App\Agents\Tools\ToolRegistry::INTEGRATION_APPS;
-        foreach ($this->providerRegistry->all() as $provider) {
-            if ($provider->isIntegration() && !in_array($provider->appName(), $allApps)) {
-                $allApps[] = $provider->appName();
-            }
-        }
-
-        // Filter by workspace-level enablement.
-        // MCP servers (mcp_ prefix) are passthrough — they self-register only when enabled.
-        if (app()->bound('currentWorkspace')) {
-            $workspaceEnabledIds = IntegrationSetting::forWorkspace()
-                ->where('enabled', true)
-                ->pluck('integration_id')
-                ->toArray();
-
-            $allApps = array_values(array_filter($allApps, function (string $app) use ($workspaceEnabledIds) {
-                return str_starts_with($app, 'mcp_') || in_array($app, $workspaceEnabledIds);
-            }));
-        }
-
-        // No agent-level records = all workspace-enabled integrations allowed
-        if ($integrationPerms->isEmpty()) {
-            return $allApps;
-        }
-
-        // When records exist: explicitly denied integrations are blocked,
-        // explicitly allowed and new (unrecorded) integrations are enabled.
-        // This ensures newly installed packages work without manual permission updates.
-        $denied = $integrationPerms
-            ->where('permission', 'deny')
-            ->pluck('scope_key')
-            ->toArray();
-
-        return array_values(array_filter($allApps, fn ($app) => !in_array($app, $denied)));
+        return $this->resolver->getEnabledIntegrations($agent);
     }
 
-    /**
-     * Check if a specific integration is enabled for an agent.
-     */
     public function isIntegrationEnabled(User $agent, string $appName): bool
     {
-        return in_array($appName, $this->getEnabledIntegrations($agent));
+        return $this->resolver->isIntegrationEnabled($agent, $appName);
     }
 
     /**
-     * Check if an agent is allowed to contact another agent.
-     *
      * @return array{allowed: bool, requires_approval: bool, can_request: bool}
      */
     public function canContactAgent(User $caller, User $target): array
     {
-        // Manager hierarchy bypass — always allow without approval
-        if ($target->id === $caller->manager_id || $caller->id === $target->manager_id) {
-            return ['allowed' => true, 'requires_approval' => false, 'can_request' => false];
-        }
-
-        // Check explicit agent-scoped permission
-        $explicit = AgentPermission::forAgent($caller->id)
-            ->where('scope_type', 'agent')
-            ->where('scope_key', $target->id)
-            ->first();
-
-        if ($explicit) {
-            if ($explicit->permission === 'deny') {
-                return ['allowed' => false, 'requires_approval' => false, 'can_request' => true];
-            }
-
-            return ['allowed' => true, 'requires_approval' => $explicit->requires_approval, 'can_request' => false];
-        }
-
-        // Check wildcard agent permission
-        $wildcard = AgentPermission::forAgent($caller->id)
-            ->where('scope_type', 'agent')
-            ->where('scope_key', '*')
-            ->first();
-
-        if ($wildcard) {
-            if ($wildcard->permission === 'deny') {
-                return ['allowed' => false, 'requires_approval' => false, 'can_request' => true];
-            }
-
-            return ['allowed' => true, 'requires_approval' => $wildcard->requires_approval, 'can_request' => false];
-        }
-
-        // Default: allow, layer behavior mode
-        $requiresApproval = $this->behaviorModeRequiresApproval($caller, 'write');
-
-        return ['allowed' => true, 'requires_approval' => $requiresApproval, 'can_request' => false];
+        return $this->resolver->canContactAgent($caller, $target);
     }
 
     /**
-     * Get the list of file folder IDs an agent has been explicitly granted access to.
-     *
-     * Returns null if wildcard (*) access is set (unrestricted).
-     * Returns empty array if no explicit grants (home folder only).
-     * Returns array of folder UUIDs if specific grants exist.
-     *
      * @return array<int, string>|null
      */
     public function getAllowedFileFolderIds(User $agent): ?array
     {
-        $perms = AgentPermission::forAgent($agent->id)
-            ->where('scope_type', 'file_folder')
-            ->allowed()
-            ->pluck('scope_key');
-
-        if ($perms->contains('*')) {
-            return null; // Unrestricted
-        }
-
-        return $perms->toArray();
+        return $this->resolver->getAllowedFileFolderIds($agent);
     }
 
-    /**
-     * Check if an agent can access a specific file or folder.
-     *
-     * Rules:
-     * 1. Agent always has access to their own home folder (/agents/{slug}/) and descendants
-     * 2. Explicit file_folder permissions grant access to a folder and its descendants
-     * 3. Wildcard (*) grants unrestricted access
-     * 4. Default (no permissions): home folder only
-     */
     public function canAccessFilePath(User $agent, WorkspaceFile $file): bool
     {
-        $allowedIds = $this->getAllowedFileFolderIds($agent);
-
-        // Wildcard: unrestricted
-        if ($allowedIds === null) {
-            return true;
-        }
-
-        // Check if the file is within the agent's home folder
-        if ($this->isInAgentHomeFolder($agent, $file)) {
-            return true;
-        }
-
-        // Check if the file is within any explicitly allowed folder
-        foreach ($allowedIds as $folderId) {
-            if ($this->isDescendantOf($file, $folderId)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->resolver->canAccessFilePath($agent, $file);
     }
 
-    /**
-     * Check if a file is within an agent's home folder (/agents/{slug}/).
-     */
-    private function isInAgentHomeFolder(User $agent, WorkspaceFile $file): bool
-    {
-        $slug = Str::slug($agent->name);
-        $current = $file;
-
-        // Walk up the tree looking for the agent's home folder pattern
-        while ($current) {
-            if ($current->parent_id === null) {
-                // We're at a root folder
-                return false;
-            }
-
-            $parent = WorkspaceFile::find($current->parent_id);
-            if (!$parent) {
-                return false;
-            }
-
-            // Check if parent is the "agents" folder and current is the agent's slug folder
-            if ($parent->name === 'agents' && $parent->parent_id === null && $current->name === $slug) {
-                return true;
-            }
-
-            // Check if we're inside the agent's slug folder (deeper descendant)
-            if ($current->name === $slug && $parent->name === 'agents' && $parent->parent_id === null) {
-                return true;
-            }
-
-            $current = $parent;
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if a file is a descendant of a given folder.
-     */
-    private function isDescendantOf(WorkspaceFile $file, string $folderId): bool
-    {
-        if ($file->id === $folderId) {
-            return true;
-        }
-
-        $current = $file;
-        $maxDepth = 20; // Prevent infinite loops
-
-        while ($current->parent_id && $maxDepth-- > 0) {
-            if ($current->parent_id === $folderId) {
-                return true;
-            }
-            $current = WorkspaceFile::find($current->parent_id);
-            if (!$current) {
-                return false;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Create an access-type approval request for a denied resource.
-     */
     public function createAccessRequest(
         User $agent,
         string $scopeType,
         string $scopeKey,
         string $description,
     ): ApprovalRequest {
-        return ApprovalRequest::create([
-            'id' => Str::uuid()->toString(),
-            'type' => 'access',
-            'title' => "Access request: {$scopeType} — {$scopeKey}",
-            'description' => $description,
-            'requester_id' => $agent->id,
-            'status' => 'pending',
-            'tool_execution_context' => [
-                'scope_type' => $scopeType,
-                'scope_key' => $scopeKey,
-            ],
-        ]);
-    }
-
-    /**
-     * Determine if the behavior mode requires approval for a given tool type.
-     *
-     * - autonomous: no additional approval requirement
-     * - supervised: write tools require approval
-     * - strict: ALL tools require approval
-     */
-    private function behaviorModeRequiresApproval(User $agent, string $toolType): bool
-    {
-        $mode = $agent->behavior_mode ?? 'autonomous';
-
-        return match ($mode) {
-            'strict' => true,
-            'supervised' => $toolType === 'write',
-            default => false,
-        };
+        return $this->resolver->createAccessRequest($agent, $scopeType, $scopeKey, $description);
     }
 }

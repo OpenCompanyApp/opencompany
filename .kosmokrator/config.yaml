@@ -1,5 +1,5 @@
 kosmokrator:
   agent:
-    mode: edit
+    mode: plan
   tools:
     default_permission_mode: prometheus

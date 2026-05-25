@@ -1,6 +1,6 @@
 # Component Library
 
-> API reference for all 26 shared components in `resources/js/Components/shared/`.
+> API reference for all 28 shared components in `resources/js/Components/shared/`.
 
 ---
 
@@ -692,6 +692,39 @@
 
 ---
 
+### AppToast
+
+> Global toast viewport bound to `useToast()`, using Reka UI toast primitives with OpenCompany icons, colors, and dark-mode styling.
+
+**File:** `resources/js/Components/shared/AppToast.vue`
+
+**Props:** None.
+
+**Store Binding:**
+
+| Source | Description |
+|--------|-------------|
+| `useToast().toasts` | Toast queue rendered as `ToastRoot` items |
+| `useToast().dismiss(id)` | Called when a toast closes |
+
+**Toast Types:**
+
+| Type | Icon | Color |
+|------|------|-------|
+| `success` | `ph:check-circle-fill` | green |
+| `error` | `ph:x-circle-fill` | red |
+| `info` | `ph:info-fill` | blue |
+
+**Usage:**
+
+```vue
+<AppToast />
+```
+
+Mount once near the app shell so all calls to `useToast()` share one viewport.
+
+---
+
 ## Display
 
 ### Badge
@@ -976,6 +1009,30 @@
 
 ```vue
 <Icon name="ph:check-circle" class="w-5 h-5 text-green-500" />
+```
+
+---
+
+### WorkspaceIcon
+
+> Square workspace icon block that maps workspace icon/color settings to a consistent visual mark.
+
+**File:** `resources/js/Components/shared/WorkspaceIcon.vue`
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `icon` | `string` | `'ph:buildings'` | Iconify icon name |
+| `color` | `string` | `'neutral'` | Workspace color key |
+| `size` | `'xs' \| 'sm' \| 'md' \| 'lg'` | `'md'` | Icon container size |
+
+**Color Keys:** `neutral`, `blue`, `green`, `yellow`, `orange`, `red`, `purple`, `pink`.
+
+**Usage:**
+
+```vue
+<WorkspaceIcon :icon="workspace.icon" :color="workspace.color" size="md" />
 ```
 
 ---

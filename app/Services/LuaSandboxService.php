@@ -5,14 +5,19 @@ namespace App\Services;
 use Lua\Exception as LuaException;
 use Lua\Sandbox;
 
+/**
+ * Executes user/agent Lua scripts inside the configured Lua sandbox.
+ *
+ * The sandbox exposes only selected bridge globals. Keep resource limits,
+ * protected global names, and app.* routing explicit because Lua scripts are a
+ * model-facing extension point that can call back into OpenCompany tools.
+ */
 class LuaSandboxService
 {
     /**
      * Execute Lua code in a sandboxed environment.
      *
      * @param  array{memoryLimit?: int, cpuLimit?: float}  $options
-     */
-    /**
      * @param  array<string, mixed>  $globals  Named globals to inject as Lua tables (e.g., ['ctx' => [...]])
      */
     public function execute(string $code, array $options = [], ?LuaBridge $bridge = null, array $globals = []): LuaResult
@@ -29,18 +34,29 @@ class LuaSandboxService
         $this->setupPrintCapture($sandbox, $output);
 
         if ($bridge !== null) {
+            // app.* is available only when a caller supplies a LuaBridge. Plain
+            // sandbox execution remains useful for syntax/tests without opening
+            // access to OpenCompany tools.
             $this->setupAppNamespace($sandbox, $bridge);
         }
 
+        $this->registerJsonGlobals($sandbox);
+        $this->rejectProtectedBridgeAssignments($code);
+
         foreach ($globals as $name => $value) {
-            $sandbox->load("{$name} = " . $this->phpToLua($value))->call();
+            // Globals become Lua identifiers. Reject dunder-style bridge names
+            // so user code cannot shadow __app, __json, __regex, or __php.
+            if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) || str_starts_with($name, '__')) {
+                throw new \InvalidArgumentException("Invalid Lua global name: {$name}");
+            }
+
+            $this->runChunk($sandbox, "{$name} = ".$this->phpToLua($value));
         }
 
         $start = microtime(true);
 
         try {
-            $fn = $sandbox->load($code);
-            $result = $fn();
+            $result = $this->runLoadedChunk($sandbox->load($code));
             $elapsed = round((microtime(true) - $start) * 1000, 1);
 
             return new LuaResult(
@@ -77,10 +93,12 @@ class LuaSandboxService
         $sandbox->register('__php', [
             'capture' => function ($line) use (&$output) {
                 $output[] = (string) $line;
+
+                return [];
             },
         ]);
 
-        $sandbox->load('
+        $this->runChunk($sandbox, '
             local _tostring = tostring
 
             local function __serialize(val, indent, seen)
@@ -131,15 +149,9 @@ class LuaSandboxService
                 __php.capture(s)
                 return val
             end
-        ')->call();
+        ');
     }
 
-    /**
-     * Register the app.* namespace using metatables to route calls to PHP via LuaBridge.
-     *
-     * Creates an infinitely nested proxy table where any app.X.Y.Z(args) call
-     * is intercepted and routed to __app.call("X.Y.Z", args).
-     */
     /**
      * Serialize a PHP value to a Lua literal.
      */
@@ -158,7 +170,7 @@ class LuaSandboxService
         }
 
         if (is_string($value)) {
-            return '"' . addcslashes($value, "\"\\\n\r\t") . '"';
+            return '"'.addcslashes($value, "\"\\\n\r\t").'"';
         }
 
         if (is_array($value)) {
@@ -173,15 +185,15 @@ class LuaSandboxService
                 if ($isSequential) {
                     $parts[] = $this->phpToLua($v);
                 } else {
-                    $key = is_int($k) ? "[{$k}]" : $k;
-                    $parts[] = "{$key} = " . $this->phpToLua($v);
+                    $key = is_int($k) ? "[{$k}]" : '['.$this->phpToLua((string) $k).']';
+                    $parts[] = "{$key} = ".$this->phpToLua($v);
                 }
             }
 
-            return '{' . implode(', ', $parts) . '}';
+            return '{'.implode(', ', $parts).'}';
         }
 
-        return '"' . addcslashes((string) $value, "\"\\\n\r\t") . '"';
+        return '"'.addcslashes((string) $value, "\"\\\n\r\t").'"';
     }
 
     /**
@@ -197,13 +209,14 @@ class LuaSandboxService
                 try {
                     return $bridge->call($path, ...$args);
                 } catch (\Throwable $e) {
-                    // Return error as table — Lua side converts to error()
+                    // Return a sentinel table so the Lua wrapper can raise the
+                    // error at the script callsite instead of inside PHP glue.
                     return ['__error' => $e->getMessage()];
                 }
             },
         ]);
 
-        $sandbox->load('
+        $this->runChunk($sandbox, '
             local function make_namespace(path)
                 return setmetatable({}, {
                     __index = function(self, key)
@@ -222,6 +235,135 @@ class LuaSandboxService
                 })
             end
             app = make_namespace("")
-        ')->call();
+        ');
+    }
+
+    /**
+     * Register `json.decode()`, `json.encode()`, and `regex.*` as Lua globals.
+     *
+     * JSON bridges PHP's json_decode/json_encode so Lua scripts can parse
+     * JSON strings. Regex bridges PHP's PCRE for patterns Lua's built-in
+     * matching doesn't support (lookaheads, non-greedy, Unicode, etc.).
+     */
+    private function registerJsonGlobals(Sandbox $sandbox): void
+    {
+        $sandbox->register('__json', [
+            'decode' => function (string $json): mixed {
+                return json_decode($json, associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
+            },
+            'encode' => function (mixed $value): string {
+                return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+            },
+        ]);
+
+        $sandbox->register('__regex', [
+            'match' => function (string $subject, string $pattern, int $flags = 0): mixed {
+                $pregFlags = match ($flags) {
+                    0,
+                    PREG_OFFSET_CAPTURE,
+                    PREG_UNMATCHED_AS_NULL,
+                    PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL => $flags,
+                    default => 0,
+                };
+
+                if (preg_match($pattern, $subject, $matches, $pregFlags) === 1) {
+                    return $matches;
+                }
+
+                return null;
+            },
+            'match_all' => function (string $subject, string $pattern, int $flags = PREG_PATTERN_ORDER): array {
+                if (preg_match_all($pattern, $subject, $matches, $flags) > 0) {
+                    return $matches;
+                }
+
+                return [];
+            },
+            'gsub' => function (string $subject, string $pattern, string $replacement, int $limit = -1): string {
+                return preg_replace($pattern, $replacement, $subject, $limit) ?? $subject;
+            },
+        ]);
+
+        $this->runChunk($sandbox, '
+            json = {
+                decode = function(s)
+                    if type(s) ~= "string" then
+                        error("json.decode: expected string, got " .. type(s), 2)
+                    end
+                    return __json.decode(s)
+                end,
+                encode = function(v)
+                    return __json.encode(v)
+                end
+            }
+
+            regex = {
+                match = function(subject, pattern, flags)
+                    if type(subject) ~= "string" then
+                        error("regex.match: expected string subject, got " .. type(subject), 2)
+                    end
+                    if type(pattern) ~= "string" then
+                        error("regex.match: expected string pattern, got " .. type(pattern), 2)
+                    end
+                    return __regex.match(subject, pattern, flags or 0)
+                end,
+                match_all = function(subject, pattern, flags)
+                    if type(subject) ~= "string" then
+                        error("regex.match_all: expected string subject, got " .. type(subject), 2)
+                    end
+                    if type(pattern) ~= "string" then
+                        error("regex.match_all: expected string pattern, got " .. type(pattern), 2)
+                    end
+                    return __regex.match_all(subject, pattern, flags or 0)
+                end,
+                gsub = function(subject, pattern, replacement, limit)
+                    if type(subject) ~= "string" then
+                        error("regex.gsub: expected string subject, got " .. type(subject), 2)
+                    end
+                    if type(pattern) ~= "string" then
+                        error("regex.gsub: expected string pattern, got " .. type(pattern), 2)
+                    end
+                    if type(replacement) ~= "string" then
+                        error("regex.gsub: expected string replacement, got " .. type(replacement), 2)
+                    end
+                    return __regex.gsub(subject, pattern, replacement, limit or -1)
+                end,
+            }
+        ');
+    }
+
+    private function rejectProtectedBridgeAssignments(string $code): void
+    {
+        // This is intentionally a simple preflight guard, not a full Lua parser.
+        // The goal is to stop obvious assignments to reserved PHP bridge globals
+        // before code runs in the sandbox.
+        if (preg_match('/(?:^|[;\r\n])\s*__[A-Za-z0-9_]*\s*=/', $code) === 1) {
+            throw new \InvalidArgumentException('Lua code may not assign __-prefixed bridge globals.');
+        }
+    }
+
+    private function runChunk(Sandbox $sandbox, string $code): mixed
+    {
+        return $this->runLoadedChunk($sandbox->load($code));
+    }
+
+    private function runLoadedChunk(mixed $chunk): mixed
+    {
+        // Different lua extension builds return loaded chunks in slightly
+        // different callable shapes. Normalize them here so the rest of the
+        // sandbox code does not care which extension variant is installed.
+        if ($chunk instanceof \Closure) {
+            return $chunk();
+        }
+
+        if (is_object($chunk) && method_exists($chunk, 'call')) {
+            return $chunk->call();
+        }
+
+        if (is_callable($chunk)) {
+            return $chunk();
+        }
+
+        throw new \RuntimeException('Lua chunk is not callable.');
     }
 }

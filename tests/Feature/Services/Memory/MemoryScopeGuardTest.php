@@ -8,11 +8,15 @@ use App\Services\Memory\MemoryScopeGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Verifies memory tools only access the channel/topic scopes they are allowed to touch.
+ */
 class MemoryScopeGuardTest extends TestCase
 {
     use RefreshDatabase;
 
     private MemoryScopeGuard $guard;
+
     private User $agent;
 
     protected function setUp(): void

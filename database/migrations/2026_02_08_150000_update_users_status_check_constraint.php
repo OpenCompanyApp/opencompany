@@ -11,6 +11,8 @@ return new class extends Migration
             return;
         }
 
+        // PostgreSQL enum-like checks must include the runtime waiting states
+        // introduced for sleep, approvals, and delegation.
         DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_status_check');
         DB::statement("ALTER TABLE users ADD CONSTRAINT users_status_check CHECK (status IN ('idle', 'working', 'offline', 'sleeping', 'awaiting_approval', 'awaiting_delegation'))");
     }
@@ -21,6 +23,7 @@ return new class extends Migration
             return;
         }
 
+        // Roll back to the original status set used before runtime wait states.
         DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_status_check');
         DB::statement("ALTER TABLE users ADD CONSTRAINT users_status_check CHECK (status IN ('idle', 'working', 'offline'))");
     }

@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // MCP server records store connection details and the last discovered
+        // tool schema cache for runtime proxy tools.
         Schema::create('mcp_servers', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('name');

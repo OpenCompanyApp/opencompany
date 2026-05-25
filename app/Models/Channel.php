@@ -2,19 +2,29 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
+use Database\Factories\ChannelFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Models\Concerns\BelongsToWorkspace;
 
+/**
+ * Workspace conversation container for chat, DMs, agent threads, and bridges.
+ *
+ * External channels keep provider/thread identity in external_provider,
+ * external_id, and external_config so ChatBridge and SyncToChat can map between
+ * vendor threads and normal OpenCompany messages.
+ */
 class Channel extends Model
 {
-    /** @use HasFactory<\Database\Factories\ChannelFactory> */
-    use HasFactory, BelongsToWorkspace;
+    /** @use HasFactory<ChannelFactory> */
+    use BelongsToWorkspace, HasFactory;
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [

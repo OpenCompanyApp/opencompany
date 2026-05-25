@@ -715,6 +715,7 @@ const priorityColors: Record<Priority, string> = {
   urgent: 'bg-neutral-700',
   high: 'bg-neutral-600',
   medium: 'bg-neutral-500',
+  normal: 'bg-neutral-500',
   low: 'bg-neutral-400',
 }
 
@@ -767,6 +768,7 @@ const priorityBreakdown = computed<PriorityBreakdownItem[]>(() => {
     urgent: 0,
     high: 0,
     medium: 0,
+    normal: 0,
     low: 0,
   }
 

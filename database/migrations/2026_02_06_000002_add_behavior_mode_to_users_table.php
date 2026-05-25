@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // behavior_mode lets operators tune an agent's autonomy without
+        // changing its identity prompt or provider brain.
         Schema::table('users', function (Blueprint $table) {
             $table->string('behavior_mode')->nullable()->after('current_task');
         });

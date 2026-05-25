@@ -2,6 +2,8 @@
 
 Goal: agents that learn from experience, get better at their work over time, and function like a human organization — developing expertise, sharing knowledge, and improving collectively.
 
+Status: Research / roadmap. The "Current System" section is code-aligned with the current memory services; "What's missing" and the implementation roadmap are proposed improvements.
+
 ---
 
 ## Current System
@@ -11,11 +13,11 @@ OpenCompany has a two-tier memory architecture:
 | Layer | What | How |
 |-------|------|-----|
 | **STM** | Conversation history | Auto-compacted at ~75% context, summary stored in `conversation_summaries` |
-| **LTM Core** | `MEMORY.md` | Always in system prompt, agent-editable via `save_memory(target: "core")` |
-| **LTM Logs** | Daily logs (`YYYY-MM-DD.md`) | On-demand via `recall_memory`, timestamped entries with category tags |
+| **LTM Core** | `MEMORY.md` | Injected into private agent/user contexts (`dm`, `agent`, `external`) and agent-editable via `save_memory(target: "core")`; intentionally omitted from public-channel prompts |
+| **LTM Logs** | Daily logs (`memory/logs/YYYY-MM-DD.md`) | On-demand via `recall_memory`, timestamped entries with category tags |
 | **Retrieval** | Hybrid search | pgvector cosine (70%) + tsvector FTS (30%), merged via RRF |
 | **Flush** | Pre-compaction promotion | Silent agent turn to `save_memory` before STM is compressed |
-| **Reranking** | Post-retrieval scoring | Ollama Qwen3-Reranker or LLM-based pointwise relevance |
+| **Reranking** | Post-retrieval scoring | Config/AppSetting-selected provider: native Cohere/Jina reranking, Ollama Qwen3-style yes/no scoring, or LLM-based pointwise relevance |
 
 Key services: `EmbeddingService`, `DocumentIndexingService`, `ChunkingService`, `ConversationCompactionService`, `MemoryFlushService`, `RerankingService`, `MemoryScopeGuard`.
 

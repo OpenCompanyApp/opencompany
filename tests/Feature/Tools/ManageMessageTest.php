@@ -14,6 +14,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Tools\Request;
 use Tests\TestCase;
 
+/**
+ * Covers message edit/delete/pin/reaction tools inside workspace channels.
+ */
 class ManageMessageTest extends TestCase
 {
     use RefreshDatabase;

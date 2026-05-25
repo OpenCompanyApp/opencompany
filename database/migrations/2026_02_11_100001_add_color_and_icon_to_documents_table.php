@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Folder/document presentation metadata is nullable so existing docs do
+        // not need a backfill.
         Schema::table('documents', function (Blueprint $table) {
             $table->string('color')->nullable()->default(null)->after('is_folder');
             $table->string('icon')->nullable()->default(null)->after('color');

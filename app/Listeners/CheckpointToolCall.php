@@ -3,8 +3,10 @@
 namespace App\Listeners;
 
 use App\Agents\OpenCompanyAgent;
+use App\Events\TaskUpdated;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Memory\OutputTruncator;
 use App\Support\LuaMetaParser;
 use Laravel\Ai\Events\ToolInvoked;
 use App\Agents\Tools\ToolRegistry;
@@ -49,10 +51,9 @@ class CheckpointToolCall
             $luaMeta = $extracted['meta'];
             $result = $extracted['result'];
 
-            // Truncate large string results to prevent DB bloat
-            if (is_string($result) && strlen($result) > 2000) {
-                $result = mb_strcut($result, 0, 2000, 'UTF-8') . '... [truncated]';
-            }
+            // Truncate large results before checkpoint persistence to keep
+            // retry context lean while preserving the full payload durably.
+            $result = app(OutputTruncator::class)->truncate($result, $event->toolInvocationId);
 
             // Sanitize to valid UTF-8 to prevent JSON encoding failures
             if (is_string($result)) {
@@ -60,10 +61,12 @@ class CheckpointToolCall
             }
 
             $toolRegistry = app(ToolRegistry::class);
+            $toolMeta = $toolRegistry->getToolMetaByClassName($toolName);
+            $toolDisplayName = $toolMeta['name'];
 
             // Human-readable descriptions for agent communication steps
-            $description = "Used tool: {$toolName}";
-            $stepIcon = $toolRegistry->getIconByClassName($toolName);
+            $description = "Used tool: {$toolDisplayName}";
+            $stepIcon = $toolMeta['icon'];
 
             if ($toolName === 'ContactAgent' && isset($event->arguments['action'])) {
                 $action = $event->arguments['action'];
@@ -113,6 +116,7 @@ class CheckpointToolCall
                 'action',
                 array_filter([
                     'tool' => $toolName,
+                    'tool_name' => $toolDisplayName,
                     'tool_call_id' => $event->toolInvocationId,
                     'icon' => $stepIcon,
                     'arguments' => $event->arguments,
@@ -123,6 +127,7 @@ class CheckpointToolCall
             );
             $step->start();
             $step->complete();
+            safeBroadcast(new TaskUpdated($task->fresh(['steps']) ?? $task, 'progress'), 'task tool progress');
         } catch (\Throwable $e) {
             Log::warning('CheckpointToolCall: failed to save checkpoint', [
                 'tool' => method_exists($event->tool, 'name')

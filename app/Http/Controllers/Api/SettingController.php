@@ -5,12 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\IndexDocumentJob;
 use App\Models\AppSetting;
+use App\Models\Automation;
 use App\Models\ConversationSummary;
 use App\Models\Document;
 use App\Models\DocumentChunk;
 use App\Models\EmbeddingCache;
 use App\Models\McpServer;
-use App\Models\Automation;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Mcp\McpClient;
@@ -28,7 +28,7 @@ class SettingController extends Controller
     /**
      * Get all settings grouped by category, merged with defaults.
      */
-    public function index(): \Illuminate\Http\JsonResponse
+    public function index(): JsonResponse
     {
         return response()->json(AppSetting::allWithDefaults());
     }
@@ -36,10 +36,10 @@ class SettingController extends Controller
     /**
      * Update settings for a specific category.
      */
-    public function update(Request $request): \Illuminate\Http\JsonResponse
+    public function update(Request $request): JsonResponse
     {
         $request->validate([
-            'category' => 'required|string|in:organization,agents,notifications,policies,memory',
+            'category' => 'required|string|in:organization,agents,notifications,policies,memory,web',
             'settings' => 'required|array',
         ]);
 
@@ -82,7 +82,7 @@ class SettingController extends Controller
     /**
      * Handle danger zone actions.
      */
-    public function dangerAction(Request $request): \Illuminate\Http\JsonResponse
+    public function dangerAction(Request $request): JsonResponse
     {
         $request->validate([
             'action' => 'required|string|in:pause_agents,reset_memory,resume_agents,reset_agents,retry_failed_jobs,refresh_mcp_tools,test_telegram,reindex_documents,reindex_documents_fresh,flush_failed_jobs,reset_embeddings,clear_embedding_cache,clear_conversation_summaries',
@@ -216,7 +216,7 @@ class SettingController extends Controller
 
         $message = "{$refreshed}/{$servers->count()} server(s) refreshed.";
         if (! empty($errors)) {
-            $message .= ' Errors: ' . implode('; ', array_map(fn ($e) => Str::limit($e, 80), $errors));
+            $message .= ' Errors: '.implode('; ', array_map(fn ($e) => Str::limit($e, 80), $errors));
         }
 
         return response()->json(['message' => $message]);
@@ -236,7 +236,7 @@ class SettingController extends Controller
 
             return response()->json(['message' => "Connected to @{$botName}."]);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Telegram test failed: ' . Str::limit($e->getMessage(), 150)], 422);
+            return response()->json(['message' => 'Telegram test failed: '.Str::limit($e->getMessage(), 150)], 422);
         }
     }
 

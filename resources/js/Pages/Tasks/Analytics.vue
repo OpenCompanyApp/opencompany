@@ -5,19 +5,19 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-1">
           <Link
-            :href="workspacePath('/tasks')"
+            :href="tasks(workspaceRouteParams())"
             class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
           >
             Tasks
           </Link>
           <Link
-            :href="workspacePath('/workload')"
+            :href="workload(workspaceRouteParams())"
             class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
           >
             Workload
           </Link>
           <Link
-            :href="workspacePath('/activity')"
+            :href="activity(workspaceRouteParams())"
             class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
           >
             Activity
@@ -319,10 +319,11 @@ import { Link } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useApi } from '@/composables/useApi'
+import { activity, tasks, workload } from '@/routes'
 import type { TokenAnalyticsResponse, TokenByAgent, TokenByModel, TokenBySource } from '@/types'
 import { estimateCost, formatCost, formatTokens } from '@/utils/tokenPricing'
 
-const { workspacePath } = useWorkspace()
+const { workspaceRouteParams } = useWorkspace()
 const { fetchTokenAnalytics } = useApi()
 
 const periods = [

@@ -427,7 +427,7 @@ import PresenceRow from '@/Components/shared/PresenceRow.vue'
 // ============================================================================
 
 type HeaderSize = 'sm' | 'md' | 'lg'
-type SaveStatus = 'saving' | 'saved' | 'error' | null
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | null
 type DocumentType = 'document' | 'markdown' | 'code' | 'spreadsheet' | 'presentation'
 
 interface Breadcrumb {
@@ -496,8 +496,8 @@ const documentTypeColors: Record<DocumentType, string> = {
 const props = withDefaults(defineProps<{
   title: string
   author?: User
-  updatedAt?: Date
-  createdAt?: Date
+  updatedAt?: Date | string
+  createdAt?: Date | string
   viewers?: User[]
   editors?: User[]
   size?: HeaderSize

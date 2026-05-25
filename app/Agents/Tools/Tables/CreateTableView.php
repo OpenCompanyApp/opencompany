@@ -9,6 +9,12 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Creates a saved presentation view for a workspace data table.
+ *
+ * Filters, sorts, hidden columns, and config are stored as structured arrays so
+ * the UI can render multiple view modes without reparsing agent text.
+ */
 class CreateTableView implements Tool
 {
     public function __construct(
@@ -55,6 +61,8 @@ class CreateTableView implements Tool
         try {
             $table = DataTable::forWorkspace()->findOrFail($request['tableId']);
 
+            // View semantics are intentionally stored, not executed here. Row
+            // filtering/sorting happens when clients or query tools read rows.
             $view = DataTableView::create([
                 'table_id' => $table->id,
                 'name' => $request['name'],

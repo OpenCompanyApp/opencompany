@@ -2,14 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Concerns\BelongsToWorkspace;
 
+/**
+ * Compacted memory state for one agent in one channel.
+ *
+ * The summary replaces older verbatim messages in prompts. Failure/circuit
+ * fields prevent repeated failing compaction attempts from blocking normal
+ * agent responses.
+ */
 class ConversationSummary extends Model
 {
-    use HasUuids, BelongsToWorkspace;
+    use BelongsToWorkspace, HasUuids;
 
     protected $fillable = [
         'id',
@@ -23,6 +30,15 @@ class ConversationSummary extends Model
         'flush_count',
         'messages_summarized',
         'last_message_id',
+        'compaction_failure_count',
+        'last_compaction_failed_at',
+        'compaction_circuit_open_until',
+        'last_compaction_error',
+    ];
+
+    protected $casts = [
+        'last_compaction_failed_at' => 'datetime',
+        'compaction_circuit_open_until' => 'datetime',
     ];
 
     /** @return BelongsTo<Channel, $this> */

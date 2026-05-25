@@ -10,7 +10,14 @@ use App\Agents\Tools\Calendar\RemoveCalendarAttendee;
 use App\Agents\Tools\Calendar\UpdateCalendarAttendee;
 use App\Agents\Tools\Calendar\UpdateCalendarEvent;
 use App\Models\User;
+use Laravel\Ai\Contracts\Tool;
 
+/**
+ * Registers calendar and attendee management tools.
+ *
+ * The provider keeps event CRUD and RSVP updates in one group so tool catalogs,
+ * Lua docs, and permission surfaces describe calendar work consistently.
+ */
 class CalendarToolProvider implements BuiltInToolProvider
 {
     public function groupName(): string
@@ -86,8 +93,10 @@ class CalendarToolProvider implements BuiltInToolProvider
         ];
     }
 
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool
+    public function createTool(string $class, User $agent, array $context = []): Tool
     {
+        // Calendar tools use the agent for workspace scoping and author/audit
+        // attribution; each tool validates the event-specific payload itself.
         return new $class($agent);
     }
 }

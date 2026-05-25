@@ -107,9 +107,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
-import axios from 'axios'
 import Icon from '@/Components/shared/Icon.vue'
 import WorkspaceIcon from '@/Components/shared/WorkspaceIcon.vue'
+import { store as storeWorkspace } from '@/actions/App/Http/Controllers/Api/WorkspaceController'
+import { dashboard } from '@/routes'
+import { wayfinderRequest } from '@/utils/wayfinder'
 
 const form = ref({
   name: '',
@@ -168,14 +170,19 @@ const handleSubmit = async () => {
   error.value = ''
 
   try {
-    const response = await axios.post('/api/workspaces', {
-      name: form.value.name.trim(),
-      slug: form.value.slug.trim(),
-      icon: form.value.icon,
-      color: form.value.color,
-    })
+    const response = await wayfinderRequest<{ slug: string }>(
+      storeWorkspace(),
+      {
+        data: {
+          name: form.value.name.trim(),
+          slug: form.value.slug.trim(),
+          icon: form.value.icon,
+          color: form.value.color,
+        },
+      },
+    )
 
-    router.visit(`/w/${response.data.slug}`)
+    router.visit(dashboard(response.data.slug))
   } catch (e: any) {
     const data = e?.response?.data
     error.value = data?.message || Object.values(data?.errors || {}).flat().join(', ') || 'Failed to create workspace'

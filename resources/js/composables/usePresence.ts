@@ -1,4 +1,5 @@
 import { ref, readonly, onUnmounted } from 'vue'
+import { updatePresence } from '@/actions/App/Http/Controllers/Api/UserController'
 import type { PresenceStatus } from '@/types'
 import { useApi } from '@/composables/useApi'
 import { useRealtime } from '@/composables/useRealtime'
@@ -76,7 +77,7 @@ export const usePresence = (userId: string, workspaceId?: string) => {
       // Handle page close
       const handleBeforeUnload = () => {
         const data = JSON.stringify({ presence: 'offline' })
-        navigator.sendBeacon(`/api/users/${userId}/presence`, data)
+        navigator.sendBeacon(updatePresence.url(userId), data)
       }
       window.addEventListener('beforeunload', handleBeforeUnload)
       activityCleanups.push(() => window.removeEventListener('beforeunload', handleBeforeUnload))

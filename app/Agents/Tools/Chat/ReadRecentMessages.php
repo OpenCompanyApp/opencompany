@@ -2,6 +2,7 @@
 
 namespace App\Agents\Tools\Chat;
 
+use App\Agents\Support\MessageAttachmentContext;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
@@ -15,6 +16,7 @@ class ReadRecentMessages implements Tool
     public function __construct(
         private User $agent,
         private AgentPermissionService $permissionService,
+        private ?MessageAttachmentContext $attachmentContext = null,
     ) {}
 
     public function description(): string
@@ -49,7 +51,7 @@ class ReadRecentMessages implements Tool
                 return "Error: Channel '{$channelId}' not found.";
             }
 
-            $messages = Message::with('author')
+            $messages = Message::with(['author', 'attachments'])
                 ->where('channel_id', $channel->id)
                 ->orderBy('created_at', 'desc')
                 ->take(min($limit, 50))
@@ -60,23 +62,34 @@ class ReadRecentMessages implements Tool
                 return json_encode([]);
             }
 
-            return json_encode($messages->map(fn ($message) => $this->formatMessage($message))->values()->toArray(), JSON_PRETTY_PRINT);
+            return json_encode($messages->map(fn ($message) => $this->formatMessage($message, $channel->workspace_id))->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error reading channel: {$e->getMessage()}";
         }
     }
 
-    private function formatMessage(Message $message): array
+    private function formatMessage(Message $message, string $workspaceId): array
     {
         return array_filter([
             'id' => $message->id,
             'author' => $message->author?->name ?? 'Unknown',
             'authorId' => $message->author_id,
             'content' => $message->content,
+            'attachments' => $this->attachments($message, $workspaceId),
             'source' => $message->source !== 'workspace' ? $message->source : null,
             'pinned' => $message->is_pinned ?: null,
             'createdAt' => $message->created_at->toIso8601String(),
         ]);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function attachments(Message $message, string $workspaceId): array
+    {
+        $context = $this->attachmentContext ??= app(MessageAttachmentContext::class);
+
+        return $context->attachmentsForMessage($message, $workspaceId);
     }
 
     /** @return array<string, mixed> */

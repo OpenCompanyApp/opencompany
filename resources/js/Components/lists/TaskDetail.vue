@@ -124,7 +124,7 @@
                 <AgentAvatar :user="task.assignee" size="md" />
                 <div>
                   <Link
-                    :href="workspacePath(task.assignee.type === 'agent' ? `/agent/${task.assignee.id}` : `/profile/${task.assignee.id}`)"
+                    :href="memberUrl(task.assignee)"
                     class="font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
                   >
                     {{ task.assignee.name }}
@@ -207,7 +207,7 @@
                 >
                   <AgentAvatar :user="collab" size="xs" />
                   <Link
-                    :href="workspacePath(collab.type === 'agent' ? `/agent/${collab.id}` : `/profile/${collab.id}`)"
+                    :href="memberUrl(collab)"
                     class="text-sm text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
                   >
                     {{ collab.name }}
@@ -263,7 +263,7 @@
                         <div class="flex items-center gap-2 mb-1">
                           <Link
                             v-if="comment.author"
-                            :href="workspacePath(comment.author.type === 'agent' ? `/agent/${comment.author.id}` : `/profile/${comment.author.id}`)"
+                            :href="memberUrl(comment.author)"
                             class="text-sm font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
                           >
                             {{ comment.author.name }}
@@ -319,7 +319,7 @@
                               <div class="flex items-center gap-2 mb-0.5">
                                 <Link
                                   v-if="reply.author"
-                                  :href="workspacePath(reply.author.type === 'agent' ? `/agent/${reply.author.id}` : `/profile/${reply.author.id}`)"
+                                  :href="memberUrl(reply.author)"
                                   class="text-xs font-medium text-neutral-900 dark:text-white hover:text-neutral-900 dark:hover:text-white transition-colors"
                                 >
                                   {{ reply.author.name }}
@@ -421,7 +421,7 @@ import Slideover from '@/Components/shared/Slideover.vue'
 import { useMarkdown } from '@/composables/useMarkdown'
 
 const { renderMarkdown } = useMarkdown()
-const { workspacePath } = useWorkspace()
+const { memberUrl } = useWorkspace()
 
 const props = defineProps<{
   open: boolean
@@ -485,6 +485,7 @@ const submittingComment = ref(false)
 
 const priorityClasses: Record<Priority, string> = {
   low: 'bg-neutral-500/20 text-neutral-400',
+  normal: 'bg-neutral-500/20 text-neutral-400',
   medium: 'bg-blue-500/20 text-blue-400',
   high: 'bg-amber-500/20 text-amber-400',
   urgent: 'bg-red-500/20 text-red-400',
@@ -492,6 +493,7 @@ const priorityClasses: Record<Priority, string> = {
 
 const priorityDots: Record<Priority, string> = {
   low: 'bg-neutral-400',
+  normal: 'bg-neutral-400',
   medium: 'bg-blue-400',
   high: 'bg-amber-400',
   urgent: 'bg-red-400',

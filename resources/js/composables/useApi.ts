@@ -1,5 +1,37 @@
-import axios from 'axios'
 import { ref } from 'vue'
+import * as ActivityApi from '@/actions/App/Http/Controllers/Api/ActivityController'
+import * as AgentApi from '@/actions/App/Http/Controllers/Api/AgentController'
+import * as AgentPermissionApi from '@/actions/App/Http/Controllers/Api/AgentPermissionController'
+import * as ApprovalApi from '@/actions/App/Http/Controllers/Api/ApprovalController'
+import * as AutomationApi from '@/actions/App/Http/Controllers/Api/AutomationController'
+import * as AutomationRuleApi from '@/actions/App/Http/Controllers/Api/AutomationRuleController'
+import * as CalendarEventApi from '@/actions/App/Http/Controllers/Api/CalendarEventController'
+import * as CalendarFeedApi from '@/actions/App/Http/Controllers/Api/CalendarFeedController'
+import * as ChannelApi from '@/actions/App/Http/Controllers/Api/ChannelController'
+import * as DataTableViewApi from '@/actions/App/Http/Controllers/Api/DataTableViewController'
+import * as DirectMessageApi from '@/actions/App/Http/Controllers/Api/DirectMessageController'
+import * as DmApi from '@/actions/App/Http/Controllers/Api/DmController'
+import * as DocumentApi from '@/actions/App/Http/Controllers/Api/DocumentController'
+import * as DocumentAttachmentApi from '@/actions/App/Http/Controllers/Api/DocumentAttachmentController'
+import * as DocumentCommentApi from '@/actions/App/Http/Controllers/Api/DocumentCommentController'
+import * as DocumentVersionApi from '@/actions/App/Http/Controllers/Api/DocumentVersionController'
+import * as FileApi from '@/actions/App/Http/Controllers/Api/FileController'
+import * as ListItemApi from '@/actions/App/Http/Controllers/Api/ListItemController'
+import * as ListItemCommentApi from '@/actions/App/Http/Controllers/Api/ListItemCommentController'
+import * as ListStatusApi from '@/actions/App/Http/Controllers/Api/ListStatusController'
+import * as ListTemplateApi from '@/actions/App/Http/Controllers/Api/ListTemplateController'
+import * as MessageApi from '@/actions/App/Http/Controllers/Api/MessageController'
+import * as NotificationApi from '@/actions/App/Http/Controllers/Api/NotificationController'
+import * as SearchApi from '@/actions/App/Http/Controllers/Api/SearchController'
+import * as SettingApi from '@/actions/App/Http/Controllers/Api/SettingController'
+import * as StatsApi from '@/actions/App/Http/Controllers/Api/StatsController'
+import * as TaskApi from '@/actions/App/Http/Controllers/Api/TaskController'
+import * as TokenAnalyticsApi from '@/actions/App/Http/Controllers/Api/TokenAnalyticsController'
+import * as UserApi from '@/actions/App/Http/Controllers/Api/UserController'
+import * as WorkloadApi from '@/actions/App/Http/Controllers/Api/WorkloadController'
+import * as WorkspaceDiskApi from '@/actions/App/Http/Controllers/Api/WorkspaceDiskController'
+import { wayfinderRequest } from '@/utils/wayfinder'
+import type { QueryParams, RouteDefinition } from '@/wayfinder'
 import type {
   User,
   Channel,
@@ -32,28 +64,36 @@ export interface PaginatedResponse<T> {
   counts?: { total: number; pending: number; active: number; completed: number }
 }
 
-const api = axios.create({
-  baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-})
+type WayfinderDefinition = RouteDefinition<any>
+type DirectMessageResponse = {
+  id?: string
+  channel_id?: string
+  channelId?: string
+  channel?: { id: string }
+}
+
+type ActionMessageResponse = {
+  message?: string
+}
+
+const query = (params: QueryParams): { query: QueryParams } => ({ query: params })
 
 // Helper to create reactive fetch
-function useFetch<T>(url: string) {
+function useFetch<T>(route: WayfinderDefinition) {
   const data = ref<T | null>(null)
   const error = ref<Error | null>(null)
   const loading = ref(true)
 
-  const execute = async () => {
+  const execute = async (): Promise<T | null> => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get(url)
+      const response = await wayfinderRequest<T>(route)
       data.value = response.data
+      return response.data
     } catch (e) {
       error.value = e as Error
+      return null
     } finally {
       loading.value = false
     }
@@ -67,84 +107,82 @@ function useFetch<T>(url: string) {
 
 export const useApi = () => {
   // Users
-  const fetchUsers = () => useFetch<User[]>('/users')
-  const fetchUser = (id: string) => useFetch<User>(`/users/${id}`)
-  const fetchAgents = () => useFetch<User[]>('/users/agents')
+  const fetchUsers = () => useFetch<User[]>(UserApi.index())
+  const fetchUser = (id: string) => useFetch<User>(UserApi.show(id))
+  const fetchAgents = () => useFetch<User[]>(UserApi.agents())
   const updateUser = (id: string, data: Partial<User>) =>
-    api.patch(`/users/${id}`, data)
+    wayfinderRequest(UserApi.update(id), { data })
   const updateUserPresence = (id: string, presence: 'online' | 'away' | 'busy' | 'offline') =>
-    api.patch(`/users/${id}/presence`, { presence })
+    wayfinderRequest(UserApi.updatePresence(id), { data: { presence } })
 
   // Channels
-  const fetchChannels = () => useFetch<Channel[]>('/channels')
-  const fetchChannel = (id: string) => useFetch<Channel>(`/channels/${id}`)
+  const fetchChannels = () => useFetch<Channel[]>(ChannelApi.index())
+  const fetchChannel = (id: string) => useFetch<Channel>(ChannelApi.show(id))
   const createChannel = (data: { name: string; type?: string; description?: string; creatorId?: string; memberIds?: string[] }) =>
-    api.post('/channels', data)
+    wayfinderRequest<Channel>(ChannelApi.store(), { data })
   const addChannelMember = (channelId: string, userId: string) =>
-    api.post(`/channels/${channelId}/members`, { userId })
+    wayfinderRequest(ChannelApi.addMember(channelId), { data: { userId } })
   const removeChannelMember = (channelId: string, userId: string) =>
-    api.delete(`/channels/${channelId}/members/${userId}`)
+    wayfinderRequest(ChannelApi.removeMember([channelId, userId]))
   const markChannelRead = (channelId: string, userId?: string) =>
-    api.post(`/channels/${channelId}/read`, { userId })
+    wayfinderRequest(ChannelApi.markRead(channelId), { data: { userId } })
   const sendTypingIndicator = (channelId: string, userId: string, userName: string, isTyping: boolean) =>
-    api.post(`/channels/${channelId}/typing`, { userId, userName, isTyping })
+    wayfinderRequest(ChannelApi.typing(channelId), { data: { userId, userName, isTyping } })
 
   // Messages
   const fetchMessages = (channelId?: string, limit?: number) => {
-    const params = new URLSearchParams()
-    if (channelId) params.append('channelId', channelId)
-    if (limit) params.append('limit', limit.toString())
-    return useFetch<Message[]>(`/messages?${params.toString()}`)
+    return useFetch<Message[]>(MessageApi.index(query({ channelId, limit })))
   }
   const sendMessage = (data: { content: string; channelId: string; authorId: string; replyToId?: string; attachmentIds?: string[] }) =>
-    api.post('/messages', data)
+    wayfinderRequest(MessageApi.store(), { data })
   const uploadMessageAttachment = async (file: File, channelId: string, uploaderId?: string) => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('channelId', channelId)
     if (uploaderId) formData.append('uploaderId', uploaderId)
-    const response = await api.post<{ id: string; name: string; type: string; size: number; url: string }>('/messages/attachments', formData, {
+    const response = await wayfinderRequest<{ id: string; name: string; type: string; size: number; url: string }>(MessageApi.uploadAttachment(), {
+      data: formData,
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     return response.data
   }
   const compactChannel = (channelId: string) =>
-    api.post(`/channels/${channelId}/compact`)
+    wayfinderRequest(MessageApi.compact(channelId))
   const deleteMessage = (id: string) =>
-    api.delete(`/messages/${id}`)
+    wayfinderRequest(MessageApi.destroy(id))
   const addMessageReaction = (messageId: string, data: { emoji: string; userId?: string }) =>
-    api.post(`/messages/${messageId}/reactions`, data)
+    wayfinderRequest(MessageApi.addReaction(messageId), { data })
   const removeMessageReaction = (messageId: string, reactionId: string) =>
-    api.delete(`/messages/${messageId}/reactions/${reactionId}`)
+    wayfinderRequest(MessageApi.removeReaction([messageId, reactionId]))
   const fetchMessageThread = (messageId: string) =>
-    useFetch(`/messages/${messageId}/thread`)
+    useFetch<{ parentMessage: Message; replies: Message[] }>(MessageApi.thread(messageId))
   const pinMessage = (messageId: string, userId?: string) =>
-    api.post(`/messages/${messageId}/pin`, { userId })
+    wayfinderRequest(MessageApi.pin(messageId), { data: { userId } })
   const fetchPinnedMessages = (channelId: string) =>
-    useFetch<Message[]>(`/channels/${channelId}/pinned`)
+    useFetch<Message[]>(ChannelApi.pinned(channelId))
 
   // List Statuses
-  const fetchListStatuses = () => useFetch<ListStatus[]>('/list-statuses')
+  const fetchListStatuses = () => useFetch<ListStatus[]>(ListStatusApi.index())
   const createListStatus = (data: { name: string; color: string; icon: string; isDone?: boolean }) =>
-    api.post('/list-statuses', data)
+    wayfinderRequest(ListStatusApi.store(), { data })
   const updateListStatus = (id: string, data: Partial<{ name: string; color: string; icon: string; isDone: boolean; isDefault: boolean }>) =>
-    api.patch(`/list-statuses/${id}`, data)
+    wayfinderRequest(ListStatusApi.update(id), { data })
   const deleteListStatus = (id: string, replacementSlug?: string) =>
-    api.delete(`/list-statuses/${id}`, { data: { replacementSlug } })
+    wayfinderRequest(ListStatusApi.destroy(id), { data: { replacementSlug } })
   const reorderListStatuses = (orders: { id: string; position: number }[]) =>
-    api.post('/list-statuses/reorder', { orders })
+    wayfinderRequest(ListStatusApi.reorder(), { data: { orders } })
 
   // List Items (kanban board items - formerly Tasks)
-  const fetchListItems = () => useFetch<ListItem[]>('/list-items')
-  const fetchListItem = (id: string) => useFetch<ListItem>(`/list-items/${id}`)
+  const fetchListItems = () => useFetch<ListItem[]>(ListItemApi.index())
+  const fetchListItem = (id: string) => useFetch<ListItem>(ListItemApi.show(id))
   const createListItem = (data: { title: string; description?: string; assigneeId?: string; priority?: string; status?: string; channelId?: string | null; dueDate?: string | null; collaboratorIds?: string[]; parentId?: string | null; isFolder?: boolean }) =>
-    api.post('/list-items', data)
+    wayfinderRequest(ListItemApi.store(), { data })
   const updateListItem = (id: string, data: Partial<ListItem>) =>
-    api.patch(`/list-items/${id}`, data)
+    wayfinderRequest(ListItemApi.update(id), { data })
   const deleteListItem = (id: string) =>
-    api.delete(`/list-items/${id}`)
+    wayfinderRequest(ListItemApi.destroy(id))
   const reorderListItems = (itemOrders: { id: string; position: number; status?: string }[]) =>
-    api.post('/list-items/reorder', { itemOrders })
+    wayfinderRequest(ListItemApi.reorder(), { data: { itemOrders } })
 
   // Legacy aliases for backwards compatibility
   const fetchTasks = fetchListItems
@@ -153,15 +191,15 @@ export const useApi = () => {
   const updateTask = updateListItem
   const deleteTask = deleteListItem
   const reorderTasks = (taskOrders: { id: string; position: number; status?: string }[]) =>
-    api.post('/list-items/reorder', { taskOrders })
+    wayfinderRequest(ListItemApi.reorder(), { data: { taskOrders } })
 
   // List Item Comments
   const fetchListItemComments = (listItemId: string) =>
-    useFetch(`/list-items/${listItemId}/comments`)
+    useFetch(ListItemCommentApi.index(listItemId))
   const addListItemComment = (listItemId: string, data: { content: string; parentId?: string; authorId?: string }) =>
-    api.post(`/list-items/${listItemId}/comments`, data)
+    wayfinderRequest(ListItemCommentApi.store(listItemId), { data })
   const deleteListItemComment = (listItemId: string, commentId: string) =>
-    api.delete(`/list-items/${listItemId}/comments/${commentId}`)
+    wayfinderRequest(ListItemCommentApi.destroy([listItemId, commentId]))
 
   // Legacy aliases
   const fetchTaskComments = fetchListItemComments
@@ -169,26 +207,21 @@ export const useApi = () => {
   const deleteTaskComment = deleteListItemComment
 
   // Agent Tasks (cases - discrete work items)
-  const fetchAgentTasks = (filters?: { status?: string | string[]; agentId?: string; requesterId?: string; type?: string; priority?: string; source?: string; search?: string; page?: number; perPage?: number }) => {
-    const params = new URLSearchParams()
-    if (filters?.status) {
-      if (Array.isArray(filters.status)) {
-        filters.status.forEach(s => params.append('status[]', s))
-      } else {
-        params.append('status', filters.status)
-      }
-    }
-    if (filters?.agentId) params.append('agentId', filters.agentId)
-    if (filters?.requesterId) params.append('requesterId', filters.requesterId)
-    if (filters?.type) params.append('type', filters.type)
-    if (filters?.priority) params.append('priority', filters.priority)
-    if (filters?.source) params.append('source', filters.source)
-    if (filters?.search) params.append('search', filters.search)
-    if (filters?.page) params.append('page', String(filters.page))
-    if (filters?.perPage) params.append('perPage', String(filters.perPage))
-    return useFetch<PaginatedResponse<AgentTask>>(`/tasks?${params.toString()}`)
+  const fetchAgentTasks = (filters?: { status?: string | string[]; agentId?: string; requesterId?: string; channelId?: string; type?: string; priority?: string; source?: string; search?: string; page?: number; perPage?: number }) => {
+    return useFetch<PaginatedResponse<AgentTask>>(TaskApi.index(query({
+      status: filters?.status,
+      agentId: filters?.agentId,
+      requesterId: filters?.requesterId,
+      channelId: filters?.channelId,
+      type: filters?.type,
+      priority: filters?.priority,
+      source: filters?.source,
+      search: filters?.search,
+      page: filters?.page,
+      perPage: filters?.perPage,
+    })))
   }
-  const fetchAgentTask = (id: string) => useFetch<AgentTask>(`/tasks/${id}`)
+  const fetchAgentTask = (id: string) => useFetch<AgentTask>(TaskApi.show(id))
   const createAgentTask = (data: {
     title: string
     description?: string
@@ -202,98 +235,98 @@ export const useApi = () => {
     parentTaskId?: string
     context?: Record<string, unknown>
     dueAt?: string
-  }) => api.post('/tasks', data)
+  }) => wayfinderRequest(TaskApi.store(), { data })
   const updateAgentTask = (id: string, data: Partial<AgentTask>) =>
-    api.patch(`/tasks/${id}`, data)
+    wayfinderRequest(TaskApi.update(id), { data })
   const deleteAgentTask = (id: string) =>
-    api.delete(`/tasks/${id}`)
+    wayfinderRequest(TaskApi.destroy(id))
 
   // Agent Task Lifecycle
   const startAgentTask = (id: string) =>
-    api.post(`/tasks/${id}/start`)
+    wayfinderRequest(TaskApi.start(id))
   const pauseAgentTask = (id: string) =>
-    api.post(`/tasks/${id}/pause`)
+    wayfinderRequest(TaskApi.pause(id))
   const resumeAgentTask = (id: string) =>
-    api.post(`/tasks/${id}/resume`)
+    wayfinderRequest(TaskApi.resume(id))
   const completeAgentTask = (id: string, result?: Record<string, unknown>) =>
-    api.post(`/tasks/${id}/complete`, { result })
+    wayfinderRequest(TaskApi.complete(id), { data: { result } })
   const failAgentTask = (id: string, reason?: string) =>
-    api.post(`/tasks/${id}/fail`, { reason })
+    wayfinderRequest(TaskApi.fail(id), { data: { reason } })
   const cancelAgentTask = (id: string) =>
-    api.post(`/tasks/${id}/cancel`)
+    wayfinderRequest(TaskApi.cancel(id))
 
   // Task Steps
   const fetchTaskSteps = (taskId: string) =>
-    useFetch<TaskStep[]>(`/tasks/${taskId}/steps`)
+    useFetch<TaskStep[]>(TaskApi.steps(taskId))
   const addTaskStep = (taskId: string, data: { description: string; type?: string; metadata?: Record<string, unknown> }) =>
-    api.post(`/tasks/${taskId}/steps`, data)
+    wayfinderRequest(TaskApi.addStep(taskId), { data })
   const updateTaskStep = (taskId: string, stepId: string, data: Partial<TaskStep>) =>
-    api.patch(`/tasks/${taskId}/steps/${stepId}`, data)
+    wayfinderRequest(TaskApi.updateStep([taskId, stepId]), { data })
   const completeTaskStep = (taskId: string, stepId: string) =>
-    api.post(`/tasks/${taskId}/steps/${stepId}/complete`)
+    wayfinderRequest(TaskApi.completeStep([taskId, stepId]))
 
   // Documents
-  const fetchDocuments = () => useFetch<Document[]>('/documents')
-  const searchDocuments = (query: string) => api.get<Document[]>(`/documents/search?q=${encodeURIComponent(query)}`)
-  const fetchDocument = (id: string) => useFetch<Document>(`/documents/${id}`)
+  const fetchDocuments = () => useFetch<Document[]>(DocumentApi.index())
+  const searchDocuments = (term: string) => wayfinderRequest<Document[]>(DocumentApi.search(query({ q: term })))
+  const fetchDocument = (id: string) => useFetch<Document>(DocumentApi.show(id))
   const createDocument = (data: { title: string; content?: string; authorId: string; parentId?: string; isFolder?: boolean; viewerIds?: string[]; editorIds?: string[] }) =>
-    api.post('/documents', data)
+    wayfinderRequest<Document>(DocumentApi.store(), { data }).then(response => response.data)
   const updateDocument = (id: string, data: Partial<Document> & { saveVersion?: boolean; changeDescription?: string }) =>
-    api.patch(`/documents/${id}`, data)
+    wayfinderRequest<Document>(DocumentApi.update(id), { data }).then(response => response.data)
   const deleteDocument = (id: string) =>
-    api.delete(`/documents/${id}`)
+    wayfinderRequest(DocumentApi.destroy(id))
 
   // Document Comments
   const fetchDocumentComments = (documentId: string) =>
-    useFetch(`/documents/${documentId}/comments`)
+    useFetch<any[]>(DocumentCommentApi.index(documentId))
   const addDocumentComment = (documentId: string, data: { content: string; parentId?: string; authorId?: string }) =>
-    api.post(`/documents/${documentId}/comments`, data)
+    wayfinderRequest(DocumentCommentApi.store(documentId), { data })
   const updateDocumentComment = (documentId: string, commentId: string, data: { content?: string; resolved?: boolean; resolvedById?: string }) =>
-    api.patch(`/documents/${documentId}/comments/${commentId}`, data)
+    wayfinderRequest(DocumentCommentApi.update([documentId, commentId]), { data })
   const deleteDocumentComment = (documentId: string, commentId: string) =>
-    api.delete(`/documents/${documentId}/comments/${commentId}`)
+    wayfinderRequest(DocumentCommentApi.destroy([documentId, commentId]))
 
   // Document Versions
   const fetchDocumentVersions = (documentId: string) =>
-    useFetch(`/documents/${documentId}/versions`)
+    useFetch<any[]>(DocumentVersionApi.index(documentId))
   const restoreDocumentVersion = (documentId: string, versionId: string, authorId?: string) =>
-    api.post(`/documents/${documentId}/versions/${versionId}/restore`, { authorId })
+    wayfinderRequest(DocumentVersionApi.restore([documentId, versionId]), { data: { authorId } })
 
   // Document Attachments
   const fetchDocumentAttachments = (documentId: string) =>
-    useFetch(`/documents/${documentId}/attachments`)
+    useFetch<any[]>(DocumentAttachmentApi.index(documentId))
   const uploadDocumentAttachment = async (documentId: string, file: File, uploaderId?: string) => {
     const formData = new FormData()
     formData.append('file', file)
     if (uploaderId) formData.append('uploaderId', uploaderId)
-    const response = await api.post(`/documents/${documentId}/attachments`, formData, {
+    const response = await wayfinderRequest(DocumentAttachmentApi.store(documentId), {
+      data: formData,
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     return response.data
   }
   const deleteDocumentAttachment = (documentId: string, attachmentId: string) =>
-    api.delete(`/documents/${documentId}/attachments/${attachmentId}`)
+    wayfinderRequest(DocumentAttachmentApi.destroy([documentId, attachmentId]))
 
   // Approvals
   const fetchApprovals = (status?: string) => {
-    const params = status ? `?status=${status}` : ''
-    return useFetch<ApprovalRequest[]>(`/approvals${params}`)
+    return useFetch<ApprovalRequest[]>(ApprovalApi.index(query({ status })))
   }
-  const fetchApproval = (id: string) => useFetch<ApprovalRequest>(`/approvals/${id}`)
+  const fetchApproval = (id: string) => useFetch<ApprovalRequest>(ApprovalApi.show(id))
   const createApproval = (data: { type: string; title: string; description?: string; requesterId: string; amount?: number; channelId?: string }) =>
-    api.post('/approvals', data)
+    wayfinderRequest(ApprovalApi.store(), { data })
   const respondToApproval = (id: string, status: 'approved' | 'rejected') =>
-    api.patch(`/approvals/${id}`, { status })
+    wayfinderRequest(ApprovalApi.update(id), { data: { status } })
 
   // Activities
   const fetchActivities = (filters?: { limit?: number; offset?: number; type?: string; userId?: string; since?: string }) => {
-    const params = new URLSearchParams()
-    if (filters?.limit) params.append('limit', String(filters.limit))
-    if (filters?.offset) params.append('offset', String(filters.offset))
-    if (filters?.type) params.append('type', filters.type)
-    if (filters?.userId) params.append('userId', filters.userId)
-    if (filters?.since) params.append('since', filters.since)
-    return useFetch<{ data: Activity[]; total: number; hasMore: boolean }>(`/activities?${params.toString()}`)
+    return useFetch<{ data: Activity[]; total: number; hasMore: boolean }>(ActivityApi.index(query({
+      limit: filters?.limit,
+      offset: filters?.offset,
+      type: filters?.type,
+      userId: filters?.userId,
+      since: filters?.since,
+    })))
   }
 
   // Workload
@@ -304,21 +337,22 @@ export const useApi = () => {
       currentTaskTitle: string | null
     }>
     summary: { totalAgents: number; activeAgents: number; totalActiveTasks: number; totalPendingTasks: number; completedToday: number; completedThisWeek: number; failedThisWeek: number }
-  }>('/workload')
+  }>(WorkloadApi.index())
 
   // Token Analytics
   const fetchTokenAnalytics = (period = '30') =>
-    useFetch<TokenAnalyticsResponse>(`/tasks/analytics/tokens?period=${period}`)
+    useFetch<TokenAnalyticsResponse>(TokenAnalyticsApi.index(query({ period })))
 
   // Stats
-  const fetchStats = () => useFetch<Stats>('/stats')
-  const fetchWorkspaceStatus = () => api.get('/stats/status')
+  const fetchStats = () => useFetch<Stats>(StatsApi.index())
+  const fetchWorkspaceStatus = (params?: { channelId?: string; agentId?: string }) =>
+    wayfinderRequest(StatsApi.status(query(params ?? {})))
   const updateStats = (data: Partial<Stats>) =>
-    api.patch('/stats', data)
+    wayfinderRequest(StatsApi.update(), { data })
 
   // List Templates (formerly Task Templates)
   const fetchListTemplates = (activeOnly = true) =>
-    useFetch(`/list-templates?activeOnly=${activeOnly}`)
+    useFetch(ListTemplateApi.index(query({ activeOnly })))
   const createListTemplate = (data: {
     name: string
     defaultTitle: string
@@ -329,11 +363,11 @@ export const useApi = () => {
     estimatedCost?: number
     tags?: string[]
     createdById?: string
-  }) => api.post('/list-templates', data)
+  }) => wayfinderRequest(ListTemplateApi.store(), { data })
   const updateListTemplate = (id: string, data: Record<string, unknown>) =>
-    api.patch(`/list-templates/${id}`, data)
+    wayfinderRequest(ListTemplateApi.update(id), { data })
   const deleteListTemplate = (id: string) =>
-    api.delete(`/list-templates/${id}`)
+    wayfinderRequest(ListTemplateApi.destroy(id))
   const createListItemFromTemplate = (templateId: string, overrides?: {
     title?: string
     description?: string
@@ -342,7 +376,7 @@ export const useApi = () => {
     channelId?: string
     collaboratorIds?: string[]
     estimatedCost?: number
-  }) => api.post(`/list-templates/${templateId}/create-item`, overrides || {})
+  }) => wayfinderRequest(ListTemplateApi.createListItem(templateId), { data: overrides || {} })
 
   // Legacy aliases
   const fetchTaskTemplates = fetchListTemplates
@@ -353,7 +387,7 @@ export const useApi = () => {
 
   // Automation Rules
   const fetchAutomationRules = (activeOnly = true) =>
-    useFetch(`/automation-rules?activeOnly=${activeOnly}`)
+    useFetch(AutomationRuleApi.index(query({ activeOnly })))
   const createAutomationRule = (data: {
     name: string
     triggerType: string
@@ -363,17 +397,17 @@ export const useApi = () => {
     actionConfig?: Record<string, unknown>
     templateId?: string
     createdById?: string
-  }) => api.post('/automation-rules', data)
+  }) => wayfinderRequest(AutomationRuleApi.store(), { data })
   const updateAutomationRule = (id: string, data: Record<string, unknown>) =>
-    api.patch(`/automation-rules/${id}`, data)
+    wayfinderRequest(AutomationRuleApi.update(id), { data })
   const deleteAutomationRule = (id: string) =>
-    api.delete(`/automation-rules/${id}`)
+    wayfinderRequest(AutomationRuleApi.destroy(id))
 
   // Automations
   const fetchAutomations = () =>
-    useFetch<import('@/types').Automation[]>('/automations')
+    useFetch<import('@/types').Automation[]>(AutomationApi.index())
   const fetchAutomation = (id: string) =>
-    useFetch<import('@/types').Automation>(`/automations/${id}`)
+    useFetch<import('@/types').Automation>(AutomationApi.show(id))
   const createAutomation = (data: {
     name: string
     agentId: string
@@ -386,17 +420,17 @@ export const useApi = () => {
     channelId?: string
     keepHistory?: boolean
     createdById?: string
-  }) => api.post('/automations', data)
+  }) => wayfinderRequest(AutomationApi.store(), { data })
   const updateAutomation = (id: string, data: Record<string, unknown>) =>
-    api.patch(`/automations/${id}`, data)
+    wayfinderRequest(AutomationApi.update(id), { data })
   const deleteAutomation = (id: string) =>
-    api.delete(`/automations/${id}`)
+    wayfinderRequest(AutomationApi.destroy(id))
   const triggerAutomation = (id: string) =>
-    api.post(`/automations/${id}/run`)
+    wayfinderRequest(AutomationApi.triggerRun(id))
   const bulkDeleteAutomations = (ids: string[]) =>
-    api.post('/automations/bulk-delete', { ids })
+    wayfinderRequest(AutomationApi.bulkDestroy(), { data: { ids } })
   const bulkTriggerAutomations = (ids: string[]) =>
-    api.post('/automations/bulk-run', { ids })
+    wayfinderRequest(AutomationApi.bulkTriggerRun(), { data: { ids } })
   const fetchAutomationRuns = (id: string) =>
     useFetch<Array<{
       id: string
@@ -408,159 +442,149 @@ export const useApi = () => {
       startedAt: string | null
       completedAt: string | null
       createdAt: string
-    }>>(`/automations/${id}/runs`)
+    }>>(AutomationApi.runs(id))
   const previewSchedule = (cronExpression: string, timezone = 'UTC') =>
-    api.get('/automations/preview-schedule', {
-      params: { cronExpression, timezone },
-    })
+    wayfinderRequest(AutomationApi.previewSchedule(query({ cronExpression, timezone })))
 
   // Agents
-  const fetchAgentDetail = (id: string) => useFetch<Record<string, unknown>>(`/agents/${id}`)
-  const fetchAgentIdentityFiles = (id: string) => useFetch<Record<string, unknown>[]>(`/agents/${id}/identity`)
+  const fetchAgentDetail = (id: string) => useFetch<Record<string, unknown>>(AgentApi.show(id))
+  const fetchAgentIdentityFiles = (id: string) => useFetch<Record<string, unknown>[]>(AgentApi.identityFiles(id))
   const updateAgentIdentityFile = (id: string, fileType: string, content: string) =>
-    api.put(`/agents/${id}/identity/${fileType}`, { content })
+    wayfinderRequest(AgentApi.updateIdentityFile([id, fileType]), { data: { content } })
   const updateAgent = (id: string, data: Record<string, unknown>) =>
-    api.patch(`/agents/${id}`, data)
+    wayfinderRequest(AgentApi.update(id), { data })
   const deleteAgent = (id: string) =>
-    api.delete(`/agents/${id}`)
+    wayfinderRequest(AgentApi.destroy(id))
 
   // Agent Permissions
   const fetchAgentPermissions = (id: string) =>
-    useFetch<{ tools: unknown[]; channelIds: string[]; folderIds: string[]; behaviorMode: string }>(`/agents/${id}/permissions`)
+    useFetch<{ tools: unknown[]; channelIds: string[]; folderIds: string[]; behaviorMode: string }>(AgentPermissionApi.index(id))
   const updateAgentToolPermissions = (id: string, tools: { scopeKey: string; permission: string; requiresApproval: boolean }[]) =>
-    api.put(`/agents/${id}/permissions/tools`, { tools })
+    wayfinderRequest(AgentPermissionApi.updateTools(id), { data: { tools } })
   const updateAgentChannelPermissions = (id: string, channels: string[]) =>
-    api.put(`/agents/${id}/permissions/channels`, { channels })
+    wayfinderRequest(AgentPermissionApi.updateChannels(id), { data: { channels } })
   const updateAgentFolderPermissions = (id: string, folders: string[]) =>
-    api.put(`/agents/${id}/permissions/folders`, { folders })
+    wayfinderRequest(AgentPermissionApi.updateFolders(id), { data: { folders } })
   const updateAgentFileFolderPermissions = (id: string, folders: string[]) =>
-    api.put(`/agents/${id}/permissions/file-folders`, { folders })
+    wayfinderRequest(AgentPermissionApi.updateFileFolders(id), { data: { folders } })
   const updateAgentIntegrations = (id: string, integrations: string[]) =>
-    api.put(`/agents/${id}/permissions/integrations`, { integrations })
+    wayfinderRequest(AgentPermissionApi.updateIntegrations(id), { data: { integrations } })
 
   // Search
-  const search = (query: string, type?: string) => {
-    const params = new URLSearchParams({ q: query })
-    if (type) params.append('type', type)
-    return api.get(`/search?${params.toString()}`)
-  }
+  const search = (term: string, type?: string) =>
+    wayfinderRequest(SearchApi.index(query({ q: term, type })))
 
   // Direct Messages
   const fetchDirectMessages = (userId: string) =>
-    useFetch(`/direct-messages?userId=${userId}`)
+    useFetch(DirectMessageApi.index(query({ userId })))
   const createDirectMessage = (user1Id: string, user2Id: string) =>
-    api.post('/direct-messages', { user1Id, user2Id })
+    wayfinderRequest<DirectMessageResponse>(DirectMessageApi.store(), { data: { user1Id, user2Id } })
   const markDirectMessageRead = (id: string, userId: string) =>
-    api.post(`/direct-messages/${id}/read`, { userId })
+    wayfinderRequest(DirectMessageApi.markRead(id), { data: { userId } })
   const getUnreadDMCount = (userId: string) =>
-    api.get(`/direct-messages/unread-count?userId=${userId}`)
+    wayfinderRequest(DirectMessageApi.unreadCount(query({ userId })))
   const fetchDm = (userId: string) =>
-    api.get(`/dm/${userId}`)
+    wayfinderRequest(DmApi.show(userId))
 
   // Data Table Views
   const updateTableView = (tableId: string, viewId: string, data: Record<string, unknown>) =>
-    api.patch(`/tables/${tableId}/views/${viewId}`, data)
+    wayfinderRequest(DataTableViewApi.update([tableId, viewId]), { data })
 
   // Calendar Events
   const fetchCalendarEvents = (filters?: { start?: string; end?: string; userId?: string }) => {
-    const params = new URLSearchParams()
-    if (filters?.start) params.append('start', filters.start)
-    if (filters?.end) params.append('end', filters.end)
-    if (filters?.userId) params.append('userId', filters.userId)
-    return useFetch<CalendarEvent[]>(`/calendar/events?${params.toString()}`)
+    return useFetch<CalendarEvent[]>(CalendarEventApi.index(query({
+      start: filters?.start,
+      end: filters?.end,
+      userId: filters?.userId,
+    })))
   }
   const createCalendarEvent = (data: { title: string; startAt: string; endAt?: string; allDay?: boolean; description?: string; location?: string; color?: string; recurrenceRule?: string; recurrenceEnd?: string; attendeeIds?: string[] }) =>
-    api.post<CalendarEvent>('/calendar/events', data)
+    wayfinderRequest<CalendarEvent>(CalendarEventApi.store(), { data })
   const updateCalendarEvent = (id: string, data: Partial<CalendarEvent>) =>
-    api.patch<CalendarEvent>(`/calendar/events/${id}`, data)
+    wayfinderRequest<CalendarEvent>(CalendarEventApi.update(id), { data })
   const deleteCalendarEvent = (id: string) =>
-    api.delete(`/calendar/events/${id}`)
+    wayfinderRequest(CalendarEventApi.destroy(id))
   const importCalendarEvents = async (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await api.post<{ imported: number; events: CalendarEvent[] }>('/calendar/events/import', formData, {
+    const response = await wayfinderRequest<{ imported: number; events: CalendarEvent[] }>(CalendarEventApi.importMethod(), {
+      data: formData,
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     return response.data
   }
   const importCalendarEventsFromUrl = (url: string) =>
-    api.post<{ imported: number; events: CalendarEvent[] }>('/calendar/events/import-url', { url })
+    wayfinderRequest<{ imported: number; events: CalendarEvent[] }>(CalendarEventApi.importFromUrl(), { data: { url } })
 
   // Calendar Feeds
-  const fetchCalendarFeeds = () => useFetch<CalendarFeed[]>('/calendar/feeds')
+  const fetchCalendarFeeds = () => useFetch<CalendarFeed[]>(CalendarFeedApi.index())
   const createCalendarFeed = (data: { name?: string }) =>
-    api.post<CalendarFeed>('/calendar/feeds', data)
+    wayfinderRequest<CalendarFeed>(CalendarFeedApi.store(), { data })
   const deleteCalendarFeed = (id: string) =>
-    api.delete(`/calendar/feeds/${id}`)
+    wayfinderRequest(CalendarFeedApi.destroy(id))
 
   // Settings
-  const fetchSettings = () => useFetch<Record<string, Record<string, unknown>>>('/settings')
+  const fetchSettings = () => useFetch<Record<string, Record<string, unknown>>>(SettingApi.index())
   const updateSettings = (category: string, settings: Record<string, unknown>) =>
-    api.patch('/settings', { category, settings })
+    wayfinderRequest(SettingApi.update(), { data: { category, settings } })
   const dangerAction = (action: string) =>
-    api.post('/settings/danger-action', { action })
-  const fetchDebugInfo = () => useFetch<Record<string, unknown>>('/settings/debug')
+    wayfinderRequest<ActionMessageResponse>(SettingApi.dangerAction(), { data: { action } })
+  const fetchDebugInfo = () => useFetch<Record<string, unknown>>(SettingApi.debug())
 
   // Storage Disks
-  const fetchDisks = () => useFetch<{ data: WorkspaceDisk[] }>('/disks')
+  const fetchDisks = () => useFetch<{ data: WorkspaceDisk[] }>(WorkspaceDiskApi.index())
   const createDisk = (data: { name: string; driver: string; config?: Record<string, string> }) =>
-    api.post<WorkspaceDisk>('/disks', data)
+    wayfinderRequest<WorkspaceDisk>(WorkspaceDiskApi.store(), { data })
   const updateDisk = (id: string, data: { name?: string; config?: Record<string, string>; enabled?: boolean }) =>
-    api.patch<WorkspaceDisk>(`/disks/${id}`, data)
-  const deleteDisk = (id: string) => api.delete(`/disks/${id}`)
-  const testDisk = (id: string) => api.post<{ success: boolean; message: string }>(`/disks/${id}/test`)
-  const setDefaultDisk = (id: string) => api.post(`/disks/${id}/default`)
+    wayfinderRequest<WorkspaceDisk>(WorkspaceDiskApi.update(id), { data })
+  const deleteDisk = (id: string) => wayfinderRequest(WorkspaceDiskApi.destroy(id))
+  const testDisk = (id: string) => wayfinderRequest<{ success: boolean; message: string }>(WorkspaceDiskApi.test(id))
+  const setDefaultDisk = (id: string) => wayfinderRequest(WorkspaceDiskApi.setDefault(id))
 
   // Files
   const fetchFiles = (parentId?: string | null, search?: string, diskId?: string) => {
-    const params = new URLSearchParams()
-    if (parentId) params.append('parent_id', parentId)
-    if (search) params.append('search', search)
-    if (diskId) params.append('disk_id', diskId)
-    return useFetch<{ data: WorkspaceFile[]; parentId: string | null }>(`/files?${params.toString()}`)
+    return useFetch<{ data: WorkspaceFile[]; parentId: string | null }>(FileApi.index(query({
+      parent_id: parentId,
+      search,
+      disk_id: diskId,
+    })))
   }
-  const fetchFolderTree = () => useFetch<FolderTreeNode[]>('/files/tree')
-  const searchFiles = (query: string, mimeType?: string) => {
-    const params = new URLSearchParams({ q: query })
-    if (mimeType) params.append('mime_type', mimeType)
-    return useFetch<{ data: WorkspaceFile[] }>(`/files/search?${params.toString()}`)
-  }
+  const fetchFolderTree = () => useFetch<FolderTreeNode[]>(FileApi.tree())
+  const searchFiles = (term: string, mimeType?: string) =>
+    useFetch<{ data: WorkspaceFile[] }>(FileApi.search(query({ q: term, mime_type: mimeType })))
   const uploadFile = async (parentId: string | null, file: File, diskId?: string) => {
     const formData = new FormData()
     formData.append('file', file)
     if (parentId) formData.append('parent_id', parentId)
     if (diskId) formData.append('disk_id', diskId)
-    return api.post<WorkspaceFile>('/files', formData, {
+    return wayfinderRequest<WorkspaceFile>(FileApi.store(), {
+      data: formData,
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   }
   const createFolder = (name: string, parentId?: string | null, diskId?: string) =>
-    api.post<WorkspaceFile>('/files/folder', { name, parent_id: parentId, disk_id: diskId })
-  const fetchFileDetails = (id: string) => useFetch<WorkspaceFile>(`/files/${id}`)
+    wayfinderRequest<WorkspaceFile>(FileApi.createFolder(), { data: { name, parent_id: parentId, disk_id: diskId } })
+  const fetchFileDetails = (id: string) => useFetch<WorkspaceFile>(FileApi.show(id))
   const fetchFolderChildren = (id: string) =>
-    useFetch<{ data: WorkspaceFile[]; parentId: string; parentName: string; parentPath: string }>(`/files/${id}/children`)
+    useFetch<{ data: WorkspaceFile[]; parentId: string; parentName: string; parentPath: string }>(FileApi.children(id))
   const renameFile = (id: string, name: string) =>
-    api.patch<WorkspaceFile>(`/files/${id}`, { name })
+    wayfinderRequest<WorkspaceFile>(FileApi.update(id), { data: { name } })
   const moveFile = (id: string, parentId: string) =>
-    api.patch<WorkspaceFile>(`/files/${id}`, { parent_id: parentId })
-  const deleteFile = (id: string) => api.delete(`/files/${id}`)
+    wayfinderRequest<WorkspaceFile>(FileApi.update(id), { data: { parent_id: parentId } })
+  const deleteFile = (id: string) => wayfinderRequest(FileApi.destroy(id))
   const copyFile = (id: string, parentId: string, name?: string) =>
-    api.post<WorkspaceFile>(`/files/${id}/copy`, { parent_id: parentId, name })
+    wayfinderRequest<WorkspaceFile>(FileApi.copy(id), { data: { parent_id: parentId, name } })
 
   // Notifications
   const fetchNotifications = (userId?: string, unreadOnly?: boolean) => {
-    const params = new URLSearchParams()
-    if (userId) params.append('userId', userId)
-    if (unreadOnly) params.append('unreadOnly', 'true')
-    return useFetch(`/notifications?${params.toString()}`)
+    return useFetch(NotificationApi.index(query({ userId, unreadOnly })))
   }
   const markNotificationRead = (id: string) =>
-    api.patch(`/notifications/${id}`, { is_read: true })
+    wayfinderRequest(NotificationApi.update(id), { data: { is_read: true } })
   const markAllNotificationsRead = (userId?: string) =>
-    api.post('/notifications/mark-all-read', { userId })
+    wayfinderRequest(NotificationApi.markAllRead(), { data: { userId } })
   const getUnreadNotificationCount = (userId?: string) => {
-    const params = userId ? `?userId=${userId}` : ''
-    return api.get(`/notifications/count${params}`)
+    return wayfinderRequest(NotificationApi.count(query({ userId })))
   }
 
   return {

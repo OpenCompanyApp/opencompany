@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Activity steps capture user-visible progress before the richer task
+        // model was introduced.
         Schema::create('activity_steps', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('user_id');
