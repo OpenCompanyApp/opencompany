@@ -30,8 +30,8 @@ class TelegramApprovalRenderer
 
     public function pendingHtml(ApprovalRequest $approval, ?Workspace $workspace): string
     {
-        $context = $approval->tool_execution_context ?? [];
-        $title = $this->html($approval->title);
+        $context = $this->redactedContext($approval);
+        $title = $this->html($this->redactedText($approval->title));
         $workspaceName = $this->html($workspace?->name ?? $approval->channel?->workspace?->name ?? 'Workspace');
         $requesterName = $this->html($approval->requester?->name ?? 'Unknown');
         $type = $this->html(ucfirst($approval->type ?? 'action'));
@@ -58,7 +58,7 @@ class TelegramApprovalRenderer
 
         if ($approval->description) {
             $lines[] = '';
-            $lines[] = $this->html(Str::limit($approval->description, 700));
+            $lines[] = $this->html(Str::limit($this->redactedText($approval->description), 700));
         }
 
         return implode("\n", $lines);
@@ -66,9 +66,9 @@ class TelegramApprovalRenderer
 
     public function resolvedHtml(ApprovalRequest $approval, string $status, User $responder): string
     {
-        $context = $approval->tool_execution_context ?? [];
+        $context = $this->redactedContext($approval);
         $label = strtoupper($status);
-        $title = $this->html($approval->title);
+        $title = $this->html($this->redactedText($approval->title));
         $type = $this->html(ucfirst($approval->type ?? 'action'));
         $tool = $this->html($this->toolName($context));
         $arguments = $this->html($this->argumentSummary($context['parameters'] ?? []));
@@ -99,10 +99,10 @@ class TelegramApprovalRenderer
 
     public function inspectText(ApprovalRequest $approval): string
     {
-        $context = $approval->tool_execution_context ?? [];
+        $context = $this->redactedContext($approval);
 
         $lines = ['Approval detail', ''];
-        $lines[] = "Title: {$approval->title}";
+        $lines[] = 'Title: '.$this->redactedText($approval->title);
         $lines[] = "Type: {$approval->type}";
         $lines[] = 'Tool: '.$this->toolName($context);
         $lines[] = 'Arguments: '.$this->argumentSummary($context['parameters'] ?? []);
@@ -114,7 +114,7 @@ class TelegramApprovalRenderer
         }
         if ($approval->description) {
             $lines[] = '';
-            $lines[] = Str::limit($approval->description, 700);
+            $lines[] = Str::limit($this->redactedText($approval->description), 700);
         }
 
         $lines[] = 'Audit ID: '.Str::limit($approval->id, 12, '');
@@ -127,7 +127,7 @@ class TelegramApprovalRenderer
         return implode("\n", [
             'Approval '.strtolower($status),
             '',
-            "Title: {$approval->title}",
+            'Title: '.$this->redactedText($approval->title),
             'By: '.$responder->name,
         ]);
     }
@@ -176,7 +176,12 @@ class TelegramApprovalRenderer
 
     private function summarizeArgumentValue(string $key, mixed $value): string
     {
-        if (preg_match('/(secret|token|password|credential|api[_-]?key)/i', $key)) {
+        if (preg_match('/(secret|token|password|credential|api[_-]?key|authorization|bearer|cookie|session)/i', $key)) {
+            return '[redacted]';
+        }
+
+        $value = ApprovalRequest::redactSecretValue($value);
+        if ($value === '[redacted]') {
             return '[redacted]';
         }
 
@@ -189,6 +194,23 @@ class TelegramApprovalRenderer
         }
 
         return is_array($value) ? '[array:'.count($value).']' : '['.get_debug_type($value).']';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function redactedContext(ApprovalRequest $approval): array
+    {
+        $context = ApprovalRequest::redactSecretValue($approval->tool_execution_context ?? []);
+
+        return is_array($context) ? $context : [];
+    }
+
+    private function redactedText(?string $value): string
+    {
+        $redacted = ApprovalRequest::redactSecretValue((string) $value);
+
+        return is_string($redacted) ? $redacted : '[redacted]';
     }
 
     private function html(string $value): string

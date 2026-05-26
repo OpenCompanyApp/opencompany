@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::index
-* @see app/Http/Controllers/Api/ApprovalController.php:17
+* @see app/Http/Controllers/Api/ApprovalController.php:19
 * @route '/api/approvals'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::index
-* @see app/Http/Controllers/Api/ApprovalController.php:17
+* @see app/Http/Controllers/Api/ApprovalController.php:19
 * @route '/api/approvals'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::index
-* @see app/Http/Controllers/Api/ApprovalController.php:17
+* @see app/Http/Controllers/Api/ApprovalController.php:19
 * @route '/api/approvals'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::index
-* @see app/Http/Controllers/Api/ApprovalController.php:17
+* @see app/Http/Controllers/Api/ApprovalController.php:19
 * @route '/api/approvals'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::show
-* @see app/Http/Controllers/Api/ApprovalController.php:29
+* @see app/Http/Controllers/Api/ApprovalController.php:31
 * @route '/api/approvals/{id}'
 */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -60,7 +60,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::show
-* @see app/Http/Controllers/Api/ApprovalController.php:29
+* @see app/Http/Controllers/Api/ApprovalController.php:31
 * @route '/api/approvals/{id}'
 */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -87,7 +87,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::show
-* @see app/Http/Controllers/Api/ApprovalController.php:29
+* @see app/Http/Controllers/Api/ApprovalController.php:31
 * @route '/api/approvals/{id}'
 */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -97,7 +97,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::show
-* @see app/Http/Controllers/Api/ApprovalController.php:29
+* @see app/Http/Controllers/Api/ApprovalController.php:31
 * @route '/api/approvals/{id}'
 */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -107,7 +107,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::store
-* @see app/Http/Controllers/Api/ApprovalController.php:36
+* @see app/Http/Controllers/Api/ApprovalController.php:38
 * @route '/api/approvals'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -122,7 +122,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::store
-* @see app/Http/Controllers/Api/ApprovalController.php:36
+* @see app/Http/Controllers/Api/ApprovalController.php:38
 * @route '/api/approvals'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -131,7 +131,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::store
-* @see app/Http/Controllers/Api/ApprovalController.php:36
+* @see app/Http/Controllers/Api/ApprovalController.php:38
 * @route '/api/approvals'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -141,7 +141,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::update
-* @see app/Http/Controllers/Api/ApprovalController.php:51
+* @see app/Http/Controllers/Api/ApprovalController.php:76
 * @route '/api/approvals/{id}'
 */
 export const update = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -156,7 +156,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::update
-* @see app/Http/Controllers/Api/ApprovalController.php:51
+* @see app/Http/Controllers/Api/ApprovalController.php:76
 * @route '/api/approvals/{id}'
 */
 update.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -183,7 +183,7 @@ update.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\ApprovalController::update
-* @see app/Http/Controllers/Api/ApprovalController.php:51
+* @see app/Http/Controllers/Api/ApprovalController.php:76
 * @route '/api/approvals/{id}'
 */
 update.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({

@@ -6,6 +6,9 @@ use App\Agents\Tools\ToolRegistry;
 use App\Models\McpServer;
 use App\Models\User;
 use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
+use OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder;
+use OpenCompany\IntegrationCore\Lua\LuaDocRenderer;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class LuaApiDocGenerator
 {
@@ -50,6 +53,10 @@ class LuaApiDocGenerator
 
     public function generateNamespaceDocs(string $namespace, User $agent): string
     {
+        if ($namespace === 'vfs' && ($docs = $this->readStaticPage('vfs')) !== null) {
+            return $docs;
+        }
+
         $renderer = $this->docRenderer();
 
         if ($renderer === null) {
@@ -157,9 +164,18 @@ class LuaApiDocGenerator
     {
         $builder = $this->catalogBuilder();
 
-        return $builder !== null
+        $map = $builder !== null
             ? $builder->buildFunctionMap($this->buildNamespaces($agent))
             : [];
+
+        if (isset($map['vfs.read'])) {
+            $map['vfs.cat'] = $map['vfs.read'];
+        }
+        if (isset($map['vfs.rg'])) {
+            $map['vfs.grep'] = $map['vfs.rg'];
+        }
+
+        return $map;
     }
 
     /**
@@ -169,9 +185,18 @@ class LuaApiDocGenerator
     {
         $builder = $this->catalogBuilder();
 
-        return $builder !== null
+        $map = $builder !== null
             ? $builder->buildParameterMap($this->buildNamespaces($agent))
             : [];
+
+        if (isset($map['vfs.read'])) {
+            $map['vfs.cat'] = $map['vfs.read'];
+        }
+        if (isset($map['vfs.rg'])) {
+            $map['vfs.grep'] = $map['vfs.rg'];
+        }
+
+        return $map;
     }
 
     /**
@@ -197,10 +222,10 @@ class LuaApiDocGenerator
             return array_keys($this->getStaticPageContents());
         }
 
-        return $renderer->getAvailablePages(
+        return array_values(array_unique($renderer->getAvailablePages(
             $this->buildVisibleNamespaces($agent),
             $this->getStaticPageContents(),
-        );
+        )));
     }
 
     /**
@@ -442,7 +467,7 @@ class LuaApiDocGenerator
 
     private function providerRegistry(): ?object
     {
-        $class = \OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class;
+        $class = ToolProviderRegistry::class;
 
         if (! class_exists($class) || ! app()->bound($class)) {
             return null;
@@ -453,7 +478,7 @@ class LuaApiDocGenerator
 
     private function catalogBuilder(): ?object
     {
-        $class = \OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder::class;
+        $class = LuaCatalogBuilder::class;
 
         if (! class_exists($class) || ! app()->bound($class)) {
             return null;
@@ -464,7 +489,7 @@ class LuaApiDocGenerator
 
     private function docRenderer(): ?object
     {
-        $class = \OpenCompany\IntegrationCore\Lua\LuaDocRenderer::class;
+        $class = LuaDocRenderer::class;
 
         if (! class_exists($class) || ! app()->bound($class)) {
             return null;

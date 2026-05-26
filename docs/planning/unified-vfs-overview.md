@@ -138,7 +138,7 @@ Friendly paths should not be the only address for durable objects. OpenCompany a
 /channels/by-id/{channel-id}
 ```
 
-Friendly paths like `/agents/atlas/memory/MEMORY.md` and `/docs/policy.md` are good AX, but `stat` should always return the canonical path, backend ID, version token, and any aliases. Path routing must also define collision behavior when two objects have the same title, file name, channel slug, or agent slug.
+Friendly paths like `/agents/atlas/memory/MEMORY.md` and `/docs/policy.md` are good AX, but `stat` should return the canonical path, backend ID, version token, and aliases where those concepts exist for the backing mount. Directory projections may only have sampled count/capability metadata. Path routing must also define collision behavior when two objects have the same title, file name, channel slug, or agent slug.
 
 ---
 
@@ -151,7 +151,7 @@ Recommended tool surface:
 | Tool | Purpose |
 |---|---|
 | `vfs_exec(command, cwd = "/")` | Execute a safe unix-like command against the virtual filesystem. |
-| `vfs_patch(path, patch, version = null)` | Apply targeted edits with stale-write protection. |
+| `vfs_patch(path, patch, version = null)` | Apply targeted edits with stale-write protection. `/docs` patches require explicit allowed document-folder scope; read visibility alone is not write permission. |
 | `vfs_write(path, content, mode = "create", version = null)` | Create or overwrite content only where raw file-like writes are valid. |
 
 These are primitive tools. They should be directly available to agents as first-class tools, and they should also be exposed through the Lua scripting API as `app.vfs.*` helpers. The direct tools optimize single-step interactive agent work. The Lua library optimizes deterministic scripts, automations, loops, transforms, and repeatable checks.
@@ -169,15 +169,15 @@ tree /agents/atlas/memory -L 3
 find /docs -name "*.md"
 find /tasks/open -type f
 grep -R "Stripe Link" /docs /agents/atlas/memory
-rg "payment token" /docs --glob "*.md"
+find /docs -name "*.md" | xargs rg "payment token"
 cat /docs/planning/unified-vfs-overview.md
 head -80 /agents/atlas/memory/MEMORY.md
 tail -50 /channels/general/messages/2026-05-25.md
-wc -l /docs/**/*.md
+find /docs -name "*.md" | xargs wc -l
 stat /tasks/open/123.md
-du -sh /files/generated
+du /files/generated/report.md
 file /files/uploads/logo.png
-cat /tables/customers/rows.ndjson | jq '.email' | sort | uniq
+grep "@example.com" /tables/customers/rows.ndjson | sort | uniq
 diff /docs/by-id/old-policy /docs/by-id/new-policy
 ```
 
@@ -185,7 +185,7 @@ Mutation commands can exist in the command language, but they must still go thro
 
 ```bash
 mkdir /files/generated/reports
-mv /tasks/open/123.md /tasks/completed/123.md
+mv /files/generated/draft.md /files/generated/archive.md
 cp /docs/policy.md /docs/archive/policy.md
 rm /files/generated/old-report.md
 ```
@@ -243,31 +243,32 @@ Target command coverage:
 | 1: output shaping and safe pipelines | `sort`, `uniq`, `cut`, `tr`, `nl`, `jq`, `sed` safe subset, `less`, `more` | These operate on bounded VFS output streams, not host pipes. `jq` is important because many projections are JSON/NDJSON. `less` and `more` should behave like paged reads. |
 | 2: comparison and integrity | `diff`, `cmp`, `comm`, `sha256sum`, `sha1sum`, `md5sum` | Useful for document/version checks, generated files, and before/after audits. Prefer `sha256sum` in examples. |
 | 3: mutations after permission classification | `mkdir`, `touch`, `mv`, `cp`, `rm`, `rmdir`, `tee`, `truncate` | Keep behind write/destructive classification, dry-run summaries where broad, stale-write checks, and approval wrapping. `tee` and redirection should route through `vfs_write`, not raw shell writes. |
-| 4: explicit non-goals for VFS exec | `bash`, `sh`, `zsh`, `python`, `node`, `php`, `artisan`, `composer`, `npm`, `git`, `curl`, `wget`, `ssh`, `scp`, `ps`, `kill`, `sudo`, `env`, `export`, `chmod`, `chown`, archive/process tools such as `tar`, `zip`, `gzip` | These are host execution, environment, network, package, process, archive, or OS permission concerns. Use direct domain tools, Lua, web/integration tools, or separate host tools where appropriate. `chmod`/`chown` should become domain permission tools if needed, not unix metadata mutations. |
+| 4: explicit non-goals for VFS exec | `bash`, `sh`, `zsh`, `python`, `node`, `php`, `artisan`, `composer`, `npm`, `git`, `curl`, `wget`, `ssh`, `scp`, `ps`, `kill`, `sudo`, `export`, host environment mutation, `chmod`, `chown`, archive/process tools such as `tar`, `zip`, `gzip` | These are host execution, environment mutation, network, package, process, archive, or OS permission concerns. Safe VFS `env`/`printenv` may expose bounded workspace metadata, but not host process environment. Use direct domain tools, Lua, web/integration tools, or separate host tools where appropriate. `chmod`/`chown` should become domain permission tools if needed, not unix metadata mutations. |
 
 Compatibility details that should be implemented deliberately:
 
 - Parse argv quoting like a shell: single quotes, double quotes, escaped spaces, and `--` option terminators.
-- Support glob syntax: `*`, `?`, `[]`, and `**`. Brace expansion is nice but optional; if not supported, return a specific unsupported-feature error.
+- Support path glob syntax for ordinary command args: `*`, `?`, and `[]`. Recursive globstar `**`, brace expansion, and `rg --glob` are future extensions; use `find ... -name ... | xargs ...` in the current command surface.
 - Support simple command sequences for read commands: `cd /docs && rg "policy" .`, `pwd; ls -la`. Do not support background jobs, subshells, command substitution, or host environment variable expansion.
 - Support pipes between allowlisted read/process commands: `find /docs -name "*.md" | sort | head -20`, `cat /tables/customers/rows.ndjson | jq '.email' | sort | uniq`.
 - Support redirection only when it is explicitly routed through VFS write semantics and permission checks. Until then, return a clear error that says to use `vfs_write` or `vfs_patch`.
 - Normalize path behavior: `.` and `..` work inside the VFS root, absolute paths start at `/`, and adapter escapes are impossible.
-- Implement common flags before exotic flags: `ls -l -a -h`, `tree -L`, `find -name -type -maxdepth -mtime`, `grep`/`rg` `-n -i -C -A -B --glob --files-with-matches`, `head -n`, `tail -n`, `wc -l -w -c`.
+- Implement common flags before exotic flags: `ls -l -a`, `tree -L`, `find -name -type -maxdepth`, `grep`/`rg` `-n -i -l -c -o --max-count --max-depth`, `head -n/-c`, `tail -n/-c`, and `wc -l -w -c`. Unsupported flags must fail loudly, including under shell operators and redirection.
 - For unsupported flags, do not fail with a generic "unsupported command". Return the command, unsupported flag, supported flags, and an equivalent example when one exists.
 
-Structured unsupported-command errors are part of the AX contract:
+Structured unsupported errors are part of the AX contract. The current runtime uses the normal tool envelope, with stable `error.code` values such as `unsupported` and `invalid_request`, plus contextual fields such as `supported_flags` or `suggestion` when available:
 
 ```json
 {
-  "error": "unsupported_command",
-  "command": "awk",
-  "reason": "awk is not implemented in the VFS command engine.",
-  "supported_alternatives": ["jq", "cut", "sed -E subset", "lua"],
-  "examples": [
-    "cat /tables/customers/rows.ndjson | jq '.email'",
-    "vfs_exec(command: \"cut -d, -f2 /files/report.csv\")"
-  ]
+  "ok": false,
+  "error": {
+    "code": "unsupported",
+    "message": "Unsupported VFS command: python",
+    "context": {
+      "command": "python",
+      "suggestion": "Use pwd, ls, tree, find, rg, grep, cat, head, tail, wc, stat, file, du, jq, diff, or the vfs_patch/vfs_write tools for edits."
+    }
+  }
 }
 ```
 
@@ -289,9 +290,9 @@ Both surfaces must call the same VFS application services, command parser, adapt
 Target direct tool examples:
 
 ```text
-vfs_exec(command: "rg \"payment token\" /docs --glob \"*.md\"", cwd: "/")
+vfs_exec(command: "find /docs -name \"*.md\" | xargs rg \"payment token\"", cwd: "/")
 vfs_exec(command: "stat /docs/by-id/01HV...", cwd: "/")
-vfs_patch(path: "/docs/by-id/01HV...", version: "sha256:...", patch: "...")
+vfs_patch(path: "/docs/by-id/01HV...", version: "sha256:...", patch: "...") // only when stat capabilities include patch
 vfs_write(path: "/files/generated/report.md", mode: "create", content: "...")
 ```
 
@@ -351,7 +352,7 @@ Important Lua-specific additions:
 - Add `app.vfs.batch(ops, opts)` only if it preserves per-operation permissions, version checks, partial-failure reporting, and approval summaries. Without those guarantees, scripts should loop explicitly.
 - Make all helpers accept `cwd` where path-relative behavior matters. `app.vfs.cd()` can be convenient, but hidden mutable cwd is risky in long scripts; explicit `cwd` is better for repeatability.
 - Return structured permission and unsupported-feature errors. The current Lua bridge raises tool errors at the callsite, so docs should teach `pcall` around VFS writes, large scans, and permission-sensitive reads.
-- Include `capabilities` and `version` in read/stat results so scripts can decide whether to patch, write, move, or skip without guessing.
+- Include `capabilities` and `version` in read/stat results so scripts can decide whether to patch, write, move, or skip without guessing. For `/docs`, advertise `patch` only when the agent has an explicit allowed document-folder scope covering that document.
 - Keep Lua helper names boring and predictable. Do not invent app-specific verbs when a unix-like helper name or direct domain tool already exists.
 
 The desired split:
@@ -384,7 +385,7 @@ get_document(documentId: "...", includeVersions: false)
 With VFS primitives:
 
 ```text
-vfs_exec(command: "rg \"payment token\" /docs --glob \"*.md\" -n")
+vfs_exec(command: "find /docs -name \"*.md\" | xargs rg -n \"payment token\"")
 vfs_exec(command: "head -120 /docs/by-id/01HV...")
 ```
 
@@ -441,7 +442,7 @@ With VFS primitives:
 
 ```text
 vfs_exec(command: "stat /docs/by-id/01HV...")
-vfs_patch(path: "/docs/by-id/01HV...", version: "sha256:abc123", patch: "<unified diff>")
+vfs_patch(path: "/docs/by-id/01HV...", version: "sha256:abc123", patch: "{\"search\":\"old\",\"replace\":\"new\"}")
 ```
 
 With Lua:
@@ -450,9 +451,11 @@ With Lua:
 local doc = app.vfs.stat("/docs/by-id/01HV...")
 
 app.vfs.patch("/docs/by-id/01HV...", [[
-@@
--Old sentence.
-+New sentence.
+<<<<<<< SEARCH
+Old sentence.
+=======
+New sentence.
+>>>>>>> REPLACE
 ]], {
     version = doc.version,
 })
@@ -474,7 +477,7 @@ With VFS primitives:
 
 ```text
 vfs_exec(command: "find /files/uploads -name \"*.txt\"")
-vfs_exec(command: "rg \"overdue\" /files/uploads --glob \"*.txt\"")
+vfs_exec(command: "find /files/uploads -name \"*.txt\" | xargs rg \"overdue\"")
 ```
 
 With Lua:
@@ -530,10 +533,10 @@ set_task_status(taskId: "01TASK...", status: "completed")
 With VFS primitives:
 
 ```text
-vfs_exec(command: "mv /tasks/open/01TASK.md /tasks/completed/01TASK.md")
+vfs_patch(path: "/tasks/by-id/01TASK", patch: "{\"fields\":{\"status\":\"completed\"}}")
 ```
 
-This only works if the task adapter explicitly maps that move to the task domain service. If the projection cannot round-trip safely, `stat` should report no `move` capability and the agent should use `set_task_status`.
+Task/list status changes currently use structured VFS patches or direct task/list tools. `mv` is file-only unless a future task adapter explicitly maps moves to the task domain service.
 
 ### Browse A Large Task Set
 
@@ -780,7 +783,7 @@ The Lua layer should be wrappers over the primitives, not a second implementatio
 - Add `resources/lua-docs/vfs.md` so `lua_read_doc("vfs")` explains commands, helpers, output shapes, cursors, version tokens, and permission behavior.
 - Extend permission evaluation with VFS command classification. A single static `vfs_exec` tool permission is not enough because `ls` and `rm` have different risk.
 - Bind `Core\Contracts\VfsAuthorizer` to `OpenCompanyVfsAuthorizer`.
-- Use `OpenCompanyVfsMountProvider` to mount `/docs`, `/files`, `/agents`, `/tasks`, `/lists`, `/channels`, `/tables`, `/tools`, `/automations`, `/approvals`, and `/workspace`.
+- Use `OpenCompanyVfsMountProvider` to mount `/docs`, `/files`, `/agents`, `/tasks`, `/lists`, `/channels`, `/tables`, `/tools`, `/automations`, `/approvals`, and `/workspace`. `/skills` is a later mount unless the skill registry is wired into the runtime.
 - Reuse existing services wherever possible: `ManageTasks` for runtime tasks, `FileSystemService` for workspace files, `AgentDocumentService` for identity/memory, document services/models for documents, channel/message queries for channels, and table services/models for data tables.
 
 Mounting should happen in OpenCompany glue, not in core:
@@ -835,6 +838,7 @@ Adapter-specific rules:
 - `DocumentsVfsAdapter` should preserve document versions and system document guardrails.
 - `WorkspaceFilesVfsAdapter` should use `FileSystemService` for metadata and bytes.
 - `AgentMemoryVfsAdapter` should use `AgentDocumentService` and memory scope rules, not generic document write paths.
+- `SkillsVfsAdapter` should project database-backed skills as draft/published/versioned `SKILL.md`, `skill.json`, prompt instructions, provenance, tests, and Lua snippets; writes must call the skill lifecycle/application service instead of creating loose files.
 - `TasksVfsAdapter` should preserve the paged `ManageTasks` query style and avoid unbounded status directories.
 - `ListsVfsAdapter` should use capped collection queries even if UI endpoints currently load all board items.
 - `ChannelsVfsAdapter` should search only permitted channels and date-bucket message history.
@@ -845,12 +849,12 @@ Adapter-specific rules:
 The first implementation should be read-heavy:
 
 1. Direct primitive tools: `vfs_exec` read commands only, plus `vfs_patch` skeleton behind strict version checks.
-2. Lua namespace: `app.vfs.exec`, `app.vfs.stat`, `app.vfs.ls`, `app.vfs.read`, `app.vfs.rg`, `app.vfs.find`, and cursor-safe page helpers over the same service.
-3. Adapters: `/docs`, `/files`, `/tasks`, `/lists`, and `/agents/{slug}/memory`.
+2. Lua namespace: `app.vfs.exec`, `app.vfs.stat`, `app.vfs.ls`, `app.vfs.read`, `app.vfs.rg`, and `app.vfs.find` over the same service. Cursor-safe page helpers are a later phase.
+3. Adapters: `/docs`, `/files`, `/tasks`, `/lists`, and `/agents/{slug}/memory`. `/skills` is a later mount.
 4. Commands: `pwd`, `cd`, `ls`, `dir`, `ll`, `tree`, `find`, `rg`, `grep`, `egrep`, `fgrep`, `cat`, `head`, `tail`, `wc`, `stat`, `file`, `du`, `realpath`, `dirname`, `basename`, `sort`, `uniq`, `cut`, `tr`, `nl`, `jq`, safe `sed`, `less`, `more`, `diff`, `cmp`, `comm`, `sha256sum`, `sha1sum`, and `md5sum`.
 5. Large-folder collection semantics before broad task/list/channel/table exposure.
 
-Mutation commands such as `mkdir`, `touch`, `mv`, `cp`, `rm`, `rmdir`, `tee`, and `truncate` should wait until command classification, approval summaries, dry-run previews, and stale-write handling are all implemented.
+Mutation commands such as `mkdir`, `touch`, `mv`, `cp`, `rm`, `rmdir`, `tee`, and `truncate` are supported only for `/files` and must route through `vfs_write` permission checks. Broad cross-domain mutations should still wait for adapter-specific dry-run previews and approval summaries.
 
 ---
 
@@ -862,6 +866,7 @@ Mutation commands such as `mkdir`, `touch`, `mv`, `cp`, `rm`, `rmdir`, `tee`, an
 | `/files` | `WorkspaceFile` + `FileSystemService` | list, read, grep text files, write, move, copy, delete | Physical bytes remain on workspace disks. |
 | `/agents/{slug}/identity` | `AgentDocumentService` | read, patch, admin-gated write | Prompt-critical; must preserve system-file guardrails. |
 | `/agents/{slug}/memory` | `AgentDocumentService` + memory services | read, grep, patch, write topic/log/peer files | Best fit for VFS and later Dream passes. |
+| `/skills` | Planned skill registry/lifecycle application service | read, grep, patch/write draft `SKILL.md`, metadata, referenced skills, enterprise policy, provenance, tests, and Lua snippets | Later phase. Database remains source of truth; published versions are immutable, automations pin versions, and ordered skill sets are callable from chat, Telegram, automations, Lua, tools, and VFS under the same effective permission policy. |
 | `/tasks` | `Task` models/services | list, read, grep, patch, move/status projection | Runtime/delegated work items; keep direct task tools for quick actions. |
 | `/lists` | `ListItem` models/services | list, read, grep, patch, move/status projection | Kanban/project board items are separate from runtime tasks. |
 | `/channels` | Channel and message models | read, grep, bounded date reads | Sensitive; likely read-only for history. |
@@ -969,6 +974,202 @@ These tools express intent better than editing a virtual file. For example, sett
 
 ---
 
+## Permission UX
+
+VFS permissions should be visible as a first-class section on the agent capabilities page, separate from the low-level tool list. The existing page already has the right ingredients: behavior mode, approval behavior, tool toggles, channel access, document folder access, and file access. VFS should make those resource permissions easier to understand rather than adding hundreds of command toggles.
+
+Recommended agent capabilities layout:
+
+```text
+Behavior Mode
+Approval Behavior
+Capabilities
+Filesystem Access
+  Overview
+  Documents
+  Files
+  Agent memory
+  Tasks
+  Lists
+  Channels
+  Tables
+  Approvals
+  Automations
+```
+
+The normal tool list should still show the primitive VFS tools:
+
+- `vfs_exec`
+- `vfs_patch`
+- `vfs_write`
+
+Those toggles answer only: "Can this agent use the VFS interface?" They should not be the full permission model. The actual resource policy belongs in the Filesystem Access section.
+
+The best product shape is:
+
+- Keep the existing Capabilities tool list as the low-level on/off surface. The VFS group is just another built-in tool group there.
+- Add a dedicated Filesystem Access section directly below Capabilities and above the existing Channel/Document/File sections.
+- Let Filesystem Access summarize the effective policy across mounts, scopes, actions, and approval behavior.
+- Reuse existing resource pickers instead of rebuilding them: document folders, file folders, and channels should still be edited with their current controls.
+- Add new compact rows only for VFS-specific scopes that do not have a good UI yet: agent memory, tasks, lists, tables, approvals, and automations.
+- Show a "why" state whenever access is limited: disabled tool, blocked mount, missing folder scope, domain permission, or approval required.
+
+This keeps the page simple for humans while making the agent-facing filesystem very broad. Humans should think in areas and risk levels. Agents should get unix-like commands inside the boundaries.
+
+### Capabilities Page UX
+
+The Filesystem Access panel should use a dense table/row layout rather than a long form. Each row answers four questions:
+
+```text
+Mount        Scope                         Actions                 Approval
+Documents    Selected folders: 4           Browse, read, patch      Writes
+Files        Home folder + reports          Browse, read, write      Writes
+Memory       Own memory                     Browse, read, patch      Writes
+Tasks        Assigned + created by agent    Browse, read, status     Inherit
+Channels     3 channels                     Browse, read, send       Sends
+```
+
+Collapsed rows should show the effective state. Expanded rows should show the picker or preset controls for that mount. Avoid nested cards; use the same section styling as the existing capabilities page.
+
+Recommended row controls:
+
+| Control | UX |
+|---|---|
+| Mount enabled | Toggle only when the whole mount can be disabled. |
+| Scope | Segmented presets plus picker where needed. |
+| Actions | Compact checkbox group or segmented action level: off, browse, read/search, patch, write, manage. |
+| Approval | Segmented control: inherit, writes, all. |
+| Preview | Read-only effective summary and sample allowed/denied paths. |
+
+The Overview row should be read-only and should surface the important combined state:
+
+```text
+VFS interface: enabled
+Read/search: docs, files, own memory, assigned tasks, selected channels
+Writes: docs require approval; files require approval; task status inherits behavior mode
+Blocked: other agents' memory, all tables, automation management
+```
+
+The page should avoid one checkbox per unix command. Command support belongs in docs and runtime compatibility errors, not the human permission UI.
+
+### Effective Access Preview
+
+Add a small "Check path" affordance in the Filesystem Access section once the backend has an effective permission endpoint:
+
+```text
+Path: /agents/atlas/memory/MEMORY.md
+Command/action: rg
+Result: denied
+Reason: agent memory scope is own memory only
+Suggested fix: allow selected agent memory or use a shared document folder
+```
+
+This is more valuable than exposing raw policy rows. It lets a human understand why an agent could not read a path without learning the internals of `agent_permissions`, VFS adapters, command classification, or approval wrapping.
+
+Human-facing VFS permissions should be mount, scope, and action based:
+
+| Area | Scope picker | Action level | Approval policy |
+|---|---|---|---|
+| Documents | all folders, selected folders, none | off, browse, read/search, patch, manage | inherit, writes, all |
+| Files | home folder, selected folders, all folders, none | off, browse, read/search, patch, write/manage | inherit, writes, all |
+| Agent memory | own, selected agents, manager chain, all agents, none | off, browse, read/search, patch | inherit, writes, all |
+| Tasks | own, assigned, selected agents, all, filtered | off, browse, read/search, patch status, manage | inherit, writes, all |
+| Lists | selected projects, assigned, all, filtered | off, browse, read/search, patch, manage | inherit, writes, all |
+| Channels | selected channels, membership, all allowed channels, none | off, browse, read/search, send, manage | inherit, sends/writes, all |
+| Tables | selected tables, all, none | off, browse, read/search, edit rows, manage schema | inherit, writes, all |
+| Approvals | own, all, none | off, read, decide | inherit, all |
+| Automations | own, all, none | off, read, run, manage | inherit, writes, all |
+
+Do not expose unix commands as human permissions. Users should not have to decide separately whether an agent may use `cat`, `head`, `tail`, `rg`, `grep`, `find`, `tree`, `stat`, `wc`, or `diff`. The backend should classify commands into action classes:
+
+| Action class | Commands and tools |
+|---|---|
+| Browse | `pwd`, `cd`, `ls`, `tree`, `find`, `stat`, `file`, `du`, `realpath`, `dirname`, `basename` |
+| Read/search | `cat`, `head`, `tail`, `wc`, `rg`, `grep`, `sort`, `uniq`, `cut`, `tr`, `nl`, `jq`, safe `sed`, `less`, `more`, `diff`, `cmp`, `comm`, checksums |
+| Patch | `vfs_patch` and round-trippable domain edits |
+| Write | `vfs_write`, create/overwrite where raw file-like writes are valid, command writes such as `tee` or `truncate` if enabled later |
+| Manage | move, copy, delete, create folders, bulk changes, schema/permission-sensitive structural changes |
+
+Each Filesystem Access row should be compact by default and expandable into the relevant picker:
+
+- Documents use the existing document folder picker.
+- Files use the existing workspace file folder picker, including the home-folder default.
+- Channels use the existing channel checklist.
+- Agent memory uses own/selected/all presets plus an agent picker.
+- Tasks and lists use presets plus optional filters, not one checkbox per task.
+- Tables use a table picker.
+- Approvals and automations use own/all/off presets plus action level.
+
+The collapsed summary should be readable without opening the row:
+
+```text
+Documents: read + patch, 4 folders, writes require approval
+Files: home folder only, read/search
+Agent memory: own memory read + patch, other agents off
+Tasks: assigned tasks, patch status, writes require approval
+Channels: 3 channels, send requires approval
+```
+
+Backend evaluation should be ordered and explainable:
+
+```text
+tool allowed?
+  -> VFS mount allowed?
+  -> VFS scope allowed?
+  -> operation class allowed?
+  -> domain object permission allowed?
+  -> approval required?
+```
+
+Recommended storage shape:
+
+```text
+agent_vfs_permissions
+  agent_id
+  mount                         # docs, files, agents, tasks, lists, channels, tables, approvals, automations
+  scope_key                     # *, folder id, channel id, agent id, table id, preset key, filter key
+  operations                    # browse, read, search, patch, write, manage
+  permission                    # allow, deny
+  requires_approval_for         # none, writes, all
+```
+
+This can be implemented as a dedicated table or as a careful extension of `agent_permissions`, but the UX should not expose the raw storage shape. The important product rule is that humans manage areas and action levels, while agents get a rich unix-like surface inside those boundaries.
+
+The cleanest OpenCompany implementation is a hybrid:
+
+1. Keep existing `agent_permissions` rows as the source of truth for current resources:
+   - `tool:*` controls primitive tool access, including `vfs_exec`, `vfs_patch`, and `vfs_write`.
+   - `folder:*` controls document folder access.
+   - `file_folder:*` controls workspace file folder access.
+   - `channel:*` controls channel access.
+2. Add VFS-specific policy rows only for concepts the current model cannot express:
+   - mount enable/disable for tasks, lists, tables, approvals, automations, and agent memory;
+   - action levels beyond the current allow/deny shape;
+   - approval policy per mount/action class;
+   - preset scopes such as own memory, manager chain, assigned tasks, or own automations.
+3. Build one backend "effective VFS policy" endpoint for the capabilities page. It should merge tool permissions, resource scopes, behavior mode, approval behavior, and VFS policy rows into the exact state the runtime will enforce.
+4. Make the VFS runtime call the same effective policy service. Do not let the UI and runtime duplicate permission math.
+
+For the first UI milestone, do not add every future control. Show:
+
+- a VFS Overview summary;
+- primitive VFS tools in the normal Capabilities list;
+- Documents, Files, and Channels as effective summaries that deep-link or expand into the existing pickers;
+- Agent memory with simple presets: off, own memory, manager chain, selected agents;
+- Tasks and Lists with simple presets: off, assigned/owned, selected agents/projects, all;
+- Tables, Approvals, and Automations as off/read/manage presets until those domains need richer editing.
+
+Suggested defaults:
+
+| Agent style | Defaults |
+|---|---|
+| Normal worker | `vfs_exec` enabled; `vfs_patch` approval-required or disabled; `vfs_write` disabled; documents selected/default folders; files home folder only; own memory read/patch; assigned tasks read/status patch; channel membership only. |
+| Researcher | Broad read/search for documents and allowed files; write/patch off by default; semantic retrieval separate from VFS. |
+| Writer/operator | Documents read/patch with write approval; tasks/lists patch status; channels send with approval if supervised. |
+| Manager/admin agent | Broader read/search; patch/write still approval-aware; manage actions separately gated. |
+
+---
+
 ## Permissions And Safety
 
 The VFS must preserve existing OpenCompany boundaries:
@@ -997,7 +1198,7 @@ Writes need extra care:
 
 - Prefer `patch` over raw overwrite for domain-backed nodes.
 - Include stale-read detection with versions, timestamps, hashes, or ETags.
-- Require version tokens for `vfs_patch` where possible, and strongly prefer them for overwrites. A token can be `updated_at`, a content hash, a row version, an ETag, or a domain-specific revision number.
+- Require version tokens for `vfs_patch` where possible, and strongly prefer them for overwrites. A token can be `updated_at`, a content hash, a row version, an ETag, or a domain-specific revision number. For document content, `vfs_patch` must also pass the explicit folder-scope check; a globally visible/readable `/docs/by-id/...` path is not enough.
 - Create document versions automatically for VFS-backed document edits unless a domain-specific policy says otherwise. Current document versioning is optional in some direct tools, but VFS patching should be safer by default.
 - Revalidate permissions, path resolution, and version tokens at the moment an approved mutation actually executes. Approval can happen later than the original tool call, so the target may have moved or changed.
 - Return clear errors when a path projection is read-only.
@@ -1429,7 +1630,7 @@ Canonical paths are durable. Friendly paths are aliases.
 
 Rules:
 
-- `stat` always returns canonical path, backend id, version, and aliases.
+- `stat` returns canonical path, backend id, and version where the mount has a concrete backing object. Directory projections may return sampled count metadata instead, and aliases are future metadata unless implemented by a mount.
 - `realpath` resolves friendly paths to canonical paths.
 - Deleted canonical ids return `not_found`, with tombstone metadata only if the caller is allowed to know the object existed.
 - Renamed friendly paths may be discoverable through `stat`/`realpath`, but writes should prefer canonical paths.
@@ -1462,6 +1663,17 @@ Expose:
 ```
 
 `lua_read_doc("vfs")` and `/tools/vfs.md` should agree because they are generated from the same registry. Include common recipes so agents learn typed Lua helpers such as `app.vfs.find(...)` instead of scraping `vfs_exec` text output.
+
+Current implementation guidance for discovery:
+
+- Document the supported unix subset precisely. Unsupported flags and malformed option values must fail with structured errors even when followed by `;`, `&&`, `||`, stderr suppression, or `2>&1`.
+- Be explicit that `grep` is literal by default and `rg` is regex by default. Both can use `-i`, `-l`, `-c`, `-n`, `-o`, `--max-count`, and `--max-depth`, but `--max-count` is applied per file rather than as a global search cutoff.
+- Document the safe `jq` subset: `.`, `.field`, `.[0]`, `.items[0]`, `.[]`, `length`, sorted `keys`, `has("key")`, simple numeric arithmetic including field-to-field arithmetic, stdin, NDJSON line input, and file arguments. Invalid or unsupported jq expressions should fail loudly.
+- Document shell conveniences that are implemented by the VFS parser: globs in path args, pipes, `;`, `&&`, `||`, stdout redirects to writable `/files`, stderr redirects, and `2>&1`.
+- Document non-goals that agents often assume from real shells: no `$VAR` expansion, command substitution, process substitution, host commands, shell functions, chmod/chown, network commands, package managers, or arbitrary interpreters.
+- Document that directory counts are sampled unless `count_is_exact` is true. Agents should inspect `returned`, `limit`, `truncated`, `skipped`, `count_mode`, `sampled_count`, and `total_count` before assuming a folder is complete.
+- Document the Lua return shape: `{ ok, result = ... }` is canonical, result fields are mirrored at top level for ergonomics, and list-like helper output is countable with `#res`.
+- Document Lua mutation ergonomics: `app.vfs.write(path, content)` defaults to overwrite, table calls can pass `mode = "create"`, `mkdir` is idempotent, and `cp`/`mv` accept `source`/`destination`, `src`/`dst`, and `src`/`dest`.
 
 ### VFS Versus Direct Tools
 
@@ -1506,13 +1718,178 @@ Dream jobs should use the VFS service internally, not call agent tools. The impo
 
 ---
 
+## Integration-Backed VFS Adapters Later
+
+Integration-backed mounts are useful later, but they are not part of the first VFS milestone. The VFS should not become a second integration framework. OpenCompany integrations should continue to own OAuth, provider API calls, token refresh, provider rate limits, pagination, webhook sync, and provider-specific edge cases. VFS adapters should be thin projections over those integration services.
+
+UX-wise, these mounts should feel like part of **Files**, not a separate "VFS integrations" product area. When a workspace enables an integration and grants agent access, OpenCompany should automatically add the integration as a virtual location in the Files surface. The VFS path remains canonical for agents, but humans should discover it through the same file browser they already use for workspace files, documents, tables, and generated artifacts.
+
+Suggested human UX:
+
+```text
+Files
+├─ Workspace files
+├─ Documents
+├─ Tables
+├─ Agent memory
+└─ Connected apps
+   ├─ GitHub              Connected · Read, patch issues
+   ├─ Google Drive        Connected · Read
+   ├─ Slack               Connected · Read, search
+   └─ Stripe              Connected · Read
+```
+
+Opening an integration location should look like a normal folder with a small connected-app header, not a separate app switcher:
+
+```text
+Files / Connected apps / GitHub
+
+GitHub                         Connected as OpenCompany Bot
+Access: Agents can read repos, issues, PRs. Writes require approval.
+
+orgs/
+repos/
+issues/
+pulls/
+actions/
+connections.json
+```
+
+Enabling an integration should make the Files effect explicit:
+
+```text
+Enable GitHub
+
+[x] Add GitHub to Files
+    Location: Files / Connected apps / GitHub
+    Agent path: /github
+
+Agent access
+(*) Read only
+( ) Read + safe patches with approval
+( ) Custom
+
+[Connect GitHub]
+```
+
+Agent capability UX should then summarize the same effective state:
+
+```text
+Filesystem Access
+
+Mount                       Scope                     Actions        Approval
+/files                      selected folders          read/write     writes
+/docs                       selected folders          read/patch     patches
+/github                    org:opencompany           read/patch     patches
+/slack                     selected channels         read/search    none
+```
+
+This keeps the mental model simple: integrations are connected app folders inside Files; agents use the corresponding VFS paths and the same permission engine.
+
+The split should be:
+
+| Layer | Responsibility |
+| --- | --- |
+| `../integrations` and app integration services | Provider auth, APIs, scopes, rate limits, pagination, retries, token refresh, webhook/event sync, raw provider quirks. |
+| `app/Domain/Vfs/Core` | Generic VFS contracts, entries, stat/list/read/search/write contracts, budgets, cursors, errors, command execution, and result shapes. |
+| `app/Domain/Vfs/OpenCompany` | Mount registration, OpenCompany workspace/agent permission mapping, approval policy, and path conventions. |
+| Integration VFS adapters | Map provider objects into VFS paths and convert provider responses into `VfsEntry`, `stat`, text, JSON, search hits, and patch targets. |
+| Direct domain tools | Keep workflow-heavy actions outside the VFS when a file metaphor is weaker than business intent. |
+
+Good VFS fits are browsing, reading, grep/search, metadata, bounded exports, diffs, and safe patches. Direct tools stay better for irreversible or workflow-heavy actions such as sending messages, charging customers, merging PRs, triggering deployments, running automations, creating invoices, or approving releases.
+
+Potential future mounts:
+
+| Mount | Likely value | VFS fit | Direct tools should still own |
+| --- | --- | --- | --- |
+| `/github` | Repos, files, issues, PRs, reviews, Actions logs, release notes. | `ls`, `cat`, `rg`, `find`, `diff`, issue/PR JSON/Markdown, safe issue/body/comment patching. | Merge PR, request review, trigger workflow, create deployment/release. |
+| `/google-drive` | Docs, Sheets, Slides, PDFs, shared folders, attachments. | Browse folders, read/export text/JSON, search, compare docs, patch draftable docs later. | Sharing changes, publishing, high-risk document rewrites. |
+| `/gmail` | Threads, attachments, customer context, draftable replies. | Search/read threads, inspect attachments, expose draft files. | Send email, reply-all, forward, change labels at scale. |
+| `/slack` | Channels, threads, users, files, decision history. | Read/search channel history, inspect threads/files/users, bounded exports. | Send message, add reaction, invite/remove users. |
+| `/linear` | Issues, projects, cycles, comments, specs. | Read/search issues, comments, projects, patch safe fields. | Create/move issues when workflow semantics matter. |
+| `/notion` | Wikis, databases, meeting notes, lightweight task lists. | Browse pages/databases, search docs, read records as Markdown/JSON. | Publish complex page updates, permission/share changes. |
+| `/jira` | Enterprise tickets, sprints, comments, project history. | Search/read tickets, comments, sprint metadata, patch narrow fields. | Workflow transitions, bulk changes, release operations. |
+| `/confluence` | Enterprise wiki and durable project docs. | Read/search pages, compare stale docs, patch drafts later. | Publish/share/archive actions. |
+| `/sharepoint` and `/onedrive` | Enterprise Office files and team folders. | Browse folders, read/export text, inspect metadata and permissions. | Sharing policy, destructive file operations, Office-native writes. |
+| `/microsoft-teams` | Channels, threads, meeting chats, files. | Search/read conversations, files, meeting context. | Send messages, meeting operations, membership changes. |
+| `/hubspot` | Contacts, companies, deals, tickets, notes. | Read/search CRM records, notes, associations, export snapshots. | Create/update deals, send emails, workflow enrollment. |
+| `/salesforce` | Accounts, opportunities, cases, knowledge articles. | Read/search records, cases, notes, knowledge articles. | Mutations, workflow/approval actions, bulk imports. |
+| `/zendesk` | Tickets, users, orgs, macros, support history. | Read/search tickets and macros, inspect timelines. | Reply to customer, solve/reopen, macro mutation. |
+| `/intercom` | Conversations, users, companies, help center. | Search/read conversations and help articles. | Send replies, assignment, state transitions. |
+| `/stripe` | Customers, subscriptions, invoices, disputes, events. | Read/search billing objects and event timelines. | Charges, refunds, invoice finalization, subscription mutation. |
+| `/postgres` or `/warehouse` | Schemas, tables, views, sampled rows, query outputs. | Browse schemas, inspect table metadata, sampled exports, safe read queries. | Writes, migrations, destructive SQL, unbounded queries. |
+| `/s3`, `/r2`, `/gcs` | Buckets, logs, exports, assets, generated artifacts. | Browse objects, read text/JSON/CSV, grep logs, copy into `/files`. | Bucket policy, lifecycle rules, bulk deletion. |
+| `/figma` | Design files, pages, components, comments, exports. | Inspect design metadata, comments, exported assets. | Modify designs, publish libraries. |
+| `/calendars` | Events, attendees, meeting notes, availability. | Read/search events, agenda exports, meeting context. | Create/update/cancel events, invite guests. |
+| `/airtable` | Lightweight business databases and views. | Browse bases/tables/views, read/search records. | Bulk edits, automation changes. |
+| `/dropbox` and `/box` | File storage for non-Google/Microsoft teams. | Browse/read/search files and folders. | Sharing, destructive file operations. |
+| `/discord` and `/telegram` | Community/support/chat history. | Search/read channels, threads, user context, files. | Send messages, moderation, membership actions. |
+
+Initial future priority for OpenCompany:
+
+1. `/github`
+2. `/google-drive`
+3. `/slack`
+4. `/gmail`
+5. `/linear`
+6. `/notion`
+7. `/postgres` or `/warehouse`
+8. `/s3`, `/r2`, or `/gcs`
+9. `/stripe`
+10. `/hubspot` or `/salesforce`
+
+GitHub is the cleanest first integration-backed mount because it has obvious filesystem semantics and strong agent demand:
+
+```text
+/github/
+  connections.json
+  orgs/
+    opencompany/
+      repos/
+        opencompany/
+          files/
+            main/
+              app/Domain/...
+          issues/
+            123.md
+            123.json
+          pulls/
+            44.json
+            44.diff
+            44/files/
+          actions/
+            runs/
+```
+
+Adapters should expose friendly paths and canonical provider IDs. Friendly names are AX aliases; canonical paths or stat metadata must carry durable IDs where collisions matter.
+
+```text
+/github/orgs/opencompany/repos/opencompany/issues/123.md
+/github/repos/by-id/{repo_id}/issues/123.md
+```
+
+Permission checks should happen before provider calls:
+
+```text
+agent permission
++ workspace connection access
++ provider OAuth scopes
++ VFS mount/action/scope policy
++ approval policy
+= allowed operation
+```
+
+Provider scopes remain the hard lower-level guard. VFS permissions are the OpenCompany-facing effective policy that decides whether an agent may use a mounted integration path at all.
+
+---
+
 ## Suggested Implementation Order
 
 1. Create the VFS subsystem skeleton: contracts, context, router, stat/list/read/search actions.
 2. Add canonical ID-backed path support and friendly-alias resolution.
 3. Add the shared VFS context and permission gate, including recursive candidate filtering for documents, files, channels, and agent memory.
 4. Register a direct VFS tool provider so `vfs_exec`, `vfs_patch`, and `vfs_write` are model-visible without Lua.
-5. Add the `app.vfs` Lua namespace and `resources/lua-docs/vfs.md` over the same VFS services, with typed helper result tables, cursor helpers, version/capability fields, and `pcall`-oriented error examples.
+5. Add the `app.vfs` Lua namespace and `resources/lua-docs/vfs.md` over the same VFS services, with typed helper result tables, version/capability fields, and `pcall`-oriented error examples. Cursor helpers are a later phase.
 6. Add the `vfs_exec` command interpreter with an allowlisted parser, structured result format, read-only command classification, argv quoting, globs, simple read-only command sequences, safe pipelines, and structured unsupported-command suggestions.
 7. Implement `/docs` and `/files` adapters first because they already map closely to current services.
 8. Support the first broad read command set: `pwd`, `cd`, `ls`, `dir`, `ll`, `tree`, `find`, `grep`, `egrep`, `fgrep`, `rg`, `cat`, `head`, `tail`, `wc`, `stat`, `file`, `du`, `realpath`, `dirname`, `basename`, `sort`, `uniq`, `cut`, `tr`, `nl`, `jq`, safe `sed`, `less`, `more`, `diff`, `cmp`, `comm`, `sha256sum`, `sha1sum`, and `md5sum`.
@@ -1526,7 +1903,7 @@ Dream jobs should use the VFS service internally, not call agent tools. The impo
 16. Add `/lists` read projection and limited patch/status projection.
 17. Add large-folder collection semantics for `/tasks`, `/lists`, `/channels`, `/tables`, `/approvals`, and automation histories: counts, cursors, max page sizes, query hints, and safe truncation.
 18. Add read-only `/tools`, `/channels`, `/tables`, `/approvals`, and `/workspace` projections with pagination/cursor limits.
-19. Add carefully gated command mutations such as `mkdir`, `touch`, `mv`, `cp`, `rm`, `rmdir`, `tee`, and `truncate` only after dynamic command permission classification is implemented.
+19. Keep command mutations carefully gated: current `/files` mutations route through `vfs_write`; broader adapter mutations need dynamic command permission classification plus adapter-specific dry runs.
 20. Revisit Dream after the VFS is stable and useful for normal agent retrieval.
 
 This keeps the first milestone useful without building the entire universe at once, while still aiming at a complete VFS rather than a half implementation.

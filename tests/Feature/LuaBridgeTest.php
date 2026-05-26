@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Mockery;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class LuaBridgeTest extends TestCase
@@ -37,6 +38,11 @@ class LuaBridgeTest extends TestCase
         $docGenerator->shouldReceive('buildAccountMap')->andReturn([]);
 
         $registry = $registry ?? Mockery::mock(ToolRegistry::class);
+        if ($registry instanceof MockInterface) {
+            $registry->shouldReceive('getToolDefinitionBySlug')
+                ->byDefault()
+                ->andReturn(['type' => 'read', 'name' => 'test', 'icon' => 'ph:wrench']);
+        }
 
         return new LuaBridge($this->agent, $registry, $docGenerator);
     }

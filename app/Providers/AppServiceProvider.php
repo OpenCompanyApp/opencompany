@@ -11,9 +11,11 @@ use App\Domain\Ai\Runtime\OpenCompanyAiProviderFactory;
 use App\Domain\Ai\Runtime\OpenCompanyAiProviderRegistrar;
 use App\Domain\Ai\Usage\OpenRouterGenerationStore;
 use App\Domain\Chat\Telegram\Application\TelegramNotificationRouter;
+use App\Domain\Vfs\Core\VfsOperationLog;
 use App\Events\TaskUpdated;
 use App\Models\ApprovalRequest;
 use App\Models\Document;
+use App\Models\VfsOperationEvent;
 use App\Observers\ApprovalRequestObserver;
 use App\Observers\DocumentObserver;
 use App\Services\AgentFileStorageService;
@@ -25,6 +27,7 @@ use App\Services\Mcp\McpServerRegistrar;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
@@ -89,6 +92,26 @@ class AppServiceProvider extends ServiceProvider
         Document::observe(DocumentObserver::class);
 
         Event::listen(TaskUpdated::class, [TelegramNotificationRouter::class, 'handleTaskUpdated']);
+        Event::listen(VfsOperationLog::class, function (VfsOperationLog $event): void {
+            if (! Schema::hasTable('vfs_operation_events')) {
+                return;
+            }
+
+            VfsOperationEvent::query()->create([
+                'id' => $event->operationId,
+                'workspace_id' => $event->workspaceId,
+                'agent_id' => $event->agentId,
+                'surface' => $event->surface,
+                'operation' => $event->operation,
+                'path' => $event->path,
+                'cwd' => $event->cwd,
+                'success' => $event->ok,
+                'error_code' => $event->errorCode,
+                'duration_ms' => max(0, $event->durationMs),
+                'metadata' => $event->metadata,
+                'occurred_at' => now(),
+            ]);
+        });
 
         // Disable JSON wrapping for API resources
         JsonResource::withoutWrapping();
@@ -134,5 +157,6 @@ class AppServiceProvider extends ServiceProvider
         $registry->registerBuiltIn(new ToolProviders\SvgToolProvider);
         $registry->registerBuiltIn(new ToolProviders\LuaToolProvider);
         $registry->registerBuiltIn(new ToolProviders\WebToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\VfsToolProvider);
     }
 }

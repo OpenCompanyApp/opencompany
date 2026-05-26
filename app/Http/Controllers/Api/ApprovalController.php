@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalRequest;
+use App\Models\Channel;
+use App\Models\User;
 use App\Services\ApprovalExecutionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -35,17 +37,40 @@ class ApprovalController extends Controller
 
     public function store(Request $request): mixed
     {
-        $approval = ApprovalRequest::create([
-            'id' => Str::uuid()->toString(),
-            'type' => $request->input('type'),
-            'title' => $request->input('title'),
-            'description' => $request->input('description'),
-            'requester_id' => $request->input('requesterId'),
-            'amount' => $request->input('amount'),
-            'status' => 'pending',
+        $data = $request->validate([
+            'type' => ['required', 'string', 'in:budget,action,spawn,access'],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'requesterId' => ['required', 'string'],
+            'channelId' => ['required', 'string'],
+            'amount' => ['nullable', 'numeric'],
+            'toolExecutionContext' => ['nullable', 'array'],
         ]);
 
-        return $approval->load('requester');
+        $requester = User::query()
+            ->where('id', $data['requesterId'])
+            ->where('type', 'agent')
+            ->where('workspace_id', workspace()->id)
+            ->firstOrFail();
+
+        $channel = Channel::query()
+            ->where('id', $data['channelId'])
+            ->where('workspace_id', workspace()->id)
+            ->firstOrFail();
+
+        $approval = ApprovalRequest::create([
+            'id' => Str::uuid()->toString(),
+            'type' => $data['type'],
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'requester_id' => $requester->id,
+            'channel_id' => $channel->id,
+            'amount' => $data['amount'] ?? null,
+            'status' => 'pending',
+            'tool_execution_context' => $data['toolExecutionContext'] ?? null,
+        ]);
+
+        return $approval->load(['requester', 'channel']);
     }
 
     public function update(Request $request, string $id): mixed
@@ -53,13 +78,21 @@ class ApprovalController extends Controller
         $approval = ApprovalRequest::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
             ->findOrFail($id);
 
+        if ($approval->status !== 'pending') {
+            return response()->json([
+                'ok' => false,
+                'error' => 'approval_already_resolved',
+                'status' => $approval->status,
+            ], 422);
+        }
+
         $approval->update([
             'status' => $request->input('status'),
             'responded_by_id' => auth()->id(),
             'responded_at' => now(),
         ]);
 
-        /** @var \App\Models\User|null $agent */
+        /** @var User|null $agent */
         $agent = $approval->requester;
         $agentIsWaiting = $agent
             && $agent->type === 'agent'

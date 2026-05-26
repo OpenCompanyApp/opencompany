@@ -32,7 +32,7 @@ class ToolRegistry
      * App groups that remain as direct AI tools.
      * Everything else is accessible only via lua_exec (code-first approach).
      */
-    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua', 'web'];
+    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua', 'web', 'vfs'];
 
     /**
      * Apps that are external integrations (can be toggled per agent).
@@ -275,6 +275,19 @@ class ToolRegistry
         return $this->getEffectiveToolMap()[$slug]['type'] ?? null;
     }
 
+    /**
+     * Return the normalized metadata used by permission evaluation and Lua.
+     *
+     * This is intentionally read-only metadata; callers still execute through
+     * the registry so provider ownership and workspace context stay intact.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getToolDefinitionBySlug(string $slug): ?array
+    {
+        return $this->getEffectiveToolMap()[$slug] ?? null;
+    }
+
     // ─── Tool filtering and instantiation ──────────────────────────────────
 
     /**
@@ -291,6 +304,10 @@ class ToolRegistry
 
         foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             $app = $appLookup[$slug] ?? 'other';
+
+            if (! empty($meta['luaOnly'])) {
+                continue;
+            }
 
             // Code-first: only direct tool groups are registered as AI tools
             if (! in_array($app, self::DIRECT_TOOL_GROUPS)) {
@@ -334,6 +351,10 @@ class ToolRegistry
         foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             $app = $appLookup[$slug] ?? 'other';
 
+            if (! empty($meta['luaOnly'])) {
+                continue;
+            }
+
             // Code-first: only direct tool groups are registered as AI tools
             if (! in_array($app, self::DIRECT_TOOL_GROUPS)) {
                 continue;
@@ -369,6 +390,10 @@ class ToolRegistry
             $app = $appLookup[$slug] ?? 'other';
             $isIntegration = in_array($app, $this->getEffectiveIntegrationApps());
             $integrationEnabled = ! $isIntegration || in_array($app, $enabledIntegrations);
+
+            if (! empty($meta['luaOnly'])) {
+                continue;
+            }
 
             // Skip tools from non-workspace-enabled integrations entirely
             if ($isIntegration && ! $integrationEnabled) {
@@ -599,6 +624,9 @@ class ToolRegistry
 
             foreach ($group['tools'] as $slug) {
                 if (! isset($this->getEffectiveToolMap()[$slug])) {
+                    continue;
+                }
+                if (! empty($this->getEffectiveToolMap()[$slug]['luaOnly'])) {
                     continue;
                 }
                 $result = $this->evaluateToolPermission($agent, $slug, $this->getEffectiveToolMap()[$slug]);

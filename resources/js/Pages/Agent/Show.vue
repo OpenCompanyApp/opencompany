@@ -311,6 +311,7 @@
             <AgentCapabilities
               :capabilities="agent.capabilities"
               :app-groups="appGroups"
+              :vfs-policy="vfsPolicy"
               :enabled-integrations="enabledIntegrations"
               :behavior-mode="behaviorMode"
               :must-wait-for-approval="mustWaitForApproval"
@@ -455,6 +456,7 @@ const agentChannels = ref<{ id: string; name: string; type: string }[]>([])
 const documentFolders = ref<{ id: string; title: string }[]>([])
 const fileFolders = ref<any[]>([])
 const appGroups = ref<{ name: string; description: string; icon: string; logo?: string; isIntegration?: boolean }[]>([])
+const vfsPolicy = ref<any>(null)
 const enabledIntegrations = ref<string[]>([])
 const agentManagerId = ref<string | null>(null)
 const agentManager = ref<{ id: string; name: string; type: string; agentType?: string; avatar?: string } | null>(null)
@@ -578,6 +580,7 @@ const fetchData = async () => {
     documentFolders.value = (raw.documentFolders as { id: string; title: string }[]) || []
     fileFolders.value = (raw.fileFolders as any[]) || []
     appGroups.value = (raw.appGroups as typeof appGroups.value) || []
+    vfsPolicy.value = raw.vfsPolicy || null
     enabledIntegrations.value = (raw.enabledIntegrations as string[]) || []
     agentManagerId.value = (raw.managerId as string) || null
     agentManager.value = (raw.manager as typeof agentManager.value) || null

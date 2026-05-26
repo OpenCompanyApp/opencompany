@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Agents\OpenCompanyAgent;
+use App\Domain\Chat\Telegram\Application\TelegramApprovalRenderer;
 use App\Events\MessageSent;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
@@ -94,6 +96,110 @@ class ApprovalResumeTest extends TestCase
             ->where('author_id', $agent->id)
             ->first();
         $this->assertNotNull($resultMessage, 'An "Approved action executed" message should be posted by the agent.');
+    }
+
+    public function test_resolved_approval_cannot_be_executed_twice(): void
+    {
+        OpenCompanyAgent::fake(['Agent follow-up response.']);
+        Event::fake([MessageSent::class]);
+
+        ['human' => $human, 'agent' => $agent, 'channel' => $channel, 'approval' => $approval] = $this->createApprovalScenario();
+
+        $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
+            'status' => 'approved',
+            'respondedById' => $human->id,
+        ])->assertOk();
+
+        $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
+            'status' => 'approved',
+            'respondedById' => $human->id,
+        ])->assertStatus(422);
+
+        $this->assertSame(1, Message::where('channel_id', $channel->id)
+            ->where('content', 'Hello from the approved tool!')
+            ->where('author_id', $agent->id)
+            ->count());
+    }
+
+    public function test_approval_store_requires_same_workspace_requester_and_channel(): void
+    {
+        $human = User::factory()->create(['type' => 'human']);
+        $agent = User::factory()->agent()->create(['workspace_id' => $this->workspace->id]);
+        $channel = Channel::factory()->create(['workspace_id' => $this->workspace->id]);
+
+        $this->actingAs($human)->postJson('/api/approvals', [
+            'type' => 'action',
+            'title' => 'Run VFS write',
+            'description' => 'Needs approval',
+            'requesterId' => $agent->id,
+            'channelId' => $channel->id,
+            'toolExecutionContext' => [
+                'tool_slug' => 'vfs_write',
+                'parameters' => ['path' => '/files/a.txt', 'content' => 'x'],
+            ],
+        ])->assertSuccessful();
+
+        $approval = ApprovalRequest::where('title', 'Run VFS write')->firstOrFail();
+        $this->assertSame($agent->id, $approval->requester_id);
+        $this->assertSame($channel->id, $approval->channel_id);
+        $this->assertSame('vfs_write', $approval->tool_execution_context['tool_slug']);
+
+        $otherWorkspace = Workspace::create(['name' => 'Other Workspace', 'slug' => 'other-approvals']);
+        $otherAgent = User::factory()->agent()->create(['workspace_id' => $otherWorkspace->id]);
+        $otherChannel = Channel::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+        $this->actingAs($human)->postJson('/api/approvals', [
+            'type' => 'action',
+            'title' => 'Cross workspace requester',
+            'requesterId' => $otherAgent->id,
+            'channelId' => $channel->id,
+        ])->assertNotFound();
+
+        $this->actingAs($human)->postJson('/api/approvals', [
+            'type' => 'action',
+            'title' => 'Cross workspace channel',
+            'requesterId' => $agent->id,
+            'channelId' => $otherChannel->id,
+        ])->assertNotFound();
+
+        $this->actingAs($human)->postJson('/api/approvals', [
+            'type' => 'action',
+            'title' => 'No channel',
+            'requesterId' => $agent->id,
+        ])->assertUnprocessable();
+    }
+
+    public function test_telegram_approval_renderer_redacts_secret_like_values(): void
+    {
+        ['human' => $human, 'approval' => $approval] = $this->createApprovalScenario(
+            toolExecutionContext: [
+                'tool_slug' => 'vfs_write',
+                'parameters' => [
+                    'path' => '/files/secret.txt',
+                    'content' => 'api_key=sk-test-secret-value-1234567890',
+                    'header' => 'Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456',
+                ],
+            ],
+        );
+        $approval->update([
+            'title' => 'api_key=title-secret',
+            'description' => 'Use https://example.test?access_token=oauth-secret&client_secret=client-secret',
+        ]);
+
+        $renderer = app(TelegramApprovalRenderer::class);
+        $payload = implode("\n---\n", [
+            $renderer->pendingHtml($approval->fresh(['requester', 'channel.workspace']), $this->workspace),
+            $renderer->resolvedHtml($approval->fresh(['requester']), 'approved', $human),
+            $renderer->inspectText($approval->fresh(['requester'])),
+            $renderer->resolutionNotificationText($approval->fresh(), 'approved', $human),
+        ]);
+
+        $this->assertStringContainsString('[redacted]', $payload);
+        $this->assertStringNotContainsString('title-secret', $payload);
+        $this->assertStringNotContainsString('sk-test-secret', $payload);
+        $this->assertStringNotContainsString('oauth-secret', $payload);
+        $this->assertStringNotContainsString('client-secret', $payload);
+        $this->assertStringNotContainsString('abcdefghijklmnopqrstuvwxyz123456', $payload);
     }
 
     public function test_approve_clears_awaiting_state(): void

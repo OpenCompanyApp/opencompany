@@ -27,6 +27,7 @@ class ApprovalExecutionService
 {
     public function __construct(
         private ToolRegistry $toolRegistry,
+        private ?AgentPermissionService $permissions = null,
     ) {}
 
     /**
@@ -54,19 +55,37 @@ class ApprovalExecutionService
             return;
         }
 
+        $toolMeta = $this->toolRegistry->getToolDefinitionBySlug($toolSlug);
+        $permission = ($this->permissions ?? app(AgentPermissionService::class))->resolveToolPermission(
+            $agent,
+            $toolSlug,
+            (string) ($toolMeta['type'] ?? 'read'),
+        );
+
+        if (($permission['allowed'] ?? false) !== true) {
+            Log::warning("Approved tool {$toolSlug} was not executed because permission is now denied.", [
+                'approval_id' => $approval->id,
+                'agent_id' => $agent->id,
+            ]);
+
+            return;
+        }
+
         try {
             $toolRequest = new ToolRequest($context['parameters'] ?? []);
             $result = $tool->handle($toolRequest);
+            $decodedResult = is_string($result) ? json_decode($result, true) : null;
+            $toolSucceeded = ! (is_array($decodedResult) && ($decodedResult['ok'] ?? true) === false);
 
             // Post the result as a normal channel message so the resumed agent
             // sees the approved side effect in conversation history.
             $channelId = $approval->channel_id ?? ($context['parameters']['channelId'] ?? null);
             if ($channelId) {
-                $channel = Channel::find($channelId);
+                $channel = $this->approvalChannel($agent, $channelId);
                 if ($channel) {
                     $resultMessage = Message::create([
                         'id' => Str::uuid()->toString(),
-                        'content' => "**Approved action executed:** {$result}",
+                        'content' => ($toolSucceeded ? '**Approved action executed:** ' : '**Approved action failed:** ').$result,
                         'channel_id' => $channelId,
                         'author_id' => $agent->id,
                         'timestamp' => now(),
@@ -136,7 +155,7 @@ class ApprovalExecutionService
             // becomes the prompt that wakes the agent if it was waiting.
             $channelId = $approval->channel_id;
             if ($channelId) {
-                $channel = Channel::find($channelId);
+                $channel = $this->approvalChannel($agent, $channelId);
                 if ($channel) {
                     $message = Message::create([
                         'id' => Str::uuid()->toString(),
@@ -186,7 +205,7 @@ class ApprovalExecutionService
         $channelId = $approval->channel_id ?? ($context['parameters']['channelId'] ?? null);
 
         if ($channelId) {
-            $channel = Channel::find($channelId);
+            $channel = $this->approvalChannel($agent, $channelId);
             if ($channel) {
                 $denialMessage = Message::create([
                     'id' => Str::uuid()->toString(),
@@ -219,5 +238,12 @@ class ApprovalExecutionService
                 app()->instance('currentWorkspace', $workspace);
             }
         }
+    }
+
+    private function approvalChannel(User $agent, string $channelId): ?Channel
+    {
+        return Channel::query()
+            ->where('workspace_id', $agent->workspace_id)
+            ->find($channelId);
     }
 }

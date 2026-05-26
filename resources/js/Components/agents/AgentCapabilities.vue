@@ -273,6 +273,73 @@
       </div>
     </section>
 
+    <!-- Filesystem Access -->
+    <section>
+      <div class="flex items-center justify-between mb-1">
+        <h3 class="text-sm font-medium text-neutral-900 dark:text-white">Filesystem Access</h3>
+        <span
+          :class="[
+            'text-[11px] font-medium px-2 py-0.5 rounded',
+            vfsPolicy?.interfaceEnabled
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+              : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
+          ]"
+        >
+          {{ vfsPolicy?.interfaceEnabled ? 'Enabled' : 'Disabled' }}
+        </span>
+      </div>
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+        {{ vfsSummaryText }}
+      </p>
+
+      <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+        <div class="hidden sm:grid sm:grid-cols-[1.1fr_1.5fr_1.2fr_0.8fr] gap-3 px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+          <span>Mount</span>
+          <span>Scope</span>
+          <span>Actions</span>
+          <span>Approval</span>
+        </div>
+        <div class="divide-y divide-neutral-200 dark:divide-neutral-700">
+          <div
+            v-for="row in vfsRows"
+            :key="row.mount"
+            class="grid grid-cols-1 sm:grid-cols-[1.1fr_1.5fr_1.2fr_0.8fr] gap-3 px-4 py-3 items-start"
+          >
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span
+                  :class="[
+                    'w-1.5 h-1.5 rounded-full shrink-0',
+                    row.status === 'enabled'
+                      ? 'bg-green-500'
+                      : row.status === 'limited'
+                        ? 'bg-amber-500'
+                        : 'bg-neutral-300 dark:bg-neutral-600'
+                  ]"
+                />
+                <p class="text-sm font-medium text-neutral-900 dark:text-white truncate">{{ row.mount }}</p>
+              </div>
+              <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">{{ row.path }}</p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm text-neutral-700 dark:text-neutral-300">{{ row.scope }}</p>
+              <p v-if="row.reason" class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{{ row.reason }}</p>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <span
+                v-for="action in row.actions"
+                :key="action"
+                class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600"
+              >
+                {{ action }}
+              </span>
+            </div>
+            <p class="text-sm text-neutral-700 dark:text-neutral-300">{{ row.approval }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Channel Access -->
     <section>
       <div class="flex items-center justify-between mb-1">
@@ -549,9 +616,26 @@ interface AppGroupInfo {
   isIntegration?: boolean
 }
 
+interface VfsPolicyRow {
+  mount: string
+  path: string
+  scope: string
+  actions: string[]
+  approval: string
+  status: 'enabled' | 'limited' | 'blocked'
+  reason?: string | null
+}
+
+interface VfsPolicy {
+  interfaceEnabled: boolean
+  summary: string[]
+  rows: VfsPolicyRow[]
+}
+
 const props = defineProps<{
   capabilities: AgentCapability[]
   appGroups: AppGroupInfo[]
+  vfsPolicy?: VfsPolicy | null
   enabledIntegrations: string[]
   behaviorMode: AgentBehaviorMode
   mustWaitForApproval: boolean
@@ -659,6 +743,12 @@ const groupedTools = computed<ToolGroup[]>(() => {
   }
 
   return [...integrations, ...builtIn]
+})
+
+const vfsRows = computed(() => props.vfsPolicy?.rows ?? [])
+const vfsSummaryText = computed(() => {
+  const summary = props.vfsPolicy?.summary ?? []
+  return summary.length > 0 ? summary.join(' · ') : 'VFS access follows primitive tool toggles and resource scopes'
 })
 
 const toggleGroup = (name: string) => {

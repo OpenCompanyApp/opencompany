@@ -113,3 +113,4 @@ edit.head = (args: { workspace_slug: string | number, id: string | number } | [w
     url: edit.url(args, options),
     method: 'head',
 })
+

@@ -68,6 +68,8 @@ class AgentDetailQuery
         $totalTasks = (int) ($taskStats->total ?? 0);
         $completedTasks = (int) ($taskStats->completed ?? 0);
 
+        $capabilities = $this->toolRegistry->getAllToolsMeta($agent);
+
         return [
             'id' => $agent->id,
             'name' => $agent->name,
@@ -96,7 +98,14 @@ class AgentDetailQuery
             'sleepingReason' => $agent->sleeping_reason,
             'awaitingDelegationIds' => $agent->awaiting_delegation_ids,
             'identity' => $identity,
-            'capabilities' => $this->toolRegistry->getAllToolsMeta($agent),
+            'capabilities' => $capabilities,
+            'vfsPolicy' => $this->effectiveVfsPolicy(
+                $agent,
+                $capabilities,
+                $channelPermissions->all(),
+                $folderPermissions->all(),
+                $fileFolderPermissions->all(),
+            ),
             'appGroups' => $this->toolRegistry->getAppGroupsMeta(),
             'enabledIntegrations' => $this->permissions->getEnabledIntegrations($agent),
             'channelPermissions' => $channelPermissions,
@@ -115,6 +124,146 @@ class AgentDetailQuery
             ],
             'tasks' => $recentTasks,
         ];
+    }
+
+    /**
+     * Build the effective VFS policy summary consumed by the capabilities UI.
+     *
+     * This is deliberately a projection over existing permission sources rather
+     * than a new policy store. Runtime VFS checks still evaluate the primitive
+     * tool permissions plus domain resource scopes; the UI summary explains
+     * that same state in mount/scope/action terms.
+     *
+     * @param  list<array<string, mixed>>  $capabilities
+     * @param  list<string>  $channelPermissions
+     * @param  list<string>  $folderPermissions
+     * @param  list<string>  $fileFolderPermissions
+     * @return array<string, mixed>
+     */
+    private function effectiveVfsPolicy(User $agent, array $capabilities, array $channelPermissions, array $folderPermissions, array $fileFolderPermissions): array
+    {
+        $tools = collect($capabilities)->keyBy('id');
+        $exec = $tools->get('vfs_exec', []);
+        $patch = $tools->get('vfs_patch', []);
+        $write = $tools->get('vfs_write', []);
+
+        $execEnabled = (bool) ($exec['enabled'] ?? false);
+        $patchEnabled = (bool) ($patch['enabled'] ?? false);
+        $writeEnabled = (bool) ($write['enabled'] ?? false);
+
+        $writeApproval = ((bool) ($patch['requiresApproval'] ?? false) || (bool) ($write['requiresApproval'] ?? false))
+            ? 'Writes'
+            : $this->approvalLabelForMode((string) ($agent->behavior_mode ?? 'autonomous'));
+
+        $rows = [
+            [
+                'mount' => 'Documents',
+                'path' => '/docs',
+                'scope' => $folderPermissions === [] ? 'All document folders' : count($folderPermissions).' selected folder(s)',
+                'actions' => array_values(array_filter(['browse', 'read/search', $patchEnabled ? 'patch' : null])),
+                'approval' => $patchEnabled ? $writeApproval : 'Inherit',
+                'status' => $execEnabled ? 'enabled' : 'blocked',
+                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+            ],
+            [
+                'mount' => 'Files',
+                'path' => '/files',
+                'scope' => in_array('*', $fileFolderPermissions, true)
+                    ? 'All file folders'
+                    : ($fileFolderPermissions === [] ? 'Home folder only' : 'Home folder + '.count($fileFolderPermissions).' selected folder(s)'),
+                'actions' => array_values(array_filter(['browse', 'read/search', $writeEnabled ? 'write/manage' : null])),
+                'approval' => $writeEnabled ? $writeApproval : 'Inherit',
+                'status' => $execEnabled ? 'enabled' : 'blocked',
+                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+            ],
+            [
+                'mount' => 'Agent memory',
+                'path' => '/agents',
+                'scope' => 'Own, manager, and direct-report agent documents',
+                'actions' => array_values(array_filter(['browse', 'read/search', $patchEnabled ? 'patch' : null])),
+                'approval' => $patchEnabled ? $writeApproval : 'Inherit',
+                'status' => $execEnabled ? 'limited' : 'blocked',
+                'reason' => $execEnabled ? 'Private memory remains scoped by agent relationship' : 'vfs_exec is disabled',
+            ],
+            [
+                'mount' => 'Tasks',
+                'path' => '/tasks',
+                'scope' => 'Workspace task projections, windowed',
+                'actions' => array_values(array_filter(['browse', 'read/search', $patchEnabled ? 'patch status/fields' : null])),
+                'approval' => $patchEnabled ? $writeApproval : 'Inherit',
+                'status' => $execEnabled ? 'enabled' : 'blocked',
+                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+            ],
+            [
+                'mount' => 'Lists',
+                'path' => '/lists',
+                'scope' => 'Workspace list projections, windowed',
+                'actions' => array_values(array_filter(['browse', 'read/search', $patchEnabled ? 'patch status/fields' : null])),
+                'approval' => $patchEnabled ? $writeApproval : 'Inherit',
+                'status' => $execEnabled ? 'enabled' : 'blocked',
+                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+            ],
+            [
+                'mount' => 'Channels',
+                'path' => '/channels',
+                'scope' => $channelPermissions === [] ? 'All joined channels' : count($channelPermissions).' selected channel(s)',
+                'actions' => ['browse', 'read/search'],
+                'approval' => 'Inherit',
+                'status' => $execEnabled ? 'enabled' : 'blocked',
+                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+            ],
+            [
+                'mount' => 'Tables',
+                'path' => '/tables',
+                'scope' => 'Workspace tables',
+                'actions' => ['browse', 'read/search'],
+                'approval' => 'Inherit',
+                'status' => $execEnabled ? 'enabled' : 'blocked',
+                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+            ],
+            [
+                'mount' => 'Approvals',
+                'path' => '/approvals',
+                'scope' => 'Own requests and pending approvals',
+                'actions' => ['browse', 'read'],
+                'approval' => 'Inherit',
+                'status' => $execEnabled ? 'limited' : 'blocked',
+                'reason' => $execEnabled ? 'Decisions stay in approval tools' : 'vfs_exec is disabled',
+            ],
+            [
+                'mount' => 'Automations',
+                'path' => '/automations',
+                'scope' => 'Workspace automation records',
+                'actions' => ['browse', 'read'],
+                'approval' => 'Inherit',
+                'status' => $execEnabled ? 'limited' : 'blocked',
+                'reason' => $execEnabled ? 'Runs and edits stay in automation tools' : 'vfs_exec is disabled',
+            ],
+        ];
+
+        return [
+            'interfaceEnabled' => $execEnabled || $patchEnabled || $writeEnabled,
+            'tools' => [
+                'exec' => ['enabled' => $execEnabled, 'approval' => (bool) ($exec['requiresApproval'] ?? false)],
+                'patch' => ['enabled' => $patchEnabled, 'approval' => (bool) ($patch['requiresApproval'] ?? false)],
+                'write' => ['enabled' => $writeEnabled, 'approval' => (bool) ($write['requiresApproval'] ?? false)],
+            ],
+            'summary' => [
+                'Read/search: '.($execEnabled ? 'enabled across allowed mounts' : 'disabled'),
+                'Writes: '.($patchEnabled || $writeEnabled ? strtolower($writeApproval) : 'disabled'),
+                'Scopes: documents/files/channels reuse existing pickers',
+            ],
+            'rows' => $rows,
+        ];
+    }
+
+    private function approvalLabelForMode(string $mode): string
+    {
+        return match ($mode) {
+            'strict' => 'All',
+            'supervised' => 'Writes',
+            default => 'Inherit',
+        };
     }
 
     /**

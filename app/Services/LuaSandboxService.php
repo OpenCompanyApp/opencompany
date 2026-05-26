@@ -230,6 +230,25 @@ class LuaSandboxService
                         if type(result) == "table" and result.__error then
                             error(result.__error, 2)
                         end
+                        if type(result) == "table" and result.__vfs_sequence_key then
+                            local sequence_key = result.__vfs_sequence_key
+                            result.__vfs_sequence_key = nil
+                            setmetatable(result, {
+                                __len = function(t)
+                                    local sequence = rawget(t, sequence_key)
+                                    return type(sequence) == "table" and #sequence or 0
+                                end,
+                                __index = function(t, key)
+                                    if type(key) == "number" then
+                                        local sequence = rawget(t, sequence_key)
+                                        if type(sequence) == "table" then
+                                            return sequence[key]
+                                        end
+                                    end
+                                    return nil
+                                end
+                            })
+                        end
                         return result
                     end
                 })
