@@ -77,7 +77,8 @@ Route::prefix('/ai-gateway/v1')->middleware(AuthenticateAiGateway::class)->group
 Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept']);
 
 // ─── Workspace creation (auth required, no workspace context) ─────
-Route::post('/workspaces', [WorkspaceController::class, 'store']);
+Route::post('/workspaces', [WorkspaceController::class, 'store'])
+    ->middleware(['auth', 'verified']);
 
 // ─── All authenticated + workspace-scoped routes ──────────────────
 Route::middleware('resolve.workspace')->group(function () {

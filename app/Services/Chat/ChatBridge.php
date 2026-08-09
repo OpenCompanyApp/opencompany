@@ -319,7 +319,9 @@ class ChatBridge
     {
         $status = $action === 'approve' ? 'approved' : 'rejected';
 
-        $approval = ApprovalRequest::find($approvalId);
+        $approval = ApprovalRequest::query()
+            ->whereHas('channel', fn ($query) => $query->where('workspace_id', $workspaceId))
+            ->find($approvalId);
         if (! $approval || $approval->status !== 'pending') {
             return;
         }
@@ -334,26 +336,9 @@ class ChatBridge
             ? $this->resolveUser($adapterName, $user)
             : null;
 
-        $approval->update([
-            'status' => $status,
-            'responded_by_id' => $responder?->id,
-            'responded_at' => now(),
-        ]);
-
-        // Execute the approved tool only after the ApprovalRequest has been
-        // marked. If execution fails later, the approval decision is still
-        // auditable and can be inspected separately.
-        $agent = $approval->requester;
-        $agentIsWaiting = $agent
-            && $agent->type === 'agent'
-            && $agent->awaiting_approval_id === $approval->id;
-
         $approvalService = app(ApprovalExecutionService::class);
-
-        if ($status === 'approved' && $approval->tool_execution_context) {
-            $approvalService->executeApprovedTool($approval, $agentIsWaiting);
-        } elseif ($status === 'rejected' && $agentIsWaiting) {
-            $approvalService->handleRejectedTool($approval);
+        if (! $approvalService->resolve($approval, $status, $responder)) {
+            return;
         }
 
         // Update the message to show result (for Telegram, edit to remove buttons)

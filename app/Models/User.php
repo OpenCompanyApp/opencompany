@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Events\AgentStatusUpdated;
 use Carbon\Carbon;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -29,7 +30,7 @@ use Illuminate\Notifications\Notifiable;
  * @property Carbon|null $last_seen_at
  * @property Carbon|null $email_verified_at
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;

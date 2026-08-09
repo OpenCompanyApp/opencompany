@@ -1987,14 +1987,15 @@ class TelegramWebhookPipeline
         array $message,
         TelegramInteraction $interaction
     ): void {
-        $approval = ApprovalRequest::with('channel')->find($approvalId);
+        $approval = ApprovalRequest::with(['channel', 'requester'])->find($approvalId);
         if (! $approval || $approval->status !== 'pending') {
             $this->answerCallback($callbackQuery, 'This approval has already been decided.');
 
             return;
         }
 
-        if ($approval->channel && $approval->channel->workspace_id !== $workspace->id) {
+        $approvalWorkspaceId = $approval->channel?->workspace_id ?? $approval->requester?->workspace_id;
+        if ($approvalWorkspaceId !== $workspace->id) {
             $this->answerCallback($callbackQuery, 'You are not authorized for this approval.');
 
             return;
@@ -2009,23 +2010,11 @@ class TelegramWebhookPipeline
 
         $status = $action === 'approve' ? 'approved' : 'rejected';
 
-        $approval->update([
-            'status' => $status,
-            'responded_by_id' => $responder->id,
-            'responded_at' => now(),
-        ]);
-
-        $agent = $approval->requester;
-        $agentIsWaiting = $agent
-            && $agent->type === 'agent'
-            && $agent->awaiting_approval_id === $approval->id;
-
         $approvalService = app(ApprovalExecutionService::class);
+        if (! $approvalService->resolve($approval, $status, $responder)) {
+            $this->answerCallback($callbackQuery, 'This approval has already been decided.');
 
-        if ($status === 'approved' && $approval->tool_execution_context) {
-            $approvalService->executeApprovedTool($approval, $agentIsWaiting);
-        } elseif ($status === 'rejected' && $agentIsWaiting) {
-            $approvalService->handleRejectedTool($approval);
+            return;
         }
 
         $interaction?->update([

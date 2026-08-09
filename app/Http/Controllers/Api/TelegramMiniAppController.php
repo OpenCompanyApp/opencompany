@@ -701,26 +701,14 @@ class TelegramMiniAppController extends Controller
 
         $identity = $context['identity'];
         $status = $data['action'] === 'approve_approval' ? 'approved' : 'rejected';
-        $approval->update([
-            'status' => $status,
-            'responded_by_id' => $identity->user_id,
-            'responded_at' => now(),
-        ]);
-
-        $agent = $approval->requester;
-        $agentIsWaiting = $agent
-            && $agent->type === 'agent'
-            && $agent->awaiting_approval_id === $approval->id;
         $approvalService = app(ApprovalExecutionService::class);
-
-        if ($status === 'approved' && $approval->tool_execution_context) {
-            if ($approval->type === 'access') {
-                $approvalService->executeApprovedAccess($approval, $agentIsWaiting);
-            } else {
-                $approvalService->executeApprovedTool($approval, $agentIsWaiting);
-            }
-        } elseif ($status === 'rejected' && $agentIsWaiting) {
-            $approvalService->handleRejectedTool($approval);
+        $responder = User::query()->find($identity->user_id);
+        if (! $approvalService->resolve($approval, $status, $responder)) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'telegram_approval_already_resolved',
+                'status' => $approval->status,
+            ], 422);
         }
 
         return [

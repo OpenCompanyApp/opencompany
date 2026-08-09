@@ -44,7 +44,10 @@ class ApprovalController extends Controller
             'requesterId' => ['required', 'string'],
             'channelId' => ['required', 'string'],
             'amount' => ['nullable', 'numeric'],
-            'toolExecutionContext' => ['nullable', 'array'],
+            // Executable context is created only by trusted agent/runtime code.
+            // Accepting it from the browser would let a member fabricate an
+            // approval and execute allowed tools as another agent.
+            'toolExecutionContext' => ['prohibited'],
         ]);
 
         $requester = User::query()
@@ -67,7 +70,7 @@ class ApprovalController extends Controller
             'channel_id' => $channel->id,
             'amount' => $data['amount'] ?? null,
             'status' => 'pending',
-            'tool_execution_context' => $data['toolExecutionContext'] ?? null,
+            'tool_execution_context' => null,
         ]);
 
         return $approval->load(['requester', 'channel']);
@@ -75,10 +78,14 @@ class ApprovalController extends Controller
 
     public function update(Request $request, string $id): mixed
     {
+        $data = $request->validate([
+            'status' => ['required', 'string', 'in:approved,rejected'],
+        ]);
+
         $approval = ApprovalRequest::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
             ->findOrFail($id);
 
-        if ($approval->status !== 'pending') {
+        if (! $this->approvalService->resolve($approval, $data['status'], $request->user())) {
             return response()->json([
                 'ok' => false,
                 'error' => 'approval_already_resolved',
@@ -86,28 +93,6 @@ class ApprovalController extends Controller
             ], 422);
         }
 
-        $approval->update([
-            'status' => $request->input('status'),
-            'responded_by_id' => auth()->id(),
-            'responded_at' => now(),
-        ]);
-
-        /** @var User|null $agent */
-        $agent = $approval->requester;
-        $agentIsWaiting = $agent
-            && $agent->type === 'agent'
-            && $agent->awaiting_approval_id === $approval->id;
-
-        if ($approval->status === 'approved' && $approval->tool_execution_context) {
-            if ($approval->type === 'access') {
-                $this->approvalService->executeApprovedAccess($approval, $agentIsWaiting);
-            } else {
-                $this->approvalService->executeApprovedTool($approval, $agentIsWaiting);
-            }
-        } elseif ($approval->status === 'rejected' && $agentIsWaiting) {
-            $this->approvalService->handleRejectedTool($approval);
-        }
-
-        return $approval->load(['requester', 'respondedBy']);
+        return $approval->fresh(['requester', 'respondedBy']);
     }
 }

@@ -31,9 +31,60 @@ class ApprovalExecutionService
     ) {}
 
     /**
+     * Atomically record a human decision and apply its side effects once.
+     *
+     * Approval buttons can be delivered through several transports and may be
+     * clicked concurrently. The conditional update is the single claim point:
+     * only the request that changes `pending` may execute the approved action
+     * or resume the waiting agent. Side effects deliberately run after the
+     * decision is durable so a slow provider call does not hold a DB lock.
+     */
+    public function resolve(ApprovalRequest $approval, string $status, ?User $responder = null): bool
+    {
+        if (! in_array($status, ['approved', 'rejected'], true)) {
+            throw new \InvalidArgumentException('Approval status must be approved or rejected.');
+        }
+
+        $claimed = ApprovalRequest::query()
+            ->whereKey($approval->getKey())
+            ->where('status', 'pending')
+            ->update([
+                'status' => $status,
+                'responded_by_id' => $responder?->id,
+                'responded_at' => now(),
+            ]);
+
+        if ($claimed !== 1) {
+            $approval->refresh();
+
+            return false;
+        }
+
+        $approval->refresh();
+
+        /** @var User|null $agent */
+        $agent = $approval->requester;
+        $agentIsWaiting = $agent
+            && $agent->type === 'agent'
+            && $agent->awaiting_approval_id === $approval->id;
+
+        if ($status === 'approved' && $approval->tool_execution_context) {
+            if ($approval->type === 'access') {
+                $this->executeApprovedAccess($approval, $agentIsWaiting);
+            } else {
+                $this->executeApprovedTool($approval, $agentIsWaiting);
+            }
+        } elseif ($status === 'rejected' && $agentIsWaiting) {
+            $this->handleRejectedTool($approval);
+        }
+
+        return true;
+    }
+
+    /**
      * Execute a tool after its approval request is approved.
      */
-    public function executeApprovedTool(ApprovalRequest $approval, bool $agentIsWaiting): void
+    private function executeApprovedTool(ApprovalRequest $approval, bool $agentIsWaiting): void
     {
         $context = $approval->tool_execution_context ?? [];
         /** @var User|null $agent */
@@ -117,7 +168,7 @@ class ApprovalExecutionService
      * Grant access after an access-type approval is approved.
      * Creates an AgentPermission record and notifies the agent.
      */
-    public function executeApprovedAccess(ApprovalRequest $approval, bool $agentIsWaiting): void
+    private function executeApprovedAccess(ApprovalRequest $approval, bool $agentIsWaiting): void
     {
         $context = $approval->tool_execution_context ?? [];
         /** @var User|null $agent */
@@ -191,7 +242,7 @@ class ApprovalExecutionService
     /**
      * Handle a rejected approval when the agent was waiting.
      */
-    public function handleRejectedTool(ApprovalRequest $approval): void
+    private function handleRejectedTool(ApprovalRequest $approval): void
     {
         /** @var User|null $agent */
         $agent = $approval->requester;

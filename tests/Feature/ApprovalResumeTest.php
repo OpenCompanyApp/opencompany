@@ -121,7 +121,7 @@ class ApprovalResumeTest extends TestCase
             ->count());
     }
 
-    public function test_approval_store_requires_same_workspace_requester_and_channel(): void
+    public function test_approval_store_rejects_client_supplied_execution_context_and_scopes_records(): void
     {
         $human = User::factory()->create(['type' => 'human']);
         $agent = User::factory()->agent()->create(['workspace_id' => $this->workspace->id]);
@@ -129,7 +129,7 @@ class ApprovalResumeTest extends TestCase
 
         $this->actingAs($human)->postJson('/api/approvals', [
             'type' => 'action',
-            'title' => 'Run VFS write',
+            'title' => 'Forged VFS write',
             'description' => 'Needs approval',
             'requesterId' => $agent->id,
             'channelId' => $channel->id,
@@ -137,12 +137,23 @@ class ApprovalResumeTest extends TestCase
                 'tool_slug' => 'vfs_write',
                 'parameters' => ['path' => '/files/a.txt', 'content' => 'x'],
             ],
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('toolExecutionContext');
+
+        $this->assertDatabaseMissing('approval_requests', ['title' => 'Forged VFS write']);
+
+        $this->actingAs($human)->postJson('/api/approvals', [
+            'type' => 'action',
+            'title' => 'Manual review',
+            'description' => 'Needs a human decision but has no executable payload',
+            'requesterId' => $agent->id,
+            'channelId' => $channel->id,
         ])->assertSuccessful();
 
-        $approval = ApprovalRequest::where('title', 'Run VFS write')->firstOrFail();
+        $approval = ApprovalRequest::where('title', 'Manual review')->firstOrFail();
         $this->assertSame($agent->id, $approval->requester_id);
         $this->assertSame($channel->id, $approval->channel_id);
-        $this->assertSame('vfs_write', $approval->tool_execution_context['tool_slug']);
+        $this->assertNull($approval->tool_execution_context);
 
         $otherWorkspace = Workspace::create(['name' => 'Other Workspace', 'slug' => 'other-approvals']);
         $otherAgent = User::factory()->agent()->create(['workspace_id' => $otherWorkspace->id]);
@@ -167,6 +178,22 @@ class ApprovalResumeTest extends TestCase
             'title' => 'No channel',
             'requesterId' => $agent->id,
         ])->assertUnprocessable();
+    }
+
+    public function test_approval_update_accepts_only_final_decision_statuses(): void
+    {
+        ['human' => $human, 'channel' => $channel, 'approval' => $approval] = $this->createApprovalScenario();
+
+        $this->actingAs($human)->patchJson("/api/approvals/{$approval->id}", [
+            'status' => 'pending',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('status');
+
+        $this->assertSame('pending', $approval->fresh()->status);
+        $this->assertDatabaseMissing('messages', [
+            'channel_id' => $channel->id,
+            'content' => 'Hello from the approved tool!',
+        ]);
     }
 
     public function test_telegram_approval_renderer_redacts_secret_like_values(): void

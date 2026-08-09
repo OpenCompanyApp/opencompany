@@ -1027,7 +1027,7 @@ LUA;
         ]);
         $approval = ApprovalRequest::factory()->create([
             'requester_id' => $this->agent->id,
-            'status' => 'approved',
+            'status' => 'pending',
             'tool_execution_context' => [
                 'tool_slug' => 'vfs_write',
                 'parameters' => [
@@ -1046,7 +1046,7 @@ LUA;
             'requires_approval' => false,
         ]);
 
-        app(ApprovalExecutionService::class)->executeApprovedTool($approval, false);
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
 
         $this->assertFalse(WorkspaceFile::forWorkspace()->where('name', 'approved-denied')->exists());
     }
