@@ -1,0 +1,3175 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Agents/Conversations/ChannelConversationLoader.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>workspace_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Conversations/ChannelConversationLoader.php
+
+		-
+			message: '#^Method App\\Agents\\OpenCompanyAgent\:\:injectCheckpointedSteps\(\) has parameter \$messages with no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Agents/OpenCompanyAgent.php
+
+		-
+			message: '#^Method App\\Agents\\OpenCompanyAgent\:\:injectPeerCards\(\) has parameter \$sections with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Agents/OpenCompanyAgent.php
+
+		-
+			message: '#^Offset ''arguments'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Agents/OpenCompanyAgent.php
+
+		-
+			message: '#^Offset ''result'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Agents/OpenCompanyAgent.php
+
+		-
+			message: '#^Offset ''tool'' does not exist on string\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: app/Agents/OpenCompanyAgent.php
+
+		-
+			message: '#^Offset ''tool_call_id'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Agents/OpenCompanyAgent.php
+
+		-
+			message: '#^Method App\\Agents\\Runtime\\AgentRun\:\:snapshot\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Agents/Runtime/AgentRun.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Agents/Runtime/Permissions/Checks/IntegrationPermissionCheck.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Services\\AgentPermissionService and ''getEnabledIntegrati…'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Agents/Runtime/Permissions/Checks/IntegrationPermissionCheck.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Agents/Runtime/Permissions/Checks/IntegrationPermissionCheck.php
+
+		-
+			message: '#^Offset ''allowed'' on array\{allowed\: bool, requires_approval\: bool\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Agents/Runtime/Permissions/Checks/ToolPermissionCheck.php
+
+		-
+			message: '#^Offset ''requires_approval'' on array\{allowed\: bool, requires_approval\: bool\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Agents/Runtime/Permissions/Checks/ToolPermissionCheck.php
+
+		-
+			message: '#^Property App\\Agents\\Runtime\\Subagents\\GenericSubagent\:\:\$conversationLoader is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Runtime/Subagents/GenericSubagent.php
+
+		-
+			message: '#^Method App\\Agents\\Runtime\\Subagents\\SubagentRun\:\:__construct\(\) has parameter \$dependsOn with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Agents/Runtime/Subagents/SubagentRun.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between int\|string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Agents/Support/MessageAttachmentContext.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Calendar/CreateCalendarEvent.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Calendar\\DeleteCalendarEvent\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Calendar/DeleteCalendarEvent.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Calendar\\GetCalendarEvent\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Calendar/GetCalendarEvent.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Agents/Tools/Calendar/GetCalendarEvent.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Calendar\\ListCalendarEvents\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Calendar/ListCalendarEvents.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Agents/Tools/Calendar/ListCalendarEvents.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Calendar\\RemoveCalendarAttendee\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Calendar/RemoveCalendarAttendee.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Calendar\\UpdateCalendarAttendee\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Calendar/UpdateCalendarAttendee.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Calendar/UpdateCalendarAttendee.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Calendar\\UpdateCalendarEvent\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Calendar/UpdateCalendarEvent.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Agents/Tools/Calendar/UpdateCalendarEvent.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Chat\\JoinExternalChannel\:\:\$permissionService is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Chat/JoinExternalChannel.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Chat\\LeaveExternalChannel\:\:\$permissionService is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Chat/LeaveExternalChannel.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Chat\\ListExternalChannels\:\:\$permissionService is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Chat/ListExternalChannels.php
+
+		-
+			message: '#^Method App\\Agents\\Tools\\Chat\\ReadPinnedMessages\:\:formatMessage\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Agents/Tools/Chat/ReadPinnedMessages.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Chat/ReadPinnedMessages.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Channel\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Channel\>\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Agents/Tools/Chat/ReadRecentMessages.php
+
+		-
+			message: '#^Method App\\Agents\\Tools\\Chat\\ReadRecentMessages\:\:formatMessage\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Agents/Tools/Chat/ReadRecentMessages.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Chat/ReadRecentMessages.php
+
+		-
+			message: '#^Method App\\Agents\\Tools\\Chat\\ReadThread\:\:formatMessage\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Agents/Tools/Chat/ReadThread.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Chat/ReadThread.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Chat\\RemoveMessageReaction\:\:\$permissionService is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Chat/RemoveMessageReaction.php
+
+		-
+			message: '#^Unable to resolve the template type TRelatedModel in call to method Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\>\:\:whereHas\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Agents/Tools/Chat/RemoveMessageReaction.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:forWorkspace\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Agents/Tools/Chat/SearchMessages.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Chat/SearchMessages.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Agents/Tools/Docs/GetDocument.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\DocumentComment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Agents/Tools/Docs/GetDocument.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\DocumentComment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Agents/Tools/Docs/GetDocument.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Agents/Tools/Docs/GetDocument.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Document\:\:\$document_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Agents/Tools/Docs/GetDocumentTree.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Document\:\:\$folder_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Agents/Tools/Docs/GetDocumentTree.php
+
+		-
+			message: '#^Parameter \#1 \$byParent of method App\\Agents\\Tools\\Docs\\GetDocumentTree\:\:buildTree\(\) expects Illuminate\\Support\\Collection\<int\|string, Illuminate\\Support\\Collection\<int, App\\Models\\Document\>\>, Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Document\>\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Agents/Tools/Docs/GetDocumentTree.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\Document\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Agents/Tools/Docs/GetDocumentTree.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,App\\Models\\Document\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Agents/Tools/Docs/GetDocumentTree.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Agents/Tools/Docs/GetDocumentTree.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocumentAttachments.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocumentComments.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\DocumentComment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocumentComments.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\DocumentComment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocumentComments.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocumentComments.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocumentVersions.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Document\:\:\$document_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocuments.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Document\:\:\$folder_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocuments.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Document\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocuments.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Document\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocuments.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Docs/ListDocuments.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Docs/SearchDocuments.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Files/GetFileInfo.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\CreateListStatus\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/CreateListStatus.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\DeleteListItem\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/DeleteListItem.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\DeleteListItemComment\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/DeleteListItemComment.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\DeleteListStatus\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/DeleteListStatus.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\GetListItem\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/GetListItem.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Agents/Tools/Lists/GetListItem.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\ListAllItems\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/ListAllItems.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\ListItemStatuses\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/ListItemStatuses.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\ListItemsByAssignee\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/ListItemsByAssignee.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\ListItemsByStatus\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/ListItemsByStatus.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\ListProjects\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/ListProjects.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\UpdateListItem\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/UpdateListItem.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Lists\\UpdateListStatus\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Lists/UpdateListStatus.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Memory/EditMemory.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Agents/Tools/Memory/ForgetMemory.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Agents/Tools/Memory/RecallMemory.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Memory/SaveMemory.php
+
+		-
+			message: '#^Class App\\Agents\\Tools\\Workspace\\CreateAgent constructor invoked with 3 parameters, 4 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Agents/Tools/Providers/WorkspaceToolProvider.php
+
+		-
+			message: '#^Class App\\Agents\\Tools\\Workspace\\GetIntegrationConfig does not have a constructor and must be instantiated without any parameters\.$#'
+			identifier: new.noConstructor
+			count: 1
+			path: app/Agents/Tools/Providers/WorkspaceToolProvider.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\AddTableColumn\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/AddTableColumn.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\BulkDeleteTableRows\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/BulkDeleteTableRows.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\CreateTableView\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/CreateTableView.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\DeleteTable\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/DeleteTable.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\DeleteTableColumn\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/DeleteTableColumn.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\DeleteTableRow\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/DeleteTableRow.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\>\:\:forWorkspace\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Agents/Tools/Tables/DeleteTableView.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\DeleteTableView\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/DeleteTableView.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\GetTable\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/GetTable.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Tables/GetTable.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\GetTableRows\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/GetTableRows.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\ListTableViews\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/ListTableViews.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\ListTables\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/ListTables.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Tables/ListTables.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\ReorderTableColumns\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/ReorderTableColumns.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\SearchTableRows\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/SearchTableRows.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\UpdateTable\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/UpdateTable.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\UpdateTableColumn\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/UpdateTableColumn.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\UpdateTableRow\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/UpdateTableRow.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\>\:\:forWorkspace\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Agents/Tools/Tables/UpdateTableView.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Tables\\UpdateTableView\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Tables/UpdateTableView.php
+
+		-
+			message: '#^Offset ''description'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Agents/Tools/ToolRegistry.php
+
+		-
+			message: '#^Offset ''icon'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Agents/Tools/ToolRegistry.php
+
+		-
+			message: '#^Offset ''label'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Agents/Tools/ToolRegistry.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\AddChannelMember\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/AddChannelMember.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\DeleteAutomation\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/DeleteAutomation.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\>\:\:forWorkspace\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Agents/Tools/Workspace/DeleteAutomationRule.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\DeleteAutomationRule\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/DeleteAutomationRule.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\DeleteItemTemplate\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/DeleteItemTemplate.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\DiscoverMcpTools\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/DiscoverMcpTools.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\GetAutomation\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/GetAutomation.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Workspace/GetAutomation.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\GetIntegrationSetup\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/GetIntegrationSetup.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\ListAutomations\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/ListAutomations.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\ListMcpServers\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/ListMcpServers.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Agents/Tools/Workspace/ListMembers.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Agents/Tools/Workspace/ListMembers.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Agents/Tools/Workspace/ListMembers.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Agents/Tools/Workspace/ListMembers.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Agents/Tools/Workspace/ListMembers.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Agents/Tools/Workspace/ListMembers.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Agents/Tools/Workspace/ListMembers.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\RemoveChannelMember\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/RemoveChannelMember.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\RemoveMcpServer\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/RemoveMcpServer.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\RunAutomation\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/RunAutomation.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\SetupIntegrationWebhook\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/SetupIntegrationWebhook.php
+
+		-
+			message: '#^Offset ''name'' on array\{class\: string, type\: string, name\: string, description\: string, icon\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Agents/Tools/Workspace/TestIntegrationConnection.php
+
+		-
+			message: '#^Offset ''type'' on array\{class\: string, type\: string, name\: string, description\: string, icon\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Agents/Tools/Workspace/TestIntegrationConnection.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\TestMcpServer\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/TestMcpServer.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\>\:\:forWorkspace\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Agents/Tools/Workspace/UpdateAutomationRule.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\UpdateAutomationRule\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/UpdateAutomationRule.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\UpdateIntegrationConfig\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/UpdateIntegrationConfig.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\UpdateItemTemplate\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/UpdateItemTemplate.php
+
+		-
+			message: '#^Property App\\Agents\\Tools\\Workspace\\UpdateMcpServer\:\:\$agent is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Agents/Tools/Workspace/UpdateMcpServer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>cacheOptions" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Ai/Gateways/PromptCachePolicy.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\IntegrationSetting\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/TelegramSync.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Console/Commands/TestGlmPing.php
+
+		-
+			message: '#^Parameter \#2 \$startedAt of static method App\\Support\\TokenMetrics\:\:fromResponse\(\) expects Carbon\\Carbon\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/AgentRuntime/Application/ExecuteAssignedTask.php
+
+		-
+			message: '#^Parameter \#3 \$completedAt of static method App\\Support\\TokenMetrics\:\:fromResponse\(\) expects Carbon\\Carbon\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/AgentRuntime/Application/ExecuteAssignedTask.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/AgentRuntime/Application/RespondToChatMessage.php
+
+		-
+			message: '#^Call to an undefined method Laravel\\Ai\\Streaming\\Events\\StreamEvent\:\:toArray\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Domain/AgentRuntime/Application/RespondToChatMessage.php
+
+		-
+			message: '#^Parameter \#2 \$startedAt of static method App\\Support\\TokenMetrics\:\:fromResponse\(\) expects Carbon\\Carbon\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/AgentRuntime/Application/RespondToChatMessage.php
+
+		-
+			message: '#^Parameter \#3 \$completedAt of static method App\\Support\\TokenMetrics\:\:fromResponse\(\) expects Carbon\\Carbon\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/AgentRuntime/Application/RespondToChatMessage.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>workspace_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/AgentRuntime/Application/RespondToChatMessage.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>defaultModel" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Ai/Catalog/AiCatalog.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<array\{id\: string, provider\: string, model\: string, name\: string\}\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Domain/Ai/Gateway/AiGatewayModelRegistry.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>driver" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Domain/Ai/Runtime/OpenCompanyAiProviderFactory.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Ai/Runtime/OpenCompanyAiProviderFactory.php
+
+		-
+			message: '#^Call to an undefined method Laravel\\Ai\\Contracts\\Providers\\TextProvider\:\:name\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Domain/Ai/Runtime/OpenRouterBillingGateway.php
+
+		-
+			message: '#^Parameter \#1 \$provider of method Laravel\\Ai\\Gateway\\OpenRouter\\OpenRouterGateway\:\:buildTextRequestBody\(\) expects Laravel\\Ai\\Providers\\Provider, Laravel\\Ai\\Contracts\\Providers\\TextProvider given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/Ai/Runtime/OpenRouterBillingGateway.php
+
+		-
+			message: '#^Parameter \#1 \$provider of method Laravel\\Ai\\Gateway\\OpenRouter\\OpenRouterGateway\:\:client\(\) expects Laravel\\Ai\\Providers\\Provider, Laravel\\Ai\\Contracts\\Providers\\TextProvider given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/Ai/Runtime/OpenRouterBillingGateway.php
+
+		-
+			message: '#^Parameter \#2 \$provider of method Laravel\\Ai\\Gateway\\OpenRouter\\OpenRouterGateway\:\:parseTextResponse\(\) expects Laravel\\Ai\\Providers\\Provider, Laravel\\Ai\\Contracts\\Providers\\TextProvider given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/Ai/Runtime/OpenRouterBillingGateway.php
+
+		-
+			message: '#^Method App\\Domain\\Ai\\Usage\\LlmUsageEvent\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Domain/Ai/Usage/LlmUsageEvent.php
+
+		-
+			message: '#^Method App\\Domain\\Ai\\Usage\\LlmUsageEvent\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Domain/Ai/Usage/LlmUsageEvent.php
+
+		-
+			message: '#^Method App\\Domain\\Ai\\Usage\\LlmUsageEvent\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Domain/Ai/Usage/LlmUsageEvent.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Ai/Usage/UsageRecorder.php
+
+		-
+			message: '#^Method App\\Domain\\Authorization\\Application\\AgentPermissionResolver\:\:integrationProviders\(\) should return array\<int, object\> but returns array\<string, OpenCompany\\IntegrationCore\\Contracts\\ToolProvider\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Domain/Authorization/Application/AgentPermissionResolver.php
+
+		-
+			message: '#^Unable to resolve the template type T in call to function array_values$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Domain/Authorization/Application/AgentPermissionResolver.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Domain/Authorization/Application/AgentPermissionResolver.php
+
+		-
+			message: '#^Method App\\Domain\\Automations\\Application\\ManageAutomations\:\:runs\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: string, title\: string, status\: string, runNumber\: mixed, result\: array\<string, mixed\>\|null, agentName\: string\|null, startedAt\: Carbon\\Carbon\|null, completedAt\: Carbon\\Carbon\|null, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Domain/Automations/Application/ManageAutomations.php
+
+		-
+			message: '#^Method App\\Domain\\Calendar\\Application\\ManageCalendarEvents\:\:baseQuery\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Domain/Calendar/Application/ManageCalendarEvents.php
+
+		-
+			message: '#^Method App\\Domain\\Calendar\\Application\\ManageCalendarEvents\:\:list\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\CalendarEvent\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 2
+			path: app/Domain/Calendar/Application/ManageCalendarEvents.php
+
+		-
+			message: '#^Parameter \#1 \$recurringEvents of method App\\Domain\\Calendar\\Application\\ManageCalendarEvents\:\:expandRecurringEvents\(\) expects Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\CalendarEvent\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/Calendar/Application/ManageCalendarEvents.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramApprovalRenderer.php
+
+		-
+			message: '#^Cannot call method timezone\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramApprovalRenderer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 5
+			path: app/Domain/Chat/Telegram/Application/TelegramApprovalRenderer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Call to function is_array\(\) with \*NEVER\* will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Call to function is_array\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Call to method gather\(\) on an unknown class App\\Domain\\Chat\\Telegram\\Application\\WorkspaceStatusService\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Cannot call method diffForHumans\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Class App\\Domain\\Chat\\Telegram\\Application\\WorkspaceStatusService not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Offset ''code'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Offset ''diagnostics'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Offset ''filename'' on array\{dirname\?\: string, basename\: string, extension\?\: string, filename\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Offset ''message'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Offset ''status'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Offset ''type'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 2
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between array\{\} and array\{\} will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>command_sync_status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>health_status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 9
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>pending_update_count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
+
+		-
+			message: '#^Call to function is_string\(\) with ''09\:00'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramDigestService.php
+
+		-
+			message: '#^Offset ''digest_key'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramDigestService.php
+
+		-
+			message: '#^Offset ''event_type'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramDigestService.php
+
+		-
+			message: '#^Offset ''time'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramDigestService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''task'' and ''task_failed'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramDigestService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and string will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramDigestService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 20
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Workspace\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Call to function is_string\(\) with ''immediate'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Call to function is_string\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Offset ''mode'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Offset ''reply_markup'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Offset ''snoozed_until'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Offset ''text'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 2
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and string will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 3
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Cannot call method diffInMilliseconds\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 6
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\TelegramDelivery\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\TelegramInteraction\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\TelegramUpdateReceipt\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Parameter \#2 \$results of method App\\Services\\TelegramService\:\:answerInlineQuery\(\) expects list\<array\<string, mixed\>\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\TelegramDelivery\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\TelegramInteraction\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\TelegramUpdateReceipt\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:all\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 3
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:values\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 3
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>content" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Domain/Chat/Telegram/Application/TelegramOutboundSync.php
+
+		-
+			message: '#^Offset ''chat_id'' on array\{\}\|string in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOutboundSync.php
+
+		-
+			message: '#^Offset ''chat_id'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOutboundSync.php
+
+		-
+			message: '#^Offset ''direct_messages…'' on array\{\}\|string in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOutboundSync.php
+
+		-
+			message: '#^Offset ''topic_id'' on array\{\}\|string in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramOutboundSync.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramSetupService.php
+
+		-
+			message: '#^Offset ''code'' on array\{code\: string, severity\: string, message\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramSetupService.php
+
+		-
+			message: '#^Offset ''diagnostics'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramSetupService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments '''', array\{''approve'', ''reject''\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments '''', array\{''summarize'', ''create_doc'', ''choose_doc'', ''attach_to_doc'', ''change_folder'', ''move_to_folder'', ''move_to_root''\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Call to function is_array\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 6
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/agents'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/approvals'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/automation'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/dashboard'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/docs'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/files'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/link'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/lists'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/settings'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/tables'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/tasks'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''cancel'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''pause'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''resume'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between ''d'' and ''d'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:handleEditedMessage\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:handleInlineQuery\(\) never returns App\\Models\\TelegramConversation so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:handleMediaCaptureAttachToDocument\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:handleMediaCaptureCreateDocument\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:handleMediaCaptureDocumentPicker\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:handleMediaCaptureFolderPicker\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:handleMediaCaptureMoveFiles\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:linkText\(\) has parameter \$message with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:mediaCaptureInteraction\(\) has parameter \$extraPayload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:rememberInlineResult\(\) never returns App\\Models\\TelegramConversation so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:resolveListDraftProject\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:startText\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:topicHelpText\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:topicText\(\) has parameter \$message with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''action'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 7
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''agent_id'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''approval_id'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''command'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''conversation_id'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''data'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''draft'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''duration'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''event'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''row_input'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''status'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''table_id'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''table_id'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''task_id'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset ''title'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Offset string on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{0\?\: non\-falsy\-string\}\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Parameter \#3 \$workspace of method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:processPayload\(\) expects App\\Models\\Workspace, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 2
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 7
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between '''' and ''create'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between '''' and ''select'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between '''' and ''cancel'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 5
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between '''' and ''dismiss'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between '''' and ''files'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between '''' and ''inspect'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between array\{\} and array\{\} will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 2
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 6
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\TelegramInteraction\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Method App\\Domain\\Integrations\\Application\\ManageIntegrationSettings\:\:listAccounts\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{alias\: string, is_default\: bool, enabled\: bool, configured\: bool\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Domain/Integrations/Application/ManageIntegrationSettings.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\McpServer\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Domain/Integrations/Application/ManageMcpServers.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:getCollection\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Domain/Work/Application/ManageTasks.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:setCollection\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Domain/Work/Application/ManageTasks.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:toArray\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Domain/Work/Application/ManageTasks.php
+
+		-
+			message: '#^PHPDoc tag @var for variable \$paginated contains generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Domain/Work/Application/ManageTasks.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Events/TaskUpdated.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Events/UserPresenceUpdated.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\ActivityController\:\:buildTaskActivity\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/ActivityController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\CalendarEventController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Api/CalendarEventController.php
+
+		-
+			message: '#^Parameter \#1 \$workspace of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\CalendarEvent\>\:\:forWorkspace\(\) expects App\\Models\\Workspace\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/Api/CalendarFeedController.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Controllers/Api/DataTableController.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Controllers/Api/DataTableController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\FileController\:\:formatFile\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/FileController.php
+
+		-
+			message: '#^Offset ''category'' on non\-empty\-array\<string, mixed\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Api/IntegrationCatalogController.php
+
+		-
+			message: '#^Offset ''icon'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\}\|array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Api/IntegrationCatalogController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/IntegrationCatalogController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Api/IntegrationController.php
+
+		-
+			message: '#^Cannot call method diffForHumans\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/IntegrationWebhookController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: mixed$#'
+			identifier: match.unhandled
+			count: 3
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:approvalDetail\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:approvalQuery\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:approvalsPanel\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:argumentSummary\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:automationPanel\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:docsPanel\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:filesPanel\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:identityPanel\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:notificationsPanel\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:settingsPanel\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:taskDetail\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:taskStepSummary\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:tasksPanel\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Offset ''diagnostics'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Offset ''source'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>allowed_updates" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>bot_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>bot_username" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>default_mode" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>health_status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/TelegramMiniAppController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\UserController\:\:findWorkspaceUser\(\) should return App\\Models\\User but returns Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/Api/UserController.php
+
+		-
+			message: '#^Parameter \#1 \$items of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\User\>\:\:merge\(\) expects iterable\<\(int\|string\), App\\Models\\User\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/UserController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\WorkspaceDiskController\:\:validateDriverConfig\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Api/WorkspaceDiskController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$avatar\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorkspaceMemberController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorkspaceMemberController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorkspaceMemberController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorkspaceMemberController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$pivot\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/WorkspaceMemberController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/WorkspaceMemberController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Api/WorkspaceMemberController.php
+
+		-
+			message: '#^Call to function abort_if\(\) with true and 404 will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/TelegramLinkController.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/TelegramLinkController.php
+
+		-
+			message: '#^Offset ''display_name'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/TelegramLinkController.php
+
+		-
+			message: '#^Offset ''telegram_user_id'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/TelegramLinkController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between '''' and '''' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/TelegramLinkController.php
+
+		-
+			message: '#^Method App\\Http\\Middleware\\ResolveWorkspace\:\:resolve\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Http/Middleware/ResolveWorkspace.php
+
+		-
+			message: '#^Method App\\Http\\Middleware\\ValidateCsrfToken\:\:shouldSkipLocalNgrokLogin\(\) has parameter \$request with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Http/Middleware/ValidateCsrfToken.php
+
+		-
+			message: '#^Call to function is_array\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 3
+			path: app/Jobs/EnrichTelegramMediaJob.php
+
+		-
+			message: '#^Offset ''cache_key'' on null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Jobs/EnrichTelegramMediaJob.php
+
+		-
+			message: '#^Offset ''telegram_enrichment'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Jobs/EnrichTelegramMediaJob.php
+
+		-
+			message: '#^Offset ''type'' does not exist on null\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Jobs/EnrichTelegramMediaJob.php
+
+		-
+			message: '#^Offset ''type'' on null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Jobs/EnrichTelegramMediaJob.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between '''' and '''' will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 2
+			path: app/Jobs/EnrichTelegramMediaJob.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>metadata" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Jobs/EnrichTelegramMediaJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/ExecuteAgentTaskJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Document\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/IndexDocumentJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\McpServer\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/RefreshMcpToolsJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/SendApprovalToTelegramJob.php
+
+		-
+			message: '#^Method App\\Listeners\\SyncToChat\:\:getAdapter\(\) has parameter \$channel with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Listeners/SyncToChat.php
+
+		-
+			message: '#^Method App\\Listeners\\SyncToChat\:\:isExternalChannel\(\) has parameter \$channel with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Listeners/SyncToChat.php
+
+		-
+			message: '#^Method App\\Listeners\\SyncToChat\:\:resolveThreadId\(\) has parameter \$channel with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Listeners/SyncToChat.php
+
+		-
+			message: '#^Method App\\Listeners\\SyncToChat\:\:sendAttachmentImages\(\) has parameter \$adapter with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Listeners/SyncToChat.php
+
+		-
+			message: '#^Method App\\Listeners\\SyncToChat\:\:sendInlineImages\(\) has parameter \$adapter with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Listeners/SyncToChat.php
+
+		-
+			message: '#^Method App\\Models\\Activity\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Activity.php
+
+		-
+			message: '#^Method App\\Models\\Activity\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Activity.php
+
+		-
+			message: '#^Method App\\Models\\Activity\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Activity.php
+
+		-
+			message: '#^Method App\\Models\\AiGatewayApiKey\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AiGatewayApiKey.php
+
+		-
+			message: '#^Method App\\Models\\AiGatewayApiKey\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AiGatewayApiKey.php
+
+		-
+			message: '#^Method App\\Models\\AiGatewayApiKey\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AiGatewayApiKey.php
+
+		-
+			message: '#^Method App\\Models\\AppSetting\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AppSetting.php
+
+		-
+			message: '#^Method App\\Models\\AppSetting\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AppSetting.php
+
+		-
+			message: '#^Method App\\Models\\AppSetting\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AppSetting.php
+
+		-
+			message: '#^Method App\\Models\\Automation\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Automation.php
+
+		-
+			message: '#^Method App\\Models\\Automation\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Automation.php
+
+		-
+			message: '#^Method App\\Models\\Automation\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Automation.php
+
+		-
+			message: '#^Method App\\Models\\CalendarEvent\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/CalendarEvent.php
+
+		-
+			message: '#^Method App\\Models\\CalendarEvent\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/CalendarEvent.php
+
+		-
+			message: '#^Method App\\Models\\CalendarEvent\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/CalendarEvent.php
+
+		-
+			message: '#^Method App\\Models\\CalendarFeed\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/CalendarFeed.php
+
+		-
+			message: '#^Method App\\Models\\CalendarFeed\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/CalendarFeed.php
+
+		-
+			message: '#^Method App\\Models\\CalendarFeed\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/CalendarFeed.php
+
+		-
+			message: '#^Method App\\Models\\Channel\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Channel.php
+
+		-
+			message: '#^Method App\\Models\\Channel\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Channel.php
+
+		-
+			message: '#^Method App\\Models\\Channel\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Channel.php
+
+		-
+			message: '#^Method App\\Models\\ConversationSummary\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ConversationSummary.php
+
+		-
+			message: '#^Method App\\Models\\ConversationSummary\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ConversationSummary.php
+
+		-
+			message: '#^Method App\\Models\\ConversationSummary\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ConversationSummary.php
+
+		-
+			message: '#^Method App\\Models\\DataTable\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/DataTable.php
+
+		-
+			message: '#^Method App\\Models\\DataTable\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/DataTable.php
+
+		-
+			message: '#^Method App\\Models\\DataTable\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/DataTable.php
+
+		-
+			message: '#^Method App\\Models\\Document\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Document.php
+
+		-
+			message: '#^Method App\\Models\\Document\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Document.php
+
+		-
+			message: '#^Method App\\Models\\Document\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Document.php
+
+		-
+			message: '#^Method App\\Models\\DocumentChunk\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/DocumentChunk.php
+
+		-
+			message: '#^Method App\\Models\\DocumentChunk\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/DocumentChunk.php
+
+		-
+			message: '#^Method App\\Models\\DocumentChunk\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/DocumentChunk.php
+
+		-
+			message: '#^Method App\\Models\\EmbeddingCache\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/EmbeddingCache.php
+
+		-
+			message: '#^Method App\\Models\\EmbeddingCache\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/EmbeddingCache.php
+
+		-
+			message: '#^Method App\\Models\\EmbeddingCache\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/EmbeddingCache.php
+
+		-
+			message: '#^Method App\\Models\\IntegrationSetting\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/IntegrationSetting.php
+
+		-
+			message: '#^Method App\\Models\\IntegrationSetting\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/IntegrationSetting.php
+
+		-
+			message: '#^Method App\\Models\\IntegrationSetting\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/IntegrationSetting.php
+
+		-
+			message: '#^Class App\\Models\\IntegrationWebhook uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/IntegrationWebhook.php
+
+		-
+			message: '#^Method App\\Models\\IntegrationWebhook\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/IntegrationWebhook.php
+
+		-
+			message: '#^Method App\\Models\\IntegrationWebhook\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/IntegrationWebhook.php
+
+		-
+			message: '#^Method App\\Models\\IntegrationWebhook\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/IntegrationWebhook.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ListItem\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/ListItem.php
+
+		-
+			message: '#^Method App\\Models\\ListItem\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ListItem.php
+
+		-
+			message: '#^Method App\\Models\\ListItem\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ListItem.php
+
+		-
+			message: '#^Method App\\Models\\ListItem\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ListItem.php
+
+		-
+			message: '#^Method App\\Models\\ListStatus\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ListStatus.php
+
+		-
+			message: '#^Method App\\Models\\ListStatus\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ListStatus.php
+
+		-
+			message: '#^Method App\\Models\\ListStatus\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ListStatus.php
+
+		-
+			message: '#^Method App\\Models\\ListTemplate\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ListTemplate.php
+
+		-
+			message: '#^Method App\\Models\\ListTemplate\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ListTemplate.php
+
+		-
+			message: '#^Method App\\Models\\ListTemplate\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ListTemplate.php
+
+		-
+			message: '#^Method App\\Models\\McpServer\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/McpServer.php
+
+		-
+			message: '#^Method App\\Models\\McpServer\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/McpServer.php
+
+		-
+			message: '#^Method App\\Models\\McpServer\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/McpServer.php
+
+		-
+			message: '#^Method App\\Models\\Notification\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Notification.php
+
+		-
+			message: '#^Method App\\Models\\Notification\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Notification.php
+
+		-
+			message: '#^Method App\\Models\\Notification\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Notification.php
+
+		-
+			message: '#^Method App\\Models\\Task\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Method App\\Models\\Task\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Method App\\Models\\Task\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Method App\\Models\\TelegramConversation\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramConversation.php
+
+		-
+			message: '#^Method App\\Models\\TelegramConversation\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramConversation.php
+
+		-
+			message: '#^Method App\\Models\\TelegramConversation\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramConversation.php
+
+		-
+			message: '#^Method App\\Models\\TelegramDelivery\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramDelivery.php
+
+		-
+			message: '#^Method App\\Models\\TelegramDelivery\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramDelivery.php
+
+		-
+			message: '#^Method App\\Models\\TelegramDelivery\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramDelivery.php
+
+		-
+			message: '#^Method App\\Models\\TelegramIntegrationProfile\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramIntegrationProfile.php
+
+		-
+			message: '#^Method App\\Models\\TelegramIntegrationProfile\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramIntegrationProfile.php
+
+		-
+			message: '#^Method App\\Models\\TelegramIntegrationProfile\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramIntegrationProfile.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/TelegramInteraction.php
+
+		-
+			message: '#^Method App\\Models\\TelegramInteraction\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramInteraction.php
+
+		-
+			message: '#^Method App\\Models\\TelegramInteraction\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramInteraction.php
+
+		-
+			message: '#^Method App\\Models\\TelegramInteraction\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramInteraction.php
+
+		-
+			message: '#^Offset ''checksum_version'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/TelegramInteraction.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and ''v2'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Models/TelegramInteraction.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Models/TelegramInteraction.php
+
+		-
+			message: '#^Method App\\Models\\TelegramSubscription\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramSubscription.php
+
+		-
+			message: '#^Method App\\Models\\TelegramSubscription\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramSubscription.php
+
+		-
+			message: '#^Method App\\Models\\TelegramSubscription\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramSubscription.php
+
+		-
+			message: '#^Method App\\Models\\TelegramUpdateReceipt\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramUpdateReceipt.php
+
+		-
+			message: '#^Method App\\Models\\TelegramUpdateReceipt\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramUpdateReceipt.php
+
+		-
+			message: '#^Method App\\Models\\TelegramUpdateReceipt\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/TelegramUpdateReceipt.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:workspaces\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\WebUsageEvent\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/WebUsageEvent.php
+
+		-
+			message: '#^Method App\\Models\\WebUsageEvent\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/WebUsageEvent.php
+
+		-
+			message: '#^Method App\\Models\\WebUsageEvent\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/WebUsageEvent.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:admins\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:agents\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:appSettings\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:automations\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:channels\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:documents\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:integrationSettings\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:invitations\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:mcpServers\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:members\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:owner\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Method App\\Models\\Workspace\:\:tasks\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Workspace.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: app/Models/WorkspaceDisk.php
+
+		-
+			message: '#^Method App\\Models\\WorkspaceDisk\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/WorkspaceDisk.php
+
+		-
+			message: '#^Method App\\Models\\WorkspaceDisk\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/WorkspaceDisk.php
+
+		-
+			message: '#^Method App\\Models\\WorkspaceDisk\:\:toSafeArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/WorkspaceDisk.php
+
+		-
+			message: '#^Method App\\Models\\WorkspaceDisk\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/WorkspaceDisk.php
+
+		-
+			message: '#^Method App\\Models\\WorkspaceFile\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/WorkspaceFile.php
+
+		-
+			message: '#^Method App\\Models\\WorkspaceFile\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/WorkspaceFile.php
+
+		-
+			message: '#^Method App\\Models\\WorkspaceFile\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/WorkspaceFile.php
+
+		-
+			message: '#^Method App\\Services\\AgentDocumentService\:\:getPeerMemoriesForAgents\(\) has parameter \$agentIds with no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/AgentDocumentService.php
+
+		-
+			message: '#^Method App\\Services\\AgentDocumentService\:\:getPeerMemoriesForUsers\(\) has parameter \$userIds with no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/AgentDocumentService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/AgentDocumentService.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Ai/ModelRuntimeCatalog.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Ai/ModelRuntimeCatalog.php
+
+		-
+			message: '#^Method App\\Services\\Chat\\ChatBridge\:\:resolveExternalId\(\) has parameter \$decoded with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Chat/ChatBridge.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Chat/DirectMessageResolver.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Contracts\\Filesystem\\Filesystem and ''temporaryUrl'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/FileSystemService.php
+
+		-
+			message: '#^Method App\\Services\\FileSystemService\:\:buildTree\(\) has parameter \$folders with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/FileSystemService.php
+
+		-
+			message: '#^Method App\\Services\\FileSystemService\:\:buildTree\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/FileSystemService.php
+
+		-
+			message: '#^Method App\\Services\\FileSystemService\:\:getFolderTree\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/FileSystemService.php
+
+		-
+			message: '#^Method App\\Services\\FileSystemService\:\:listDirectory\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/FileSystemService.php
+
+		-
+			message: '#^Method App\\Services\\FileSystemService\:\:searchFiles\(\) has parameter \$accessibleFolderIds with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/FileSystemService.php
+
+		-
+			message: '#^Method App\\Services\\FileSystemService\:\:searchFiles\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/FileSystemService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/Integrations/ConfigSchemaNormalizer.php
+
+		-
+			message: '#^Method App\\Services\\Integrations\\IntegrationCatalog\:\:all\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\<mixed, mixed\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Integrations/IntegrationCatalog.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Integrations/IntegrationCatalog.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Integrations/IntegrationCatalog.php
+
+		-
+			message: '#^Call to an undefined method OpenCompany\\IntegrationCore\\Contracts\\ConfigurableIntegration\:\:appName\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/Integrations/IntegrationConfigResolver.php
+
+		-
+			message: '#^Offset ''category'' on array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationConfigResolver.php
+
+		-
+			message: '#^Offset ''icon'' on array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationConfigResolver.php
+
+		-
+			message: '#^Call to an undefined method OpenCompany\\IntegrationCore\\Contracts\\ConfigurableIntegration\:\:appName\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/Integrations/IntegrationDirectory.php
+
+		-
+			message: '#^Offset ''category'' on array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationDirectory.php
+
+		-
+			message: '#^Offset ''description'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationDirectory.php
+
+		-
+			message: '#^Offset ''icon'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationDirectory.php
+
+		-
+			message: '#^Offset ''icon'' on array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationDirectory.php
+
+		-
+			message: '#^Offset ''label'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationDirectory.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Integrations/IntegrationDirectory.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Mcp/McpConfigImporter.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Mcp/McpConfigImporter.php
+
+		-
+			message: '#^Method App\\Services\\Mcp\\McpProxyTool\:\:parameters\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 3
+			path: app/Services/Mcp/McpProxyTool.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Mcp/McpServerRegistrar.php
+
+		-
+			message: '#^Offset 1 on array\{list\<string\>, list\<string\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Memory/CompactionMemoryExtractor.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Document\:\:\$workspace_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Memory/DocumentIndexingService.php

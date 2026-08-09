@@ -1,5 +1,8 @@
 includes:
     - vendor/larastan/larastan/extension.neon
+    # This checked-in debt inventory makes CI a regression gate: new errors
+    # fail while existing findings remain explicit and removable over time.
+    - phpstan-baseline.neon
 
 parameters:
     paths:

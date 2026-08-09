@@ -111,7 +111,9 @@ jobs:
         uses: ramsey/composer-install@v3
 
       - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --memory-limit=512M
+        # The complete app plus 591 path-based integration packages exceeds
+        # 512 MiB during PHPStan's parallel analysis on GitHub runners.
+        run: vendor/bin/phpstan analyse --memory-limit=2G
 
   production-image:
     name: Production image
