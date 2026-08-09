@@ -59,6 +59,7 @@
         }
     ],
     "require": {
+        "ext-quickjs_sandbox": "^1.0",
         "php": "^8.4",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/ai": "^0.6.7",

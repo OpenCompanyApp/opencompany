@@ -1,23 +1,26 @@
 <?php
 
-namespace App\Agents\Tools\Lua;
+namespace App\Agents\Tools\Code;
 
 use App\Models\User;
-use App\Services\LuaApiDocGenerator;
+use App\Services\CodeApiDocGenerator;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class LuaListDocs implements Tool
+/**
+ * Lists permission-visible Code Mode namespaces and supplementary guides.
+ */
+final class CodeListDocs implements Tool
 {
     public function __construct(
-        private LuaApiDocGenerator $docs,
+        private CodeApiDocGenerator $docs,
         private User $agent,
     ) {}
 
     public function description(): string
     {
-        return 'List available Lua API namespaces for discovery. Use lua_read_doc for the actual function list, parameters, and detailed reference before calling anything.';
+        return 'List permission-visible Code Mode namespaces. Use code_read_doc for exact inputs, effects, return shapes, and examples before calling a capability.';
     }
 
     public function handle(Request $request): string
@@ -27,7 +30,7 @@ class LuaListDocs implements Tool
 
             return $this->docs->generateNamespaceIndex($this->agent, $namespace);
         } catch (\Throwable $e) {
-            return "Error listing Lua API docs: {$e->getMessage()}";
+            return "Error listing Code Mode docs: {$e->getMessage()}";
         }
     }
 

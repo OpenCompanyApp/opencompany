@@ -3,7 +3,9 @@
 namespace App\Agents\Tools\Workspace;
 
 use App\Models\Automation;
+use App\Models\Channel;
 use App\Models\User;
+use App\Services\QuickJsSandboxService;
 use Cron\CronExpression;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
@@ -13,6 +15,7 @@ class UpdateAutomation implements Tool
 {
     public function __construct(
         private User $agent,
+        private QuickJsSandboxService $sandbox,
     ) {}
 
     public function description(): string
@@ -51,10 +54,33 @@ class UpdateAutomation implements Tool
                 $updates['prompt'] = $request['prompt'];
             }
             if (isset($request['script'])) {
-                if (! str_starts_with(trim($request['script']), '--!strict')) {
-                    return 'Automation scripts must start with --!strict. Add it as the first line.';
-                }
                 $updates['script'] = $request['script'];
+            }
+
+            $targetType = $updates['execution_type'] ?? $automation->execution_type;
+            if ($targetType === 'script'
+                && (isset($request['script']) || $automation->script_runtime !== config('code.runtime'))) {
+                $script = (string) ($updates['script'] ?? $automation->script ?? '');
+                if (trim($script) === '') {
+                    return 'A JavaScript body is required before enabling a script automation.';
+                }
+
+                $validation = $this->sandbox->execute(
+                    code: $script,
+                    profile: 'automation',
+                    validateOnly: true,
+                    sourceName: 'automation-code.js',
+                );
+                if (! $validation->succeeded()) {
+                    $error = $validation->error ?? [];
+
+                    return 'JavaScript validation failed ['.($error['type'] ?? 'syntax_error').']'
+                        .(isset($error['line']) ? ' at line '.$error['line'] : '')
+                        .': '.($error['message'] ?? 'Invalid source.');
+                }
+                $updates['script_runtime'] = config('code.runtime');
+            } elseif ($targetType === 'prompt') {
+                $updates['script_runtime'] = null;
             }
             if (isset($request['cronExpression'])) {
                 if (! CronExpression::isValidExpression($request['cronExpression'])) {
@@ -75,7 +101,7 @@ class UpdateAutomation implements Tool
                 $updates['agent_id'] = $request['agentId'];
             }
             if (isset($request['channelId'])) {
-                $channel = \App\Models\Channel::forWorkspace()->find($request['channelId']);
+                $channel = Channel::forWorkspace()->find($request['channelId']);
                 if (! $channel) {
                     return 'Error: Channel not found in this workspace.';
                 }
@@ -126,7 +152,7 @@ class UpdateAutomation implements Tool
                 ->description('New prompt (for prompt-type automations).'),
             'script' => $schema
                 ->string()
-                ->description('New Luau script (for script-type automations). Must start with --!strict for type safety.'),
+                ->description('New synchronous JavaScript function body for a script automation. It is compiled before saving.'),
             'cronExpression' => $schema
                 ->string()
                 ->description('New cron expression.'),

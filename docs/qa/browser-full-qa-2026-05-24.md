@@ -115,7 +115,7 @@ Make `Modal.vue` explicitly emit `close` when Reka tries to close, including Esc
 
 Severity: Medium
 
-Manual result: chat run boxes show readable names like `Update Task` and `Execute Lua Code`, but task detail still shows `UpdateTask`, `LuaExec`, and `SetTaskStatus`.
+Manual result: chat run boxes show readable names like `Update Task` and `Execute Lua Code`, but task detail still shows `UpdateTask`, `CodeExec`, and `SetTaskStatus`.
 
 Evidence:
 
@@ -153,7 +153,7 @@ Manual result: `UpdateTask` expands to raw JSON under `ARGUMENTS`. The Lua execu
 Evidence:
 
 - Browser: `/tmp/opencompany-qa-20260524T183920Z/manual-task-update-tool-detail.json`
-- Code: `resources/js/Components/tasks/ExecutionTrace.vue:81` uses generic JSON rendering for all non-`LuaExec` tools
+- Code: `resources/js/Components/tasks/ExecutionTrace.vue:81` uses generic JSON rendering for all non-`CodeExec` tools
 
 Suggested fix:
 

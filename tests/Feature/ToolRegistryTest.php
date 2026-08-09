@@ -184,12 +184,14 @@ class ToolRegistryTest extends TestCase
         $this->assertNull($tool);
     }
 
-    public function test_app_catalog_includes_lua_docs_first_guidance(): void
+    public function test_app_catalog_includes_code_mode_ax_guidance(): void
     {
         $catalog = $this->registry->getAppCatalog($this->agent);
 
-        $this->assertStringContainsString('Always call lua_read_doc(namespace) before writing code', $catalog);
+        $this->assertStringContainsString('Always call code_read_doc(namespace) before writing code', $catalog);
         $this->assertStringContainsString('Do not assume raw upstream API response shapes', $catalog);
-        $this->assertStringContainsString('inspect with a minimal lua_exec call before writing multi-step logic', $catalog);
+        $this->assertStringContainsString('minimal read-only code_exec call before multi-step logic', $catalog);
+        $this->assertStringContainsString('failed writes with effectStatus=unknown', $catalog);
+        $this->assertStringContainsString('never await or Promise APIs', $catalog);
     }
 }

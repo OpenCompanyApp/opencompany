@@ -89,7 +89,7 @@ User Guide
 │
 ├── Automations                      [NEW]    — Scheduled tasks, cron expressions, execution history
 │   ├── Scheduled Automations        [NEW]    — Create and manage recurring agent tasks
-│   └── Lua Scripting                [NEW]    — Deterministic script automations with the Lua sandbox and bridge
+│   └── Code Mode                    [NEW]    — Deterministic JavaScript automations with the QuickJS sandbox and effect-aware bridge
 │
 ├── Org Chart                                 — Agent hierarchy, team structure, constellation view
 │

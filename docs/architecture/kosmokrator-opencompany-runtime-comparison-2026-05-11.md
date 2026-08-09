@@ -387,7 +387,7 @@ Implementation steps:
    - Provider/model tests should return structured provider/model/auth diagnostics.
 
 5. Route Lua and agent integration execution through `IntegrationRuntime`.
-   - Keep existing `OpenCompanyLuaToolInvoker` behavior initially.
+   - Keep existing `OpenCompanyScriptToolInvoker` behavior initially.
    - Replace direct provider/tool construction with runtime calls once parity tests pass.
 
 6. Slim `IntegrationController`.

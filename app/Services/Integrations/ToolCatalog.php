@@ -10,7 +10,7 @@ use App\Agents\Tools\ToolRegistry;
  * Older generated actions and long-running local processes may still resolve
  * this service name while the current runtime uses App\Agents\Tools\ToolRegistry
  * directly. Keep this adapter thin so tool ownership, permissions, package
- * discovery, and Lua catalog behavior remain centralized in ToolRegistry.
+ * discovery, and Code Mode catalog behavior remain centralized in ToolRegistry.
  */
 class ToolCatalog extends ToolRegistry
 {

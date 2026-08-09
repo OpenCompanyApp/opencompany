@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use Carbon\Carbon;
 use Cron\CronExpression;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Concerns\BelongsToWorkspace;
+use Illuminate\Support\Str;
 
 /**
  * @property string $id
@@ -18,6 +19,7 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property string $execution_type
  * @property string $prompt
  * @property string|null $script
+ * @property string|null $script_runtime
  * @property string $cron_expression
  * @property string $timezone
  * @property bool $is_active
@@ -48,6 +50,7 @@ class Automation extends Model
         'agent_id',
         'prompt',
         'script',
+        'script_runtime',
         'cron_expression',
         'timezone',
         'is_active',
@@ -160,7 +163,7 @@ class Automation extends Model
     {
         if (! $this->channel_id) {
             $channel = Channel::create([
-                'id' => \Illuminate\Support\Str::uuid()->toString(),
+                'id' => Str::uuid()->toString(),
                 'workspace_id' => $this->workspace_id,
                 'name' => $this->name,
                 'type' => 'dm',
@@ -197,7 +200,12 @@ class Automation extends Model
         ]);
     }
 
-    public function recordFailure(string $error): void
+    /**
+     * Record a failed run with optional structured runtime/effect diagnostics.
+     *
+     * @param  array<string, mixed>  $details
+     */
+    public function recordFailure(string $error, array $details = []): void
     {
         $failures = $this->consecutive_failures + 1;
 
@@ -207,7 +215,7 @@ class Automation extends Model
             'run_count' => $this->run_count + 1,
             'consecutive_failures' => $failures,
             'is_active' => $failures < 5,
-            'last_result' => ['error' => $error],
+            'last_result' => array_merge(['error' => $error], $details),
         ]);
     }
 }

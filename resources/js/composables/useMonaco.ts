@@ -1,4 +1,4 @@
-import editorWorkerUrl from 'monaco-editor/esm/vs/editor/editor.worker?url'
+import editorWorkerUrl from 'monaco-editor/esm/vs/editor/editor.worker?worker&url'
 
 let editorWorkerBlobUrl: string | null = null
 
@@ -17,12 +17,23 @@ const monacoWorkerUrl = () => {
 // Must be set BEFORE monaco-editor is imported — it checks this on load
 self.MonacoEnvironment = {
   getWorker() {
-    return new Worker(monacoWorkerUrl(), { type: 'module', name: 'monaco-editor-worker' })
+    // Production assets are served from the same origin, so the emitted
+    // worker URL is both simpler and more reliable there. Keep the blob
+    // indirection exclusively for Valet/Vite development, where the page and
+    // module server intentionally have different origins.
+    const workerUrl = import.meta.env.DEV ? monacoWorkerUrl() : editorWorkerUrl
+
+    return new Worker(workerUrl, { type: 'module', name: 'monaco-editor-worker' })
   },
 }
 
-import * as monaco from 'monaco-editor'
-import 'monaco-editor/esm/vs/basic-languages/lua/lua.contribution'
+// Import the editor surface and contributions explicitly. The umbrella
+// `monaco-editor` entry registers every bundled language and makes Code Mode
+// users download dozens of irrelevant tokenizers.
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
+import 'monaco-editor/esm/vs/editor/editor.all.js'
+import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution.js'
+import 'monaco-editor/esm/vs/language/typescript/monaco.contribution.js'
 
 let initialized = false
 

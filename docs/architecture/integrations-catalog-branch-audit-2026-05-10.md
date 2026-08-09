@@ -259,7 +259,7 @@ Fresh validation that passed:
 
 - `php -l` on changed PHP files
 - `git diff --check`
-- `php artisan test --testsuite=Feature --filter='Integration|DynamicProvider|ToolRegistry|LuaApiDocGenerator|LuaSandbox|Memory'`
+- `php artisan test --testsuite=Feature --filter='Integration|DynamicProvider|ToolRegistry|CodeApiDocGenerator|LuaSandbox|Memory'`
   - 197 passed, 7 skipped
 
 Validation that failed due to broader existing drift:

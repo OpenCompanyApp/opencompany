@@ -1,9 +1,10 @@
 # QuickJS Code Mode Migration
 
-Status: Approved direction; implementation plan only. OpenCompany will make a
-hard cut from the current Lua/Luau runtime to synchronous JavaScript on
+Status: Implemented on the coordinated `feat/quickjs` worktrees; verification
+and draft-PR evidence are recorded before merge. OpenCompany makes a hard cut
+from the prior runtime to synchronous JavaScript on
 `OpenCompanyApp/quickjs-sandbox`. No compatibility runtime or dual-language
-period will be retained.
+period is retained.
 
 Verified against `dev` at `93895a1` on 2026-08-09. The QuickJS extension
 contract and v1.0.0 release assets were also verified locally before this plan
@@ -66,20 +67,20 @@ deployment image, and documentation.
 | Surface | Current state on `dev` | Required cutover |
 |---|---|---|
 | Native runtime | `Lua\Sandbox`, installed from `OpenCompanyApp/lua-sandbox` in `Dockerfile` | `QuickJS\Sandbox` from `OpenCompanyApp/quickjs-sandbox` v1.0.0 |
-| Application runtime | `LuaSandboxService`, `LuaBridge`, `LuaResult`, `OpenCompanyLuaToolInvoker` | Code Mode classes with a QuickJS-specific sandbox adapter |
+| Application runtime | `QuickJsSandboxService`, `CodeBridge`, `CodeExecutionResult`, `OpenCompanyScriptToolInvoker` | Code Mode classes with a QuickJS-specific sandbox adapter |
 | Agent tools | `lua_exec`, `lua_list_docs`, `lua_read_doc`, `lua_search_docs` | `code_exec`, `code_list_docs`, `code_read_doc`, `code_search_docs` |
-| Tool catalog | `luaNamespace`, `luaDocs`, `luaFunction` | `scriptNamespace`, `scriptDocs`, `scriptFunction` |
+| Tool catalog | Legacy language-specific fields | `codeNamespace`, `scriptDocs`, `codeFunction` |
 | Integration core | Four Lua-specific core files and `ToolProvider::luaDocsPath()` | Language-neutral script catalog, docs, bridge, and invoker contracts |
-| Integration docs | 639 providers and 639 `lua-docs/*.md` files in the sibling repository | `scriptDocsPath()` and JavaScript examples under `script-docs/` |
+| Integration docs | 600 provider documentation directories in the clean sibling repository | `scriptDocsPath()` and JavaScript examples under `script-docs/` |
 | Static app docs | Five files under `resources/lua-docs/` | JavaScript Code Mode docs under `resources/code-docs/` |
-| Console | `/developer/lua-console`, `/api/lua/execute`, `LuaConsole.vue` | `/developer/code-console`, `/api/code/execute`, `CodeConsole.vue` |
+| Console | `/developer/lua-console`, `/api/lua/execute`, `CodeConsole.vue` | `/developer/code-console`, `/api/code/execute`, `CodeConsole.vue` |
 | Automations | Generic `script` column, but scripts execute as Luau and Monaco labels them Luau | Preserve generic storage; execute only `quickjs-v1` JavaScript |
-| Traces | `__LUA_META__`, `lua_meta`, `LuaExecutionDetail.vue` | `__CODE_META__`, `code_meta`, `CodeExecutionDetail.vue` |
+| Traces | Model-visible hidden metadata marker plus parser | `code_meta` side channel and `CodeExecutionDetail.vue`; no output marker |
 | Tests | Lua-named unit/feature coverage | QuickJS and Code Mode coverage plus cutover checks |
 
-At this snapshot, 64 active runtime/UI/test files in OpenCompany contain Lua
-references. The sibling `integrations` checkout contains 639
-`luaDocsPath()` implementations and 639 matching Lua documentation files. The
+At the planning snapshot, 64 active runtime/UI/test files in OpenCompany
+contained legacy runtime references. The clean sibling `integrations` worktree
+contained 600 provider documentation directories. The
 sibling checkout also has unrelated uncommitted work, so implementation must
 start from a separate clean worktree there.
 
@@ -97,7 +98,7 @@ metadata.
 | Native extension | `quickjs_sandbox` / Composer platform package `ext-quickjs_sandbox` |
 | Agent tool group | `code` |
 | Shared package contracts | `ScriptCatalogBuilder`, `ScriptDocRenderer`, `ScriptBridge`, `ScriptToolInvoker` |
-| App runtime adapter | `QuickJsSandbox` |
+| App runtime adapter | `QuickJsSandboxService` |
 | App orchestration | `CodeBridge`, `CodeApiDocGenerator`, `CodeExecutionResult` |
 | Trace metadata | `code_meta` |
 
@@ -229,28 +230,21 @@ sentinel result.
 
 ## PHP Runtime Design
 
-Create a focused bounded context under `app/Domain/CodeExecution`:
+The implemented app-owned boundary stays deliberately compact:
 
 ```text
-app/Domain/CodeExecution/
-├── Application/
-│   └── ExecuteCode.php
-├── Contracts/
-│   └── CodeExecutionProfile.php
-├── Support/
-│   ├── CodeApiDocGenerator.php
-│   ├── CodeBridge.php
-│   ├── CodeExecutionResult.php
-│   ├── CodeMetaParser.php
-│   └── OpenCompanyScriptToolInvoker.php
-└── Runtime/
-    └── QuickJsSandbox.php
+app/Services/
+├── QuickJsSandboxService.php
+├── CodeBridge.php
+├── CodeApiDocGenerator.php
+├── CodeExecutionResult.php
+└── OpenCompanyScriptToolInvoker.php
 ```
 
 The exact namespace may be flattened if Laravel dependency injection becomes
 needlessly noisy, but the ownership must remain explicit:
 
-- `QuickJsSandbox` alone knows `QuickJS\Sandbox`, its bootstrap source, and its
+- `QuickJsSandboxService` alone knows `QuickJS\Sandbox`, its bootstrap source, and its
   typed exceptions.
 - `CodeBridge` alone maps `app.*` paths to the shared script bridge and exposes
   its structured call log.
@@ -352,11 +346,11 @@ Replace the entire `app/Agents/Tools/Lua` directory with
 
 | Delete | Create | Model-facing name |
 |---|---|---|
-| `LuaExec` | `CodeExec` | `code_exec` |
-| `LuaListDocs` | `CodeListDocs` | `code_list_docs` |
-| `LuaReadDoc` | `CodeReadDoc` | `code_read_doc` |
-| `LuaSearchDocs` | `CodeSearchDocs` | `code_search_docs` |
-| `LuaToolProvider` | `CodeToolProvider` | group `code` |
+| `CodeExec` | `CodeExec` | `code_exec` |
+| `CodeListDocs` | `CodeListDocs` | `code_list_docs` |
+| `CodeReadDoc` | `CodeReadDoc` | `code_read_doc` |
+| `CodeSearchDocs` | `CodeSearchDocs` | `code_search_docs` |
+| `CodeToolProvider` | `CodeToolProvider` | group `code` |
 
 `code_exec` accepts only `code`. It does not expose memory or CPU knobs to the
 model. Its description must state that execution is synchronous, `app.*` is
@@ -377,7 +371,7 @@ fork. Because the current sibling checkout is dirty, create a separate clean
 
 1. Rename the four core types:
    - `Contracts/LuaToolInvoker` -> `Contracts/ScriptToolInvoker`
-   - `Lua/LuaBridge` -> `Script/ScriptBridge`
+   - `Lua/CodeBridge` -> `Script/ScriptBridge`
    - `Lua/LuaCatalogBuilder` -> `Script/ScriptCatalogBuilder`
    - `Lua/LuaDocRenderer` -> `Script/ScriptDocRenderer`
 2. Rename `ToolProvider::luaDocsPath()` to `scriptDocsPath()` with no deprecated
@@ -409,7 +403,7 @@ templates so the next package catalog build cannot reintroduce Lua.
 
 Within OpenCompany:
 
-- Rename `LuaApiDocGenerator` to `CodeApiDocGenerator`.
+- Rename `CodeApiDocGenerator` to `CodeApiDocGenerator`.
 - Rename `resources/lua-docs/` to `resources/code-docs/` and rewrite all five
   pages in JavaScript.
 - Change catalog response keys to `scriptNamespace`, `scriptDocs`, and
@@ -417,7 +411,7 @@ Within OpenCompany:
 - Render JavaScript signatures as
   `app.namespace.function({ required, optional? })`.
 - Update `resources/js/Pages/Developer/Tools.vue` to consume the new keys.
-- Replace `useLuaCompletions.ts` with `useCodeCompletions.ts` and use Monaco's
+- Replace `useCodeCompletions.ts` with `useCodeCompletions.ts` and use Monaco's
   built-in JavaScript language mode.
 - Update current architecture, ecosystem, UI, and planning documentation.
 - Mark `docs/planning/lua-scripting.md` as superseded initially, then remove it
@@ -482,20 +476,13 @@ shape, integer precision, and string concatenation.
 
 ## Execution Traces and Observability
 
-Replace language-specific trace plumbing:
+Remove the model-visible marker and parser entirely. `CodeExec` exposes its last
+structured result on the invoked tool instance; the synchronous listener reads
+that side channel before `OutputTruncator`, so call details survive human-output
+truncation without polluting model context. Task steps retain the neutral
+`code_meta` key and `CodeExecutionDetail.vue` renderer.
 
-- `<!--__LUA_META__...__LUA_META__-->` ->
-  `<!--__CODE_META__...__CODE_META__-->`
-- `LuaMetaParser` -> `CodeMetaParser`
-- task step `lua_meta` -> `code_meta`
-- `LuaExecutionDetail.vue` -> `CodeExecutionDetail.vue`
-- “Executed Lua script” -> “Executed JavaScript”
-
-Keep metadata extraction before `OutputTruncator`, as today, so structured call
-details survive human-output truncation. Include runtime version and normalized
-failure type in `code_meta`.
-
-Historical steps with `lua_meta` receive no specialized renderer after the hard
+Historical steps with `code_meta` receive no specialized renderer after the hard
 cut; their ordinary stored tool output remains available. Do not carry a legacy
 parser in active runtime code just to decorate prototype history.
 

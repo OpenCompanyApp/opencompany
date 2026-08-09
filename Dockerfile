@@ -54,11 +54,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pecl install redis && docker-php-ext-enable redis \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Lua Sandbox PHP extension (Luau runtime)
-ARG LUA_SANDBOX_VERSION=v1.0.0
-RUN curl -fsSL "https://github.com/OpenCompanyApp/lua-sandbox/releases/download/${LUA_SANDBOX_VERSION}/liblua_sandbox-linux-x86_64.so" \
-    -o "$(php-config --extension-dir)/liblua_sandbox.so" \
-    && echo "extension=liblua_sandbox.so" > /usr/local/etc/php/conf.d/lua-sandbox.ini
+# QuickJS sandbox PHP extension. Pin both release and digest so production
+# cannot silently pick up a replaced native artifact.
+ARG QUICKJS_SANDBOX_VERSION=v1.0.0
+ARG QUICKJS_SANDBOX_SHA256=925c7f290f15292b4e1e113ccb81b823f467b85cfacd6557431c282f19876cb4
+RUN curl -fsSL "https://github.com/OpenCompanyApp/quickjs-sandbox/releases/download/${QUICKJS_SANDBOX_VERSION}/quickjs_sandbox-php84-linux-x86_64.so" \
+    -o /tmp/quickjs_sandbox.so \
+    && echo "${QUICKJS_SANDBOX_SHA256}  /tmp/quickjs_sandbox.so" | sha256sum -c - \
+    && install -m 0644 /tmp/quickjs_sandbox.so "$(php-config --extension-dir)/quickjs_sandbox.so" \
+    && echo "extension=quickjs_sandbox.so" > /usr/local/etc/php/conf.d/quickjs-sandbox.ini \
+    && rm /tmp/quickjs_sandbox.so \
+    && php --ri quickjs_sandbox
 
 # PlantUML JAR
 RUN curl -fsSL https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar \
@@ -90,6 +96,7 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Laravel setup
 RUN rm -f bootstrap/cache/*.php \
+    && php -r "class_exists('QuickJS\\Sandbox') || exit(1);" \
     && php artisan package:discover --ansi \
     && php artisan route:cache \
     && php artisan view:cache \

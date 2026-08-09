@@ -189,10 +189,10 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             return Inertia::render('Developer/Tools');
         })->name('developer.tools');
 
-        // Lua console
-        Route::get('/developer/lua-console', function () {
-            return Inertia::render('Developer/LuaConsole');
-        })->name('developer.lua-console');
+        // Capability-empty QuickJS console
+        Route::get('/developer/code-console', function () {
+            return Inertia::render('Developer/CodeConsole');
+        })->name('developer.code-console');
 
         // Calendar
         Route::get('/calendar', function () {

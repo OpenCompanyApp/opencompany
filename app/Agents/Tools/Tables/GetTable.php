@@ -48,7 +48,7 @@ class GetTable implements Tool
                 return "Error: Table '{$tableId}' not found.";
             }
 
-            // Keep the response compact and stable for agents and Lua docs:
+            // Keep the response compact and stable for agents and Code Mode docs:
             // identifiers, names, types, and required flags only.
             return json_encode([
                 'id' => $table->id,

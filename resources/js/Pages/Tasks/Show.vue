@@ -55,7 +55,7 @@
               class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400"
             >
               <Icon name="ph:code" class="w-3 h-3" />
-              Luau Script
+              QuickJS Script
             </span>
           </div>
           <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">
@@ -300,7 +300,7 @@
             <Icon name="ph:code" class="w-4 h-4 text-violet-500" />
             Script
           </h3>
-          <pre class="text-xs rounded-lg p-4 overflow-x-auto border max-h-64 overflow-y-auto bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"><code class="hljs oc-syntax whitespace-pre-wrap break-words" v-html="highlight(task.description, 'lua')" /></pre>
+          <pre class="text-xs rounded-lg p-4 overflow-x-auto border max-h-64 overflow-y-auto bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"><code class="hljs oc-syntax whitespace-pre-wrap break-words" v-html="highlight(task.description, 'javascript')" /></pre>
           <button
             v-if="ctx.automation_id"
             class="mt-2 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
@@ -911,12 +911,12 @@ const bridgeCallsFromMetadata = (metadata: unknown): BridgeCallSummary[] => {
     return []
   }
 
-  const luaMeta = (metadata as { lua_meta?: unknown }).lua_meta
-  if (!luaMeta || typeof luaMeta !== 'object') {
+  const codeMeta = (metadata as { code_meta?: unknown }).code_meta
+  if (!codeMeta || typeof codeMeta !== 'object') {
     return []
   }
 
-  const bridgeCalls = (luaMeta as { bridgeCalls?: unknown }).bridgeCalls
+  const bridgeCalls = (codeMeta as { bridgeCalls?: unknown }).bridgeCalls
 
   return Array.isArray(bridgeCalls) ? bridgeCalls as BridgeCallSummary[] : []
 }

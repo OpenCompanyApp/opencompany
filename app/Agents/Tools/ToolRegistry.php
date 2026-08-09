@@ -9,8 +9,8 @@ use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\AgentPermissionService;
+use App\Services\CodeApiDocGenerator;
 use App\Services\Integrations\IntegrationCatalog;
-use App\Services\LuaApiDocGenerator;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -30,9 +30,9 @@ class ToolRegistry
 {
     /**
      * App groups that remain as direct AI tools.
-     * Everything else is accessible only via lua_exec (code-first approach).
+     * Everything else is accessible only through code_exec (code-first approach).
      */
-    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua', 'web'];
+    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'code', 'web'];
 
     /**
      * Apps that are external integrations (can be toggled per agent).
@@ -109,7 +109,7 @@ class ToolRegistry
             $this->effectiveToolMap = [];
 
             // Built-in providers are app-owned and may expose direct Laravel AI
-            // tools or Lua-only tools depending on DIRECT_TOOL_GROUPS.
+            // tools or Code Mode-only tools depending on DIRECT_TOOL_GROUPS.
             foreach ($this->builtInProviders as $provider) {
                 foreach ($provider->tools() as $slug => $meta) {
                     $normalized = $this->normalizeToolMeta($slug, $meta);
@@ -461,12 +461,16 @@ class ToolRegistry
                     'type' => $meta['type'],
                     'icon' => $meta['icon'],
                     'parameters' => [],
+                    'returns' => is_array($meta['returns'] ?? null) ? $meta['returns'] : [],
                 ];
 
                 $catalogTool = $isIntegration ? $this->catalogToolDefinition($slug) : null;
                 if ($catalogTool !== null) {
                     $toolData['fullDescription'] = (string) ($catalogTool['description'] ?? $meta['description']);
                     $toolData['parameters'] = $this->normalizeCatalogParameters($catalogTool['parameters'] ?? []);
+                    $toolData['returns'] = is_array($catalogTool['returns'] ?? null)
+                        ? $catalogTool['returns']
+                        : $toolData['returns'];
                     $tools[] = $toolData;
 
                     continue;
@@ -577,7 +581,7 @@ class ToolRegistry
     /**
      * Build a compact app catalog string for the system prompt.
      * Code-first: only direct tool groups are listed as tools.
-     * Everything else is accessible through lua_exec.
+     * Everything else is accessible through code_exec.
      */
     public function getAppCatalog(User $agent): string
     {
@@ -618,16 +622,19 @@ class ToolRegistry
             $lines[] = "{$appName}: {$group['label']} — {$group['description']}{$approval}";
         }
 
-        // Section 2: Lua API (everything else, accessible via lua_exec)
+        // Section 2: Code Mode API (everything else, accessible via code_exec)
         $lines[] = '';
-        $lines[] = '## Lua API (code-first)';
+        $lines[] = '## Code Mode API (QuickJS)';
         $lines[] = '';
-        $lines[] = 'All data operations and integrations are available through lua_exec.';
-        $lines[] = 'Always call lua_read_doc(namespace) before writing code to look up function names and parameters.';
+        $lines[] = 'All data operations and integrations are available through code_exec.';
+        $lines[] = 'Always call code_read_doc(namespace) before writing code to inspect exact parameter, effect, and return contracts.';
         $lines[] = 'Do not assume raw upstream API response shapes; integrations may normalize names and structure.';
-        $lines[] = 'If docs do not make the return shape clear, inspect with a minimal lua_exec call before writing multi-step logic.';
+        $lines[] = 'Validate unfamiliar JavaScript first, then inspect unclear return shapes with one minimal read-only code_exec call before multi-step logic.';
+        $lines[] = 'Code Mode is synchronous: use plain values and loops, never await or Promise APIs.';
+        $lines[] = 'Treat failed writes with effectStatus=unknown as potentially completed. Do not retry unless retryable=true; verify state with a read first.';
+        $lines[] = 'Prefer one bounded script for deterministic multi-step work, but keep irreversible writes explicit and inspectable.';
         $lines[] = '';
-        $lines[] = app(LuaApiDocGenerator::class)->getNamespaceSummary($agent);
+        $lines[] = app(CodeApiDocGenerator::class)->getNamespaceSummary($agent);
 
         return implode("\n", $lines);
     }

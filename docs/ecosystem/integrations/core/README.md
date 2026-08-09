@@ -2,8 +2,6 @@
 
 > Framework-agnostic core for building integration packages. Part of the [OpenCompany](https://github.com/OpenCompanyApp) ecosystem.
 
-Status: Current package reference copy. `ConfigCredentialResolver` uses `config/ai-tools.php` for standalone consumers; OpenCompany overrides credential lookup with workspace-scoped integration settings.
-
 Provides the contracts, credential abstraction, and auto-discovery registry that all OpenCompany integration packages build on. Packages built on integration-core work in any PHP application — OpenCompany (web), KosmoKrator (CLI), or custom consumers.
 
 ## About OpenCompany
@@ -26,8 +24,8 @@ Laravel auto-discovers the service provider. Non-Laravel apps can use the contra
 |-----------|---------|
 | `Tool` interface | Framework-agnostic tool contract — `name()`, `description()`, `parameters()`, `execute()` |
 | `ToolResult` value object | Structured result from tool execution — `success()`, `error()`, metadata |
-| `ToolProvider` interface | Contract every integration package implements — declares tools, metadata, factory, and Lua docs |
-| `HasIntegrationCapabilities` interface | Optional capability metadata for catalog, CLI, Lua, MCP gateway, and SEO generators |
+| `ToolProvider` interface | Contract every integration package implements — declares tools, metadata, factory, and JavaScript docs |
+| `HasIntegrationCapabilities` interface | Optional capability metadata for catalog, CLI, JavaScript, MCP gateway, and SEO generators |
 | `CredentialResolver` interface | Abstraction for API keys/config — swap between config files, databases, or vaults |
 | `ConfigCredentialResolver` | Default resolver that reads from `config/ai-tools.php` |
 | `ToolProviderRegistry` | Singleton registry that collects all tool providers for discovery |
@@ -86,9 +84,9 @@ class WeatherToolProvider implements ToolProvider
         );
     }
 
-    public function luaDocsPath(): ?string
+    public function scriptDocsPath(): ?string
     {
-        return null; // Or: __DIR__ . '/../lua-docs/weather.md'
+        return null; // Or: __DIR__ . '/../script-docs/weather.md'
     }
 }
 ```
@@ -236,4 +234,4 @@ $registry->get('celestial');   // Get a specific provider
 
 ## License
 
-MIT - see the package source repository license.
+MIT — see [LICENSE](LICENSE)

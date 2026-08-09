@@ -5,6 +5,7 @@ namespace App\Agents\Tools\Workspace;
 use App\Models\Automation;
 use App\Models\Task;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -36,9 +37,9 @@ class GetAutomation implements Tool
 
             /** @var User|null $agent */
             $agent = $automation->agent;
-            /** @var \Carbon\Carbon|null $nextRunAt */
+            /** @var Carbon|null $nextRunAt */
             $nextRunAt = $automation->next_run_at;
-            /** @var \Carbon\Carbon|null $lastRunAt */
+            /** @var Carbon|null $lastRunAt */
             $lastRunAt = $automation->last_run_at;
 
             $lines = [];
@@ -49,11 +50,11 @@ class GetAutomation implements Tool
             $lines[] = '## Configuration';
             $lines[] = "- **ID:** {$automation->id}";
             $lines[] = "- **Trigger:** {$automation->trigger_type}";
-            $lines[] = "- **Execution type:** " . ($automation->execution_type ?? 'prompt');
+            $lines[] = '- **Execution type:** '.($automation->execution_type ?? 'prompt');
             $lines[] = "- **Cron:** {$automation->cron_expression}";
             $lines[] = "- **Timezone:** {$automation->timezone}";
-            $lines[] = '- **Agent:** ' . ($agent->name ?? 'Unknown');
-            $lines[] = '- **Channel:** ' . ($automation->channel?->name ?? 'Auto-created');
+            $lines[] = '- **Agent:** '.($agent->name ?? 'Unknown');
+            $lines[] = '- **Channel:** '.($automation->channel?->name ?? 'Auto-created');
             if ($automation->description) {
                 $lines[] = "- **Description:** {$automation->description}";
             }
@@ -61,17 +62,17 @@ class GetAutomation implements Tool
 
             // Status
             $lines[] = '## Status';
-            $lines[] = '- **Active:** ' . ($automation->is_active ? 'Yes' : 'No');
+            $lines[] = '- **Active:** '.($automation->is_active ? 'Yes' : 'No');
             $lines[] = "- **Run count:** {$automation->run_count}";
             $lines[] = "- **Consecutive failures:** {$automation->consecutive_failures}";
-            $lines[] = '- **Last run:** ' . ($lastRunAt?->format('Y-m-d H:i T') ?? 'Never');
-            $lines[] = '- **Next run:** ' . ($nextRunAt?->format('Y-m-d H:i T') ?? 'N/A');
+            $lines[] = '- **Last run:** '.($lastRunAt?->format('Y-m-d H:i T') ?? 'Never');
+            $lines[] = '- **Next run:** '.($nextRunAt?->format('Y-m-d H:i T') ?? 'N/A');
 
             // Next scheduled runs
             if ($automation->is_active && $automation->cron_expression) {
                 $nextRuns = $automation->getNextRuns(3);
                 if (! empty($nextRuns)) {
-                    $lines[] = '- **Upcoming:** ' . implode(', ', array_map(
+                    $lines[] = '- **Upcoming:** '.implode(', ', array_map(
                         fn ($run) => $run->format('Y-m-d H:i'),
                         $nextRuns
                     ));
@@ -82,7 +83,7 @@ class GetAutomation implements Tool
             // Content
             $lines[] = '## Content';
             if ($automation->isScript()) {
-                $lines[] = '```lua';
+                $lines[] = '```javascript';
                 $lines[] = $automation->script;
                 $lines[] = '```';
             } else {
@@ -109,11 +110,11 @@ class GetAutomation implements Tool
 
                     if ($result) {
                         if (isset($result['error'])) {
-                            $line .= ' — Error: ' . Str::limit($result['error'], 100);
+                            $line .= ' — Error: '.Str::limit($result['error'], 100);
                         } elseif (isset($result['output'])) {
-                            $line .= ' — ' . Str::limit($result['output'], 100);
+                            $line .= ' — '.Str::limit($result['output'], 100);
                         } elseif (isset($result['response'])) {
-                            $line .= ' — ' . Str::limit($result['response'], 100);
+                            $line .= ' — '.Str::limit($result['response'], 100);
                         }
 
                         if (isset($result['execution_time_ms'])) {

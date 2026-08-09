@@ -30,8 +30,8 @@ export default defineConfig({
             output: {
                 manualChunks: {
                     // Monaco is large and editor-specific, so keep it out of
-                    // the main app chunk for non-editor pages.
-                    'monaco-editor': ['monaco-editor'],
+                    // the main app chunk without pulling in every language.
+                    'monaco-editor': ['monaco-editor/esm/vs/editor/editor.api.js'],
                 },
             },
         },

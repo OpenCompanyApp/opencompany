@@ -258,7 +258,7 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
         }
 
         $apps = $this->toolRegistry->getAppCatalog($this->agent)."\n\n";
-        $apps .= "To generate images/PDFs: use lua_exec with app.svg, app.integrations.mermaid, app.integrations.plantuml, app.integrations.vegalite, or app.integrations.typst. NEVER fabricate image/document URLs.\n";
+        $apps .= "To generate images/PDFs: use code_exec with app.svg, app.integrations.mermaid, app.integrations.plantuml, app.integrations.vegalite, or app.integrations.typst. NEVER fabricate image/document URLs.\n";
         if (! $identityFiles->isEmpty()) {
             $apps .= "Tools marked with * require approval.\n";
         }

@@ -18,13 +18,13 @@ KosmoKrator is not just a CLI coding agent — it's a runtime that can host any 
         OpenCompany                      KosmoKrator
         (web platform)                   (the engine)
               │                               │
-         LuaBridge                  ┌─────────┼─────────┐
+         CodeBridge                  ┌─────────┼─────────┐
               │                     │         │         │
          LuaSandbox              CLI       Desktop   (Mobile)
          (PECL ext)           terminal    NativePHP  future
               │               ANSI/TUI    Electron
          MCP Client               │         │
-                              LuaBridge  LuaBridge
+                              CodeBridge  CodeBridge
                                   │         │
                               LuaSandbox LuaSandbox
                                   │         │
@@ -99,7 +99,7 @@ local gmail = docs("app.gmail.work")            -- list tools for this account
 local detail = docs("app.gmail.work.send_message")  -- full schema + examples
 ```
 
-API docs are auto-generated from tool schemas by `LuaApiDocGenerator`. This keeps the system prompt small while giving the LLM access to arbitrarily large tool surfaces.
+API docs are auto-generated from tool schemas by `CodeApiDocGenerator`. This keeps the system prompt small while giving the LLM access to arbitrarily large tool surfaces.
 
 ### Fallback to Standard tool_use
 
@@ -216,7 +216,7 @@ opencompanyapp/integration-core          (framework-agnostic)
 └── composer.json                        ← NO laravel/ai dependency
 ```
 
-No bridge package needed. Vendor package tools are Lua-only — they're never passed to the laravel/ai agent loop. Built-in tools (tasks, system, agents, memory, lua) still implement `Laravel\Ai\Contracts\Tool` directly. `LuaBridge` and `getToolCatalog()` use a dual-dispatch `instanceof` check to handle both tool types.
+No bridge package needed. Vendor package tools are Lua-only — they're never passed to the laravel/ai agent loop. Built-in tools (tasks, system, agents, memory, lua) still implement `Laravel\Ai\Contracts\Tool` directly. `CodeBridge` and `getToolCatalog()` use a dual-dispatch `instanceof` check to handle both tool types.
 
 **Result:**
 - All tool packages depend only on `integration-core` (no laravel/ai)

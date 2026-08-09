@@ -73,9 +73,9 @@ src/
 │   ├── ToolRegistry.php
 │   └── Coding/             # Built-in tools
 ├── Lua/
-│   ├── LuaSandboxService.php
-│   ├── LuaBridge.php
-│   └── LuaApiDocGenerator.php
+│   ├── QuickJsSandboxService.php
+│   ├── CodeBridge.php
+│   └── CodeApiDocGenerator.php
 ├── Mcp/
 │   └── McpClient.php
 ├── Integration/

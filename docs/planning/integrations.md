@@ -566,11 +566,11 @@ explicit processor per workflow.
 
 **Best for:** Stripe webhooks, GitHub webhooks, Shopify webhooks.
 
-### Pattern 5: Lua Scripting Bridge (Partial / Current)
+### Pattern 5: QuickJS Code Mode Bridge (Current)
 Lightweight deterministic automations that call integration APIs through the
-current `app.*` Lua bridge and script-automation runtime at zero token cost.
+current synchronous `app.*` JavaScript bridge and script-automation runtime at zero token cost.
 The older `oc.integrations.query()` / `oc.http.post()` examples are roadmap
-syntax unless backed by a current Lua bridge function.
+syntax unless backed by a current Code Mode function.
 
 **Best for:** Simple routing, status sync, conditional notifications.
 

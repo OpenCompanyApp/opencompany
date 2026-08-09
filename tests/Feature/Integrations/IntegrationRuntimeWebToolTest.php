@@ -16,7 +16,7 @@ class IntegrationRuntimeWebToolTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_lua_runtime_returns_structured_data_block_from_web_tools(): void
+    public function test_code_mode_runtime_returns_structured_data_block_from_web_tools(): void
     {
         $agent = User::factory()->create(['type' => 'agent']);
         $tool = new class implements Tool
