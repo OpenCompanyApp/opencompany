@@ -78,7 +78,8 @@
 | [integration-refactor.md](planning/integration-refactor.md) | Integration refactor strategy and implementation notes | Working on package/runtime integration cleanup |
 | [integrations.md](planning/integrations.md) | Integrations product and architecture planning | Planning integration features or package scope |
 | [laravel-mcp-client.md](planning/laravel-mcp-client.md) | Laravel MCP client planning | Building or evaluating MCP client support |
-| [lua-scripting.md](planning/lua-scripting.md) | Lua scripting strategy for integrations and tools | Working on sandboxed script execution |
+| [quickjs-code-mode-migration.md](planning/quickjs-code-mode-migration.md) | Approved hard-cut implementation plan from Lua/Luau to synchronous JavaScript on QuickJS, including shared integration contracts, security budgets, persisted scripts, UI, deployment, and removal gates | Implementing or reviewing the QuickJS Code Mode migration |
+| [lua-scripting.md](planning/lua-scripting.md) | Superseded Lua scripting design retained only until the QuickJS implementation removes the old runtime | Reviewing the historical scripting design before deletion |
 | [memory-systems.md](planning/memory-systems.md) | Memory-system research and roadmap notes | Comparing memory implementation options |
 | [skill-system.md](planning/skill-system.md) | Skill-system planning for reusable agent capabilities | Designing skill packaging or execution |
 | [vector-optional.md](planning/vector-optional.md) | Optional vector-search architecture | Deciding whether vector storage belongs in a feature |
