@@ -56,9 +56,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # QuickJS sandbox PHP extension. Pin both release and digest so production
 # cannot silently pick up a replaced native artifact.
-ARG QUICKJS_SANDBOX_VERSION=v1.0.0
-ARG QUICKJS_SANDBOX_SHA256=925c7f290f15292b4e1e113ccb81b823f467b85cfacd6557431c282f19876cb4
-RUN curl -fsSL "https://github.com/OpenCompanyApp/quickjs-sandbox/releases/download/${QUICKJS_SANDBOX_VERSION}/quickjs_sandbox-php84-linux-x86_64.so" \
+ARG QUICKJS_SANDBOX_VERSION=v1.0.1
+ARG QUICKJS_SANDBOX_SHA256=55033182e8aad1ecca3921c92cad833a69318533ca0801b06b72250e8448428e
+RUN curl -fsSL "https://github.com/OpenCompanyApp/quickjs-sandbox/releases/download/${QUICKJS_SANDBOX_VERSION}/quickjs_sandbox-php84-zts-linux-x86_64.so" \
     -o /tmp/quickjs_sandbox.so \
     && echo "${QUICKJS_SANDBOX_SHA256}  /tmp/quickjs_sandbox.so" | sha256sum -c - \
     && install -m 0644 /tmp/quickjs_sandbox.so "$(php-config --extension-dir)/quickjs_sandbox.so" \

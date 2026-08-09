@@ -7,8 +7,8 @@ from the prior runtime to synchronous JavaScript on
 period is retained.
 
 Verified against `dev` at `93895a1` on 2026-08-09. The QuickJS extension
-contract and v1.0.0 release assets were also verified locally before this plan
-was written.
+contract and v1.0.1 ABI-specific release assets were verified locally and in
+the release matrix before this plan was finalized.
 
 ## Decision
 
@@ -66,7 +66,7 @@ deployment image, and documentation.
 
 | Surface | Current state on `dev` | Required cutover |
 |---|---|---|
-| Native runtime | `Lua\Sandbox`, installed from `OpenCompanyApp/lua-sandbox` in `Dockerfile` | `QuickJS\Sandbox` from `OpenCompanyApp/quickjs-sandbox` v1.0.0 |
+| Native runtime | `Lua\Sandbox`, installed from `OpenCompanyApp/lua-sandbox` in `Dockerfile` | `QuickJS\Sandbox` from `OpenCompanyApp/quickjs-sandbox` v1.0.1 |
 | Application runtime | `QuickJsSandboxService`, `CodeBridge`, `CodeExecutionResult`, `OpenCompanyScriptToolInvoker` | Code Mode classes with a QuickJS-specific sandbox adapter |
 | Agent tools | `lua_exec`, `lua_list_docs`, `lua_read_doc`, `lua_search_docs` | `code_exec`, `code_list_docs`, `code_read_doc`, `code_search_docs` |
 | Tool catalog | Legacy language-specific fields | `codeNamespace`, `scriptDocs`, `codeFunction` |
@@ -201,7 +201,7 @@ closure, install the public proxy, and delete the callback's global property.
 Only after that script returns may the adapter compile the untrusted source as
 a second script in the same sandbox. Never concatenate bootstrap and user
 source, because that would put untrusted code in the callback's lexical scope.
-This two-script pattern has been smoke-tested against `quickjs_sandbox` v1.0.0:
+This two-script pattern has been smoke-tested against `quickjs_sandbox` v1.0.1:
 
 ```js
 const host = globalThis.__oc_host;
@@ -284,7 +284,7 @@ final class QuickJsSandbox
 }
 ```
 
-Catch and classify the exact v1.0.0 exception surface:
+Catch and classify the exact v1.0.1 exception surface:
 
 - `QuickJS\SyntaxException` -> `syntax`
 - `QuickJS\TimeoutException` -> `cpu_limit`
@@ -501,16 +501,18 @@ tool result bodies.
 
 ## Native Extension and Docker
 
-Use the released v1.0.0 Linux/PHP 8.4 artifact in the production image:
+Use the released v1.0.1 artifacts whose PHP version and thread-safety ABI match
+the consumer exactly:
 
 | Target | Release asset | Verified SHA-256 |
 |---|---|---|
-| Production, PHP 8.4 Linux x86_64 | `quickjs_sandbox-php84-linux-x86_64.so` | `925c7f290f15292b4e1e113ccb81b823f467b85cfacd6557431c282f19876cb4` |
-| Local, PHP 8.5 macOS ARM64 | `quickjs_sandbox-php85-macos-aarch64.so` | `5baeb061ca4ab104651c6bd3f4dbdcd72db70599f934fca72a616b133b69db73` |
+| Production, PHP 8.4 ZTS Linux x86_64 | `quickjs_sandbox-php84-zts-linux-x86_64.so` | `55033182e8aad1ecca3921c92cad833a69318533ca0801b06b72250e8448428e` |
+| CI, PHP 8.4 NTS Linux x86_64 | `quickjs_sandbox-php84-nts-linux-x86_64.so` | `1030bdb948c056bacc607ddec0e825872622b1bdd214dc758696691644ce4097` |
+| Local, PHP 8.5 NTS macOS ARM64 | `quickjs_sandbox-php85-nts-macos-aarch64.so` | `1bed3c79866232e95486815471358a549f7f8107619ff9b0222976a372cf7e31` |
 
 ```dockerfile
-ARG QUICKJS_SANDBOX_VERSION=v1.0.0
-ARG QUICKJS_SANDBOX_ASSET=quickjs_sandbox-php84-linux-x86_64.so
+ARG QUICKJS_SANDBOX_VERSION=v1.0.1
+ARG QUICKJS_SANDBOX_ASSET=quickjs_sandbox-php84-zts-linux-x86_64.so
 
 RUN curl -fsSLO "https://github.com/OpenCompanyApp/quickjs-sandbox/releases/download/${QUICKJS_SANDBOX_VERSION}/${QUICKJS_SANDBOX_ASSET}" \
     && curl -fsSLO "https://github.com/OpenCompanyApp/quickjs-sandbox/releases/download/${QUICKJS_SANDBOX_VERSION}/${QUICKJS_SANDBOX_ASSET}.sha256" \
@@ -532,7 +534,7 @@ same commit. Add a small diagnostic command or health check that reports only
 extension presence, extension version, engine version, and supported profile
 names—never source or runtime globals.
 
-Local macOS development already has QuickJS Sandbox v1.0.0 installed for PHP
+Local macOS development already has QuickJS Sandbox v1.0.1 installed for PHP
 8.5. The implementation still needs a setup check/documented installer path so
 another developer gets a clear failure instead of skipped tests.
 
@@ -617,7 +619,7 @@ Historical imported research is the only intentional exclusion.
    source.
 3. Freeze new Lua-specific package docs and runtime changes while migration is
    in flight.
-4. Pin `OpenCompanyApp/quickjs-sandbox` v1.0.0 artifacts and checksums.
+4. Pin `OpenCompanyApp/quickjs-sandbox` v1.0.1 ABI-specific artifacts and checksums.
 
 Gate: counts, artifact ABIs, deployment architecture, and rollback snapshot are
 recorded before code changes.
@@ -730,7 +732,7 @@ disabled them to prevent code from running under the wrong language semantics.
 
 ## Definition of Done
 
-- QuickJS Sandbox v1.0.0 is checksum-verified and loaded in the production PHP
+- QuickJS Sandbox v1.0.1 is checksum-verified and loaded in the production PHP
   8.4 image; local PHP 8.5 remains operational.
 - Code Mode is the only script tool and developer surface.
 - `app.*` calls retain workspace scoping, permissions, account aliases,
