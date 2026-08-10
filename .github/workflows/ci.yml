@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main, dev]
 
+# This hard-cut PR must test its coordinated package branch. Once it is merged,
+# every other PR and push resolves integrations from the canonical main branch.
+env:
+  INTEGRATIONS_REF: ${{ github.head_ref == 'feat/quickjs' && 'feat/quickjs' || 'main' }}
+
 jobs:
   backend-tests:
     name: Backend tests
@@ -20,8 +25,6 @@ jobs:
           git clone https://github.com/OpenCompanyApp/astronomy-bundle-php.git tmp/astronomy-bundle-php
           git clone https://github.com/OpenCompanyApp/chatogrator.git tmp/chatogrator
           git clone https://github.com/OpenCompanyApp/prism-codex.git tmp/prism-codex
-        env:
-          INTEGRATIONS_REF: feat/quickjs
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -85,10 +88,6 @@ jobs:
           git clone https://github.com/OpenCompanyApp/astronomy-bundle-php.git tmp/astronomy-bundle-php
           git clone https://github.com/OpenCompanyApp/chatogrator.git tmp/chatogrator
           git clone https://github.com/OpenCompanyApp/prism-codex.git tmp/prism-codex
-        env:
-          # The hard-cut application PR and package PR are intentionally paired.
-          # Change this back to main once the package migration lands.
-          INTEGRATIONS_REF: feat/quickjs
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -126,8 +125,6 @@ jobs:
         run: |
           git clone --branch "${INTEGRATIONS_REF}" --single-branch https://github.com/OpenCompanyApp/integrations.git ../integrations
           git clone https://github.com/OpenCompanyApp/astronomy-bundle-php.git tmp/astronomy-bundle-php
-        env:
-          INTEGRATIONS_REF: feat/quickjs
 
       - name: Build the exact production image
         run: docker build --build-context integrations=../integrations --tag opencompany-quickjs-ci .
