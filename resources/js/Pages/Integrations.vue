@@ -14,11 +14,11 @@
               Tool Catalog
             </Link>
             <Link
-              :href="developerLuaConsoleUrl()"
+              :href="developerCodeConsoleUrl()"
               class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
             >
               <Icon name="ph:terminal" class="w-3.5 h-3.5" />
-              Lua Console
+              Code Console
             </Link>
           </div>
         </div>
@@ -861,7 +861,7 @@ import AiGatewayConfigModal from '@/Components/integrations/AiGatewayConfigModal
 import { wayfinderRequest } from '@/utils/wayfinder'
 import type { Integration } from '@/Components/integrations/IntegrationCard.vue'
 
-const { developerLuaConsoleUrl, developerToolsUrl } = useWorkspace()
+const { developerCodeConsoleUrl, developerToolsUrl } = useWorkspace()
 
 const initialQuery = new URLSearchParams(window.location.search)
 

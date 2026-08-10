@@ -1,30 +1,28 @@
-# TickTick — Lua API Reference
+# TickTick — JavaScript API Reference
 
-## ticktick_list_projects
+## list_projects
 
 List all projects (task lists). No parameters. Call this first to discover project IDs.
 
-```lua
-local projects = ticktick_list_projects({})
+```js
+var projects = app.integrations.ticktick.list_projects({})
 
-for _, p in ipairs(projects) do
-  log(p.name .. " (id: " .. p.id .. ")")
-end
+for (const p of (projects)) {
+  console.log(p.name + " (id: " + p.id + ")")
+}
 ```
-
-## ticktick_get_tasks
+## get_tasks
 
 Get all tasks in a project.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `project_id` | string | yes | Project ID (from `ticktick_list_projects`) |
+| `project_id` | string | yes | Project ID (from `list_projects`) |
 
-```lua
-local tasks = ticktick_get_tasks({ project_id = "abc123" })
+```js
+var tasks = app.integrations.ticktick.get_tasks({ project_id: "abc123" })
 ```
-
-## ticktick_create_task
+## create_task
 
 Create a new task.
 
@@ -47,7 +45,7 @@ Create a new task.
 
 Status: `0` = unchecked, `2` = checked.
 
-## ticktick_complete_task
+## complete_task
 
 Mark a task as complete.
 
@@ -56,11 +54,11 @@ Mark a task as complete.
 | `project_id` | string | yes | Project ID the task belongs to |
 | `task_id` | string | yes | Task ID to complete |
 
-## ticktick_update_task
+## update_task
 
 Update an existing task (same fields as create, plus `task_id` and `project_id`).
 
-## ticktick_delete_task
+## delete_task
 
 Delete a task (requires `project_id` and `task_id`).
 
@@ -68,57 +66,72 @@ Delete a task (requires `project_id` and `task_id`).
 
 ### List projects, then create a task
 
-```lua
--- Step 1: find the project
-local projects = ticktick_list_projects({})
-local project_id = nil
-for _, p in ipairs(projects) do
-  if p.name == "Work" then
+```js
+// Step 1: find the project
+var projects = app.integrations.ticktick.list_projects({})
+var project_id = null
+for (const p of (projects)) {
+  if (p.name === "Work") {
     project_id = p.id
     break
-  end
-end
+  }
+}
 
--- Step 2: create a high-priority task with a due date
-ticktick_create_task({
-  title = "Finish quarterly report",
-  project_id = project_id,
-  content = "Include revenue and churn metrics",
-  due_date = "2026-04-01T17:00:00+0000",
-  priority = 5,
-  is_all_day = false
+// Step 2: create a high-priority task with a due date
+app.integrations.ticktick.create_task({
+  title: "Finish quarterly report",
+  project_id: project_id,
+  content: "Include revenue && churn metrics",
+  due_date: "2026-04-01T17:00:00+0000",
+  priority: 5,
+  is_all_day: false,
 })
 ```
-
 ### Create a task with subtasks
 
-```lua
-ticktick_create_task({
-  title = "Launch checklist",
-  project_id = project_id,
-  priority = 3,
-  items = '[{"title": "Update changelog", "status": 0}, {"title": "Tag release", "status": 0}, {"title": "Notify team", "status": 0}]'
+```js
+app.integrations.ticktick.create_task({
+  title: "Launch checklist",
+  project_id: project_id,
+  priority: 3,
+  items: '[{"title": "Update changelog", "status": 0}, {"title": "Tag release", "status": 0}, {"title": "Notify team", "status": 0}]',
 })
 ```
-
 ### Complete a task
 
-```lua
--- Step 1: get tasks in the project
-local tasks = ticktick_get_tasks({ project_id = "abc123" })
+```js
+// Step 1: get tasks in the project
+var tasks = app.integrations.ticktick.get_tasks({ project_id: "abc123" })
 
--- Step 2: complete the first one
-ticktick_complete_task({
-  project_id = "abc123",
-  task_id = tasks[1].id
+// Step 2: complete the first one
+app.integrations.ticktick.complete_task({
+  project_id: "abc123",
+  task_id: tasks[0].id,
 })
 ```
-
 ### Create a quick Inbox task
 
-```lua
-ticktick_create_task({
-  title = "Buy groceries",
-  priority = 1
+```js
+app.integrations.ticktick.create_task({
+  title: "Buy groceries",
+  priority: 1,
 })
 ```
+---
+
+## Multi-Account Usage
+
+If you have multiple ticktick accounts configured, use account-specific namespaces:
+
+```js
+// Default account (always works)
+app.integrations.ticktick.function_name({ /* parameters */ })
+
+// Explicit default (portable across setups)
+app.integrations.ticktick.default.function_name({ /* parameters */ })
+
+// Named accounts
+app.integrations.ticktick.work.function_name({ /* parameters */ })
+app.integrations.ticktick.personal.function_name({ /* parameters */ })
+```
+All functions are identical across accounts — only the credentials differ.

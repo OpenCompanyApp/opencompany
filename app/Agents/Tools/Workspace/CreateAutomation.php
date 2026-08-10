@@ -3,7 +3,10 @@
 namespace App\Agents\Tools\Workspace;
 
 use App\Models\Automation;
+use App\Models\Channel;
 use App\Models\User;
+use App\Services\QuickJsSandboxService;
+use Carbon\Carbon;
 use Cron\CronExpression;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
@@ -14,11 +17,12 @@ class CreateAutomation implements Tool
 {
     public function __construct(
         private User $agent,
+        private QuickJsSandboxService $sandbox,
     ) {}
 
     public function description(): string
     {
-        return 'Create an automation. Execution types: "prompt" (sends prompt to agent, costs tokens) or "script" (runs --!strict Luau directly, zero cost). Scripts receive a ctx table with run context. Use lua_read_doc() for available functions, test with lua_exec first.';
+        return 'Create an automation. "prompt" sends work to an agent; "script" runs validated synchronous JavaScript on quickjs-v1 without model tokens. Scripts receive a read-only-style ctx data object. Discover APIs with code_read_doc and validate with code_exec before saving.';
     }
 
     public function handle(Request $request): string
@@ -41,11 +45,14 @@ class CreateAutomation implements Tool
             }
 
             if ($executionType === 'script' && empty($request['script'])) {
-                return "script is required when executionType is 'script'. Use lua_read_doc() to explore available app.* functions, then test your script with lua_exec before saving.";
+                return "script is required when executionType is 'script'. Use code_read_doc to explore app.* and code_exec in validate mode before saving.";
             }
 
-            if ($executionType === 'script' && ! str_starts_with(trim($request['script']), '--!strict')) {
-                return 'Automation scripts must start with --!strict. Add it as the first line.';
+            if ($executionType === 'script') {
+                $validationError = $this->validateScript((string) $request['script']);
+                if ($validationError !== null) {
+                    return $validationError;
+                }
             }
 
             // Validate cron expression
@@ -72,7 +79,7 @@ class CreateAutomation implements Tool
 
             // Validate channelId belongs to workspace
             if (isset($request['channelId'])) {
-                $channel = \App\Models\Channel::forWorkspace()->find($request['channelId']);
+                $channel = Channel::forWorkspace()->find($request['channelId']);
                 if (! $channel) {
                     return 'Error: Channel not found in this workspace.';
                 }
@@ -87,6 +94,7 @@ class CreateAutomation implements Tool
                 'agent_id' => $agentId,
                 'prompt' => $executionType === 'prompt' ? $request['prompt'] : null,
                 'script' => $executionType === 'script' ? $request['script'] : null,
+                'script_runtime' => $executionType === 'script' ? config('code.runtime') : null,
                 'cron_expression' => $cronExpression,
                 'timezone' => $request['timezone'] ?? 'UTC',
                 'channel_id' => $request['channelId'] ?? null,
@@ -95,7 +103,7 @@ class CreateAutomation implements Tool
                 'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
             ]);
 
-            /** @var \Carbon\Carbon|null $nextRunAt */
+            /** @var Carbon|null $nextRunAt */
             $nextRunAt = $automation->next_run_at;
             $nextRun = $nextRunAt?->format('Y-m-d H:i T');
 
@@ -121,7 +129,7 @@ class CreateAutomation implements Tool
                 ->description("Agent prompt. Required for 'prompt' type."),
             'script' => $schema
                 ->string()
-                ->description("--!strict Luau script. Required for 'script' type."),
+                ->description("Synchronous JavaScript function body. Required for 'script' type; modules and Promise jobs are unavailable."),
             'cronExpression' => $schema
                 ->string()
                 ->description("5-field cron, e.g. '0 9 * * 1-5'.")
@@ -139,5 +147,28 @@ class CreateAutomation implements Tool
                 ->string()
                 ->description('Automation description.'),
         ];
+    }
+
+    /**
+     * Compile without exposing app.* so creation cannot schedule invalid code.
+     */
+    private function validateScript(string $script): ?string
+    {
+        $result = $this->sandbox->execute(
+            code: $script,
+            profile: 'automation',
+            validateOnly: true,
+            sourceName: 'automation-code.js',
+        );
+
+        if ($result->succeeded()) {
+            return null;
+        }
+
+        $error = $result->error ?? [];
+
+        return 'JavaScript validation failed ['.($error['type'] ?? 'syntax_error').']'
+            .(isset($error['line']) ? ' at line '.$error['line'] : '')
+            .': '.($error['message'] ?? 'Invalid source.');
     }
 }

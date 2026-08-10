@@ -1,23 +1,26 @@
 <?php
 
-namespace App\Agents\Tools\Lua;
+namespace App\Agents\Tools\Code;
 
 use App\Models\User;
-use App\Services\LuaApiDocGenerator;
+use App\Services\CodeApiDocGenerator;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class LuaSearchDocs implements Tool
+/**
+ * Searches permission-visible function metadata and supplementary Code Mode docs.
+ */
+final class CodeSearchDocs implements Tool
 {
     public function __construct(
-        private LuaApiDocGenerator $docs,
+        private CodeApiDocGenerator $docs,
         private User $agent,
     ) {}
 
     public function description(): string
     {
-        return 'Search the Lua scripting API documentation by keyword. Searches function names, descriptions, and parameter info across all available namespaces and supplementary docs.';
+        return 'Search Code Mode docs by intent, function, parameter, or provider term. Read the selected function page before execution.';
     }
 
     public function handle(Request $request): string
@@ -32,7 +35,7 @@ class LuaSearchDocs implements Tool
 
             return $this->docs->search($query, $this->agent, $limit);
         } catch (\Throwable $e) {
-            return "Error searching Lua API docs: {$e->getMessage()}";
+            return "Error searching Code Mode docs: {$e->getMessage()}";
         }
     }
 

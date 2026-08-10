@@ -1,9 +1,9 @@
 const TOOL_LABELS: Record<string, string> = {
   CreateTask: 'Create Task',
   CreateTaskStep: 'Create Task Step',
-  LuaExec: 'Execute Lua Code',
-  LuaReadDoc: 'Read Lua API Doc',
-  LuaSearchDocs: 'Search Lua API Docs',
+  CodeExec: 'Execute JavaScript',
+  CodeReadDoc: 'Read Code Mode API Doc',
+  CodeSearchDocs: 'Search Code Mode API Docs',
   SetTaskStatus: 'Set Task Status',
   UpdateTask: 'Update Task',
 }

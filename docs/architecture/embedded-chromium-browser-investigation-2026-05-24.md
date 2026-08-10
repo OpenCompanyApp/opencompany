@@ -245,8 +245,8 @@ Execution flow:
 ```text
 Lua script
   -> app.browser.playwright(...)
-  -> LuaBridge
-  -> OpenCompanyLuaToolInvoker
+  -> CodeBridge
+  -> OpenCompanyScriptToolInvoker
   -> IntegrationRuntime / ToolRegistry
   -> BrowserRuntime
   -> BrowserPlaywrightWorker

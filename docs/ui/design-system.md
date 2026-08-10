@@ -124,7 +124,7 @@ Light Mode Hierarchy          Dark Mode Hierarchy
 Runtime and tool-inspector code blocks use highlight.js classes plus the
 `oc-syntax` class from `resources/css/app.css`. The class keeps backgrounds
 transparent so the surrounding panel owns the surface color, while light/dark
-syntax colors stay theme-aware for Lua, JSON, Markdown, and provider payloads.
+syntax colors stay theme-aware for JavaScript, JSON, Markdown, and provider payloads.
 | `--color-agent-sleeping` | `oklch(0.55 0.12 250)` | `oklch(0.60 0.12 250)` | Agent in scheduled sleep | `bg-indigo-400` |
 | `--color-agent-awaiting-approval` | `oklch(0.55 0.10 70)` | `oklch(0.65 0.10 70)` | Waiting for human approval | `bg-amber-500` |
 | `--color-agent-awaiting-delegation` | `oklch(0.50 0.12 250)` | `oklch(0.55 0.12 250)` | Waiting for delegated work | `bg-indigo-500` |

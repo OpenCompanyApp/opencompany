@@ -18,7 +18,7 @@ Provider managers, provider registry, web tool formatter, direct
 connection validation also exist in the current worktree. Workspace web defaults
 and controls are present in `AppSetting`, `SettingController`, `Settings.vue`,
 and `WebAccessSettings.vue`. Lua `app.web.*` docs and structured-output
-normalization are present through `resources/lua-docs/web.md` and
+normalization are present through `resources/code-docs/web.md` and
 `IntegrationRuntime`. Workspace-scoped usage events are recorded through
 `WebUsageRecorder` / `web_usage_events`, and `web:providers`, `web:configure`,
 `web:doctor`, `web:search`, and `web:fetch` provide the current Artisan
@@ -78,7 +78,7 @@ Current implementation state in this worktree:
   max fetch bytes, domain allow/block lists, country, language, and recency.
   `DirectFetchProvider` consumes `web_fetch_max_bytes` when a workspace is
   bound and falls back to `config('web.fetch.max_bytes')`.
-- Present: `resources/lua-docs/web.md` for `app.web.search` /
+- Present: `resources/code-docs/web.md` for `app.web.search` /
   `app.web.fetch`, plus `IntegrationRuntime` parsing for formatter-emitted
   structured data.
 - Present: focused tests in `tests/Feature/Tools/WebToolsTest.php`,
@@ -88,7 +88,7 @@ Current implementation state in this worktree:
   `tests/Feature/Domain/Web/WebProviderManagerTest.php`,
   `tests/Feature/Domain/Web/WebProviderRegistryTest.php`,
   `tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php`,
-  `tests/Feature/LuaApiDocGeneratorTest.php`,
+  `tests/Feature/CodeApiDocGeneratorTest.php`,
   `tests/Unit/Domain/Web/WebRequestGuardTest.php`,
   `tests/Unit/Domain/Web/DirectFetchProviderTest.php`, and
   `tests/Unit/Domain/Web/HtmlPageExtractorTest.php`,
@@ -176,9 +176,9 @@ OpenCompany has the right primitives already:
 
 - `ToolRegistry` merges built-in providers, integration packages, and MCP.
 - `ToolRegistry::DIRECT_TOOL_GROUPS` controls direct model-visible tools.
-- `LuaSandboxService` exposes `app.*` only through a supplied `LuaBridge`.
-- `LuaBridge` delegates `app.*` calls into integration-core's Lua bridge.
-- `OpenCompanyLuaToolInvoker` routes Lua calls through `IntegrationRuntime`.
+- `QuickJsSandboxService` exposes `app.*` only through a supplied `CodeBridge`.
+- `CodeBridge` delegates `app.*` calls into integration-core's Lua bridge.
+- `OpenCompanyScriptToolInvoker` routes Lua calls through `IntegrationRuntime`.
 - `IntegrationRuntime` instantiates tools from `ToolRegistry` and normalizes
   return values.
 - `IntegrationSetting` and `IntegrationSettingCredentialResolver` already give
@@ -489,7 +489,7 @@ Implementation path:
 4. Add `app/Agents/Tools/Providers/WebToolProvider`.
 5. Register `WebToolProvider` in `AppServiceProvider`.
 6. Add `web` to `ToolRegistry::DIRECT_TOOL_GROUPS`.
-7. Ensure `LuaApiDocGenerator` sees the new built-in group so Lua docs expose
+7. Ensure `CodeApiDocGenerator` sees the new built-in group so Lua docs expose
    `app.web.search` and `app.web.fetch`.
 8. Add Integration/Settings UI entries for provider credentials.
 9. Add tests for provider manager fallback/cache, guard behavior, direct fetch,
@@ -502,7 +502,7 @@ Implemented focused test slice:
 - `tests/Feature/Domain/Web/WebProviderRegistryTest.php`
 - `tests/Feature/Domain/Web/WebCredentialResolverTest.php`
 - `tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php`
-- `tests/Feature/LuaApiDocGeneratorTest.php`
+- `tests/Feature/CodeApiDocGeneratorTest.php`
 - `tests/Unit/Domain/Web/DirectFetchProviderTest.php`
 - `tests/Unit/Domain/Web/HtmlPageExtractorTest.php`
 - `tests/Unit/Domain/Web/MarkdownPageExtractorTest.php`
@@ -808,7 +808,7 @@ Tool/runtime classes:
 - register `web` in `ToolRegistry::DIRECT_TOOL_GROUPS`;
 - expose `app.web.search` and `app.web.fetch` through the existing Lua bridge
   by using the same tool invocation path;
-- update `resources/lua-docs` with request/response examples.
+- update `resources/code-docs` with request/response examples.
 
 Do not add a separate `web_fetch_external` direct tool in OpenCompany. Fold
 Kosmo's external fetch behavior into `web_fetch` through `provider` and
@@ -980,7 +980,7 @@ Current focused test files:
 - `tests/Feature/Domain/Web/WebLiveSmokeTest.php`;
 - `tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php`;
 - `tests/Feature/Tools/WebToolsTest.php`;
-- `tests/Feature/LuaApiDocGeneratorTest.php`;
+- `tests/Feature/CodeApiDocGeneratorTest.php`;
 - `tests/Feature/Admin/WebProviderSettingsTest.php`.
 
 Coverage targets:

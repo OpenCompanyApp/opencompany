@@ -15,7 +15,7 @@
               <h1 class="text-xl font-semibold text-neutral-900 dark:text-white">Tool Catalog</h1>
             </div>
             <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1 ml-7">
-              API reference for all tools and Lua functions
+              API reference for all tools and synchronous Code Mode functions
             </p>
           </div>
           <!-- Search -->
@@ -200,7 +200,7 @@
                 </div>
               </div>
               <div class="flex items-center gap-3 mt-2 ml-11 text-xs text-neutral-400 dark:text-neutral-500">
-                <span v-if="activeGroup.luaNamespace" class="font-mono">{{ activeGroup.luaNamespace }}.*</span>
+                <span v-if="activeGroup.codeNamespace" class="font-mono">{{ activeGroup.codeNamespace }}.*</span>
                 <span>{{ filteredTools.length }} {{ filteredTools.length === 1 ? 'tool' : 'tools' }}</span>
                 <span
                   v-if="activeGroup.isIntegration && activeGroup.enabled === false"
@@ -245,12 +245,18 @@
                   <p class="text-sm font-medium text-neutral-900 dark:text-white mt-1.5">{{ tool.name }}</p>
                   <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{{ tool.description }}</p>
 
-                  <!-- Lua function signature -->
-                  <div v-if="tool.luaFunction && activeGroup.luaNamespace" class="mt-2">
+                  <!-- JavaScript function signature -->
+                  <div v-if="tool.codeFunction && activeGroup.codeNamespace" class="mt-2">
                     <code
-                      v-html="highlightSignature(buildLuaSignature(tool, activeGroup.luaNamespace))"
-                      class="text-xs font-mono bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700/50 px-2 py-1 rounded inline-block lua-sig"
+                      v-html="highlightSignature(buildCodeSignature(tool, activeGroup.codeNamespace))"
+                      class="text-xs font-mono bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700/50 px-2 py-1 rounded inline-block code-sig"
                     />
+                  </div>
+
+                  <!-- Return contract, when a package declares one. -->
+                  <div v-if="hasReturnContract(tool)" class="mt-3">
+                    <p class="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">Returns</p>
+                    <code class="block overflow-x-auto whitespace-pre-wrap text-[11px] font-mono text-neutral-600 dark:text-neutral-300 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-700/50 rounded-md px-3 py-2">{{ formatReturnContract(tool.returns!) }}</code>
                   </div>
 
                   <!-- Full description (when different from short) -->
@@ -319,11 +325,11 @@
               </div>
             </div>
 
-            <!-- Supplementary Lua docs -->
-            <div v-if="activeGroup.luaDocs" class="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+            <!-- Supplementary package-owned script docs -->
+            <div v-if="activeGroup.scriptDocs" class="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-700">
               <h3 class="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">Supplementary Documentation</h3>
               <div
-                v-html="renderMarkdown(activeGroup.luaDocs)"
+                v-html="renderMarkdown(activeGroup.scriptDocs)"
                 class="prose-doc"
               />
             </div>
@@ -364,7 +370,8 @@ interface ToolEntry {
   type: 'read' | 'write'
   icon: string
   parameters: ToolParameter[]
-  luaFunction?: string
+  codeFunction?: string
+  returns?: Record<string, unknown>
 }
 
 interface AppGroup {
@@ -375,8 +382,8 @@ interface AppGroup {
   isIntegration: boolean
   enabled?: boolean
   tools: ToolEntry[]
-  luaNamespace?: string
-  luaDocs?: string
+  codeNamespace?: string
+  scriptDocs?: string
 }
 
 interface StaticDoc {
@@ -423,7 +430,7 @@ const sidebarItems = computed<SidebarItem[]>(() => {
 
   // App groups
   for (const group of groups.value) {
-    const isMcp = group.name.startsWith('mcp_') || group.luaNamespace?.startsWith('app.mcp.')
+    const isMcp = group.name.startsWith('mcp_') || group.codeNamespace?.startsWith('app.mcp.')
     const section = isMcp ? 'mcp' : group.isIntegration ? 'integration' : 'builtin'
 
     items.push({
@@ -482,7 +489,7 @@ const filteredTools = computed(() => {
       || t.name.toLowerCase().includes(q)
       || t.description.toLowerCase().includes(q)
       || (t.fullDescription && t.fullDescription.toLowerCase().includes(q))
-      || (t.luaFunction && t.luaFunction.toLowerCase().includes(q))
+      || (t.codeFunction && t.codeFunction.toLowerCase().includes(q))
   )
 })
 
@@ -522,15 +529,23 @@ const hasFullDescription = (tool: ToolEntry) => {
   return tool.fullDescription && tool.fullDescription !== tool.description
 }
 
+const hasReturnContract = (tool: ToolEntry) => {
+  return tool.returns && Object.keys(tool.returns).length > 0
+}
+
+const formatReturnContract = (returns: Record<string, unknown>) => {
+  return JSON.stringify(returns, null, 2)
+}
+
 const formatType = (type: string | string[]) => {
   if (Array.isArray(type)) return type.join(' | ')
   return type
 }
 
-const buildLuaSignature = (tool: ToolEntry, namespace: string) => {
-  if (!tool.luaFunction) return ''
+const buildCodeSignature = (tool: ToolEntry, namespace: string) => {
+  if (!tool.codeFunction) return ''
   const params = (tool.parameters || []).map(p => p.required ? p.name : p.name + '?')
-  return `${namespace}.${tool.luaFunction}(${params.join(', ')})`
+  return `${namespace}.${tool.codeFunction}(${params.join(', ')})`
 }
 
 const highlightSignature = (sig: string): string => {
@@ -750,22 +765,22 @@ onMounted(async () => {
   color: var(--color-neutral-400);
 }
 
-/* Lua signature syntax highlighting (v-html needs :deep) */
-.lua-sig :deep(.sig-ns)       { color: var(--color-neutral-500); }
-.lua-sig :deep(.sig-dot)      { color: var(--color-neutral-400); }
-.lua-sig :deep(.sig-fn)       { color: #16a34a; font-weight: 600; }
-.lua-sig :deep(.sig-paren)    { color: var(--color-neutral-500); }
-.lua-sig :deep(.sig-param)    { color: #2563eb; }
-.lua-sig :deep(.sig-optional) { color: #a855f7; }
-.lua-sig :deep(.sig-opt-mark) { color: #a855f7; }
-.lua-sig :deep(.sig-comma)    { color: var(--color-neutral-400); }
+/* JavaScript signature syntax highlighting (v-html needs :deep). */
+.code-sig :deep(.sig-ns)       { color: var(--color-neutral-500); }
+.code-sig :deep(.sig-dot)      { color: var(--color-neutral-400); }
+.code-sig :deep(.sig-fn)       { color: #16a34a; font-weight: 600; }
+.code-sig :deep(.sig-paren)    { color: var(--color-neutral-500); }
+.code-sig :deep(.sig-param)    { color: #2563eb; }
+.code-sig :deep(.sig-optional) { color: #a855f7; }
+.code-sig :deep(.sig-opt-mark) { color: #a855f7; }
+.code-sig :deep(.sig-comma)    { color: var(--color-neutral-400); }
 
-:is(.dark) .lua-sig :deep(.sig-ns)       { color: var(--color-neutral-400); }
-:is(.dark) .lua-sig :deep(.sig-dot)      { color: var(--color-neutral-500); }
-:is(.dark) .lua-sig :deep(.sig-fn)       { color: #4ade80; font-weight: 600; }
-:is(.dark) .lua-sig :deep(.sig-paren)    { color: var(--color-neutral-400); }
-:is(.dark) .lua-sig :deep(.sig-param)    { color: #60a5fa; }
-:is(.dark) .lua-sig :deep(.sig-optional) { color: #c084fc; }
-:is(.dark) .lua-sig :deep(.sig-opt-mark) { color: #c084fc; }
-:is(.dark) .lua-sig :deep(.sig-comma)    { color: var(--color-neutral-500); }
+:is(.dark) .code-sig :deep(.sig-ns)       { color: var(--color-neutral-400); }
+:is(.dark) .code-sig :deep(.sig-dot)      { color: var(--color-neutral-500); }
+:is(.dark) .code-sig :deep(.sig-fn)       { color: #4ade80; font-weight: 600; }
+:is(.dark) .code-sig :deep(.sig-paren)    { color: var(--color-neutral-400); }
+:is(.dark) .code-sig :deep(.sig-param)    { color: #60a5fa; }
+:is(.dark) .code-sig :deep(.sig-optional) { color: #c084fc; }
+:is(.dark) .code-sig :deep(.sig-opt-mark) { color: #c084fc; }
+:is(.dark) .code-sig :deep(.sig-comma)    { color: var(--color-neutral-500); }
 </style>

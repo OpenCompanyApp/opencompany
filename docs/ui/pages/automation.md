@@ -1,6 +1,6 @@
 # Automations
 
-> Manage scheduled prompt and Luau script automations, including run history, bulk actions, and editor-based create/edit flows.
+> Manage scheduled prompt and runtime-pinned QuickJS automations, including run history, bulk actions, and editor-based create/edit flows.
 
 ---
 
@@ -45,7 +45,7 @@ Create and edit screens use a full-height editor layout:
 | Toolbar: back, name input, Prompt/Script toggle, Save/Run        |
 +------------------------------------------------------------------+
 | Monaco editor                                      | Sidebar     |
-| Markdown prompt or Luau script                     | Agent       |
+| Markdown prompt or JavaScript                      | Agent       |
 |                                                    | Schedule    |
 |                                                    | Timezone    |
 |                                                    | History     |
@@ -67,7 +67,7 @@ Create and edit screens use a full-height editor layout:
 | `Modal` (shared) | Run-detail modal on edit screen |
 | `SearchInput` (shared) | Index search |
 | `CronBuilder` | Schedule builder in create/edit sidebars |
-| `MonacoEditor` | Prompt Markdown and Luau script editor |
+| `MonacoEditor` | Prompt Markdown and JavaScript editor |
 | `Icon` (shared) | Phosphor icons throughout |
 
 ---
@@ -88,8 +88,11 @@ Create and edit screens use a full-height editor layout:
 ### Create/Edit
 
 - The name is edited inline in the toolbar.
-- Prompt/Script segmented control switches the Monaco editor between Markdown and Luau modes.
-- Script mode shows a Luau badge and an API Reference link through the generated developer tools route helper.
+- Prompt/Script segmented control switches the Monaco editor between Markdown and JavaScript modes.
+- Script mode shows a QuickJS badge and an API Reference link through the generated developer tools route helper.
+- New or rewritten scripts compile capability-empty before persistence and are pinned to `quickjs-v1`.
+- Pre-cutover scripts remain visible but disabled until a user rewrites and validates them; they are never guessed or translated automatically.
+- Run details include execution ID, wall/CPU time, memory, capability calls, and the effect ledger.
 - Sidebar fields select agent, cron schedule, timezone, and conversation history retention.
 - Create screen saves through `createAutomation()`.
 - Edit screen loads the automation and recent runs, saves through `updateAutomation()`, and can trigger an immediate run.

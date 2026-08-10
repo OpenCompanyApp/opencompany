@@ -14,8 +14,8 @@ the current git tree.
 
 Three commits that restructured how integrations are organized, shared, and loaded.
 
-- **Commit `4cffd75`** — ToolRegistry decomposed into 15 `BuiltInToolProvider` classes. New `integration-core` package with shared contracts. 13 integration packages consolidated into monorepo. Lua docs for 6 integrations.
-- **Commit `24e2cc8`** - Lua doc generation and LuaBridge moved to shared `integration-core`. This older note predates the app-owned AI runtime that replaced Prism-era provider registration.
+- **Commit `4cffd75`** — ToolRegistry decomposed into 15 `BuiltInToolProvider` classes. New `integration-core` package with shared contracts. 13 integration packages consolidated into a monorepo. This predates Code Mode's JavaScript docs.
+- **Commit `24e2cc8`** - The original script docs and bridge moved to shared `integration-core`. This older note predates the language-neutral ScriptBridge and app-owned AI runtime.
 - **Commit `df74cb3`** — Monorepo moved from `tmp/integrations/` to `../integrations/`.
 
 ### 2. File Management System (Mar 1–2)
@@ -31,9 +31,9 @@ Complete virtual filesystem with multi-disk storage (local, S3, SFTP), agent fil
 
 ### 3. Automation / Script System (Feb 28 – Mar 1)
 
-Prompt and Luau script automations with Monaco editor, cron scheduling, run history.
+Prompt and runtime-pinned QuickJS automations with Monaco editor, cron scheduling, and run history.
 
-- Two execution modes: **prompt** (agent-driven, costs tokens) and **script** (Luau sandbox, zero cost)
+- Two execution modes: **prompt** (agent-driven, costs tokens) and **script** (QuickJS sandbox, zero token cost)
 - Auto-disable after 5 consecutive failures
 - 6 agent tools: list, get, create, update, delete, run
 - `RunScriptAutomationJob` with `ctx` table (automation_id, run_number, last_run_at, schedule)
@@ -96,7 +96,7 @@ Multi-account integration settings and additional refinements.
 |------|------|-----|
 | Integration refactor | **High** | All integrations reorganized. Missing `../integrations/` breaks everything. |
 | File management | **High** | New subsystem with storage ops, permissions, agent tools. Data loss potential. |
-| Automation / Scripts | **High** | Luau sandbox execution, auto-disable, destructive keep_history=false. |
+| Automation / Scripts | **High** | QuickJS sandbox execution, legacy-script cutover, auto-disable, destructive keep_history=false. |
 | Security hardening | **High** | 14 controllers rescoped — any regression is an auth bypass or false denial. |
 | Telegram forwarding | **Medium** | Single-try, echo prevention, file handling. |
 | Chat UI | **Medium** | XSS surface (mitigated), UX edge cases. |

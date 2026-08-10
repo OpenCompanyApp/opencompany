@@ -15,7 +15,7 @@
 | [observability.md](architecture/observability.md) | Proposal for monitoring, metrics, logging, error tracking, health checks, and alerting; planned file paths are not current inventory unless they exist | Planning admin/ops features |
 | [ai-tool-packages.md](architecture/ai-tool-packages.md) | AI tool package ecosystem strategy - ToolProvider contract, credential abstraction, hybrid ToolRegistry, building new tool packages | Creating or modifying AI tool packages, understanding package architecture |
 | [embedded-chromium-browser-investigation-2026-05-24.md](architecture/embedded-chromium-browser-investigation-2026-05-24.md) | Feasibility research for remote Chromium browser sessions with user live control, agent automation, provider options, and OpenCompany runtime/security boundaries | Planning browser automation, web research, or human-in-the-loop browsing features |
-| [web-search-fetch-adapter-investigation-2026-05-24.md](architecture/web-search-fetch-adapter-investigation-2026-05-24.md) | KosmoKrator-backed investigation and OpenCompany implementation plan for adapter-based non-browser `web_search`/`web_fetch`; current app baseline covers config, providers, managers, direct tools, Lua docs/runtime normalization, provider setup and web access UI, caching, usage events, diagnostics/configuration commands, extraction, URL safety, focused tests, adapter failure/malformed-payload coverage, and opt-in direct/Tavily live smoke tests, while broader provider live smoke coverage remains planned | Auditing or extending regular web research/fetch tools before browser automation |
+| [web-search-fetch-adapter-investigation-2026-05-24.md](architecture/web-search-fetch-adapter-investigation-2026-05-24.md) | Historical adapter investigation plus the current non-browser `web_search`/`web_fetch` provider, caching, usage, diagnostics, safety, and test baseline | Auditing or extending regular web research/fetch tools before browser automation |
 | [telegram-chatogrator-capabilities-investigation-2026-05-24.md](architecture/telegram-chatogrator-capabilities-investigation-2026-05-24.md) | Research-only comparison of OpenCompany Telegram/Chatogrator, KosmoKrator Telegram gateway, current Hermes Telegram UX, provider abstraction differences, and current Telegram Bot API capabilities | Investigating Telegram/chat-provider capabilities before deciding any product direction |
 | [telegram-world-class-implementation-overview-2026-05-24.md](architecture/telegram-world-class-implementation-overview-2026-05-24.md) | Agent-first Telegram target overview: switch agents/topics, run status, approvals, and attachments as agent context instead of a broad product-module command center | Rethinking or auditing Telegram UX direction |
 | [telegram-world-class-implementation-plan-2026-05-24.md](architecture/telegram-world-class-implementation-plan-2026-05-24.md) | Phased reset plan for the agent-first Telegram implementation, including visible command shrinkage, agent/topic switching, media-as-context, approvals/run controls, Mini App as advanced drawer, and default-off legacy resource commands | Implementing or continuing the Telegram UX reset |
@@ -38,7 +38,7 @@
 
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
-| [ecosystem/integrations/](ecosystem/integrations/) | Integration package authoring reference, package layout, Lua tools, credentials, triggers, app publishing flow, and generated per-package Lua docs | Building or updating OpenCompany integration packages |
+| [ecosystem/integrations/](ecosystem/integrations/) | Integration package authoring reference, language-neutral script bridge, credentials, triggers, publishing flow, and generated JavaScript Code Mode docs | Building or updating OpenCompany integration packages |
 | [ecosystem/integrations/core/README.md](ecosystem/integrations/core/README.md) | Shared integration-core contracts and primitives used by package implementations | Changing common package behavior or reviewing package ownership boundaries |
 | [ecosystem/integrations/celestial/README.md](ecosystem/integrations/celestial/README.md) | Celestial integration package reference | Working on the Celestial package |
 | [ecosystem/integrations/clickup/README.md](ecosystem/integrations/clickup/README.md) | ClickUp integration package reference | Working on the ClickUp package |
@@ -78,7 +78,8 @@
 | [integration-refactor.md](planning/integration-refactor.md) | Integration refactor strategy and implementation notes | Working on package/runtime integration cleanup |
 | [integrations.md](planning/integrations.md) | Integrations product and architecture planning | Planning integration features or package scope |
 | [laravel-mcp-client.md](planning/laravel-mcp-client.md) | Laravel MCP client planning | Building or evaluating MCP client support |
-| [lua-scripting.md](planning/lua-scripting.md) | Lua scripting strategy for integrations and tools | Working on sandboxed script execution |
+| [quickjs-code-mode-migration.md](planning/quickjs-code-mode-migration.md) | Approved hard-cut implementation plan from Lua/Luau to synchronous JavaScript on QuickJS, including shared integration contracts, security budgets, persisted scripts, UI, deployment, and removal gates | Implementing or reviewing the QuickJS Code Mode migration |
+| [code-mode-agent-experience.md](architecture/code-mode-agent-experience.md) | Code Mode discovery, validation, execution, effects, retry, trace, and evaluation contracts | Reviewing or improving agent experience for programmatic tool use |
 | [memory-systems.md](planning/memory-systems.md) | Memory-system research and roadmap notes | Comparing memory implementation options |
 | [skill-system.md](planning/skill-system.md) | Skill-system planning for reusable agent capabilities | Designing skill packaging or execution |
 | [vector-optional.md](planning/vector-optional.md) | Optional vector-search architecture | Deciding whether vector storage belongs in a feature |
@@ -118,7 +119,7 @@
 | [pages/calendar.md](ui/pages/calendar.md) | Calendar page specification | Working on calendar UI |
 | [pages/chat.md](ui/pages/chat.md) | Chat page specification | Working on chat UI |
 | [pages/dashboard.md](ui/pages/dashboard.md) | Dashboard page specification | Working on dashboard UI |
-| [pages/developer.md](ui/pages/developer.md) | Developer tool catalog and Lua console specification | Working on developer tool reference or script execution UI |
+| [pages/developer.md](ui/pages/developer.md) | Developer tool catalog and QuickJS Code Console specification | Working on developer tool reference or script execution UI |
 | [pages/docs.md](ui/pages/docs.md) | Docs page specification | Working on document viewer UI |
 | [pages/files.md](ui/pages/files.md) | Files page specification | Working on workspace file manager UI |
 | [pages/integrations.md](ui/pages/integrations.md) | Integrations page specification | Working on integration UI |

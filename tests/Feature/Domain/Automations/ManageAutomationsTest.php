@@ -9,11 +9,9 @@ use App\Models\Automation;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\LuaResult;
-use App\Services\LuaSandboxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
-use Mockery;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class ManageAutomationsTest extends TestCase
@@ -84,19 +82,14 @@ class ManageAutomationsTest extends TestCase
             'name' => 'Script summary',
             'execution_type' => 'script',
             'agent_id' => $agent->id,
-            'script' => 'print("hello")',
+            'script' => 'console.log("hello from script"); return "ok";',
+            'script_runtime' => 'quickjs-v1',
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'created_by_id' => $creator->id,
             'is_active' => true,
             'keep_history' => true,
         ]);
-
-        $sandbox = Mockery::mock(LuaSandboxService::class);
-        $sandbox->shouldReceive('execute')
-            ->once()
-            ->andReturn(new LuaResult('hello from script', null, 'ok', 12.3, 1024));
-        app()->instance(LuaSandboxService::class, $sandbox);
 
         app(ExecuteScriptAutomation::class)->handle($automation);
 
@@ -114,5 +107,79 @@ class ManageAutomationsTest extends TestCase
 
         $automation->refresh();
         $this->assertSame(1, $automation->run_count);
+        $this->assertSame('quickjs-v1', $automation->last_result['script_runtime']);
+        $this->assertArrayHasKey('execution_id', $automation->last_result);
+        $this->assertArrayHasKey('effects', $automation->last_result);
+    }
+
+    public function test_script_creation_compiles_and_pins_the_runtime(): void
+    {
+        $creator = User::factory()->create(['type' => 'human']);
+        $agent = User::factory()->agent()->create();
+        $this->actingAs($creator);
+
+        $automation = app(ManageAutomations::class)->create([
+            'name' => 'JavaScript report',
+            'executionType' => 'script',
+            'agentId' => $agent->id,
+            'script' => 'return { ok: true };',
+            'cronExpression' => '0 9 * * *',
+            'timezone' => 'UTC',
+            'createdById' => $creator->id,
+        ]);
+
+        $this->assertSame('quickjs-v1', $automation->script_runtime);
+        $this->assertTrue($automation->is_active);
+    }
+
+    public function test_invalid_javascript_is_rejected_before_persistence(): void
+    {
+        $creator = User::factory()->create(['type' => 'human']);
+        $agent = User::factory()->agent()->create();
+        $this->actingAs($creator);
+
+        try {
+            app(ManageAutomations::class)->create([
+                'name' => 'Broken script',
+                'executionType' => 'script',
+                'agentId' => $agent->id,
+                'script' => 'const broken = ;',
+                'cronExpression' => '0 9 * * *',
+                'createdById' => $creator->id,
+            ]);
+            $this->fail('Expected validation failure.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('syntax_error', $exception->errors()['script'][0]);
+        }
+
+        $this->assertFalse(Automation::where('name', 'Broken script')->exists());
+    }
+
+    public function test_unpinned_legacy_script_refuses_execution_without_creating_a_task(): void
+    {
+        $creator = User::factory()->create(['type' => 'human']);
+        $agent = User::factory()->agent()->create();
+        $automation = Automation::create([
+            'id' => 'legacy-script',
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Legacy script',
+            'execution_type' => 'script',
+            'agent_id' => $agent->id,
+            'script' => 'return true',
+            'script_runtime' => null,
+            'cron_expression' => '0 9 * * *',
+            'timezone' => 'UTC',
+            'created_by_id' => $creator->id,
+            'is_active' => false,
+            'keep_history' => true,
+        ]);
+
+        app(ExecuteScriptAutomation::class)->handle($automation);
+
+        $this->assertFalse(Task::where('context->automation_id', $automation->id)->exists());
+        $automation->refresh();
+        $this->assertSame(1, $automation->consecutive_failures);
+        $this->assertFalse($automation->last_result['retryable']);
+        $this->assertSame('quickjs-v1', $automation->last_result['required_runtime']);
     }
 }

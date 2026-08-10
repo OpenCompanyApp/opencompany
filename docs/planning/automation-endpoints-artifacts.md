@@ -2,17 +2,17 @@
 
 Status: Planning, code-audited 2026-05-25. This document describes a future endpoint/artifact surface. It supersedes the older "dashboards" framing: dashboards are one artifact type, not the whole product surface.
 
-Related: `docs/planning/lua-scripting.md`, `docs/planning/unified-vfs-overview.md`, `docs/ui/pages/automation.md`, `docs/ui/pages/files.md`, `docs/ui/pages/tables.md`
+Related: ``docs/planning/unified-vfs-overview.md`, `docs/ui/pages/automation.md`, `docs/ui/pages/files.md`, `docs/ui/pages/tables.md`
 
 ## Current Code Snapshot
 
 The pieces below exist today and should be reused instead of rebuilt:
 
 - Automations already have `trigger_type`, `execution_type`, nullable `prompt`, nullable `script`, schedule fields, run counts, failure counts, and `last_result` on `app/Models/Automation.php`.
-- `execution_type = script` already runs through `RunScriptAutomationJob`, `ExecuteScriptAutomation`, `LuaSandboxService`, and `LuaBridge`.
+- `execution_type = script` already runs through `RunScriptAutomationJob`, `ExecuteScriptAutomation`, `QuickJsSandboxService`, and `CodeBridge`.
 - Current automation creation requires a cron expression through `AutomationController`, `ManageAutomations`, and the create/edit Vue screens.
 - Automation tools already exist in `app/Agents/Tools/Workspace/*` and are registered by `AutomationsToolProvider`, but they create scheduled prompt/script automations only.
-- API routes expose automation CRUD, manual runs, file CRUD, document CRUD, table CRUD, Lua console execution, and tool catalog data under the current workspace context.
+- API routes expose automation CRUD, manual runs, file CRUD, document CRUD, table CRUD, JavaScript console execution, and tool catalog data under the current workspace context.
 - Workspace files are backed by `WorkspaceFile`, `WorkspaceDisk`, and `FileSystemService`; agents can already create text files through `write_file`, and server-side importers can write binary files. This is useful infrastructure, but it should not be the canonical product home for artifacts.
 - The SVG tool already returns generated PNG artifacts as a conversion primitive, but there is no first-class `Artifact` model, artifact route, artifact viewer, or artifact catalog.
 - There is no `app/Domain/Vfs` implementation yet. The unified VFS document is still the target architecture.
@@ -33,8 +33,8 @@ The platform evolves from "agents that chat" into "agents that build inspectable
 | Artifact | A durable workspace object produced by an agent or automation. The canonical unit is a folder bundle with a manifest, pages, assets, backend scripts, data, and tests. |
 | Artifact bundle | The source tree for an artifact. It behaves like a small workspace app/repo under `/artifacts/{artifact-slug}`. |
 | Dashboard artifact | A renderable artifact whose primary UI is HTML/CSS/JS and whose data comes from endpoint automations, tables, files, or VFS reads. |
-| Artifact file | A file inside an artifact bundle: HTML, CSS, JS, Lua, JSON, Markdown, CSV, image, or other asset. It may be backed by a dedicated artifact file table or hidden workspace-file storage. |
-| Backend script | A Lua source file inside `backend/` that is exposed as an artifact-scoped endpoint by the artifact runtime. |
+| Artifact file | A file inside an artifact bundle: HTML, CSS, JS, JavaScript, JSON, Markdown, CSV, image, or other asset. It may be backed by a dedicated artifact file table or hidden workspace-file storage. |
+| Backend script | A JavaScript source file inside `backend/` that is exposed as an artifact-scoped endpoint by the artifact runtime. |
 | VFS path | The stable agent-facing path that later exposes artifacts, files, documents, tables, automations, and endpoint definitions through one filesystem model. |
 
 ## Product Shape
@@ -47,7 +47,7 @@ Three pillars should work together:
 
 Dashboard pages remain valid, but the model should be folder-first and broader:
 
-- `app`: one or more HTML pages, shared assets, and Lua backend scripts.
+- `app`: one or more HTML pages, shared assets, and JavaScript backend scripts.
 - `report`: Markdown/HTML/PDF source plus generated data files.
 - `dashboard`: dashboard-like app with charts, tables, refresh policy, and read endpoints.
 - `form`: HTML form pages plus write endpoints and validation scripts.
@@ -73,9 +73,9 @@ An artifact should look like a small repo. The root folder is canonical for agen
     logo.png
 
   backend/
-    list-feedback.lua
-    create-feedback.lua
-    update-status.lua
+    list-feedback.js
+    create-feedback.js
+    update-status.js
 
   data/
     seed.json
@@ -102,13 +102,13 @@ An artifact should look like a small repo. The root folder is canonical for agen
     {
       "slug": "feedback.list",
       "method": "GET",
-      "script": "backend/list-feedback.lua",
+      "script": "backend/list-feedback.js",
       "auth": "workspace"
     },
     {
       "slug": "feedback.create",
       "method": "POST",
-      "script": "backend/create-feedback.lua",
+      "script": "backend/create-feedback.js",
       "auth": "workspace"
     }
   ],
@@ -124,19 +124,19 @@ Keep the folder convention stable. Agents should be able to infer where frontend
 
 ## Artifact Backend Endpoints
 
-Artifact backend endpoints should primarily be manifest entries that point at Lua files inside the artifact bundle. That keeps the source of a mini-app together: frontend in `pages/` and `assets/`, backend in `backend/`, fixtures in `data/`, tests in `tests/`.
+Artifact backend endpoints should primarily be manifest entries that point at JavaScript files inside the artifact bundle. That keeps the source of a mini-app together: frontend in `pages/` and `assets/`, backend in `backend/`, fixtures in `data/`, tests in `tests/`.
 
 Backend execution is automation-adjacent. Treat artifact endpoints and scheduled automations as two runtime bindings over script source, not two unrelated products:
 
 ```text
 Artifact bundle owns source:
-  /artifacts/feedback-tracker/backend/list-feedback.lua
+  /artifacts/feedback-tracker/backend/list-feedback.js
 
 Artifact endpoint binding owns request/response execution:
   GET /api/artifacts/feedback-tracker/endpoints/feedback.list
 
 Automation binding owns scheduled/manual/background execution:
-  every weekday 09:00 -> run backend/list-feedback.lua -> write data/report/output
+  every weekday 09:00 -> run backend/list-feedback.js -> write data/report/output
 ```
 
 This keeps editable source in the artifact bundle while letting the existing automation runtime own scheduling, run history, failure handling, and manual runs.
@@ -163,28 +163,28 @@ Endpoint execution should:
 1. Resolve the workspace before finding the artifact.
 2. Find an active `Artifact::forWorkspace()` record by slug.
 3. Read and validate `artifact.json`.
-4. Resolve the endpoint entry to a Lua file under the same artifact root.
+4. Resolve the endpoint entry to a JavaScript file under the same artifact root.
 5. Check the endpoint method allowlist, auth mode, artifact status, and artifact permissions.
-6. Build a request context and pass it to `LuaSandboxService` as `ctx.request` and `ctx.artifact`.
-7. Use `LuaBridge` so endpoint scripts call the same agent-visible tools and permission checks as normal Lua.
+6. Build a request context and pass it to `QuickJsSandboxService` as `ctx.request` and `ctx.artifact`.
+7. Use `CodeBridge` so endpoint scripts call the same agent-visible tools and permission checks as normal JavaScript.
 8. Return JSON with a bounded body, status code, headers allowlist, execution metadata, and clear errors.
 9. Record success/failure without assuming endpoint calls should always create long-lived task conversation output.
 
 Request context should be explicit:
 
-```lua
-local request = ctx.request
-local artifact = ctx.artifact
+```javascript
+const request = ctx.request;
+const artifact = ctx.artifact;
 
 return {
-  status = 200,
-  body = {
-    method = request.method,
-    query = request.query,
-    user = request.user,
-    artifact = artifact.slug,
+  status: 200,
+  body: {
+    method: request.method,
+    query: request.query,
+    user: request.user,
+    artifact: artifact.slug,
   },
-}
+};
 ```
 
 Endpoint manifest fields:
@@ -193,7 +193,7 @@ Endpoint manifest fields:
 |---|---|
 | `slug` | Human-friendly endpoint name, unique inside the artifact. |
 | `method` / `methods` | Allowed methods, usually `GET`, `POST`, or both. |
-| `script` | Relative path to a Lua file under `backend/`. |
+| `script` | Relative path to a JavaScript file under `backend/`. |
 | `auth_mode` | `session`, `token`, `signed`, or later `public`. |
 | `request_schema` | Optional JSON schema used for validation and agent docs. |
 | `response_schema` | Optional JSON schema used by artifact builders and tests. |
@@ -240,7 +240,7 @@ Recommended storage approach:
 
 1. Prefer a dedicated `artifact_files` tree if implementation starts from scratch. It gives artifact-specific paths, versions, checksums, MIME types, and ownership without leaking into the Files product.
 2. If speed matters, reuse `WorkspaceFile` internally by pointing `artifacts.root_folder_id` at a hidden folder. Hide that folder from the normal Files UI and expose it through `ArtifactService`.
-3. Do not store HTML, CSS, JS, or Lua directly in `artifacts` columns. Keep source files patchable and inspectable as files.
+3. Do not store HTML, CSS, JS, or JavaScript directly in `artifacts` columns. Keep source files patchable and inspectable as files.
 4. Do not make `/files/generated/artifacts` the agent-facing path. That makes Artifacts feel like file clutter instead of a first-class workspace object.
 
 ## Artifact Viewer
@@ -328,7 +328,7 @@ Log policy:
 - Redact secrets before persistence.
 - Store larger payloads in private storage only when needed, with pointers from the run log.
 - Keep stdout/stderr/output bounded.
-- Record Lua bridge call count and compact tool-call summaries.
+- Record JavaScript bridge call count and compact tool-call summaries.
 - Show artifact version, endpoint slug, trigger, actor, status, duration, and time in the Lab UI.
 
 Lab run list:
@@ -391,13 +391,13 @@ Frontend sandbox:
 - Allow artifact pages to call only endpoints declared in `artifact.json`.
 - Do not let artifact JavaScript call arbitrary OpenCompany APIs.
 
-Lua sandbox:
+JavaScript sandbox:
 
 - No OS access.
 - No host filesystem access.
 - No raw network by default.
 - Artifact file/VFS access only through explicit artifact or VFS APIs.
-- Tool calls only through `LuaBridge`.
+- Tool calls only through `CodeBridge`.
 - CPU, memory, execution-time, response-size, output-size, and tool-call budgets.
 
 Endpoint request flow:
@@ -411,7 +411,7 @@ Endpoint request flow:
   -> validate endpoint exists
   -> validate method/auth/request schema
   -> enforce rate limit and capability scope
-  -> execute the versioned Lua script
+  -> execute the versioned JavaScript script
   -> persist run log
   -> return bounded JSON
 ```
@@ -449,7 +449,7 @@ Manifest example:
 
 Secret handling rules:
 
-- Never expose raw integration credentials to artifact HTML or Lua.
+- Never expose raw integration credentials to artifact HTML or JavaScript.
 - Redact tokens, API keys, cookies, OAuth values, authorization headers, and known secret-shaped strings from logs.
 - Do not include request headers in run logs unless explicitly allowlisted and redacted.
 - Keep integration access scoped to named capabilities, not broad credential access.
@@ -515,7 +515,7 @@ Manifest endpoint sharing flag:
     {
       "slug": "feedback.list",
       "method": "GET",
-      "script": "backend/list-feedback.lua",
+      "script": "backend/list-feedback.js",
       "share": {
         "enabled": true,
         "methods": ["GET"]
@@ -591,7 +591,7 @@ Git integration should be a strong artifact capability because artifacts are fol
 Use cases:
 
 - Export an artifact bundle to a GitHub repository for external review.
-- Import an existing small HTML/Lua tool into Lab as an artifact.
+- Import an existing small HTML/JavaScript tool into Lab as an artifact.
 - Sync `/artifacts/{slug}` to a branch so developers can edit with normal Git workflows.
 - Map published artifact versions to commits or tags.
 - Open pull requests for high-risk artifact changes before publishing.
@@ -637,7 +637,7 @@ artifact version v12
 
 Security and workflow rules:
 
-- Git credentials must go through integration credential storage; never expose tokens to artifact Lua or HTML.
+- Git credentials must go through integration credential storage; never expose tokens to artifact JavaScript or HTML.
 - Importing from Git creates or updates a draft, never a published version directly.
 - Publish gates still run after Git import.
 - Capability expansions from Git diffs still require approval.
@@ -667,12 +667,12 @@ Example commerce artifact:
     app.js
 
   backend/
-    list-products.lua
-    create-checkout-session.lua
-    handle-stripe-webhook.lua
-    get-entitlement.lua
-    cancel-subscription.lua
-    accept-agent-order.lua
+    list-products.js
+    create-checkout-session.js
+    handle-stripe-webhook.js
+    get-entitlement.js
+    cancel-subscription.js
+    accept-agent-order.js
 
   data/
     products.json
@@ -688,7 +688,7 @@ Practical future flow using normal Stripe Checkout/Billing:
 ```text
 User opens artifact pricing page
   -> POST /api/artifacts/client-portal/endpoints/checkout.create
-  -> backend/create-checkout-session.lua calls app.stripe.checkout.create_session(...)
+  -> backend/create-checkout-session.js calls app.stripe.checkout.create_session(...)
   -> Stripe Checkout handles payment
   -> Stripe webhook reaches OpenCompany
   -> app-owned webhook verifier invokes artifact-safe handler or updates entitlement tables
@@ -699,11 +699,11 @@ Future agentic-commerce flow:
 
 ```text
 Buyer agent requests catalog/quote
-  -> backend/list-products.lua or backend/quote.lua returns structured products, prices, policies
+  -> backend/list-products.js or backend/quote.js returns structured products, prices, policies
 
 Buyer approves purchase through its AI platform/payment rail
   -> platform sends scoped payment token/order context
-  -> backend/accept-agent-order.lua validates and accepts order through app.stripe.agentic.*
+  -> backend/accept-agent-order.js validates and accepts order through app.stripe.agentic.*
   -> artifact records order, entitlement, fulfillment task, and receipt
 ```
 
@@ -717,7 +717,7 @@ Manifest capability example:
     {
       "slug": "checkout.create",
       "method": "POST",
-      "script": "backend/create-checkout-session.lua",
+      "script": "backend/create-checkout-session.js",
       "permissions": {
         "stripe": ["checkout.sessions.create"],
         "tables": ["artifact_entitlements:write"]
@@ -727,7 +727,7 @@ Manifest capability example:
 }
 ```
 
-Lua handler pattern:
+JavaScript handler pattern:
 
 ```text
 validate input
@@ -737,198 +737,186 @@ emit optional channel/task side effects
 return bounded JSON
 ```
 
-Example `backend/list-products.lua`:
+Example `backend/list-products.js`:
 
-```lua
---!strict
-
-local products = app.tables.rows("artifact_products", {
-  where = { active = true },
-  order_by = "sort_order"
-})
+```javascript
+const products = app.tables.rows("artifact_products", {
+  where: { active: true },
+  order_by: "sort_order",
+});
 
 return {
-  status = 200,
-  body = {
-    products = products
-  }
-}
+  status: 200,
+  body: { products },
+};
 ```
 
-Example `backend/create-checkout-session.lua`:
+Example `backend/create-checkout-session.js`:
 
-```lua
---!strict
+```javascript
+const request = ctx.request;
+const artifact = ctx.artifact;
+const input = request.body;
 
-local request = ctx.request
-local artifact = ctx.artifact
-local input = request.body
-
-if not input.price_id then
+if (!input.price_id) {
   return {
-    status = 422,
-    body = { error = "price_id is required" }
-  }
-end
+    status: 422,
+    body: { error: "price_id is required" },
+  };
+}
 
-local idempotency_key = "artifact:" .. artifact.id .. ":checkout:" .. request.id
+const idempotency_key = `artifact:${artifact.id}:checkout:${request.id}`;
 
-local session = app.stripe.checkout.create_session({
-  mode = input.mode or "subscription",
-  price_id = input.price_id,
-  quantity = input.quantity or 1,
-  customer_email = input.email,
-  success_url = artifact.urls.page("success") .. "?session_id={CHECKOUT_SESSION_ID}",
-  cancel_url = artifact.urls.page("pricing"),
-  metadata = {
-    artifact_id = artifact.id,
-    artifact_slug = artifact.slug,
-    workspace_id = ctx.workspace.id,
-    actor_id = request.user and request.user.id or nil
+const session = app.stripe.checkout.create_session({
+  mode: input.mode || "subscription",
+  price_id: input.price_id,
+  quantity: input.quantity || 1,
+  customer_email: input.email,
+  success_url: `${artifact.urls.page("success")}?session_id={CHECKOUT_SESSION_ID}`,
+  cancel_url: artifact.urls.page("pricing"),
+  metadata: {
+    artifact_id: artifact.id,
+    artifact_slug: artifact.slug,
+    workspace_id: ctx.workspace.id,
+    actor_id: request.user ? request.user.id : null,
   },
-  idempotency_key = idempotency_key
-})
+  idempotency_key,
+});
 
 app.tables.insert("artifact_payment_events", {
-  artifact_id = artifact.id,
-  provider = "stripe",
-  event_type = "checkout_session_created",
-  external_id = session.id,
-  status = "created",
-  metadata = {
-    price_id = input.price_id,
-    mode = input.mode or "subscription"
-  }
-})
+  artifact_id: artifact.id,
+  provider: "stripe",
+  event_type: "checkout_session_created",
+  external_id: session.id,
+  status: "created",
+  metadata: {
+    price_id: input.price_id,
+    mode: input.mode || "subscription",
+  },
+});
 
 return {
-  status = 200,
-  body = {
-    checkout_url = session.url,
-    session_id = session.id
-  }
-}
+  status: 200,
+  body: {
+    checkout_url: session.url,
+    session_id: session.id,
+  },
+};
 ```
 
-Example `backend/handle-stripe-webhook.lua`:
+Example `backend/handle-stripe-webhook.js`:
 
-```lua
---!strict
+```javascript
+const event = ctx.request.body;
 
-local event = ctx.request.body
-
-if event.type == "checkout.session.completed" then
-  local session = event.data.object
+if (event.type === "checkout.session.completed") {
+  const session = event.data.object;
 
   app.tables.upsert("artifact_entitlements", {
-    external_customer_id = session.customer,
-    artifact_id = session.metadata.artifact_id
+    external_customer_id: session.customer,
+    artifact_id: session.metadata.artifact_id,
   }, {
-    workspace_id = session.metadata.workspace_id,
-    artifact_id = session.metadata.artifact_id,
-    actor_id = session.metadata.actor_id,
-    external_customer_id = session.customer,
-    external_subscription_id = session.subscription,
-    status = "active",
-    source = "stripe",
-    activated_at = app.time.now()
-  })
+    workspace_id: session.metadata.workspace_id,
+    artifact_id: session.metadata.artifact_id,
+    actor_id: session.metadata.actor_id,
+    external_customer_id: session.customer,
+    external_subscription_id: session.subscription,
+    status: "active",
+    source: "stripe",
+    activated_at: app.time.now(),
+  });
 
-  app.channels.send("billing", "New artifact subscription: " .. session.id)
-end
+  app.channels.send("billing", `New artifact subscription: ${session.id}`);
+}
 
-if event.type == "customer.subscription.deleted" then
-  local subscription = event.data.object
+if (event.type === "customer.subscription.deleted") {
+  const subscription = event.data.object;
 
   app.tables.update_where("artifact_entitlements", {
-    external_subscription_id = subscription.id
+    external_subscription_id: subscription.id,
   }, {
-    status = "cancelled",
-    cancelled_at = app.time.now()
-  })
-end
+    status: "cancelled",
+    cancelled_at: app.time.now(),
+  });
+}
 
 return {
-  status = 200,
-  body = { received = true }
-}
+  status: 200,
+  body: { received: true },
+};
 ```
 
-Example `backend/get-entitlement.lua`:
+Example `backend/get-entitlement.js`:
 
-```lua
---!strict
+```javascript
+const user = ctx.request.user;
 
-local user = ctx.request.user
-
-if not user then
+if (!user) {
   return {
-    status = 401,
-    body = { error = "Authentication required" }
-  }
-end
+    status: 401,
+    body: { error: "Authentication required" },
+  };
+}
 
-local entitlement = app.tables.first("artifact_entitlements", {
-  where = {
-    artifact_id = ctx.artifact.id,
-    actor_id = user.id,
-    status = "active"
-  }
-})
+const entitlement = app.tables.first("artifact_entitlements", {
+  where: {
+    artifact_id: ctx.artifact.id,
+    actor_id: user.id,
+    status: "active",
+  },
+});
 
 return {
-  status = 200,
-  body = {
-    active = entitlement ~= nil,
-    entitlement = entitlement
-  }
-}
+  status: 200,
+  body: {
+    active: entitlement !== null,
+    entitlement,
+  },
+};
 ```
 
 Future agentic payment handler shape:
 
-```lua
---!strict
+```javascript
+const input = ctx.request.body;
 
-local input = ctx.request.body
-
-if not input.shared_payment_token then
+if (!input.shared_payment_token) {
   return {
-    status = 422,
-    body = { error = "shared_payment_token is required" }
-  }
-end
+    status: 422,
+    body: { error: "shared_payment_token is required" },
+  };
+}
 
-local order = app.stripe.agentic.accept_order({
-  shared_payment_token = input.shared_payment_token,
-  cart = input.cart,
-  buyer_agent = input.buyer_agent,
-  idempotency_key = "agent-order:" .. ctx.request.id
-})
+const order = app.stripe.agentic.accept_order({
+  shared_payment_token: input.shared_payment_token,
+  cart: input.cart,
+  buyer_agent: input.buyer_agent,
+  idempotency_key: `agent-order:${ctx.request.id}`,
+});
 
 app.tables.insert("artifact_orders", {
-  artifact_id = ctx.artifact.id,
-  order_id = order.id,
-  status = order.status,
-  total = order.total,
-  currency = order.currency,
-  buyer_agent = input.buyer_agent
-})
+  artifact_id: ctx.artifact.id,
+  order_id: order.id,
+  status: order.status,
+  total: order.total,
+  currency: order.currency,
+  buyer_agent: input.buyer_agent,
+});
 
 return {
-  status = 200,
-  body = {
-    order_id = order.id,
-    status = order.status
-  }
-}
+  status: 200,
+  body: {
+    order_id: order.id,
+    status: order.status,
+  },
+};
 ```
 
 Payment security rules:
 
-- Artifact Lua must never receive Stripe secret keys.
+- Artifact JavaScript must never receive Stripe secret keys.
 - Artifact HTML must never receive Stripe secret keys.
-- Lua calls an OpenCompany-owned Stripe integration wrapper such as `app.stripe.*`; exact API shape is future work.
+- JavaScript calls an OpenCompany-owned Stripe integration wrapper such as `app.stripe.*`; exact API shape is future work.
 - Stripe webhooks must be verified by app-owned code before any artifact handler sees normalized event data.
 - Use idempotency keys for checkout, order acceptance, refunds, and fulfillment actions.
 - Store payment events, entitlements, and orders in workspace-scoped tables or first-class billing records.
@@ -1001,7 +989,7 @@ New capabilities:
 
 Files changed:
   artifact.json
-  backend/create-feedback.lua
+  backend/create-feedback.js
 ```
 
 ## Audit Trail
@@ -1053,7 +1041,7 @@ Suggested v1 defaults:
 ```text
 10 endpoint requests/minute per user
 100 endpoint requests/minute per workspace
-30 seconds max Lua execution
+30 seconds max JavaScript execution
 fixed max tool calls per run
 fixed max response bytes
 fixed max log bytes
@@ -1082,7 +1070,7 @@ Start conservative:
 - No external network from artifact frontend.
 - No arbitrary CDN assets.
 - No direct OpenCompany API calls from artifact HTML.
-- Lua only through the existing sandbox and tool bridge.
+- JavaScript only through the existing sandbox and tool bridge.
 - Read endpoints before write endpoints.
 - Write endpoints require approval.
 - Published versions are immutable.
@@ -1144,8 +1132,8 @@ Canonical VFS paths:
 /artifacts/{artifact-slug}/pages/admin.html
 /artifacts/{artifact-slug}/assets/styles.css
 /artifacts/{artifact-slug}/assets/app.js
-/artifacts/{artifact-slug}/backend/list-feedback.lua
-/artifacts/{artifact-slug}/backend/create-feedback.lua
+/artifacts/{artifact-slug}/backend/list-feedback.js
+/artifacts/{artifact-slug}/backend/create-feedback.js
 /artifacts/{artifact-slug}/data/sample-response.json
 /artifacts/{artifact-slug}/tests/create-feedback.request.json
 ```
@@ -1156,14 +1144,14 @@ Files app behavior:
 - If `WorkspaceFile` backs artifact files internally, hide those implementation folders from normal Files browsing or show them only as linked/generated system files.
 - Lab owns preview, edit, endpoint bindings, schedules, logs, publish state, permissions, duplicate, archive, and delete.
 
-Agent and Lua behavior should converge on the future VFS primitives:
+Agent and JavaScript behavior should converge on the future VFS primitives:
 
-```lua
-local rows = app.tables.get_rows("feedback_tracker", { limit = 100 })
+```javascript
+const rows = app.tables.get_rows("feedback_tracker", { limit: 100 });
 
-app.vfs.write("/artifacts/feedback-tracker/data/feedback.json", json.encode(rows), {
-  mode = "overwrite",
-})
+app.vfs.write("/artifacts/feedback-tracker/data/feedback.json", JSON.stringify(rows), {
+  mode: "overwrite",
+});
 ```
 
 `app.vfs.*` does not exist yet, so current implementation work should add an `ArtifactService` and artifact tools first, or use hidden file storage behind artifact-specific operations. Avoid teaching agents to use `/files/generated/artifacts` as the durable path.
@@ -1200,7 +1188,7 @@ Tabs:
   Settings
 ```
 
-The `Endpoints` tab owns request/response bindings for `backend/*.lua` scripts. The `Automations` tab owns schedules/manual background jobs that run the same scripts. This makes the backend feel integrated with automations without moving the source out of the artifact.
+The `Endpoints` tab owns request/response bindings for `backend/*.js` scripts. The `Automations` tab owns schedules/manual background jobs that run the same scripts. This makes the backend feel integrated with automations without moving the source out of the artifact.
 
 Opening a published artifact is a separate consumption route:
 
@@ -1227,7 +1215,7 @@ create_artifact(name: "Feedback Tracker", slug: "feedback-tracker", type: "app")
 write_artifact_file("feedback-tracker", "artifact.json", manifest)
 write_artifact_file("feedback-tracker", "pages/index.html", html)
 write_artifact_file("feedback-tracker", "assets/styles.css", css)
-write_artifact_file("feedback-tracker", "backend/list-feedback.lua", lua)
+write_artifact_file("feedback-tracker", "backend/list-feedback.js", javascript)
 run_artifact_endpoint("feedback-tracker", "feedback.list", { method: "GET" })
 publish_artifact("feedback-tracker")
 ```
@@ -1238,7 +1226,7 @@ Once VFS exists, the same flow becomes:
 vfs_exec("tree /artifacts/feedback-tracker")
 vfs_exec("cat /artifacts/feedback-tracker/artifact.json")
 vfs_patch("/artifacts/feedback-tracker/pages/index.html", ...)
-vfs_write("/artifacts/feedback-tracker/backend/create-feedback.lua", ...)
+vfs_write("/artifacts/feedback-tracker/backend/create-feedback.js", ...)
 ```
 
 The important AX rule: an artifact is a named workspace object with a folder tree. Agents should never have to remember an implementation storage path to find or modify it.
@@ -1252,7 +1240,7 @@ The agent should:
 1. Create a table called `feedback_tracker` with columns for title, category, status, submitter, and timestamps.
 2. Create an artifact bundle at `/artifacts/feedback-tracker`.
 3. Write `artifact.json`, `pages/index.html`, `assets/styles.css`, and any shared JS.
-4. Write `backend/list-feedback.lua` and `backend/create-feedback.lua`.
+4. Write `backend/list-feedback.js` and `backend/create-feedback.js`.
 5. Bind those backend scripts as artifact endpoints in `artifact.json`.
 6. Test endpoint responses and artifact rendering.
 7. Publish the artifact when the preview, endpoints, and manifest validate.
@@ -1268,7 +1256,7 @@ The agent should:
 | Artifact runs | Medium | Unified run log for http, schedule, manual, preview, and test triggers with redaction and bounded payloads. |
 | Artifact events | Small | Append-only audit trail for lifecycle, file, endpoint, capability, publish, rollback, approval, and schedule changes. |
 | Artifact manifest parser | Medium | Validate `artifact.json`, entry page, pages, assets, endpoint scripts, permissions, and test fixtures. |
-| Artifact endpoint router | Medium | Resolve artifact + manifest endpoint + Lua script, then execute with request/artifact context. |
+| Artifact endpoint router | Medium | Resolve artifact + manifest endpoint + JavaScript script, then execute with request/artifact context. |
 | Security gate evaluator | Medium | Intersect actor, agent, artifact, manifest, workspace, and tool permissions before reads/writes. |
 | Publishing gates | Medium | Validate manifest/files/scripts/tests/capabilities, generate immutable version, and require approval for high-risk changes. |
 | Approval integration | Medium | Reuse approval flow for capability expansion, write endpoints, scheduled writes, public sharing, and integration mutations. |
@@ -1279,16 +1267,16 @@ The agent should:
 | Custom artifact domains | Large | Paid future feature outside v1: DNS verification, TLS, hostname routing, domain access policy, billing checks, and domain audit events. |
 | Git integration | Large | Future artifact source sync: export/import bundles, commit/tag published versions, optional PR flow, conflict detection, and approval-aware capability diffs. |
 | Stripe/payment artifacts | Large | Future commerce capability: Checkout/Billing endpoints, verified webhooks, entitlement tables, agentic payment handlers, idempotency, and payment-specific approvals/logging. |
-| Request context in Lua | Small | Add `ctx.request.body`, `query`, `method`, `headers`, `user`, `workspace`, and endpoint metadata. |
+| Request context in JavaScript | Small | Add `ctx.request.body`, `query`, `method`, `headers`, `user`, `workspace`, and endpoint metadata. |
 | Artifact viewer routes/UI | Medium | List, show, preview, archive, refresh, edit source files where permitted. |
 | Artifact sandbox/proxy | Medium | Iframe CSP, endpoint allowlist, signed asset/proxy URLs, no broad app API access. |
 | Asset runtime/CSP | Medium | Serve approved local runtime assets, apply strict iframe CSP, and block arbitrary external origins in v1. |
-| Rate limits and budgets | Small | Per-user/workspace rates, Lua execution limits, tool-call budgets, response/log byte caps, and overlap behavior. |
+| Rate limits and budgets | Small | Per-user/workspace rates, JavaScript execution limits, tool-call budgets, response/log byte caps, and overlap behavior. |
 | Agent tool: `create_artifact` | Medium | Creates artifact record, root folder, manifest, and initial file tree. |
 | Agent tool: `write_artifact_file` | Small | Create/update a file inside the artifact bundle with path validation. |
 | Agent tool: `run_artifact_endpoint` | Small | Smoke-test a backend endpoint with request fixtures. |
 | Agent tool: `publish_artifact` | Small | Validate manifest, pages, endpoints, and status transition. |
-| Lua docs | Small | Extend `lua_read_doc()` docs for endpoint request context and artifact/VFS patterns. |
+| JavaScript docs | Small | Extend `code_read_doc()` docs for endpoint request context and artifact/VFS patterns. |
 | VFS integration | Large | Add `app/Domain/Vfs`, then expose artifacts through top-level `/artifacts`. |
 | Tests | Medium | Feature tests for endpoint auth/method/schema, artifact viewer, workspace isolation, and iframe/proxy security. |
 
@@ -1299,8 +1287,8 @@ The agent should:
 - **Lab UX**: Artifact management lives in Lab with automations because endpoints, schedules, runs, and failures are shared runtime concerns.
 - **Direct open URLs**: Published artifacts get clean `/artifacts/{slug}` routes for viewing/sharing inside the workspace.
 - **First-class VFS home**: Artifacts live under VFS `/artifacts`, not under Files.
-- **Reuse current domains**: Lua executes scripts, tables store rows, documents store docs, file storage may store bytes, VFS projects them.
-- **No runtime fork**: endpoint scripts use the same Lua sandbox and tool bridge as scheduled script automations.
+- **Reuse current domains**: JavaScript executes scripts, tables store rows, documents store docs, file storage may store bytes, VFS projects them.
+- **No runtime fork**: endpoint scripts use the same JavaScript sandbox and tool bridge as scheduled script automations.
 - **Workspace-safe**: every lookup uses `forWorkspace()`, workspace-bound routes, or the future VFS authorizer.
 - **Inspectable**: artifacts should have source files, manifests, endpoint bindings, and run logs agents can inspect.
 - **Patchable later**: structure artifacts so future `vfs_patch` and `vfs_write` can update them safely with version checks.
@@ -1335,4 +1323,4 @@ The agent should:
 - Stripe Checkout/Billing and agentic-commerce artifacts.
 - Artifact version history and rollback.
 - Artifact marketplace or workspace template gallery.
-- QuickJS only if Luau plus HTML artifacts is insufficient; do not add a second script runtime casually.
+- Consider an out-of-process isolation tier only if the in-process QuickJS profile is insufficient; do not add a second script language casually.

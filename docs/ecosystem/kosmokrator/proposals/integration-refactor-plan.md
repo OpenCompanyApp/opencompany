@@ -4,7 +4,7 @@
 
 ## Context
 
-The AI tool packages were originally built around `Laravel\Ai\Contracts\Tool` — each tool exposed `description()`, `schema(JsonSchema)`, and `handle(Request)` for direct LLM function calling. We then switched to Lua code mode where the LLM writes Lua scripts that call tools via `LuaBridge`, making the LLM-oriented interface unnecessary overhead.
+The AI tool packages were originally built around `Laravel\Ai\Contracts\Tool` — each tool exposed `description()`, `schema(JsonSchema)`, and `handle(Request)` for direct LLM function calling. We then switched to Lua code mode where the LLM writes Lua scripts that call tools via `CodeBridge`, making the LLM-oriented interface unnecessary overhead.
 
 Additionally, KosmoKrator (CLI agent) needs to share the same tool ecosystem but cannot depend on `laravel/ai`. The packages must become framework-agnostic.
 
@@ -37,7 +37,7 @@ interface Tool
 }
 ```
 
-`parameters()` returns a plain array — what `LuaApiDocGenerator` actually needs:
+`parameters()` returns a plain array — what `CodeApiDocGenerator` actually needs:
 
 ```php
 public function parameters(): array
@@ -100,7 +100,7 @@ In OpenCompany: `IntegrationSettingCredentialResolver` resolves from DB. In Kosm
 
 ## Phase 2: Bridge Package `integration-laravel-ai`
 
-> **OUTCOME: Skipped.** The plan assumed we'd need a `LaravelAiToolAdapter` to wrap new-style tools back into `Laravel\Ai\Contracts\Tool` for the agent loop. In practice, vendor package tools are never passed to the agent loop — they're Lua-only. Built-in tools (tasks, system, agents, memory, lua) still implement `Laravel\Ai\Contracts\Tool` directly. The dual-dispatch `instanceof` check in `LuaBridge` and `getToolCatalog()` was sufficient. No bridge package needed.
+> **OUTCOME: Skipped.** The plan assumed we'd need a `LaravelAiToolAdapter` to wrap new-style tools back into `Laravel\Ai\Contracts\Tool` for the agent loop. In practice, vendor package tools are never passed to the agent loop — they're Lua-only. Built-in tools (tasks, system, agents, memory, lua) still implement `Laravel\Ai\Contracts\Tool` directly. The dual-dispatch `instanceof` check in `CodeBridge` and `getToolCatalog()` was sufficient. No bridge package needed.
 
 ---
 
@@ -254,7 +254,7 @@ class YamlCredentialResolver implements CredentialResolver
 
 ### Lua Namespace
 
-The `LuaBridge` registers functions per account:
+The `CodeBridge` registers functions per account:
 
 ```lua
 app.gmail.work.send_message({to = "cto@company.com", ...})
@@ -296,7 +296,7 @@ app.mermaid.render_mermaid({syntax = table.concat(lines, "\n")})
 \```
 ```
 
-`LuaApiDocGenerator` already has `getProviderLuaDocs()` wired up — it just needs packages to start providing content.
+`CodeApiDocGenerator` already has `getProviderLuaDocs()` wired up — it just needs packages to start providing content.
 
 ---
 

@@ -3,15 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Services\LuaApiDocGenerator;
+use App\Services\CodeApiDocGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class LuaApiDocGeneratorTest extends TestCase
+class CodeApiDocGeneratorTest extends TestCase
 {
     use RefreshDatabase;
 
-    private LuaApiDocGenerator $generator;
+    private CodeApiDocGenerator $generator;
 
     private User $agent;
 
@@ -19,7 +19,7 @@ class LuaApiDocGeneratorTest extends TestCase
     {
         parent::setUp();
 
-        $this->generator = app(LuaApiDocGenerator::class);
+        $this->generator = app(CodeApiDocGenerator::class);
         $this->agent = User::factory()->create([
             'type' => 'agent',
             'brain' => 'anthropic:claude-sonnet-4-5-20250929',
@@ -66,7 +66,7 @@ class LuaApiDocGeneratorTest extends TestCase
         $map = $this->generator->buildFunctionMap($this->agent);
 
         foreach (array_keys($map) as $path) {
-            $this->assertFalse(str_starts_with($path, 'lua.'), "Should not contain lua namespace: {$path}");
+            $this->assertFalse(str_starts_with($path, 'code.'), "Should not contain code namespace: {$path}");
             $this->assertFalse(str_starts_with($path, 'tasks.'), "Should not contain tasks namespace: {$path}");
             $this->assertFalse(str_starts_with($path, 'system.'), "Should not contain system namespace: {$path}");
         }
@@ -128,12 +128,12 @@ class LuaApiDocGeneratorTest extends TestCase
         $this->assertStringContainsString("Namespace 'nonexistent' not found", $index);
     }
 
-    public function test_generate_namespace_index_points_to_lua_read_doc_for_details(): void
+    public function test_generate_namespace_index_points_to_code_read_doc_for_details(): void
     {
         $index = $this->generator->generateNamespaceIndex($this->agent);
 
-        $this->assertStringContainsString('Use `lua_read_doc` to inspect a namespace before calling its functions.', $index);
-        $this->assertStringContainsString('lua_read_doc(page: "integrations.coingecko")', $index);
+        $this->assertStringContainsString('Use `code_read_doc` to inspect a namespace before calling its functions.', $index);
+        $this->assertStringContainsString('code_read_doc(page: "integrations.coingecko")', $index);
     }
 
     public function test_generate_namespace_index_hides_redundant_default_aliases(): void
@@ -297,7 +297,7 @@ class LuaApiDocGeneratorTest extends TestCase
         $this->assertMatchesRegularExpression('/\| event_id \| string \| yes \|/', $docs);
     }
 
-    public function test_all_function_names_are_valid_lua_identifiers(): void
+    public function test_all_function_names_are_valid_javascript_identifiers(): void
     {
         $map = $this->generator->buildFunctionMap($this->agent);
 
@@ -307,7 +307,7 @@ class LuaApiDocGeneratorTest extends TestCase
             $this->assertMatchesRegularExpression(
                 '/^[a-zA-Z_][a-zA-Z0-9_]*$/',
                 $fnName,
-                "Invalid Lua identifier '{$fnName}' in path '{$path}' (tool: {$slug})"
+                "Invalid JavaScript identifier '{$fnName}' in path '{$path}' (tool: {$slug})"
             );
         }
     }
@@ -332,7 +332,7 @@ class LuaApiDocGeneratorTest extends TestCase
 
     private function assertDerivesName(string $expected, string $toolName, string $appName): void
     {
-        $method = new \ReflectionMethod(LuaApiDocGenerator::class, 'deriveFunctionName');
+        $method = new \ReflectionMethod(CodeApiDocGenerator::class, 'deriveFunctionName');
 
         $result = $method->invoke($this->generator, $toolName, $appName);
 

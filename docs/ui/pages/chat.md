@@ -198,7 +198,7 @@ uses them again.
 | **Non-assistant channel with no messages** | "Start the conversation" centered state. |
 | **Runtime before first visible response** | Small runtime activity panel while an assistant task is active. |
 | **Runtime tied to a prompt** | `ThinkingPanel` appears directly after the triggering message when the task exposes `triggerMessageId`. |
-| **Tool inspection** | Runtime steps use `metadata.tool_name` when present, fall back to a humanized class name, and render Lua code, Lua-style tool-call arguments/results, Lua runtime metadata, or JSON fallback sections under "Inspect tool data". |
+| **Tool inspection** | Runtime steps use `metadata.tool_name` when present, fall back to a humanized class name, and render JavaScript, readable tool-call arguments/results, structured QuickJS metadata, or JSON fallback sections under "Inspect tool data". |
 | **Streaming response** | Temporary assistant message with incremental markdown content and pulsing dots. |
 | **No conversations** | Sidebar empty state with "Start with an agent, DM, or channel." |
 | **Sidebar collapsed** | Desktop sidebar shrinks to icon-only `w-16`; state is persisted in `localStorage`. |

@@ -1,6 +1,6 @@
-# Plausible Analytics — Lua API Reference
+# Plausible Analytics — JavaScript API Reference
 
-## plausible_query_stats
+## query_stats
 
 Query website analytics with aggregate stats, timeseries, or breakdowns.
 
@@ -63,82 +63,95 @@ Operators: `is`, `is_not`, `contains`, `does_not_contain`, `matches`, `does_not_
 
 ### Top pages by visitors (last 30 days)
 
-```lua
-local result = plausible_query_stats({
-  site_id = "example.com",
-  metrics = {"visitors", "pageviews"},
-  date_range = "30d",
-  dimensions = {"event:page"},
-  order_by = '[["visitors", "desc"]]',
-  limit = 20
+```js
+var result = app.integrations.plausible.query_stats({
+  site_id: "example.com",
+  metrics: ["visitors", "pageviews"],
+  date_range: "30d",
+  dimensions: ["event:page"],
+  order_by: 'String.raw`"visitors", "desc"`',
+  limit: 20,
 })
 
-for _, row in ipairs(result.rows) do
-  log(row["event:page"] .. ": " .. row.visitors .. " visitors")
-end
+for (const row of (result.rows)) {
+  console.log(row["event:page"] + ": " + row.visitors + " visitors")
+}
 ```
-
 ### Traffic by country (custom date range)
 
-```lua
-local result = plausible_query_stats({
-  site_id = "example.com",
-  metrics = {"visitors", "visits", "bounce_rate"},
-  date_range = "custom",
-  date_from = "2026-01-01",
-  date_to = "2026-01-31",
-  dimensions = {"visit:country"},
-  order_by = '[["visitors", "desc"]]',
-  limit = 10
+```js
+var result = app.integrations.plausible.query_stats({
+  site_id: "example.com",
+  metrics: ["visitors", "visits", "bounce_rate"],
+  date_range: "custom",
+  date_from: "2026-01-01",
+  date_to: "2026-01-31",
+  dimensions: ["visit:country"],
+  order_by: 'String.raw`"visitors", "desc"`',
+  limit: 10,
 })
 
-for _, row in ipairs(result.rows) do
-  log(row["visit:country"] .. ": " .. row.visitors .. " visitors, " .. row.bounce_rate .. "% bounce")
-end
+for (const row of (result.rows)) {
+  console.log(row["visit:country"] + ": " + row.visitors + " visitors, " + row.bounce_rate + "% bounce")
+}
 ```
-
 ### Filter to specific country
 
-```lua
-local result = plausible_query_stats({
-  site_id = "example.com",
-  metrics = {"visitors", "pageviews"},
-  date_range = "7d",
-  dimensions = {"event:page"},
-  filters = '[["is", "visit:country", ["US"]]]'
+```js
+var result = app.integrations.plausible.query_stats({
+  site_id: "example.com",
+  metrics: ["visitors", "pageviews"],
+  date_range: "7d",
+  dimensions: ["event:page"],
+  filters: 'String.raw`"is", "visit:country", ["US"`]',
 })
 ```
-
 ### Filter pages containing /blog
 
-```lua
-local result = plausible_query_stats({
-  site_id = "example.com",
-  metrics = {"visitors", "pageviews"},
-  date_range = "30d",
-  dimensions = {"event:page"},
-  filters = '[["contains", "event:page", ["/blog"]]]',
-  order_by = '[["pageviews", "desc"]]'
+```js
+var result = app.integrations.plausible.query_stats({
+  site_id: "example.com",
+  metrics: ["visitors", "pageviews"],
+  date_range: "30d",
+  dimensions: ["event:page"],
+  filters: 'String.raw`"contains", "event:page", ["/blog"`]',
+  order_by: 'String.raw`"pageviews", "desc"`',
 })
 ```
-
 ### Daily timeseries
 
-```lua
-local result = plausible_query_stats({
-  site_id = "example.com",
-  metrics = {"visitors"},
-  date_range = "30d",
-  dimensions = {"time:day"}
+```js
+var result = app.integrations.plausible.query_stats({
+  site_id: "example.com",
+  metrics: ["visitors"],
+  date_range: "30d",
+  dimensions: ["time:day"],
 })
 ```
-
 ### Aggregate totals (no dimensions)
 
-```lua
-local result = plausible_query_stats({
-  site_id = "example.com",
-  metrics = {"visitors", "pageviews", "bounce_rate", "visit_duration"},
-  date_range = "30d"
+```js
+var result = app.integrations.plausible.query_stats({
+  site_id: "example.com",
+  metrics: ["visitors", "pageviews", "bounce_rate", "visit_duration"],
+  date_range: "30d",
 })
 ```
+---
+
+## Multi-Account Usage
+
+If you have multiple plausible accounts configured, use account-specific namespaces:
+
+```js
+// Default account (always works)
+app.integrations.plausible.function_name({ /* parameters */ })
+
+// Explicit default (portable across setups)
+app.integrations.plausible.default.function_name({ /* parameters */ })
+
+// Named accounts
+app.integrations.plausible.work.function_name({ /* parameters */ })
+app.integrations.plausible.personal.function_name({ /* parameters */ })
+```
+All functions are identical across accounts — only the credentials differ.

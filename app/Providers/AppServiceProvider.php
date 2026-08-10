@@ -30,8 +30,8 @@ use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
 use OpenCompany\IntegrationCore\Contracts\AgentFileStorage;
 use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
-use OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder;
-use OpenCompany\IntegrationCore\Lua\LuaDocRenderer;
+use OpenCompany\IntegrationCore\Script\ScriptCatalogBuilder;
+use OpenCompany\IntegrationCore\Script\ScriptDocRenderer;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class AppServiceProvider extends ServiceProvider
@@ -43,12 +43,12 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ToolRegistry::class);
 
-        if (class_exists(LuaCatalogBuilder::class)) {
-            $this->app->singleton(LuaCatalogBuilder::class);
+        if (class_exists(ScriptCatalogBuilder::class)) {
+            $this->app->singleton(ScriptCatalogBuilder::class);
         }
 
-        if (class_exists(LuaDocRenderer::class)) {
-            $this->app->singleton(LuaDocRenderer::class);
+        if (class_exists(ScriptDocRenderer::class)) {
+            $this->app->singleton(ScriptDocRenderer::class);
         }
 
         // Override the default config-based credential resolver with DB-backed one
@@ -132,7 +132,7 @@ class AppServiceProvider extends ServiceProvider
         $registry->registerBuiltIn(new ToolProviders\WorkspaceToolProvider($permissions));
         $registry->registerBuiltIn(new ToolProviders\AutomationsToolProvider);
         $registry->registerBuiltIn(new ToolProviders\SvgToolProvider);
-        $registry->registerBuiltIn(new ToolProviders\LuaToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\CodeToolProvider);
         $registry->registerBuiltIn(new ToolProviders\WebToolProvider);
     }
 }

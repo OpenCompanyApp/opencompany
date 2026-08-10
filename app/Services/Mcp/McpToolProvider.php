@@ -100,7 +100,7 @@ class McpToolProvider implements ToolProvider
         );
     }
 
-    public function luaDocsPath(): ?string
+    public function scriptDocsPath(): ?string
     {
         return null;
     }

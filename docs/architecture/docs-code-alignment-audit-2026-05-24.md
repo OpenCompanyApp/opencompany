@@ -8,7 +8,7 @@ Status: In progress. This audit records code-backed documentation alignment work
 The current pass checked the tracked and confidential Markdown inventory against high-risk code surfaces:
 
 - Markdown inventory after this pass: 157 files across tracked Markdown,
-  `docs/confidential`, and `resources/lua-docs`.
+  `docs/confidential`, and the then-current embedded runtime docs.
 - Route inventory: 357 Laravel routes from `php artisan route:list --json`.
 - UI page inventory: 23 `docs/ui/pages/*.md` files covering routed page groups and legacy redirect surfaces.
 - `AGENTS.md` and `CLAUDE.md` remain byte-identical.
@@ -16,7 +16,7 @@ The current pass checked the tracked and confidential Markdown inventory against
 ## Updates Made In This Pass
 
 - Added [files.md](../ui/pages/files.md) for `resources/js/Pages/Files.vue`, `useFileManager`, and file/disk API endpoints.
-- Added [developer.md](../ui/pages/developer.md) for `Developer/Tools.vue`, `Developer/LuaConsole.vue`, `/api/tools/catalog`, and `/api/lua/execute`.
+- Added [developer.md](../ui/pages/developer.md) for `Developer/Tools.vue`, `Developer/CodeConsole.vue`, `/api/tools/catalog`, and `/api/lua/execute`.
 - Added [messages.md](../ui/pages/messages.md) to document that `/messages` routes now redirect into Chat, while legacy `Messages/*.vue` components remain present but unrouted.
 - Added [workspace.md](../ui/pages/workspace.md) for setup, workspace creation, and invitation acceptance flows.
 - Updated [chat.md](../ui/pages/chat.md) and [profile.md](../ui/pages/profile.md) so DM links and redirects match current routes.
@@ -30,7 +30,7 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Updated [../documentation.md](../documentation.md) and [../INDEX.md](../INDEX.md) so external-channel docs reference the current Chatogrator-backed architecture instead of the older Discord sidecar/not-started framing.
 - Updated confidential monetization notes so BSL 1.1 + Additional Use Grant remains the authoritative current license posture and workspace/plan gating is not presented as shipped without enforcement code.
 - Updated [../tools/charts.md](../tools/charts.md) so visualization renderers are described as built-in SVG plus integration-package tools reached through Lua, not generic external MCP tools.
-- Updated [../planning/lua-scripting.md](../planning/lua-scripting.md) and [../../resources/lua-docs/_overview.md](../../resources/lua-docs/_overview.md) so current script automations use `execution_type = "script"`, `RunScriptAutomationJob`, `LuaSandboxService`, and the current 30-second sandbox default instead of the older "No Lua yet" / `script_language` plan.
+- The runtime documentation audited at that time has since been superseded by [the QuickJS migration plan](../planning/quickjs-code-mode-migration.md) and [the current Code Mode overview](../../resources/code-docs/_overview.md).
 - Updated [../planning/memory-implementation.md](../planning/memory-implementation.md) and [../planning/memory-systems.md](../planning/memory-systems.md) so memory docs describe private-channel-only `MEMORY.md` prompt injection, current `memory/logs/YYYY-MM-DD.md` storage, weighted RRF retrieval, and current reranking provider options.
 - Updated [../planning/dream-vfs.md](../planning/dream-vfs.md) so it treats the identity/memory refactor and current `WorkspaceFile` tools as implemented baseline while keeping Dream consolidation and unix-style VFS tools as roadmap.
 - Updated [../planning/vector-optional.md](../planning/vector-optional.md) so the optional-embeddings plan explicitly states the current write path still requires embeddings and reorders follow-up work from the now-implemented memory refactor baseline.
@@ -71,14 +71,14 @@ The current pass checked the tracked and confidential Markdown inventory against
 - Updated confidential emergent-strategy notes so the implemented MCP surface is correctly described as a remote MCP client/runtime; OpenCompany-as-MCP-server export remains roadmap.
 - Added explicit status guards to confidential corporate-structure and domain research snapshots.
 - Updated [../planning/integrations.md](../planning/integrations.md) so the Lua scripting bridge integration pattern is no longer labeled wholly planned; current `app.*` Lua bridge and script automations are distinguished from older proposed `oc.*` syntax.
-- Added a current-runtime note to [../planning/lua-scripting.md](../planning/lua-scripting.md) so the older `oc.*` namespace examples are explicitly future ergonomics while current execution uses `app.*` through `LuaBridge`.
+- The former scripting plan used `oc.*` examples; the implemented and current contract is `app.*` through `CodeBridge`.
 - Folded the new [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) into the Markdown inventory and added an explicit investigation/proposal status guard after checking the linked Tavily, Firecrawl, Exa, and Jina provider docs.
 - Cross-checked the added web-search/fetch parity plan against the local KosmoKrator `src/Web` snapshot, including native provider managers, the older provider registry, Z.AI MCP/search-reader classes, and provider names; added a guard that KosmoKrator endpoints/default models are snapshot inputs rather than timeless vendor guarantees.
 - Rechecked [../ui/pages/chat.md](../ui/pages/chat.md) against the current dirty `resources/js/Pages/Chat.vue` worktree and updated it from the old separate `ChannelList` / `Area` / `ChannelInfo` layout to the active unified `AssistantChatShell` / `ConversationSidebar` / `AssistantConversation` surface.
 - Updated [../ui/pages/chat.md](../ui/pages/chat.md) again for the same dirty worktree's new Echo stream-event bridge: `.text_start`, `.text_delta`, `.text_end`, `.stream_end`, and `.stream_failed` now create/update temporary streaming assistant messages in the page.
 - Updated confidential streaming comparisons so OpenCompany is no longer described as having no streaming at all; current chat response stream events are distinguished from still-separate AI Gateway/general transport streaming.
 - Rechecked [web-search-fetch-adapter-investigation-2026-05-24.md](web-search-fetch-adapter-investigation-2026-05-24.md) against the new dirty `config/web.php` plus `app/Domain/Web` scaffold. The first update moved it from pure proposal to partial scaffold when config, contracts, enum, exceptions, and value objects appeared.
-- Rechecked the same web-search/fetch investigation after additional web runtime classes appeared in the worktree. At that point the doc distinguished present code (`WebCredentialResolver`, `StreamableMcpToolInvoker`, `WebRequestGuard`, extractors, `WebResultCache`, provider managers, provider registry, formatter, direct `web_search`/`web_fetch` tools, `WebToolProvider`, `config/integrations.php` web-provider setup entries, Integrations UI category support, web access settings UI/defaults, config-only connection validation, `resources/lua-docs/web.md`, structured-output normalization in `IntegrationRuntime`, focused web tool/safety/direct-fetch tests, and concrete Tavily/Z.AI/Firecrawl/Exa/Brave/Parallel/Jina/SearxNG/Perplexity/OpenAI-native/Anthropic-native adapters) from then-missing usage recorder, diagnostics/live smoke tests, and broader provider/manager/Lua coverage.
+- Rechecked the same web-search/fetch investigation after additional web runtime classes appeared in the worktree. At that point the doc distinguished present code (`WebCredentialResolver`, `StreamableMcpToolInvoker`, `WebRequestGuard`, extractors, `WebResultCache`, provider managers, provider registry, formatter, direct `web_search`/`web_fetch` tools, `WebToolProvider`, `config/integrations.php` web-provider setup entries, Integrations UI category support, web access settings UI/defaults, config-only connection validation, the embedded web API docs, structured-output normalization in `IntegrationRuntime`, focused web tool/safety/direct-fetch tests, and concrete Tavily/Z.AI/Firecrawl/Exa/Brave/Parallel/Jina/SearxNG/Perplexity/OpenAI-native/Anthropic-native adapters) from then-missing usage recorder, diagnostics/live smoke tests, and broader provider/manager/runtime coverage.
 - Rechecked the web runtime again after usage and diagnostic command files landed. The web investigation now records `WebUsageRecorder`, `WebUsageEvent`, `web_usage_events`, `WebAccessPolicy`, the then-current `web:providers` / `web:doctor` / `web:search` / `web:fetch` commands, and the later `web:configure` command is reconciled below.
 - Rechecked [../ui/pages/chat.md](../ui/pages/chat.md) after the task-thinking UI changed. It now documents `triggerMessageId` task anchoring, inline `ThinkingPanel` placement after the spawning message, and the fallback first-task panel for empty assistant conversations.
 - Rechecked [../ui/pages/settings.md](../ui/pages/settings.md) after `WebAccessSettings` and the `web` settings category appeared. It now lists Memory, Web Access, Storage, Debug, and Danger Zone as separate sections and documents web provider defaults, external fetch, limits, cache, domain, locale, and recency controls.
@@ -113,7 +113,7 @@ git diff --check
 ```
 
 ```bash
-# Local Markdown links across tracked Markdown, docs/confidential, and resources/lua-docs:
+# Local Markdown links across tracked Markdown, docs/confidential, and embedded runtime docs:
 # 157 files checked; fenced and inline code examples ignored; 0 failures.
 php <local-link-checker>
 ```
@@ -121,7 +121,7 @@ php <local-link-checker>
 ```bash
 # docs/INDEX.md coverage for tracked docs and generated Lua docs:
 # Direct doc links plus intentional directory-level entries for imported KosmoKrator,
-# generated integration sub-docs, and resources/lua-docs were checked.
+# generated integration sub-docs, and embedded runtime docs were checked.
 # 121 non-confidential docs checked; 0 coverage gaps.
 php <docs-index-coverage-checker>
 ```

@@ -1,18 +1,18 @@
 # Integration Package Refactor Plan
 
-Status: Historical / mostly implemented. The current app consumes framework-agnostic `opencompanyapp/integration-*` packages through `opencompanyapp/integration-core`, `ToolProviderRegistry`, `LuaBridge`, `config/integration_catalog.php`, and `app/Agents/Tools/ToolRegistry.php`. Remaining phase notes are useful as refactor rationale, not a literal current file inventory.
+Status: Historical / mostly implemented. The current app consumes framework-agnostic `opencompanyapp/integration-*` packages through `opencompanyapp/integration-core`, `ToolProviderRegistry`, `CodeBridge`, `config/integration_catalog.php`, and `app/Agents/Tools/ToolRegistry.php`. Remaining phase notes are useful as refactor rationale, not a literal current file inventory.
 
 Current code check, 2026-05-24:
 
 - `../integrations/core/src/Contracts/Tool.php` is framework-agnostic and exposes `name()`, `description()`, `parameters()`, and `execute(array $args): ToolResult`.
-- `../integrations/core/src/Contracts/ToolProvider.php` now includes `luaDocsPath()` and `credentialFields()` directly.
+- `../integrations/core/src/Contracts/ToolProvider.php` now includes `scriptDocsPath()` and `credentialFields()` directly.
 - `../integrations/core/src/Support/ToolProviderRegistry.php` is a small registry; the app still has a local `app/Agents/Tools/ToolRegistry.php` because built-in OpenCompany tools and Laravel AI agent wiring remain app-owned.
-- Built-in OpenCompany tool groups are split across `app/Agents/Tools/Providers/*ToolProvider.php`; the current direct AI-callable groups are `tasks`, `system`, `agents`, `memory`, `lua`, and `web`.
+- Built-in OpenCompany tool groups are split across `app/Agents/Tools/Providers/*ToolProvider.php`; the current direct AI-callable groups include `tasks`, `system`, `agents`, `memory`, `code`, and `web`.
 - Packages have been renamed to `opencompanyapp/integration-*`; `composer.lock` currently installs 585 integration packages.
 
 ## Context
 
-The AI tool packages were originally built around `Laravel\Ai\Contracts\Tool` — each tool exposed `description()`, `schema(JsonSchema)`, and `handle(Request)` for direct LLM function calling. We then switched to Lua code mode where the LLM writes Lua scripts that call tools via `LuaBridge`, making the LLM-oriented interface unnecessary overhead.
+The AI tool packages were originally built around `Laravel\Ai\Contracts\Tool` — each tool exposed `description()`, `schema(JsonSchema)`, and `handle(Request)` for direct LLM function calling. The later Code Mode architecture calls package tools through a language-neutral `ScriptBridge`, making that LLM-oriented package interface unnecessary overhead.
 
 Additionally, KosmoKrator (CLI agent) needs to share the same tool ecosystem but cannot depend on `laravel/ai`. The packages must become framework-agnostic.
 
@@ -22,10 +22,10 @@ The items below describe the baseline this plan was written against. They are
 not all current defects in the May 2026 codebase.
 
 1. **`integration-core` depended on `laravel/ai`** for the `Tool` interface. Every tool package transitively depended on `laravel/ai`. KosmoKrator could not use them.
-2. **225+ tool classes** implemented `Laravel\Ai\Contracts\Tool` with `schema(JsonSchema)` and `handle(Request)` even though they were never direct LLM tools — they were called via Lua.
+2. **225+ tool classes** implemented `Laravel\Ai\Contracts\Tool` with `schema(JsonSchema)` and `handle(Request)` even though they were never direct LLM tools — they were called through the script bridge.
 3. **`ToolRegistry` was a 1965-line monolith** mixing tool metadata (`TOOL_MAP`), instantiation (180-line `match`), permissions, catalog generation, and app group config.
 4. **Two registration paths**: external packages self-register via `ToolProviderRegistry`, built-in tools are hardcoded in `TOOL_MAP` + the giant `match`.
-5. **`ProvidesLuaDocs`** was optional and zero packages implemented it despite Lua being the primary mode.
+5. Supplementary script documentation was optional and effectively absent despite Code Mode being the primary package surface.
 6. **No multi-account support** in `ToolProvider` or `CredentialResolver` — needed for KosmoKrator's `app.gmail.work.*` / `app.gmail.personal.*` pattern.
 7. **Package naming** (`ai-tool-*`) reflected Era 1 thinking.
 
@@ -48,7 +48,7 @@ interface Tool
 }
 ```
 
-`parameters()` returns a plain array — what `LuaApiDocGenerator` actually needs:
+`parameters()` returns a plain array — what `CodeApiDocGenerator` actually needs:
 
 ```php
 public function parameters(): array
@@ -239,7 +239,7 @@ Each provider:
 - Handles instantiation in `createTool()` (eliminates the `match` statement)
 - Provides `appMeta()` (eliminates `APP_GROUPS` entries for that section)
 
-The current direct tool groups (`tasks`, `system`, `agents`, `memory`, `lua`, and `web`) can also become providers or stay in ToolRegistry since they are core agent machinery.
+The direct tool groups (`tasks`, `system`, `agents`, `memory`, `code`, and `web`) can also become providers or stay in ToolRegistry since they are core agent machinery.
 
 Register in `AppServiceProvider`:
 
@@ -255,7 +255,7 @@ $registry->register(new DocsToolProvider($this->app));
 ```php
 class ToolRegistry
 {
-    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua', 'web'];
+    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'code', 'web'];
 
     public function getToolsForAgent(User $agent): array { /* iterate registry, filter, wrap */ }
     public function getAppCatalog(User $agent): string { /* build system prompt */ }
@@ -308,31 +308,31 @@ class YamlCredentialResolver implements CredentialResolver
 }
 ```
 
-### Lua Namespace
+### Code Mode namespace
 
-The `LuaBridge` registers functions per account:
+The `CodeBridge` registers functions per account:
 
-```lua
-app.gmail.work.send_message({to = "cto@company.com", ...})
-app.gmail.personal.list_messages({query = "is:unread"})
+```javascript
+app.gmail.work.send_message({ to: "cto@company.com" });
+app.gmail.personal.list_messages({ query: "is:unread" });
 ```
 
 OpenCompany initially uses a single implicit `default` account (backward compatible). Multi-account is opt-in.
 
 ---
 
-## Phase 6: Lua Docs in Every Package
+## Phase 6: Script docs in every package
 
-**Goal**: Every tool package ships a `lua-docs/` directory with real examples and common patterns.
+**Goal**: Every tool package ships a `script-docs/` directory with real JavaScript examples and common patterns.
 
 Add to every package:
 
 ```
 ai-tool-mermaid/
-├── lua-docs/
+├── script-docs/
 │   └── mermaid.md          # examples, tips, common patterns
 ├── src/
-│   ├── MermaidToolProvider.php  → luaDocsPath() returns __DIR__.'/../lua-docs/mermaid.md'
+│   ├── MermaidToolProvider.php  → scriptDocsPath() returns __DIR__.'/../script-docs/mermaid.md'
 │   └── Tools/RenderMermaid.php
 ```
 
@@ -342,17 +342,17 @@ Example content:
 ## Common Patterns
 
 ### Flowchart from data
-\```lua
-local items = app.tables.get_table_rows({table_id = "..."})
-local lines = {"graph TD"}
-for _, item in ipairs(items.rows) do
-    table.insert(lines, string.format("    %s --> %s", item.from, item.to))
-end
-app.mermaid.render_mermaid({syntax = table.concat(lines, "\n")})
+\```javascript
+const items = app.tables.get_table_rows({ table_id: "..." });
+const lines = ["graph TD"];
+for (const item of items.rows) {
+  lines.push(`    ${item.from} --> ${item.to}`);
+}
+app.mermaid.render_mermaid({ syntax: lines.join("\n") });
 \```
 ```
 
-`LuaApiDocGenerator` already has `getProviderLuaDocs()` wired up — it just needs packages to start providing content.
+`CodeApiDocGenerator` consumes package `scriptDocsPath()` content alongside generated signatures.
 
 ---
 
@@ -391,7 +391,7 @@ Do this **after** the contract changes (phases 1-4) so each package is only touc
 | **3** | Migrate tool packages to new contract | Each package becomes framework-agnostic |
 | **4** | Built-in `ToolProvider` implementations | Eliminates ToolRegistry monolith |
 | **5** | Multi-account `CredentialResolver` | Signatures only — `?string $account` on `CredentialResolver`, `credentialFields()` on `ToolProvider`. Full implementation deferred to KosmoKrator (OpenCompany uses workspace scoping instead). |
-| **6** | Lua docs in every package | Agent quality improvement |
+| **6** | Script docs in every package | Agent quality improvement |
 | **7** | Rename `ai-tool-*` → `integration-*` | Cosmetic, do last when stable |
 
 Phases 1-3 are the critical path for KosmoKrator. Phase 4 is the biggest maintenance win for OpenCompany. Phases 5-7 can happen in parallel with KosmoKrator development.

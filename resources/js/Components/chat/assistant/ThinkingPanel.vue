@@ -50,7 +50,7 @@
                 <p v-if="step.metadata?.tool" class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                   Tool call: <span class="font-mono">{{ displayToolName(step.metadata) }}</span>
                 </p>
-                <details v-if="step.metadata?.arguments || step.metadata?.result || step.metadata?.lua_meta" class="mt-2">
+                <details v-if="step.metadata?.arguments || step.metadata?.result || step.metadata?.code_meta" class="mt-2">
                   <summary class="cursor-pointer text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white">
                     Inspect tool data
                   </summary>
@@ -179,27 +179,27 @@ const toSnakeCase = (value: string) =>
     .replace(/[\s-]+/g, '_')
     .toLowerCase()
 
-const luaKey = (key: string) =>
+const codeKey = (key: string) =>
   /^[A-Za-z_][A-Za-z0-9_]*$/.test(key)
     ? key
     : `[${JSON.stringify(key)}]`
 
-const formatLuaValue = (value: unknown, depth = 0): string => {
+const formatCodeValue = (value: unknown, depth = 0): string => {
   const indent = '  '.repeat(depth)
   const childIndent = '  '.repeat(depth + 1)
 
-  if (value === null || value === undefined) return 'nil'
+  if (value === null || value === undefined) return 'null'
   if (typeof value === 'string') return JSON.stringify(value)
-  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'nil'
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'null'
   if (typeof value === 'boolean') return value ? 'true' : 'false'
 
   if (Array.isArray(value)) {
-    if (value.length === 0) return '{}'
+    if (value.length === 0) return '[]'
 
     return [
-      '{',
-      ...value.map(item => `${childIndent}${formatLuaValue(item, depth + 1)},`),
-      `${indent}}`,
+      '[',
+      ...value.map(item => `${childIndent}${formatCodeValue(item, depth + 1)},`),
+      `${indent}]`,
     ].join('\n')
   }
 
@@ -209,7 +209,7 @@ const formatLuaValue = (value: unknown, depth = 0): string => {
 
     return [
       '{',
-      ...entries.map(([key, entryValue]) => `${childIndent}${luaKey(key)} = ${formatLuaValue(entryValue, depth + 1)},`),
+      ...entries.map(([key, entryValue]) => `${childIndent}${codeKey(key)}: ${formatCodeValue(entryValue, depth + 1)},`),
       `${indent}}`,
     ].join('\n')
   }
@@ -217,16 +217,16 @@ const formatLuaValue = (value: unknown, depth = 0): string => {
   return JSON.stringify(String(value))
 }
 
-const formatLuaCall = (tool: unknown, args: unknown): string => {
+const formatCodeCall = (tool: unknown, args: unknown): string => {
   const toolName = typeof tool === 'string' && tool.length > 0 ? tool : 'tool'
   const fnName = toSnakeCase(toolName)
 
   if (args === undefined || args === null) return `${fnName}()`
   if (Array.isArray(args)) {
-    return `${fnName}(${args.map(item => formatLuaValue(item)).join(', ')})`
+    return `${fnName}(${args.map(item => formatCodeValue(item)).join(', ')})`
   }
 
-  return `${fnName}(${formatLuaValue(args)})`
+  return `${fnName}(${formatCodeValue(args)})`
 }
 
 const formatJson = (value: unknown) => {
@@ -241,35 +241,35 @@ const formatMetadataSections = (metadata: Record<string, unknown>): MetadataSect
   const sections: MetadataSection[] = []
   const args = metadata.arguments
 
-  if (metadata.tool === 'LuaExec' && isRecord(args) && typeof args.code === 'string') {
+  if (metadata.tool === 'CodeExec' && isRecord(args) && typeof args.code === 'string') {
     sections.push({
-      label: 'Lua code',
-      language: 'lua',
+      label: 'JavaScript',
+      language: 'javascript',
       code: args.code,
     })
   } else if (args !== undefined) {
     sections.push({
       label: 'Tool call',
-      language: 'lua',
-      code: formatLuaCall(metadata.tool, args),
+      language: 'javascript',
+      code: formatCodeCall(metadata.tool, args),
     })
   }
 
   if (metadata.result !== undefined && metadata.result !== null) {
     sections.push({
       label: 'Result',
-      language: typeof metadata.result === 'string' ? 'markdown' : 'lua',
+      language: typeof metadata.result === 'string' ? 'markdown' : 'javascript',
       code: typeof metadata.result === 'string'
         ? metadata.result
-        : formatLuaValue(metadata.result),
+        : formatCodeValue(metadata.result),
     })
   }
 
-  if (metadata.lua_meta) {
+  if (metadata.code_meta) {
     sections.push({
-      label: 'Lua runtime',
-      language: 'lua',
-      code: formatLuaValue(metadata.lua_meta),
+      label: 'QuickJS runtime',
+      language: 'json',
+      code: formatJson(metadata.code_meta),
     })
   }
 

@@ -38,7 +38,6 @@ create.url = (args: { workspace_slug: string | number } | [workspace_slug: strin
             .replace('{workspace_slug}', parsedArgs.workspace_slug.toString())
             .replace(/\/+$/, '') + queryParams(options)
 }
-
 /**
 * @see routes/web.php:153
 * @route '/w/{workspace_slug}/automation/create'

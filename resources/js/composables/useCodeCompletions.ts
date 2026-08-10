@@ -5,22 +5,25 @@ import { wayfinderRequest } from '@/utils/wayfinder'
 
 interface CatalogParam {
   name: string
-  type: string
+  type: string | string[]
   required: boolean
   description?: string
+  enum?: Array<string | number | boolean>
 }
 
 interface CatalogTool {
   slug: string
   name: string
   description: string
-  luaFunction?: string
+  type: 'read' | 'write'
+  codeFunction?: string
   parameters: CatalogParam[]
+  returns?: Record<string, unknown>
 }
 
 interface CatalogGroup {
   name: string
-  luaNamespace: string
+  codeNamespace: string
   description?: string
   tools: CatalogTool[]
   isIntegration: boolean
@@ -46,8 +49,8 @@ function buildTree(groups: CatalogGroup[]): NamespaceNode {
   const root: NamespaceNode = { children: new Map(), tools: [] }
 
   for (const group of groups) {
-    // luaNamespace is like "app.chat" or "app.integrations.google_calendar"
-    const parts = group.luaNamespace.split('.')
+    // codeNamespace is like "app.chat" or "app.integrations.google_calendar"
+    const parts = group.codeNamespace.split('.')
     // Skip the "app" prefix — it's implicit in the root
     let node = root
     for (let i = 1; i < parts.length; i++) {
@@ -56,7 +59,7 @@ function buildTree(groups: CatalogGroup[]): NamespaceNode {
       }
       node = node.children.get(parts[i])!
     }
-    node.tools = group.tools.filter(t => t.luaFunction)
+    node.tools = group.tools.filter(t => t.codeFunction)
     node.description = group.description
   }
 
@@ -73,17 +76,56 @@ function resolveNode(root: NamespaceNode, segments: string[]): NamespaceNode | n
   return node
 }
 
+function snippetValue(param: CatalogParam, tabStop: number): string {
+  const escapeDefault = (value: string) => value.replace(/([\\$}])/g, '\\$1')
+  const firstEnumValue = param.enum?.[0]
+  if (typeof firstEnumValue === 'string') {
+    return `"\${${tabStop}:${escapeDefault(firstEnumValue)}}"`
+  }
+  if (typeof firstEnumValue === 'number' || typeof firstEnumValue === 'boolean') {
+    return `\${${tabStop}:${String(firstEnumValue)}}`
+  }
+
+  const type = Array.isArray(param.type) ? param.type[0] : param.type
+  switch (type) {
+    case 'string':
+      return `"\${${tabStop}:value}"`
+    case 'integer':
+    case 'number':
+      return `\${${tabStop}:0}`
+    case 'boolean':
+      return `\${${tabStop}:false}`
+    case 'array':
+      return `[\${${tabStop}}]`
+    case 'object':
+      return `{\${${tabStop}}}`
+    default:
+      return `\${${tabStop}:null}`
+  }
+}
+
 function buildParamSnippet(params: CatalogParam[]): string {
-  if (params.length === 0) return '()'
+  // Required-only snippets keep the first runnable draft small. Optional
+  // parameters remain discoverable in completion documentation and the catalog.
+  const required = params.filter(param => param.required)
+  if (required.length === 0) return '({})'
 
   const lines: string[] = []
   let tabStop = 1
-  for (const p of params) {
-    const placeholder = p.type === 'string' ? `"\${${tabStop}}"` : `\${${tabStop}}`
-    lines.push(`  ${p.name} = ${placeholder}`)
+  for (const param of required) {
+    lines.push(`  ${param.name}: ${snippetValue(param, tabStop)}`)
     tabStop++
   }
-  return '({\n' + lines.join(',\n') + '\n})'
+  return '({\n' + lines.join(',\n') + ',\n})'
+}
+
+function buildContractDocs(tool: CatalogTool): string {
+  const effect = `\n\n**Effect:** ${tool.type}`
+  const returns = tool.returns && Object.keys(tool.returns).length > 0
+    ? `\n\n**Returns:** \`${JSON.stringify(tool.returns)}\``
+    : ''
+
+  return effect + returns
 }
 
 function buildParamDocs(params: CatalogParam[]): string {
@@ -101,7 +143,7 @@ function buildParamDocs(params: CatalogParam[]): string {
 function registerProvider(catalog: CatalogResponse): monaco.IDisposable {
   const tree = buildTree(catalog.groups)
 
-  return monaco.languages.registerCompletionItemProvider('lua', {
+  return monaco.languages.registerCompletionItemProvider('javascript', {
     triggerCharacters: ['.'],
 
     provideCompletionItems(model, position) {
@@ -172,24 +214,27 @@ function registerProvider(catalog: CatalogResponse): monaco.IDisposable {
 
       // Suggest functions at this level
       for (const tool of node.tools) {
-        if (!tool.luaFunction) continue
-        if (partial && !tool.luaFunction.startsWith(partial)) continue
+        if (!tool.codeFunction) continue
+        if (partial && !tool.codeFunction.startsWith(partial)) continue
 
-        const sig = tool.parameters.length > 0
-          ? '(' + tool.parameters.map(p => p.name).join(', ') + ')'
-          : '()'
+        const required = tool.parameters.filter(param => param.required)
+        const optionalCount = tool.parameters.length - required.length
+        const sig = required.length > 0
+          ? '({' + required.map(param => param.name).join(', ') + '})'
+          : tool.parameters.length > 0 ? '({})' : '()'
+        const detail = optionalCount > 0 ? `${sig} · ${optionalCount} optional` : sig
 
         suggestions.push({
-          label: { label: tool.luaFunction, detail: ' ' + sig },
+          label: { label: tool.codeFunction, detail: ' ' + detail },
           kind: monaco.languages.CompletionItemKind.Function,
-          detail: sig,
+          detail,
           documentation: {
-            value: tool.description + buildParamDocs(tool.parameters),
+            value: tool.description + buildContractDocs(tool) + buildParamDocs(tool.parameters),
           },
-          insertText: tool.luaFunction + buildParamSnippet(tool.parameters),
+          insertText: tool.codeFunction + buildParamSnippet(tool.parameters),
           insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
           range,
-          sortText: '1_' + tool.luaFunction,
+          sortText: '1_' + tool.codeFunction,
         })
       }
 
@@ -199,11 +244,11 @@ function registerProvider(catalog: CatalogResponse): monaco.IDisposable {
 }
 
 /**
- * Register Lua autocomplete for the `app.*` bridge API.
+ * Register JavaScript autocomplete for the permission-scoped `app.*` API.
  * Fetches the tool catalog once and provides dot-triggered completions.
- * Call in LuaConsole setup — auto-disposes on unmount.
+ * Call in CodeConsole setup — auto-disposes on unmount.
  */
-export function useLuaCompletions() {
+export function useCodeCompletions() {
   registrationCount++
 
   // Lazily fetch catalog

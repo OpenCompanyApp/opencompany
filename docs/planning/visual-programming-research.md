@@ -1,13 +1,13 @@
 # Visual Programming Language Research
 
-Research into visual programming options that could complement the existing Lua scripting system. The goal is to offer an alternative way to build automations and workflows — especially for users who aren't comfortable writing code.
+Research into visual programming options that could complement QuickJS Code Mode. The goal is to offer an alternative way to build automations and workflows — especially for users who aren't comfortable writing code.
 
 Status: Research / planning. This is a product-direction survey, not current implementation documentation.
 
 ## Requirements
 
 - Embeddable in a web app (Vue 3 / TypeScript stack)
-- Can generate or map to Lua code (our existing runtime) OR has its own execution engine
+- Can generate synchronous JavaScript for the existing runtime or has its own execution engine
 - 100% client-side editor (no server dependency for the UI)
 - Actively maintained, mature ecosystem
 - Supports custom blocks/nodes for our `app.*` bridge API
@@ -23,8 +23,8 @@ Status: Research / planning. This is a product-direction survey, not current imp
 
 ### Why it fits
 
-- **Built-in Lua generator** — Blockly ships with code generators for JavaScript, Python, Lua, Dart, and PHP. We can generate Lua directly from blocks, then execute it through our existing Luau runtime. Zero new backend work.
-- **Custom blocks** — We can create blocks for each `app.*` namespace (e.g. a "Send Message" block with channel/content inputs that generates `app.chat.send_message({ channel_id = "...", content = "..." })`).
+- **Built-in JavaScript generator** — Blockly can generate JavaScript directly for the existing synchronous QuickJS runtime. No new backend engine is required.
+- **Custom blocks** — We can create blocks for each `app.*` namespace (for example, a "Send Message" block that generates `app.chat.send_message({ channel_id: "...", content: "..." })`).
 - **100% client-side** — No server dependency. The editor is a single embeddable component.
 - **Massive ecosystem** — Used by Scratch, MIT App Inventor, MakeCode, and hundreds of education/automation platforms. Battle-tested at scale.
 - **Toolbox customization** — We can organize blocks into categories matching our tool catalog (Chat, Calendar, Lists, Integrations, MCP, etc.).
@@ -33,9 +33,9 @@ Status: Research / planning. This is a product-direction survey, not current imp
 
 1. Embed Blockly editor in a new page (e.g. `/developer/visual-editor`)
 2. Define custom block definitions from our tool catalog API (`/api/tools/catalog`)
-3. Use `luaGenerator.workspaceToCode(workspace)` to produce Lua code
-4. Execute via our existing `/api/lua/execute` endpoint
-5. Optionally show generated Lua alongside blocks (educational / debugging)
+3. Use `javascriptGenerator.workspaceToCode(workspace)` to produce synchronous JavaScript
+4. Validate and execute through `/api/code/execute`
+5. Optionally show generated JavaScript alongside blocks for debugging and learning
 
 ### Considerations
 
@@ -65,12 +65,12 @@ Status: Research / planning. This is a product-direction survey, not current imp
 2. Define custom nodes for each tool (Send Message node, Create Event node, etc.)
 3. Two execution options:
    - **Direct execution** via rete-engine (each node calls our API directly)
-   - **Lua transpilation** — convert the graph to Lua code for our existing runtime (more work, but unified execution model)
+   - **JavaScript transpilation** — convert the graph to Code Mode source (more work, but one execution model)
 4. Graphs are serialized as JSON, storable in the database
 
 ### Considerations
 
-- No built-in Lua generation — would need custom transpilation layer or use its own engine
+- No built-in Code Mode graph compiler — would need a small JavaScript transpilation layer or its own engine
 - Node-based editors have a steeper learning curve than block-based
 - More powerful for complex workflows (branching, parallel paths, data transformations)
 - The ecosystem is smaller than Blockly's, but actively maintained (last commit Dec 2025)
@@ -101,7 +101,7 @@ Status: Research / planning. This is a product-direction survey, not current imp
 
 ### n8n / Node-RED
 - Full workflow automation platforms, not embeddable components
-- Overkill for our use case — we already have the execution runtime (Lua)
+- Overkill for our use case — we already have the QuickJS execution runtime
 - Interesting as UX inspiration though
 
 ---
@@ -111,7 +111,7 @@ Status: Research / planning. This is a product-direction survey, not current imp
 | Criteria               | Blockly          | Rete.js          |
 |------------------------|------------------|------------------|
 | Editor type            | Block-based      | Node-based       |
-| Lua generation         | Built-in         | Custom needed    |
+| JavaScript generation  | Built-in         | Custom needed    |
 | Vue 3 support          | Vanilla JS (wrap)| First-class      |
 | Learning curve (users) | Very low         | Medium           |
 | Complexity ceiling     | Medium           | High             |
@@ -125,15 +125,15 @@ Status: Research / planning. This is a product-direction survey, not current imp
 
 **Start with Blockly** as the first visual programming option:
 
-1. **Lowest integration effort** — Lua generation is built-in, so blocks immediately produce executable code through our existing runtime. No new backend work.
+1. **Lowest integration effort** — JavaScript generation is built in, so blocks can produce source for the existing runtime without a second backend.
 2. **Lowest user barrier** — Block-based editing is the most accessible visual programming paradigm. Users drag blocks, snap them together, done.
-3. **Reuses our tool catalog** — We can auto-generate block definitions from `/api/tools/catalog`, the same data source we use for Lua autocomplete.
-4. **Show generated Lua** — Users can see the Lua code their blocks produce, creating a learning path from visual → text programming.
+3. **Reuses our tool catalog** — We can auto-generate block definitions from `/api/tools/catalog`, the same data source used for Code Mode completions.
+4. **Show generated JavaScript** — Users can see the source their blocks produce, creating a learning path from visual to text programming.
 
 **Consider Rete.js later** for power users who want node-based workflow builders (think n8n-style), especially if we add data transformation or multi-step pipeline features.
 
 ### Possible phased approach
 
-- **Phase 1:** Blockly editor page with custom blocks for core tools → generates Lua → executes
+- **Phase 1:** Blockly editor page with custom blocks for core tools → generates and validates JavaScript → executes
 - **Phase 2:** Save/load block workspaces, use in automation rules
 - **Phase 3:** Evaluate Rete.js for advanced workflow builder if demand exists

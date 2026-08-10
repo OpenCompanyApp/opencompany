@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\CalendarEventController;
 use App\Http\Controllers\Api\CalendarFeedController;
 use App\Http\Controllers\Api\ChannelController;
 use App\Http\Controllers\Api\ChatWebhookController;
+use App\Http\Controllers\Api\CodeConsoleController;
 use App\Http\Controllers\Api\CodexAuthController;
 use App\Http\Controllers\Api\DataTableColumnController;
 use App\Http\Controllers\Api\DataTableController;
@@ -36,7 +37,6 @@ use App\Http\Controllers\Api\ListItemCommentController;
 use App\Http\Controllers\Api\ListItemController;
 use App\Http\Controllers\Api\ListStatusController;
 use App\Http\Controllers\Api\ListTemplateController;
-use App\Http\Controllers\Api\LuaConsoleController;
 use App\Http\Controllers\Api\McpServerController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NotificationController;
@@ -336,8 +336,8 @@ Route::middleware('resolve.workspace')->group(function () {
     // Tool catalog (developer reference)
     Route::get('/tools/catalog', [ToolCatalogController::class, 'index']);
 
-    // Lua console
-    Route::post('/lua/execute', [LuaConsoleController::class, 'execute']);
+    // Capability-empty QuickJS developer console
+    Route::post('/code/execute', [CodeConsoleController::class, 'execute']);
 
     // Integrations (read-only for all members)
     Route::get('/integrations', [IntegrationController::class, 'index']);

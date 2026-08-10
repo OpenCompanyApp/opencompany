@@ -34,7 +34,7 @@ Recommended shape:
 - Keep it in the OpenCompany domain, under `app/Domain/Vfs`, but split the reusable engine from OpenCompany-specific adapters so the implementation can be copied to another app later without untangling business logic.
 - Treat VFS paths as projections over existing domain models. Do not migrate business data into files just to make the filesystem abstraction work.
 - Use stable canonical ID-backed paths for durable references, with friendly aliases for agent ergonomics.
-- Keep `vfs_exec`, `vfs_patch`, and `vfs_write` as the primitive direct tools. Expose the same implementation through `app.vfs.*` Lua helpers for programmatic workflows.
+- Keep `vfs_exec`, `vfs_patch`, and `vfs_write` as the primitive direct tools. Expose the same implementation through `app.vfs.*` Code Mode helpers for programmatic workflows.
 - Make unix-style read/navigation commands feel real inside the VFS command engine, but do not expose host shell execution.
 - Keep `patch` separate from command execution so edits can have version checks, approval summaries, dry runs, and clear permission behavior.
 - Make every operation workspace-scoped, permission-filtered, budgeted, and auditable.
@@ -154,7 +154,7 @@ Recommended tool surface:
 | `vfs_patch(path, patch, version = null)` | Apply targeted edits with stale-write protection. |
 | `vfs_write(path, content, mode = "create", version = null)` | Create or overwrite content only where raw file-like writes are valid. |
 
-These are primitive tools. They should be directly available to agents as first-class tools, and they should also be exposed through the Lua scripting API as `app.vfs.*` helpers. The direct tools optimize single-step interactive agent work. The Lua library optimizes deterministic scripts, automations, loops, transforms, and repeatable checks.
+These are primitive tools. They should be directly available to agents as first-class tools, and they should also be exposed through the Code Mode scripting API as `app.vfs.*` helpers. The direct tools optimize single-step interactive agent work. The Code Mode library optimizes deterministic scripts, automations, loops, transforms, and repeatable checks.
 
 `vfs_exec` is not shell access. It is a VFS command interpreter with a limited unix grammar. It should parse an argv-style command, route it through the VFS adapters, and return compact structured output. No arbitrary `bash`, host filesystem access, environment access, command substitution, or unrestricted process execution.
 
@@ -239,11 +239,11 @@ Target command coverage:
 
 | Tier | Commands | Notes |
 |---|---|---|
-| 0: navigation and read inspection | `pwd`, `cd`, `ls`, `dir`, `ll`, `tree`, `find`, `rg`, `grep`, `egrep`, `fgrep`, `cat`, `head`, `tail`, `wc`, `stat`, `file`, `du`, `realpath`, `dirname`, `basename` | This is the minimum useful unix-like surface. `cd` should update command-local cwd in command sequences and Lua sessions, while direct tools can still pass `cwd`. `dir` and `ll` are aliases. `egrep`/`fgrep` map to `grep -E` and `grep -F`. |
+| 0: navigation and read inspection | `pwd`, `cd`, `ls`, `dir`, `ll`, `tree`, `find`, `rg`, `grep`, `egrep`, `fgrep`, `cat`, `head`, `tail`, `wc`, `stat`, `file`, `du`, `realpath`, `dirname`, `basename` | This is the minimum useful unix-like surface. `cd` should update command-local cwd in command sequences and Code Mode sessions, while direct tools can still pass `cwd`. `dir` and `ll` are aliases. `egrep`/`fgrep` map to `grep -E` and `grep -F`. |
 | 1: output shaping and safe pipelines | `sort`, `uniq`, `cut`, `tr`, `nl`, `jq`, `sed` safe subset, `less`, `more` | These operate on bounded VFS output streams, not host pipes. `jq` is important because many projections are JSON/NDJSON. `less` and `more` should behave like paged reads. |
 | 2: comparison and integrity | `diff`, `cmp`, `comm`, `sha256sum`, `sha1sum`, `md5sum` | Useful for document/version checks, generated files, and before/after audits. Prefer `sha256sum` in examples. |
 | 3: mutations after permission classification | `mkdir`, `touch`, `mv`, `cp`, `rm`, `rmdir`, `tee`, `truncate` | Keep behind write/destructive classification, dry-run summaries where broad, stale-write checks, and approval wrapping. `tee` and redirection should route through `vfs_write`, not raw shell writes. |
-| 4: explicit non-goals for VFS exec | `bash`, `sh`, `zsh`, `python`, `node`, `php`, `artisan`, `composer`, `npm`, `git`, `curl`, `wget`, `ssh`, `scp`, `ps`, `kill`, `sudo`, `env`, `export`, `chmod`, `chown`, archive/process tools such as `tar`, `zip`, `gzip` | These are host execution, environment, network, package, process, archive, or OS permission concerns. Use direct domain tools, Lua, web/integration tools, or separate host tools where appropriate. `chmod`/`chown` should become domain permission tools if needed, not unix metadata mutations. |
+| 4: explicit non-goals for VFS exec | `bash`, `sh`, `zsh`, `python`, `node`, `php`, `artisan`, `composer`, `npm`, `git`, `curl`, `wget`, `ssh`, `scp`, `ps`, `kill`, `sudo`, `env`, `export`, `chmod`, `chown`, archive/process tools such as `tar`, `zip`, `gzip` | These are host execution, environment, network, package, process, archive, or OS permission concerns. Use direct domain tools, Code Mode, web/integration tools, or separate host tools where appropriate. `chmod`/`chown` should become domain permission tools if needed, not unix metadata mutations. |
 
 Compatibility details that should be implemented deliberately:
 
@@ -263,7 +263,7 @@ Structured unsupported-command errors are part of the AX contract:
   "error": "unsupported_command",
   "command": "awk",
   "reason": "awk is not implemented in the VFS command engine.",
-  "supported_alternatives": ["jq", "cut", "sed -E subset", "lua"],
+  "supported_alternatives": ["jq", "cut", "sed -E subset", "code_exec"],
   "examples": [
     "cat /tables/customers/rows.ndjson | jq '.email'",
     "vfs_exec(command: \"cut -d, -f2 /files/report.csv\")"
@@ -275,16 +275,16 @@ This error shape matters as much as successful output. It lets an agent recover 
 
 ---
 
-## Primitive Tools And Lua Library
+## Primitive Tools And Code Mode Library
 
 The VFS should have one implementation and two agent-facing access styles:
 
 | Surface | Shape | Best for |
 |---|---|---|
 | Primitive tools | `vfs_exec`, `vfs_patch`, `vfs_write` | Interactive agent retrieval, quick inspection, precise one-off edits. |
-| Lua library | `app.vfs.exec`, `app.vfs.stat`, `app.vfs.read`, `app.vfs.patch`, `app.vfs.write`, helpers like `app.vfs.rg` | Scripts, automations, loops, batch transforms, scheduled checks. |
+| Code Mode library | `app.vfs.exec`, `app.vfs.stat`, `app.vfs.read`, `app.vfs.patch`, `app.vfs.write`, helpers like `app.vfs.rg` | Scripts, automations, loops, batch transforms, scheduled checks. |
 
-Both surfaces must call the same VFS application services, command parser, adapters, permission gate, output limiter, and approval/version handling. The Lua layer should not call lower-level models directly and should not have broader access than the primitive tools.
+Both surfaces must call the same VFS application services, command parser, adapters, permission gate, output limiter, and approval/version handling. The Code Mode layer should not call lower-level models directly and should not have broader access than the primitive tools.
 
 Target direct tool examples:
 
@@ -295,40 +295,40 @@ vfs_patch(path: "/docs/by-id/01HV...", version: "sha256:...", patch: "...")
 vfs_write(path: "/files/generated/report.md", mode: "create", content: "...")
 ```
 
-Target Lua examples:
+Target Code Mode examples:
 
-```lua
-local matches = app.vfs.rg("payment token", { "/docs" }, { glob = "*.md", limit = 20 })
+```javascript
+const matches = app.vfs.rg("payment token", ["/docs"], { glob: "*.md", limit: 20 });
 
-local stat = app.vfs.stat("/docs/by-id/01HV...")
-app.vfs.patch("/docs/by-id/01HV...", patch, { version = stat.version })
+const stat = app.vfs.stat("/docs/by-id/01HV...");
+app.vfs.patch("/docs/by-id/01HV...", patch, { version: stat.version });
 
 app.vfs.write("/files/generated/report.md", markdown, {
-    mode = "create",
-})
+  mode: "create",
+});
 ```
 
-The Lua API can expose ergonomic helpers such as `app.vfs.ls`, `app.vfs.cat`, `app.vfs.head`, `app.vfs.tail`, `app.vfs.rg`, `app.vfs.find`, `app.vfs.jq`, `app.vfs.diff`, `app.vfs.du`, and `app.vfs.file`, but those helpers are convenience wrappers over `ExecuteCommand`, not separate semantics. If a helper cannot preserve unix semantics clearly, prefer `app.vfs.exec("...")`.
+The Code Mode API can expose ergonomic helpers such as `app.vfs.ls`, `app.vfs.cat`, `app.vfs.head`, `app.vfs.tail`, `app.vfs.rg`, `app.vfs.find`, `app.vfs.jq`, `app.vfs.diff`, `app.vfs.du`, and `app.vfs.file`, but those helpers are convenience wrappers over `ExecuteCommand`, not separate semantics. If a helper cannot preserve unix semantics clearly, prefer `app.vfs.exec("...")`.
 
-The Lua docs should include a dedicated `vfs` namespace page so agents can discover the unix command grammar, output shapes, version tokens, permission behavior, and safe scripting patterns through `lua_read_doc("vfs")`.
+The Code Mode docs should include a dedicated `vfs` namespace page so agents can discover the unix command grammar, output shapes, version tokens, permission behavior, and safe scripting patterns through `code_read_doc("vfs")`.
 
-### Programmatic Lua AX Audit
+### Programmatic Code Mode AX Audit
 
-The current plan is strong for interactive agent AX, but it needs a more explicit contract for programmatic Lua use. Lua scripts should not have to parse unix-like text output. They should get stable Lua tables, typed helper arguments, cursors, limits, and version tokens.
+The current plan is strong for interactive agent AX, but it needs a more explicit contract for programmatic Code Mode use. Code Mode scripts should not have to parse unix-like text output. They should get stable JavaScript objects, typed helper arguments, cursors, limits, and version tokens.
 
 Keep `app.vfs.exec("rg ...")` for shell-compatible work, but make typed helpers the preferred script API:
 
-```lua
-local hits = app.vfs.rg("payment token", { "/docs", "/agents/atlas/memory" }, {
-    glob = "*.md",
-    line_numbers = true,
-    context = 2,
-    limit = 50,
-})
+```javascript
+const hits = app.vfs.rg("payment token", ["/docs", "/agents/atlas/memory"], {
+  glob: "*.md",
+  line_numbers: true,
+  context: 2,
+  limit: 50,
+});
 
-for _, hit in ipairs(hits.matches) do
-    print(hit.path .. ":" .. hit.line .. " " .. hit.text)
-end
+for (const hit of hits.matches) {
+  console.log(`${hit.path}:${hit.line} ${hit.text}`);
+}
 ```
 
 Programmatic result shapes should be stable and documented:
@@ -343,16 +343,16 @@ Programmatic result shapes should be stable and documented:
 | `app.vfs.write(path, content, opts)` | `{ path, created, overwritten, version_after, approval }` |
 | `app.vfs.exec(command, opts)` | `{ command, cwd, exit_code, stdout, stderr, data, diagnostics, truncated }` |
 
-Important Lua-specific additions:
+Important Code Mode-specific additions:
 
 - Add cursor helpers so scripts can safely handle large folders without manual loop bugs: `app.vfs.pages(path, opts)`, `app.vfs.each(path, opts, fn)`, or an equivalent iterator shape.
-- Require explicit maxima for iteration helpers: `max_pages`, `max_items`, `max_bytes`, and `deadline_ms`. The helper should stop with `truncated = true` rather than exhausting the Lua sandbox.
-- Add a `dry_run` option for mutations and bulk-ish helpers so Lua can build approval summaries without changing state.
+- Require explicit maxima for iteration helpers: `max_pages`, `max_items`, `max_bytes`, and `deadline_ms`. The helper should stop with `truncated = true` rather than exhausting the Code Mode sandbox.
+- Add a `dry_run` option for mutations and bulk-ish helpers so Code Mode can build approval summaries without changing state.
 - Add `app.vfs.batch(ops, opts)` only if it preserves per-operation permissions, version checks, partial-failure reporting, and approval summaries. Without those guarantees, scripts should loop explicitly.
 - Make all helpers accept `cwd` where path-relative behavior matters. `app.vfs.cd()` can be convenient, but hidden mutable cwd is risky in long scripts; explicit `cwd` is better for repeatability.
-- Return structured permission and unsupported-feature errors. The current Lua bridge raises tool errors at the callsite, so docs should teach `pcall` around VFS writes, large scans, and permission-sensitive reads.
+- Return structured permission and unsupported-feature errors. The current Code Mode bridge raises tool errors at the callsite, so docs should teach `try`/`catch` around VFS writes, large scans, and permission-sensitive reads.
 - Include `capabilities` and `version` in read/stat results so scripts can decide whether to patch, write, move, or skip without guessing.
-- Keep Lua helper names boring and predictable. Do not invent app-specific verbs when a unix-like helper name or direct domain tool already exists.
+- Keep Code Mode helper names boring and predictable. Do not invent app-specific verbs when a unix-like helper name or direct domain tool already exists.
 
 The desired split:
 
@@ -360,12 +360,12 @@ The desired split:
 Interactive agent:
   vfs_exec("find /docs -name '*.md' | sort | head -20")
 
-Programmatic Lua:
-  local page = app.vfs.find({ "/docs" }, { name = "*.md", sort = "path", limit = 20 })
-  for _, item in ipairs(page.items) do ... end
+Programmatic Code Mode:
+  const page = app.vfs.find(["/docs"], { name: "*.md", sort: "path", limit: 20 });
+  for (const item of page.items) { /* ... */ }
 ```
 
-This keeps the unix AX without making Lua scripts brittle. `vfs_exec` can remain universal, but `app.vfs.*` should feel like a small, typed standard library over the same VFS primitives.
+This keeps the unix AX without making Code Mode scripts brittle. `vfs_exec` can remain universal, but `app.vfs.*` should feel like a small, typed standard library over the same VFS primitives.
 
 ---
 
@@ -388,9 +388,9 @@ vfs_exec(command: "rg \"payment token\" /docs --glob \"*.md\" -n")
 vfs_exec(command: "head -120 /docs/by-id/01HV...")
 ```
 
-With Lua:
+With Code Mode:
 
-```lua
+```javascript
 local hits = app.vfs.rg("payment token", { "/docs" }, {
     glob = "*.md",
     line_numbers = true,
@@ -419,9 +419,9 @@ vfs_exec(command: "rg \"Stripe Link\" /agents/atlas/memory")
 vfs_exec(command: "stat /agents/by-id/01AG.../memory/MEMORY.md")
 ```
 
-With Lua:
+With Code Mode:
 
-```lua
+```javascript
 local memory = app.vfs.rg("Stripe Link", { "/agents/atlas/memory" }, { limit = 10 })
 print(memory.summary)
 ```
@@ -444,9 +444,9 @@ vfs_exec(command: "stat /docs/by-id/01HV...")
 vfs_patch(path: "/docs/by-id/01HV...", version: "sha256:abc123", patch: "<unified diff>")
 ```
 
-With Lua:
+With Code Mode:
 
-```lua
+```javascript
 local doc = app.vfs.stat("/docs/by-id/01HV...")
 
 app.vfs.patch("/docs/by-id/01HV...", [[
@@ -477,9 +477,9 @@ vfs_exec(command: "find /files/uploads -name \"*.txt\"")
 vfs_exec(command: "rg \"overdue\" /files/uploads --glob \"*.txt\"")
 ```
 
-With Lua:
+With Code Mode:
 
-```lua
+```javascript
 local overdue = app.vfs.rg("overdue", { "/files/uploads" }, {
     glob = "*.txt",
     max_files = 100,
@@ -500,13 +500,13 @@ The VFS service still owns MIME checks, streaming limits, skipped-file counts, a
 
 Before VFS, a script uses table-specific calls:
 
-```lua
+```javascript
 local rows = app.tables.get_rows({ tableId = "leads", limit = 100 })
 ```
 
-With VFS Lua, the same data can be consumed as a bounded export when that shape is better:
+With VFS Code Mode, the same data can be consumed as a bounded export when that shape is better:
 
-```lua
+```javascript
 local page = app.vfs.read("/tables/leads/rows.ndjson", {
     cursor = nil,
     limit = 100,
@@ -555,9 +555,9 @@ vfs_exec(command: "find /tasks/completed -mtime -7 -name \"*billing*\" --limit 5
 vfs_exec(command: "rg \"approval failed\" /tasks/completed --since 2026-05-01 --limit 25")
 ```
 
-With Lua:
+With Code Mode:
 
-```lua
+```javascript
 local page = app.vfs.ls("/tasks/completed", {
     limit = 50,
     sort = "updated_at:desc",
@@ -671,7 +671,7 @@ app/Agents/Tools/Vfs/
   WriteVfsPath.php
 app/Agents/Tools/Providers/
   VfsToolProvider.php
-resources/lua-docs/
+resources/code-docs/
   vfs.md
 ```
 
@@ -697,7 +697,7 @@ interface VfsAdapter
 
 `ExecuteCommand` owns unix-like command parsing and dispatch. It should map commands such as `ls`, `find`, `rg`, `cat`, `head`, `tail`, `wc`, and `stat` onto the same lower-level VFS actions used by direct application code. That keeps the agent AX unix-like while keeping the implementation permission-aware and auditable.
 
-The VFS tool provider must be registered as a direct agent-callable group and as a Lua namespace. Today, the agent-visible registry only registers a short list of direct tool groups and leaves most app tools behind the Lua API. VFS improves AX only if `vfs_exec`, `vfs_patch`, and `vfs_write` are direct primitive tools with compact schemas, while the same primitives are also available from `app.vfs.*` for scripts and automations.
+The VFS tool provider must be registered as a direct agent-callable group and as a Code Mode namespace. Today, the agent-visible registry only registers a short list of direct tool groups and leaves most app tools behind the Code Mode API. VFS improves AX only if `vfs_exec`, `vfs_patch`, and `vfs_write` are direct primitive tools with compact schemas, while the same primitives are also available from `app.vfs.*` for scripts and automations.
 
 ---
 
@@ -724,7 +724,7 @@ in OpenCompany.
 The core rule:
 
 ```text
-Agents and Lua call thin surfaces.
+Agents and Code Mode call thin surfaces.
 Thin surfaces call one VFS application service.
 The VFS service routes to domain adapters.
 Adapters call existing domain services and models.
@@ -745,24 +745,24 @@ vfs_exec("ls /tasks/completed --limit 50")
   -> tool returns compact structured output
 ```
 
-Lua follows the same service path:
+Code Mode follows the same service path:
 
 ```text
 app.vfs.ls("/tasks/completed", { limit = 50 })
-  -> Lua bridge
-  -> VFS Lua function binding
+  -> Code Mode bridge
+  -> VFS Code Mode function binding
   -> VirtualFilesystemService::list()
   -> same router, adapter, permission, limiter, and result DTOs
 ```
 
-The Lua layer should be wrappers over the primitives, not a second implementation. For example, `app.vfs.rg(...)` can build a `VfsSearchQuery` or call `ExecuteCommand`, but it must not query `Document`, `Task`, `WorkspaceFile`, or `Message` directly.
+The Code Mode layer should be wrappers over the primitives, not a second implementation. For example, `app.vfs.rg(...)` can build a `VfsSearchQuery` or call `ExecuteCommand`, but it must not query `Document`, `Task`, `WorkspaceFile`, or `Message` directly.
 
 ### Layer Responsibilities
 
 | Layer | Owns | Must not own |
 |---|---|---|
 | Agent tools | JSON schemas, tool names, request-to-service mapping, approval wrapper compatibility | Domain queries, path routing, permission expansion, projection rendering |
-| Lua namespace | Script-friendly wrappers, docs, argument normalization | Direct model access or broader permissions than tools |
+| Code Mode namespace | Script-friendly wrappers, docs, argument normalization | Direct model access or broader permissions than tools |
 | `Core\Application\VirtualFilesystemService` | Orchestration, context creation, command dispatch, adapter routing | Domain-specific query details |
 | `ExecuteCommand` | Unix-like grammar dispatch, command classification, pipe/flag semantics | Host shell execution |
 | `PathRouter` | Prefix matching, canonical path resolution, friendly alias lookup | Authorization decisions |
@@ -776,8 +776,8 @@ The Lua layer should be wrappers over the primitives, not a second implementatio
 
 - Register `VfsToolProvider` from `AppServiceProvider::registerBuiltInToolProviders()`.
 - Add `vfs` to `ToolRegistry::DIRECT_TOOL_GROUPS` so `vfs_exec`, `vfs_patch`, and `vfs_write` are model-visible.
-- Register a Lua `vfs` namespace so scripts can call `app.vfs.*` through the existing Lua bridge.
-- Add `resources/lua-docs/vfs.md` so `lua_read_doc("vfs")` explains commands, helpers, output shapes, cursors, version tokens, and permission behavior.
+- Register a Code Mode `vfs` namespace so scripts can call `app.vfs.*` through the existing Code Mode bridge.
+- Add `resources/code-docs/vfs.md` so `code_read_doc("vfs")` explains commands, helpers, output shapes, cursors, version tokens, and permission behavior.
 - Extend permission evaluation with VFS command classification. A single static `vfs_exec` tool permission is not enough because `ls` and `rm` have different risk.
 - Bind `Core\Contracts\VfsAuthorizer` to `OpenCompanyVfsAuthorizer`.
 - Use `OpenCompanyVfsMountProvider` to mount `/docs`, `/files`, `/agents`, `/tasks`, `/lists`, `/channels`, `/tables`, `/tools`, `/automations`, `/approvals`, and `/workspace`.
@@ -845,7 +845,7 @@ Adapter-specific rules:
 The first implementation should be read-heavy:
 
 1. Direct primitive tools: `vfs_exec` read commands only, plus `vfs_patch` skeleton behind strict version checks.
-2. Lua namespace: `app.vfs.exec`, `app.vfs.stat`, `app.vfs.ls`, `app.vfs.read`, `app.vfs.rg`, `app.vfs.find`, and cursor-safe page helpers over the same service.
+2. Code Mode namespace: `app.vfs.exec`, `app.vfs.stat`, `app.vfs.ls`, `app.vfs.read`, `app.vfs.rg`, `app.vfs.find`, and cursor-safe page helpers over the same service.
 3. Adapters: `/docs`, `/files`, `/tasks`, `/lists`, and `/agents/{slug}/memory`.
 4. Commands: `pwd`, `cd`, `ls`, `dir`, `ll`, `tree`, `find`, `rg`, `grep`, `egrep`, `fgrep`, `cat`, `head`, `tail`, `wc`, `stat`, `file`, `du`, `realpath`, `dirname`, `basename`, `sort`, `uniq`, `cut`, `tr`, `nl`, `jq`, safe `sed`, `less`, `more`, `diff`, `cmp`, `comm`, `sha256sum`, `sha1sum`, and `md5sum`.
 5. Large-folder collection semantics before broad task/list/channel/table exposure.
@@ -866,7 +866,7 @@ Mutation commands such as `mkdir`, `touch`, `mv`, `cp`, `rm`, `rmdir`, `tee`, an
 | `/lists` | `ListItem` models/services | list, read, grep, patch, move/status projection | Kanban/project board items are separate from runtime tasks. |
 | `/channels` | Channel and message models | read, grep, bounded date reads | Sensitive; likely read-only for history. |
 | `/tables` | Data table services | read schema/views, export rows, grep exports | Structured APIs remain primary for row mutations. |
-| `/tools` | `ToolRegistry`, Lua docs, MCP catalog | read, grep, glob | Discovery only; no raw writes. |
+| `/tools` | `ToolRegistry`, Code Mode docs, MCP catalog | read, grep, glob | Discovery only; no raw writes. |
 | `/automations` | Automation models/services | read, patch selected config, run via domain tool | Running remains an explicit action. |
 | `/approvals` | Approval models/services | read, maybe decide via domain action | Do not make approval decisions via raw file edits. |
 | `/workspace` | Workspace settings and members | read, admin-gated patch | High-risk writes should require explicit capability and approvals. |
@@ -894,7 +894,7 @@ Directory operations need consistent collection semantics:
 - `find` and `rg` push filters into the backing query where possible before scanning projected content.
 - `stat` on a collection returns counts, supported indexes, default sort, maximum page size, and suggested narrower paths.
 - `cat` on a collection path should fail with a clear "directory is too large; use ls/find/rg or a paged export" message.
-- Lua helpers must expose cursor arguments and must not loop through every page unless the script gives an explicit maximum.
+- Code Mode helpers must expose cursor arguments and must not loop through every page unless the script gives an explicit maximum.
 
 Suggested collection result shape:
 
@@ -963,7 +963,7 @@ Keep fast, intentional tools such as:
 - `run_automation`
 - `request_approval`
 - `contact_agent`
-- integration-specific tools through Lua or direct providers
+- integration-specific tools through Code Mode or direct providers
 
 These tools express intent better than editing a virtual file. For example, setting a task to done should usually be `set_task_status`, even if moving `/tasks/open/123.md` to `/tasks/completed/123.md` is also supported later as a projection.
 
@@ -1040,7 +1040,7 @@ Log:
 - `operation_id`
 - `workspace_id`
 - `agent_id` or background actor id
-- surface: `tool`, `lua`, `automation`, `dream`, or internal app call
+- surface: `tool`, `code`, `automation`, `dream`, or internal app call
 - command/helper name
 - `cwd`
 - canonical paths touched
@@ -1055,7 +1055,7 @@ Persist all writes, destructive/admin operations, failed permission attempts, ap
 
 ### Formal Error Contract
 
-Use one structured error shape across direct tools, Lua helpers, command execution, and internal callers:
+Use one structured error shape across direct tools, Code Mode helpers, command execution, and internal callers:
 
 ```json
 {
@@ -1092,7 +1092,7 @@ conflict
 invalid_path
 ```
 
-Lua may raise these at the callsite through the bridge, but the underlying VFS result and metadata should still preserve the structured code and suggestions.
+Code Mode may raise these at the callsite through the bridge, but the underlying VFS result and metadata should still preserve the structured code and suggestions.
 
 ### Test And Certification Matrix
 
@@ -1106,13 +1106,13 @@ Required contract coverage:
 - Error shape consistency.
 - Version token and capability reporting.
 
-Command and Lua tests should be separate:
+Command and Code Mode tests should be separate:
 
 - Parser tests for quoting, globs, flags, pipes, and read-only command sequences.
 - Unix command compatibility tests.
 - Unsupported command and unsupported flag suggestion tests.
 - Large-folder refusal/truncation tests.
-- Lua helper result-shape tests.
+- Code Mode helper result-shape tests.
 - Stale-write and approval revalidation tests.
 
 ### Projection Round-Trip Rules
@@ -1332,7 +1332,7 @@ Search result shape:
 }
 ```
 
-Commands and Lua helpers should preserve the split:
+Commands and Code Mode helpers should preserve the split:
 
 ```text
 rg "invoice-1234" /docs /files              # exact/regex VFS text search
@@ -1340,7 +1340,7 @@ grep -R "invoice-1234" /docs                # exact/regex VFS text search
 find /docs -name "*refund*"                 # path/metadata search
 ```
 
-```lua
+```javascript
 local exact = app.vfs.rg("invoice-1234", { "/docs", "/files" }, {
     line_numbers = true,
     limit = 50,
@@ -1354,7 +1354,7 @@ local lexical = app.vfs.search("refund policy", { "/docs" }, {
 
 Semantic retrieval remains separate and explicit:
 
-```lua
+```javascript
 local likely = app.retrieval.semantic_search("how do we handle refunds", {
     paths = { "/docs" },
     limit = 10,
@@ -1403,7 +1403,7 @@ deadline_ms
 
 Every adapter receives the budget and must decrement/check it. When a budget is hit, return `truncated = true` with diagnostics instead of timing out silently.
 
-Lua iteration helpers must require explicit `max_pages`, `max_items`, or `max_bytes`. They should not accidentally loop through an entire workspace until the Lua sandbox kills the script.
+Code Mode iteration helpers must require explicit `max_pages`, `max_items`, or `max_bytes`. They should not accidentally loop through an entire workspace until the Code Mode sandbox kills the script.
 
 ### Approval UX For Mutations
 
@@ -1457,11 +1457,11 @@ Expose:
 ```text
 /tools/vfs.md
 /tools/vfs/commands.json
-/tools/vfs/lua.json
+/tools/vfs/code.json
 /tools/vfs/examples.md
 ```
 
-`lua_read_doc("vfs")` and `/tools/vfs.md` should agree because they are generated from the same registry. Include common recipes so agents learn typed Lua helpers such as `app.vfs.find(...)` instead of scraping `vfs_exec` text output.
+`code_read_doc("vfs")` and `/tools/vfs.md` should agree because they are generated from the same registry. Include common recipes so agents learn typed Code Mode helpers such as `app.vfs.find(...)` instead of scraping `vfs_exec` text output.
 
 ### VFS Versus Direct Tools
 
@@ -1511,8 +1511,8 @@ Dream jobs should use the VFS service internally, not call agent tools. The impo
 1. Create the VFS subsystem skeleton: contracts, context, router, stat/list/read/search actions.
 2. Add canonical ID-backed path support and friendly-alias resolution.
 3. Add the shared VFS context and permission gate, including recursive candidate filtering for documents, files, channels, and agent memory.
-4. Register a direct VFS tool provider so `vfs_exec`, `vfs_patch`, and `vfs_write` are model-visible without Lua.
-5. Add the `app.vfs` Lua namespace and `resources/lua-docs/vfs.md` over the same VFS services, with typed helper result tables, cursor helpers, version/capability fields, and `pcall`-oriented error examples.
+4. Register a direct VFS tool provider so `vfs_exec`, `vfs_patch`, and `vfs_write` are model-visible without Code Mode.
+5. Add the `app.vfs` Code Mode namespace and `resources/code-docs/vfs.md` over the same VFS services, with typed helper result objects, cursor helpers, version/capability fields, and `try`/`catch` error examples.
 6. Add the `vfs_exec` command interpreter with an allowlisted parser, structured result format, read-only command classification, argv quoting, globs, simple read-only command sequences, safe pipelines, and structured unsupported-command suggestions.
 7. Implement `/docs` and `/files` adapters first because they already map closely to current services.
 8. Support the first broad read command set: `pwd`, `cd`, `ls`, `dir`, `ll`, `tree`, `find`, `grep`, `egrep`, `fgrep`, `rg`, `cat`, `head`, `tail`, `wc`, `stat`, `file`, `du`, `realpath`, `dirname`, `basename`, `sort`, `uniq`, `cut`, `tr`, `nl`, `jq`, safe `sed`, `less`, `more`, `diff`, `cmp`, `comm`, `sha256sum`, `sha1sum`, and `md5sum`.

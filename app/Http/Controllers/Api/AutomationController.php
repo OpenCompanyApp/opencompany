@@ -44,7 +44,7 @@ class AutomationController extends Controller
             'timezone' => 'nullable|string|timezone',
         ];
         $rules[$executionType === 'script' ? 'script' : 'prompt'] = $executionType === 'script'
-            ? 'required|string|max:50000'
+            ? 'required|string|max:524288'
             : 'required|string|max:10000';
 
         $request->validate($rules);

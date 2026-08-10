@@ -2,27 +2,33 @@
 
 Monorepo for all [OpenCompany](https://github.com/OpenCompanyApp) integration packages. Each package exposes tools that AI agents can call — from rendering diagrams to querying APIs to managing tasks.
 
-Status: Current package authoring/reference copy. In standalone Laravel consumers the default credential resolver reads `config/ai-tools.php`; in OpenCompany itself credentials and enablement are workspace-scoped through `IntegrationSetting`, `config/integrations.php`, `config/chat_integrations.php`, and dynamic integration catalog metadata.
-
-Integrations are independent Composer packages built on a shared core. They work in any PHP 8.2+ application: [OpenCompany](https://github.com/OpenCompanyApp) (web), [KosmoKrator](https://github.com/OpenCompanyApp) (CLI), or your own consumer.
+Integrations are independent Composer packages built on a shared core. They work in any PHP 8.2+ application: [OpenCompany](https://github.com/OpenCompanyApp) (web), [KosmoKrator](https://github.com/OpenCompanyApp/kosmokrator) (CLI), or your own consumer.
 
 ## Repository Structure
 
 ```
-core/               Shared contracts, credential abstraction, Lua bridge, registry
-celestial/          Astronomy: moon phases, sunrise/sunset, planet positions, eclipses
-clickup/            ClickUp project management: tasks, lists, folders, time tracking
-coingecko/          CoinGecko cryptocurrency: prices, market data, trending, charts
-exchangerate/       Currency exchange rates: 340+ fiat, crypto, and metal conversions
-google/             Google Calendar, Gmail, Drive, Sheets, Docs, Forms, Contacts, Tasks, Analytics, Search Console
-mermaid/            Mermaid diagram rendering to PNG
-plantuml/           PlantUML diagram rendering to PNG
-plausible/          Plausible Analytics: stats, realtime visitors, goals
-ticktick/           TickTick task management with time tracking
-trustmrr/           TrustMRR verified startup revenue data
-typst/              Typst document rendering to PDF
-vegalite/           Vega-Lite chart rendering to PNG
-worldbank/          World Bank economic indicators for 200+ countries
+core/                       Shared contracts, credential abstraction, script bridge, registry
+packages/
+  celestial/                Astronomy: moon phases, sunrise/sunset, planet positions, eclipses
+  clickup/                  ClickUp project management: tasks, lists, folders, time tracking
+  coingecko/                CoinGecko cryptocurrency: prices, market data, trending, charts
+  constant-contact/         Constant Contact email marketing: contacts, campaigns, lists
+  etsy/                     Etsy e-commerce: listings, orders, inventory, seller account
+  exchangerate/             Currency exchange rates: 340+ fiat, crypto, and metal conversions
+  google/                   Google Calendar, Gmail, Drive, Sheets, Docs, Forms, Contacts, Tasks, Analytics, Search Console
+  mermaid/                  Mermaid diagram rendering to PNG
+  microsoft-powerbi/        Microsoft Power BI: reports, datasets, workspaces, user info
+  plantuml/                 PlantUML diagram rendering to PNG
+  plausible/                Plausible Analytics: stats, realtime visitors, goals
+  recruitee/                Recruitee ATS: job offers, candidates, departments
+  splunk/                   Splunk log analytics: search, indexes, saved searches
+  statuspage/               Atlassian Statuspage: incidents, components, status management
+  tapfiliate/               Tapfiliate affiliate marketing: affiliates, conversions, tracking
+  ticktick/                 TickTick task management with time tracking
+  trustmrr/                 TrustMRR verified startup revenue data
+  typst/                    Typst document rendering to PDF
+  vegalite/                 Vega-Lite chart rendering to PNG
+  worldbank/                World Bank economic indicators for 200+ countries
 ```
 
 ## Architecture
@@ -32,9 +38,9 @@ worldbank/          World Bank economic indicators for 200+ countries
 │  Host Application (OpenCompany, KosmoKrator)     │
 │                                                  │
 │  ┌──────────┐   ┌───────────────────────────┐   │
-│  │ Lua VM   │──▸│ LuaBridge                  │   │
-│  │          │   │   functionMap → tool slugs  │   │
-│  │ app.integrations.mermaid.render(...)       │   │
+│  │ QuickJS  │──▸│ ScriptBridge                  │   │
+│  │ sandbox  │   │   functionMap → tool slugs    │   │
+│  │ app.integrations.mermaid.render(...)         │   │
 │  └──────────┘   └────────────┬──────────────┘   │
 │                              │                   │
 │  ┌───────────────────────────▼──────────────┐   │
@@ -57,37 +63,57 @@ worldbank/          World Bank economic indicators for 200+ countries
 **Key concepts:**
 
 - **Tool** — A single callable action (e.g. "render a Mermaid diagram", "list ClickUp tasks"). Implements `name()`, `description()`, `parameters()`, `execute()`.
-- **ToolProvider** — Groups related tools under an app name. Declares metadata, handles tool instantiation with credentials, and optionally provides Lua documentation.
+- **ToolProvider** — Groups related tools under an app name. Declares metadata, handles tool instantiation with credentials, and optionally provides JavaScript documentation.
 - **ToolProviderRegistry** — Singleton that collects all providers. The host queries it to discover available tools.
-- **CredentialResolver** — Abstraction for API keys. The standalone default reads from `config/ai-tools.php`; OpenCompany swaps this for encrypted, workspace-scoped `IntegrationSetting` storage.
-- **LuaBridge** — Routes `app.integrations.{name}.{function}(...)` calls from the Lua VM to PHP tool classes.
+- **CredentialResolver** — Abstraction for API keys. The default reads from `config/ai-tools.php`; OpenCompany swaps this for encrypted database storage.
+- **ScriptBridge** — Routes synchronous `app.integrations.{name}.{function}(...)` calls from a host sandbox to PHP tool classes.
 
-## Documented Core Packages
+### How It Works in OpenCompany
 
-The table below covers the curated package docs maintained in this directory.
-OpenCompany's runtime can expose many more catalog integrations through
-`opencompanyapp/integration-bundle` and the generated package catalog; use
-`IntegrationCatalog` and `ToolProviderRegistry` for the live installed count.
+OpenCompany uses a **code-first agent architecture** — agents write and execute JavaScript programs to access all workspace functionality, including integrations. The full pipeline:
 
-| Package | Tools | Credentials | Category | Description |
-|---------|------:|-------------|----------|-------------|
-| [celestial](celestial/) | 9 | None | Data | Moon phases, sunrise/sunset, planet positions, eclipses, zodiac |
-| [clickup](clickup/) | 34 | API token | Productivity | Tasks, lists, folders, time tracking, docs, chat |
-| [coingecko](coingecko/) | 29 | None | Data | Crypto prices, market data, trending coins, historical charts |
-| [exchangerate](exchangerate/) | 6 | None | Data | 340+ currency conversions (fiat, crypto, metals) |
-| [google](google/) | 121 | OAuth | Productivity | Calendar, Gmail, Drive, Sheets, Docs, Forms, Contacts, Tasks, Analytics, Search Console |
-| [mermaid](mermaid/) | 1 | None | Rendering | Flowcharts, sequences, Gantt, class diagrams → PNG |
-| plantuml | 1 | None | Rendering | UML class, sequence, activity, component, state → PNG |
-| [plausible](plausible/) | 8 | API key | Analytics | Stats, realtime visitors, site and goal management |
-| [ticktick](ticktick/) | 9 | OAuth | Productivity | Projects, tasks, time tracking (TickTick and Dida365) |
-| [trustmrr](trustmrr/) | 2 | API key | Data | Verified startup revenue, MRR, growth, acquisitions |
-| typst | 1 | None | Rendering | Reports, invoices, proposals → PDF |
-| vegalite | 1 | None | Rendering | Bar, line, scatter, heatmap, boxplot charts → PNG |
-| [worldbank](worldbank/) | 14 | None | Data | GDP, inflation, population for 200+ countries |
+1. **System prompt** includes a namespace summary of all available JavaScript APIs (`app.chat.*`, `app.integrations.mermaid.*`, etc.)
+2. **Agent calls `code_exec`** with JavaScript code like `app.integrations.plausible.query_stats({...})`
+3. **QuickJS sandbox** applies host-defined memory, CPU, stack, output, and callback budgets and routes synchronous `app.*` calls to `ScriptBridge`
+4. **ScriptBridge** maps the function path to a tool slug via `ScriptCatalogBuilder`-generated function maps
+5. **`OpenCompanyScriptToolInvoker`** instantiates the tool via the `ToolProvider` and calls `execute()`
+6. **Result** flows back through QuickJS to the agent, with effect-aware call logging for observability and safe retry decisions
+
+Agents can also introspect available tools at runtime:
+- `code_read_doc("integrations.plausible")` — Full API reference with parameter tables
+- `code_search_docs("query stats")` — Search across all namespaces and supplementary docs
+- `code_list_docs()` — List all available namespaces and static pages
+
+**Credential management in OpenCompany** uses encrypted database storage instead of config files. The `IntegrationSettingCredentialResolver` reads from the `integration_settings` table (workspace-scoped, `encrypted:array` cast). Users configure credentials through the Integrations UI — tool packages are unaware of the storage backend.
+
+## Available Integrations
+
+| Package | Tools | Triggers | Credentials | Category | Description |
+|---------|------:|---------:|-------------|----------|-------------|
+| [celestial](packages/celestial/) | 9 | — | None | Data | Moon phases, sunrise/sunset, planet positions, eclipses, zodiac |
+| [clickup](packages/clickup/) | 34 | 4 | API token | Productivity | Tasks, lists, folders, time tracking, docs, chat |
+| [coingecko](packages/coingecko/) | 8 | — | None | Data | Crypto prices, market data, trending coins, historical charts |
+| [constant-contact](packages/constant-contact/) | 6 | — | Access token | Email | Contacts, campaigns, lists |
+| [etsy](packages/etsy/) | 6 | — | API token | E-commerce | Shop listings, orders, inventory, seller profile |
+| [exchangerate](packages/exchangerate/) | 5 | — | None | Data | 340+ currency conversions (fiat, crypto, metals) |
+| [google](packages/google/) | 117 | — | OAuth | Productivity | Calendar, Gmail, Drive, Sheets, Docs, Forms, Contacts, Tasks, Analytics, Search Console |
+| [mermaid](packages/mermaid/) | 1 | — | None | Rendering | Flowcharts, sequences, Gantt, class diagrams → PNG |
+| [plantuml](packages/plantuml/) | 1 | — | None | Rendering | UML class, sequence, activity, component, state → PNG |
+| [microsoft-powerbi](packages/microsoft-powerbi/) | 6 | — | Access token | Analytics | Reports, datasets, workspaces, user info |
+| [plausible](packages/plausible/) | 8 | — | None | Analytics | Stats, realtime visitors, site and goal management |
+| [recruitee](packages/recruitee/) | 6 | — | Access token | HR | Job offers, candidates, departments, user info |
+| [splunk](packages/splunk/) | 6 | — | Bearer token | Monitoring | Log search, indexes, saved searches, user context |
+| [statuspage](packages/statuspage/) | 5 | — | API key + Page ID | Monitoring | Incidents, components, status management |
+| [tapfiliate](packages/tapfiliate/) | 5 | — | API key | Marketing | Affiliates, conversions, referral tracking |
+| [ticktick](packages/ticktick/) | 9 | — | OAuth | Productivity | Projects, tasks, time tracking (TickTick and Dida365) |
+| [trustmrr](packages/trustmrr/) | 2 | — | API key | Data | Verified startup revenue, MRR, growth, acquisitions |
+| [typst](packages/typst/) | 1 | — | None | Rendering | Reports, invoices, proposals → PDF |
+| [vegalite](packages/vegalite/) | 1 | — | None | Rendering | Bar, line, scatter, heatmap, boxplot charts → PNG |
+| [worldbank](packages/worldbank/) | 6 | — | None | Data | GDP, inflation, population for 200+ countries |
 
 ## Installation
 
-Each subdirectory is an independent Composer package. In your consuming application:
+Each package directory is an independent Composer package. In your consuming application:
 
 ```json
 {
@@ -104,6 +130,60 @@ Each subdirectory is an independent Composer package. In your consuming applicat
 ```
 
 Laravel auto-discovers service providers. For non-Laravel apps, use the contracts and registry directly.
+
+## Catalog and SEO Metadata
+
+`php build-catalog.php` writes `integrations-catalog.json`, the machine-readable catalog used by KosmoKrator docs, headless CLI discovery, JavaScript API docs, and SEO pages. Every integration stays in the catalog, including integrations that are not fully supported by a local CLI runtime yet, so hosts can document future proxy support without hiding available packages.
+
+The catalog includes:
+
+- `auth`, `auth_strategy`, and `auth_summary`
+- `host_availability` for CLI, web, proxy, and MCP gateway surfaces
+- `runtime_requirements` for binaries or services such as `mmdc`, Java, Typst, or Node.js
+- `compatibility`, `compatibility_summary`, `cli_setup_supported`, and `cli_runtime_supported`
+- `setup` with generated headless configure, doctor, status, and MCP gateway commands
+- `seo` with title, meta description, keyword phrases, setup summaries, and tool counts
+
+Most packages do not need explicit metadata. The catalog builder derives sensible defaults from `credentialFields()`, tool read/write types, package metadata, and JavaScript docs. For example, a ClickUp package with `api_token` and `workspace_id` credentials gets generated setup instructions like:
+
+```console
+kosmokrator integrations:configure clickup --set api_token="$CLICKUP_API_TOKEN" --set workspace_id="$CLICKUP_WORKSPACE_ID" --enable --read allow --write ask --json
+kosmokrator integrations:doctor clickup --json
+kosmokrator mcp:serve --integration=clickup --write=deny
+```
+
+When inference is not specific enough, implement `HasIntegrationCapabilities` on the provider or add the same keys to `appMeta()` / `integrationMeta()`:
+
+```php
+use OpenCompany\IntegrationCore\Contracts\HasIntegrationCapabilities;
+
+class AcmeToolProvider implements ToolProvider, HasIntegrationCapabilities
+{
+    public function integrationCapabilities(): array
+    {
+        return [
+            'auth_strategy' => 'oauth2_authorization_code',
+            'cli_setup_supported' => false,
+            'cli_runtime_supported' => true,
+            'host_availability' => [
+                'cli' => true,
+                'web' => true,
+                'proxy' => true,
+                'mcp_gateway' => true,
+            ],
+            'runtime_requirements' => [
+                ['name' => 'acme', 'type' => 'binary', 'required' => true],
+            ],
+            'seo' => [
+                'cli_setup_summary' => 'Acme can run from KosmoKrator after credentials are connected through OAuth.',
+                'mcp_setup_summary' => 'Expose Acme tools to MCP clients through the KosmoKrator MCP gateway.',
+            ],
+        ];
+    }
+}
+```
+
+Use `cli_setup_supported: false` when credentials cannot be configured fully headlessly, for example browser redirect OAuth without device-code or manual-token support. Use `cli_runtime_supported: false` only when the tool cannot currently run locally. The docs site should still render those integrations and explain the limitation.
 
 ### System Dependencies
 
@@ -126,8 +206,10 @@ This walkthrough creates a complete integration from scratch. We'll build a "Wea
 
 ### 1. Create the Package Directory
 
+Create a new directory under `packages/`:
+
 ```
-weather/
+packages/weather/
 ├── composer.json
 ├── src/
 │   ├── WeatherServiceProvider.php
@@ -135,7 +217,7 @@ weather/
 │   ├── WeatherToolProvider.php
 │   └── Tools/
 │       └── GetWeather.php
-└── lua-docs/              (optional)
+└── script-docs/              (optional)
     └── weather.md
 ```
 
@@ -353,9 +435,9 @@ class WeatherToolProvider implements ToolProvider
         return new $class(app(WeatherService::class));
     }
 
-    public function luaDocsPath(): ?string
+    public function scriptDocsPath(): ?string
     {
-        return __DIR__ . '/../lua-docs/weather.md';
+        return __DIR__ . '/../script-docs/weather.md';
     }
 
     public function credentialFields(): array
@@ -453,7 +535,7 @@ class GetWeather implements Tool
 
 **Optional parameter keys:**
 - `required` — `true` if the parameter must be provided (default `false`)
-- `description` — Shown in generated Lua docs and tool catalogs
+- `description` — Shown in generated JavaScript docs and tool catalogs
 - `enum` — Array of allowed string values
 - `items` — Element type for arrays, e.g. `['type' => 'string']`
 - `properties` — Sub-property definitions for objects
@@ -585,6 +667,265 @@ public function execute(array $args): ToolResult
 
 ---
 
+## Multi-Account Support
+
+Integrations and MCP servers support multiple credential sets per workspace. Users can connect several accounts for the same service (e.g., "work" and "personal" ClickUp workspaces, two GitHub MCP servers) and agents can target any of them.
+
+### How It Works
+
+**Single account** (default): Flat namespace, backward compatible.
+```js
+app.integrations.clickup.create_task({ list_id: "123", name: "Ship it" });
+```
+
+**Portable scripts**: Use `.default` to always target the user's default account — works regardless of how many accounts exist. This is the recommended pattern for shareable scripts and automations.
+```js
+app.integrations.clickup.default.create_task({ list_id: "123", name: "Ship it" });
+app.mcp.github.default.search_repos({ query: "bug" });
+```
+
+**Multiple accounts**: Per-account sub-namespaces appear alongside the flat and default namespaces.
+```js
+// Uses the default account
+app.integrations.clickup.create_task({ list_id: "123", name: "Ship it" });
+app.integrations.clickup.default.create_task({ list_id: "123", name: "Ship it" });
+
+// Explicit account targeting
+app.integrations.clickup.work.create_task({ list_id: "123", name: "Ship it" });
+app.integrations.clickup.personal.create_task({ list_id: "456", name: "Buy groceries" });
+
+// MCP servers work the same way
+app.mcp.github.work.search_repos({ query: "internal" });
+app.mcp.github.personal.search_repos({ query: "side-project" });
+```
+
+Agents discover available accounts via `code_read_doc("integrations.clickup")` or `code_read_doc("mcp.github")` — each account appears as a separate sub-namespace with the same functions.
+
+### Implementation in Tool Providers
+
+The `$context['account']` parameter is passed through to `createTool()`. When set, resolve credentials for that specific account:
+
+```php
+public function createTool(string $class, array $context = []): Tool
+{
+    $account = $context['account'] ?? null;
+
+    if ($account !== null) {
+        $creds = app(CredentialResolver::class);
+        $service = new MyService(
+            apiKey: $creds->get('myservice', 'api_key', '', $account),
+        );
+        return new $class($service);
+    }
+
+    // Default: use the container singleton (single-account path)
+    return new $class(app(MyService::class));
+}
+```
+
+### Database Schema
+
+Both `integration_settings` and `mcp_servers` use `account_alias` to differentiate accounts:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `account_alias` | VARCHAR(32) | `''` = default account, `'work'` / `'personal'` = named accounts |
+| `is_default` | BOOLEAN | Which named account the flat namespace resolves to (integration_settings only) |
+
+Unique constraints: `(workspace_id, integration_id, account_alias)` and `(workspace_id, slug, account_alias)`.
+
+MCP servers sharing the same slug but different account aliases are grouped into a single provider. The default account's server provides the canonical tool definitions.
+
+### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/integrations/{id}/accounts` | List all accounts |
+| POST | `/api/integrations/{id}/accounts` | Create a new account (requires `alias` + `config`) |
+| PUT | `/api/integrations/{id}/accounts/{alias}` | Update account config |
+| DELETE | `/api/integrations/{id}/accounts/{alias}` | Remove an account |
+| POST | `/api/integrations/{id}/accounts/{alias}/default` | Set as default |
+
+---
+
+## Triggers
+
+Triggers are event sources — they receive events from external services (via webhook) or discover new events (via polling). While tools are **pull** (agent calls a function), triggers are **push** (external service sends data to us).
+
+The integration repo defines triggers declaratively; the host application provides infrastructure (HTTP endpoints, job scheduling, state persistence).
+
+### Trigger Types
+
+| Type | How It Works | Example |
+|------|-------------|---------|
+| **Webhook** | External service POSTs events to a host-generated URL | ClickUp fires `taskCreated` to your endpoint |
+| **Polling** | Host periodically calls `poll()` to check for new data | Check an API every 5 min for changes |
+
+### Adding Triggers to an Integration
+
+Implement `HasTriggers` alongside your existing `ToolProvider`:
+
+```php
+use OpenCompany\IntegrationCore\Contracts\HasTriggers;
+use OpenCompany\IntegrationCore\Contracts\Trigger;
+
+class ClickUpToolProvider implements ToolProvider, HasTriggers
+{
+    public function triggers(): array
+    {
+        return [
+            'clickup_task_created' => [
+                'class' => ClickUpTaskCreatedTrigger::class,
+                'name' => 'Task Created',
+                'description' => 'Triggered when a new task is created.',
+                'icon' => 'ph:plus-circle',
+            ],
+        ];
+    }
+
+    public function createTrigger(string $class, array $context = []): Trigger
+    {
+        return new $class($this->resolveService($context));
+    }
+}
+```
+
+### Building a Webhook Trigger
+
+```php
+use OpenCompany\IntegrationCore\Contracts\Trigger;
+use OpenCompany\IntegrationCore\Contracts\TriggerContext;
+use OpenCompany\IntegrationCore\Support\TriggerResult;
+use OpenCompany\IntegrationCore\Support\TriggerType;
+
+class ClickUpTaskCreatedTrigger extends Trigger
+{
+    public function __construct(protected ClickUpService $service) {}
+
+    public function name(): string { return 'clickup_task_created'; }
+    public function description(): string { return 'Triggered when a task is created.'; }
+    public function type(): TriggerType { return TriggerType::Webhook; }
+
+    public function parameters(): array
+    {
+        return [
+            'space_id' => ['type' => 'string', 'description' => 'Scope to a space (optional).'],
+        ];
+    }
+
+    public function onEnable(TriggerContext $ctx): void
+    {
+        $response = $this->service->createWebhook($this->service->getWorkspaceId(), [
+            'endpoint' => $ctx->webhookUrl(),
+            'events' => ['taskCreated'],
+        ]);
+        $ctx->store()->put('webhook_id', $response['webhook']['id']);
+        $ctx->store()->put('webhook_secret', $response['webhook']['secret']);
+    }
+
+    public function onDisable(TriggerContext $ctx): void
+    {
+        $this->service->deleteWebhook($ctx->store()->get('webhook_id'));
+        $ctx->store()->forget('webhook_id');
+        $ctx->store()->forget('webhook_secret');
+    }
+
+    public function verify(TriggerContext $ctx, array $headers, string $rawBody): bool
+    {
+        $secret = $ctx->store()->get('webhook_secret', '');
+        $expected = hash_hmac('sha256', $rawBody, $secret);
+        return hash_equals($expected, $headers['x-signature'] ?? '');
+    }
+
+    public function process(TriggerContext $ctx, array $payload): TriggerResult
+    {
+        return TriggerResult::event([
+            'event' => 'taskCreated',
+            'task' => $this->service->getTask($payload['task_id']),
+        ]);
+    }
+}
+```
+
+### Building a Polling Trigger
+
+```php
+class ExchangeRateChangedTrigger extends Trigger
+{
+    public function type(): TriggerType { return TriggerType::Polling; }
+
+    public function onEnable(TriggerContext $ctx): void
+    {
+        // Store baseline for comparison
+        $ctx->store()->put('last_rates', $this->service->getRates());
+    }
+
+    public function onDisable(TriggerContext $ctx): void
+    {
+        $ctx->store()->forget('last_rates');
+    }
+
+    public function poll(TriggerContext $ctx): TriggerResult
+    {
+        $current = $this->service->getRates();
+        $previous = $ctx->store()->get('last_rates', []);
+        $ctx->store()->put('last_rates', $current);
+
+        $changed = array_filter($current, fn ($rate, $key) =>
+            ($previous[$key] ?? null) !== $rate, ARRAY_FILTER_USE_BOTH);
+
+        return $changed ? TriggerResult::event($changed) : TriggerResult::empty();
+    }
+}
+```
+
+### How the Host Uses Triggers
+
+The host discovers triggers through the same `ToolProviderRegistry`:
+
+```php
+// Discovery
+foreach ($registry->all() as $provider) {
+    if ($provider instanceof HasTriggers) {
+        foreach ($provider->triggers() as $slug => $meta) {
+            // Register webhook routes, build trigger catalog for UI
+        }
+    }
+}
+
+// Enable a trigger
+$trigger = $provider->createTrigger($meta['class'], ['account' => $account]);
+$trigger->onEnable($context);  // Registers webhook at external service
+
+// Incoming webhook request
+$handshake = $trigger->handshake($payload);
+if ($handshake !== null) {
+    return response()->json($handshake);  // Challenge response
+}
+if ($trigger->verify($context, $headers, $rawBody)) {
+    $result = $trigger->process($context, json_decode($rawBody, true));
+    foreach ($result->events as $event) {
+        // Dispatch to automations, notify agents, etc.
+    }
+}
+
+// Disable
+$trigger->onDisable($context);  // Deregisters webhook
+```
+
+### Trigger Contracts
+
+| Contract | Type | Purpose |
+|----------|------|---------|
+| `Trigger` | Abstract class | Base for all triggers — lifecycle, processing, verification |
+| `TriggerContext` | Interface | Host-provided: webhook URL, store, config |
+| `TriggerStore` | Interface | Host-provided: key-value persistence per subscription |
+| `TriggerResult` | Value object | Wraps zero or more events from process/poll |
+| `TriggerType` | Enum | `Webhook` or `Polling` |
+| `HasTriggers` | Interface | Optional interface for trigger-capable providers |
+
+---
+
 ## Making an Integration Configurable
 
 To add a settings UI in OpenCompany, implement `ConfigurableIntegration` alongside `ToolProvider`:
@@ -667,6 +1008,54 @@ class WeatherToolProvider implements ToolProvider, ConfigurableIntegration
 - `string_list` — Dynamic list of strings (e.g. site IDs)
 - `oauth_connect` — OAuth connection button, requires `authorize_url` and `redirect_uri`
 
+### Auth and Host Capabilities
+
+Credential field shape is not enough to decide whether an integration can be
+configured in OpenCompany, KosmoKrator, or both. For example, an OAuth access
+token can be manually pasted in a CLI, while an OAuth redirect flow needs a web
+callback during setup but may still run in CLI after tokens are stored.
+
+The catalog builder infers capability metadata for every integration:
+
+- `auth.strategy` — `none`, `api_key`, `api_token`, `bearer_token`,
+  `oauth2_authorization_code`, `oauth2_manual_token`,
+  `oauth2_client_credentials`, `basic`, or `custom`
+- `auth.setup_flows` — `none`, `manual_secret`, `manual_token`,
+  `web_redirect`, `local_redirect`, `device_code`, `service_account`,
+  `client_credentials`, or `cli_only`
+- `host_availability.web` — setup/runtime support in OpenCompany-style web hosts
+- `host_availability.cli` — setup/runtime support in KosmoKrator-style CLI hosts
+- `runtime_requirements` — local binaries or services required at runtime
+
+If inference is not precise enough, implement
+`OpenCompany\IntegrationCore\Contracts\HasIntegrationCapabilities` on the
+provider and return explicit metadata:
+
+```php
+public function integrationCapabilities(): array
+{
+    return [
+        'auth' => [
+            'strategy' => 'oauth2_authorization_code',
+            'setup_flows' => ['web_redirect'],
+            'requires_browser_for_setup' => true,
+            'refreshable' => true,
+        ],
+        'host_availability' => [
+            'web' => ['setup_supported' => true, 'runtime_supported' => true, 'setup_mode' => 'web_redirect'],
+            'cli' => ['setup_supported' => false, 'runtime_supported' => true, 'setup_mode' => 'unsupported'],
+        ],
+    ];
+}
+```
+
+Use `local_redirect` or `device_code` when an OAuth integration can be
+configured from a CLI host. Google OAuth is the main current example: web hosts
+use the registered redirect callback, while CLI hosts can use a desktop
+loopback redirect and, for supported scopes, device-code setup. Keep purely
+browser-callback OAuth integrations as `web_redirect` with CLI setup disabled;
+their tools may still run in CLI once the host already has stored tokens.
+
 **Conditional fields** — Show a field only when another field has a specific value:
 ```php
 [
@@ -679,56 +1068,18 @@ class WeatherToolProvider implements ToolProvider, ConfigurableIntegration
 
 ---
 
-## Lua Documentation
+## JavaScript Documentation
 
-Agents discover tools through auto-generated Lua API docs. The `LuaDocRenderer` and `LuaCatalogBuilder` in core handle this automatically based on your `parameters()` and `description()` definitions.
+Agents discover tools through auto-generated JavaScript API docs. The `ScriptDocRenderer` and `ScriptCatalogBuilder` in core handle this automatically based on your `parameters()` and `description()` definitions.
 
-For complex integrations, add a `lua-docs/{name}.md` file with supplementary documentation — workflows, examples, and gotchas that aren't captured by the parameter reference.
+For complex integrations, add a `script-docs/{name}.md` file with supplementary documentation — workflows, examples, and gotchas that aren't captured by the parameter reference.
 
-### Writing Lua Docs
+### How JavaScript Routing Works
 
-```markdown
-## Common Workflows
-
-### Get current weather and format it
-
-```lua
-local weather = app.integrations.weather.get({location = "Amsterdam"})
-local forecast = app.integrations.weather.forecast({location = "Amsterdam", days = 3})
-```
-
-### Batch lookups
-
-```lua
-local cities = {"Amsterdam", "London", "Tokyo"}
-for _, city in ipairs(cities) do
-    local w = app.integrations.weather.get({location = city})
-    -- process results
-end
-```
-
-## Notes
-
-- Locations accept city names, addresses, or lat/lng coordinates
-- Rate limit: 60 requests per minute
-- Temperature is in Celsius by default (use `units = "imperial"` for Fahrenheit)
-```
-
-Point to the file in your tool provider:
-
-```php
-public function luaDocsPath(): ?string
-{
-    return __DIR__ . '/../lua-docs/weather.md';
-}
-```
-
-### How Lua Routing Works
-
-The `LuaCatalogBuilder` transforms your tool definitions into a Lua namespace tree:
+The `ScriptCatalogBuilder` transforms your tool definitions into a JavaScript namespace tree:
 
 ```
-app.integrations.weather.get({location = "Amsterdam"})
+app.integrations.weather.get({ location: "Amsterdam" })
 │   │              │      │
 │   │              │      └─ Function name (derived from tool name, minus app name)
 │   │              └─ App name (from ToolProvider::appName())
@@ -736,12 +1087,55 @@ app.integrations.weather.get({location = "Amsterdam"})
 └─ Root namespace
 ```
 
-The `LuaBridge` then:
+**Function name derivation** — `ScriptCatalogBuilder::deriveFunctionName()` converts the tool's `name` field (not the slug) to a JavaScript-friendly function name:
+1. Converts to `snake_case`
+2. Removes stop words (`on`, `of`, `for`, `in`, `to`, `the`, `a`, `an`)
+3. Removes words that overlap with the app name (e.g. "Exchange Rates" in the `exchangerate` app → `exchange_rates`)
+4. Falls back to the full snake_case name if filtering removes everything
+
+For example, with `appName() = 'google_sheets'`:
+- "Create Spreadsheet" → `create_spreadsheet`
+- "Add Sheet" → `add` (because "sheet" overlaps with "google_sheets")
+- "Write Range" → `write_range`
+
+The `ScriptBridge` then:
 1. Looks up the function path in its `functionMap` to find the tool slug
 2. Maps positional arguments to named parameters via `parameterMap`
-3. Delegates to `LuaToolInvoker::invoke()` which instantiates and executes the tool
+3. Delegates to `ScriptToolInvoker::invoke()` which instantiates and executes the tool
 4. Logs the call (path, duration, status, error) for observability
 5. Suggests similar functions on typos ("Did you mean: ...")
+
+### Writing JavaScript Docs
+
+Supplementary docs are appended below the auto-generated parameter reference when an agent calls `code_read_doc("integrations.{name}")`. Use the correct `app.integrations.*` calling convention — agents will copy-paste from these examples:
+
+```markdown
+## Common Workflows
+
+### Get current weather and format it
+
+```js
+var weather = app.integrations.weather.get({ location: "Amsterdam" });
+var forecast = app.integrations.weather.forecast({ location: "Amsterdam", days: 3 });
+console.log({ weather, forecast });
+```
+
+## Notes
+
+- Locations accept city names, addresses, or lat/lng coordinates
+- Rate limit: 60 requests per minute
+```
+
+Use the **derived function names** (as shown in auto-generated docs), not the raw tool slugs. For example, write `app.integrations.coingecko.market_rankings()` not `coingecko_markets()`.
+
+Point to the file in your tool provider:
+
+```php
+public function scriptDocsPath(): ?string
+{
+    return __DIR__ . '/../script-docs/weather.md';
+}
+```
 
 ---
 
@@ -773,7 +1167,7 @@ interface ToolProvider
     public function tools(): array;                                 // Tool definitions
     public function isIntegration(): bool;                          // Toggleable per agent?
     public function createTool(string $class, array $context = []): Tool;
-    public function luaDocsPath(): ?string;                         // Supplementary docs
+    public function scriptDocsPath(): ?string;                         // Supplementary docs
     public function credentialFields(): array;                      // Required credentials
 }
 ```
@@ -823,12 +1217,12 @@ interface AgentFileStorage
 }
 ```
 
-### `LuaToolInvoker`
+### `ScriptToolInvoker`
 
-Host-side adapter for executing tools from the Lua bridge.
+Host-side adapter for executing tools from the JavaScript bridge.
 
 ```php
-interface LuaToolInvoker
+interface ScriptToolInvoker
 {
     public function invoke(string $toolSlug, array $args): mixed;
     public function getToolMeta(string $toolSlug): array;
@@ -849,6 +1243,75 @@ $result->data;         // mixed — string, array, or any serializable value
 $result->error;        // ?string
 $result->meta;         // array — files, timing, etc.
 $result->toString();   // String representation for legacy consumers
+```
+
+### `HasTriggers`
+
+Optional. Adds trigger/webhook support to a ToolProvider.
+
+```php
+interface HasTriggers
+{
+    public function triggers(): array;   // Slug => {class, name, description, icon}
+    public function createTrigger(string $class, array $context = []): Trigger;
+}
+```
+
+### `Trigger`
+
+Abstract base class for event sources. Webhook triggers override `process()` and `verify()`; polling triggers override `poll()`.
+
+```php
+abstract class Trigger
+{
+    abstract public function name(): string;
+    abstract public function description(): string;
+    abstract public function type(): TriggerType;        // Webhook or Polling
+    abstract public function onEnable(TriggerContext $ctx): void;
+    abstract public function onDisable(TriggerContext $ctx): void;
+
+    public function parameters(): array;                  // Config fields (default: [])
+    public function process(TriggerContext $ctx, array $payload): TriggerResult;
+    public function poll(TriggerContext $ctx): TriggerResult;
+    public function verify(TriggerContext $ctx, array $headers, string $rawBody): bool;
+    public function handshake(array $payload): ?array;
+}
+```
+
+### `TriggerContext` / `TriggerStore`
+
+Host-provided interfaces for trigger infrastructure.
+
+```php
+interface TriggerContext
+{
+    public function webhookUrl(): string;   // Host-generated endpoint URL
+    public function store(): TriggerStore;  // Persistent key-value storage
+    public function config(): array;        // User configuration values
+}
+
+interface TriggerStore
+{
+    public function get(string $key, mixed $default = null): mixed;
+    public function put(string $key, mixed $value): void;
+    public function has(string $key): bool;
+    public function forget(string $key): void;
+}
+```
+
+### `TriggerResult`
+
+Value object returned by `process()` and `poll()`.
+
+```php
+$result = TriggerResult::event($data);   // Single event
+$result = TriggerResult::from($events);  // Multiple events
+$result = TriggerResult::empty();        // No events
+
+$result->hasEvents();  // bool
+$result->count();      // int
+$result->events;       // list<array>
+$result->meta;         // array
 ```
 
 ---
@@ -877,6 +1340,26 @@ return [
 ];
 ```
 
+### How OpenCompany Manages Credentials
+
+OpenCompany replaces `ConfigCredentialResolver` with `IntegrationSettingCredentialResolver` — a database-backed implementation:
+
+- **Storage**: `integration_settings` table with an `encrypted:array` `config` column (Laravel's encryption cast)
+- **Scoping**: All queries are workspace-scoped via `BelongsToWorkspace` trait — credentials never leak between workspaces
+- **UI**: Users configure credentials through the Integrations settings page. Packages that implement `ConfigurableIntegration` get automatic form rendering from their `configSchema()`
+- **Masking**: Secret fields are never returned in plaintext to the frontend — displayed as `****xxxx`
+- **Test connection**: The UI calls `testConnection()` to verify credentials before saving
+
+```php
+// OpenCompany's AppServiceProvider
+$this->app->singleton(
+    CredentialResolver::class,
+    IntegrationSettingCredentialResolver::class,
+);
+```
+
+The optional `$account` parameter on `CredentialResolver::get()`, `isConfigured()`, and `getAccounts()` is the shared path for multi-account hosts. KosmoKrator uses it for headless named credentials; OpenCompany can map it to workspace-scoped account aliases.
+
 ### Custom Credential Storage
 
 Bind your own `CredentialResolver` implementation:
@@ -885,7 +1368,7 @@ Bind your own `CredentialResolver` implementation:
 // In your AppServiceProvider
 $this->app->singleton(
     \OpenCompany\IntegrationCore\Contracts\CredentialResolver::class,
-    \App\Services\DatabaseCredentialResolver::class,
+    \App\Services\YourCustomResolver::class,
 );
 ```
 
@@ -908,7 +1391,7 @@ parameters:
 Run from any package directory:
 
 ```console
-cd mermaid && ../vendor/bin/phpstan analyse
+cd packages/mermaid && ../../vendor/bin/phpstan analyse
 ```
 
 ---
@@ -917,12 +1400,12 @@ cd mermaid && ../vendor/bin/phpstan analyse
 
 ### Adding a New Integration
 
-1. Create a new directory following the structure above
+1. Create a new directory under `packages/` following the structure above
 2. Implement `ToolProvider` (and optionally `ConfigurableIntegration`)
 3. Create your service class and tool classes
-4. Add lua-docs if the integration has non-obvious workflows
+4. Add script-docs if the integration has non-obvious workflows — use `app.integrations.{name}.{function}()` syntax
 5. Add a `phpstan.neon` and ensure level 5 passes
-6. Update this README's structure listing and integrations table
+6. Run `php build-catalog.php` and update this README's structure listing and integrations table
 
 ### Conventions
 
@@ -940,11 +1423,14 @@ cd mermaid && ../vendor/bin/phpstan analyse
 - [ ] Service class encapsulating all API communication
 - [ ] Service provider with singleton service registration and `ToolProviderRegistry` boot
 - [ ] Tool provider implementing `ToolProvider` (and `ConfigurableIntegration` if credentials are needed)
+- [ ] Capability metadata checked; add `HasIntegrationCapabilities` only when catalog inference is not specific enough
 - [ ] Tool classes with clear `description()`, typed `parameters()`, and `ToolResult` returns
 - [ ] `credentialFields()` defined for any required API keys or tokens
 - [ ] `testConnection()` if implementing `ConfigurableIntegration`
-- [ ] `lua-docs/{name}.md` for integrations with complex workflows
+- [ ] `script-docs/{name}.md` for integrations with complex workflows (using `app.integrations.*` calling convention)
+- [ ] `php build-catalog.php` run, with generated auth/setup/SEO fields reviewed for CLI, JavaScript, and MCP gateway docs
 - [ ] Entry added to README structure listing and integrations table
+- [ ] JavaScript-doc function names match `deriveFunctionName()` output (check auto-generated docs via `code_read_doc`)
 
 ## License
 

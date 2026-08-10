@@ -19,7 +19,7 @@
 
 ```
 +--------------------------------------------------------------------+
-| Header: "Integrations"       [Tool Catalog] [Lua Console]          |
+| Header: "Integrations"       [Tool Catalog] [Code Console]         |
 | "Connect external services and manage API access"                  |
 +--------------------------------------------------------------------+
 | Sidebar / mobile pills                 | Main content              |

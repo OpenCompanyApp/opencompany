@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "17f1385e2503afb654e853187f182ffa",
+    "content-hash": "c689650b6699f128e11cbbc5635f69dc",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -7735,7 +7735,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/calendly",
-                "reference": "5f2fb8a8f4d97a37a208a01a67882feede8efedc"
+                "reference": "8eb6d0b71cb68a2175c477059455485d1c172084"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -7763,7 +7763,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Calendly integration for OpenCompany — event types, bookings, organizations, and users.",
+            "description": "Calendly integration for OpenCompany - event types, bookings, organizations, and users.",
             "keywords": [
                 "calendly",
                 "opencompany",
@@ -10087,7 +10087,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/crowdin",
-                "reference": "69dd248a0db6d3cd2e02dbfd84d3264db435dd95"
+                "reference": "60290d6238d48841335fe2073afcaa2fc601cdaf"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -10118,7 +10118,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Crowdin localization platform integration for Laravel — manage projects, strings, translations, and languages.",
+            "description": "Crowdin integration for Laravel - manage official API v2 coverage for projects, files, strings, translations, tasks, reports, users, and AI localization workflows.",
             "keywords": [
                 "crowdin",
                 "localization",
@@ -13107,7 +13107,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/freshteam",
-                "reference": "bc3deb49b0db8c7742049ec65f5b7dcf21f048cf"
+                "reference": "1da13c8d959132b6b9ebaa485993f4f8ca9ba749"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -13138,11 +13138,12 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Freshteam HR integration for Laravel — manage candidates, job postings, employees, and user info.",
+            "description": "Freshteam HR integration for Laravel — manage employees, org structure, time off, recruiting, applicants, and new hires.",
             "keywords": [
                 "freshteam",
                 "hr",
                 "opencompany",
+                "recruiting",
                 "tools"
             ],
             "transport-options": {
@@ -13291,7 +13292,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/gainsight",
-                "reference": "b3738c7e15277c999a755996e7656c1b69442368"
+                "reference": "ecf0dcc1e8cb482f1d2338bd65334bb13d788afc"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -13322,10 +13323,11 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Gainsight integration for Laravel — list companies, users, and surveys from the Gainsight customer success platform.",
+            "description": "Gainsight NXT integration for Laravel — query and mutate Company and other MDA object records through the official REST API.",
             "keywords": [
                 "customer-success",
                 "gainsight",
+                "mda",
                 "opencompany",
                 "tools"
             ],
@@ -16102,7 +16104,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/immigrant",
-                "reference": "1fe8fee89996d362cd6289b1f748a9e90065e85e"
+                "reference": "9380da27133770fe2f6d48428e62c0cece4d0595"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -16133,14 +16135,14 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Immigrant migration tool integration for Laravel — manage immigration applications, documents, and statuses.",
+            "description": "USCIS Case Status API integration for Laravel — look up immigration case status by receipt number.",
             "keywords": [
-                "immigrant",
+                "case-status",
+                "government",
                 "immigration",
-                "migration",
                 "opencompany",
-                "productivity",
-                "tools"
+                "tools",
+                "uscis"
             ],
             "transport-options": {
                 "symlink": false,
@@ -16373,7 +16375,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/intercom",
-                "reference": "da3a883c1736292d154c670525951b44c114d2f3"
+                "reference": "0a29ca010e484c2a0f04a5d89370662ea6d02b3a"
             },
             "require": {
                 "illuminate/http": "^11.0|^12.0",
@@ -16395,9 +16397,9 @@
                 }
             },
             "license": [
-                "proprietary"
+                "MIT"
             ],
-            "description": "Intercom integration for OpenCompany – contacts, conversations, and companies.",
+            "description": "Generated Intercom REST API integration for OpenCompany agents.",
             "transport-options": {
                 "symlink": false,
                 "relative": true
@@ -17235,7 +17237,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/klipfolio",
-                "reference": "6ede957e39357882340bdc83f2909535ef2c493e"
+                "reference": "5a42ffc2f6abc7c8d67ed8ff76c965f0a858501f"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -17266,7 +17268,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Klipfolio integration for Laravel — list and view dashboards, metrics, and data sources.",
+            "description": "Klipfolio Klips API integration for Laravel — list and view dashboards, Klips, data sources, clients, and users.",
             "keywords": [
                 "analytics",
                 "klipfolio",
@@ -17284,7 +17286,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/knock",
-                "reference": "1b4970e4e2a087ab51786d05e5a3c125ce46feab"
+                "reference": "a61eeec6d6077f63255b260b8095ac2c06ec5f36"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -17315,7 +17317,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Knock notification engine integration for Laravel — manage workflows, messages, and recipients.",
+            "description": "Knock notification infrastructure integration for Laravel — trigger workflows, inspect messages, manage users, and read workflow definitions.",
             "keywords": [
                 "communication",
                 "knock",
@@ -17334,7 +17336,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/ko-fi",
-                "reference": "4c51fe9fdab57b8049cf0422f62803abec1d856d"
+                "reference": "0739c16802c459a70f2d1199ce32f31005c1e3c7"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -17365,7 +17367,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Ko-fi integration for Laravel — manage supporters, transactions, commissions, and shop items.",
+            "description": "Ko-fi webhook integration for Laravel — verify, parse, and normalize payment webhook events.",
             "keywords": [
                 "ko-fi",
                 "opencompany",
@@ -17418,7 +17420,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/lambda-labs",
-                "reference": "0f917ff876a9a59a5e5d68df55b107806e29cc6b"
+                "reference": "66b64a60651baf0c3ade16e58c805acf110d941b"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -17449,7 +17451,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Lambda Labs GPU cloud integration for Laravel — manage GPU instances, SSH keys, instance types, and images.",
+            "description": "Lambda Labs GPU cloud integration for Laravel — manage GPU instances, SSH keys, regions, file systems, instance types, and images.",
             "keywords": [
                 "cloud",
                 "gpu",
@@ -17554,7 +17556,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/lark",
-                "reference": "ebbd628e986f1ef3f9585a45ef49404f6e7b5788"
+                "reference": "dab1680e51d2653dbd8d5da969ab3d83c6519094"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -17585,7 +17587,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Lark Suite integration for Laravel — list chats, send messages, manage members, and get current user.",
+            "description": "Lark Suite integration for Laravel — list chats, send messages, list members, and get current user.",
             "keywords": [
                 "communication",
                 "lark",
@@ -17603,7 +17605,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/lasso",
-                "reference": "abbc12dc5099b558e8ae0411a1e84edd97c0aea0"
+                "reference": "d369522f963a4d584b18bdd132da8dc5a9e64b1f"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -17634,7 +17636,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Lasso CRM integration for Laravel — manage contacts, deals, inventory, and user data for real estate.",
+            "description": "Lasso CRM integration for Laravel — manage registrants, project settings, and real estate inventory.",
             "keywords": [
                 "crm",
                 "lasso",
@@ -17654,7 +17656,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/later",
-                "reference": "96a8dd1a9c273ad782051622bc6158e1cc0279fa"
+                "reference": "12cdfd7aaf524d7ff798c495bcab5fa57de96d6c"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -17685,7 +17687,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Later integration for Laravel — manage social media scheduling, profiles, posts, and media.",
+            "description": "Later Influence Reporting API integration for Laravel — query instances, campaigns, platforms, creators, posts, and performance metrics.",
             "keywords": [
                 "later",
                 "marketing",
@@ -17754,7 +17756,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/lemlist",
-                "reference": "9e838a1f7155950d12cc60aad22c8053b726adbe"
+                "reference": "784e63ae2a8f132ab60dd11c21bf86f5a562ffdc"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -17785,7 +17787,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Lemlist integration for Laravel — manage campaigns, leads, teams, and sub-accounts.",
+            "description": "lemlist integration for Laravel — manage teams, campaigns, leads, contacts, unsubscribes, webhooks, and enrichment.",
             "keywords": [
                 "email",
                 "lemlist",
@@ -18086,7 +18088,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/litmos",
-                "reference": "f5e2ebe932e6eaddafe4b7878d5b9298f238f945"
+                "reference": "eeeefc2b6f0f4a9be8048dcf67828b6ff77405c7"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -18117,7 +18119,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Litmos LMS integration for Laravel — manage users, courses, and teams via the Litmos API.",
+            "description": "Litmos LMS integration for Laravel agents via the v1.svc API.",
             "keywords": [
                 "education",
                 "litmos",
@@ -18224,7 +18226,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/lokalise",
-                "reference": "3276b069c2636e1339bffeeb5474b61a13a3d9de"
+                "reference": "57bdfd29bbd4aec177e860c6d6c32f72747e589a"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -18255,7 +18257,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Lokalise localization platform integration for Laravel — manage projects, keys, translations, and contributors.",
+            "description": "Lokalise API v2 integration for Laravel agents.",
             "keywords": [
                 "localization",
                 "lokalise",
@@ -18275,7 +18277,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/loom",
-                "reference": "d84a25906d48738c3c4a13fbf72c56049d4a5610"
+                "reference": "cb1f6a8d0c541a1a96727a1af1307b819af3f4b4"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -18306,7 +18308,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Loom video platform integration for Laravel — manage videos, workspaces, and user profiles.",
+            "description": "Loom public embed and oEmbed integration for Laravel agents.",
             "keywords": [
                 "loom",
                 "opencompany",
@@ -18663,7 +18665,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/mailtrap",
-                "reference": "dcd989fe2896127da548a1ef26f8c80a935a0109"
+                "reference": "c962dbce41cec73f1ba90e77cbef86640430647b"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -18694,7 +18696,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Mailtrap integration for Laravel — manage inboxes, messages, test emails, and suppressions.",
+            "description": "Mailtrap integration for Laravel — manage official API coverage for sending, sandbox testing, contacts, accounts, templates, and inbound email.",
             "keywords": [
                 "email",
                 "mailtrap",
@@ -22372,7 +22374,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/opsgenie",
-                "reference": "1567340f421dc9f3cb47f52eea39f5e14078a624"
+                "reference": "fa99ee2c81b0bdf229236a98694ffbcbbea6e618"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -22403,7 +22405,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Opsgenie integration for Laravel — manage alerts, incidents, and teams.",
+            "description": "Opsgenie integration for Laravel - manage official API coverage for alerts, incidents, schedules, teams, users, policies, and on-call workflows.",
             "keywords": [
                 "incident-management",
                 "opencompany",
@@ -22620,9 +22622,11 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/paddle",
-                "reference": "f9059445c27efac074eaea1d0353e8cd7c876d78"
+                "reference": "97303bde4d5cb93a7595f6ae61328c9c88ea730b"
             },
             "require": {
+                "illuminate/http": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
                 "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
@@ -22651,7 +22655,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Paddle integration for Laravel — manage transactions, customers, and products.",
+            "description": "Generated Paddle Billing API integration for OpenCompany agents.",
             "keywords": [
                 "finance",
                 "opencompany",
@@ -23245,7 +23249,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/pingdom",
-                "reference": "6543c5116dd51ea7fcd66c51e010ccbd967c54a2"
+                "reference": "7b11091ed500789b2e7ac77c6430d04c01b35f14"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -23276,7 +23280,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Pingdom uptime monitoring integration for Laravel — list checks, get check details, create checks, view results, manage alerts.",
+            "description": "Pingdom integration for Laravel - manage official API v3.1 coverage for checks, results, probes, alerts, maintenance windows, teams, contacts, and transaction monitoring.",
             "keywords": [
                 "analytics",
                 "monitoring",
@@ -24372,7 +24376,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/qualifying",
-                "reference": "c169af79813a7335262bca12db05d7c32474279a"
+                "reference": "d749685f5090d12b8ddfc06a6013a9f357df3344"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -24403,12 +24407,13 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Qualifying CRM integration for Laravel — manage accounts, contacts, and deals.",
+            "description": "Qualified.io assessment platform integration for Laravel — manage assessments, challenges, candidates, reviews, notes, solutions, and webhooks.",
             "keywords": [
-                "crm",
+                "assessments",
+                "hiring",
                 "opencompany",
+                "qualified",
                 "qualifying",
-                "sales",
                 "tools"
             ],
             "transport-options": {
@@ -26182,7 +26187,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/sendgrid",
-                "reference": "1f0d25ade0712694c074554744806e6853f74f90"
+                "reference": "1d5a0214ee61ddd420c10c9e7e00c12c7aac7d95"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -26213,7 +26218,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "SendGrid integration for Laravel — send emails, manage templates and contacts.",
+            "description": "SendGrid integration for Laravel - generated coverage for Twilio SendGrid Web API v3.",
             "keywords": [
                 "communication",
                 "email",
@@ -26282,9 +26287,11 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations/packages/sentry",
-                "reference": "13c4fa7ec2a759c96aaaa0c55c504cc8a547b6af"
+                "reference": "da408cedd4e2e245dd677c27ba6499333aab9d29"
             },
             "require": {
+                "illuminate/http": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
                 "opencompanyapp/integration-core": "^2.0 || @dev",
                 "php": "^8.2"
             },
@@ -26313,7 +26320,7 @@
                     "homepage": "https://github.com/OpenCompanyApp"
                 }
             ],
-            "description": "Sentry integration for Laravel — list projects, issues, releases, and manage errors.",
+            "description": "Generated Sentry Public API integration for OpenCompany agents.",
             "keywords": [
                 "errors",
                 "monitoring",
@@ -41863,6 +41870,7 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
+        "ext-quickjs_sandbox": "^1.0",
         "php": "^8.4"
     },
     "platform-dev": {},

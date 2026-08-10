@@ -9,9 +9,9 @@
         >
           <Icon name="ph:arrow-left" class="w-4 h-4" />
         </Link>
-        <h1 class="text-sm font-semibold text-neutral-900 dark:text-white">Lua Console</h1>
+        <h1 class="text-sm font-semibold text-neutral-900 dark:text-white">Code Console</h1>
         <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 leading-none">
-          Luau
+          QuickJS
         </span>
         <span class="w-px h-4 bg-neutral-200 dark:bg-neutral-700" />
         <Link
@@ -29,11 +29,20 @@
           <kbd class="px-1 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 font-mono text-[10px]">{{ metaKey }}+Enter</kbd>
         </span>
         <Button
+          variant="secondary"
+          size="sm"
+          icon-left="ph:check-circle"
+          :disabled="running || !code.trim()"
+          @click="execute('validate')"
+        >
+          Validate
+        </Button>
+        <Button
           size="sm"
           :icon-left="running ? 'ph:spinner' : 'ph:play-fill'"
           :loading="running"
           :disabled="!code.trim()"
-          @click="execute"
+          @click="execute()"
         >
           Run
         </Button>
@@ -41,12 +50,12 @@
     </div>
 
     <!-- Editor + Output splitter -->
-    <SplitterGroup direction="vertical" auto-save-id="lua-console" class="flex-1 min-h-0">
+    <SplitterGroup direction="vertical" auto-save-id="code-console" class="flex-1 min-h-0">
       <!-- Editor panel -->
       <SplitterPanel :default-size="70" :min-size="25">
         <MonacoEditor
           v-model="code"
-          language="lua"
+          language="javascript"
           @ready="onEditorReady"
           @cursor-change="onCursorChange"
         />
@@ -63,7 +72,7 @@
 
     <!-- Status bar -->
     <div class="flex items-center h-6 px-3 shrink-0 border-t border-neutral-200 dark:border-neutral-700/60 bg-white dark:bg-[#1f1f1f] text-[11px] text-neutral-400 dark:text-neutral-500 gap-3 select-none">
-      <span class="font-medium">Luau</span>
+      <span class="font-medium">JavaScript / QuickJS</span>
       <span class="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
       <span>Ln {{ cursorLine }}, Col {{ cursorColumn }}</span>
       <span class="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
@@ -84,38 +93,50 @@
 import { ref, onMounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
-import { execute as executeLua } from '@/actions/App/Http/Controllers/Api/LuaConsoleController'
+import { execute as executeCode } from '@/actions/App/Http/Controllers/Api/CodeConsoleController'
 import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import MonacoEditor from '@/Components/developer/MonacoEditor.vue'
 import ConsoleOutput from '@/Components/developer/ConsoleOutput.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
-import { useLuaCompletions } from '@/composables/useLuaCompletions'
+import { useCodeCompletions } from '@/composables/useCodeCompletions'
 import { wayfinderRequest } from '@/utils/wayfinder'
 import type { editor as MonacoEditorType } from 'monaco-editor'
 
 const { developerToolsUrl } = useWorkspace()
-useLuaCompletions()
+useCodeCompletions()
 
 const code = ref('')
 const running = ref(false)
 const cursorLine = ref(1)
 const cursorColumn = ref(1)
 const lastResult = ref<{
+  executionId?: string
+  validatedOnly?: boolean
   output?: string
-  error?: string
+  error?: {
+    type: string
+    message: string
+    line?: number | null
+    column?: number | null
+    suggestion?: string
+    retryable?: boolean
+    effectStatus?: string
+  } | string
   result?: any
   executionTime?: number
+  cpuTime?: number
   memoryUsage?: number
+  peakMemoryUsage?: number
 } | null>(null)
 
 const metaKey = navigator.platform.includes('Mac') ? '\u2318' : 'Ctrl'
 
 onMounted(() => {
-  const initialCode = sessionStorage.getItem('lua-console-code')
+  const initialCode = sessionStorage.getItem('code-console-code')
   if (initialCode) {
     code.value = initialCode
-    sessionStorage.removeItem('lua-console-code')
+    sessionStorage.removeItem('code-console-code')
   }
 })
 
@@ -126,13 +147,13 @@ function onEditorReady(editor: MonacoEditorType.IStandaloneCodeEditor) {
 
   // Register Cmd/Ctrl+Enter to run
   editor.addAction({
-    id: 'lua-execute',
-    label: 'Run Lua Code',
+    id: 'code-execute',
+    label: 'Run JavaScript',
     keybindings: [
       // Monaco KeyMod.CtrlCmd | Monaco KeyCode.Enter
       2048 | 3,
     ],
-    run: () => execute(),
+    run: () => execute('execute'),
   })
 }
 
@@ -141,12 +162,12 @@ function onCursorChange(line: number, column: number) {
   cursorColumn.value = column
 }
 
-async function execute() {
+async function execute(mode: 'validate' | 'execute' = 'execute') {
   if (running.value || !code.value.trim()) return
 
   running.value = true
   try {
-    const { data } = await wayfinderRequest(executeLua(), { data: { code: code.value } })
+    const { data } = await wayfinderRequest(executeCode(), { data: { code: code.value, mode } })
     lastResult.value = data
   } catch (err: any) {
     lastResult.value = {

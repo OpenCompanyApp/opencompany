@@ -40,7 +40,7 @@ import DataTableViewController from './DataTableViewController'
 import AgentController from './AgentController'
 import AgentPermissionController from './AgentPermissionController'
 import ToolCatalogController from './ToolCatalogController'
-import LuaConsoleController from './LuaConsoleController'
+import CodeConsoleController from './CodeConsoleController'
 import IntegrationController from './IntegrationController'
 import IntegrationCatalogController from './IntegrationCatalogController'
 import CodexAuthController from './CodexAuthController'
@@ -94,7 +94,7 @@ const Api = {
     AgentController: Object.assign(AgentController, AgentController),
     AgentPermissionController: Object.assign(AgentPermissionController, AgentPermissionController),
     ToolCatalogController: Object.assign(ToolCatalogController, ToolCatalogController),
-    LuaConsoleController: Object.assign(LuaConsoleController, LuaConsoleController),
+    CodeConsoleController: Object.assign(CodeConsoleController, CodeConsoleController),
     IntegrationController: Object.assign(IntegrationController, IntegrationController),
     IntegrationCatalogController: Object.assign(IntegrationCatalogController, IntegrationCatalogController),
     CodexAuthController: Object.assign(CodexAuthController, CodexAuthController),
