@@ -186,6 +186,14 @@ class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
                 throw new \RuntimeException('The parent task is unavailable, inactive, or outside the subagent workspace.');
             }
 
+            // Workspace membership alone does not authorize moving a parent's
+            // approvals or tool context into another conversation. Chat tasks
+            // persist their channel at creation; absent channel authority must
+            // be repaired by the host, never inferred from a delegated prompt.
+            if ($parent->channel_id !== $this->channelId) {
+                throw new \RuntimeException('The delegated channel does not match the parent task.');
+            }
+
             $child = Task::create([
                 'id' => Str::uuid()->toString(),
                 'workspace_id' => $this->agent->workspace_id,

@@ -63,6 +63,7 @@ class GenericSubagentTaskOwnershipTest extends TestCase
             'agent_id' => $this->parentAgent->id,
             'requester_id' => $this->parentAgent->id,
             'source' => Task::SOURCE_CHAT,
+            'channel_id' => $this->channel->id,
         ]);
     }
 
@@ -146,6 +147,30 @@ class GenericSubagentTaskOwnershipTest extends TestCase
         $this->assertSame(1, Task::query()->count());
         $this->assertSame('parent-channel', $registry->getChannelContext());
         $this->assertSame('parent-task', $registry->getTaskContext());
+    }
+
+    public function test_same_workspace_channel_mismatch_or_missing_parent_channel_never_starts_a_peer(): void
+    {
+        $parent = $this->parentTask();
+        $otherChannel = Channel::factory()->create(['workspace_id' => $this->peerAgent->workspace_id]);
+        $registry = $this->registry();
+        GenericSubagent::fake(['must not execute'])->preventStrayPrompts();
+
+        foreach ([$otherChannel->id, null] as $parentChannel) {
+            $parent->update(['channel_id' => $parentChannel]);
+            try {
+                $this->subagent($registry, $parent->id)->prompt('Do not move this conversation.');
+                $this->fail('Delegation must retain its parent conversation authority.');
+            } catch (\RuntimeException $exception) {
+                $this->assertSame('The delegated channel does not match the parent task.', $exception->getMessage());
+            }
+
+            $this->assertSame(0, Task::query()->where('parent_task_id', $parent->id)->count());
+            $this->assertSame('parent-channel', $registry->getChannelContext());
+            $this->assertSame('parent-task', $registry->getTaskContext());
+        }
+
+        GenericSubagent::assertNeverPrompted();
     }
 
     public function test_peer_owned_child_can_acquire_a_receipt_before_a_fake_local_write(): void

@@ -112,6 +112,10 @@ transitions, never provider work. Inactive parents cannot authorize a delegated
 write receipt; stopped or missing children cannot be reported as completed
 delegations. Tool construction/provider failures persist a sanitized failure and
 restore the parent registry context. These tests use a fake SDK, not an LLM.
+The locked parent must also own the exact delegated channel; a different channel
+in the same workspace or a missing parent channel fails before SDK/tool work.
+The follow-up delegated/receipt run passes 23 tests / 130 assertions, overlapping
+the combined run rather than adding to its total.
 
 Host callback/checkpoint failures share a per-execution typed latch, so guest
 rescue cannot clear the first control failure or permit later callbacks. Missing
