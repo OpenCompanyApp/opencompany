@@ -163,7 +163,7 @@
             "dist": {
                 "type": "path",
                 "url": "../bowerbird-ruby-engine",
-                "reference": "0bcc25e806a0c9b38cbe4712b5085d7fca142d7e"
+                "reference": "9923d96eed3aa989543758f69980e05f8b855f7e"
             },
             "require": {
                 "php": "^8.4"
@@ -176,9 +176,20 @@
             },
             "archive": {
                 "exclude": [
+                    "/.git",
+                    "/.github",
+                    "/Cargo.lock",
+                    "/Cargo.toml",
+                    "/build.rs",
+                    "/build_config.rb",
+                    "/engine.lock.json",
+                    "/fuzz",
+                    "/native",
+                    "/scripts",
+                    "/src",
                     "/target",
-                    "/vendor",
-                    "/.git"
+                    "/tests",
+                    "/vendor"
                 ]
             },
             "scripts": {
@@ -18037,7 +18048,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations-mruby/packages/linkedin",
-                "reference": "36a1d66e2e6704fad7a4437d9d7b88ac50db4407"
+                "reference": "2f1e143d2ea241d8bcd8d292e6423c04e3e30044"
             },
             "require": {
                 "illuminate/http": "^11.0|^12.0",
@@ -18049,7 +18060,7 @@
             "extra": {
                 "laravel": {
                     "providers": [
-                        "OpenCompany\\Integrations\\Linkedin\\LinkedinServiceProvider"
+                        "OpenCompany\\Integrations\\Linkedin\\LinkedInServiceProvider"
                     ]
                 }
             },
@@ -22709,7 +22720,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations-mruby/packages/pagerduty",
-                "reference": "c820b71b1a4cd7b0d63f04724ca477df4b58e955"
+                "reference": "c44ac2068d13a56b7f3e22c055cd83a2cdef17cc"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -22719,7 +22730,7 @@
             "extra": {
                 "laravel": {
                     "providers": [
-                        "OpenCompany\\Integrations\\Pagerduty\\PagerdutyServiceProvider"
+                        "OpenCompany\\Integrations\\Pagerduty\\PagerDutyServiceProvider"
                     ]
                 }
             },
@@ -26220,7 +26231,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations-mruby/packages/sendgrid",
-                "reference": "1f0d25ade0712694c074554744806e6853f74f90"
+                "reference": "4c941d437140bf982cc11273ed59fba3d6a143ac"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -26233,7 +26244,7 @@
             "extra": {
                 "laravel": {
                     "providers": [
-                        "OpenCompany\\Integrations\\Sendgrid\\SendgridServiceProvider"
+                        "OpenCompany\\Integrations\\Sendgrid\\SendGridServiceProvider"
                     ]
                 }
             },
@@ -30695,7 +30706,7 @@
             "dist": {
                 "type": "path",
                 "url": "../integrations-mruby/packages/woocommerce",
-                "reference": "b332a535d21ffb2207dcb7739bd5bdaf130d8c30"
+                "reference": "bec8715d0bda3837f10b4f220606877833fcffcf"
             },
             "require": {
                 "opencompanyapp/integration-core": "^2.0 || @dev",
@@ -30705,7 +30716,7 @@
             "extra": {
                 "laravel": {
                     "providers": [
-                        "OpenCompany\\Integrations\\Woocommerce\\WoocommerceServiceProvider"
+                        "OpenCompany\\Integrations\\Woocommerce\\WooCommerceServiceProvider"
                     ]
                 }
             },
