@@ -31,6 +31,8 @@ components.d.ts
 # Playwright
 /screenshots
 /.playwright-mcp
+/.playwright-cli/
+/.auth/
 
 # Claude Code video assets
 /.claude/video-assets

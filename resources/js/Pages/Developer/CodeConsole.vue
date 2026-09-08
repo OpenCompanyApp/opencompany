@@ -124,7 +124,7 @@ const lastResult = ref<{
     suggestion?: string
     retryable?: boolean
     effectStatus?: string
-  } | string
+  } | string | null
   result?: any
   executionTime?: number
   cpuTime?: number | null
@@ -182,7 +182,9 @@ async function execute(mode: 'validate' | 'execute' = 'execute') {
     const model = editorInstance?.getModel()
     const error = lastResult.value?.error
     if (model && code.value === submittedSource) {
-      const located = typeof error === 'object' && error.line && error.line <= model.getLineCount()
+      // Successful executions explicitly return error: null. JavaScript calls
+      // null an object, so test presence before reading diagnostic locations.
+      const located = error !== null && typeof error === 'object' && error.line && error.line <= model.getLineCount()
       monaco.editor.setModelMarkers(model, 'mruby', located ? [{
         severity: monaco.MarkerSeverity.Error, message: `[${error.type}] ${error.message}`,
         startLineNumber: error.line!, endLineNumber: error.line!,

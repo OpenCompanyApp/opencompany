@@ -63,7 +63,7 @@ defineProps<{
     output?: string
     executionId?: string
     validatedOnly?: boolean
-    error?: string | ConsoleError
+    error?: string | ConsoleError | null
     result?: any
     executionTime?: number
     cpuTime?: number | null

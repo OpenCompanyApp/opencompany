@@ -27,6 +27,10 @@ on:
       - 'database/migrations/*mruby*'
       - 'resources/code-docs/**'
       - 'resources/js/**'
+      - 'scripts/testing/mruby-console-browser.js'
+      - 'scripts/testing/mruby-history-browser.js'
+      - 'docs/testing/mruby-console-browser.md'
+      - 'docs/testing/mruby-history-browser.md'
       - 'tests/Feature/Mruby*'
       - 'tests/Feature/ScriptAdmissionTest.php'
       - 'tests/Feature/ScriptCallbackAuthorizationTest.php'
@@ -69,6 +73,10 @@ on:
       - 'database/migrations/*mruby*'
       - 'resources/code-docs/**'
       - 'resources/js/**'
+      - 'scripts/testing/mruby-console-browser.js'
+      - 'scripts/testing/mruby-history-browser.js'
+      - 'docs/testing/mruby-console-browser.md'
+      - 'docs/testing/mruby-history-browser.md'
       - 'tests/Feature/Mruby*'
       - 'tests/Feature/ScriptAdmissionTest.php'
       - 'tests/Feature/ScriptCallbackAuthorizationTest.php'
@@ -167,7 +175,7 @@ jobs:
         env:
           APP_ENV: testing
         run: |
-          php artisan test --compact \
+          php artisan test --compact --display-warnings \
             tests/Feature/MrubySandboxServiceTest.php \
             tests/Feature/MrubySandboxSecurityTest.php \
             tests/Feature/MrubyDocumentationTest.php \
@@ -202,3 +210,47 @@ jobs:
         run: |
           npm ci
           npm run build:typecheck
+
+      # This browser check owns its explicitly named session and serves only
+      # compiled public assets. Each fixture intercepts all application traffic.
+      - name: Run isolated mruby browser regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          playwright_cli() {
+            npx --yes --package=@playwright/cli@0.1.18 playwright-cli "$@"
+          }
+          playwright_cli install-browser chrome
+
+          static_server_pid=''
+          cleanup() {
+            cleanup_status=$?
+            trap - EXIT
+            playwright_cli -s=browser close || true
+            if [[ -n "$static_server_pid" ]] && kill -0 "$static_server_pid" 2>/dev/null; then
+              kill "$static_server_pid" || true
+              wait "$static_server_pid" || true
+            fi
+            exit "$cleanup_status"
+          }
+          trap cleanup EXIT
+
+          php -S 127.0.0.1:18743 -t public >"$RUNNER_TEMP/mruby-static-server.log" 2>&1 &
+          static_server_pid=$!
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:18743/build/manifest.json >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent --show-error http://127.0.0.1:18743/build/manifest.json >/dev/null
+
+          playwright_cli -s=browser open about:blank --persistent
+          playwright_cli -s=browser run-code --filename=scripts/testing/mruby-console-browser.js
+          playwright_cli -s=browser snapshot
+          playwright_cli -s=browser close
+
+          playwright_cli -s=browser open about:blank --persistent
+          playwright_cli -s=browser run-code --filename=scripts/testing/mruby-history-browser.js
+          playwright_cli -s=browser snapshot
+          playwright_cli -s=browser close
