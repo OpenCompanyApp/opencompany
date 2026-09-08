@@ -12,7 +12,7 @@ listed below.
   local cutover.
 - `../integrations-mruby` is the isolated `feat/mruby` integration worktree.
   Draft integration PR #4 is pinned at
-  `c0047a4a2496f85927ce40761ec573677846fb5a` for the coordinated application
+  `30e48a7c8e0ec9508a8e7f6094cadddd21d486cc` for the coordinated application
   workflow.
 - The public engine [v0.1.0-rc.1 prerelease](https://github.com/OpenCompanyApp/bowerbird-ruby-engine/releases/tag/v0.1.0-rc.1)
   targets `772e2b46c37a4bcf4cffbc57e6d9214493c11473`. The app consumes its
@@ -129,6 +129,12 @@ names, so same-display-name operations do not overwrite parameter, account, or
 permission mappings. Generated function documentation exposes stable exact
 paths. Provider interfaces use `scriptDocsPath`.
 
+Shared bridge/catalog/docs treat only an explicit `read` as read-only. Missing,
+custom and legacy `action` classifications become conservative writes; successful
+write ledger entries are non-retryable. Focused core/conformance tests pass
+15 tests / 97 assertions. Existing explicit reads/writes retain their semantics;
+183 legacy action entries now receive conservative write handling.
+
 A development-only AST converter migrated 600 repository-owned pages containing
 3,942 Ruby examples. The examples passed real mruby compilation-only sweeps; the
 converter is neither a stored-script translator nor a runtime dependency.
@@ -141,8 +147,9 @@ the source used by the application workflow.
 A focused release-artifact application run passed 111 tests / 2,972 assertions,
 including real-registry write classification, a real local document write followed
 by Ruby failure, and renderer timeout/cleanup. Do not add overlapping subset
-totals. Hosted app run `34237009117` and integration
-run `34236523477` are green at their pre-receipt / current integration commits.
+totals. Hosted app run `34239316817` is green at `35afc1e`, using the published
+RC native/PHP artifacts and including receipts and renderer budgets; integration
+run `34236523477` is green at the current coordinated integration commit.
 
 The dedicated [mruby workflow](../../.github/workflows/mruby.yml) downloads the
 pinned released engine, verifies and exports its SHA-256, installs the pinned integration
@@ -158,7 +165,9 @@ no additional index entry is needed.
 
 ## Remaining gates — do not claim these are shipped
 
-1. Finish release-artifact CI and production Docker qualification. Cross-workspace
+1. Finish hosted AMD64 production Docker qualification. Release-artifact app CI
+   and the clean-context ARM64 image are green; unprivileged, data-only Ruby
+   execution passes through both Client and the Laravel sandbox. Cross-workspace
    and mocked-browser coverage exists; real worker/browser cutover still needs
    a safe target that does not replace the user's separate VFS/run-control work.
 2. Implement schema-aware static API validation from an actual Ruby parser/AST

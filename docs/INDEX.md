@@ -66,7 +66,8 @@
 
 The [mruby-only implementation plan](planning/mruby-only-code-mode-implementation.md)
 and [implementation evidence / remaining gates](planning/mruby-implementation-progress.md)
-describe the in-progress runtime replacement; publication and local cutover are not complete.
+describe the in-progress runtime replacement. Coordinated draft PRs and an engine
+release candidate are published; full qualification and local cutover are not complete.
 
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
@@ -93,6 +94,9 @@ describe the in-progress runtime replacement; publication and local cutover are 
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
 | [qa-strategy.md](testing/qa-strategy.md) | Testing pyramid, CI/CD pipeline, coverage targets, test data management | Setting up automated test infrastructure |
+| [mruby-docker.md](testing/mruby-docker.md) | Clean-context ARM64 Docker qualification, immutable Ruby engine artifact verification, and remaining packaging gates | Building or reviewing the mruby production image |
+| [mruby-history-browser.md](testing/mruby-history-browser.md) | Mocked-API browser checks of real built source-history UI | Verifying history display, deliberate loading and dark mode without live data |
+| [mruby-dependency-audit.md](testing/mruby-dependency-audit.md) | Dated dependency advisories and comparison with the dev lockfile | Reviewing inherited dependency release risks |
 
 ## Audits
 

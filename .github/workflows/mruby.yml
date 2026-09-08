@@ -102,8 +102,8 @@ jobs:
           git clone --depth 1 --branch feat/mruby --single-branch \
             https://github.com/OpenCompanyApp/integrations.git \
             "$GITHUB_WORKSPACE/../integrations-mruby"
-          git -C "$GITHUB_WORKSPACE/../integrations-mruby" fetch --depth 1 origin c0047a4a2496f85927ce40761ec573677846fb5a
-          git -C "$GITHUB_WORKSPACE/../integrations-mruby" checkout --detach c0047a4a2496f85927ce40761ec573677846fb5a
+          git -C "$GITHUB_WORKSPACE/../integrations-mruby" fetch --depth 1 origin 30e48a7c8e0ec9508a8e7f6094cadddd21d486cc
+          git -C "$GITHUB_WORKSPACE/../integrations-mruby" checkout --detach 30e48a7c8e0ec9508a8e7f6094cadddd21d486cc
 
       # These legacy path dependencies are still required by the app's locked
       # dependency graph. They are not part of this mruby workflow's runtime.
