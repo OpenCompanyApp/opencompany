@@ -61,7 +61,7 @@ jobs:
           }
 
           archive_context https://github.com/OpenCompanyApp/integrations.git \
-            30e48a7c8e0ec9508a8e7f6094cadddd21d486cc \
+            d8666a50966d51d8420d9908c5e7c1beca3dfdfd \
             "$RUNNER_TEMP/mruby-docker-contexts/integrations"
           archive_context https://github.com/OpenCompanyApp/astronomy-bundle-php.git \
             7d2f0924657c52d61ca4fa576b71df8c7be72a17 \

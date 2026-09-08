@@ -62,6 +62,27 @@ class ScriptCallbackReceiptTest extends TestCase
         ]);
     }
 
+    public function test_missing_receipt_intent_is_not_replaced_with_a_fabricated_success(): void
+    {
+        $service = new ScriptCallbackReceiptService;
+        $step = $service->begin($this->agent, $this->task()->id,
+            hash('sha256', 'receipt-intent-regression'), Str::uuid()->toString(),
+            1, 'fake_write', [], null);
+        $step->update(['metadata' => ['unrelated' => 'preserve']]);
+
+        try {
+            $service->succeeded($step, ['written' => true]);
+            $this->fail('Missing intent must require reconciliation.');
+        } catch (\LogicException $exception) {
+            $this->assertSame('The script callback intent is unavailable.', $exception->getMessage());
+        }
+
+        $step->refresh();
+        $this->assertSame(['unrelated' => 'preserve'], $step->metadata);
+        $this->assertSame(TaskStep::STATUS_IN_PROGRESS, $step->status);
+        $this->assertNull($step->completed_at);
+    }
+
     /** @param Closure(Request): string|Stringable $handler */
     private function fakeTool(Closure $handler): Tool
     {

@@ -65,6 +65,17 @@ final class ScriptCallbackReceiptService
             throw ScriptDispatchException::denied('The current task is not active for this agent in its workspace.');
         }
 
+        // Delegated children can remain active when a parent is paused (the
+        // Task cancellation cascade intentionally targets only active/pending
+        // descendants). Do not let that stale child acquire a write receipt.
+        if ($task->source === Task::SOURCE_AGENT_DELEGATION && $task->parent_task_id !== null && ! Task::query()
+            ->whereKey($task->parent_task_id)
+            ->where('workspace_id', $agent->workspace_id)
+            ->where('status', Task::STATUS_ACTIVE)
+            ->exists()) {
+            throw ScriptDispatchException::denied('The delegated parent task is no longer active.');
+        }
+
         $requestDigest = $this->canonicalDigest([
             'tool_slug' => $toolSlug,
             'arguments' => $arguments,
@@ -113,8 +124,13 @@ final class ScriptCallbackReceiptService
 
     private function finish(TaskStep $step, string $disposition, ?string $receiptDigest, bool $receiptDigestUnavailable): void
     {
-        $metadata = $step->metadata ?? [];
-        $callback = $metadata['script_callback'] ?? [];
+        $metadata = $step->getAttribute('metadata');
+        if (! is_array($metadata) || ! is_array($metadata['script_callback'] ?? null)) {
+            // Losing the intent is not evidence of a confirmed write outcome.
+            // Preserve the row for reconciliation instead of fabricating it.
+            throw new \LogicException('The script callback intent is unavailable.');
+        }
+        $callback = $metadata['script_callback'];
         $callback['disposition'] = $disposition;
         $callback['receipt_digest'] = $receiptDigest;
         $callback['receipt_digest_unavailable'] = $receiptDigestUnavailable;
@@ -145,7 +161,11 @@ final class ScriptCallbackReceiptService
         }
     }
 
-    /** Convert associative maps into a deterministic, non-persisted hash input. */
+    /**
+     * Convert associative maps into a deterministic, non-persisted hash input.
+     *
+     * @param  \SplObjectStorage<object, null>|null  $seen
+     */
     private function canonicalize(mixed $value, int $depth = 0, ?\SplObjectStorage $seen = null): mixed
     {
         // Recursive PHP arrays can be produced by host-side callers. Refuse a

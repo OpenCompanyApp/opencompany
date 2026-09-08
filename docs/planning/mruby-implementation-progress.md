@@ -12,7 +12,7 @@ listed below.
   local cutover.
 - `../integrations-mruby` is the isolated `feat/mruby` integration worktree.
   Draft integration PR #4 is pinned at
-  `30e48a7c8e0ec9508a8e7f6094cadddd21d486cc` for the coordinated application
+  `d8666a50966d51d8420d9908c5e7c1beca3dfdfd` for the coordinated application
   workflow.
 - The public engine [v0.1.0-rc.1 prerelease](https://github.com/OpenCompanyApp/bowerbird-ruby-engine/releases/tag/v0.1.0-rc.1)
   targets `772e2b46c37a4bcf4cffbc57e6d9214493c11473`. The app consumes its
@@ -69,7 +69,7 @@ the real local web/queue checkout has not been switched. Previous candidates are
 retained for recovery.
 
 After the RC artifact installation, the combined focused application run passes
-111 tests / 2,972 assertions, including real queue execution, stale/redelivered queue fencing,
+122 tests / 3,026 assertions, including real queue execution, stale/redelivered queue fencing,
 permission/approval callbacks, cancellation/deadline rescue, source history,
 catalog/value contracts and deterministic AX cases. Type checking and Vite build
 also pass; existing bundle-size/annotation warnings remain.
@@ -106,6 +106,19 @@ intent before dispatch. Source/invocation/sequence and canonical request/result
 digests are retained without raw provider payloads. Unknown outcomes explicitly
 prohibit automatic replay. This is not an atomic provider/database transaction.
 
+Delegated peer prompts create a same-workspace, peer-owned child Task only when
+the SDK prompt actually executes. Short transactions lock parent/child lifecycle
+transitions, never provider work. Inactive parents cannot authorize a delegated
+write receipt; stopped or missing children cannot be reported as completed
+delegations. Tool construction/provider failures persist a sanitized failure and
+restore the parent registry context. These tests use a fake SDK, not an LLM.
+
+Host callback/checkpoint failures share a per-execution typed latch, so guest
+rescue cannot clear the first control failure or permit later callbacks. Missing
+receipt intent fails closed rather than manufacturing a successful outcome.
+The six focused host-boundary PHPStan targets pass at repository level 6 and are
+now enforced in the dedicated mruby workflow.
+
 Cancellation and fixed callback deadlines reach Laravel HTTP (including MCP)
 and the app's native SVG renderer. Silent renderer children are polled and
 stopped on cancellation/expiry; shorter configured process timeouts remain
@@ -135,6 +148,11 @@ write ledger entries are non-retryable. Focused core/conformance tests pass
 15 tests / 97 assertions. Existing explicit reads/writes retain their semantics;
 183 legacy action entries now receive conservative write handling.
 
+Integration CI now installs the same versioned RC PHP adapter and verifies the
+Linux AMD64 native archive before extraction. Native source qualification stays
+in the engine repository; documentation checks no longer build an older engine
+source revision or require a mutable Rust toolchain.
+
 A development-only AST converter migrated 600 repository-owned pages containing
 3,942 Ruby examples. The examples passed real mruby compilation-only sweeps; the
 converter is neither a stored-script translator nor a runtime dependency.
@@ -144,12 +162,15 @@ the source used by the application workflow.
 
 ### Focused validation and CI
 
-A focused release-artifact application run passed 111 tests / 2,972 assertions,
+A focused release-artifact application run passed 122 tests / 3,026 assertions,
 including real-registry write classification, a real local document write followed
 by Ruby failure, and renderer timeout/cleanup. Do not add overlapping subset
-totals. Hosted app run `34239316817` is green at `35afc1e`, using the published
+totals. Hosted app run `34240660848` is green at `db895ed`, using the published
 RC native/PHP artifacts and including receipts and renderer budgets; integration
-run `34236523477` is green at the current coordinated integration commit.
+run `34243098751` is green at `d8666a5`, now compiling all Ruby examples with
+the released native/PHP artifacts. The new delegated boundary also passes the
+combined local run above; the historical app run does not prove untested changes
+at a later head.
 
 The dedicated [mruby workflow](../../.github/workflows/mruby.yml) downloads the
 pinned released engine, verifies and exports its SHA-256, installs the pinned integration
@@ -165,9 +186,9 @@ no additional index entry is needed.
 
 ## Remaining gates — do not claim these are shipped
 
-1. Finish hosted AMD64 production Docker qualification. Release-artifact app CI
-   and the clean-context ARM64 image are green; unprivileged, data-only Ruby
-   execution passes through both Client and the Laravel sandbox. Cross-workspace
+1. Release-artifact app CI and both Linux Docker targets are green: hosted AMD64
+   run `34240660770` executes real Ruby as `www-data` with networking disabled
+   and a read-only filesystem. Cross-workspace
    and mocked-browser coverage exists; real worker/browser cutover still needs
    a safe target that does not replace the user's separate VFS/run-control work.
 2. Implement schema-aware static API validation from an actual Ruby parser/AST
@@ -184,7 +205,7 @@ no additional index entry is needed.
    triage baseline Composer advisories (29 advisories across nine existing packages),
    and complete release review of the draft application/integration PRs. Draft PRs
    and development source do not authorize a merge or demonstrate a release.
-6. Qualify production Docker, recoverable database/source export and worker
-   drain, then perform the explicitly approved browser and local-runtime
+6. Prepare recoverable database/source export and worker drain, then perform
+   the explicitly approved browser and local-runtime
    cutover at `http://opencompany.test`. No live provider or production cutover
    has been performed.

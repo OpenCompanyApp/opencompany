@@ -77,9 +77,23 @@ disposable `colima-mruby-qualification` context reclaimed 10.43 GB after failed
 attempts; no containers, volumes, default-context images, or application data
 were removed.
 
+## Hosted Linux AMD64 evidence
+
+GitHub Actions run
+[34240660770](https://github.com/OpenCompanyApp/opencompany/actions/runs/34240660770)
+completed on 2026-09-08 for application commit
+`db895edc8848f556f13e3b07f1946344280fef4e`. It created clean archive contexts
+at the pinned integration revision `30e48a7c8e0ec9508a8e7f6094cadddd21d486cc`,
+built and loaded the Linux AMD64 image
+`sha256:048c865c92c9f3e3f8ece559912894469e54e31d4a7da2f0f505aae7bc29cbb7`,
+and passed the reusable smoke as `www-data` with `--network none --read-only`.
+That smoke verifies the archive checksum/configuration fallback and executes
+`6 * 7` through both the release PHP adapter and `MrubySandboxService`, each
+returning `42`. It does not start the application daemon or access a database or
+provider.
+
 ## Remaining packaging qualification
 
-- Build and smoke the Linux AMD64 image in its hosted target environment.
 - Validate release provenance/SBOM/signature policy and the installer before a
   production release claim.
 - Run the approved browser, database, worker-drain, and live cutover procedure

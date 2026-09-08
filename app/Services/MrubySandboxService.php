@@ -38,13 +38,11 @@ final class MrubySandboxService
         try {
             $client = new Client((string) config('code.engine_binary'), $this->engineDigest());
             $budget = app(CodeExecutionBudget::class);
-            $hostFailure = null;
+            $hostFailure = new CodeExecutionFailureState;
             $callbacks = [];
             foreach ($validateOnly ? [] : ($bridge?->capabilities() ?? []) as $path => $callback) {
-                $callbacks[$path] = static function (array $args) use ($budget, $callback, &$hostFailure): mixed {
-                    if ($hostFailure !== null) {
-                        throw new CapabilityFailure($hostFailure['type'], $hostFailure['message']);
-                    }
+                $callbacks[$path] = static function (array $args) use ($budget, $callback, $hostFailure): mixed {
+                    $hostFailure->throwIfFailed();
                     try {
                         return $budget->callback(static function () use ($budget, $callback, $args): mixed {
                             $value = $callback($args);
@@ -55,23 +53,21 @@ final class MrubySandboxService
                             return $value;
                         });
                     } catch (CodeExecutionCancelled) {
-                        $hostFailure = ['type' => 'cancelled', 'message' => 'Execution was cancelled. Inspect earlier effects before retrying.'];
-                        throw new CapabilityFailure($hostFailure['type'], $hostFailure['message']);
+                        throw $hostFailure->latch(new CapabilityFailure('cancelled', 'Execution was cancelled. Inspect earlier effects before retrying.'));
                     } catch (CodeExecutionDeadlineExceeded) {
-                        $hostFailure = ['type' => 'callback_time_exceeded', 'message' => 'The callback deadline expired. Inspect earlier effects before retrying.'];
-                        throw new CapabilityFailure($hostFailure['type'], $hostFailure['message']);
+                        throw $hostFailure->latch(new CapabilityFailure('callback_time_exceeded', 'The callback deadline expired. Inspect earlier effects before retrying.'));
                     }
                 };
             }
-            $checkpoint = static function () use ($budget, &$hostFailure): bool {
+            $checkpoint = static function () use ($budget, $hostFailure): bool {
                 try {
                     $budget->checkpoint();
 
                     return false;
                 } catch (CodeExecutionCancelled) {
-                    $hostFailure = ['type' => 'cancelled', 'message' => 'Execution was cancelled. Inspect earlier effects before retrying.'];
+                    $hostFailure->latch(new CapabilityFailure('cancelled', 'Execution was cancelled. Inspect earlier effects before retrying.'));
                 } catch (CodeExecutionDeadlineExceeded) {
-                    $hostFailure = ['type' => 'callback_time_exceeded', 'message' => 'The execution deadline expired. Inspect earlier effects before retrying.'];
+                    $hostFailure->latch(new CapabilityFailure('callback_time_exceeded', 'The execution deadline expired. Inspect earlier effects before retrying.'));
                 }
 
                 return true;
@@ -105,7 +101,7 @@ final class MrubySandboxService
                     ? $value : (string) json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $values)),
             ], $execution->logs);
             $effects = $bridge?->effectSummary() ?? $this->emptyEffects();
-            $error = $hostFailure ?? $execution->error;
+            $error = $hostFailure->diagnostic() ?? $execution->error;
             // A guest can rescue a Ruby exception but cannot turn a host-owned
             // pending approval or denial into a successfully completed program.
             if (($effects['callbacksPendingApproval'] ?? 0) > 0 || ($effects['callbacksDenied'] ?? 0) > 0) {

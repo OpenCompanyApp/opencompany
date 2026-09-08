@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/mruby.yml'
       - 'app/Agents/Tools/Code/**'
+      - 'app/Agents/Runtime/Subagents/GenericSubagent.php'
       - 'app/Agents/Tools/ToolRegistry.php'
       - 'app/Agents/Tools/Workspace/**'
       - 'app/Agents/Tools/Charts/RenderSvg.php'
@@ -30,8 +31,12 @@ on:
       - 'tests/Feature/ScriptAdmissionTest.php'
       - 'tests/Feature/ScriptCallbackAuthorizationTest.php'
       - 'tests/Feature/ScriptCallbackReceiptTest.php'
+      - 'tests/Feature/GenericSubagentTaskOwnershipTest.php'
+      - 'tests/Unit/CodeExecutionFailureStateTest.php'
       - 'tests/Feature/CodeApiDocGeneratorTest.php'
       - 'tests/Feature/CodeBridgeTest.php'
+      - 'tests/Feature/ToolRegistryTest.php'
+      - 'tests/Feature/Domain/Automations/ManageAutomationsTest.php'
       - 'tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php'
       - 'tests/Feature/Tools/CodeExecTest.php'
       - 'composer.json'
@@ -43,6 +48,7 @@ on:
     paths:
       - '.github/workflows/mruby.yml'
       - 'app/Agents/Tools/Code/**'
+      - 'app/Agents/Runtime/Subagents/GenericSubagent.php'
       - 'app/Agents/Tools/ToolRegistry.php'
       - 'app/Agents/Tools/Workspace/**'
       - 'app/Agents/Tools/Charts/RenderSvg.php'
@@ -67,8 +73,12 @@ on:
       - 'tests/Feature/ScriptAdmissionTest.php'
       - 'tests/Feature/ScriptCallbackAuthorizationTest.php'
       - 'tests/Feature/ScriptCallbackReceiptTest.php'
+      - 'tests/Feature/GenericSubagentTaskOwnershipTest.php'
+      - 'tests/Unit/CodeExecutionFailureStateTest.php'
       - 'tests/Feature/CodeApiDocGeneratorTest.php'
       - 'tests/Feature/CodeBridgeTest.php'
+      - 'tests/Feature/ToolRegistryTest.php'
+      - 'tests/Feature/Domain/Automations/ManageAutomationsTest.php'
       - 'tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php'
       - 'tests/Feature/Tools/CodeExecTest.php'
       - 'composer.json'
@@ -102,8 +112,8 @@ jobs:
           git clone --depth 1 --branch feat/mruby --single-branch \
             https://github.com/OpenCompanyApp/integrations.git \
             "$GITHUB_WORKSPACE/../integrations-mruby"
-          git -C "$GITHUB_WORKSPACE/../integrations-mruby" fetch --depth 1 origin 30e48a7c8e0ec9508a8e7f6094cadddd21d486cc
-          git -C "$GITHUB_WORKSPACE/../integrations-mruby" checkout --detach 30e48a7c8e0ec9508a8e7f6094cadddd21d486cc
+          git -C "$GITHUB_WORKSPACE/../integrations-mruby" fetch --depth 1 origin d8666a50966d51d8420d9908c5e7c1beca3dfdfd
+          git -C "$GITHUB_WORKSPACE/../integrations-mruby" checkout --detach d8666a50966d51d8420d9908c5e7c1beca3dfdfd
 
       # These legacy path dependencies are still required by the app's locked
       # dependency graph. They are not part of this mruby workflow's runtime.
@@ -122,6 +132,16 @@ jobs:
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Check mruby host boundary types
+        run: |
+          vendor/bin/phpstan analyse --no-progress --memory-limit=1G \
+            app/Agents/Runtime/Subagents/GenericSubagent.php \
+            app/Services/CodeExecutionFailureState.php \
+            app/Services/CodeExecutionBudget.php \
+            app/Services/CodeBridge.php \
+            app/Services/ScriptCallbackReceiptService.php \
+            app/Services/MrubySandboxService.php
 
       # Native source qualification belongs to the engine repository. Exercise
       # the actual versioned release bytes consumed by the application here.
@@ -161,8 +181,12 @@ jobs:
             tests/Feature/ScriptAdmissionTest.php \
             tests/Feature/ScriptCallbackAuthorizationTest.php \
             tests/Feature/ScriptCallbackReceiptTest.php \
+            tests/Feature/GenericSubagentTaskOwnershipTest.php \
+            tests/Unit/CodeExecutionFailureStateTest.php \
             tests/Feature/CodeApiDocGeneratorTest.php \
             tests/Feature/CodeBridgeTest.php \
+            tests/Feature/ToolRegistryTest.php \
+            tests/Feature/Domain/Automations/ManageAutomationsTest.php \
             tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php \
             tests/Feature/Tools/CodeExecTest.php
 
