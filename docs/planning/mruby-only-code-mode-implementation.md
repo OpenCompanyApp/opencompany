@@ -1,7 +1,8 @@
 # mruby-only Code Mode implementation plan
 
-Status: Implementation in progress; draft PRs and an engine RC are published,
-but full qualification and local cutover are not complete. See the
+Status: Implementation in progress; draft PRs and an engine RC are published.
+The selected separate local site/database is qualified; full release qualification
+and any later primary-site cutover are not complete. See the
 [current evidence and remaining gates](mruby-implementation-progress.md).
 Verified: 2026-09-08 against the primary OpenCompany checkout, the separate QuickJS worktrees,
 the OpenFactory/Bowerbird Ruby specifications and crate inventory, and current upstream mruby docs.

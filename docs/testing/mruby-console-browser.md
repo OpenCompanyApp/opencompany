@@ -2,9 +2,15 @@
 
 This is a **mocked-API browser regression fixture**, not authenticated Laravel,
 database, provider, or released-engine evidence. It loads this isolated
-checkout's real built Vue assets, intercepts every browser request, and permits
+checkout's real built Vue assets, intercepts every page request, and permits
 only synthetic `POST /api/code/execute` responses. No credentials, saved browser
 state, external API, LLM, integration, or Ruby engine process is used.
+
+The fixture's explicit request-context fetches retrieve the manifest and compiled
+assets from `127.0.0.1:18743`; those local fetches are separate from page routing.
+The static server must serve only this checkout's `public` directory. CLI package
+installation/update checks are tooling traffic, not application/provider calls;
+set `NO_UPDATE_NOTIFIER=1` for local CLI invocations to disable its update check.
 
 The normal application layout starts a background presence heartbeat. The fixture
 explicitly aborts that `PATCH /api/users/fixture-user/presence` attempt before it

@@ -29,6 +29,7 @@ on:
       - 'resources/js/**'
       - 'scripts/testing/mruby-console-browser.js'
       - 'scripts/testing/mruby-history-browser.js'
+      - 'scripts/testing/mruby.env.testing'
       - 'docs/testing/mruby-console-browser.md'
       - 'docs/testing/mruby-history-browser.md'
       - 'tests/Feature/Mruby*'
@@ -75,6 +76,7 @@ on:
       - 'resources/js/**'
       - 'scripts/testing/mruby-console-browser.js'
       - 'scripts/testing/mruby-history-browser.js'
+      - 'scripts/testing/mruby.env.testing'
       - 'docs/testing/mruby-console-browser.md'
       - 'docs/testing/mruby-history-browser.md'
       - 'tests/Feature/Mruby*'
@@ -175,7 +177,12 @@ jobs:
         env:
           APP_ENV: testing
         run: |
-          php artisan test --compact --display-warnings \
+          # A clean CI checkout has no .env. Dotenv safely tolerates absence,
+          # but PHPUnit still records its suppressed file-read warning. Keep
+          # settings in phpunit.xml; never copy local credentials into CI.
+          test ! -e .env.testing
+          cp scripts/testing/mruby.env.testing .env.testing
+          php artisan test --compact --display-warnings --fail-on-warning \
             tests/Feature/MrubySandboxServiceTest.php \
             tests/Feature/MrubySandboxSecurityTest.php \
             tests/Feature/MrubyDocumentationTest.php \

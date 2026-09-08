@@ -180,11 +180,13 @@ the source used by the application workflow.
 A focused release-artifact application run passed 123 tests / 3,035 assertions,
 including real-registry write classification, a real local document write followed
 by Ruby failure, and renderer timeout/cleanup. Do not add overlapping subset
-totals. Hosted app run `34243642139` is green at `53b5a98`, using the published
-RC native/PHP artifacts and including delegated receipts and renderer budgets.
-It completed all 3,035 assertions but reported PHP warnings; the new workflow
-prints warning details for diagnosis instead of hiding them in compact output.
-Hosted Docker run `34243642224` is also green at that application head. Integration
+totals. Hosted app run `34246651275` is green at `81773c5`, using the published
+RC native/PHP artifacts and including delegated receipts, renderer budgets and
+both browser fixtures. It completed all 3,035 assertions but reported 122 warnings:
+Dotenv's optional read of the absent CI `.env` file. The workflow now copies a
+credentials-free testing fixture to `.env.testing` and fails on future PHP warnings;
+the diagnostic run above predates that environment fix.
+Hosted Docker run `34243642224` is green at `53b5a98`. Integration
 run `34243098751` is green at `d8666a5`, now compiling all Ruby examples with
 the released native/PHP artifacts. The new delegated boundary also passes the
 combined local run above; the historical app run does not prove untested changes
