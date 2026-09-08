@@ -32,6 +32,11 @@ class MrubyHostControlTest extends TestCase
 
     public function test_cancellation_interrupts_a_running_guest_and_is_not_retryable(): void
     {
+        // This deliberately non-yielding guest exercises host-side polling. Keep
+        // the test's instruction cap at the engine's admitted maximum to give
+        // the 50ms cancellation signal headroom on faster runners. The default
+        // cap can legitimately end this loop before cancellation is requested.
+        config(['code.profiles.agent.instruction_limit' => 100_000_000]);
         $start = hrtime(true);
         $result = app(MrubySandboxService::class)->execute('loop {}',
             cancelled: fn (): bool => hrtime(true) - $start > 50_000_000);

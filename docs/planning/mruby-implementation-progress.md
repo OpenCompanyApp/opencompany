@@ -186,7 +186,12 @@ both browser fixtures. It completed all 3,035 assertions but reported 122 warnin
 Dotenv's optional read of the absent CI `.env` file. The workflow now copies a
 credentials-free testing fixture to `.env.testing` and fails on future PHP warnings;
 the diagnostic run above predates that environment fix.
-Hosted Docker run `34243642224` is green at `53b5a98`. Integration
+Run `34247240824` confirmed the warnings were gone, but exposed a cancellation
+test race: the default instruction cap could finish the guest before its 50 ms
+cancellation signal. That test now uses the engine's admitted instruction ceiling
+to separate the limits; it retains the strict cancellation/non-retryability and
+1.5-second cleanup assertions, without changing production budgets.
+Hosted Docker run `34247240844` is green at `7cf8235`. Integration
 run `34243098751` is green at `d8666a5`, now compiling all Ruby examples with
 the released native/PHP artifacts. The new delegated boundary also passes the
 combined local run above; the historical app run does not prove untested changes
