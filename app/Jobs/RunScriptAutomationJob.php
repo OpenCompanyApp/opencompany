@@ -5,12 +5,14 @@ namespace App\Jobs;
 use App\Domain\Automations\Application\ExecuteScriptAutomation;
 use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Models\Automation;
+use App\Services\ScriptAutomationInvocation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
 
 /**
  * Queue transport for one mruby automation run.
@@ -32,9 +34,18 @@ class RunScriptAutomationJob implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 120;
 
+    private ?array $sourceReceipt = null;
+
+    private ?string $invocationId = null;
+
     public function __construct(
         private Automation $automation,
-    ) {}
+        ?array $sourceReceipt = null,
+        ?string $invocationId = null,
+    ) {
+        $this->sourceReceipt = $sourceReceipt ?? ScriptAutomationInvocation::capture($automation);
+        $this->invocationId = $invocationId ?? (string) Str::uuid();
+    }
 
     public function uniqueId(): string
     {
@@ -43,8 +54,16 @@ class RunScriptAutomationJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(?ExecuteScriptAutomation $executeScriptAutomation = null): void
     {
+        // Missing properties on old serialized jobs retain null defaults. Never
+        // mint an admission receipt during handle() for a legacy queued body.
+        $current = $this->automation->fresh();
+        if ($current === null || $this->invocationId === null
+            || ! ScriptAutomationInvocation::matches($current, $this->sourceReceipt)) {
+            return;
+        }
+        $this->automation = $current;
         $this->setWorkspaceContext($this->automation->workspace_id);
 
-        ($executeScriptAutomation ?? app(ExecuteScriptAutomation::class))->handle($this->automation);
+        ($executeScriptAutomation ?? app(ExecuteScriptAutomation::class))->handle($this->automation, $this->invocationId);
     }
 }

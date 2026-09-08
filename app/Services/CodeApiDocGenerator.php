@@ -33,7 +33,7 @@ class CodeApiDocGenerator
      */
     private ?array $cachedNamespaces = null;
 
-    private ?User $cachedAgent = null;
+    private ?string $cachedNamespaceFingerprint = null;
 
     public function __construct(
         private ToolRegistry $registry,
@@ -48,7 +48,7 @@ class CodeApiDocGenerator
         }
 
         $namespaces = $filterNamespace !== null && str_ends_with($filterNamespace, '.default')
-            ? $this->buildNamespaces($agent)
+            ? $this->buildScriptNamespaces($agent)
             : $this->buildVisibleNamespaces($agent);
 
         return $renderer->generateNamespaceIndex(
@@ -68,7 +68,7 @@ class CodeApiDocGenerator
 
         return $renderer->generateNamespaceDocs(
             $namespace,
-            $this->buildNamespaces($agent),
+            $this->buildScriptNamespaces($agent),
             fn (string $ns) => $this->getProviderScriptDocs($ns),
         );
     }
@@ -84,7 +84,7 @@ class CodeApiDocGenerator
         return $renderer->generateFunctionDocs(
             $namespace,
             $function,
-            $this->buildNamespaces($agent),
+            $this->buildScriptNamespaces($agent),
         );
     }
 
@@ -116,15 +116,59 @@ class CodeApiDocGenerator
      *     }>
      * }>
      */
-    private function buildNamespaces(User $agent): array
+    private function buildScriptNamespaces(User $agent): array
     {
-        if ($this->cachedNamespaces !== null && $this->cachedAgent?->id === $agent->id) {
+        $builder = $this->catalogBuilder();
+        $catalog = $this->withAccountAliases($this->registry->getScriptToolCatalog($agent));
+        $fingerprint = $this->namespaceFingerprint($agent, $catalog);
+
+        // Permission, workspace, visible catalog, and account changes all
+        // alter executable capability paths. Recompute the source catalog
+        // before consulting this cache; an agent id alone is never safe here.
+        if ($this->cachedNamespaces !== null && $this->cachedNamespaceFingerprint === $fingerprint) {
             return $this->cachedNamespaces;
         }
 
-        $builder = $this->catalogBuilder();
-        $catalog = $this->registry->getToolCatalog($agent);
+        $this->cachedNamespaces = $builder !== null
+            ? $builder->buildNamespaces(
+                $catalog,
+                ['tasks', 'system', 'code'],
+            )
+            : [];
+        $this->cachedNamespaceFingerprint = $fingerprint;
 
+        return $this->cachedNamespaces;
+    }
+
+    /**
+     * Build the unfiltered developer inventory.
+     *
+     * Developer tooling intentionally exposes disabled integrations for
+     * browsing and configuration. It must not be reused for agent discovery.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function buildDeveloperNamespaces(User $agent): array
+    {
+        $builder = $this->catalogBuilder();
+        $catalog = $this->withAccountAliases($this->registry->getToolCatalog($agent));
+
+        return $builder !== null
+            ? $builder->buildNamespaces(
+                $catalog,
+                ['tasks', 'system', 'code'],
+            )
+            : [];
+    }
+
+    /**
+     * Add only currently configured account aliases to a visible catalog.
+     *
+     * @param  array<int, array<string, mixed>>  $catalog
+     * @return array<int, array<string, mixed>>
+     */
+    private function withAccountAliases(array $catalog): array
+    {
         if (app()->bound(CredentialResolver::class)) {
             $credentialResolver = app(CredentialResolver::class);
 
@@ -149,15 +193,26 @@ class CodeApiDocGenerator
             unset($app);
         }
 
-        $this->cachedNamespaces = $builder !== null
-            ? $builder->buildNamespaces(
-                $catalog,
-                ['tasks', 'system', 'code'],
-            )
-            : [];
-        $this->cachedAgent = $agent;
+        return $catalog;
+    }
 
-        return $this->cachedNamespaces;
+    /**
+     * Describe every input that may change executable script documentation.
+     *
+     * The registry recalculates visible integrations and permissions before
+     * this is called. Hashing its resulting catalog covers permission decisions
+     * (including approval-required writes), while the account-enriched payload
+     * covers credential and MCP account changes without exposing secrets.
+     *
+     * @param  array<int, array<string, mixed>>  $catalog
+     */
+    private function namespaceFingerprint(User $agent, array $catalog): string
+    {
+        return hash('sha256', serialize([
+            'actor_id' => $agent->getKey(),
+            'workspace_id' => $agent->workspace_id,
+            'catalog' => $catalog,
+        ]));
     }
 
     /**
@@ -168,7 +223,7 @@ class CodeApiDocGenerator
         $builder = $this->catalogBuilder();
 
         return $builder !== null
-            ? $builder->buildFunctionMap($this->buildNamespaces($agent))
+            ? $builder->buildFunctionMap($this->buildScriptNamespaces($agent))
             : [];
     }
 
@@ -180,7 +235,7 @@ class CodeApiDocGenerator
         $builder = $this->catalogBuilder();
 
         return $builder !== null
-            ? $builder->buildParameterMap($this->buildNamespaces($agent))
+            ? $builder->buildParameterMap($this->buildScriptNamespaces($agent))
             : [];
     }
 
@@ -192,7 +247,7 @@ class CodeApiDocGenerator
         $builder = $this->catalogBuilder();
 
         return $builder !== null
-            ? $builder->buildAccountMap($this->buildNamespaces($agent))
+            ? $builder->buildAccountMap($this->buildScriptNamespaces($agent))
             : [];
     }
 
@@ -263,7 +318,7 @@ class CodeApiDocGenerator
      */
     public function getNamespacesForCatalog(User $agent): array
     {
-        return $this->buildNamespaces($agent);
+        return $this->buildDeveloperNamespaces($agent);
     }
 
     public function getSupplementaryDocs(string $namespace): ?string
@@ -303,7 +358,7 @@ class CodeApiDocGenerator
     public function getNamespaceSummary(User $agent): string
     {
         $renderer = $this->docRenderer();
-        $namespaces = $this->buildVisibleNamespaceSummary();
+        $namespaces = $this->buildVisibleNamespaceSummary($agent);
 
         if ($renderer === null) {
             $namespaces = array_keys($namespaces);
@@ -319,16 +374,17 @@ class CodeApiDocGenerator
     }
 
     /**
-     * Build namespace names for prompt summaries without instantiating every
-     * integration tool. Full docs still use buildNamespaces().
+     * Build prompt-summary namespace names from the same permission-scoped
+     * catalog as executable documentation. Full docs still use
+     * buildScriptNamespaces().
      *
      * @return array<string, array{description: string, functions: array<int, array{name: string, description: string, fullDescription: string, parameters: array<int, array<string, mixed>>, sourceToolSlug: string}>}>
      */
-    private function buildVisibleNamespaceSummary(): array
+    private function buildVisibleNamespaceSummary(User $agent): array
     {
         $namespaces = [];
 
-        foreach ($this->registry->getAppGroupsMeta() as $app) {
+        foreach ($this->registry->getScriptToolCatalog($agent) as $app) {
             $appName = (string) ($app['name'] ?? '');
 
             if ($appName === '' || in_array($appName, ['tasks', 'system', 'code'], true)) {
@@ -372,7 +428,7 @@ class CodeApiDocGenerator
      */
     private function buildVisibleNamespaces(User $agent): array
     {
-        $namespaces = $this->buildNamespaces($agent);
+        $namespaces = $this->buildScriptNamespaces($agent);
 
         foreach (array_keys($namespaces) as $namespace) {
             if (! str_ends_with($namespace, '.default')) {

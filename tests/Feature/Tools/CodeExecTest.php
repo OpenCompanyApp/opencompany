@@ -39,9 +39,12 @@ class CodeExecTest extends TestCase
         $docs->shouldReceive('buildParameterMap')->andReturn([]);
         $docs->shouldReceive('buildAccountMap')->andReturn([]);
 
+        $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getTaskContext')->andReturnNull();
+
         return new CodeExec(
             app(MrubySandboxService::class),
-            Mockery::mock(ToolRegistry::class),
+            $registry,
             $docs,
             $this->agent,
         );

@@ -97,9 +97,9 @@ class CodeBridgeTest extends TestCase
             'name' => 'Send Channel Message',
             'type' => 'write',
         ]);
-        $registry->shouldReceive('instantiateToolBySlug')
+        $registry->shouldReceive('resolveScriptToolForDispatch')
             ->with('send_channel_message', Mockery::type(User::class), null)
-            ->andReturn($fakeTool);
+            ->andReturn(['decision' => 'allow', 'reason' => 'Allowed', 'tool' => $fakeTool]);
 
         $bridge = $this->makeBridge(
             ['chat.send' => 'send_channel_message'],
@@ -118,12 +118,60 @@ class CodeBridgeTest extends TestCase
         $this->assertFalse($bridge->isExecutionRetryable());
     }
 
+    public function test_unavailable_tool_is_reported_without_a_successful_effect(): void
+    {
+        $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
+        $registry->shouldReceive('resolveScriptToolForDispatch')->once()->andReturn([
+            'decision' => 'deny',
+            'reason' => 'Tool not available: get_document',
+        ]);
+        $bridge = $this->makeBridge(['docs.get' => 'get_document'], $registry);
+
+        try {
+            $bridge->call('docs.get');
+            $this->fail('Expected an unavailable tool failure.');
+        } catch (ScriptBridgeException $exception) {
+            $this->assertStringContainsString('Tool not available', $exception->getMessage());
+        }
+
+        $this->assertSame('error', $bridge->getCallLog()[0]['status']);
+        $this->assertSame(0, $bridge->effectSummary()['writesSucceeded']);
+    }
+
+    public function test_multiple_calls_retain_order_and_duration_without_arguments(): void
+    {
+        $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
+        $registry->shouldReceive('resolveScriptToolForDispatch')->twice()->andReturn([
+            'decision' => 'allow',
+            'reason' => 'Allowed',
+            'tool' => $this->makeFakeTool('ok'),
+        ]);
+        $bridge = $this->makeBridge(['docs.first' => 'first', 'docs.second' => 'second'], $registry);
+
+        $bridge->call('docs.first');
+        $bridge->call('docs.second');
+
+        $log = $bridge->getCallLog();
+        $this->assertSame(['docs.first', 'docs.second'], array_column($log, 'path'));
+        foreach ($log as $entry) {
+            $this->assertSame('ok', $entry['status']);
+            $this->assertGreaterThanOrEqual(0, $entry['durationMs']);
+            $this->assertArrayNotHasKey('args', $entry);
+        }
+    }
+
     public function test_maps_positional_arguments_from_published_parameter_order(): void
     {
         $fakeTool = $this->makeFakeTool('ok');
         $registry = Mockery::mock(ToolRegistry::class);
         $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
-        $registry->shouldReceive('instantiateToolBySlug')->andReturn($fakeTool);
+        $registry->shouldReceive('resolveScriptToolForDispatch')->andReturn([
+            'decision' => 'allow',
+            'reason' => 'Allowed',
+            'tool' => $fakeTool,
+        ]);
         $bridge = $this->makeBridge(
             ['docs.get' => 'get_document'],
             $registry,
@@ -163,7 +211,7 @@ class CodeBridgeTest extends TestCase
     {
         $registry = Mockery::mock(ToolRegistry::class);
         $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'write']);
-        $registry->shouldNotReceive('instantiateToolBySlug');
+        $registry->shouldNotReceive('resolveScriptToolForDispatch');
         $bridge = $this->makeBridge(
             ['chat.send' => 'send_channel_message'],
             $registry,
@@ -212,7 +260,11 @@ class CodeBridgeTest extends TestCase
             'type' => 'write',
             'name' => 'Write Thing',
         ]);
-        $registry->shouldReceive('instantiateToolBySlug')->andReturn($failingTool);
+        $registry->shouldReceive('resolveScriptToolForDispatch')->andReturn([
+            'decision' => 'allow',
+            'reason' => 'Allowed',
+            'tool' => $failingTool,
+        ]);
         $bridge = $this->makeBridge(['things.write' => 'write_thing'], $registry);
 
         try {
@@ -232,11 +284,53 @@ class CodeBridgeTest extends TestCase
         $this->assertFalse($bridge->isExecutionRetryable());
     }
 
+    public function test_pending_approval_latches_the_execution_after_a_rescued_callback_error(): void
+    {
+        $registry = Mockery::mock(ToolRegistry::class);
+        $registry->shouldReceive('getToolMetaBySlug')->once()->andReturn([
+            'type' => 'write',
+            'name' => 'Write Thing',
+        ]);
+        $registry->shouldReceive('resolveScriptToolForDispatch')
+            ->once()
+            ->with('write_thing', Mockery::type(User::class), null)
+            ->andReturn(['decision' => 'approval_required', 'reason' => 'Approval required']);
+        $registry->shouldReceive('getChannelContext')->once()->andReturnNull();
+
+        $bridge = $this->makeBridge(['things.write' => 'write_thing'], $registry);
+
+        try {
+            $bridge->call('things.write');
+            $this->fail('Expected a pending approval failure.');
+        } catch (ScriptBridgeException $exception) {
+            $this->assertSame('approval_pending', $exception->errorType);
+        }
+
+        // A Ruby rescue can reach a second callback, but it cannot use that
+        // rescue to enqueue another approval or run a later write.
+        try {
+            $bridge->call('things.write');
+            $this->fail('Expected the execution latch to stop later callbacks.');
+        } catch (ScriptBridgeException $exception) {
+            $this->assertSame('approval_pending', $exception->errorType);
+        }
+
+        $this->assertCount(1, $bridge->getCallLog());
+        $this->assertSame('pending', $bridge->getCallLog()[0]['effectStatus']);
+        $this->assertSame(1, $bridge->effectSummary()['writesPendingApproval']);
+        $this->assertSame(0, $bridge->effectSummary()['writesUnknown']);
+        $this->assertFalse($bridge->isExecutionRetryable());
+    }
+
     public function test_enforces_callback_and_result_budgets(): void
     {
         $registry = Mockery::mock(ToolRegistry::class);
         $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
-        $registry->shouldReceive('instantiateToolBySlug')->once()->andReturn($this->makeFakeTool(str_repeat('x', 30)));
+        $registry->shouldReceive('resolveScriptToolForDispatch')->once()->andReturn([
+            'decision' => 'allow',
+            'reason' => 'Allowed',
+            'tool' => $this->makeFakeTool(str_repeat('x', 30)),
+        ]);
         $bridge = $this->makeBridge(
             ['docs.list' => 'list_documents'],
             $registry,

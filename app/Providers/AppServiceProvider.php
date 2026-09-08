@@ -20,8 +20,10 @@ use App\Services\AgentFileStorageService;
 use App\Services\AgentPermissionService;
 use App\Services\Chat\ChatBridge;
 use App\Services\Chat\ChatManager;
+use App\Services\CodeExecutionBudget;
 use App\Services\IntegrationSettingCredentialResolver;
 use App\Services\Mcp\McpServerRegistrar;
+use Closure;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Event;
@@ -36,12 +38,16 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /** The HTTP factory is shared, so install the dynamic budget wrapper once. */
+    private ?\WeakMap $codeExecutionBudgetFactories = null;
+
     /**
      * Register any application services.
      */
     public function register(): void
     {
         $this->app->singleton(ToolRegistry::class);
+        $this->app->scoped(CodeExecutionBudget::class);
 
         if (class_exists(ScriptCatalogBuilder::class)) {
             $this->app->singleton(ScriptCatalogBuilder::class);
@@ -83,6 +89,24 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        $this->app->afterResolving(HttpFactory::class, function (HttpFactory $http): void {
+            $this->codeExecutionBudgetFactories ??= new \WeakMap;
+            if (isset($this->codeExecutionBudgetFactories[$http])) {
+                return;
+            }
+
+            $this->codeExecutionBudgetFactories[$http] = true;
+
+            // Resolve the scoped budget at transport time: capturing one
+            // instance here would leak a completed worker/request scope into
+            // later host calls.
+            $http->globalMiddleware(function (callable $handler): Closure {
+                return function ($request, array $options) use ($handler) {
+                    return $this->app->make(CodeExecutionBudget::class)->dispatch($handler, $request, $options);
+                };
+            });
+        });
 
         // Observers
         ApprovalRequest::observe(ApprovalRequestObserver::class);

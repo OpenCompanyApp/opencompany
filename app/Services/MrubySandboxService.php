@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Bowerbird\RubyEngine\CapabilityFailure;
 use Bowerbird\RubyEngine\Client;
 use Illuminate\Support\Str;
 
@@ -26,27 +27,74 @@ final class MrubySandboxService
         array $globals = [],
         bool $validateOnly = false,
         string $sourceName = 'opencompany-code.rb',
+        ?\Closure $cancelled = null,
     ): CodeExecutionResult {
         $limits = $this->profile($profile);
         $started = hrtime(true);
+        $cancelled ??= static fn (): bool => false;
         try {
             $client = new Client((string) config('code.engine_binary'), $this->engineDigest());
-            $execution = $client->execute(
-                source: $code,
-                capabilities: $validateOnly ? [] : ($bridge?->capabilities() ?? []),
-                globals: $globals,
-                validateOnly: $validateOnly,
-                limits: [
-                    'memory_bytes' => (int) $limits['memory_limit'],
-                    'instructions' => (int) $limits['instruction_limit'],
-                    'wall_ms' => (int) $limits['wall_limit_ms'],
-                    'cpu_ms' => (int) ($limits['cpu_limit_ms'] ?? 1000),
-                    'source_bytes' => (int) $limits['source_limit'],
-                    'result_bytes' => (int) $limits['result_limit'],
-                    'calls' => (int) $limits['callback_limit'],
-                    'log_bytes' => (int) $limits['output_limit'],
-                ],
-                filename: $sourceName,
+            $budget = app(CodeExecutionBudget::class);
+            $hostFailure = null;
+            $callbacks = [];
+            foreach ($validateOnly ? [] : ($bridge?->capabilities() ?? []) as $path => $callback) {
+                $callbacks[$path] = static function (array $args) use ($budget, $callback, &$hostFailure): mixed {
+                    if ($hostFailure !== null) {
+                        throw new CapabilityFailure($hostFailure['type'], $hostFailure['message']);
+                    }
+                    try {
+                        return $budget->callback(static function () use ($budget, $callback, $args): mixed {
+                            $value = $callback($args);
+                            // Providers may catch transport exceptions and return
+                            // an error payload. Expiry cannot become Ruby success.
+                            $budget->checkpoint();
+
+                            return $value;
+                        });
+                    } catch (CodeExecutionCancelled) {
+                        $hostFailure = ['type' => 'cancelled', 'message' => 'Execution was cancelled. Inspect earlier effects before retrying.'];
+                        throw new CapabilityFailure($hostFailure['type'], $hostFailure['message']);
+                    } catch (CodeExecutionDeadlineExceeded) {
+                        $hostFailure = ['type' => 'callback_time_exceeded', 'message' => 'The callback deadline expired. Inspect earlier effects before retrying.'];
+                        throw new CapabilityFailure($hostFailure['type'], $hostFailure['message']);
+                    }
+                };
+            }
+            $checkpoint = static function () use ($budget, &$hostFailure): bool {
+                try {
+                    $budget->checkpoint();
+
+                    return false;
+                } catch (CodeExecutionCancelled) {
+                    $hostFailure = ['type' => 'cancelled', 'message' => 'Execution was cancelled. Inspect earlier effects before retrying.'];
+                } catch (CodeExecutionDeadlineExceeded) {
+                    $hostFailure = ['type' => 'callback_time_exceeded', 'message' => 'The execution deadline expired. Inspect earlier effects before retrying.'];
+                }
+
+                return true;
+            };
+            $execution = $budget->within(
+                aggregateMilliseconds: (int) min($limits['wall_limit_ms'], ($limits['callback_total_wall_limit'] > 0 ? $limits['callback_total_wall_limit'] * 1000 : $limits['wall_limit_ms'])),
+                perCallbackMilliseconds: max(1, (int) ($limits['callback_wall_limit'] * 1000)),
+                cancelled: $cancelled,
+                callback: fn () => $client->execute(
+                    source: $code,
+                    capabilities: $callbacks,
+                    globals: $globals,
+                    validateOnly: $validateOnly,
+                    limits: [
+                        'memory_bytes' => (int) $limits['memory_limit'],
+                        'instructions' => (int) $limits['instruction_limit'],
+                        'wall_ms' => (int) $limits['wall_limit_ms'],
+                        'cpu_ms' => (int) ($limits['cpu_limit_ms'] ?? 1000),
+                        'source_bytes' => (int) $limits['source_limit'],
+                        'result_bytes' => (int) $limits['result_limit'],
+                        'calls' => (int) $limits['callback_limit'],
+                        'log_bytes' => (int) $limits['output_limit'],
+                    ],
+                    filename: $sourceName,
+                    cancelled: $checkpoint,
+                ),
             );
             $logs = array_map(static fn (array $values): array => [
                 'level' => 'log',
@@ -54,14 +102,28 @@ final class MrubySandboxService
                     ? $value : (string) json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $values)),
             ], $execution->logs);
             $effects = $bridge?->effectSummary() ?? $this->emptyEffects();
+            $error = $hostFailure ?? $execution->error;
+            // A guest can rescue a Ruby exception but cannot turn a host-owned
+            // pending approval or denial into a successfully completed program.
+            if (($effects['callbacksPendingApproval'] ?? 0) > 0 || ($effects['callbacksDenied'] ?? 0) > 0) {
+                foreach ($bridge?->getCallLog() ?? [] as $entry) {
+                    if (in_array($entry['errorType'] ?? '', ['approval_pending', 'authorization_denied'], true)) {
+                        $error = ['type' => $entry['errorType'], 'message' => $entry['error']];
+                        break;
+                    }
+                }
+            }
+            if ($cancelled()) {
+                $error = ['type' => 'cancelled', 'message' => 'Execution was cancelled. Inspect earlier effects before retrying.'];
+            }
 
             return new CodeExecutionResult(
                 executionId: $execution->executionId,
                 profile: $profile,
                 output: implode("\n", array_column($logs, 'text')),
                 logs: $logs,
-                error: $execution->error === null ? null : $this->diagnostic($execution->error, $effects),
-                result: $execution->result,
+                error: $error === null ? null : $this->diagnostic($error, $effects),
+                result: $error === null ? $execution->result : null,
                 executionTime: $execution->wallMilliseconds,
                 cpuTime: isset($execution->usage['cpu_ms']) ? (float) $execution->usage['cpu_ms'] : null,
                 memoryUsage: null,
@@ -69,15 +131,17 @@ final class MrubySandboxService
                 effects: $effects,
                 validatedOnly: $validateOnly,
             );
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
             // Startup errors may contain installation paths or service details.
             // Operators diagnose the configured artifact; agents get a safe message.
             $effects = $bridge?->effectSummary() ?? $this->emptyEffects();
 
             return new CodeExecutionResult(
                 executionId: (string) Str::uuid(), profile: $profile, output: '', logs: [],
-                error: $this->diagnostic(['type' => 'engine_unavailable',
-                    'message' => 'The pinned Ruby engine is unavailable. Ask an operator to verify its installation.'], $effects),
+                error: $this->diagnostic(['type' => $exception instanceof CodeExecutionCancelled ? 'cancelled' : 'engine_unavailable',
+                    'message' => $exception instanceof CodeExecutionCancelled
+                        ? 'Execution was cancelled before startup.'
+                        : 'The pinned Ruby engine is unavailable. Ask an operator to verify its installation.'], $effects),
                 result: null, executionTime: (hrtime(true) - $started) / 1_000_000,
                 cpuTime: null, memoryUsage: null, peakMemoryUsage: null, effects: $effects,
                 validatedOnly: $validateOnly,
@@ -115,7 +179,8 @@ final class MrubySandboxService
     private function emptyEffects(): array
     {
         return ['callbacks' => 0, 'callbackWallTime' => 0.0, 'reads' => 0,
-            'writesSucceeded' => 0, 'writesUnknown' => 0, 'retryable' => true];
+            'writesSucceeded' => 0, 'writesUnknown' => 0,
+            'writesPendingApproval' => 0, 'callbacksDenied' => 0, 'retryable' => true];
     }
 
     /**
@@ -129,15 +194,22 @@ final class MrubySandboxService
     private function diagnostic(array $error, array $effects): array
     {
         $effectStatus = $effects['writesUnknown'] > 0 ? 'unknown'
-            : ($effects['writesSucceeded'] > 0 ? 'succeeded' : 'none');
+            : ($effects['writesSucceeded'] > 0 ? 'succeeded'
+                : (($effects['writesPendingApproval'] ?? 0) > 0 ? 'pending'
+                    : (($effects['callbacksDenied'] ?? 0) > 0 ? 'denied' : 'none')));
+
+        $suggestion = match ($effectStatus) {
+            'pending' => 'The callback was not executed. Wait for the recorded approval decision; do not automatically rerun this script.',
+            'denied' => 'No callback ran. Update permissions or integration enablement before creating a new execution.',
+            'unknown', 'succeeded' => 'Inspect confirmed and ambiguous effects before changing or rerunning this script.',
+            default => 'Check the source location and code_read_doc contract; use mode: validate before execution.',
+        };
 
         return [...$error,
             'line' => $error['line'] ?? null,
             'column' => $error['column'] ?? null,
-            'suggestion' => $effectStatus !== 'none'
-                ? 'Inspect confirmed and ambiguous effects before changing or rerunning this script.'
-                : 'Check the source location and code_read_doc contract; use mode: validate before execution.',
-            'retryable' => (bool) $effects['retryable'] && ! in_array($error['type'] ?? '', ['engine_unavailable', 'host_transport_error'], true),
+            'suggestion' => $suggestion,
+            'retryable' => (bool) $effects['retryable'] && ! in_array($error['type'] ?? '', ['engine_unavailable', 'host_transport_error', 'cancelled', 'approval_pending', 'authorization_denied', 'callback_time_exceeded'], true),
             'effectStatus' => $effectStatus,
         ];
     }

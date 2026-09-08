@@ -9,7 +9,9 @@ use App\Models\Automation;
 use Cron\CronExpression;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * API adapter for workspace automations.
@@ -138,6 +140,36 @@ class AutomationController extends Controller
         $this->automations->run($id);
 
         return response()->json(['message' => 'Run dispatched']);
+    }
+
+    /**
+     * Page immutable revision metadata without sending every historical body.
+     * Resolve the parent in the active workspace before touching its history;
+     * archived source is user data, never a global developer catalog resource.
+     */
+    public function scriptRevisions(string $id): LengthAwarePaginator
+    {
+        $automation = $this->automations->show($id);
+
+        return DB::table('automation_script_revisions')
+            ->where('workspace_id', $automation->workspace_id)
+            ->where('automation_id', $automation->id)
+            ->select(['id', 'runtime', 'source_digest', 'engine_digest', 'status', 'created_at'])
+            ->orderByDesc('created_at')->orderByDesc('id')->paginate(20);
+    }
+
+    /** Read exactly one preserved source; selecting it never admits or executes it. */
+    public function scriptRevision(string $id, string $revision): object
+    {
+        $automation = $this->automations->show($id);
+        $row = DB::table('automation_script_revisions')
+            ->where('workspace_id', $automation->workspace_id)
+            ->where('automation_id', $automation->id)
+            ->where('id', $revision)
+            ->first(['id', 'runtime', 'source', 'source_digest', 'engine_digest', 'status', 'created_at']);
+        abort_if($row === null, 404);
+
+        return $row;
     }
 
     public function previewSchedule(Request $request): JsonResponse

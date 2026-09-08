@@ -159,6 +159,8 @@
               </p>
             </div>
 
+            <ScriptRevisionHistory v-if="form.executionType === 'script'" :automation-id="automationId" @select="form.script = $event" />
+
             <!-- Run History -->
             <template v-if="runs.length">
               <div class="border-t border-neutral-200 dark:border-neutral-700/60 -mx-4 px-4 pt-4">
@@ -296,6 +298,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import CronBuilder from '@/Components/automation/CronBuilder.vue'
+import ScriptRevisionHistory from '@/Components/automation/ScriptRevisionHistory.vue'
 import MonacoEditor from '@/Components/developer/MonacoEditor.vue'
 import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
@@ -446,7 +449,7 @@ async function handleSave() {
       executionType: form.value.executionType,
       agentId: form.value.agentId,
       prompt: form.value.executionType === 'prompt' ? form.value.prompt.trim() : undefined,
-      script: form.value.executionType === 'script' ? form.value.script.trim() : undefined,
+      script: form.value.executionType === 'script' ? form.value.script : undefined,
       cronExpression: form.value.cronExpression,
       timezone: form.value.timezone,
       keepHistory: form.value.keepHistory,

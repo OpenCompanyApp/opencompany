@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Agents\Tools\ToolRegistry;
+use App\Models\AgentPermission;
 use App\Models\User;
 use App\Services\CodeApiDocGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CodeApiDocGeneratorTest extends TestCase
@@ -70,6 +73,64 @@ class CodeApiDocGeneratorTest extends TestCase
             $this->assertFalse(str_starts_with($path, 'tasks.'), "Should not contain tasks namespace: {$path}");
             $this->assertFalse(str_starts_with($path, 'system.'), "Should not contain system namespace: {$path}");
         }
+    }
+
+    public function test_agent_discovery_excludes_disabled_integrations_while_developer_catalog_keeps_them(): void
+    {
+        // The developer inventory remains a configuration surface. Agent Code
+        // Mode must instead use only the enabled integration capability set.
+        $scriptNamespaces = $this->generator->buildFunctionMap($this->agent);
+        $developerNamespaces = $this->generator->getNamespacesForCatalog($this->agent);
+
+        $this->assertArrayHasKey('integrations.coingecko', $developerNamespaces);
+        $this->assertSame([], array_filter(
+            array_keys($scriptNamespaces),
+            static fn (string $path): bool => str_starts_with($path, 'integrations.coingecko.'),
+        ));
+        $this->assertLessThan(5_000, count($scriptNamespaces));
+    }
+
+    public function test_permission_change_rebuilds_cached_agent_capabilities(): void
+    {
+        $before = $this->generator->buildFunctionMap($this->agent);
+        $this->assertArrayHasKey('web.search', $before);
+
+        // Regression: the old cache key was only the actor id, so a newly
+        // denied tool stayed visible until the PHP process was restarted.
+        AgentPermission::create([
+            'id' => Str::uuid()->toString(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'tool',
+            'scope_key' => 'web_search',
+            'permission' => 'deny',
+            'requires_approval' => false,
+        ]);
+
+        $after = $this->generator->buildFunctionMap($this->agent);
+
+        $this->assertArrayNotHasKey('web.search', $after);
+    }
+
+    public function test_approval_required_tool_remains_discoverable_with_its_approval_contract(): void
+    {
+        AgentPermission::create([
+            'id' => Str::uuid()->toString(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'tool',
+            'scope_key' => 'web_search',
+            'permission' => 'allow',
+            'requires_approval' => true,
+        ]);
+
+        $catalog = app(ToolRegistry::class)->getScriptToolCatalog($this->agent);
+        $web = collect($catalog)->firstWhere('name', 'web');
+        $tool = collect($web['tools'] ?? [])->firstWhere('slug', 'web_search');
+
+        // Approval is not a discovery denial; runtime still owns approval at
+        // dispatch, while the generated documentation reflects visibility.
+        $this->assertIsArray($tool);
+        $this->assertTrue($tool['requiresApproval']);
+        $this->assertArrayHasKey('web.search', $this->generator->buildFunctionMap($this->agent));
     }
 
     // ── deriveFunctionName (via reflection) ──────────────────────
@@ -349,14 +410,16 @@ class CodeApiDocGeneratorTest extends TestCase
      */
     private function primeNamespaceCache(array $namespaces): void
     {
+        // Establish a real current visibility fingerprint first. The injected
+        // namespaces then isolate renderer behavior without restoring the old
+        // unsafe actor-id-only cache contract.
+        $this->generator->buildFunctionMap($this->agent);
+
         $generator = new \ReflectionObject($this->generator);
 
         $cachedNamespaces = $generator->getProperty('cachedNamespaces');
         $cachedNamespaces->setAccessible(true);
         $cachedNamespaces->setValue($this->generator, $namespaces);
 
-        $cachedAgent = $generator->getProperty('cachedAgent');
-        $cachedAgent->setAccessible(true);
-        $cachedAgent->setValue($this->generator, $this->agent);
     }
 }

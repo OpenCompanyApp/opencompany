@@ -189,7 +189,7 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             return Inertia::render('Developer/Tools');
         })->name('developer.tools');
 
-        // Capability-empty QuickJS console
+        // Capability-empty mruby console
         Route::get('/developer/code-console', function () {
             return Inertia::render('Developer/CodeConsole');
         })->name('developer.code-console');

@@ -1,0 +1,197 @@
+name: mruby contracts
+
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - '.github/workflows/mruby.yml'
+      - 'app/Agents/Tools/Code/**'
+      - 'app/Agents/Tools/ToolRegistry.php'
+      - 'app/Agents/Tools/Workspace/**'
+      - 'app/Application/ExecuteScriptAutomation.php'
+      - 'app/Domain/Automations/**'
+      - 'app/Jobs/RunAutomationJob.php'
+      - 'app/Jobs/RunScriptAutomationJob.php'
+      - 'app/Services/ApprovalExecutionService.php'
+      - 'app/Services/CodeApiDocGenerator.php'
+      - 'app/Services/CodeBridge.php'
+      - 'app/Services/Integrations/IntegrationRuntime.php'
+      - 'app/Services/MrubySandboxService.php'
+      - 'app/Services/ScriptAdmission.php'
+      - 'config/code.php'
+      - 'database/migrations/*mruby*'
+      - 'resources/code-docs/**'
+      - 'resources/js/**'
+      - 'tests/Feature/Mruby*'
+      - 'tests/Feature/ScriptAdmissionTest.php'
+      - 'tests/Feature/ScriptCallbackAuthorizationTest.php'
+      - 'tests/Feature/CodeApiDocGeneratorTest.php'
+      - 'tests/Feature/CodeBridgeTest.php'
+      - 'tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php'
+      - 'tests/Feature/Tools/CodeExecTest.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'package.json'
+      - 'package-lock.json'
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/mruby.yml'
+      - 'app/Agents/Tools/Code/**'
+      - 'app/Agents/Tools/ToolRegistry.php'
+      - 'app/Agents/Tools/Workspace/**'
+      - 'app/Application/ExecuteScriptAutomation.php'
+      - 'app/Domain/Automations/**'
+      - 'app/Jobs/RunAutomationJob.php'
+      - 'app/Jobs/RunScriptAutomationJob.php'
+      - 'app/Services/ApprovalExecutionService.php'
+      - 'app/Services/CodeApiDocGenerator.php'
+      - 'app/Services/CodeBridge.php'
+      - 'app/Services/Integrations/IntegrationRuntime.php'
+      - 'app/Services/MrubySandboxService.php'
+      - 'app/Services/ScriptAdmission.php'
+      - 'config/code.php'
+      - 'database/migrations/*mruby*'
+      - 'resources/code-docs/**'
+      - 'resources/js/**'
+      - 'tests/Feature/Mruby*'
+      - 'tests/Feature/ScriptAdmissionTest.php'
+      - 'tests/Feature/ScriptCallbackAuthorizationTest.php'
+      - 'tests/Feature/CodeApiDocGeneratorTest.php'
+      - 'tests/Feature/CodeBridgeTest.php'
+      - 'tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php'
+      - 'tests/Feature/Tools/CodeExecTest.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mruby-contracts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: mruby runtime and UI contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # composer.json intentionally uses sibling path repositories. Keep the
+      # application checkout pristine and recreate that layout explicitly.
+      # Pin the coordinated public integrations source; do not follow a mutable
+      # feature branch for executable capability contracts.
+      - name: Check out mruby integration sources
+        run: |
+          git clone --depth 1 --branch feat/mruby --single-branch \
+            https://github.com/OpenCompanyApp/integrations.git \
+            "$GITHUB_WORKSPACE/../integrations-mruby"
+          git -C "$GITHUB_WORKSPACE/../integrations-mruby" fetch --depth 1 origin c0047a4a2496f85927ce40761ec573677846fb5a
+          git -C "$GITHUB_WORKSPACE/../integrations-mruby" checkout --detach c0047a4a2496f85927ce40761ec573677846fb5a
+
+      - name: Check out the pinned Ruby engine source
+        uses: actions/checkout@v4
+        with:
+          repository: OpenCompanyApp/bowerbird-ruby-engine
+          ref: 9b82a41ad11d7aca8cf49b210603a2c2ffe67277
+          path: .ci/bowerbird-ruby-engine
+
+      - name: Verify engine revision and link sibling path dependency
+        run: |
+          test "$(git -C .ci/bowerbird-ruby-engine rev-parse HEAD)" = 9b82a41ad11d7aca8cf49b210603a2c2ffe67277
+          test ! -e "$GITHUB_WORKSPACE/../bowerbird-ruby-engine"
+          ln -s "$GITHUB_WORKSPACE/.ci/bowerbird-ruby-engine" "$GITHUB_WORKSPACE/../bowerbird-ruby-engine"
+
+      # These legacy path dependencies are still required by the app's locked
+      # dependency graph. They are not part of this mruby workflow's runtime.
+      - name: Check out remaining path dependencies
+        run: |
+          git clone --depth 1 https://github.com/OpenCompanyApp/astronomy-bundle-php.git tmp/astronomy-bundle-php
+          git clone --depth 1 https://github.com/OpenCompanyApp/chatogrator.git tmp/chatogrator
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, curl, dom, sqlite3, pdo_sqlite
+          tools: composer:v2
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Set up the pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.87'
+
+      - name: Set up Ruby and rake for the pinned mruby build
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler: none
+
+      - name: Install rake
+        run: gem install rake --no-document
+
+      - name: Build the pinned Ruby engine and export its identity
+        working-directory: .ci/bowerbird-ruby-engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          mruby_upstream="$(php -r 'echo json_decode(file_get_contents("engine.lock.json"), true, 512, JSON_THROW_ON_ERROR)["upstream"];')"
+          mruby_version="$(php -r 'echo json_decode(file_get_contents("engine.lock.json"), true, 512, JSON_THROW_ON_ERROR)["version"];')"
+          mruby_commit="$(php -r 'echo json_decode(file_get_contents("engine.lock.json"), true, 512, JSON_THROW_ON_ERROR)["commit"];')"
+          git clone --depth 1 --branch "$mruby_version" "$mruby_upstream" vendor/mruby
+          git -C vendor/mruby checkout --detach "$mruby_commit"
+          test "$(git -C vendor/mruby rev-parse HEAD)" = "$mruby_commit"
+          cargo build --locked --release
+          engine_binary="$GITHUB_WORKSPACE/.ci/bowerbird-ruby-engine/target/release/ruby-engine"
+          test -x "$engine_binary"
+          engine_sha256="$(sha256sum "$engine_binary" | awk '{print $1}')"
+          test "$engine_sha256" = "$(sha256sum "$engine_binary" | awk '{print $1}')"
+          {
+            echo "RUBY_ENGINE_BINARY=$engine_binary"
+            echo "RUBY_ENGINE_SHA256=$engine_sha256"
+          } >> "$GITHUB_ENV"
+
+      - name: Run focused mruby PHP contracts
+        env:
+          APP_ENV: testing
+        run: |
+          php artisan test --compact \
+            tests/Feature/MrubySandboxServiceTest.php \
+            tests/Feature/MrubySandboxSecurityTest.php \
+            tests/Feature/MrubyDocumentationTest.php \
+            tests/Feature/MrubyIntegrationValueTest.php \
+            tests/Feature/MrubySourceMigrationTest.php \
+            tests/Feature/MrubyAgentExperienceTest.php \
+            tests/Feature/MrubyAutomationQueueTest.php \
+            tests/Feature/MrubyExecutionBudgetTest.php \
+            tests/Feature/MrubyHostControlTest.php \
+            tests/Feature/MrubyScriptHistoryTest.php \
+            tests/Feature/ScriptAdmissionTest.php \
+            tests/Feature/ScriptCallbackAuthorizationTest.php \
+            tests/Feature/CodeApiDocGeneratorTest.php \
+            tests/Feature/CodeBridgeTest.php \
+            tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php \
+            tests/Feature/Tools/CodeExecTest.php
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Type-check and build the UI
+        env:
+          WAYFINDER_SKIP_GENERATE: 'true'
+        run: |
+          npm ci
+          npm run build:typecheck

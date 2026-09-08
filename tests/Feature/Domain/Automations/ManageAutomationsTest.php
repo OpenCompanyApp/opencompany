@@ -9,11 +9,9 @@ use App\Models\Automation;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\LuaResult;
-use App\Services\LuaSandboxService;
+use App\Services\ScriptAdmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
-use Mockery;
 use Tests\TestCase;
 
 class ManageAutomationsTest extends TestCase
@@ -78,13 +76,15 @@ class ManageAutomationsTest extends TestCase
     {
         $creator = User::factory()->create(['type' => 'human']);
         $agent = User::factory()->agent()->create();
+        $source = 'puts "hello from script"; "ok"';
         $automation = Automation::create([
             'id' => 'script-automation',
             'workspace_id' => $this->workspace->id,
             'name' => 'Script summary',
             'execution_type' => 'script',
             'agent_id' => $agent->id,
-            'script' => 'print("hello")',
+            'script' => $source,
+            ...app(ScriptAdmission::class)->admit($source),
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'created_by_id' => $creator->id,
@@ -92,12 +92,8 @@ class ManageAutomationsTest extends TestCase
             'keep_history' => true,
         ]);
 
-        $sandbox = Mockery::mock(LuaSandboxService::class);
-        $sandbox->shouldReceive('execute')
-            ->once()
-            ->andReturn(new LuaResult('hello from script', null, 'ok', 12.3, 1024));
-        app()->instance(LuaSandboxService::class, $sandbox);
-
+        // Exercise real compilation, immutable admission and subprocess
+        // execution. A fabricated sandbox result would miss runtime drift.
         app(ExecuteScriptAutomation::class)->handle($automation);
 
         $task = Task::where('source', Task::SOURCE_AUTOMATION)

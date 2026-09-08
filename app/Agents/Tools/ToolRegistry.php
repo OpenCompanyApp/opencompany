@@ -8,6 +8,7 @@ use App\Agents\Tools\Providers\BuiltInToolProvider;
 use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Models\AppSetting;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\AgentPermissionService;
 use App\Services\CodeApiDocGenerator;
 use App\Services\Integrations\IntegrationCatalog;
@@ -93,11 +94,34 @@ class ToolRegistry
     }
 
     /**
+     * Return the channel currently bound to this registry execution.
+     *
+     * Script approval requests use this only to attach themselves to an
+     * already workspace-scoped conversation; it does not authorize channel
+     * access or expose any message content.
+     */
+    public function getChannelContext(): ?string
+    {
+        return $this->currentChannelId;
+    }
+
+    /**
      * Set the task context for tools that need the current task ID.
      */
     public function setTaskContext(?string $taskId): void
     {
         $this->currentTaskId = $taskId;
+    }
+
+    /**
+     * Return the task currently bound to this registry execution.
+     *
+     * Code Mode callback cancellation is app-owned; exposing only the opaque
+     * ID lets that boundary observe its task without granting tool access.
+     */
+    public function getTaskContext(): ?string
+    {
+        return $this->currentTaskId;
     }
 
     // ─── Effective (merged built-in + external) accessors ──────────────────
@@ -440,17 +464,57 @@ class ToolRegistry
      */
     public function getToolCatalog(User $agent): array
     {
+        return $this->buildToolCatalog($agent, scriptCapabilitiesOnly: false);
+    }
+
+    /**
+     * Return only currently discoverable script capabilities for this actor.
+     *
+     * Unlike the developer inventory, disabled integrations and denied tools
+     * must not enter an agent's runtime capability list. Approval-required tools
+     * remain discoverable; IntegrationRuntime must still obtain approval at
+     * dispatch. This method neither grants authority nor executes providers.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getScriptToolCatalog(User $agent): array
+    {
+        return $this->buildToolCatalog($agent, scriptCapabilitiesOnly: true);
+    }
+
+    /**
+     * Build display schemas after the optional runtime visibility gate. Keeping
+     * filtering ahead of schema construction also avoids loading every disabled
+     * package merely to execute a small, workspace-owned script.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildToolCatalog(User $agent, bool $scriptCapabilitiesOnly): array
+    {
         $factory = new JsonSchemaTypeFactory;
         $builtIn = [];
         $integrations = [];
+        $enabledIntegrations = $scriptCapabilitiesOnly
+            ? $this->permissionService->getEnabledIntegrations($agent)
+            : [];
 
         foreach ($this->getEffectiveAppGroups() as $appName => $group) {
             $isIntegration = in_array($appName, $this->getEffectiveIntegrationApps());
+            if ($scriptCapabilitiesOnly && $isIntegration && ! in_array($appName, $enabledIntegrations, true)) {
+                continue;
+            }
             $tools = [];
 
             foreach ($group['tools'] as $slug) {
                 $meta = $this->getEffectiveToolMap()[$slug] ?? null;
                 if (! $meta) {
+                    continue;
+                }
+
+                // The unfiltered developer catalog is not a capability grant.
+                // Never move this gate below schema/tool construction.
+                $permission = $scriptCapabilitiesOnly ? $this->evaluateToolPermission($agent, $slug, $meta) : null;
+                if ($permission?->decision === 'deny') {
                     continue;
                 }
 
@@ -463,6 +527,9 @@ class ToolRegistry
                     'parameters' => [],
                     'returns' => is_array($meta['returns'] ?? null) ? $meta['returns'] : [],
                 ];
+                if ($permission !== null) {
+                    $toolData['requiresApproval'] = $permission->decision === 'approval_required';
+                }
 
                 $catalogTool = $isIntegration ? $this->catalogToolDefinition($slug) : null;
                 if ($catalogTool !== null) {
@@ -576,6 +643,56 @@ class ToolRegistry
         }
 
         return $this->instantiateTool($this->getEffectiveToolMap()[$slug]['class'], $agent, $slug, $account);
+    }
+
+    /**
+     * Resolve one Code Mode callback after evaluating its current authority.
+     *
+     * `instantiateToolBySlug()` intentionally remains the post-approval path:
+     * approval execution has already received a human decision. Ruby callbacks
+     * are different. They can outlive discovery and must re-check workspace,
+     * integration enablement, and tool policy before a provider is constructed.
+     *
+     * @return array{decision: 'allow'|'deny'|'approval_required', reason: string, tool?: \OpenCompany\IntegrationCore\Contracts\Tool|Tool}
+     */
+    public function resolveScriptToolForDispatch(string $slug, User $agent, ?string $account = null): array
+    {
+        $meta = $this->getEffectiveToolMap()[$slug] ?? null;
+        if ($meta === null) {
+            return ['decision' => 'deny', 'reason' => "Tool not available: {$slug}"];
+        }
+
+        // Script callbacks must never guess a workspace from ambient process
+        // state. HTTP, queue, and test callers bind this before reaching tools.
+        if (! app()->bound('currentWorkspace')) {
+            return ['decision' => 'deny', 'reason' => 'No workspace is bound for this callback.'];
+        }
+
+        $workspace = app('currentWorkspace');
+        if (! $workspace instanceof Workspace || $workspace->id !== $agent->workspace_id) {
+            return ['decision' => 'deny', 'reason' => 'The callback workspace does not match the agent workspace.'];
+        }
+
+        $app = $this->buildAppLookup()[$slug] ?? null;
+        if ($app !== null
+            && in_array($app, $this->getEffectiveIntegrationApps(), true)
+            && ! in_array($app, $this->permissionService->getEnabledIntegrations($agent), true)) {
+            return ['decision' => 'deny', 'reason' => "Integration {$app} is not enabled for this agent."];
+        }
+
+        // This must happen on every callback, not at script discovery time.
+        // In particular, a permission revoked after Code Mode rendered docs
+        // must prevent provider construction and all external effects.
+        $permission = $this->evaluateToolPermission($agent, $slug, $meta);
+        if ($permission->decision !== 'allow') {
+            return ['decision' => $permission->decision, 'reason' => $permission->reason];
+        }
+
+        return [
+            'decision' => 'allow',
+            'reason' => $permission->reason,
+            'tool' => $this->instantiateTool($meta['class'], $agent, $slug, $account),
+        ];
     }
 
     /**

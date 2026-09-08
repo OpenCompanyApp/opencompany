@@ -14,7 +14,9 @@ use App\Services\CodeApiDocGenerator;
 use App\Services\CodeBridge;
 use App\Services\MrubySandboxService;
 use App\Services\ScriptAdmission;
+use App\Services\ScriptAutomationInvocation;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -34,7 +36,7 @@ class ExecuteScriptAutomation
         private MrubySandboxService $sandbox,
     ) {}
 
-    public function handle(Automation $automation): void
+    public function handle(Automation $automation, ?string $invocationId = null): void
     {
         if (! app(ScriptAdmission::class)->matches($automation)) {
             $automation->recordFailure(
@@ -63,20 +65,39 @@ class ExecuteScriptAutomation
 
         try {
             $channelId = $automation->ensureChannel();
-            $task = $this->createRunTask($automation, $agent, $channelId);
+            $task = $this->createRunTask($automation, $agent, $channelId, $invocationId ?? (string) Str::uuid());
+            if ($task === null) {
+                // A queue redelivery may arrive after an external mutation but
+                // before the original worker acknowledged the job. The existing
+                // Task claim fences the entire script, including failed runs.
+                return;
+            }
             $bridge = new CodeBridge(
                 $agent,
                 $this->toolRegistry,
                 $this->docGenerator,
                 $this->sandbox->profile('automation'),
             );
-            $result = $this->sandbox->execute(
-                code: (string) $automation->script,
-                profile: 'automation',
-                bridge: $bridge,
-                globals: ['ctx' => $this->scriptContext($automation)],
-                sourceName: 'automation-code.rb',
-            );
+            $priorChannel = $this->toolRegistry->getChannelContext();
+            $priorTask = $this->toolRegistry->getTaskContext();
+            $this->toolRegistry->setChannelContext($channelId);
+            $this->toolRegistry->setTaskContext($task->id);
+            try {
+                $result = $this->sandbox->execute(
+                    code: (string) $automation->script,
+                    profile: 'automation',
+                    bridge: $bridge,
+                    globals: ['ctx' => $this->scriptContext($automation)],
+                    sourceName: 'automation-code.rb',
+                    cancelled: fn (): bool => ! Task::query()->whereKey($task->id)
+                        ->where('workspace_id', $automation->workspace_id)->where('status', Task::STATUS_ACTIVE)->exists(),
+                );
+            } finally {
+                // ToolRegistry is shared by queue jobs. Approvals must route to
+                // this automation's channel, never a previous job's context.
+                $this->toolRegistry->setChannelContext($priorChannel);
+                $this->toolRegistry->setTaskContext($priorTask);
+            }
 
             $output = $this->renderOutput($result->output, $result->result);
             $bridgeCalls = $bridge->getCallLog();
@@ -84,7 +105,14 @@ class ExecuteScriptAutomation
                 $errorMessage = $this->formatError($result->error);
                 $failureOutput = $this->renderFailureOutput($output, $errorMessage, $result->error);
                 $this->postOutputMessage($agent, $channelId, $failureOutput);
-                $task->fail();
+                if (($result->error['type'] ?? null) === 'cancelled') {
+                    $task->refresh();
+                    if ($task->status !== Task::STATUS_CANCELLED) {
+                        $task->cancel();
+                    }
+                } else {
+                    $task->fail();
+                }
                 $task->update([
                     'result' => [
                         'error' => $result->error,
@@ -163,29 +191,39 @@ class ExecuteScriptAutomation
         }
     }
 
-    private function createRunTask(Automation $automation, User $agent, string $channelId): Task
+    private function createRunTask(Automation $automation, User $agent, string $channelId, string $invocationId): ?Task
     {
-        return Task::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => $automation->workspace_id,
-            'title' => "Script: {$automation->name}",
-            'description' => Str::limit($automation->script, 200),
-            'type' => Task::TYPE_CUSTOM,
-            'status' => Task::STATUS_ACTIVE,
-            'priority' => Task::PRIORITY_NORMAL,
-            'source' => Task::SOURCE_AUTOMATION,
-            'agent_id' => $agent->id,
-            'requester_id' => $automation->created_by_id,
-            'channel_id' => $channelId,
-            'started_at' => now(),
-            'context' => [
-                'automation_id' => $automation->id,
-                'execution_type' => 'script',
-                'script_runtime' => $automation->script_runtime,
-                'schedule' => $automation->cron_expression,
-                'run_number' => $automation->run_count + 1,
-            ],
-        ]);
+        return DB::transaction(function () use ($automation, $agent, $channelId, $invocationId): ?Task {
+            $current = Automation::whereKey($automation->id)->lockForUpdate()->firstOrFail();
+            if (! ScriptAutomationInvocation::matches($current, ScriptAutomationInvocation::capture($automation))) {
+                return null;
+            }
+            if (Task::whereKey($invocationId)->exists()) {
+                return null;
+            }
+
+            return Task::create([
+                'id' => $invocationId,
+                'workspace_id' => $automation->workspace_id,
+                'title' => "Script: {$automation->name}",
+                'description' => Str::limit($automation->script, 200),
+                'type' => Task::TYPE_CUSTOM,
+                'status' => Task::STATUS_ACTIVE,
+                'priority' => Task::PRIORITY_NORMAL,
+                'source' => Task::SOURCE_AUTOMATION,
+                'agent_id' => $agent->id,
+                'requester_id' => $automation->created_by_id,
+                'channel_id' => $channelId,
+                'started_at' => now(),
+                'context' => [
+                    'automation_id' => $automation->id,
+                    'execution_type' => 'script',
+                    'script_runtime' => $automation->script_runtime,
+                    'schedule' => $automation->cron_expression,
+                    'run_number' => $automation->run_count + 1,
+                ],
+            ]);
+        });
     }
 
     /**

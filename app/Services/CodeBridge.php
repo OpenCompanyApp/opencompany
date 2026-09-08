@@ -28,6 +28,12 @@ final class CodeBridge
     private float $callbackWallSeconds = 0.0;
 
     /**
+     * A host authorization disposition that a rescued Ruby exception cannot
+     * turn into further callback authority during the same program.
+     */
+    private ?string $dispatchLatch = null;
+
+    /**
      * @param  array<string, int|float>  $profile  Resolved host-owned runtime profile
      */
     public function __construct(
@@ -86,6 +92,15 @@ final class CodeBridge
      */
     public function call(string $path, mixed ...$args): mixed
     {
+        if ($this->dispatchLatch !== null) {
+            throw new ScriptBridgeException(
+                $this->dispatchLatch,
+                'Code execution stopped after a callback was denied or is awaiting approval. Start a new execution only after the recorded decision is resolved.',
+                ['path' => $path],
+                retryable: false,
+            );
+        }
+
         $limit = (int) ($this->profile['callback_limit'] ?? 0);
         if ($limit < 1 || $this->callbackCount >= $limit) {
             throw new ScriptBridgeException(
@@ -101,6 +116,12 @@ final class CodeBridge
         try {
             $result = $this->bridge->call($path, ...$args);
         } catch (ScriptBridgeException $exception) {
+            if (in_array($exception->errorType, ['approval_pending', 'authorization_denied'], true)) {
+                // Ruby may rescue a CapabilityFailure, but it cannot use that
+                // rescue to reach another host callback in this execution.
+                $this->dispatchLatch = $exception->errorType;
+            }
+
             throw $exception;
         } catch (\Throwable $exception) {
             throw new ScriptBridgeException(
@@ -161,17 +182,40 @@ final class CodeBridge
     /**
      * Summarize the execution's read/write effects without retaining arguments.
      *
-     * @return array{callbacks: int, callbackWallTime: float, reads: int, writesSucceeded: int, writesUnknown: int, retryable: bool}
+     * @return array{callbacks: int, callbackWallTime: float, reads: int, writesSucceeded: int, writesUnknown: int, writesPendingApproval: int, callbacksDenied: int, retryable: bool}
      */
     public function effectSummary(): array
     {
         $reads = 0;
         $writesSucceeded = 0;
         $writesUnknown = 0;
+        $writesPendingApproval = 0;
+        $callbacksPendingApproval = 0;
+        $callbacksDenied = 0;
 
         foreach ($this->getCallLog() as $entry) {
             $effect = $entry['effect'] ?? 'none';
             if ($effect === 'none') {
+                continue;
+            }
+
+            $status = $entry['effectStatus'] ?? 'unknown';
+            if ($status === 'denied') {
+                // A policy refusal happens before a read or write begins.
+                $callbacksDenied++;
+
+                continue;
+            }
+
+            if ($status === 'pending') {
+                $callbacksPendingApproval++;
+                // Approval also happens before provider dispatch. Reads can be
+                // configured to require approval, so do not count either form
+                // as an executed read; only writes need a dedicated effect tally.
+                if ($effect === 'write') {
+                    $writesPendingApproval++;
+                }
+
                 continue;
             }
 
@@ -181,9 +225,9 @@ final class CodeBridge
                 continue;
             }
 
-            if (($entry['effectStatus'] ?? 'unknown') === 'succeeded') {
+            if ($status === 'succeeded') {
                 $writesSucceeded++;
-            } elseif (($entry['effectStatus'] ?? 'unknown') === 'unknown') {
+            } elseif ($status === 'unknown') {
                 $writesUnknown++;
             }
         }
@@ -194,7 +238,13 @@ final class CodeBridge
             'reads' => $reads,
             'writesSucceeded' => $writesSucceeded,
             'writesUnknown' => $writesUnknown,
-            'retryable' => $writesSucceeded === 0 && $writesUnknown === 0,
+            'writesPendingApproval' => $writesPendingApproval,
+            'callbacksPendingApproval' => $callbacksPendingApproval,
+            'callbacksDenied' => $callbacksDenied,
+            'retryable' => $writesSucceeded === 0
+                && $writesUnknown === 0
+                && $callbacksPendingApproval === 0
+                && $callbacksDenied === 0,
         ];
     }
 

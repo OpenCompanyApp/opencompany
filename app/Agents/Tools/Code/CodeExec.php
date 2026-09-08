@@ -3,6 +3,7 @@
 namespace App\Agents\Tools\Code;
 
 use App\Agents\Tools\ToolRegistry;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\CodeApiDocGenerator;
 use App\Services\CodeBridge;
@@ -50,6 +51,10 @@ final class CodeExec implements Tool
         }
 
         try {
+            $taskId = $this->registry->getTaskContext();
+            $cancelled = $taskId === null ? null : fn (): bool => ! Task::query()
+                ->whereKey($taskId)->where('workspace_id', $this->agent->workspace_id)
+                ->whereNotIn('status', [Task::STATUS_CANCELLED, Task::STATUS_FAILED, Task::STATUS_COMPLETED])->exists();
             $bridge = $mode === 'execute'
                 ? new CodeBridge(
                     $this->agent,
@@ -65,6 +70,7 @@ final class CodeExec implements Tool
                 bridge: $bridge,
                 validateOnly: $mode === 'validate',
                 sourceName: 'agent-code.rb',
+                cancelled: $cancelled,
             );
 
             $this->lastExecutionMetadata = array_merge($result->toArray(), [
@@ -72,8 +78,10 @@ final class CodeExec implements Tool
             ]);
 
             return $this->formatForAgent($result);
-        } catch (\Throwable $exception) {
-            return 'Code execution could not start: '.$exception->getMessage();
+        } catch (\Throwable) {
+            // Catalog/bootstrap failures can contain service paths or provider
+            // configuration. Only typed sandbox diagnostics are model-visible.
+            return 'Code execution could not start. Ask an operator to verify the Ruby engine and capability configuration.';
         }
     }
 

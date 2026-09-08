@@ -163,7 +163,7 @@
             "dist": {
                 "type": "path",
                 "url": "../bowerbird-ruby-engine",
-                "reference": "316852148b739fa22bbcfe1c4fca5e75fb7116bb"
+                "reference": "0bcc25e806a0c9b38cbe4712b5085d7fca142d7e"
             },
             "require": {
                 "php": "^8.4"
