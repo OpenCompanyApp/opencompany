@@ -40,6 +40,7 @@ components.d.ts
 
 # Local package development
 /tmp
+/.runtime/
 
 # Confidential business docs
 /docs/confidential

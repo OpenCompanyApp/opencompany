@@ -6,6 +6,7 @@ use App\Agents\Tools\ToolRegistry;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\User;
+use App\Services\ScriptCallbackReceiptService;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
@@ -24,7 +25,10 @@ class IntegrationRuntime
 {
     private const MAX_VALUE_DEPTH = 64;
 
-    public function __construct(private ToolRegistry $registry) {}
+    public function __construct(
+        private ToolRegistry $registry,
+        private ?ScriptCallbackReceiptService $receipts = null,
+    ) {}
 
     /**
      * Execute one currently-authorized script callback and return a mruby-safe result.
@@ -40,7 +44,7 @@ class IntegrationRuntime
      * @throws ScriptDispatchException for denied or approval-pending callbacks
      * @throws \RuntimeException when an allowed tool fails or returns an unsafe value
      */
-    public function call(User $agent, string $toolSlug, array $args, ?string $account = null): mixed
+    public function call(User $agent, string $toolSlug, array $args, ?string $account = null, ?array $receiptContext = null): mixed
     {
         $dispatch = $this->registry->resolveScriptToolForDispatch($toolSlug, $agent, $account);
 
@@ -60,40 +64,72 @@ class IntegrationRuntime
             throw new \RuntimeException("Tool not available: {$toolSlug}");
         }
 
-        if ($tool instanceof IntegrationTool) {
-            $result = $tool->execute($args);
-            if (! $result->succeeded()) {
-                throw new \RuntimeException($result->error ?? "Tool failed: {$toolSlug}");
+        $receipt = null;
+        $receiptService = null;
+        if (($receiptContext['required'] ?? false) === true
+            // Only an explicit read can skip durable write intent. A missing
+            // or custom effect type must fail closed rather than becoming an
+            // optimistic retryable callback.
+            && $this->registry->getToolTypeBySlug($toolSlug) !== 'read') {
+            // This durable intent must happen after authorization but before the
+            // first provider-facing method; it is never an idempotency promise.
+            $receiptService = $this->receipts ?? new ScriptCallbackReceiptService;
+            $receipt = $receiptService->begin(
+                $agent,
+                $this->registry->getTaskContext(),
+                $receiptContext['source_digest'] ?? null,
+                $receiptContext['code_invocation_id'] ?? null,
+                (int) ($receiptContext['sequence'] ?? 0),
+                $toolSlug,
+                $args,
+                $account,
+            );
+        }
+
+        try {
+            if ($tool instanceof IntegrationTool) {
+                $result = $tool->execute($args);
+                if (! $result->succeeded()) {
+                    throw new \RuntimeException($result->error ?? "Tool failed: {$toolSlug}");
+                }
+
+                $normalized = $this->normalize($result->data);
+            } else {
+                $raw = $tool->handle(new Request($this->snakeToCamel($args)));
+
+                if (! is_string($raw)) {
+                    $normalized = $this->normalize($raw);
+                } elseif (str_contains($raw, "\nStructured data:\n")) {
+                    $json = trim((string) str($raw)->afterLast("\nStructured data:\n"));
+                    $decoded = $this->decodeJson($json);
+                    $normalized = $decoded['decoded'] ? $this->normalize($decoded['value']) : $raw;
+                } else {
+                    $trimmed = ltrim($raw);
+                    if (($trimmed[0] ?? '') !== '{'
+                        && ($trimmed[0] ?? '') !== '['
+                        && ! in_array($trimmed, ['true', 'false', 'null'], true)) {
+                        $normalized = $raw;
+                    } else {
+                        $decoded = $this->decodeJson($raw);
+                        $normalized = $decoded['decoded'] ? $this->normalize($decoded['value']) : $raw;
+                    }
+                }
             }
 
-            return $this->normalize($result->data);
-        }
-
-        $raw = $tool->handle(new Request($this->snakeToCamel($args)));
-
-        if (! is_string($raw)) {
-            return $this->normalize($raw);
-        }
-
-        if (str_contains($raw, "\nStructured data:\n")) {
-            $json = trim((string) str($raw)->afterLast("\nStructured data:\n"));
-            $decoded = $this->decodeJson($json);
-
-            if ($decoded['decoded']) {
-                return $this->normalize($decoded['value']);
+            if ($receipt !== null) {
+                $receiptService->succeeded($receipt, $normalized);
             }
+
+            return $normalized;
+        } catch (\Throwable $exception) {
+            // A dispatched write with no confirmed receipt is ambiguous. Keep
+            // the durable record, but never convert this into an auto-retry.
+            if ($receipt !== null) {
+                $receiptService->unknown($receipt);
+            }
+
+            throw $exception;
         }
-
-        $trimmed = ltrim($raw);
-        if (($trimmed[0] ?? '') !== '{'
-            && ($trimmed[0] ?? '') !== '['
-            && ! in_array($trimmed, ['true', 'false', 'null'], true)) {
-            return $raw;
-        }
-
-        $decoded = $this->decodeJson($raw);
-
-        return $decoded['decoded'] ? $this->normalize($decoded['value']) : $raw;
     }
 
     /**

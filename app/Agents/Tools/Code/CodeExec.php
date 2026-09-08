@@ -100,7 +100,7 @@ final class CodeExec implements Tool
         $lines = [];
 
         if ($result->validatedOnly && $result->succeeded()) {
-            $lines[] = 'Validation passed. No code was executed and no external calls were made.';
+            $lines[] = 'Validation passed (Ruby syntax/profile only). No code was executed and no external calls were made. Capability names, argument schemas and current permissions are checked at execution time.';
         }
 
         if ($result->output !== '') {

@@ -82,6 +82,8 @@ class CodeExecTest extends TestCase
         ]));
 
         $this->assertStringContainsString('Validation passed', $response);
+        $this->assertStringContainsString('Ruby syntax/profile only', $response);
+        $this->assertStringContainsString('checked at execution time', $response);
         $this->assertTrue($tool->lastExecutionMetadata()['validatedOnly']);
         $this->assertSame(0, $tool->lastExecutionMetadata()['effects']['callbacks']);
     }

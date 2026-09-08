@@ -57,6 +57,9 @@ class CodeBridgeTest extends TestCase
                 'callback_wall_limit' => 10.0,
                 'callback_total_wall_limit' => 30.0,
                 'callback_result_limit' => 4096,
+                // Direct bridge unit tests intentionally exercise catalog and
+                // budget behavior without creating a task authority record.
+                'require_task_receipt_for_writes' => false,
             ], $profile),
         );
     }
@@ -95,8 +98,8 @@ class CodeBridgeTest extends TestCase
         $registry->shouldReceive('getToolMetaBySlug')->with('send_channel_message')->andReturn([
             'icon' => 'ph:chat',
             'name' => 'Send Channel Message',
-            'type' => 'write',
         ]);
+        $registry->shouldReceive('getToolTypeBySlug')->with('send_channel_message')->andReturn('write');
         $registry->shouldReceive('resolveScriptToolForDispatch')
             ->with('send_channel_message', Mockery::type(User::class), null)
             ->andReturn(['decision' => 'allow', 'reason' => 'Allowed', 'tool' => $fakeTool]);
@@ -121,7 +124,8 @@ class CodeBridgeTest extends TestCase
     public function test_unavailable_tool_is_reported_without_a_successful_effect(): void
     {
         $registry = Mockery::mock(ToolRegistry::class);
-        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn([]);
+        $registry->shouldReceive('getToolTypeBySlug')->andReturn('read');
         $registry->shouldReceive('resolveScriptToolForDispatch')->once()->andReturn([
             'decision' => 'deny',
             'reason' => 'Tool not available: get_document',
@@ -142,7 +146,8 @@ class CodeBridgeTest extends TestCase
     public function test_multiple_calls_retain_order_and_duration_without_arguments(): void
     {
         $registry = Mockery::mock(ToolRegistry::class);
-        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn([]);
+        $registry->shouldReceive('getToolTypeBySlug')->andReturn('read');
         $registry->shouldReceive('resolveScriptToolForDispatch')->twice()->andReturn([
             'decision' => 'allow',
             'reason' => 'Allowed',
@@ -166,7 +171,8 @@ class CodeBridgeTest extends TestCase
     {
         $fakeTool = $this->makeFakeTool('ok');
         $registry = Mockery::mock(ToolRegistry::class);
-        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn([]);
+        $registry->shouldReceive('getToolTypeBySlug')->andReturn('read');
         $registry->shouldReceive('resolveScriptToolForDispatch')->andReturn([
             'decision' => 'allow',
             'reason' => 'Allowed',
@@ -210,7 +216,8 @@ class CodeBridgeTest extends TestCase
     public function test_invalid_arguments_fail_before_provider_dispatch(): void
     {
         $registry = Mockery::mock(ToolRegistry::class);
-        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'write']);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn([]);
+        $registry->shouldReceive('getToolTypeBySlug')->andReturn('write');
         $registry->shouldNotReceive('resolveScriptToolForDispatch');
         $bridge = $this->makeBridge(
             ['chat.send' => 'send_channel_message'],
@@ -257,9 +264,11 @@ class CodeBridgeTest extends TestCase
 
         $registry = Mockery::mock(ToolRegistry::class);
         $registry->shouldReceive('getToolMetaBySlug')->andReturn([
-            'type' => 'write',
             'name' => 'Write Thing',
         ]);
+        // A custom/unknown catalog type must remain conservative: a failed
+        // callback is an ambiguous write, never a retryable read.
+        $registry->shouldReceive('getToolTypeBySlug')->andReturn('custom_effect');
         $registry->shouldReceive('resolveScriptToolForDispatch')->andReturn([
             'decision' => 'allow',
             'reason' => 'Allowed',
@@ -288,9 +297,9 @@ class CodeBridgeTest extends TestCase
     {
         $registry = Mockery::mock(ToolRegistry::class);
         $registry->shouldReceive('getToolMetaBySlug')->once()->andReturn([
-            'type' => 'write',
             'name' => 'Write Thing',
         ]);
+        $registry->shouldReceive('getToolTypeBySlug')->once()->andReturn('write');
         $registry->shouldReceive('resolveScriptToolForDispatch')
             ->once()
             ->with('write_thing', Mockery::type(User::class), null)
@@ -325,7 +334,8 @@ class CodeBridgeTest extends TestCase
     public function test_enforces_callback_and_result_budgets(): void
     {
         $registry = Mockery::mock(ToolRegistry::class);
-        $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
+        $registry->shouldReceive('getToolMetaBySlug')->andReturn([]);
+        $registry->shouldReceive('getToolTypeBySlug')->andReturn('read');
         $registry->shouldReceive('resolveScriptToolForDispatch')->once()->andReturn([
             'decision' => 'allow',
             'reason' => 'Allowed',

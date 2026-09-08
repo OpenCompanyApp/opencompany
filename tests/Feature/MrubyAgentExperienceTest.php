@@ -54,7 +54,10 @@ class MrubyAgentExperienceTest extends TestCase
     {
         $registry = Mockery::mock(ToolRegistry::class);
         $registry->shouldReceive('getToolMetaBySlug')->andReturnUsing(
-            static fn (string $slug): array => ['name' => $slug, 'type' => str_contains($slug, 'write') ? 'write' : 'read'],
+            static fn (string $slug): array => ['name' => $slug],
+        );
+        $registry->shouldReceive('getToolTypeBySlug')->andReturnUsing(
+            static fn (string $slug): string => str_contains($slug, 'write') ? 'write' : 'read',
         );
         $registry->shouldReceive('resolveScriptToolForDispatch')->andReturnUsing(
             function (string $slug, User $agent, ?string $account = null) use ($tools): array {
@@ -76,6 +79,8 @@ class MrubyAgentExperienceTest extends TestCase
             'callback_wall_limit' => 2.0,
             'callback_total_wall_limit' => 5.0,
             'callback_result_limit' => 32 * 1024,
+            // AX workflows use fake tools and are not task-owned write runs.
+            'require_task_receipt_for_writes' => false,
         ]);
     }
 

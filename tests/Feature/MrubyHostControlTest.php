@@ -45,6 +45,7 @@ class MrubyHostControlTest extends TestCase
     {
         $registry = Mockery::mock(ToolRegistry::class);
         $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
+        $registry->shouldReceive('getToolTypeBySlug')->andReturn('read');
         $registry->shouldReceive('getChannelContext')->andReturnNull();
         $registry->shouldReceive('resolveScriptToolForDispatch')->once()->andReturn([
             'decision' => 'approval_required', 'reason' => 'Approval is required.',
@@ -84,6 +85,7 @@ class MrubyHostControlTest extends TestCase
         };
         $registry = Mockery::mock(ToolRegistry::class);
         $registry->shouldReceive('getToolMetaBySlug')->andReturn(['type' => 'read']);
+        $registry->shouldReceive('getToolTypeBySlug')->andReturn('read');
         $registry->shouldReceive('resolveScriptToolForDispatch')->once()->andReturn([
             'decision' => 'allow', 'reason' => 'Allowed', 'tool' => $tool,
         ]);

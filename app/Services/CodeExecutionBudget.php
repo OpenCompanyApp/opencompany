@@ -4,15 +4,17 @@ namespace App\Services;
 
 use Closure;
 use Psr\Http\Message\RequestInterface;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
+use Symfony\Component\Process\Process;
 
 /**
- * Applies a short-lived script execution budget to Laravel HTTP dispatch.
+ * Applies a short-lived script execution budget to Code Mode transports.
  *
  * This app-owned boundary does not decide whether a tool is allowed, create
  * provider requests, or interrupt the PHP worker. CodeBridge establishes the
  * aggregate execution scope and each approved tool callback opens a child
- * scope. The registered Guzzle middleware then sees the remaining child
- * deadline immediately before transport dispatch, including retry attempts.
+ * scope. The registered Guzzle middleware and the explicit Symfony Process
+ * runner see the remaining child deadline immediately before dispatch.
  *
  * The stack is deliberately process-local and restored in finally blocks. It
  * must therefore be entered around every script execution rather than treated
@@ -151,6 +153,81 @@ final class CodeExecutionBudget
         }
 
         return $handler($request, $options);
+    }
+
+    /**
+     * Run a local child process under the active callback deadline.
+     *
+     * Symfony Process is not a Guzzle transport, so the HTTP middleware cannot
+     * constrain it. Under Code Mode we poll the child process and stop it on a
+     * cancellation/deadline checkpoint. Outside an active callback this retains
+     * the caller's ordinary Symfony timeout and does not affect host work.
+     *
+     * @throws CodeExecutionCancelled|CodeExecutionDeadlineExceeded
+     */
+    public function runProcess(Process $process, ?float $configuredTimeout = null): void
+    {
+        $scope = $this->activeScope();
+        if ($scope === null || $scope['callback_deadline_ns'] === null) {
+            if ($configuredTimeout !== null) {
+                $process->setTimeout($configuredTimeout);
+            }
+            $process->run();
+
+            return;
+        }
+
+        $timeout = $this->processTimeout($configuredTimeout);
+        $process->setTimeout($timeout);
+        $process->start();
+
+        try {
+            // A process can be silent, so output callbacks are insufficient for
+            // cancellation. Polling keeps the child bounded without signals to
+            // the PHP worker or a global host timeout mutation.
+            while ($process->isRunning()) {
+                // Symfony's configured timeout can be shorter than the Code
+                // Mode allowance. Check it explicitly while polling; merely
+                // asking isRunning() does not promise that enforcement.
+                $process->checkTimeout();
+                usleep(5_000);
+                $this->checkpoint();
+                $process->checkTimeout();
+            }
+            $process->wait();
+            $this->checkpoint();
+        } catch (CodeExecutionCancelled|CodeExecutionDeadlineExceeded $exception) {
+            $process->stop(0);
+
+            throw $exception;
+        } catch (ProcessTimedOutException) {
+            $process->stop(0);
+
+            throw new CodeExecutionDeadlineExceeded;
+        }
+    }
+
+    /**
+     * Return a process timeout that cannot outlive the fixed callback deadline.
+     *
+     * @throws CodeExecutionCancelled|CodeExecutionDeadlineExceeded
+     */
+    public function processTimeout(?float $configuredTimeout): ?float
+    {
+        $scope = $this->activeScope();
+        if ($scope === null || $scope['callback_deadline_ns'] === null) {
+            return $configuredTimeout;
+        }
+
+        $this->checkpoint();
+        $remainingSeconds = ($this->deadline($scope) - hrtime(true)) / 1_000_000_000;
+        if ($remainingSeconds <= 0) {
+            throw new CodeExecutionDeadlineExceeded;
+        }
+
+        return $configuredTimeout !== null && $configuredTimeout > 0
+            ? min($configuredTimeout, $remainingSeconds)
+            : $remainingSeconds;
     }
 
     /**

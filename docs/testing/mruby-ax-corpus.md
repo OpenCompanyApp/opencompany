@@ -21,6 +21,21 @@ This is not a model-quality comparison, an optimal-agent-experience claim, or
 a benchmark against QuickJS. It is a small, repeatable compatibility and safety
 regression suite for the currently supported Ruby bridge contract.
 
+## Host-boundary evidence
+
+Companion focused tests protect the host-owned boundaries that the corpus relies
+on. Write callbacks under the default agent profile require an active task,
+agent/workspace match, bound source digest, invocation ID, and callback sequence
+before a provider-facing tool method can run. `TaskStep` stores correlation
+identifiers plus canonical request/result digests and an explicit `succeeded`
+or non-replayable `unknown` disposition; it does not make provider calls
+idempotent or auto-retry them.
+
+The execution budget clamps Laravel HTTP at dispatch and bounds the reachable
+native SVG renderer's child process. MCP calls use Laravel HTTP. These are local
+fake-tool/process checks, not evidence of live-provider cancellation or model
+quality.
+
 Run it only with the pinned engine available:
 
 ```sh

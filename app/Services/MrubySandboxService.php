@@ -30,6 +30,9 @@ final class MrubySandboxService
         ?\Closure $cancelled = null,
     ): CodeExecutionResult {
         $limits = $this->profile($profile);
+        if (! $validateOnly && $bridge !== null) {
+            $bridge->bindSource($code);
+        }
         $started = hrtime(true);
         $cancelled ??= static fn (): bool => false;
         try {
@@ -149,7 +152,7 @@ final class MrubySandboxService
         }
     }
 
-    /** @return array<string,int|float> Host-owned budget; agents cannot override limits. */
+    /** @return array<string,int|float|bool> Host-owned budget; agents cannot override limits. */
     public function profile(string $profile): array
     {
         if (! in_array($profile, ['agent', 'automation', 'console'], true)) {

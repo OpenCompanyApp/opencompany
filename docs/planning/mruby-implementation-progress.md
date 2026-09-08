@@ -14,10 +14,10 @@ listed below.
   Draft integration PR #4 is pinned at
   `c0047a4a2496f85927ce40761ec573677846fb5a` for the coordinated application
   workflow.
-- The public engine repository's `main` has advanced beyond `9b82`. The workflow is
-  deliberately pinned to qualification commit
-  `9b82a41ad11d7aca8cf49b210603a2c2ffe67277`, rather than following a mutable
-  branch.
+- The public engine [v0.1.0-rc.1 prerelease](https://github.com/OpenCompanyApp/bowerbird-ruby-engine/releases/tag/v0.1.0-rc.1)
+  targets `772e2b46c37a4bcf4cffbc57e6d9214493c11473`. The app consumes its
+  versioned minimal PHP adapter archive; app CI consumes its SHA-256-pinned
+  Linux AMD64 native archive rather than rebuilding mutable local sources.
 - The primary `../opencompany` checkout remains on `feat/vfs`. Its existing,
   uncommitted VFS/run-control/licensing/documentation work is outside this
   migration and has not been imported. The plan's wider VFS/run-control ideas
@@ -25,9 +25,9 @@ listed below.
 - No migration has run against the real local application database and no
   domain, worker, extension configuration, PHP service, or browser session has
   been cut over. There are no live provider calls in the focused contract tests.
-- The Composer path repository still uses development source. Do not run
-  overlapping Composer mutations or mirror a mutable Rust target directory;
-  immutable released artifacts are a remaining release gate.
+- Integrations still use coordinated development path repositories. The engine
+  adapter no longer uses a path symlink or mirrors a Rust target directory.
+  Do not run overlapping Composer mutations.
 
 ## Implemented, bounded evidence
 
@@ -52,17 +52,24 @@ smoke scenarios (GitHub Actions run `34234660653`). This is useful portability
 evidence only. Follow-up run `34235637370` at `9b82a41` also passed the bounded
 AddressSanitizer corpus, with instrumented mruby/shim verification and a distinct
 sanitizer failure exit code. Coverage-guided protocol/admission fuzzing is now
-checked in but its hosted run, sustained-load, ABI/GC adversarial review and
-signed-release qualification remain pending.
+green in hosted runs `34236675933` and `34237150197`. These short protocol/request
+targets do not cover the native compiler or C value bridge. Sustained native
+fuzz/load and independent ABI/GC security review remain outstanding.
+
+RC packaging run `34237642178` passed all three platforms. All downloaded archive
+checksums verified; provenance and SPDX attestations for the downloaded Mac
+archive verified using `gh attestation verify`. Those exact archives and evidence
+bundles are now published in the prerelease, not represented as a stable release.
 
 The normal macOS release candidate is installed only for this isolated PHP
-worktree at `~/.local/libexec/opencompany/ruby-engine/9b82a41ad11d7aca8cf49b210603a2c2ffe67277/ruby-engine`.
-SHA-256: `03c8457b696db29ab6efc7355bc092a16e612b1c7438a99d711da22cc3f4099a`.
-Its seven PHP smoke scenarios pass; the real local web/queue checkout has not
-been switched. The previous candidate is retained for recovery.
+worktree at `~/.local/libexec/opencompany/ruby-engine/v0.1.0-rc.1/ruby-engine`.
+SHA-256: `120c90bb38ac52c03b4c91518ebb43fcfa8f25cab8c3e9d3c684d9754ff40688`.
+The hosted seven PHP smoke scenarios and extracted adapter/binary smoke pass;
+the real local web/queue checkout has not been switched. Previous candidates are
+retained for recovery.
 
-After this installation, the combined focused application run passes 96 tests /
-2,885 assertions, including real queue execution, stale/redelivered queue fencing,
+After the RC artifact installation, the combined focused application run passes
+111 tests / 2,972 assertions, including real queue execution, stale/redelivered queue fencing,
 permission/approval callbacks, cancellation/deadline rescue, source history,
 catalog/value contracts and deterministic AX cases. Type checking and Vite build
 also pass; existing bundle-size/annotation warnings remain.
@@ -93,10 +100,21 @@ revoked permission, disabled integration, wrong workspace/account/context, and
 duplicate execution fail closed. This does not introduce an automatic retry of a
 pending script.
 
-Task claiming now fences stale queued automation work. Cancellation and resource
-budget wiring, paged script history, and the editor/history experience are in
-the current feature worktree. Their final focused test run is still in progress;
-they are not yet browser or production-cutover evidence.
+Task claiming fences stale queued automation work. Default agent/automation
+writes now require an active same-agent/workspace Task and persist a TaskStep
+intent before dispatch. Source/invocation/sequence and canonical request/result
+digests are retained without raw provider payloads. Unknown outcomes explicitly
+prohibit automatic replay. This is not an atomic provider/database transaction.
+
+Cancellation and fixed callback deadlines reach Laravel HTTP (including MCP)
+and the app's native SVG renderer. Silent renderer children are polled and
+stopped on cancellation/expiry; shorter configured process timeouts remain
+enforced. Killing local work cannot undo a dispatched remote write.
+
+Paged history and editor behavior have passed the
+[mocked-API browser fixture](../testing/mruby-history-browser.md): exact source,
+escaping, deliberate load, pagination, dark theme, and no save/run side effects.
+This uses real built Vue assets but is not authenticated live Laravel evidence.
 
 Ruby highlighting, snippets, signature help, source-bound diagnostic markers,
 safe snippet/HTML escaping, and workspace-invalidated completions are present.
@@ -120,14 +138,14 @@ the source used by the application workflow.
 
 ### Focused validation and CI
 
-A prior non-browser focused application run reported 71 tests / 2,763
-assertions. It predates the latest queue/history/budget and approval wiring, so
-it is deliberately not presented as the final total. Earlier focused subsets
-also covered source migration, sandboxing, catalog generation, bridge dispatch,
-and CodeExec. Do not add overlapping totals.
+A focused release-artifact application run passed 111 tests / 2,972 assertions,
+including real-registry write classification, a real local document write followed
+by Ruby failure, and renderer timeout/cleanup. Do not add overlapping subset
+totals. Hosted app run `34237009117` and integration
+run `34236523477` are green at their pre-receipt / current integration commits.
 
-The dedicated [mruby workflow](../../.github/workflows/mruby.yml) builds the
-pinned engine, verifies and exports its SHA-256, installs the pinned integration
+The dedicated [mruby workflow](../../.github/workflows/mruby.yml) downloads the
+pinned released engine, verifies and exports its SHA-256, installs the pinned integration
 source, and runs the bounded PHP contract set. That set includes sandbox,
 documentation, integration value, source migration, agent experience, stale
 automation queue, execution budget, script history, admission, callback
@@ -140,22 +158,22 @@ no additional index entry is needed.
 
 ## Remaining gates — do not claim these are shipped
 
-1. Finish and record the current focused queue/history/budget/approval run;
-   add cross-workspace and browser coverage for the new paths. Validate stale
-   queue fencing, partial effects, cancellation, and cleanup under real worker
-   conditions.
+1. Finish release-artifact CI and production Docker qualification. Cross-workspace
+   and mocked-browser coverage exists; real worker/browser cutover still needs
+   a safe target that does not replace the user's separate VFS/run-control work.
 2. Implement schema-aware static API validation from an actual Ruby parser/AST
    and authoritative catalog schemas. A regex or a compile-only sweep must not
    be misrepresented as capability analysis. Runtime dispatch remains the
    authority until then.
 3. Establish a matched-model AX task corpus and baselines; current editor and
    agent-experience tests are not a matched-model measurement.
-4. Complete engine release qualification: parser/compiler/value/protocol fuzzing,
-   ASAN and other sanitizer runs, sustained cancellation/memory benchmarks,
-   ABI/GC adversarial review, provenance, SBOM/notices, and signed/checksummed
-   immutable artifacts.
-5. Replace local Composer path coupling with released immutable dependencies and
-   complete release review of the draft application/integration PRs. Draft PRs
+4. Complete native parser/compiler/value fuzzing, sustained cancellation/memory
+   benchmarks and ABI/GC adversarial review. Protocol fuzzing, bounded ASAN,
+   provenance, SBOM/notices and attested/checksummed RC artifacts are delivered;
+   they do not eliminate the deeper qualification gates.
+5. Replace remaining integration path coupling with released immutable dependencies,
+   triage baseline Composer advisories (29 advisories across nine existing packages),
+   and complete release review of the draft application/integration PRs. Draft PRs
    and development source do not authorize a merge or demonstrate a release.
 6. Qualify production Docker, recoverable database/source export and worker
    drain, then perform the explicitly approved browser and local-runtime

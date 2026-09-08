@@ -8,7 +8,7 @@ on:
       - 'app/Agents/Tools/Code/**'
       - 'app/Agents/Tools/ToolRegistry.php'
       - 'app/Agents/Tools/Workspace/**'
-      - 'app/Application/ExecuteScriptAutomation.php'
+      - 'app/Agents/Tools/Charts/RenderSvg.php'
       - 'app/Domain/Automations/**'
       - 'app/Jobs/RunAutomationJob.php'
       - 'app/Jobs/RunScriptAutomationJob.php'
@@ -18,6 +18,10 @@ on:
       - 'app/Services/Integrations/IntegrationRuntime.php'
       - 'app/Services/MrubySandboxService.php'
       - 'app/Services/ScriptAdmission.php'
+      - 'app/Services/ScriptAutomationInvocation.php'
+      - 'app/Services/ScriptCallbackReceiptService.php'
+      - 'app/Services/OpenCompanyScriptToolInvoker.php'
+      - 'app/Services/CodeExecution*.php'
       - 'config/code.php'
       - 'database/migrations/*mruby*'
       - 'resources/code-docs/**'
@@ -25,6 +29,7 @@ on:
       - 'tests/Feature/Mruby*'
       - 'tests/Feature/ScriptAdmissionTest.php'
       - 'tests/Feature/ScriptCallbackAuthorizationTest.php'
+      - 'tests/Feature/ScriptCallbackReceiptTest.php'
       - 'tests/Feature/CodeApiDocGeneratorTest.php'
       - 'tests/Feature/CodeBridgeTest.php'
       - 'tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php'
@@ -40,7 +45,7 @@ on:
       - 'app/Agents/Tools/Code/**'
       - 'app/Agents/Tools/ToolRegistry.php'
       - 'app/Agents/Tools/Workspace/**'
-      - 'app/Application/ExecuteScriptAutomation.php'
+      - 'app/Agents/Tools/Charts/RenderSvg.php'
       - 'app/Domain/Automations/**'
       - 'app/Jobs/RunAutomationJob.php'
       - 'app/Jobs/RunScriptAutomationJob.php'
@@ -50,6 +55,10 @@ on:
       - 'app/Services/Integrations/IntegrationRuntime.php'
       - 'app/Services/MrubySandboxService.php'
       - 'app/Services/ScriptAdmission.php'
+      - 'app/Services/ScriptAutomationInvocation.php'
+      - 'app/Services/ScriptCallbackReceiptService.php'
+      - 'app/Services/OpenCompanyScriptToolInvoker.php'
+      - 'app/Services/CodeExecution*.php'
       - 'config/code.php'
       - 'database/migrations/*mruby*'
       - 'resources/code-docs/**'
@@ -57,6 +66,7 @@ on:
       - 'tests/Feature/Mruby*'
       - 'tests/Feature/ScriptAdmissionTest.php'
       - 'tests/Feature/ScriptCallbackAuthorizationTest.php'
+      - 'tests/Feature/ScriptCallbackReceiptTest.php'
       - 'tests/Feature/CodeApiDocGeneratorTest.php'
       - 'tests/Feature/CodeBridgeTest.php'
       - 'tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php'
@@ -95,19 +105,6 @@ jobs:
           git -C "$GITHUB_WORKSPACE/../integrations-mruby" fetch --depth 1 origin c0047a4a2496f85927ce40761ec573677846fb5a
           git -C "$GITHUB_WORKSPACE/../integrations-mruby" checkout --detach c0047a4a2496f85927ce40761ec573677846fb5a
 
-      - name: Check out the pinned Ruby engine source
-        uses: actions/checkout@v4
-        with:
-          repository: OpenCompanyApp/bowerbird-ruby-engine
-          ref: 9b82a41ad11d7aca8cf49b210603a2c2ffe67277
-          path: .ci/bowerbird-ruby-engine
-
-      - name: Verify engine revision and link sibling path dependency
-        run: |
-          test "$(git -C .ci/bowerbird-ruby-engine rev-parse HEAD)" = 9b82a41ad11d7aca8cf49b210603a2c2ffe67277
-          test ! -e "$GITHUB_WORKSPACE/../bowerbird-ruby-engine"
-          ln -s "$GITHUB_WORKSPACE/.ci/bowerbird-ruby-engine" "$GITHUB_WORKSPACE/../bowerbird-ruby-engine"
-
       # These legacy path dependencies are still required by the app's locked
       # dependency graph. They are not part of this mruby workflow's runtime.
       - name: Check out remaining path dependencies
@@ -126,36 +123,21 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
 
-      - name: Set up the pinned Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: '1.87'
-
-      - name: Set up Ruby and rake for the pinned mruby build
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.4'
-          bundler: none
-
-      - name: Install rake
-        run: gem install rake --no-document
-
-      - name: Build the pinned Ruby engine and export its identity
-        working-directory: .ci/bowerbird-ruby-engine
+      # Native source qualification belongs to the engine repository. Exercise
+      # the actual versioned release bytes consumed by the application here.
+      - name: Install checksum-pinned mruby release candidate
         shell: bash
         run: |
           set -euo pipefail
-          mruby_upstream="$(php -r 'echo json_decode(file_get_contents("engine.lock.json"), true, 512, JSON_THROW_ON_ERROR)["upstream"];')"
-          mruby_version="$(php -r 'echo json_decode(file_get_contents("engine.lock.json"), true, 512, JSON_THROW_ON_ERROR)["version"];')"
-          mruby_commit="$(php -r 'echo json_decode(file_get_contents("engine.lock.json"), true, 512, JSON_THROW_ON_ERROR)["commit"];')"
-          git clone --depth 1 --branch "$mruby_version" "$mruby_upstream" vendor/mruby
-          git -C vendor/mruby checkout --detach "$mruby_commit"
-          test "$(git -C vendor/mruby rev-parse HEAD)" = "$mruby_commit"
-          cargo build --locked --release
-          engine_binary="$GITHUB_WORKSPACE/.ci/bowerbird-ruby-engine/target/release/ruby-engine"
+          mkdir -p .ci/ruby-engine
+          curl --fail --location --retry 3 \
+            https://github.com/OpenCompanyApp/bowerbird-ruby-engine/releases/download/v0.1.0-rc.1/bowerbird-ruby-engine-v0.1.0-rc.1-linux-amd64.tar.gz \
+            --output .ci/ruby-engine.tar.gz
+          echo '3c4b1d629d4813b5ffa977fc1559844c58ea94ffd391a6ffce9e7ac0b016605c  .ci/ruby-engine.tar.gz' | sha256sum --check
+          tar -xzf .ci/ruby-engine.tar.gz --strip-components=1 -C .ci/ruby-engine
+          engine_binary="$GITHUB_WORKSPACE/.ci/ruby-engine/bin/ruby-engine"
           test -x "$engine_binary"
           engine_sha256="$(sha256sum "$engine_binary" | awk '{print $1}')"
-          test "$engine_sha256" = "$(sha256sum "$engine_binary" | awk '{print $1}')"
           {
             echo "RUBY_ENGINE_BINARY=$engine_binary"
             echo "RUBY_ENGINE_SHA256=$engine_sha256"
@@ -178,6 +160,7 @@ jobs:
             tests/Feature/MrubyScriptHistoryTest.php \
             tests/Feature/ScriptAdmissionTest.php \
             tests/Feature/ScriptCallbackAuthorizationTest.php \
+            tests/Feature/ScriptCallbackReceiptTest.php \
             tests/Feature/CodeApiDocGeneratorTest.php \
             tests/Feature/CodeBridgeTest.php \
             tests/Feature/Integrations/IntegrationRuntimeWebToolTest.php \

@@ -6,6 +6,7 @@ use App\Services\CodeExecutionBudget;
 use App\Services\CodeExecutionCancelled;
 use App\Services\CodeExecutionDeadlineExceeded;
 use Illuminate\Support\Facades\Http;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class MrubyExecutionBudgetTest extends TestCase
@@ -115,5 +116,59 @@ class MrubyExecutionBudgetTest extends TestCase
 
         $this->assertCount(2, $timeouts);
         $this->assertLessThan($timeouts[0], $timeouts[1]);
+    }
+
+    public function test_process_timeout_is_clamped_and_expiry_stops_a_silent_child(): void
+    {
+        $budget = app(CodeExecutionBudget::class);
+        $process = new Process([PHP_BINARY, '-r', 'usleep(500000);']);
+
+        try {
+            $budget->within(5_000, 15, static fn (): bool => false, function () use ($budget, $process): void {
+                $budget->callback(function () use ($budget, $process): void {
+                    $this->assertLessThanOrEqual(0.015, $budget->processTimeout(30.0));
+                    $budget->runProcess($process, 30.0);
+                });
+            });
+            $this->fail('Expected a child-process deadline exception.');
+        } catch (CodeExecutionDeadlineExceeded $exception) {
+            $this->assertSame(CodeExecutionDeadlineExceeded::ERROR_CODE, $exception->getMessage());
+        }
+
+        $this->assertFalse($process->isRunning());
+    }
+
+    public function test_cancellation_prevents_process_start(): void
+    {
+        $budget = app(CodeExecutionBudget::class);
+        $process = new Process([PHP_BINARY, '-r', 'usleep(500000);']);
+
+        $this->expectException(CodeExecutionCancelled::class);
+        try {
+            $budget->within(5_000, 500, static fn (): bool => true, function () use ($budget, $process): void {
+                $budget->callback(fn (): mixed => $budget->runProcess($process, 30.0));
+            });
+        } finally {
+            $this->assertFalse($process->isStarted());
+        }
+    }
+
+    public function test_process_honors_a_shorter_configured_timeout_than_the_callback_budget(): void
+    {
+        $budget = app(CodeExecutionBudget::class);
+        $process = new Process([PHP_BINARY, '-r', 'usleep(1000000);']);
+        $started = microtime(true);
+
+        try {
+            $budget->within(5_000, 1_000, static fn (): bool => false, function () use ($budget, $process): void {
+                $budget->callback(fn (): mixed => $budget->runProcess($process, 0.02));
+            });
+            $this->fail('Expected the configured child-process timeout.');
+        } catch (CodeExecutionDeadlineExceeded $exception) {
+            $this->assertSame(CodeExecutionDeadlineExceeded::ERROR_CODE, $exception->getMessage());
+        }
+
+        $this->assertLessThan(0.5, microtime(true) - $started);
+        $this->assertFalse($process->isRunning());
     }
 }

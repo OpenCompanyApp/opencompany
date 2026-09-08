@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
 use Bowerbird\RubyEngine\CapabilityFailure;
+use Illuminate\Support\Str;
 use OpenCompany\IntegrationCore\Script\ScriptBridge;
 use OpenCompany\IntegrationCore\Script\ScriptBridgeException;
 
@@ -33,8 +34,10 @@ final class CodeBridge
      */
     private ?string $dispatchLatch = null;
 
+    private OpenCompanyScriptToolInvoker $invoker;
+
     /**
-     * @param  array<string, int|float>  $profile  Resolved host-owned runtime profile
+     * @param  array<string, int|float|bool>  $profile  Resolved host-owned runtime profile
      */
     public function __construct(
         User $agent,
@@ -46,9 +49,24 @@ final class CodeBridge
         $this->bridge = new ScriptBridge(
             $docGenerator->buildFunctionMap($agent),
             $docGenerator->buildParameterMap($agent),
-            new OpenCompanyScriptToolInvoker($agent, $registry),
+            $this->invoker = new OpenCompanyScriptToolInvoker(
+                $agent,
+                $registry,
+                requireTaskReceiptForWrites: (bool) ($this->profile['require_task_receipt_for_writes'] ?? true),
+            ),
             $docGenerator->buildAccountMap($agent),
         );
+    }
+
+    /**
+     * Bind the actual Ruby source to this bridge before it is handed to mruby.
+     *
+     * The UUID distinguishes repeated executions of identical source within a
+     * task; no source text is retained in the callback receipt.
+     */
+    public function bindSource(string $source): void
+    {
+        $this->invoker->bindExecution(hash('sha256', $source), Str::uuid()->toString());
     }
 
     /**

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a49a106fcccdfd2b8b7f4627e1c0cbe0",
+    "content-hash": "e03a0846150931ccec2c2ecb4b2f9fac",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -159,11 +159,12 @@
         },
         {
             "name": "bowerbird/ruby-engine",
-            "version": "0.1.0",
+            "version": "0.1.0-rc.1",
             "dist": {
-                "type": "path",
-                "url": "../bowerbird-ruby-engine",
-                "reference": "9923d96eed3aa989543758f69980e05f8b855f7e"
+                "type": "tar",
+                "url": "https://github.com/OpenCompanyApp/bowerbird-ruby-engine/releases/download/v0.1.0-rc.1/bowerbird-ruby-engine-v0.1.0-rc.1-php-adapter.tar.gz",
+                "reference": "772e2b46c37a4bcf4cffbc57e6d9214493c11473",
+                "shasum": "8a842df93086c4d7b71d56532ae08daa8cd13422"
             },
             "require": {
                 "php": "^8.4"
@@ -174,37 +175,9 @@
                     "Bowerbird\\RubyEngine\\": "php/src/"
                 }
             },
-            "archive": {
-                "exclude": [
-                    "/.git",
-                    "/.github",
-                    "/Cargo.lock",
-                    "/Cargo.toml",
-                    "/build.rs",
-                    "/build_config.rb",
-                    "/engine.lock.json",
-                    "/fuzz",
-                    "/native",
-                    "/scripts",
-                    "/src",
-                    "/target",
-                    "/tests",
-                    "/vendor"
-                ]
-            },
-            "scripts": {
-                "test": [
-                    "php php/tests/smoke.php"
-                ]
-            },
             "license": [
                 "Apache-2.0"
-            ],
-            "description": "Bounded PHP subprocess adapter for the shared isolated mruby guest",
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
+            ]
         },
         {
             "name": "brick/math",
