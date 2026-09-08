@@ -43,6 +43,14 @@ composer dev
 
 > Requires PHP 8.4+, Node.js 20+, and PostgreSQL with [pgvector](https://github.com/pgvector/pgvector).
 
+### Optional local Ruby engine candidate
+
+Code-mode development can use the separately published mruby engine RC. Install
+it with `scripts/install-ruby-engine.sh`; it verifies the selected platform
+archive before extraction and prints, rather than writes, the needed local
+configuration. See [the installation guide](docs/guides/mruby-installation.md)
+for supported platforms and verification details.
+
 ## Tech Stack
 
 | Layer | Technology |

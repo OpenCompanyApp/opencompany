@@ -5,47 +5,65 @@ namespace App\Jobs;
 use App\Domain\Automations\Application\ExecuteScriptAutomation;
 use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Models\Automation;
+use App\Services\ScriptAutomationInvocation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
 
 /**
- * Queue transport for one script automation run.
+ * Queue transport for one mruby automation run.
  *
  * Script execution lives in the Automations domain context. This adapter owns
  * queue uniqueness, timeout/retry metadata, serialization, and workspace
- * binding for the sandbox execution path.
+ * binding for the sandbox execution path. Whole-script automatic retries are
+ * intentionally disabled because an interrupted program may have completed
+ * external writes even when the final runtime result is an error.
  */
 class RunScriptAutomationJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     use SetsWorkspaceContext;
 
-    public int $tries = 2;
+    public int $tries = 1;
 
     public int $timeout = 60;
 
-    /** @var array<int, int> */
-    public array $backoff = [10];
-
     public int $uniqueFor = 120;
+
+    private ?array $sourceReceipt = null;
+
+    private ?string $invocationId = null;
 
     public function __construct(
         private Automation $automation,
-    ) {}
+        ?array $sourceReceipt = null,
+        ?string $invocationId = null,
+    ) {
+        $this->sourceReceipt = $sourceReceipt ?? ScriptAutomationInvocation::capture($automation);
+        $this->invocationId = $invocationId ?? (string) Str::uuid();
+    }
 
     public function uniqueId(): string
     {
-        return 'script_automation_'.$this->automation->id;
+        return 'ruby_automation_'.$this->automation->id;
     }
 
     public function handle(?ExecuteScriptAutomation $executeScriptAutomation = null): void
     {
+        // Missing properties on old serialized jobs retain null defaults. Never
+        // mint an admission receipt during handle() for a legacy queued body.
+        $current = $this->automation->fresh();
+        if ($current === null || $this->invocationId === null
+            || ! ScriptAutomationInvocation::matches($current, $this->sourceReceipt)) {
+            return;
+        }
+        $this->automation = $current;
         $this->setWorkspaceContext($this->automation->workspace_id);
 
-        ($executeScriptAutomation ?? app(ExecuteScriptAutomation::class))->handle($this->automation);
+        ($executeScriptAutomation ?? app(ExecuteScriptAutomation::class))->handle($this->automation, $this->invocationId);
     }
 }

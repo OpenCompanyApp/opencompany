@@ -10,15 +10,18 @@ use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\LuaApiDocGenerator;
-use App\Services\LuaBridge;
-use App\Services\LuaSandboxService;
+use App\Services\CodeApiDocGenerator;
+use App\Services\CodeBridge;
+use App\Services\MrubySandboxService;
+use App\Services\ScriptAdmission;
+use App\Services\ScriptAutomationInvocation;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Executes one script-based automation run through the Luau sandbox.
+ * Executes one runtime-pinned Ruby automation through mruby.
  *
  * The queue job owns retry/timeout/uniqueness and workspace binding. This use
  * case owns OpenCompany's script automation lifecycle: creating the run task,
@@ -29,13 +32,30 @@ class ExecuteScriptAutomation
 {
     public function __construct(
         private ToolRegistry $toolRegistry,
-        private LuaApiDocGenerator $docGenerator,
-        private LuaSandboxService $luaSandbox,
+        private CodeApiDocGenerator $docGenerator,
+        private MrubySandboxService $sandbox,
     ) {}
 
-    public function handle(Automation $automation): void
+    public function handle(Automation $automation, ?string $invocationId = null): void
     {
-        $agent = User::find($automation->agent_id);
+        if (! app(ScriptAdmission::class)->matches($automation)) {
+            $automation->recordFailure(
+                'Automation is disabled until its exact Ruby source is validated with the current engine.',
+                [
+                    'script_runtime' => $automation->script_runtime,
+                    'required_runtime' => config('code.runtime'),
+                    'retryable' => false,
+                ],
+            );
+            // Runtime incompatibility is not a transient failure. The generic
+            // failure counter normally keeps early failures active, so enforce
+            // the migration invariant after recording operator diagnostics.
+            $automation->update(['is_active' => false]);
+
+            return;
+        }
+
+        $agent = User::where('workspace_id', $automation->workspace_id)->where('type', 'agent')->find($automation->agent_id);
 
         if (! $agent) {
             $automation->recordFailure('Agent not found');
@@ -45,42 +65,91 @@ class ExecuteScriptAutomation
 
         try {
             $channelId = $automation->ensureChannel();
-            $task = $this->createRunTask($automation, $agent, $channelId);
-            $bridge = new LuaBridge($agent, $this->toolRegistry, $this->docGenerator);
-            $result = $this->luaSandbox->execute(
-                $automation->script,
-                ['cpuLimit' => 30.0],
-                $bridge,
-                ['ctx' => $this->scriptContext($automation)],
+            $task = $this->createRunTask($automation, $agent, $channelId, $invocationId ?? (string) Str::uuid());
+            if ($task === null) {
+                // A queue redelivery may arrive after an external mutation but
+                // before the original worker acknowledged the job. The existing
+                // Task claim fences the entire script, including failed runs.
+                return;
+            }
+            $bridge = new CodeBridge(
+                $agent,
+                $this->toolRegistry,
+                $this->docGenerator,
+                $this->sandbox->profile('automation'),
             );
+            $priorChannel = $this->toolRegistry->getChannelContext();
+            $priorTask = $this->toolRegistry->getTaskContext();
+            $this->toolRegistry->setChannelContext($channelId);
+            $this->toolRegistry->setTaskContext($task->id);
+            try {
+                $result = $this->sandbox->execute(
+                    code: (string) $automation->script,
+                    profile: 'automation',
+                    bridge: $bridge,
+                    globals: ['ctx' => $this->scriptContext($automation)],
+                    sourceName: 'automation-code.rb',
+                    cancelled: fn (): bool => ! Task::query()->whereKey($task->id)
+                        ->where('workspace_id', $automation->workspace_id)->where('status', Task::STATUS_ACTIVE)->exists(),
+                );
+            } finally {
+                // ToolRegistry is shared by queue jobs. Approvals must route to
+                // this automation's channel, never a previous job's context.
+                $this->toolRegistry->setChannelContext($priorChannel);
+                $this->toolRegistry->setTaskContext($priorTask);
+            }
 
-            $output = trim($result->output);
-            $this->postOutputMessage($agent, $channelId, $output);
-
+            $output = $this->renderOutput($result->output, $result->result);
             $bridgeCalls = $bridge->getCallLog();
             if ($result->error !== null) {
-                $task->fail();
+                $errorMessage = $this->formatError($result->error);
+                $failureOutput = $this->renderFailureOutput($output, $errorMessage, $result->error);
+                $this->postOutputMessage($agent, $channelId, $failureOutput);
+                if (($result->error['type'] ?? null) === 'cancelled') {
+                    $task->refresh();
+                    if ($task->status !== Task::STATUS_CANCELLED) {
+                        $task->cancel();
+                    }
+                } else {
+                    $task->fail();
+                }
                 $task->update([
                     'result' => [
                         'error' => $result->error,
-                        'output' => $output,
+                        'output' => $failureOutput,
+                        'execution_id' => $result->executionId,
+                        'script_runtime' => $automation->script_runtime,
                         'execution_time_ms' => $result->executionTime,
+                        'cpu_time_ms' => $result->cpuTime,
                         'memory_usage' => $result->memoryUsage,
+                        'peak_memory_usage' => $result->peakMemoryUsage,
+                        'effects' => $result->effects,
                         'bridge_calls' => $bridgeCalls,
                     ],
                 ]);
 
                 safeBroadcast(new TaskUpdated($task, 'failed'), 'script task failure');
-                $automation->recordFailure($result->error);
+                $automation->recordFailure($errorMessage, [
+                    'execution_id' => $result->executionId,
+                    'script_runtime' => $automation->script_runtime,
+                    'runtime_error' => $result->error,
+                    'effects' => $result->effects,
+                ]);
 
                 return;
             }
 
+            $this->postOutputMessage($agent, $channelId, $output);
             $task->complete([
                 'output' => $output,
                 'return_value' => $result->result,
+                'execution_id' => $result->executionId,
+                'script_runtime' => $automation->script_runtime,
                 'execution_time_ms' => $result->executionTime,
+                'cpu_time_ms' => $result->cpuTime,
                 'memory_usage' => $result->memoryUsage,
+                'peak_memory_usage' => $result->peakMemoryUsage,
+                'effects' => $result->effects,
                 'bridge_calls' => $bridgeCalls,
                 'tool_calls_count' => count($bridgeCalls),
             ]);
@@ -91,7 +160,10 @@ class ExecuteScriptAutomation
                 'task_id' => $task->id,
                 'output' => Str::limit($output, 200),
                 'return_value' => $result->result,
+                'execution_id' => $result->executionId,
+                'script_runtime' => $automation->script_runtime,
                 'execution_time_ms' => $result->executionTime,
+                'effects' => $result->effects,
                 'bridge_calls_count' => count($bridgeCalls),
                 'completed_at' => now()->toIso8601String(),
             ]);
@@ -119,28 +191,39 @@ class ExecuteScriptAutomation
         }
     }
 
-    private function createRunTask(Automation $automation, User $agent, string $channelId): Task
+    private function createRunTask(Automation $automation, User $agent, string $channelId, string $invocationId): ?Task
     {
-        return Task::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => $automation->workspace_id,
-            'title' => "Script: {$automation->name}",
-            'description' => Str::limit($automation->script, 200),
-            'type' => Task::TYPE_CUSTOM,
-            'status' => Task::STATUS_ACTIVE,
-            'priority' => Task::PRIORITY_NORMAL,
-            'source' => Task::SOURCE_AUTOMATION,
-            'agent_id' => $agent->id,
-            'requester_id' => $automation->created_by_id,
-            'channel_id' => $channelId,
-            'started_at' => now(),
-            'context' => [
-                'automation_id' => $automation->id,
-                'execution_type' => 'script',
-                'schedule' => $automation->cron_expression,
-                'run_number' => $automation->run_count + 1,
-            ],
-        ]);
+        return DB::transaction(function () use ($automation, $agent, $channelId, $invocationId): ?Task {
+            $current = Automation::whereKey($automation->id)->lockForUpdate()->firstOrFail();
+            if (! ScriptAutomationInvocation::matches($current, ScriptAutomationInvocation::capture($automation))) {
+                return null;
+            }
+            if (Task::whereKey($invocationId)->exists()) {
+                return null;
+            }
+
+            return Task::create([
+                'id' => $invocationId,
+                'workspace_id' => $automation->workspace_id,
+                'title' => "Script: {$automation->name}",
+                'description' => Str::limit($automation->script, 200),
+                'type' => Task::TYPE_CUSTOM,
+                'status' => Task::STATUS_ACTIVE,
+                'priority' => Task::PRIORITY_NORMAL,
+                'source' => Task::SOURCE_AUTOMATION,
+                'agent_id' => $agent->id,
+                'requester_id' => $automation->created_by_id,
+                'channel_id' => $channelId,
+                'started_at' => now(),
+                'context' => [
+                    'automation_id' => $automation->id,
+                    'execution_type' => 'script',
+                    'script_runtime' => $automation->script_runtime,
+                    'schedule' => $automation->cron_expression,
+                    'run_number' => $automation->run_count + 1,
+                ],
+            ]);
+        });
     }
 
     /**
@@ -154,12 +237,15 @@ class ExecuteScriptAutomation
         return [
             'automation_id' => $automation->id,
             'automation_name' => $automation->name,
+            'agent_id' => $automation->agent_id,
+            'channel_id' => $automation->channel_id,
             'run_number' => $automation->run_count + 1,
             'last_run_at' => $lastRunAt?->toIso8601String(),
             'last_result' => $automation->last_result,
             'trigger_type' => $automation->trigger_type,
             'schedule' => $automation->cron_expression,
             'timezone' => $automation->timezone,
+            'script_runtime' => $automation->script_runtime,
         ];
     }
 
@@ -180,5 +266,61 @@ class ExecuteScriptAutomation
 
         Channel::where('id', $channelId)->update(['last_message_at' => now()]);
         broadcast(new MessageSent($agentMessage));
+    }
+
+    /**
+     * Prefer explicit console output, but make a returned summary useful for
+     * deterministic automations that do not log.
+     */
+    private function renderOutput(string $output, mixed $returnValue): string
+    {
+        $output = trim($output);
+        if ($output !== '' || $returnValue === null) {
+            return $output;
+        }
+
+        if (is_string($returnValue)) {
+            return $returnValue;
+        }
+
+        return (string) json_encode(
+            $returnValue,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+        );
+    }
+
+    /**
+     * Make runtime failures unmistakable in the automation channel while
+     * preserving bounded partial console output that may help repair the code.
+     * The sandbox has already redacted host errors before they reach this layer.
+     *
+     * @param  array<string, mixed>  $error
+     */
+    private function renderFailureOutput(string $output, string $errorMessage, array $error): string
+    {
+        $parts = [];
+        if (trim($output) !== '') {
+            $parts[] = trim($output);
+        }
+
+        $parts[] = $errorMessage;
+        if (is_string($error['suggestion'] ?? null) && $error['suggestion'] !== '') {
+            $parts[] = 'Repair: '.$error['suggestion'];
+        }
+        if (($error['effectStatus'] ?? null) === 'unknown') {
+            $parts[] = 'Write status is unknown. Verify state with a read before considering a retry.';
+        }
+
+        return implode("\n\n", $parts);
+    }
+
+    /** @param  array<string, mixed>  $error */
+    private function formatError(array $error): string
+    {
+        $location = isset($error['line'])
+            ? ' at line '.$error['line'].(isset($error['column']) ? ':'.$error['column'] : '')
+            : '';
+
+        return '['.($error['type'] ?? 'runtime_error').']'.$location.': '.($error['message'] ?? 'Ruby execution failed.');
     }
 }

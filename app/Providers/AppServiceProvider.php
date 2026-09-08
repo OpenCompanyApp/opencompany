@@ -20,8 +20,10 @@ use App\Services\AgentFileStorageService;
 use App\Services\AgentPermissionService;
 use App\Services\Chat\ChatBridge;
 use App\Services\Chat\ChatManager;
+use App\Services\CodeExecutionBudget;
 use App\Services\IntegrationSettingCredentialResolver;
 use App\Services\Mcp\McpServerRegistrar;
+use Closure;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Event;
@@ -30,25 +32,29 @@ use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
 use OpenCompany\IntegrationCore\Contracts\AgentFileStorage;
 use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
-use OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder;
-use OpenCompany\IntegrationCore\Lua\LuaDocRenderer;
+use OpenCompany\IntegrationCore\Script\ScriptCatalogBuilder;
+use OpenCompany\IntegrationCore\Script\ScriptDocRenderer;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /** The HTTP factory is shared, so install the dynamic budget wrapper once. */
+    private ?\WeakMap $codeExecutionBudgetFactories = null;
+
     /**
      * Register any application services.
      */
     public function register(): void
     {
         $this->app->singleton(ToolRegistry::class);
+        $this->app->scoped(CodeExecutionBudget::class);
 
-        if (class_exists(LuaCatalogBuilder::class)) {
-            $this->app->singleton(LuaCatalogBuilder::class);
+        if (class_exists(ScriptCatalogBuilder::class)) {
+            $this->app->singleton(ScriptCatalogBuilder::class);
         }
 
-        if (class_exists(LuaDocRenderer::class)) {
-            $this->app->singleton(LuaDocRenderer::class);
+        if (class_exists(ScriptDocRenderer::class)) {
+            $this->app->singleton(ScriptDocRenderer::class);
         }
 
         // Override the default config-based credential resolver with DB-backed one
@@ -83,6 +89,24 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        $this->app->afterResolving(HttpFactory::class, function (HttpFactory $http): void {
+            $this->codeExecutionBudgetFactories ??= new \WeakMap;
+            if (isset($this->codeExecutionBudgetFactories[$http])) {
+                return;
+            }
+
+            $this->codeExecutionBudgetFactories[$http] = true;
+
+            // Resolve the scoped budget at transport time: capturing one
+            // instance here would leak a completed worker/request scope into
+            // later host calls.
+            $http->globalMiddleware(function (callable $handler): Closure {
+                return function ($request, array $options) use ($handler) {
+                    return $this->app->make(CodeExecutionBudget::class)->dispatch($handler, $request, $options);
+                };
+            });
+        });
 
         // Observers
         ApprovalRequest::observe(ApprovalRequestObserver::class);
@@ -132,7 +156,7 @@ class AppServiceProvider extends ServiceProvider
         $registry->registerBuiltIn(new ToolProviders\WorkspaceToolProvider($permissions));
         $registry->registerBuiltIn(new ToolProviders\AutomationsToolProvider);
         $registry->registerBuiltIn(new ToolProviders\SvgToolProvider);
-        $registry->registerBuiltIn(new ToolProviders\LuaToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\CodeToolProvider);
         $registry->registerBuiltIn(new ToolProviders\WebToolProvider);
     }
 }

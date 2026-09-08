@@ -2,6 +2,9 @@ node_modules
 vendor
 .env
 .env.*
+.auth
+.playwright-cli
+.runtime
 .git
 .idea
 .vscode
@@ -16,7 +19,5 @@ tests
 screenshots
 inspiration
 tmp/*
-!tmp/astronomy-bundle-php/
-!tmp/astronomy-bundle-php/**
 docs/
 .claude

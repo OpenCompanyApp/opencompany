@@ -31,6 +31,8 @@ components.d.ts
 # Playwright
 /screenshots
 /.playwright-mcp
+/.playwright-cli/
+/.auth/
 
 # Claude Code video assets
 /.claude/video-assets
@@ -40,6 +42,7 @@ components.d.ts
 
 # Local package development
 /tmp
+/.runtime/
 
 # Confidential business docs
 /docs/confidential

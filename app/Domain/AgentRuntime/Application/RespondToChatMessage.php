@@ -2,10 +2,10 @@
 
 namespace App\Domain\AgentRuntime\Application;
 
-use App\Agents\Support\MessageAttachmentContext;
 use App\Agents\Runtime\AgentRunBuilder;
 use App\Agents\Runtime\AgentRunFailed;
 use App\Agents\Runtime\AgentRunOptions;
+use App\Agents\Support\MessageAttachmentContext;
 use App\Domain\Ai\Usage\UsageRecorder;
 use App\Domain\Chat\Telegram\Application\TelegramNotificationRouter;
 use App\Events\AgentStatusUpdated;
@@ -41,7 +41,7 @@ class RespondToChatMessage
      * Stream event types consumed by the chat UI.
      *
      * Tool calls/results are persisted as task steps instead of being pushed
-     * through the realtime message stream. Large tool results, especially Lua
+     * through the realtime message stream. Large tool results, especially Code Mode
      * documentation and integration payloads, can exceed the Pusher/Reverb
      * frame limit and must never be allowed to fail the durable agent run.
      */

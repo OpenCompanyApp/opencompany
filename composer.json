@@ -7,29 +7,46 @@
     "license": "SEE LICENSE IN LICENSE.md",
     "repositories": [
         {
+            "type": "package",
+            "package": {
+                "name": "bowerbird/ruby-engine",
+                "version": "0.1.0-rc.1",
+                "type": "library",
+                "license": "Apache-2.0",
+                "require": {"php": "^8.4"},
+                "autoload": {"psr-4": {"Bowerbird\\RubyEngine\\": "php/src/"}},
+                "dist": {
+                    "type": "tar",
+                    "url": "https://github.com/OpenCompanyApp/bowerbird-ruby-engine/releases/download/v0.1.0-rc.1/bowerbird-ruby-engine-v0.1.0-rc.1-php-adapter.tar.gz",
+                    "reference": "772e2b46c37a4bcf4cffbc57e6d9214493c11473",
+                    "shasum": "8a842df93086c4d7b71d56532ae08daa8cd13422"
+                }
+            }
+        },
+        {
             "type": "path",
-            "url": "../integrations/catalog",
+            "url": "../integrations-mruby/catalog",
             "options": {
                 "symlink": false
             }
         },
         {
             "type": "path",
-            "url": "../integrations/bundle",
+            "url": "../integrations-mruby/bundle",
             "options": {
                 "symlink": false
             }
         },
         {
             "type": "path",
-            "url": "../integrations/core",
+            "url": "../integrations-mruby/core",
             "options": {
                 "symlink": false
             }
         },
         {
             "type": "path",
-            "url": "../integrations/packages/*",
+            "url": "../integrations-mruby/packages/*",
             "options": {
                 "symlink": false
             }
@@ -60,6 +77,7 @@
     ],
     "require": {
         "php": "^8.4",
+        "bowerbird/ruby-engine": "0.1.0-rc.1",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/ai": "^0.6.7",
         "laravel/framework": "^12.0",

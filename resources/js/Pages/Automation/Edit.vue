@@ -58,7 +58,7 @@
 
           <template v-if="form.executionType === 'script'">
             <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 leading-none shrink-0">
-              Luau
+              mruby
             </span>
             <span class="w-px h-4 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
             <a
@@ -73,7 +73,7 @@
         </div>
 
         <div class="flex items-center gap-1.5 shrink-0">
-          <Button size="sm" variant="ghost" icon-left="ph:play-fill" :loading="running" :disabled="running" @click="handleRun">
+          <Button size="sm" variant="ghost" icon-left="ph:play-fill" :loading="running" :disabled="running || legacyScript" @click="handleRun">
             Run
           </Button>
           <Button size="sm" variant="primary" icon-left="ph:floppy-disk" :loading="saving" :disabled="!isValid" @click="handleSave">
@@ -82,13 +82,20 @@
         </div>
       </div>
 
+      <div
+        v-if="legacyScript"
+        class="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
+      >
+        This legacy script is disabled. Rewrite it as synchronous Ruby and save it to pin the automation to opencompany-code-v1 before running.
+      </div>
+
       <!-- Main area: Editor + Sidebar -->
       <div class="flex-1 min-h-0 flex">
         <!-- Editor panel -->
         <div class="flex-1 min-w-0">
           <MonacoEditor
             v-model="content"
-            :language="form.executionType === 'script' ? 'lua' : 'markdown'"
+            :language="form.executionType === 'script' ? 'ruby' : 'markdown'"
             @cursor-change="(line: number, col: number) => { cursorLine = line; cursorColumn = col }"
           />
         </div>
@@ -152,6 +159,8 @@
               </p>
             </div>
 
+            <ScriptRevisionHistory v-if="form.executionType === 'script'" :automation-id="automationId" @select="form.script = $event" />
+
             <!-- Run History -->
             <template v-if="runs.length">
               <div class="border-t border-neutral-200 dark:border-neutral-700/60 -mx-4 px-4 pt-4">
@@ -189,7 +198,7 @@
 
       <!-- Status bar -->
       <div class="flex items-center h-6 px-3 shrink-0 border-t border-neutral-200 dark:border-neutral-700/60 bg-white dark:bg-[#1f1f1f] text-[11px] text-neutral-400 dark:text-neutral-500 gap-3 select-none">
-        <span class="font-medium">{{ form.executionType === 'script' ? 'Luau' : 'Markdown' }}</span>
+        <span class="font-medium">{{ form.executionType === 'script' ? 'Ruby / mruby' : 'Markdown' }}</span>
         <span class="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
         <span>Ln {{ cursorLine }}, Col {{ cursorColumn }}</span>
       </div>
@@ -289,6 +298,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import Button from '@/Components/shared/Button.vue'
 import Modal from '@/Components/shared/Modal.vue'
 import CronBuilder from '@/Components/automation/CronBuilder.vue'
+import ScriptRevisionHistory from '@/Components/automation/ScriptRevisionHistory.vue'
 import MonacoEditor from '@/Components/developer/MonacoEditor.vue'
 import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
@@ -330,6 +340,9 @@ const form = ref({
   timezone: 'UTC',
   keepHistory: true,
 })
+
+const legacyScript = computed(() => automationData.value?.executionType === 'script'
+  && automationData.value?.scriptRuntime !== 'opencompany-code-v1')
 
 const content = computed({
   get: () => form.value.executionType === 'script' ? form.value.script : form.value.prompt,
@@ -436,7 +449,7 @@ async function handleSave() {
       executionType: form.value.executionType,
       agentId: form.value.agentId,
       prompt: form.value.executionType === 'prompt' ? form.value.prompt.trim() : undefined,
-      script: form.value.executionType === 'script' ? form.value.script.trim() : undefined,
+      script: form.value.executionType === 'script' ? form.value.script : undefined,
       cronExpression: form.value.cronExpression,
       timezone: form.value.timezone,
       keepHistory: form.value.keepHistory,

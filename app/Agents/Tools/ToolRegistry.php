@@ -8,9 +8,10 @@ use App\Agents\Tools\Providers\BuiltInToolProvider;
 use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Models\AppSetting;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\AgentPermissionService;
+use App\Services\CodeApiDocGenerator;
 use App\Services\Integrations\IntegrationCatalog;
-use App\Services\LuaApiDocGenerator;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -30,9 +31,9 @@ class ToolRegistry
 {
     /**
      * App groups that remain as direct AI tools.
-     * Everything else is accessible only via lua_exec (code-first approach).
+     * Everything else is accessible only through code_exec (code-first approach).
      */
-    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'lua', 'web'];
+    public const DIRECT_TOOL_GROUPS = ['tasks', 'system', 'agents', 'memory', 'code', 'web'];
 
     /**
      * Apps that are external integrations (can be toggled per agent).
@@ -93,11 +94,34 @@ class ToolRegistry
     }
 
     /**
+     * Return the channel currently bound to this registry execution.
+     *
+     * Script approval requests use this only to attach themselves to an
+     * already workspace-scoped conversation; it does not authorize channel
+     * access or expose any message content.
+     */
+    public function getChannelContext(): ?string
+    {
+        return $this->currentChannelId;
+    }
+
+    /**
      * Set the task context for tools that need the current task ID.
      */
     public function setTaskContext(?string $taskId): void
     {
         $this->currentTaskId = $taskId;
+    }
+
+    /**
+     * Return the task currently bound to this registry execution.
+     *
+     * Code Mode callback cancellation is app-owned; exposing only the opaque
+     * ID lets that boundary observe its task without granting tool access.
+     */
+    public function getTaskContext(): ?string
+    {
+        return $this->currentTaskId;
     }
 
     // ─── Effective (merged built-in + external) accessors ──────────────────
@@ -109,7 +133,7 @@ class ToolRegistry
             $this->effectiveToolMap = [];
 
             // Built-in providers are app-owned and may expose direct Laravel AI
-            // tools or Lua-only tools depending on DIRECT_TOOL_GROUPS.
+            // tools or Code Mode-only tools depending on DIRECT_TOOL_GROUPS.
             foreach ($this->builtInProviders as $provider) {
                 foreach ($provider->tools() as $slug => $meta) {
                     $normalized = $this->normalizeToolMeta($slug, $meta);
@@ -440,17 +464,57 @@ class ToolRegistry
      */
     public function getToolCatalog(User $agent): array
     {
+        return $this->buildToolCatalog($agent, scriptCapabilitiesOnly: false);
+    }
+
+    /**
+     * Return only currently discoverable script capabilities for this actor.
+     *
+     * Unlike the developer inventory, disabled integrations and denied tools
+     * must not enter an agent's runtime capability list. Approval-required tools
+     * remain discoverable; IntegrationRuntime must still obtain approval at
+     * dispatch. This method neither grants authority nor executes providers.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getScriptToolCatalog(User $agent): array
+    {
+        return $this->buildToolCatalog($agent, scriptCapabilitiesOnly: true);
+    }
+
+    /**
+     * Build display schemas after the optional runtime visibility gate. Keeping
+     * filtering ahead of schema construction also avoids loading every disabled
+     * package merely to execute a small, workspace-owned script.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildToolCatalog(User $agent, bool $scriptCapabilitiesOnly): array
+    {
         $factory = new JsonSchemaTypeFactory;
         $builtIn = [];
         $integrations = [];
+        $enabledIntegrations = $scriptCapabilitiesOnly
+            ? $this->permissionService->getEnabledIntegrations($agent)
+            : [];
 
         foreach ($this->getEffectiveAppGroups() as $appName => $group) {
             $isIntegration = in_array($appName, $this->getEffectiveIntegrationApps());
+            if ($scriptCapabilitiesOnly && $isIntegration && ! in_array($appName, $enabledIntegrations, true)) {
+                continue;
+            }
             $tools = [];
 
             foreach ($group['tools'] as $slug) {
                 $meta = $this->getEffectiveToolMap()[$slug] ?? null;
                 if (! $meta) {
+                    continue;
+                }
+
+                // The unfiltered developer catalog is not a capability grant.
+                // Never move this gate below schema/tool construction.
+                $permission = $scriptCapabilitiesOnly ? $this->evaluateToolPermission($agent, $slug, $meta) : null;
+                if ($permission?->decision === 'deny') {
                     continue;
                 }
 
@@ -461,12 +525,19 @@ class ToolRegistry
                     'type' => $meta['type'],
                     'icon' => $meta['icon'],
                     'parameters' => [],
+                    'returns' => is_array($meta['returns'] ?? null) ? $meta['returns'] : [],
                 ];
+                if ($permission !== null) {
+                    $toolData['requiresApproval'] = $permission->decision === 'approval_required';
+                }
 
                 $catalogTool = $isIntegration ? $this->catalogToolDefinition($slug) : null;
                 if ($catalogTool !== null) {
                     $toolData['fullDescription'] = (string) ($catalogTool['description'] ?? $meta['description']);
                     $toolData['parameters'] = $this->normalizeCatalogParameters($catalogTool['parameters'] ?? []);
+                    $toolData['returns'] = is_array($catalogTool['returns'] ?? null)
+                        ? $catalogTool['returns']
+                        : $toolData['returns'];
                     $tools[] = $toolData;
 
                     continue;
@@ -575,9 +646,59 @@ class ToolRegistry
     }
 
     /**
+     * Resolve one Code Mode callback after evaluating its current authority.
+     *
+     * `instantiateToolBySlug()` intentionally remains the post-approval path:
+     * approval execution has already received a human decision. Ruby callbacks
+     * are different. They can outlive discovery and must re-check workspace,
+     * integration enablement, and tool policy before a provider is constructed.
+     *
+     * @return array{decision: 'allow'|'deny'|'approval_required', reason: string, tool?: \OpenCompany\IntegrationCore\Contracts\Tool|Tool}
+     */
+    public function resolveScriptToolForDispatch(string $slug, User $agent, ?string $account = null): array
+    {
+        $meta = $this->getEffectiveToolMap()[$slug] ?? null;
+        if ($meta === null) {
+            return ['decision' => 'deny', 'reason' => "Tool not available: {$slug}"];
+        }
+
+        // Script callbacks must never guess a workspace from ambient process
+        // state. HTTP, queue, and test callers bind this before reaching tools.
+        if (! app()->bound('currentWorkspace')) {
+            return ['decision' => 'deny', 'reason' => 'No workspace is bound for this callback.'];
+        }
+
+        $workspace = app('currentWorkspace');
+        if (! $workspace instanceof Workspace || $workspace->id !== $agent->workspace_id) {
+            return ['decision' => 'deny', 'reason' => 'The callback workspace does not match the agent workspace.'];
+        }
+
+        $app = $this->buildAppLookup()[$slug] ?? null;
+        if ($app !== null
+            && in_array($app, $this->getEffectiveIntegrationApps(), true)
+            && ! in_array($app, $this->permissionService->getEnabledIntegrations($agent), true)) {
+            return ['decision' => 'deny', 'reason' => "Integration {$app} is not enabled for this agent."];
+        }
+
+        // This must happen on every callback, not at script discovery time.
+        // In particular, a permission revoked after Code Mode rendered docs
+        // must prevent provider construction and all external effects.
+        $permission = $this->evaluateToolPermission($agent, $slug, $meta);
+        if ($permission->decision !== 'allow') {
+            return ['decision' => $permission->decision, 'reason' => $permission->reason];
+        }
+
+        return [
+            'decision' => 'allow',
+            'reason' => $permission->reason,
+            'tool' => $this->instantiateTool($meta['class'], $agent, $slug, $account),
+        ];
+    }
+
+    /**
      * Build a compact app catalog string for the system prompt.
      * Code-first: only direct tool groups are listed as tools.
-     * Everything else is accessible through lua_exec.
+     * Everything else is accessible through code_exec.
      */
     public function getAppCatalog(User $agent): string
     {
@@ -618,16 +739,19 @@ class ToolRegistry
             $lines[] = "{$appName}: {$group['label']} — {$group['description']}{$approval}";
         }
 
-        // Section 2: Lua API (everything else, accessible via lua_exec)
+        // Section 2: Code Mode API (everything else, accessible via code_exec)
         $lines[] = '';
-        $lines[] = '## Lua API (code-first)';
+        $lines[] = '## Code Mode API (mruby)';
         $lines[] = '';
-        $lines[] = 'All data operations and integrations are available through lua_exec.';
-        $lines[] = 'Always call lua_read_doc(namespace) before writing code to look up function names and parameters.';
+        $lines[] = 'All data operations and integrations are available through code_exec.';
+        $lines[] = 'Always call code_read_doc(namespace) before writing code to inspect exact parameter, effect, and return contracts.';
         $lines[] = 'Do not assume raw upstream API response shapes; integrations may normalize names and structure.';
-        $lines[] = 'If docs do not make the return shape clear, inspect with a minimal lua_exec call before writing multi-step logic.';
+        $lines[] = 'Validate unfamiliar Ruby first, then inspect unclear return shapes with one minimal read-only code_exec call before multi-step logic.';
+        $lines[] = 'Code Mode is synchronous: use plain values and loops, never await or Promise APIs.';
+        $lines[] = 'Treat failed writes with effectStatus=unknown as potentially completed. Do not retry unless retryable=true; verify state with a read first.';
+        $lines[] = 'Prefer one bounded script for deterministic multi-step work, but keep irreversible writes explicit and inspectable.';
         $lines[] = '';
-        $lines[] = app(LuaApiDocGenerator::class)->getNamespaceSummary($agent);
+        $lines[] = app(CodeApiDocGenerator::class)->getNamespaceSummary($agent);
 
         return implode("\n", $lines);
     }
