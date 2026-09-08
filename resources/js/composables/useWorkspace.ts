@@ -19,7 +19,7 @@ import {
 import { show as showAgentRoute } from '@/routes/agent'
 import { show as showApprovalRoute } from '@/routes/approvals'
 import { edit as editAutomationRoute } from '@/routes/automation'
-import { luaConsole as developerLuaConsoleRoute, tools as developerToolsRoute } from '@/routes/developer'
+import { codeConsole as developerCodeConsoleRoute, tools as developerToolsRoute } from '@/routes/developer'
 import { index as messagesRoute, show as showMessageRoute } from '@/routes/messages'
 import { edit as editProfileRoute, show as showProfileRoute } from '@/routes/profile'
 import { show as showTableRoute } from '@/routes/tables'
@@ -125,7 +125,7 @@ export const useWorkspace = () => {
   const messagesUrl = (options?: RouteQueryOptions) => messagesRoute.url(workspaceRouteParams(), options)
   const messageUrl = (id: string | number, options?: RouteQueryOptions) => showMessageRoute.url(workspaceRouteParams({ id }), options)
   const developerToolsUrl = (options?: RouteQueryOptions) => developerToolsRoute.url(workspaceRouteParams(), options)
-  const developerLuaConsoleUrl = (options?: RouteQueryOptions) => developerLuaConsoleRoute.url(workspaceRouteParams(), options)
+  const developerCodeConsoleUrl = (options?: RouteQueryOptions) => developerCodeConsoleRoute.url(workspaceRouteParams(), options)
 
   /**
    * Switch to a different workspace.
@@ -169,7 +169,7 @@ export const useWorkspace = () => {
     messagesUrl,
     messageUrl,
     developerToolsUrl,
-    developerLuaConsoleUrl,
+    developerCodeConsoleUrl,
     switchWorkspace,
   }
 }

@@ -1,9 +1,9 @@
 <template>
   <div class="space-y-3">
-    <!-- Lua Code (Monaco, read-only, lazy-loaded) -->
+    <!-- Ruby (Monaco, read-only, lazy-loaded) -->
     <div>
       <div class="flex items-center justify-between mb-1.5">
-        <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Lua Code</label>
+        <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Ruby</label>
         <div class="flex items-center gap-1">
           <button
             class="p-1 rounded text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
@@ -14,7 +14,7 @@
           </button>
           <button
             class="p-1 rounded text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-            title="Open in Lua Console"
+            title="Open in Code Console"
             @click="openInConsole"
           >
             <Icon name="ph:terminal" class="w-3.5 h-3.5" />
@@ -28,7 +28,7 @@
         <Suspense>
           <MonacoEditor
             :model-value="code"
-            language="lua"
+            language="ruby"
             :readonly="true"
           />
           <template #fallback>
@@ -49,14 +49,16 @@
             <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">Result</span>
           </div>
           <div class="flex items-center gap-3 text-xs text-neutral-400 dark:text-neutral-500 tabular-nums font-mono">
-            <span v-if="meta?.executionTime != null">{{ meta.executionTime }}ms</span>
-            <span v-if="meta?.memoryUsage">{{ formatBytes(meta.memoryUsage) }}</span>
+            <span v-if="meta?.executionTime != null">{{ meta.executionTime }}ms wall</span>
+            <span v-if="meta?.cpuTime != null">{{ meta.cpuTime }}ms CPU</span>
+            <span v-if="meta?.peakMemoryUsage">{{ formatBytes(meta.peakMemoryUsage) }} peak</span>
           </div>
         </div>
         <!-- Content -->
         <div class="max-h-64 overflow-y-auto">
-          <pre v-if="meta" class="p-3 text-xs leading-5 font-mono whitespace-pre-wrap"><template v-if="meta.error"><span class="text-red-600 dark:text-red-400">{{ meta.error }}</span></template><template v-else>{{ meta.output || '(no output)' }}</template><template v-if="meta.returnValue != null">
-<span class="text-neutral-400">→ {{ formatReturnValue(meta.returnValue) }}</span></template></pre>
+          <pre v-if="meta" class="p-3 text-xs leading-5 font-mono whitespace-pre-wrap"><template v-if="meta.error"><span class="text-red-600 dark:text-red-400">{{ formatError(meta.error) }}</span><template v-if="meta.error.suggestion">
+<span class="text-amber-600 dark:text-amber-400">Repair: {{ meta.error.suggestion }}</span></template></template><template v-else>{{ meta.output || '(no output)' }}</template><template v-if="meta.result != null">
+<span class="text-neutral-400">→ {{ formatReturnValue(meta.result) }}</span></template></pre>
           <pre v-else class="p-3 text-xs leading-5 font-mono whitespace-pre-wrap">{{ humanText }}</pre>
         </div>
       </div>
@@ -65,7 +67,7 @@
     <!-- Bridge Activity -->
     <div v-if="meta?.bridgeCalls?.length">
       <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 block">
-        Bridge Calls
+        Capability Calls
         <span class="text-neutral-400 font-normal">({{ meta.bridgeCalls.length }})</span>
       </label>
       <div class="border border-neutral-200 dark:border-neutral-700 rounded-md divide-y divide-neutral-100 dark:divide-neutral-700/50 overflow-hidden">
@@ -80,6 +82,7 @@
           />
           <span class="text-xs text-neutral-700 dark:text-neutral-300 flex-1 truncate">{{ call.name || call.path }}</span>
           <span v-if="call.error" class="text-xs text-red-500 dark:text-red-400 truncate max-w-48" :title="call.error">{{ call.error }}</span>
+          <span v-if="call.effect === 'write'" :class="['text-[10px] uppercase', call.effectStatus === 'unknown' ? 'text-amber-500' : 'text-violet-500']">write · {{ call.effectStatus }}</span>
           <Icon
             :name="call.status === 'ok' ? 'ph:check-circle' : 'ph:x-circle'"
             :class="['w-3 h-3 shrink-0', call.status === 'ok' ? 'text-green-500' : 'text-red-500']"
@@ -90,14 +93,14 @@
     </div>
 
     <!-- Fullscreen Modal -->
-    <Modal v-model:open="showFullscreen" title="Lua Script" icon="ph:code" size="full">
+    <Modal v-model:open="showFullscreen" title="Ruby / mruby" icon="ph:code" size="full">
       <div class="flex flex-col h-full gap-3">
         <!-- Code editor (fills available space) -->
         <div class="flex-1 min-h-0 rounded-md overflow-hidden border border-neutral-200 dark:border-neutral-700">
           <Suspense>
             <MonacoEditor
               :model-value="code"
-              language="lua"
+              language="ruby"
               :readonly="true"
             />
             <template #fallback>
@@ -118,13 +121,13 @@
               <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">Result</span>
             </div>
             <div class="flex items-center gap-3 text-xs text-neutral-400 dark:text-neutral-500 tabular-nums font-mono">
-              <span v-if="meta?.executionTime != null">{{ meta.executionTime }}ms</span>
-              <span v-if="meta?.memoryUsage">{{ formatBytes(meta.memoryUsage) }}</span>
+              <span v-if="meta?.executionTime != null">{{ meta.executionTime }}ms wall</span>
+              <span v-if="meta?.cpuTime != null">{{ meta.cpuTime }}ms CPU</span>
             </div>
           </button>
           <div v-if="modalResultOpen" class="max-h-48 overflow-y-auto border-t border-neutral-200 dark:border-neutral-700/60">
-            <pre v-if="meta" class="p-3 text-xs leading-5 font-mono whitespace-pre-wrap"><template v-if="meta.error"><span class="text-red-600 dark:text-red-400">{{ meta.error }}</span></template><template v-else>{{ meta.output || '(no output)' }}</template><template v-if="meta.returnValue != null">
-<span class="text-neutral-400">→ {{ formatReturnValue(meta.returnValue) }}</span></template></pre>
+            <pre v-if="meta" class="p-3 text-xs leading-5 font-mono whitespace-pre-wrap"><template v-if="meta.error"><span class="text-red-600 dark:text-red-400">{{ formatError(meta.error) }}</span></template><template v-else>{{ meta.output || '(no output)' }}</template><template v-if="meta.result != null">
+<span class="text-neutral-400">→ {{ formatReturnValue(meta.result) }}</span></template></pre>
             <pre v-else class="p-3 text-xs leading-5 font-mono whitespace-pre-wrap">{{ humanText }}</pre>
           </div>
         </div>
@@ -137,7 +140,7 @@
           >
             <div class="flex items-center gap-2">
               <Icon :name="modalBridgeOpen ? 'ph:caret-down' : 'ph:caret-right'" class="w-3 h-3 text-neutral-400 dark:text-neutral-500" />
-              <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Bridge Calls</span>
+              <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Capability Calls</span>
               <span class="text-xs text-neutral-400 font-normal">({{ meta.bridgeCalls.length }})</span>
             </div>
           </button>
@@ -177,7 +180,7 @@ const MonacoEditor = defineAsyncComponent(() =>
   import('@/Components/developer/MonacoEditor.vue')
 )
 
-const { developerLuaConsoleUrl } = useWorkspace()
+const { developerCodeConsoleUrl } = useWorkspace()
 
 interface BridgeCall {
   path: string
@@ -187,6 +190,9 @@ interface BridgeCall {
   icon?: string
   name?: string
   group?: string
+  effect?: 'read' | 'write'
+  effectStatus?: 'none' | 'succeeded' | 'unknown'
+  retryable?: boolean
 }
 
 const GROUP_ICONS: Record<string, string> = {
@@ -203,44 +209,39 @@ function bridgeCallIcon(call: BridgeCall): string {
   return GROUP_ICONS[group] ?? 'ph:wrench'
 }
 
-interface LuaMeta {
+interface CodeMeta {
+  executionId: string
+  profile: string
   output: string
-  error: string | null
-  returnValue: unknown
+  error: {
+    type: string
+    message: string
+    line?: number | null
+    column?: number | null
+    suggestion?: string
+    retryable?: boolean
+    effectStatus?: string
+  } | null
+  result: unknown
   executionTime: number
+  cpuTime: number | null
   memoryUsage: number | null
+  peakMemoryUsage: number | null
   bridgeCalls: BridgeCall[]
 }
 
 const props = defineProps<{
   code: string
   result: string
-  luaMeta?: LuaMeta | null
+  codeMeta?: CodeMeta | null
 }>()
 
 const showFullscreen = ref(false)
 const modalResultOpen = ref(false)
 const modalBridgeOpen = ref(false)
 
-const LUA_META_RE = /<!--__LUA_META__(.*?)__LUA_META__-->/s
-
 const parsed = computed(() => {
-  // Prefer structured metadata from backend (survives truncation)
-  if (props.luaMeta) {
-    return { meta: props.luaMeta as LuaMeta, humanText: props.result }
-  }
-  // Legacy fallback: parse from result string
-  const match = props.result.match(LUA_META_RE)
-  if (match) {
-    try {
-      const meta: LuaMeta = JSON.parse(match[1])
-      const humanText = props.result.replace(LUA_META_RE, '').trim()
-      return { meta, humanText }
-    } catch {
-      // Corrupted metadata — fall back
-    }
-  }
-  return { meta: null as LuaMeta | null, humanText: props.result }
+  return { meta: props.codeMeta ?? null, humanText: props.result }
 })
 
 const meta = computed(() => parsed.value.meta)
@@ -253,8 +254,8 @@ const editorHeight = computed(() => {
 })
 
 function openInConsole() {
-  sessionStorage.setItem('lua-console-code', props.code)
-  router.visit(developerLuaConsoleUrl())
+  sessionStorage.setItem('code-console-code', props.code)
+  router.visit(developerCodeConsoleUrl())
 }
 
 function formatBytes(bytes: number): string {
@@ -264,7 +265,7 @@ function formatBytes(bytes: number): string {
 }
 
 function formatReturnValue(value: unknown): string {
-  if (value === null || value === undefined) return 'nil'
+  if (value === null || value === undefined) return 'null'
   if (typeof value === 'object') {
     try {
       return JSON.stringify(value, null, 2)
@@ -273,5 +274,10 @@ function formatReturnValue(value: unknown): string {
     }
   }
   return String(value)
+}
+
+function formatError(error: NonNullable<CodeMeta['error']>): string {
+  const location = error.line ? ` at ${error.line}${error.column ? `:${error.column}` : ''}` : ''
+  return `[${error.type}]${location}: ${error.message}`
 }
 </script>

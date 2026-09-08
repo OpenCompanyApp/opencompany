@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<{
   readonly?: boolean
 }>(), {
   modelValue: '',
-  language: 'lua',
+  language: 'ruby',
   readonly: false,
 })
 
@@ -41,6 +41,11 @@ onMounted(() => {
     language: props.language,
     theme: getTheme(),
     readOnly: props.readonly,
+    // Monaco's EditContext path is still Chromium-specific and gives browser
+    // automation and some assistive-input tools no writable text surface. The
+    // mature textarea input path preserves IME, accessibility, and testability
+    // consistently across every browser OpenCompany supports.
+    editContext: false,
     minimap: { enabled: false },
     fontSize: 13,
     lineHeight: 20,

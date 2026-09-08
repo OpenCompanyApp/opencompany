@@ -8,28 +8,36 @@
     "repositories": [
         {
             "type": "path",
-            "url": "../integrations/catalog",
+            "url": "../bowerbird-ruby-engine",
+            "options": {
+                "symlink": true,
+                "versions": {"bowerbird/ruby-engine": "0.1.0"}
+            }
+        },
+        {
+            "type": "path",
+            "url": "../integrations-mruby/catalog",
             "options": {
                 "symlink": false
             }
         },
         {
             "type": "path",
-            "url": "../integrations/bundle",
+            "url": "../integrations-mruby/bundle",
             "options": {
                 "symlink": false
             }
         },
         {
             "type": "path",
-            "url": "../integrations/core",
+            "url": "../integrations-mruby/core",
             "options": {
                 "symlink": false
             }
         },
         {
             "type": "path",
-            "url": "../integrations/packages/*",
+            "url": "../integrations-mruby/packages/*",
             "options": {
                 "symlink": false
             }
@@ -60,6 +68,7 @@
     ],
     "require": {
         "php": "^8.4",
+        "bowerbird/ruby-engine": "0.1.0",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/ai": "^0.6.7",
         "laravel/framework": "^12.0",

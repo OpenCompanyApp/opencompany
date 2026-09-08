@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Automation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\Automation
+ * @mixin Automation
  */
 class AutomationResource extends JsonResource
 {
@@ -22,6 +23,10 @@ class AutomationResource extends JsonResource
             'agentId' => $this->agent_id,
             'prompt' => $this->prompt,
             'script' => $this->script,
+            'scriptRuntime' => $this->script_runtime,
+            'scriptDigest' => $this->script_digest,
+            'scriptEngineDigest' => $this->script_engine_digest,
+            'scriptValidatedAt' => $this->script_validated_at?->toIso8601String(),
             'cronExpression' => $this->cron_expression,
             'timezone' => $this->timezone,
             'isActive' => $this->is_active,

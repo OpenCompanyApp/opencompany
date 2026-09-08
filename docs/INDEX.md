@@ -64,6 +64,10 @@
 
 ## Planning & Implementation
 
+The [mruby-only implementation plan](planning/mruby-only-code-mode-implementation.md)
+and [implementation evidence / remaining gates](planning/mruby-implementation-progress.md)
+describe the in-progress runtime replacement; publication and local cutover are not complete.
+
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
 | [memory-implementation.md](planning/memory-implementation.md) | Memory system architecture reference — STM/LTM model, phase summary **(Status: Complete)** | Understanding the memory architecture |

@@ -6,8 +6,18 @@ use App\Agents\Tools\ToolRegistry;
 use App\Models\McpServer;
 use App\Models\User;
 use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
+use OpenCompany\IntegrationCore\Script\ScriptCatalogBuilder;
+use OpenCompany\IntegrationCore\Script\ScriptDocRenderer;
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
-class LuaApiDocGenerator
+/**
+ * Builds permission-scoped, searchable app.* documentation for Code Mode.
+ *
+ * Canonical function/schema mapping lives in integration-core. OpenCompany adds
+ * active account aliases, static product guides, and workspace-visible tools;
+ * it never places credentials or live tool results in documentation caches.
+ */
+class CodeApiDocGenerator
 {
     /**
      * @var array<string, array{
@@ -53,13 +63,13 @@ class LuaApiDocGenerator
         $renderer = $this->docRenderer();
 
         if ($renderer === null) {
-            return $this->getProviderLuaDocs($namespace) ?? "No Lua docs available for namespace '{$namespace}'.";
+            return $this->getProviderScriptDocs($namespace) ?? "No Code Mode docs available for namespace '{$namespace}'.";
         }
 
         return $renderer->generateNamespaceDocs(
             $namespace,
             $this->buildNamespaces($agent),
-            fn (string $ns) => $this->getProviderLuaDocs($ns),
+            fn (string $ns) => $this->getProviderScriptDocs($ns),
         );
     }
 
@@ -68,7 +78,7 @@ class LuaApiDocGenerator
         $renderer = $this->docRenderer();
 
         if ($renderer === null) {
-            return "Lua docs renderer unavailable for {$namespace}.{$function}.";
+            return "Code Mode docs renderer unavailable for {$namespace}.{$function}.";
         }
 
         return $renderer->generateFunctionDocs(
@@ -142,7 +152,7 @@ class LuaApiDocGenerator
         $this->cachedNamespaces = $builder !== null
             ? $builder->buildNamespaces(
                 $catalog,
-                ['tasks', 'system', 'lua'],
+                ['tasks', 'system', 'code'],
             )
             : [];
         $this->cachedAgent = $agent;
@@ -163,7 +173,7 @@ class LuaApiDocGenerator
     }
 
     /**
-     * @return array<string, list<string>> path => [paramName1, paramName2, ...]
+     * @return array<string, list<array<string, mixed>>> path => parameter definitions
      */
     public function buildParameterMap(User $agent): array
     {
@@ -204,10 +214,10 @@ class LuaApiDocGenerator
     }
 
     /**
-     * Get supplementary Lua docs from a ToolProvider via luaDocsPath().
+     * Get supplementary Code Mode docs from a ToolProvider via scriptDocsPath().
      * Works for integration namespaces (e.g., "integrations.clickup" → provider "clickup").
      */
-    private function getProviderLuaDocs(string $namespace): ?string
+    private function getProviderScriptDocs(string $namespace): ?string
     {
         $providerRegistry = $this->providerRegistry();
 
@@ -229,7 +239,7 @@ class LuaApiDocGenerator
             return null;
         }
 
-        $path = $provider->luaDocsPath();
+        $path = $provider->scriptDocsPath();
         if ($path === null || ! is_file($path)) {
             return null;
         }
@@ -258,7 +268,7 @@ class LuaApiDocGenerator
 
     public function getSupplementaryDocs(string $namespace): ?string
     {
-        return $this->getProviderLuaDocs($namespace);
+        return $this->getProviderScriptDocs($namespace);
     }
 
     /**
@@ -299,10 +309,10 @@ class LuaApiDocGenerator
             $namespaces = array_keys($namespaces);
 
             if ($namespaces === []) {
-                return 'No external Lua API namespaces are available in this workspace.';
+                return 'No external Code Mode API namespaces are available in this workspace.';
             }
 
-            return "Available Lua namespaces:\n- ".implode("\n- ", $namespaces);
+            return "Available Code Mode namespaces:\n- ".implode("\n- ", $namespaces);
         }
 
         return $renderer->getNamespaceSummary($namespaces);
@@ -321,7 +331,7 @@ class LuaApiDocGenerator
         foreach ($this->registry->getAppGroupsMeta() as $app) {
             $appName = (string) ($app['name'] ?? '');
 
-            if ($appName === '' || in_array($appName, ['tasks', 'system', 'lua'], true)) {
+            if ($appName === '' || in_array($appName, ['tasks', 'system', 'code'], true)) {
                 continue;
             }
 
@@ -383,7 +393,7 @@ class LuaApiDocGenerator
      */
     private function getStaticPages(): array
     {
-        $dir = resource_path('lua-docs');
+        $dir = resource_path('code-docs');
 
         if (! is_dir($dir)) {
             return [];
@@ -442,7 +452,7 @@ class LuaApiDocGenerator
 
     private function providerRegistry(): ?object
     {
-        $class = \OpenCompany\IntegrationCore\Support\ToolProviderRegistry::class;
+        $class = ToolProviderRegistry::class;
 
         if (! class_exists($class) || ! app()->bound($class)) {
             return null;
@@ -453,7 +463,7 @@ class LuaApiDocGenerator
 
     private function catalogBuilder(): ?object
     {
-        $class = \OpenCompany\IntegrationCore\Lua\LuaCatalogBuilder::class;
+        $class = ScriptCatalogBuilder::class;
 
         if (! class_exists($class) || ! app()->bound($class)) {
             return null;
@@ -464,7 +474,7 @@ class LuaApiDocGenerator
 
     private function docRenderer(): ?object
     {
-        $class = \OpenCompany\IntegrationCore\Lua\LuaDocRenderer::class;
+        $class = ScriptDocRenderer::class;
 
         if (! class_exists($class) || ! app()->bound($class)) {
             return null;

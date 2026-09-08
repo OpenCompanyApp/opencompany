@@ -17,7 +17,7 @@ use Illuminate\Queue\SerializesModels;
  *
  * Prompt automation execution lives in the Automations domain context. Script
  * automations still use their dedicated queue adapter because they run through
- * the Luau sandbox path with a much shorter timeout.
+ * the mruby path with a much shorter timeout and no whole-script retry.
  */
 class RunAutomationJob implements ShouldBeUnique, ShouldQueue
 {

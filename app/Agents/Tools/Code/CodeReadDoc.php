@@ -1,24 +1,27 @@
 <?php
 
-namespace App\Agents\Tools\Lua;
+namespace App\Agents\Tools\Code;
 
 use App\Models\User;
-use App\Services\LuaApiDocGenerator;
+use App\Services\CodeApiDocGenerator;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class LuaReadDoc implements Tool
+/**
+ * Reads one compact namespace, function, or Code Mode guide.
+ */
+final class CodeReadDoc implements Tool
 {
     public function __construct(
-        private LuaApiDocGenerator $docs,
+        private CodeApiDocGenerator $docs,
         private User $agent,
     ) {}
 
     public function description(): string
     {
         return <<<'DESC'
-Read Lua API documentation for a namespace, function, or supplementary guide.
+Read Code Mode documentation for a namespace, function, or supplementary guide.
 
 - Namespace (e.g. "chat") → full API reference with all functions and parameters
 - Function (e.g. "chat.send") → detailed single-function docs
@@ -56,12 +59,12 @@ DESC;
                 // Handle multi-level: "integrations.gmail.send_email" or "mcp.exa_search.search"
                 if (in_array($namespace, ['integrations', 'mcp']) && str_contains($function, '.')) {
                     $subParts = explode('.', $function, 2);
-                    $namespace = $namespace . '.' . $subParts[0];
+                    $namespace = $namespace.'.'.$subParts[0];
                     $function = $subParts[1];
                 }
                 // Handle namespace-only: "integrations.gmail" or "mcp.exa_search"
                 elseif (in_array($namespace, ['integrations', 'mcp'])) {
-                    return $this->docs->generateNamespaceDocs($namespace . '.' . $function, $this->agent);
+                    return $this->docs->generateNamespaceDocs($namespace.'.'.$function, $this->agent);
                 }
 
                 return $this->docs->generateFunctionDocs($namespace, $function, $this->agent);
@@ -69,7 +72,7 @@ DESC;
 
             // Try as namespace
             $namespaceDocs = $this->docs->generateNamespaceDocs($page, $this->agent);
-            if (!str_starts_with($namespaceDocs, "Namespace '{$page}' not found.")) {
+            if (! str_starts_with($namespaceDocs, "Namespace '{$page}' not found.")) {
                 return $namespaceDocs;
             }
 
@@ -77,10 +80,10 @@ DESC;
             $available = $this->docs->getAvailablePages($this->agent);
 
             return "Page '{$page}' not found. Available pages:\n\n"
-                . "**Namespaces:** " . implode(', ', array_filter($available, fn ($p) => !in_array($p, ['overview', 'context', 'errors', 'examples']))) . "\n"
-                . "**Guides:** overview, context, errors, examples";
+                .'**Namespaces:** '.implode(', ', array_filter($available, fn ($p) => ! in_array($p, ['overview', 'context', 'errors', 'examples'])))."\n"
+                .'**Guides:** overview, context, errors, examples';
         } catch (\Throwable $e) {
-            return "Error reading Lua doc: {$e->getMessage()}";
+            return "Error reading Code Mode doc: {$e->getMessage()}";
         }
     }
 

@@ -59,23 +59,23 @@ tools.head = (args: { workspace_slug: string | number } | [workspace_slug: strin
 
 /**
 * @see routes/web.php:193
-* @route '/w/{workspace_slug}/developer/lua-console'
+* @route '/w/{workspace_slug}/developer/code-console'
 */
-export const luaConsole = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: luaConsole.url(args, options),
+export const codeConsole = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: codeConsole.url(args, options),
     method: 'get',
 })
 
-luaConsole.definition = {
+codeConsole.definition = {
     methods: ["get","head"],
-    url: '/w/{workspace_slug}/developer/lua-console',
+    url: '/w/{workspace_slug}/developer/code-console',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see routes/web.php:193
-* @route '/w/{workspace_slug}/developer/lua-console'
+* @route '/w/{workspace_slug}/developer/code-console'
 */
-luaConsole.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
+codeConsole.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { workspace_slug: args }
     }
@@ -92,32 +92,32 @@ luaConsole.url = (args: { workspace_slug: string | number } | [workspace_slug: s
         workspace_slug: args.workspace_slug,
     }
 
-    return luaConsole.definition.url
+    return codeConsole.definition.url
             .replace('{workspace_slug}', parsedArgs.workspace_slug.toString())
             .replace(/\/+$/, '') + queryParams(options)
 }
 
 /**
 * @see routes/web.php:193
-* @route '/w/{workspace_slug}/developer/lua-console'
+* @route '/w/{workspace_slug}/developer/code-console'
 */
-luaConsole.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: luaConsole.url(args, options),
+codeConsole.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: codeConsole.url(args, options),
     method: 'get',
 })
 
 /**
 * @see routes/web.php:193
-* @route '/w/{workspace_slug}/developer/lua-console'
+* @route '/w/{workspace_slug}/developer/code-console'
 */
-luaConsole.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
-    url: luaConsole.url(args, options),
+codeConsole.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: codeConsole.url(args, options),
     method: 'head',
 })
 
 const developer = {
     tools: Object.assign(tools, tools),
-    luaConsole: Object.assign(luaConsole, luaConsole),
+    codeConsole: Object.assign(codeConsole, codeConsole),
 }
 
 export default developer
