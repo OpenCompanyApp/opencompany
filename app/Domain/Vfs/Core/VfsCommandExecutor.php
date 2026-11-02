@@ -53,7 +53,8 @@ use App\Models\User;
  *   next_cursor      continuation cursor of the first pageable command
  *                    (ls DIR, cat PAGED_FILE, find); pass back as `cursor`
  *   output_truncated stdout exceeded VfsBudget::$maxOutputBytes
- *   result           metadata of the last command (no stdout)
+ *   result           command-specific metadata of the last command (counts,
+ *                    limits, written paths); never stdout or top-level keys
  *
  * Error envelope (VfsError thrown):
  * - the last executed command failed and its stderr was not redirected;
@@ -267,7 +268,9 @@ class VfsCommandExecutor
         $this->assertDisplayableOutput($stdout);
 
         $metadata = is_array($lastResult) ? $lastResult : [];
-        unset($metadata['stdout'], $metadata['stderr'], $metadata['error'], $metadata['next_cursor']);
+        // result carries only command-specific metadata: everything the
+        // envelope already has at the top level is removed, stdout above all.
+        unset($metadata['stdout'], $metadata['stderr'], $metadata['error'], $metadata['next_cursor'], $metadata['exit_code'], $metadata['cwd'], $metadata['class']);
 
         return [
             'ok' => true,

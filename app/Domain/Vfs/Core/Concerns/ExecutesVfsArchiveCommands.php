@@ -20,7 +20,8 @@ use ZipArchive;
  * - Creation is bounded globally: at most maxFiles members in total (not per
  *   directory) and at most the content ceiling in bytes; exceeding either
  *   fails before anything is written.
- * - Extraction is bounded by maxFiles members and the content ceiling, and
+ * - Extraction is bounded by maxFiles members and by decompressionFactor x
+ *   maxBytes inflated bytes (like gunzip; never above the content ceiling), and
  *   member names are sanitized (no "..", no absolute paths) under a /files
  *   destination.
  */
@@ -59,12 +60,8 @@ trait ExecutesVfsArchiveCommands
 
         $archive = $this->archiveInput($agent, $file, $args, $cwd, $stdin);
         if ($args->has('z')) {
-            $ceiling = $this->contentCeiling();
-            $decoded = @gzdecode($archive, $ceiling + 1);
-            if ($decoded === false || strlen($decoded) > $ceiling) {
-                throw VfsError::invalid('tar archive is not valid gzip data, or it expands beyond the content limit.', ['max_content_bytes' => $ceiling]);
-            }
-            $archive = $decoded;
+            // Same bound as gunzip: decompressionFactor x maxBytes.
+            $archive = $this->boundedGzdecode($archive, $budget, 'tar archive');
         }
         $entries = $this->parseTarArchive($archive, $budget);
 
@@ -499,7 +496,8 @@ trait ExecutesVfsArchiveCommands
         }
         $entries = [];
         $bytes = 0;
-        $ceiling = $this->contentCeiling();
+        // Inflated members are bounded like gunzip (decompressionFactor x maxBytes).
+        $ceiling = $this->decompressionCap($budget);
         try {
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $name = $zip->getNameIndex($i);
@@ -512,7 +510,7 @@ trait ExecutesVfsArchiveCommands
                 // Check the declared size before inflating the member.
                 $declared = (int) ($zip->statIndex($i)['size'] ?? 0);
                 if ($bytes + $declared > $ceiling) {
-                    throw VfsError::invalid("zip archive expands beyond the VFS content limit ({$ceiling} bytes).", ['max_content_bytes' => $ceiling]);
+                    throw VfsError::invalid("zip archive expands beyond the VFS decompression limit ({$ceiling} bytes = {$this->decompressionFactor} x maxBytes).", ['max_decompressed_bytes' => $ceiling, 'hint' => 'Raise maxBytes or extract a smaller archive.']);
                 }
                 $content = $zip->getFromIndex($i, $ceiling - $bytes + 1);
                 if ($content === false) {
@@ -520,7 +518,7 @@ trait ExecutesVfsArchiveCommands
                 }
                 $bytes += strlen($content);
                 if ($bytes > $ceiling) {
-                    throw VfsError::invalid("zip archive expands beyond the VFS content limit ({$ceiling} bytes).", ['max_content_bytes' => $ceiling]);
+                    throw VfsError::invalid("zip archive expands beyond the VFS decompression limit ({$ceiling} bytes = {$this->decompressionFactor} x maxBytes).", ['max_decompressed_bytes' => $ceiling, 'hint' => 'Raise maxBytes or extract a smaller archive.']);
                 }
                 $entries[$this->safeArchiveName($name)] = $content;
             }

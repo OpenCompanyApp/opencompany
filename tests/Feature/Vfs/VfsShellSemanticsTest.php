@@ -405,6 +405,10 @@ class VfsShellSemanticsTest extends TestCase
         $bomb = $this->shErr('zcat /files/b/plain.gz', new VfsBudget(maxBytes: 1_000));
         $this->assertSame('invalid_request', $bomb->errorCode);
         $this->assertStringContainsString('decompression limit', $bomb->getMessage());
+        $this->sh('tar -c -z -f /files/b/plain.tgz /files/b/plain.txt');
+        $this->assertStringContainsString('decompression limit', $this->shErr('tar -t -z -f /files/b/plain.tgz', new VfsBudget(maxBytes: 1_000))->getMessage());
+        $this->sh('zip /files/b/plain.zip /files/b/plain.txt');
+        $this->assertStringContainsString('decompression limit', $this->shErr('unzip -l /files/b/plain.zip', new VfsBudget(maxBytes: 1_000))->getMessage());
 
         // Archive creation is bounded by maxFiles in total, not per folder.
         foreach (['x', 'y'] as $folder) {
