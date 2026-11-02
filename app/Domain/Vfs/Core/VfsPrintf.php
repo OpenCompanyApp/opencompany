@@ -6,23 +6,40 @@ namespace App\Domain\Vfs\Core;
  * C-style printf formatting shared by the shell `printf` builtin and awk.
  *
  * Owns conversion specs `%[flags][width][.precision]conv` with flags `-+ 0#`,
- * `*` width/precision, conversions d i o u x X e E f F g G c s b and `%%`.
+ * `*` width/precision, conversions d i o u x X e E f F g G c s b q and `%%`.
  * PHP's sprintf differs from C in exponent digits, the space and `#` flags,
  * and argument-count errors (it throws ArgumentCountError for too few args),
  * so every conversion is formatted here explicitly and never throws on
  * argument count: missing arguments format as "" or 0, like bash.
  *
+ * Resource invariant: every width and precision is checked against
+ * MAX_FIELD before anything is padded, and the bytes one invocation
+ * produces are counted against MAX_OUTPUT_BYTES as they are appended, so a
+ * tiny format such as `%100000000s` fails with a VfsError instead of
+ * allocating past the worker's memory limit. The executor's own output cap
+ * runs only after the command returns; it cannot protect this allocation.
+ *
  * Pure: no storage access.
  */
 final class VfsPrintf
 {
+    /** Largest accepted field width or precision (bytes/characters). */
+    public const MAX_FIELD = 1_048_576;
+
+    /** Largest output one printf/sprintf invocation may build. */
+    public const MAX_OUTPUT_BYTES = 4_194_304;
+
     private const SPEC = '/%(?<flags>[-+ 0#\']*)(?<width>\*|\d+)?(?:\.(?<precision>\*|\d*))?(?<conv>[diouxXeEfFgGcsbq%])/';
 
     /**
      * bash `printf`: process escapes in the format, then re-apply the format
      * while arguments remain (each pass must consume at least one argument).
+     * A `\c` inside a `%b` argument ends the whole invocation: nothing after
+     * it is written, neither the rest of the format nor further passes.
      *
      * @param  list<string>  $args
+     *
+     * @throws VfsError invalid_request when a field or the output exceeds its cap.
      */
     public static function shell(string $format, array $args): string
     {
@@ -30,10 +47,11 @@ final class VfsPrintf
         $out = '';
         $index = 0;
         $count = count($args);
+        $stopped = false;
         do {
             $before = $index;
-            $out .= self::apply($format, $args, $index, true);
-            if ($index === $before) {
+            $out .= self::apply($format, $args, $index, true, $stopped, strlen($out));
+            if ($stopped || $index === $before) {
                 break;
             }
         } while ($index < $count);
@@ -46,25 +64,49 @@ final class VfsPrintf
      * lexer.
      *
      * @param  list<string|int|float|null>  $args
+     *
+     * @throws VfsError invalid_request when a field or the output exceeds its cap.
      */
     public static function awk(string $format, array $args): string
     {
         $index = 0;
+        $stopped = false;
 
-        return self::apply($format, $args, $index, false);
+        return self::apply($format, $args, $index, false, $stopped, 0);
     }
 
     /**
+     * One pass of $format over $args starting at $index. Sets $stopped when
+     * a `%b` argument contained `\c` (shell only); the output then ends
+     * with that conversion. $already is the output size of earlier passes,
+     * counted against MAX_OUTPUT_BYTES.
+     *
      * @param  list<string|int|float|null>  $args
      */
-    private static function apply(string $format, array $args, int &$index, bool $shell): string
+    private static function apply(string $format, array $args, int &$index, bool $shell, bool &$stopped, int $already): string
     {
-        return preg_replace_callback(self::SPEC, function (array $m) use ($args, &$index, $shell): string {
-            if ($m['conv'] === '%') {
-                return '%';
+        preg_match_all(self::SPEC, $format, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        $out = '';
+        $position = 0;
+        $append = function (string $text) use (&$out, $already): void {
+            if ($already + strlen($out) + strlen($text) > self::MAX_OUTPUT_BYTES) {
+                throw VfsError::invalid('printf output exceeds '.self::MAX_OUTPUT_BYTES.' bytes.', ['hint' => 'Use smaller widths or fewer arguments.']);
             }
-            $flags = $m['flags'];
-            $width = $m['width'];
+            $out .= $text;
+        };
+        foreach ($matches as $match) {
+            [$whole, $offset] = $match[0];
+            $append(substr($format, $position, $offset - $position));
+            $position = $offset + strlen($whole);
+            $conv = $match['conv'][0];
+            if ($conv === '%') {
+                $append('%');
+
+                continue;
+            }
+            $flags = $match['flags'][0];
+            // Unmatched groups before `conv` are present as ['', -1].
+            $width = $match['width'][0];
             if ($width === '*') {
                 $width = (string) (int) self::number($args[$index++] ?? 0);
                 if (str_starts_with($width, '-')) {
@@ -73,18 +115,30 @@ final class VfsPrintf
                 }
             }
             // `%.f` means precision 0; no dot means no precision.
-            $precision = str_contains($m[0], '.') ? ($m['precision'] === '' ? '0' : $m['precision']) : null;
+            $precision = str_contains($whole, '.') ? ($match['precision'][0] === '' ? '0' : $match['precision'][0]) : null;
             if ($precision === '*') {
                 $precision = (string) max(0, (int) self::number($args[$index++] ?? 0));
+            }
+            // Invariant: checked before convert() pads or formats anything.
+            foreach (['width' => $width, 'precision' => $precision] as $label => $value) {
+                if ($value !== null && $value !== '' && (strlen($value) > 7 || (int) $value > self::MAX_FIELD)) {
+                    throw VfsError::invalid("printf {$label} {$value} exceeds the maximum of ".self::MAX_FIELD.'.', ['hint' => 'Use a smaller field width or precision.']);
+                }
             }
             $arg = $args[$index] ?? null;
             $index++;
 
-            return self::convert($m['conv'], $flags, $width === '' ? null : (int) $width, $precision === null ? null : (int) $precision, $arg, $shell);
-        }, $format) ?? $format;
+            $append(self::convert($conv, $flags, $width === '' ? null : (int) $width, $precision === null ? null : (int) $precision, $arg, $shell, $stopped));
+            if ($stopped) {
+                return $out;
+            }
+        }
+        $append(substr($format, $position));
+
+        return $out;
     }
 
-    private static function convert(string $conv, string $flags, ?int $width, ?int $precision, string|int|float|null $arg, bool $shell): string
+    private static function convert(string $conv, string $flags, ?int $width, ?int $precision, string|int|float|null $arg, bool $shell, bool &$stopped): string
     {
         $left = str_contains($flags, '-');
         $zero = str_contains($flags, '0') && ! $left;
@@ -94,15 +148,24 @@ final class VfsPrintf
 
         switch ($conv) {
             case 's':
-            case 'q':
                 $text = self::string($arg);
                 if ($precision !== null) {
                     $text = mb_substr($text, 0, $precision);
                 }
 
                 return self::pad($text, $width, $left, false);
+            case 'q':
+                if (! $shell) {
+                    throw VfsError::invalid('awk printf does not support %q.', ['hint' => 'Use %s.']);
+                }
+                $text = self::shellQuote(self::string($arg));
+                if ($precision !== null) {
+                    $text = substr($text, 0, $precision);
+                }
+
+                return self::pad($text, $width, $left, false);
             case 'b':
-                $text = self::escapes(self::string($arg), true);
+                $text = self::escapes(self::string($arg), true, $stopped);
                 if ($precision !== null) {
                     $text = substr($text, 0, $precision);
                 }
@@ -258,10 +321,40 @@ final class VfsPrintf
     }
 
     /**
+     * Quote one argument for `%q` so the VFS shell lexer reads it back as
+     * exactly one word with the same bytes.
+     *
+     * - empty: `''`;
+     * - only portable word characters: unchanged;
+     * - printable text: each other byte backslash-escaped (bash style,
+     *   `a b` becomes `a\ b`);
+     * - text with control bytes (newline, tab, ...): POSIX single quotes,
+     *   with `'` written as `'\''`. bash would write `$'...'`, but the VFS
+     *   lexer has no `$'...'` quoting, and a single-quoted newline is the
+     *   same word in every POSIX shell.
+     */
+    private static function shellQuote(string $text): string
+    {
+        if ($text === '') {
+            return "''";
+        }
+        if (preg_match('/^[A-Za-z0-9_.\/:@%+=,-]+$/', $text) === 1) {
+            return $text;
+        }
+        if (preg_match('/[\x00-\x1f\x7f]/', $text) === 1) {
+            return "'".str_replace("'", "'\\''", $text)."'";
+        }
+
+        return preg_replace('/([^A-Za-z0-9_.\/:@%+=,\x80-\xff-])/', '\\\\$1', $text) ?? $text;
+    }
+
+    /**
      * Resolve backslash escapes as bash printf does in formats (and %b
      * arguments, where \c stops output and octal is written \0NNN).
+     * $stopped is set when a %b argument's `\c` ended the output; the
+     * caller must then stop the whole printf invocation.
      */
-    public static function escapes(string $text, bool $percentB): string
+    public static function escapes(string $text, bool $percentB, bool &$stopped = false): string
     {
         $out = '';
         $length = strlen($text);
@@ -274,19 +367,32 @@ final class VfsPrintf
             }
             $n = $text[++$i];
             switch ($n) {
-                case 'n': $out .= "\n"; break;
-                case 't': $out .= "\t"; break;
-                case 'r': $out .= "\r"; break;
-                case 'a': $out .= "\x07"; break;
-                case 'b': $out .= "\x08"; break;
-                case 'f': $out .= "\f"; break;
-                case 'v': $out .= "\v"; break;
-                case 'e': $out .= "\x1b"; break;
-                case '\\': $out .= '\\'; break;
-                case '"': $out .= '"'; break;
-                case "'": $out .= "'"; break;
+                case 'n': $out .= "\n";
+                    break;
+                case 't': $out .= "\t";
+                    break;
+                case 'r': $out .= "\r";
+                    break;
+                case 'a': $out .= "\x07";
+                    break;
+                case 'b': $out .= "\x08";
+                    break;
+                case 'f': $out .= "\f";
+                    break;
+                case 'v': $out .= "\v";
+                    break;
+                case 'e': $out .= "\x1b";
+                    break;
+                case '\\': $out .= '\\';
+                    break;
+                case '"': $out .= '"';
+                    break;
+                case "'": $out .= "'";
+                    break;
                 case 'c':
                     if ($percentB) {
+                        $stopped = true;
+
                         return $out;
                     }
                     $out .= '\\c';

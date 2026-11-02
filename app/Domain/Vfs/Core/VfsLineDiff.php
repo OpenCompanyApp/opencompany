@@ -14,12 +14,23 @@ namespace App\Domain\Vfs\Core;
  * Replaces a positional line-N-vs-line-N comparison that reported every line
  * after an insertion as changed.
  *
- * Bounded: refuses inputs whose edit distance exceeds MAX_EDITS instead of
- * consuming unbounded memory.
+ * Bounded (memory before time, checked before allocation):
+ * - lines that occur on only one side can never be part of a common
+ *   subsequence, so they are set aside before Myers runs (GNU diff does the
+ *   same); two completely different files therefore cost O(N+M), not O(D^2);
+ * - the Myers trace is stored as one packed 32-bit frontier per edit step
+ *   and the total number of stored cells is held to MAX_TRACE_CELLS (about
+ *   16 MB), and the diagonal/snake work to MAX_WORK;
+ * - past either budget the diff fails with invalid_request "inputs too
+ *   different to diff within budget" instead of exhausting the worker.
  */
 final class VfsLineDiff
 {
-    private const MAX_EDITS = 20_000;
+    /** Cells (frontier entries) the stored Myers trace may hold in total. */
+    public const MAX_TRACE_CELLS = 4_000_000;
+
+    /** Diagonal steps plus snake comparisons Myers may perform. */
+    public const MAX_WORK = 40_000_000;
 
     /** @var list<string> */
     private array $a;
@@ -279,8 +290,9 @@ final class VfsLineDiff
         for ($i = 0; $i < $prefix; $i++) {
             $ops[] = ['=', $i, $i];
         }
-        $middle = $this->myers(array_slice($a, $prefix, $n - $prefix - $suffix), array_slice($b, $prefix, $m - $prefix - $suffix));
-        foreach ($middle as [$kind, $i, $j]) {
+        $aMiddle = array_slice($a, $prefix, $n - $prefix - $suffix);
+        $bMiddle = array_slice($b, $prefix, $m - $prefix - $suffix);
+        foreach ($this->middleScript($aMiddle, $bMiddle) as [$kind, $i, $j]) {
             $ops[] = [$kind, $i < 0 ? -1 : $i + $prefix, $j < 0 ? -1 : $j + $prefix];
         }
         for ($k = 0; $k < $suffix; $k++) {
@@ -291,9 +303,80 @@ final class VfsLineDiff
     }
 
     /**
+     * Minimal edit script of the trimmed middle.
+     *
+     * A line whose key does not occur on the other side cannot be matched,
+     * so only lines present on both sides go into Myers; that keeps the
+     * common "rewrite everything" case linear. The matched pairs Myers
+     * finds are then mapped back, and each gap between matches is emitted
+     * as its deletions followed by its insertions (GNU order).
+     *
      * @param  list<string>  $a
      * @param  list<string>  $b
      * @return list<array{0: string, 1: int, 2: int}>
+     */
+    private function middleScript(array $a, array $b): array
+    {
+        $inB = array_fill_keys($b, true);
+        $inA = array_fill_keys($a, true);
+        $aIndex = [];
+        $aKept = [];
+        foreach ($a as $i => $line) {
+            if (isset($inB[$line])) {
+                $aIndex[] = $i;
+                $aKept[] = $line;
+            }
+        }
+        $bIndex = [];
+        $bKept = [];
+        foreach ($b as $j => $line) {
+            if (isset($inA[$line])) {
+                $bIndex[] = $j;
+                $bKept[] = $line;
+            }
+        }
+
+        $pairs = [];
+        foreach ($this->myers($aKept, $bKept) as [$kind, $i, $j]) {
+            if ($kind === '=') {
+                $pairs[] = [$aIndex[$i], $bIndex[$j]];
+            }
+        }
+        $pairs[] = [count($a), count($b)];
+
+        $ops = [];
+        $x = 0;
+        $y = 0;
+        foreach ($pairs as [$i, $j]) {
+            for (; $x < $i; $x++) {
+                $ops[] = ['-', $x, -1];
+            }
+            for (; $y < $j; $y++) {
+                $ops[] = ['+', -1, $y];
+            }
+            if ($i < count($a)) {
+                $ops[] = ['=', $i, $j];
+                $x = $i + 1;
+                $y = $j + 1;
+            }
+        }
+
+        return $ops;
+    }
+
+    /**
+     * Myers greedy shortest edit script with a compact, budgeted trace.
+     *
+     * $trace[$d] holds the frontier as it was when step $d began: for d > 0
+     * the furthest x of every diagonal k = -(d-1), -(d-1)+2, ..., d-1, packed
+     * as unsigned 32-bit integers (4 bytes per cell instead of a PHP hash
+     * bucket). Step 0 starts from the virtual diagonal 1 at x = 0.
+     *
+     * @param  list<string>  $a
+     * @param  list<string>  $b
+     * @return list<array{0: string, 1: int, 2: int}>
+     *
+     * @throws VfsError invalid_request when the trace or work budget is exceeded.
      */
     private function myers(array $a, array $b): array
     {
@@ -312,11 +395,20 @@ final class VfsLineDiff
         $max = $n + $m;
         $v = [1 => 0];
         $trace = [];
+        $cells = 0;
+        $work = 0;
         for ($d = 0; $d <= $max; $d++) {
-            if ($d > self::MAX_EDITS) {
-                throw VfsError::invalid('diff: the files differ too much to compare within the VFS budget.', ['hint' => 'Compare smaller sections (head/sed -n) or use cmp/sha256sum to check equality.']);
+            // Invariant: the budget is checked before this step's frontier
+            // is stored, so the trace never grows past MAX_TRACE_CELLS.
+            $cells += $d;
+            if ($cells > self::MAX_TRACE_CELLS) {
+                throw self::overBudget();
             }
-            $trace[] = $v;
+            $frontier = [];
+            for ($k = -($d - 1); $k <= $d - 1; $k += 2) {
+                $frontier[] = $v[$k];
+            }
+            $trace[] = $frontier === [] ? '' : pack('V*', ...$frontier);
             for ($k = -$d; $k <= $d; $k += 2) {
                 if ($k === -$d || ($k !== $d && ($v[$k - 1] ?? -1) < ($v[$k + 1] ?? -1))) {
                     $x = $v[$k + 1] ?? 0;
@@ -327,10 +419,14 @@ final class VfsLineDiff
                 while ($x < $n && $y < $m && $a[$x] === $b[$y]) {
                     $x++;
                     $y++;
+                    $work++;
+                }
+                if (++$work > self::MAX_WORK) {
+                    throw self::overBudget();
                 }
                 $v[$k] = $x;
                 if ($x >= $n && $y >= $m) {
-                    return $this->backtrack($trace, $n, $m, $a, $b);
+                    return $this->backtrack($trace, $n, $m);
                 }
             }
         }
@@ -338,26 +434,50 @@ final class VfsLineDiff
         return [];
     }
 
+    private static function overBudget(): VfsError
+    {
+        return VfsError::invalid('diff: inputs too different to diff within budget.', [
+            'hint' => 'Compare smaller sections (head/sed -n) or use cmp/sha256sum to check equality.',
+        ]);
+    }
+
     /**
-     * @param  list<array<int, int>>  $trace
-     * @param  list<string>  $a
-     * @param  list<string>  $b
+     * Frontier value of diagonal $k as stored for step $d, or null when that
+     * diagonal had not been reached (the `?? default` of the live frontier).
+     *
+     * @param  list<string>  $trace
+     */
+    private static function traced(array $trace, int $d, int $k): ?int
+    {
+        if ($d === 0) {
+            return $k === 1 ? 0 : null;
+        }
+        $offset = $k + ($d - 1);
+        if ($offset < 0 || $offset % 2 !== 0 || $offset / 2 >= $d) {
+            return null;
+        }
+        $unpacked = unpack('V', $trace[$d], intdiv($offset, 2) * 4);
+
+        return $unpacked === false ? null : (int) $unpacked[1];
+    }
+
+    /**
+     * @param  list<string>  $trace
      * @return list<array{0: string, 1: int, 2: int}>
      */
-    private function backtrack(array $trace, int $n, int $m, array $a, array $b): array
+    private function backtrack(array $trace, int $n, int $m): array
     {
         $ops = [];
         $x = $n;
         $y = $m;
         for ($d = count($trace) - 1; $d >= 0; $d--) {
-            $v = $trace[$d];
             $k = $x - $y;
-            if ($k === -$d || ($k !== $d && ($v[$k - 1] ?? -1) < ($v[$k + 1] ?? -1))) {
+            if ($k === -$d || ($k !== $d && (self::traced($trace, $d, $k - 1) ?? -1) < (self::traced($trace, $d, $k + 1) ?? -1))) {
                 $prevK = $k + 1;
             } else {
                 $prevK = $k - 1;
             }
-            $prevX = $v[$prevK] ?? 0;
+            $prevX = self::traced($trace, $d, $prevK) ?? 0;
             $prevY = $prevX - $prevK;
             while ($x > $prevX && $y > $prevY) {
                 $ops[] = ['=', $x - 1, $y - 1];

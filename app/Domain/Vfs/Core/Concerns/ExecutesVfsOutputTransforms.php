@@ -2,6 +2,7 @@
 
 namespace App\Domain\Vfs\Core\Concerns;
 
+use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsPrintf;
 
 /**
@@ -35,7 +36,10 @@ trait ExecutesVfsOutputTransforms
         }
         $stdout = implode(' ', $words);
         if ($escapes) {
-            $stdout = VfsPrintf::escapes($stdout, true);
+            // bash: `\c` ends the output, including the trailing newline.
+            $stopped = false;
+            $stdout = VfsPrintf::escapes($stdout, true, $stopped);
+            $newline = $newline && ! $stopped;
         }
 
         return ['stdout' => $stdout.($newline ? "\n" : ''), 'class' => 'read-transform'];
@@ -49,7 +53,7 @@ trait ExecutesVfsOutputTransforms
     {
         $format = array_shift($words);
         if ($format === null) {
-            throw \App\Domain\Vfs\Core\VfsError::invalid('printf requires a format string.', ['hint' => 'printf "%s\n" value']);
+            throw VfsError::invalid('printf requires a format string.', ['hint' => 'printf "%s\n" value']);
         }
 
         return ['stdout' => VfsPrintf::shell($format, $words), 'class' => 'read-transform'];

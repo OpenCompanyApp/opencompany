@@ -19,11 +19,22 @@ namespace App\Domain\Vfs\Core;
  * Rejected on purpose with a specific error: branching (b, t, T, :label),
  * file I/O commands (r, R, w, W, s///w) and the e command — they either loop
  * or touch storage outside the governed paths.
+ *
+ * Resource invariant: MAX_STEPS bounds time, not memory. A few steps can
+ * double the pattern space each time (`s/a/aa/g` repeated, `h;G`), so the
+ * pattern space, the hold space and the output are each bounded by the
+ * caller's byte limit (the VFS content ceiling) and checked while they grow:
+ * a substitution checks its running result inside the replace callback, and
+ * every append is checked before it is made. Exceeding the limit is an
+ * invalid_request VfsError, never a PHP memory fatal.
  */
 final class VfsSedScript
 {
     /** Hard bound on executed commands per run, a guard against pathological input. */
     private const MAX_STEPS = 2_000_000;
+
+    /** Byte limit of the run in progress (pattern space, hold space, output). */
+    private int $maxBytes = PHP_INT_MAX;
 
     /**
      * @param  list<array<string, mixed>>  $commands
@@ -53,10 +64,17 @@ final class VfsSedScript
     /**
      * Run the program over one input stream.
      *
+     * $maxBytes bounds the pattern space, the hold space and the output
+     * (each, independently); the executor passes the VFS content ceiling so
+     * any file the VFS can store can still be edited.
+     *
      * @return string the output stream
+     *
+     * @throws VfsError invalid_request when the step budget or $maxBytes is exceeded.
      */
-    public function run(string $input, bool $quiet): string
+    public function run(string $input, bool $quiet, int $maxBytes): string
     {
+        $this->maxBytes = max(1, $maxBytes);
         $lines = $input === '' ? [] : explode("\n", $input);
         $trailingNewline = $input === '' || str_ends_with($input, "\n");
         if ($trailingNewline && $lines !== []) {
@@ -105,6 +123,13 @@ final class VfsSedScript
 
                         continue;
                     }
+
+                    // Invariant: growth is checked every step, before the next
+                    // command can double it again (s///, G, H, N, p, a, i).
+                    $this->assertWithin($pattern, 'pattern space');
+                    $this->assertWithin($hold, 'hold space');
+                    $this->assertWithin($out, 'output');
+                    $this->assertWithin($append, 'output');
 
                     switch ($name) {
                         case '{':
@@ -188,12 +213,14 @@ final class VfsSedScript
                             $hold = $pattern;
                             break;
                         case 'H':
+                            $this->assertFits(strlen($hold) + 1 + strlen($pattern), 'hold space');
                             $hold .= "\n".$pattern;
                             break;
                         case 'g':
                             $pattern = $hold;
                             break;
                         case 'G':
+                            $this->assertFits(strlen($pattern) + 1 + strlen($hold), 'pattern space');
                             $pattern .= "\n".$hold;
                             break;
                         case 'x':
@@ -205,10 +232,13 @@ final class VfsSedScript
             } while ($restart);
 
             if (! $deleted && ! $quiet) {
+                $this->assertFits(strlen($out) + strlen($pattern) + 1, 'output');
                 $out .= $pattern."\n";
             }
+            $this->assertFits(strlen($out) + strlen($append), 'output');
             $out .= $append;
         }
+        $this->assertWithin($out, 'output');
 
         if (! $trailingNewline && str_ends_with($out, "\n") && $index >= $count) {
             $out = substr($out, 0, -1);
@@ -304,14 +334,20 @@ final class VfsSedScript
         $global = $command['global'];
         $seen = 0;
         $did = false;
-        $result = @preg_replace_callback($command['re'], function (array $match) use (&$seen, &$did, $occurrence, $global, $command): string {
+        // Running size of the substituted pattern: checked per match so a
+        // global substitution cannot build a result past the byte limit.
+        $size = strlen($pattern);
+        $result = @preg_replace_callback($command['re'], function (array $match) use (&$seen, &$did, &$size, $occurrence, $global, $command): string {
             $seen++;
             if ($seen < $occurrence || (! $global && $seen > $occurrence)) {
                 return $match[0];
             }
             $did = true;
+            $replacement = self::expandReplacement($command['replacement'], $match, $this->maxBytes - $size + strlen($match[0]), $this->maxBytes);
+            $size += strlen($replacement) - strlen($match[0]);
+            $this->assertFits($size, 'pattern space');
 
-            return self::expandReplacement($command['replacement'], $match);
+            return $replacement;
         }, $pattern);
         if ($result === null) {
             throw VfsError::invalid('sed substitution failed to run (regex too complex or invalid).');
@@ -321,13 +357,35 @@ final class VfsSedScript
     }
 
     /**
+     * Fail when $bytes exceeds the run's byte limit for $what.
+     *
+     * @throws VfsError
+     */
+    private function assertFits(int $bytes, string $what): void
+    {
+        if ($bytes > $this->maxBytes) {
+            throw VfsError::invalid("sed {$what} would exceed {$this->maxBytes} bytes.", [
+                'max_bytes' => $this->maxBytes,
+                'hint' => 'The script grows text without bound (e.g. a repeated s/a/aa/g or G); simplify it or narrow the input.',
+            ]);
+        }
+    }
+
+    private function assertWithin(string $buffer, string $what): void
+    {
+        $this->assertFits(strlen($buffer), $what);
+    }
+
+    /**
      * Expand a parsed replacement: list of literal strings, group references
-     * (int), and case-conversion markers (\U \L \u \l \E).
+     * (int), and case-conversion markers (\U \L \u \l \E). Fails as soon
+     * as the expansion passes $remaining (what is left of the run's $limit
+     * for this match), before appending further parts.
      *
      * @param  list<string|int|array{case: string}>  $parts
      * @param  array<int|string, string>  $match
      */
-    private static function expandReplacement(array $parts, array $match): string
+    private static function expandReplacement(array $parts, array $match, int $remaining, int $limit): string
     {
         $out = '';
         $mode = null;
@@ -353,6 +411,9 @@ final class VfsSedScript
                 $first = mb_substr($text, 0, 1);
                 $text = ($next === 'u' ? mb_strtoupper($first) : mb_strtolower($first)).mb_substr($text, 1);
                 $next = null;
+            }
+            if (strlen($out) + strlen($text) > $remaining) {
+                throw VfsError::invalid("sed pattern space would exceed {$limit} bytes.", ['max_bytes' => $limit, 'hint' => 'The substitution grows text without bound; simplify it or narrow the input.']);
             }
             $out .= $text;
         }

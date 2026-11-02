@@ -2,6 +2,7 @@
 
 namespace App\Domain\Vfs\Core\Concerns;
 
+use App\Domain\Vfs\Core\VfsArgs;
 use App\Domain\Vfs\Core\VfsAwkProgram;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
@@ -37,7 +38,7 @@ trait ExecutesVfsFieldTransforms
             }
             $assignments[$m[1]] = VfsPrintf::escapes($m[2], false);
         }
-        $result = VfsAwkProgram::parse($program)->run($this->inputsFrom($agent, $args, $cwd, $stdin, 1), $separator ?? ' ', $assignments);
+        $result = VfsAwkProgram::parse($program)->run($this->inputsFrom($agent, $args, $cwd, $stdin, 1), $separator ?? ' ', $assignments, $this->contentCeiling());
 
         return ['stdout' => $result['output'], 'class' => 'read-transform', 'exit_code' => $result['exit_code']];
     }
@@ -84,7 +85,7 @@ trait ExecutesVfsFieldTransforms
                 str_starts_with($word, '-n') => $maxArgs = $value('-n', substr($word, 2)),
                 str_starts_with($word, '--delimiter=') => $delimiter = substr($word, 12),
                 str_starts_with($word, '-d') => $delimiter = $value('-d', substr($word, 2)),
-                default => throw \App\Domain\Vfs\Core\VfsArgs::unsupportedFlag($spec, $word),
+                default => throw VfsArgs::unsupportedFlag($spec, $word),
             };
         }
         $start = $i;

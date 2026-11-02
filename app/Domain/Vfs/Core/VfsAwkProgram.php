@@ -22,12 +22,25 @@ namespace App\Domain\Vfs\Core;
  * numeric therefore also compare numerically (a documented simplification).
  *
  * Bounded by MAX_STEPS evaluations so `while (1)` cannot hang a request.
+ *
+ * Resource invariant: steps bound time, not memory. A field index or NF
+ * assignment (`NF=100000000`, `$100000000="x"`) is checked against
+ * MAX_FIELDS, and every string the program builds (concatenation, sub/gsub,
+ * sprintf via VfsPrintf's own caps) against the run's byte limit, BEFORE
+ * the allocation happens, so `s = s s` in a loop or a huge field index
+ * fails with an invalid_request VfsError instead of a PHP memory fatal.
  */
 final class VfsAwkProgram
 {
     private const MAX_STEPS = 5_000_000;
 
     private const MAX_OUTPUT_BYTES = 50_000_000;
+
+    /** Largest field index or NF a program may set ($N = ..., NF = N). */
+    public const MAX_FIELDS = 100_000;
+
+    /** Byte limit of the run in progress for any string the program builds. */
+    private int $maxBytes = PHP_INT_MAX;
 
     /** @var array<string, mixed> */
     private array $vars = [];
@@ -68,10 +81,14 @@ final class VfsAwkProgram
      *
      * @param  list<array{name: string, content: string}>  $inputs  Input streams in order ('-' for stdin).
      * @param  array<string, string>  $assignments  -v assignments (values already escape-processed).
+     * @param  int  $maxBytes  Largest string the program may build (the executor passes the VFS content ceiling).
      * @return array{output: string, exit_code: int}
+     *
+     * @throws VfsError invalid_request when a step, field, string or output cap is exceeded.
      */
-    public function run(array $inputs, string $fieldSeparator = ' ', array $assignments = []): array
+    public function run(array $inputs, string $fieldSeparator = ' ', array $assignments = [], int $maxBytes = PHP_INT_MAX): array
     {
+        $this->maxBytes = max(1, $maxBytes);
         $this->vars = [
             'FS' => $fieldSeparator, 'OFS' => ' ', 'ORS' => "\n", 'RS' => "\n", 'SUBSEP' => "\034",
             'NR' => 0, 'FNR' => 0, 'RSTART' => 0, 'RLENGTH' => -1, 'FILENAME' => '',
@@ -362,7 +379,11 @@ final class VfsAwkProgram
             case 'cmp':
                 return $this->compare($this->eval($node['l']), $this->eval($node['r']), $node['op']) ? 1 : 0;
             case 'concat':
-                return $this->str($this->eval($node['l'])).$this->str($this->eval($node['r']));
+                $left = $this->str($this->eval($node['l']));
+                $right = $this->str($this->eval($node['r']));
+                $this->assertBytes(strlen($left) + strlen($right), 'string concatenation');
+
+                return $left.$right;
             case 'bin':
                 return $this->arith($node['op'], $this->num($this->eval($node['l'])), $this->num($this->eval($node['r'])));
             case 'incr':
@@ -548,17 +569,22 @@ final class VfsAwkProgram
         $target = $args[2] ?? ['k' => 'field', 'e' => ['k' => 'num', 'v' => 0]];
         $subject = $this->str($this->eval($target));
         $count = 0;
-        $result = @preg_replace_callback($this->compileRegex($pattern), function (array $m) use ($replacement): string {
+        // Running result size, checked per match before it is appended.
+        $size = strlen($subject);
+        $result = @preg_replace_callback($this->compileRegex($pattern), function (array $m) use ($replacement, &$size): string {
+            $size -= strlen($m[0]);
             $out = '';
             $length = strlen($replacement);
             for ($i = 0; $i < $length; $i++) {
                 $c = $replacement[$i];
                 if ($c === '\\' && $i + 1 < $length && in_array($replacement[$i + 1], ['&', '\\'], true)) {
-                    $out .= $replacement[++$i];
-
-                    continue;
+                    $piece = $replacement[++$i];
+                } else {
+                    $piece = $c === '&' ? $m[0] : $c;
                 }
-                $out .= $c === '&' ? $m[0] : $c;
+                $size += strlen($piece);
+                $this->assertBytes($size, 'sub/gsub result');
+                $out .= $piece;
             }
 
             return $out;
@@ -615,6 +641,8 @@ final class VfsAwkProgram
         if ($index < 0) {
             throw VfsError::invalid("awk: attempt to assign field {$index}.");
         }
+        // Invariant: checked before the field list is padded up to $index.
+        $this->assertFieldCount($index);
         if ($index === 0) {
             $this->setRecord($value);
 
@@ -631,6 +659,7 @@ final class VfsAwkProgram
 
     private function setNf(int $nf): void
     {
+        $this->assertFieldCount($nf);
         $fields = array_slice($this->fields(), 0, max(0, $nf));
         while (count($fields) < $nf) {
             $fields[] = '';
@@ -784,6 +813,26 @@ final class VfsAwkProgram
         }
 
         throw VfsError::invalid("awk: invalid regular expression /{$pattern}/.");
+    }
+
+    /**
+     * @throws VfsError when a program sets more than MAX_FIELDS fields.
+     */
+    private function assertFieldCount(int $count): void
+    {
+        if ($count > self::MAX_FIELDS) {
+            throw VfsError::invalid("awk: field {$count} exceeds the VFS limit of ".self::MAX_FIELDS.' fields.', ['hint' => 'Assign a smaller NF or field index.']);
+        }
+    }
+
+    /**
+     * @throws VfsError when a string the program builds would exceed the run's byte limit.
+     */
+    private function assertBytes(int $bytes, string $what): void
+    {
+        if ($bytes > $this->maxBytes) {
+            throw VfsError::invalid("awk {$what} would exceed {$this->maxBytes} bytes.", ['max_bytes' => $this->maxBytes, 'hint' => 'A loop is growing a string without bound; narrow the program.']);
+        }
     }
 
     private function emit(string $text): void
