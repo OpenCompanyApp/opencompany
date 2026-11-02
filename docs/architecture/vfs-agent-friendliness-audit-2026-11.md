@@ -10,8 +10,20 @@ few lines. Each finding marked **(verified)** was rechecked against the code or 
 GLM pilot ran against a simulator that copies the real tool schemas and envelopes, not against the
 live app.
 Authority: [Product Direction](../PRODUCT_DIRECTION.md) pillar 2 (owner direction 2026-11-02:
-"Computer access is a per-agent choice", "Runtime split"). [Current State](../CURRENT_STATE.md)
-remains the authority for what is implemented.
+"Computer access is a per-agent choice"), pillar 3 ("The VFS is the governed path to company
+data"), pillar 9 and the "Nuclear decisions", plus
+[Connections, Events and Routines](../planning/connections-events-routines.md) (CER).
+[Current State](../CURRENT_STATE.md) remains the authority for what is implemented.
+Direction update: the future-design sections (§5.6, §5.7), the recommendations (§10) and the issues
+(§11) were revised on 2026-11-02 for the locked direction:
+
+- external storage mounts;
+- the `/connections` and `/skills` mounts;
+- the workspace event log;
+- deletion of the package system;
+- no compatibility.
+
+Conflicts and open points with those documents are listed in §12.
 
 ## 0. Frame
 
@@ -589,12 +601,134 @@ computer, and it maps into the computer at `~/oc/me` via pull.
 | `/me/scratch/` | run-scoped working files, auto-expiring | self | Manus |
 | `/me/results/{run}/{call}.txt` | offloaded large tool outputs; previews reference these paths | system (written), self (read) | Manus restorable compression |
 | `/me/pending/` | read-only view of this agent's pending approvals with diffs | system | — |
-| `/me/skills/` | approved SKILL.md skills, read-only | admins, via scan and approval | Claude Skills, dots |
+
+Skills are **not** under `/me`. They get the workspace-level `/skills` mount from CER (§5.6). The
+agent sees only the skills it is granted there.
 
 The `/me` area is subject to the same audit and to manager visibility rules. Size quotas prevent it
 from becoming an exfiltration staging area. Because it is exportable by default to the agent's own
 computer, it must never hold copies of non-exportable data: the bridge rejects pushes into `/me` of
 content pulled from non-exportable mounts.
+
+### 5.6 Connection, external-storage and skills mounts (pillar 9, CER)
+
+The locked direction adds three mount families. All of them must follow the §5.1 invariants.
+
+**Prerequisite: a mount registry.** Today the root list is hardcoded
+(`ResolvesVfsPaths.php:52`), and dispatch is a `match` per root in `OpenCompanyVfs`. Replace it with
+a `VfsMount` contract that every mount implements:
+
+- `list`, `stat`, `read`, `readContent`, `write`, `patch`, `delete`, `move`
+- `capabilities`, `history`, `changes`
+- `searchCandidates`
+
+Mounts register by path prefix, including nested prefixes such as `/files/drive`. Built-in,
+connection and skills mounts then plug in without touching the dispatcher. The policy, audit and
+event pipeline runs **around** the mount, never inside it, so a new mount cannot forget governance.
+
+**External storage, `/files/{connection}/…`** (Drive first; CER "Storage mount semantics"):
+
+- **Mount point and identity.**
+  - Mount at `/files/drive/<connection-name>/…` when there can be more than one Drive connection
+    (personal and shared), not a single `/files/drive/…`. See §12.
+  - The canonical by-id path is `/files/by-id/<oc-file-id>`, with the external id and revision in
+    `stat` metadata.
+- **Reads** come from the index. `readContent` fetches lazily and caches.
+  - Native Google formats appear as `.md`/`.csv`/`.txt` exports with
+    `capabilities: [read]` and `read_only_reason: "native format; Phase 1 supports uploads and new
+    files only"`.
+  - Indexed text is labelled untrusted, both in search snippets and in `vfs_read` metadata.
+- **Access.**
+  - The mount filters entries by the external ACL of the connection identity, **and** OpenCompany
+    grants decide the agent's read and write scope inside the mount.
+  - Personal connections are invisible to other principals' agents unless their owner granted them.
+  - Denials must say which side denied, e.g. "Drive ACL: no write access for connection X" vs
+    "OpenCompany: no write grant on /files/drive/sales".
+- **Writes** are two-phase:
+  1. The normal VFS policy, approval and audit run against the *external* base revision captured at
+     read time.
+  2. The connector pushes with the provider's revision precondition.
+
+  Outcomes map to the VFS vocabulary:
+  - a push precondition failure → `conflict`, with `external_revision`;
+  - a provider error → `unavailable` (a new code, retryable, with `retry_after`);
+  - a push still in flight → `{ok:true,status:"pending_push"}`, finished asynchronously, with the
+    final outcome posted back like approval results.
+
+  Uploads and new files are the Phase 1 write surface.
+- **Computer agents** see these mounts only through the VFS projection (pull/push or read-only
+  mount), never through a provider login on the computer (CER).
+
+**MCP resources, `/connections/<name>/`** (read-only):
+
+- **Layout.**
+  - `/connections/<name>/README.md` describes the connection (server, pinned tool hashes, the
+    agent's grant mode), with no secrets.
+  - `/connections/<name>/resources/<uri-encoded or server-provided path>` holds the resources.
+  - Resource templates are listed but not expanded.
+- **Reads** go through the rebuilt MCP client with per-agent connection grants. Results are
+  untrusted, size-capped and cached per run.
+- **Change events.** MCP `resources/subscribe` notifications become events
+  (`mcp.resource.updated`, subject = VFS path).
+- **No writes.** Mutations go through the connection's *actions* (tools), which have their own
+  approval policy.
+
+**Skills, `/skills`** (progressive disclosure):
+
+- **Index level.** `ls /skills` and `cat /skills/index.md` show name, description, version and
+  digest only. This is the cheap tier that also feeds the prompt.
+- **Body level.** `cat /skills/<name>/SKILL.md` gives the full instructions.
+- **Resources level.** `/skills/<name>/resources/…` is read on demand.
+- **Scripts** (`/skills/<name>/scripts/…`) are readable but executable only in mruby or on the
+  agent's computer. The VFS never runs them.
+- **Grants.**
+  - Only approved, digest-bound skills that the agent is granted are visible.
+  - Pending imports appear only to admins.
+  - Writes are admin-only and go through import and approval, not `vfs_write`.
+
+**`/tools` after the package deletion.** The current `/tools` mount reads `ToolRegistry` and the
+package-generated catalog index (`BuildsVfsToolCatalogIndex`). Rebuild it as the agent's
+*effective tool surface* from three sources behind one `ToolCatalogSource` interface:
+
+- built-in tools;
+- connection actions, i.e. pinned MCP tool definitions with their hashes;
+- API-manifest operations exposed through the search-and-execute meta-tools.
+
+The layout is `/tools/<source>/<name>.json`, plus `/tools/index.md` and a `/tools/vfs/…` reference.
+Remove `/tools/integrations/index.json` with the package system.
+
+**Other renames once the work apps land:**
+
+- `/automations` → `/routines/<routine>/` with `routine.json`, `versions/` and `runs/`. Script and
+  prompt bodies are visible only to owners and admins.
+- `/lists` (plus whichever of `/tasks` becomes Issues) → `/issues/…` with front-matter markdown.
+- Workload and dashboard data get no mount.
+
+Under the no-compatibility decision, these are plain renames with no aliases.
+
+### 5.7 VFS events in the workspace event log
+
+- **Every committed VFS mutation emits an event** in the CER envelope:
+  - types: `vfs.file.written`, `vfs.file.created`, `vfs.file.deleted`, `vfs.file.moved`,
+    `vfs.record.updated` (rows and issues), `vfs.approval.requested`;
+  - source `vfs`;
+  - subject: canonical VFS path plus backend ref;
+  - actor: agent, human or connection;
+  - idempotency key: the operation's key;
+  - payload: before/after version, surface, approval id; no content;
+  - `causality_id`/`depth`: inherited from the run that wrote it.
+- **Causality must propagate.** A routine triggered by `vfs.file.written` that writes the same file
+  must carry depth+1, so the CER loop guard can stop ping-pong between agents and routines. That
+  means the VFS operation context must always carry the current run's causality. Today the tool
+  layer doesn't pass run context into the VFS at all.
+- **Reads are not individual events.** They would flood the log. Per-run aggregates go to the run
+  record, or a `vfs.read.summary` event at run end. **Exports** (pulls into a computer, MCP resource
+  reads by external clients) are individual events, because they move data out of the governed
+  boundary.
+- **The log replaces `vfs_operation_events`.** Until the log exists, a `VfsEventSink` contract with
+  a table-backed implementation keeps the envelope shape, so the switch is a binding change.
+- **The change feed** (§5.4) becomes an event-log query filtered by subject prefix and re-checked
+  against read permission, rather than a VFS-specific table.
 
 ---
 
@@ -677,6 +811,9 @@ The bridge from Code Mode must treat the VFS envelope as typed:
   across. Errors map to `isError` plus the JSON envelope. Long outputs return resource links to
   `/me/results/…` rather than inline blobs. Approvals return `pending_approval` and never block the
   MCP call.
+- **Placement in CER:** this is the VFS part of "OpenCompany itself as an MCP server", which CER
+  schedules for its Phase 5. The internal VFS HTTP API needed by the computer bridge comes much
+  earlier (Phase 2 of the product phases), and the MCP server is a thin adapter over it.
 
 ---
 
@@ -860,7 +997,7 @@ recommendations: in-stdout truncation lines and exec cursors (P4), path aliases 
     gate.
 17. **Change feed and advisory leases** (§5.4).
 18. **Object history** for files and rows, `.history/` views, `log`, `diff @vN` and restore (§7).
-19. **`/me` agent areas:** notes, single-writer `todo.md`, scratch, results, pending, skills (§5.5).
+19. **`/me` agent areas:** notes, single-writer `todo.md`, scratch, results, pending (§5.5).
 20. **Read-only mount** (FUSE or materialized) for computer agents.
 21. **MCP server** exposing the 5 tools; VFS endpoints in the public OpenAPI (pillar 7).
 22. **Shell depth:** real `sed` (addresses, `-n`, regex), `awk` (patterns, NR/NF, END sums), LCS
@@ -869,6 +1006,32 @@ recommendations: in-stdout truncation lines and exec cursors (P4), path aliases 
 23. **Performance:** lazy `find` size, a bounded `du`, decompression caps, cheaper file version
     tokens (store a content hash on write), indexed slug resolution.
 24. **Issues mount** once the Issues model is decided (Phase 4).
+
+### Added for the locked direction (pillar 9, CER, nuclear decisions)
+
+25. **P1: `VfsMount` registry** (§5.6). It is a prerequisite for every new mount, and it moves the
+    policy, audit and event pipeline outside the mounts so they cannot skip it.
+26. **P1: events and causality** (§5.7):
+    - a `VfsEventSink` with the CER envelope now, rebound to the workspace event log when it lands;
+    - run causality and depth carried in every VFS operation context;
+    - exports always logged, reads summarized.
+27. **P1: break freely.** No compatibility is needed, so these changes come with no aliases or
+    shims:
+    - remove the duplicate helpers (`vfs_search`, `vfs_count`);
+    - remove the legacy flat `mutation_*` metadata fields;
+    - one name-keyed row shape;
+    - rename `/automations` and `/lists` when Routines and Issues land;
+    - fold any new VFS tables into the squashed migration baseline.
+28. **P2: rebuild the `/tools` source** from built-in tools, connection actions and API manifests
+    (§5.6). Delete the package-catalog index code with the package system.
+29. **P2: external storage mounts** under `/files/drive/<connection>/…`:
+    - index plus lazy fetch;
+    - two-phase writes with an external revision precondition;
+    - `conflict` and `unavailable` mapping, plus `pending_push`;
+    - effective access = external ACL ∩ OpenCompany grants, with denials saying which side denied;
+    - untrusted labelling.
+30. **P2: `/connections/<name>/` read-only MCP-resources mount**, and **`/skills` with
+    three-tier progressive disclosure** (§5.6).
 
 ---
 
@@ -1033,6 +1196,78 @@ These have **not been filed**; another session is restructuring Linear. Titles a
       - resource links for offloaded results;
       - `pending_approval` never blocks;
       - VFS routes in the versioned OpenAPI.
+
+21. **VFS: replace root dispatch with a `VfsMount` registry (P1)**
+    - Description: the hardcoded root list and per-root `match` dispatch block new mounts. Governance
+      must wrap mounts, not live inside them.
+    - AC:
+      - every existing mount implements `VfsMount`;
+      - mounts register by prefix, including nested ones like `/files/drive`;
+      - policy, audit and events run outside the mounts;
+      - a test mount registered in tests is governed with no extra code;
+      - no behaviour change for existing paths.
+22. **VFS: emit CER-envelope events with run causality (P1)**
+    - AC:
+      - every committed mutation emits `vfs.*` events with subject, actor, idempotency key,
+        `causality_id` and depth from the current run;
+      - exports are always events, reads only per-run summaries;
+      - `VfsEventSink` is bound to a table now and switches to the workspace event log with a
+        binding change;
+      - a routine-style test shows depth increasing on re-trigger.
+23. **VFS: rebuild `/tools` on built-in tools, connection actions and API manifests (P2)**
+    - AC:
+      - `/tools` lists the agent's effective tool surface behind a `ToolCatalogSource` interface;
+      - MCP tools show pinned definition hashes;
+      - manifests appear through their meta-tools;
+      - package-catalog index code is deleted with the package system.
+24. **VFS: Drive storage mount under `/files/drive/<connection>/` (P2, with the Drive connector)**
+    - AC:
+      - index plus lazy fetch;
+      - native formats as read-only exports;
+      - effective access = external ACL ∩ OpenCompany grants, and denial messages name the side;
+      - two-phase writes with external revision preconditions mapped to `conflict`, `unavailable`
+        and `pending_push`;
+      - untrusted labelling;
+      - computer agents see it only through the VFS;
+      - evals MIX-01..04 rerun on a Drive-backed doc.
+25. **VFS: `/connections/<name>/` MCP-resources mount and `/skills` progressive-disclosure mount (P2)**
+    - AC:
+      - `/connections` is read-only, grant-checked, untrusted-labelled and size-capped, and
+        subscriptions become events;
+      - `/skills` has index, body and resources tiers;
+      - only approved, digest-bound, granted skills are visible;
+      - scripts are never executed by the VFS;
+      - imports and writes are admin-only via approval.
+
+---
+
+## 12. Conflicts and open points with the direction and CER documents
+
+I did not edit those documents. Points for the owner:
+
+1. **`/files/drive/...` with more than one Drive connection.** CER's example implies one Drive mount.
+   Personal and shared connections can both be Drive, so this audit recommends
+   `/files/drive/<connection-name>/…`, or a connection-named mount point. Otherwise two connections
+   collide on one path.
+2. **`/connections/<name>/` holds only MCP resources in CER.** Agents will also expect to find
+   connection metadata and grants there. This audit adds a `README.md` and a `resources/` subfolder.
+   CER should either confirm this layout or reserve `/connections` for resources only.
+3. **"Writes go through the VFS write path with revision checks" leaves the external push timing
+   open.** It could be synchronous within the tool call, or asynchronous after approval. This audit
+   proposes `pending_push` plus posting the outcome back, and a new `unavailable` error code. CER
+   should pick one.
+4. **The event log as "the audit trail".** Logging every VFS read as an event would flood a log that
+   also drives triggers and the activity feed. This audit logs exports as events and reads only as
+   per-run summaries. The governance model should confirm that read auditing at that level is
+   enough.
+5. **`/skills` vs per-agent skills.** Pillar 1 says every agent has skills; CER puts them in a
+   workspace `/skills` mount. This audit shows only granted skills under `/skills` and adds no
+   `/me/skills`. If per-agent private skills are intended, CER needs a location for them.
+6. **Old package-system issues.** The Phase 1 VFS work keeps `/tools/integrations/index.json`
+   working until the package deletion lands. That deletion should remove it rather than port it.
+7. **Not a conflict, only ordering.** The squashed migration baseline should absorb the new VFS
+   tables from the hardening branch: file and row versions, idempotency keys, audit and event-sink
+   fields.
 
 ---
 
