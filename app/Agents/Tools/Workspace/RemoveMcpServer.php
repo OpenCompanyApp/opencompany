@@ -2,6 +2,8 @@
 
 namespace App\Agents\Tools\Workspace;
 
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Services\Mcp\McpServerRegistrar;
 use App\Models\AgentPermission;
 use App\Models\McpServer;
 use App\Models\User;
@@ -31,18 +33,22 @@ class RemoveMcpServer implements Tool
             $name = $server->name;
             $appName = 'mcp_' . $server->slug;
 
-            // Clean up permissions
+            // Invariant: other workspaces may use the same slug; only this
+            // workspace's agents lose grants for the removed server.
             AgentPermission::where('scope_type', 'integration')
                 ->where('scope_key', $appName)
+                ->whereHas('agent', fn ($query) => $query->where('workspace_id', $server->workspace_id))
                 ->delete();
 
             $toolSlugs = $server->getToolSlugs();
             if (!empty($toolSlugs)) {
                 AgentPermission::where('scope_type', 'tool')
                     ->whereIn('scope_key', $toolSlugs)
+                    ->whereHas('agent', fn ($query) => $query->where('workspace_id', $server->workspace_id))
                     ->delete();
             }
 
+            McpServerRegistrar::forget(app(ToolProviderRegistry::class), $server);
             $server->delete();
 
             return "MCP server removed: {$name}. Associated permissions cleaned up.";

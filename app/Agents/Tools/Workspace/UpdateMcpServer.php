@@ -2,6 +2,8 @@
 
 namespace App\Agents\Tools\Workspace;
 
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Services\Mcp\McpServerRegistrar;
 use App\Models\McpServer;
 use App\Models\User;
 use App\Services\Mcp\McpUrlPolicy;
@@ -67,6 +69,10 @@ class UpdateMcpServer implements Tool
             }
 
             $server->update($updates);
+            $fresh = $server->fresh();
+            $fresh->enabled && $fresh->discovered_tools !== null
+                ? McpServerRegistrar::register(app(ToolProviderRegistry::class), $fresh)
+                : McpServerRegistrar::forget(app(ToolProviderRegistry::class), $fresh);
 
             return "MCP server updated: {$server->name} (ID: {$server->id}). Updated fields: " . implode(', ', array_keys($updates)) . '.';
         } catch (\Throwable $e) {

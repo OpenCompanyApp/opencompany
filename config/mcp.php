@@ -35,4 +35,9 @@ return [
         'trim',
         explode(',', (string) env('MCP_ALLOWED_PRIVATE_HOSTS', '')),
     ))),
+
+    // Hard cap (bytes) on one MCP JSON-RPC response body. Larger responses
+    // are rejected before parsing so a hostile or broken server cannot
+    // exhaust worker memory or flood the model context.
+    'max_response_bytes' => (int) env('MCP_MAX_RESPONSE_BYTES', 5 * 1024 * 1024),
 ];

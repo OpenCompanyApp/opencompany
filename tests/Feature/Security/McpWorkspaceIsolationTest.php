@@ -55,4 +55,46 @@ class McpWorkspaceIsolationTest extends TestCase
         $tool = $providers->get('mcp_github')->createTool(\App\Services\Mcp\McpProxyTool::class, ['tool_slug' => 'mcp_github__delete_repo']);
         $this->assertSame('https://b.example.com/mcp', (new \ReflectionProperty($tool, 'server'))->getValue($tool)->url);
     }
+
+    // Live registration of workspace B's same-slug server must not evict
+    // workspace A's; a server disabled after registration is never called.
+    public function test_live_registration_merges_and_disabled_servers_are_never_called(): void
+    {
+        $other = Workspace::create(['name' => 'Other', 'slug' => 'other-mcp-live']);
+        $providers = app(ToolProviderRegistry::class);
+        $a = $this->server($this->workspace, 'list_issues', 'https://a.example.com/mcp');
+        McpServerRegistrar::registerAll($providers);
+
+        McpServerRegistrar::register($providers, $this->server($other, 'delete_repo', 'https://b.example.com/mcp'));
+
+        app()->instance('currentWorkspace', $this->workspace);
+        $this->assertNotNull(app(ToolRegistry::class)->getToolDefinitionBySlug('mcp_github__list_issues'));
+
+        $a->update(['enabled' => false]); // e.g. disabled from another process
+        $this->expectException(\RuntimeException::class);
+        $providers->get('mcp_github')->createTool(\App\Services\Mcp\McpProxyTool::class, ['tool_slug' => 'mcp_github__list_issues']);
+    }
+
+    // Removing workspace A's server must not delete workspace B's grants for
+    // B's own same-slug server.
+    public function test_removing_a_server_keeps_other_workspaces_grants(): void
+    {
+        $other = Workspace::create(['name' => 'Other', 'slug' => 'other-mcp-grants']);
+        $mine = $this->server($this->workspace, 'list_issues', 'https://a.example.com/mcp');
+        $this->server($other, 'list_issues', 'https://b.example.com/mcp');
+        $theirAgent = \App\Models\User::factory()->agent()->create(['workspace_id' => $other->id]);
+        $myAgent = \App\Models\User::factory()->agent()->create(['workspace_id' => $this->workspace->id]);
+        foreach ([$theirAgent, $myAgent] as $agent) {
+            \App\Models\AgentPermission::create(['id' => (string) Str::uuid(), 'agent_id' => $agent->id, 'scope_type' => 'integration',
+                'scope_key' => 'mcp_github', 'permission' => 'allow', 'requires_approval' => false]);
+        }
+
+        app()->instance('currentWorkspace', $this->workspace);
+        $result = app(\App\Agents\Tools\Workspace\RemoveMcpServer::class, ['agent' => $myAgent])
+            ->handle(new \Laravel\Ai\Tools\Request(['serverId' => $mine->id]));
+
+        $this->assertStringContainsString('removed', $result);
+        $this->assertSame(1, \App\Models\AgentPermission::where('agent_id', $theirAgent->id)->count());
+        $this->assertSame(0, \App\Models\AgentPermission::where('agent_id', $myAgent->id)->count());
+    }
 }

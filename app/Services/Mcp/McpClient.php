@@ -139,6 +139,13 @@ class McpClient
             );
         }
 
+        // Invariant: bound the response before any parsing (config/mcp.php).
+        $maxBytes = (int) config('mcp.max_response_bytes', 5 * 1024 * 1024);
+        $declared = (int) $response->header('Content-Length');
+        if (($declared > 0 && $declared > $maxBytes) || strlen($response->body()) > $maxBytes) {
+            throw new \RuntimeException("MCP server response exceeds the {$maxBytes}-byte limit.");
+        }
+
         // Track session ID from response
         if ($sessionId = $response->header('Mcp-Session-Id')) {
             $this->sessionId = $sessionId;

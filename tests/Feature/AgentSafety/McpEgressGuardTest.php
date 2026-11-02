@@ -157,6 +157,18 @@ class McpEgressGuardTest extends TestCase
         Http::assertNotSent(fn ($request) => str_contains($request->url(), '169.254.169.254'));
     }
 
+    // Oversized MCP responses are rejected before parsing (config/mcp.php).
+    public function test_client_rejects_oversized_responses(): void
+    {
+        config(['mcp.max_response_bytes' => 1024]);
+        Http::fake(['https://93.184.216.34/*' => Http::response(['jsonrpc' => '2.0', 'id' => 1, 'result' => ['blob' => str_repeat('x', 4096)]])]);
+        $server = new McpServer(['url' => 'https://93.184.216.34/mcp', 'auth_type' => 'none', 'timeout' => 5]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('exceeds the 1024-byte limit');
+        McpClient::fromServer($server)->initialize();
+    }
+
     public function test_agent_add_mcp_server_tool_refuses_private_url_without_saving(): void
     {
         Http::fake();

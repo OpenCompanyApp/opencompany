@@ -51,6 +51,25 @@ class McpToolProvider implements ToolProvider
     }
 
     /**
+     * Remove a server (by id) from its workspace group.
+     */
+    public function removeServer(McpServer $server): void
+    {
+        $workspaceId = (string) $server->workspace_id;
+        if (! isset($this->workspaces[$workspaceId])) {
+            return;
+        }
+        if (($this->workspaces[$workspaceId]['default'] ?? null)?->id === $server->id) {
+            $this->workspaces[$workspaceId]['default'] = null;
+        }
+        foreach ($this->workspaces[$workspaceId]['accounts'] as $alias => $candidate) {
+            if ($candidate->id === $server->id) {
+                unset($this->workspaces[$workspaceId]['accounts'][$alias]);
+            }
+        }
+    }
+
+    /**
      * Register an additional account server for this provider.
      */
     public function addAccountServer(string $account, McpServer $server): void
@@ -122,6 +141,11 @@ class McpToolProvider implements ToolProvider
             $slug = $this->toolSlug($mcpTool['name']);
             $tools[$slug] = [
                 'class' => McpProxyTool::class,
+                // Deliberately always 'write': MCP `annotations` (readOnlyHint)
+                // are claims by an external server and are not trusted. Typing a
+                // tool as read would also make Code Mode treat its failures as
+                // safely retryable. Every MCP call is approval-gated anyway by
+                // the external-mutation floor (AgentPermissionResolver).
                 'type' => 'write',
                 'name' => $mcpTool['name'],
                 'description' => Str::limit($mcpTool['description'] ?? '', 120),
@@ -141,7 +165,12 @@ class McpToolProvider implements ToolProvider
     public function createTool(string $class, array $context = []): Tool
     {
         $account = $context['account'] ?? null;
-        $server = $this->resolveServer($account);
+        // Invariant: re-read the server at call time. The in-process provider
+        // can be stale (removed/disabled by an admin in another process, or
+        // auth rotated); never call with a stale, deleted or disabled row.
+        $cached = $this->resolveServer($account);
+        $server = McpServer::query()->whereKey($cached->id)->where('workspace_id', $cached->workspace_id)->where('enabled', true)->first()
+            ?? throw new \RuntimeException("MCP server {$cached->slug} is disabled or no longer exists.");
 
         $toolSlug = $context['tool_slug'] ?? '';
         $mcpToolName = $this->mcpToolNameFromSlug($toolSlug);

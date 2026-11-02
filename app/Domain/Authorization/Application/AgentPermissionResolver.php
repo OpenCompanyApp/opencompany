@@ -463,9 +463,13 @@ class AgentPermissionResolver
 
     private function behaviorModeRequiresApproval(User $agent, string $toolType): bool
     {
+        // Invariant: `supervised` gates everything that is not a declared read.
+        // Tools with a missing or non-standard type (the registry defaults
+        // unknown metadata to 'action') are treated as mutations, never as
+        // reads — an untyped tool must not slip past supervision.
         return match ($agent->behavior_mode ?? 'autonomous') {
             'strict' => true,
-            'supervised' => $toolType === 'write',
+            'supervised' => $toolType !== 'read',
             default => false,
         };
     }

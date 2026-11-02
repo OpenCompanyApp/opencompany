@@ -2,6 +2,7 @@
 
 namespace App\Agents\Tools\Workspace;
 
+use App\Services\Mcp\McpServerRegistrar;
 use App\Models\McpServer;
 use App\Models\User;
 use App\Services\Mcp\McpClient;
@@ -42,7 +43,7 @@ class DiscoverMcpTools implements Tool
 
                 // Re-register provider
                 $registry = app(ToolProviderRegistry::class);
-                $registry->register(new McpToolProvider($server));
+                McpServerRegistrar::register($registry, $server);
 
                 $toolCount = count($tools);
                 $toolNames = collect($tools)->pluck('name')->implode(', ');

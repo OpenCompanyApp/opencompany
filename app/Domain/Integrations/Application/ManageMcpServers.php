@@ -2,6 +2,7 @@
 
 namespace App\Domain\Integrations\Application;
 
+use App\Services\Mcp\McpServerRegistrar;
 use App\Models\AgentPermission;
 use App\Models\McpServer;
 use App\Services\Mcp\McpClient;
@@ -58,7 +59,7 @@ class ManageMcpServers
 
         try {
             $this->discoverInitial($server);
-            app(ToolProviderRegistry::class)->register(new McpToolProvider($server->fresh()));
+            McpServerRegistrar::register(app(ToolProviderRegistry::class), $server->fresh());
         } catch (\Throwable $e) {
             return [
                 'server' => $this->format($server),
@@ -100,6 +101,7 @@ class ManageMcpServers
         }
 
         $server->update($updates);
+        $this->syncRegistration($server->fresh());
 
         return $this->format($server->fresh());
     }
@@ -125,7 +127,20 @@ class ManageMcpServers
                 ->delete();
         }
 
+        McpServerRegistrar::forget(app(ToolProviderRegistry::class), $server);
         $server->delete();
+    }
+
+    /**
+     * Keep this process's MCP provider in step with the row (other workers
+     * pick it up at boot; createTool re-reads the row at call time anyway).
+     */
+    private function syncRegistration(McpServer $server): void
+    {
+        $registry = app(ToolProviderRegistry::class);
+        $server->enabled && $server->discovered_tools !== null
+            ? McpServerRegistrar::register($registry, $server)
+            : McpServerRegistrar::forget($registry, $server);
     }
 
     /**

@@ -585,9 +585,15 @@ class ToolRegistry
                 }
 
                 $catalogTool = $isIntegration ? $this->catalogToolDefinition($slug) : null;
-                if ($catalogTool !== null) {
+                // The generated catalog misses constant-defined schemas (about
+                // 24k tools have `parameters: []`). On the agent-discovery path
+                // an empty catalog schema must not hide the live one: ScriptBridge
+                // skips argument validation for an empty parameter list. The
+                // unfiltered developer catalog keeps the cheap catalog data.
+                $catalogParameters = $catalogTool !== null ? $this->normalizeCatalogParameters($catalogTool['parameters'] ?? []) : [];
+                if ($catalogTool !== null && ($catalogParameters !== [] || ! $scriptCapabilitiesOnly)) {
                     $toolData['fullDescription'] = (string) ($catalogTool['description'] ?? $meta['description']);
-                    $toolData['parameters'] = $this->normalizeCatalogParameters($catalogTool['parameters'] ?? []);
+                    $toolData['parameters'] = $catalogParameters;
                     $toolData['returns'] = is_array($catalogTool['returns'] ?? null)
                         ? $catalogTool['returns']
                         : $toolData['returns'];

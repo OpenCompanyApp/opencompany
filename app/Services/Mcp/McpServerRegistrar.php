@@ -42,4 +42,31 @@ class McpServerRegistrar
             $registry->register($provider);
         }
     }
+
+    /**
+     * Register or refresh ONE server without disturbing other workspaces'
+     * servers that share its slug (a plain register() would replace them).
+     */
+    public static function register(ToolProviderRegistry $registry, McpServer $server): void
+    {
+        $existing = $registry->get('mcp_'.$server->slug);
+        if ($existing instanceof McpToolProvider) {
+            $existing->addServer($server);
+
+            return;
+        }
+
+        $registry->register(new McpToolProvider($server));
+    }
+
+    /**
+     * Stop exposing a removed or disabled server in this process.
+     */
+    public static function forget(ToolProviderRegistry $registry, McpServer $server): void
+    {
+        $existing = $registry->get('mcp_'.$server->slug);
+        if ($existing instanceof McpToolProvider) {
+            $existing->removeServer($server);
+        }
+    }
 }
