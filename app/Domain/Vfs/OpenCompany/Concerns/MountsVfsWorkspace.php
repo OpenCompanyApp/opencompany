@@ -20,8 +20,11 @@ use Illuminate\Database\Query\JoinClause;
  * - members.json: human members and agents. Human email addresses are
  *   personal data: they are only served to agents with an explicit `allow`
  *   row for the `list_members` tool (the members/contacts permission an admin
- *   sets in Capabilities); otherwise `email` is null and `email_redacted` is
- *   true. Agent principals keep their (non-personal) addresses.
+ *   sets in Capabilities) that does not require approval; otherwise `email`
+ *   is null and `email_redacted` is true; when list_members is allowed only
+ *   with approval, the top-level `email_redaction` points at that gated
+ *   tool. Agent
+ *   principals keep their (non-personal) addresses.
  * - changes.ndjson: the change feed (see pageWorkspaceChanges()).
  */
 trait MountsVfsWorkspace
@@ -95,14 +98,15 @@ trait MountsVfsWorkspace
     private function pageWorkspaceMembersExport(User $agent, VfsBudget $budget, array $state): array
     {
         $path = '/workspace/members.json';
-        $emptyContent = $this->workspaceMembersExportContent([]);
+        $showEmails = $this->agentMaySeeMemberEmails($agent);
+        $emailNote = $showEmails ? null : $this->memberEmailRedactionNote($agent);
+        $emptyContent = $this->workspaceMembersExportContent([], $emailNote);
         $usedBytes = strlen($emptyContent);
         $this->vfsRecordFitsByteBudget($path, $budget->maxBytes, 0, $usedBytes, 0);
 
         $memberCount = 0;
         $agentCount = 0;
         $workspaceId = (string) workspace()->id;
-        $showEmails = $this->agentMaySeeMemberEmails($agent);
         $query = User::query()
             ->leftJoin('workspace_members as vfs_memberships', function (JoinClause $join) use ($workspaceId): void {
                 $join->on('vfs_memberships.user_id', '=', 'users.id')
@@ -167,7 +171,7 @@ trait MountsVfsWorkspace
         );
 
         return [
-            'content' => $this->workspaceMembersExportContent($page['entries']),
+            'content' => $this->workspaceMembersExportContent($page['entries'], $emailNote),
             'returned' => count($page['entries']),
             'has_more' => $page['has_more'],
             'next_state' => $page['next_state'],
@@ -329,8 +333,9 @@ trait MountsVfsWorkspace
      * Render one independently valid workspace-roster JSON chunk.
      *
      * @param  list<VfsEntry>  $entries
+     * @param  string|null  $emailNote  why human emails are redacted (null when shown); part of every chunk so the byte budget of the empty chunk stays exact
      */
-    private function workspaceMembersExportContent(array $entries): string
+    private function workspaceMembersExportContent(array $entries, ?string $emailNote = null): string
     {
         $members = [];
         $agents = [];
@@ -346,6 +351,7 @@ trait MountsVfsWorkspace
         return json_encode([
             'members' => $members,
             'agents' => $agents,
+            ...($emailNote !== null ? ['email_redaction' => $emailNote] : []),
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
     }
 
@@ -367,8 +373,15 @@ trait MountsVfsWorkspace
     }
 
     /**
-     * Explicit members/contacts permission: an allow row for list_members.
-     * Behavior-mode defaults do not count; this is personal data.
+     * Explicit members/contacts permission: an allow row for list_members
+     * that does not require approval. Behavior-mode defaults do not count;
+     * this is personal data.
+     *
+     * Invariant: the VFS never serves more than the backing tool would
+     * without a human. An approval-gated list_members row used to expose
+     * every email on a plain `cat`; now the emails stay redacted and the
+     * redaction note points at the approval-gated tool. Reads never create
+     * approval requests themselves.
      */
     private function agentMaySeeMemberEmails(User $agent): bool
     {
@@ -376,7 +389,29 @@ trait MountsVfsWorkspace
             ->tools()
             ->allowed()
             ->where('scope_key', 'list_members')
+            ->where('requires_approval', false)
             ->exists();
+    }
+
+    /**
+     * Model-facing reason for redacted emails when list_members is allowed
+     * only with approval, so the agent knows the data exists behind the
+     * gated tool. Null otherwise: without any grant the plain
+     * `email_redacted: true` shape is unchanged (and its roster chunk size
+     * stays the documented minimum).
+     */
+    private function memberEmailRedactionNote(User $agent): ?string
+    {
+        $gated = AgentPermission::forAgent($agent->id)
+            ->tools()
+            ->allowed()
+            ->where('scope_key', 'list_members')
+            ->where('requires_approval', true)
+            ->exists();
+
+        return $gated
+            ? 'Human email addresses need human approval for this agent: call the list_members tool, which asks for approval, instead of reading this file.'
+            : null;
     }
 
     /** @return array<string, mixed> */

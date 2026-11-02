@@ -34,9 +34,31 @@ trait MountsVfsApprovals
     }
 
     /**
-     * Page only approvals requested by the acting agent. Requester workspace
-     * validation remains inside every continuation query rather than trusting
-     * the actor binding stored in the cursor.
+     * The acting agent's own approvals in the agent's (bound) workspace.
+     *
+     * Invariant: scope by the approval's persisted workspace_id, never by the
+     * requester's current workspace. An agent reassigned from W1 to W2 used
+     * to satisfy a whereHas(requester) check with its new workspace and could
+     * read W1's descriptions, parameters and previews. The facade already
+     * asserts that the bound workspace equals $agent->workspace_id
+     * (OpenCompanyVfs::assertBoundWorkspace), and replay refuses the same
+     * reassignment (ApprovalExecutionService). Rows without a workspace_id
+     * fail closed. Every approval read (listing, file, stat, /me/pending)
+     * must start from this query.
+     *
+     * @return Builder<ApprovalRequest>
+     */
+    private function agentApprovalsQuery(User $agent): Builder
+    {
+        return ApprovalRequest::query()
+            ->where('requester_id', $agent->id)
+            ->where('workspace_id', $agent->workspace_id);
+    }
+
+    /**
+     * Page only approvals requested by the acting agent. Workspace scoping
+     * (agentApprovalsQuery) runs inside every continuation query rather than
+     * trusting the actor binding stored in the cursor.
      *
      * @param  list<string>  $segments
      * @param  array<string, mixed>  $state
@@ -49,9 +71,7 @@ trait MountsVfsApprovals
         }
 
         return $this->paginateVfsTimestampQuery(
-            ApprovalRequest::query()
-                ->where('requester_id', $agent->id)
-                ->whereHas('requester', fn (Builder $query) => $query->where('workspace_id', $agent->workspace_id)),
+            $this->agentApprovalsQuery($agent),
             'created_at',
             'desc',
             $budget->maxEntries,
@@ -82,10 +102,8 @@ trait MountsVfsApprovals
         }
 
         $id = Str::before($segments[1], '.json');
-        $approval = ApprovalRequest::query()
+        $approval = $this->agentApprovalsQuery($agent)
             ->where('id', $id)
-            ->where('requester_id', $agent->id)
-            ->whereHas('requester', fn (Builder $query) => $query->where('workspace_id', $agent->workspace_id))
             ->first() ?? throw VfsError::notFound($path);
 
         return json_encode($this->approvalPayload($approval), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
