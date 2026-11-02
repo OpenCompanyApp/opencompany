@@ -7,8 +7,12 @@ use App\Agents\Providers\DynamicProviderResolver;
 use App\Agents\Runtime\ActiveAgentRun;
 use App\Agents\Runtime\Subagents\GenericSubagent;
 use App\Agents\Runtime\Subagents\OrchestrateSubagents;
+use App\Agents\Support\UntrustedContent;
+use App\Agents\Support\UntrustedOutputTool;
 use App\Agents\Tools\System\RunGuardedTool;
 use App\Agents\Tools\ToolRegistry;
+use App\Agents\Tools\Web\WebFetchTool;
+use App\Agents\Tools\Web\WebSearchTool;
 use App\Ai\Contracts\HasSystemPrompts;
 use App\Models\AppSetting;
 use App\Models\Channel;
@@ -30,6 +34,7 @@ use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Promptable;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
+use Laravel\Ai\Tools\ToolNameResolver;
 
 /**
  * Main runtime implementation for an OpenCompany workspace agent.
@@ -277,6 +282,12 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
             $sections[] = ['label' => 'Current Task', 'content' => $taskContext];
         }
 
+        // Prompt-injection floor. This section is static text and its label is
+        // not in PromptFrameBuilder's volatile list, so it stays in the
+        // cacheable stable frame. It must ship in every prompt (identity or
+        // fallback) because untrusted blocks can appear in any channel.
+        $sections[] = ['label' => 'Untrusted Content', 'content' => UntrustedContent::systemPromptSection()];
+
         $apps = $this->toolRegistry->getAppCatalog($this->agent)."\n\n";
         $apps .= "To generate images/PDFs: use code_exec with app.svg, app.integrations.mermaid, app.integrations.plantuml, app.integrations.vegalite, or app.integrations.typst. NEVER fabricate image/document URLs.\n";
         if (! $identityFiles->isEmpty()) {
@@ -407,7 +418,10 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
         $this->toolRegistry->setTaskContext($this->taskId);
 
         $tools = [
-            ...$this->toolRegistry->getToolsForAgent($this->agent),
+            ...array_map(
+                fn ($tool) => $tool instanceof Tool ? $this->labelUntrustedOutput($tool) : $tool,
+                $this->toolRegistry->getToolsForAgent($this->agent),
+            ),
             OrchestrateSubagents::for($this->agent, $this->channelId, $this->taskId),
             ...$this->genericSubagents(),
         ];
@@ -422,6 +436,25 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
             fn ($tool) => $tool instanceof Tool ? new RunGuardedTool($tool) : $tool,
             $tools,
         );
+    }
+
+    /**
+     * Label direct tools whose output is third-party text before the model sees it.
+     *
+     * Only the model-facing tool list is decorated. The same tool classes are
+     * also invoked by Code Mode callbacks, whose results are structured script
+     * values and must stay unwrapped; CodeExec labels its own model-visible
+     * output when a callback touched an untrusted source. Matching uses the
+     * resolved tool name so approval-wrapped instances (which delegate name())
+     * are labelled as well.
+     */
+    private function labelUntrustedOutput(Tool $tool): Tool
+    {
+        return match (ToolNameResolver::resolve($tool)) {
+            class_basename(WebFetchTool::class) => new UntrustedOutputTool($tool, 'web_fetch', 'url'),
+            class_basename(WebSearchTool::class) => new UntrustedOutputTool($tool, 'web_search', 'query'),
+            default => $tool,
+        };
     }
 
     /**
@@ -464,7 +497,8 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
      */
     public function timeout(): int
     {
-        return (int) config('ai.request_timeout', 600);
+        // Single source of truth: config/ai.php (AI_REQUEST_TIMEOUT).
+        return (int) config('ai.request_timeout');
     }
 
     /**

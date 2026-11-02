@@ -2,6 +2,7 @@
 
 namespace App\Agents\Tools\Code;
 
+use App\Agents\Support\UntrustedContent;
 use App\Agents\Tools\ToolRegistry;
 use App\Models\Task;
 use App\Models\User;
@@ -73,11 +74,12 @@ final class CodeExec implements Tool
                 cancelled: $cancelled,
             );
 
+            $callLog = $bridge?->getCallLog() ?? [];
             $this->lastExecutionMetadata = array_merge($result->toArray(), [
-                'bridgeCalls' => $bridge?->getCallLog() ?? [],
+                'bridgeCalls' => $callLog,
             ]);
 
-            return $this->formatForAgent($result);
+            return $this->formatForAgent($result, $this->untrustedOrigins($callLog));
         } catch (\Throwable) {
             // Catalog/bootstrap failures can contain service paths or provider
             // configuration. Only typed sandbox diagnostics are model-visible.
@@ -95,30 +97,57 @@ final class CodeExec implements Tool
         return $this->lastExecutionMetadata;
     }
 
-    private function formatForAgent(CodeExecutionResult $result): string
+    /**
+     * Render the model-visible summary of one execution.
+     *
+     * When $untrustedOrigins is non-empty, script-derived text (console output,
+     * the error message, and the return value) can contain third-party content,
+     * so it is emitted inside one UntrustedContent block. Host-authored guidance
+     * (repair hint, retry/effect status, execution ID, timing) stays outside the
+     * block so the model can still trust it. With no untrusted callbacks the
+     * output format is unchanged.
+     *
+     * @param  list<string>  $untrustedOrigins
+     */
+    private function formatForAgent(CodeExecutionResult $result, array $untrustedOrigins = []): string
     {
         $lines = [];
+        $dataLines = [];
+        $hostLines = [];
 
         if ($result->validatedOnly && $result->succeeded()) {
             $lines[] = 'Validation passed (Ruby syntax/profile only). No code was executed and no external calls were made. Capability names, argument schemas and current permissions are checked at execution time.';
         }
 
         if ($result->output !== '') {
-            $lines[] = "Console:\n{$result->output}";
+            $dataLines[] = "Console:\n{$result->output}";
         }
 
         if ($result->error !== null) {
             $location = $result->error['line'] !== null
                 ? ' at line '.$result->error['line'].($result->error['column'] !== null ? ':'.$result->error['column'] : '')
                 : '';
-            $lines[] = 'Error ['.$result->error['type'].']'.$location.': '.$result->error['message'];
-            $lines[] = 'Repair: '.$result->error['suggestion'];
-            $lines[] = 'Retryable: '.($result->error['retryable'] ? 'yes' : 'no')
+            $dataLines[] = 'Error ['.$result->error['type'].']'.$location.': '.$result->error['message'];
+            $hostLines[] = 'Repair: '.$result->error['suggestion'];
+            $hostLines[] = 'Retryable: '.($result->error['retryable'] ? 'yes' : 'no')
                 .'; write effects: '.$result->error['effectStatus'].'.';
         }
 
-        if ($result->result !== null) {
-            $lines[] = 'Return value: '.$this->formatResult($result->result);
+        $returnLine = $result->result !== null
+            ? 'Return value: '.$this->formatResult($result->result)
+            : null;
+
+        if ($untrustedOrigins !== [] && ($dataLines !== [] || $returnLine !== null)) {
+            $block = implode("\n", array_filter([...$dataLines, $returnLine], fn ($line) => $line !== null));
+            $lines[] = UntrustedContent::wrap($block, 'code_exec', implode(', ', $untrustedOrigins));
+            array_push($lines, ...$hostLines);
+        } else {
+            // Preserve the historical ordering exactly when nothing untrusted
+            // ran: console, error, repair/retry guidance, return value.
+            array_push($lines, ...$dataLines, ...$hostLines);
+            if ($returnLine !== null) {
+                $lines[] = $returnLine;
+            }
         }
 
         $lines[] = 'Execution ID: '.$result->executionId;
@@ -126,6 +155,46 @@ final class CodeExec implements Tool
             .($result->cpuTime !== null ? ", {$result->cpuTime}ms Ruby CPU" : '');
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Collect the Code Mode namespaces whose callbacks returned third-party data.
+     *
+     * Untrusted sources: every `integrations.*` namespace (installed integration
+     * packages), every `mcp.*` namespace (remote MCP servers), and the built-in
+     * `web` group. Callbacks refused before dispatch (denied,
+     * pending approval, unknown function, argument errors) never reached the
+     * source, so they do not taint the output. Internal workspace namespaces
+     * (tasks, docs, tables, vfs, ...) are trusted workspace data.
+     *
+     * @param  list<array<string, mixed>>  $callLog
+     * @return list<string>
+     */
+    private function untrustedOrigins(array $callLog): array
+    {
+        $origins = [];
+
+        foreach ($callLog as $entry) {
+            $path = (string) ($entry['path'] ?? '');
+            $group = (string) ($entry['group'] ?? '');
+            $reachedSource = ($entry['status'] ?? null) === 'ok'
+                || ($entry['errorType'] ?? null) === 'tool_error';
+
+            if (! $reachedSource) {
+                continue;
+            }
+
+            if (str_starts_with($path, 'mcp.')) {
+                // mcp.<server>.<tool>: name the server, not just "mcp".
+                $origins[] = implode('.', array_slice(explode('.', $path), 0, 2));
+            } elseif (str_starts_with($path, 'integrations.') || str_starts_with($group, 'mcp_')) {
+                $origins[] = $group !== '' ? $group : $path;
+            } elseif ($group === 'web' || str_starts_with($path, 'web.')) {
+                $origins[] = 'web';
+            }
+        }
+
+        return array_values(array_unique($origins));
     }
 
     private function formatResult(mixed $value): string

@@ -67,11 +67,15 @@ class ChatWebhookController
     /**
      * Telegram sends X-Telegram-Bot-Api-Secret-Token header.
      * Match against all workspace telegram configs.
+     *
+     * Comparison is constant-time, and a workspace whose webhook_secret is
+     * empty/missing can never match, so an unconfigured bot cannot be claimed
+     * by sending an empty header.
      */
     private function resolveFromTelegramSecret(Request $request): ?Workspace
     {
         $secret = $request->header('X-Telegram-Bot-Api-Secret-Token');
-        if (! $secret) {
+        if (! is_string($secret) || $secret === '') {
             return null;
         }
 
@@ -80,7 +84,7 @@ class ChatWebhookController
         $setting = IntegrationSetting::where('integration_id', 'telegram')
             ->where('enabled', true)
             ->get()
-            ->first(fn ($s) => $s->getConfigValue('webhook_secret') === $secret);
+            ->first(fn ($s) => $this->secretEquals($s->getConfigValue('webhook_secret'), $secret));
 
         return $setting ? Workspace::find($setting->workspace_id) : null;
     }
@@ -160,14 +164,16 @@ class ChatWebhookController
     }
 
     /**
-     * Generic fallback: match a webhook secret header or query param.
+     * Generic fallback: match the X-Webhook-Secret header.
+     *
+     * Header-only by contract: a `?secret=` query fallback was removed because
+     * query strings leak into access logs and Telescope request entries.
      */
     private function resolveFromGenericSecret(string $adapter, Request $request): ?Workspace
     {
-        $secret = $request->header('X-Webhook-Secret')
-            ?? $request->query('secret');
+        $secret = $request->header('X-Webhook-Secret');
 
-        if (! $secret) {
+        if (! is_string($secret) || $secret === '') {
             return null;
         }
 
@@ -176,9 +182,19 @@ class ChatWebhookController
         $setting = IntegrationSetting::where('integration_id', $adapter)
             ->where('enabled', true)
             ->get()
-            ->first(fn ($s) => $s->getConfigValue('webhook_secret') === $secret);
+            ->first(fn ($s) => $this->secretEquals($s->getConfigValue('webhook_secret'), $secret));
 
         return $setting ? Workspace::find($setting->workspace_id) : null;
+    }
+
+    /**
+     * Constant-time shared-secret check; empty or non-string stored secrets
+     * never match.
+     */
+    private function secretEquals(mixed $expected, string $presented): bool
+    {
+        return is_string($expected) && $expected !== '' && $presented !== ''
+            && hash_equals($expected, $presented);
     }
 
     private function validSlackSignature(Request $request, IntegrationSetting $setting): bool
@@ -237,14 +253,15 @@ class ChatWebhookController
      */
     private function validSecretHeader(Request $request, IntegrationSetting $setting, array $configKeys): bool
     {
-        $secret = $request->header('X-Webhook-Secret') ?? $request->query('secret');
+        // Header-only: query-string secrets leak into logs (see resolveFromGenericSecret).
+        $secret = $request->header('X-Webhook-Secret');
         if (! is_string($secret) || $secret === '') {
             return false;
         }
 
         foreach ($configKeys as $key) {
             $candidate = $setting->getConfigValue($key);
-            if (is_string($candidate) && $candidate !== '' && hash_equals($candidate, $secret)) {
+            if ($this->secretEquals($candidate, $secret)) {
                 return true;
             }
         }

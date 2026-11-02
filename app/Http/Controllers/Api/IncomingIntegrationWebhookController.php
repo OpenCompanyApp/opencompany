@@ -13,6 +13,14 @@ use Illuminate\Http\Response;
  * records receipt diagnostics. Downstream fan-out to agents, channels, or tasks
  * should be added as an explicit processor rather than hidden in this public
  * trust boundary.
+ *
+ * Secret transport contract: the secret is accepted ONLY in a header, either
+ * `X-Webhook-Secret: <secret>` or `Authorization: Bearer <secret>`. The old
+ * `?secret=` query string is rejected on purpose: URLs land in reverse-proxy
+ * access logs, Telescope request entries, and referrers, so query secrets
+ * leak. Do not re-add a query fallback for convenience.
+ *
+ * Rate limiting is applied at the route (`throttle:integration-webhooks`).
  */
 class IncomingIntegrationWebhookController
 {
@@ -34,10 +42,21 @@ class IncomingIntegrationWebhookController
         return new Response('', 202);
     }
 
+    /**
+     * Constant-time comparison of the presented header secret with the
+     * stored one. An empty stored or presented secret never matches, so a
+     * misconfigured webhook cannot become an unauthenticated endpoint.
+     */
     private function secretMatches(IntegrationWebhook $webhook, Request $request): bool
     {
-        $secret = $request->header('X-Webhook-Secret') ?? $request->query('secret');
+        $expected = $webhook->secret;
+        $presented = $request->header('X-Webhook-Secret');
+        if (! is_string($presented) || $presented === '') {
+            $presented = $request->bearerToken();
+        }
 
-        return is_string($secret) && hash_equals($webhook->secret, $secret);
+        return is_string($expected) && $expected !== ''
+            && is_string($presented) && $presented !== ''
+            && hash_equals($expected, $presented);
     }
 }

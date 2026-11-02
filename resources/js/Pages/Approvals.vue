@@ -115,7 +115,8 @@
 
               <!-- Actions -->
               <div class="shrink-0">
-                <div v-if="approval.status === 'pending'" class="flex items-center gap-2">
+                <!-- can_resolve is the server policy hint (admin/approver, not the requester). -->
+                <div v-if="approval.status === 'pending' && approval.can_resolve !== false" class="flex items-center gap-2">
                   <button
                     type="button"
                     class="px-3 py-1.5 text-xs font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors duration-150 disabled:opacity-50"
@@ -133,6 +134,13 @@
                     Reject
                   </button>
                 </div>
+                <span
+                  v-else-if="approval.status === 'pending'"
+                  class="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
+                >
+                  <Icon name="ph:hourglass" class="w-3.5 h-3.5" />
+                  Awaiting an approver
+                </span>
                 <span
                   v-else
                   :class="[

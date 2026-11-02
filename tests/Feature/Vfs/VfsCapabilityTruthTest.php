@@ -199,7 +199,7 @@ class VfsCapabilityTruthTest extends TestCase
 
         $taskApproval = ApprovalRequest::query()->latest()->firstOrFail();
         $this->assertSame($taskPath, $taskApproval->tool_execution_context['vfs_approval']['subject']);
-        app(ApprovalExecutionService::class)->resolve($taskApproval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($taskApproval, 'approved', $this->workspaceApprover());
         $this->assertSame('approved task description', $task->fresh()->description);
 
         $folderPath = "/files/by-id/{$fileFolder->id}";
@@ -221,7 +221,7 @@ class VfsCapabilityTruthTest extends TestCase
             ->where('tool_execution_context->tool_slug', 'vfs_write')
             ->firstOrFail();
         $this->assertSame($writePath, $writeApproval->tool_execution_context['vfs_approval']['subject']);
-        app(ApprovalExecutionService::class)->resolve($writeApproval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($writeApproval, 'approved', $this->workspaceApprover());
         $this->assertTrue($this->workspaceFileExists('approved.md'));
     }
 
@@ -366,5 +366,21 @@ class VfsCapabilityTruthTest extends TestCase
         } catch (VfsError $error) {
             $this->assertSame($expectedCode, $error->errorCode);
         }
+    }
+
+    /**
+     * A human admin of the test workspace. ApprovalExecutionService::resolve()
+     * refuses unattributed (null) responders since ApprovalResolutionPolicy,
+     * so tests that resolve approvals directly must name an approver.
+     */
+    private function workspaceApprover(): User
+    {
+        $approver = User::factory()->create(['type' => 'human']);
+        \App\Models\WorkspaceMember::query()->firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'user_id' => $approver->id],
+            ['role' => 'admin'],
+        );
+
+        return $approver;
     }
 }

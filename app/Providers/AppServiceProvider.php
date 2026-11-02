@@ -13,6 +13,7 @@ use App\Domain\Ai\Usage\OpenRouterGenerationStore;
 use App\Domain\Chat\Telegram\Application\TelegramNotificationRouter;
 use App\Domain\Vfs\Core\VfsOperationLog;
 use App\Events\TaskUpdated;
+use App\Http\Middleware\AuthenticateAiGateway;
 use App\Models\ApprovalRequest;
 use App\Models\Document;
 use App\Models\VfsOperationEvent;
@@ -26,7 +27,9 @@ use App\Services\CodeExecutionBudget;
 use App\Services\IntegrationSettingCredentialResolver;
 use App\Services\Mcp\McpServerRegistrar;
 use Closure;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobFailed;
@@ -34,6 +37,7 @@ use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -97,6 +101,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        $this->configureRateLimiting();
 
         $this->app->afterResolving(HttpFactory::class, function (HttpFactory $http): void {
             $this->codeExecutionBudgetFactories ??= new \WeakMap;
@@ -177,6 +183,109 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register all built-in tool providers with the ToolRegistry.
      */
+    /**
+     * Register the named edge limiters used as `throttle:<name>` in routes/api.php.
+     *
+     * Budgets come from config/rate_limits.php (env-driven). Closures read
+     * config per request, so tests and runtime config changes apply without
+     * re-registration. Keys are prefixed per limiter. The framework also
+     * namespaces by limiter name, but explicit prefixes keep the guest and
+     * user buckets from ever colliding.
+     *
+     * Breadcrumb: these are app-local edge controls, not package-owned. Keep
+     * them here (or move them to a dedicated provider) rather than inlining
+     * numeric `throttle:60,1` strings in routes.
+     */
+    private function configureRateLimiting(): void
+    {
+        // Authenticated first-party API: one bucket per user, so NAT'd teams
+        // do not starve each other. Guests fall back to a tighter IP bucket.
+        RateLimiter::for('api', function (Request $request): Limit {
+            $user = $request->user();
+
+            return $user
+                ? Limit::perMinute(max(1, (int) config('rate_limits.api.per_minute')))->by('user:'.$user->getAuthIdentifier())
+                : Limit::perMinute(max(1, (int) config('rate_limits.api.guest_per_minute')))->by('ip:'.$request->ip());
+        });
+
+        // Chat provider webhooks: IP + adapter, so a noisy Slack source cannot
+        // exhaust Telegram's budget (and vice versa). Deliberately not keyed by
+        // the presented secret: attackers could rotate fake secrets to get
+        // fresh buckets.
+        RateLimiter::for('chat-webhooks', function (Request $request): Limit {
+            $adapter = (string) ($request->route('adapter') ?? 'telegram-legacy');
+
+            return Limit::perMinute(max(1, (int) config('rate_limits.chat_webhooks.per_minute')))
+                ->by('chat-webhook:'.$adapter.'|'.$request->ip());
+        });
+
+        // Incoming integration webhooks: IP + webhook id.
+        RateLimiter::for('integration-webhooks', function (Request $request): Limit {
+            return Limit::perMinute(max(1, (int) config('rate_limits.integration_webhooks.per_minute')))
+                ->by('integration-webhook:'.(string) $request->route('webhook').'|'.$request->ip());
+        });
+
+        // Telegram Mini App: the Telegram user id here is parsed from
+        // *unverified* init_data (signature checks happen in the controller).
+        // It is therefore always combined with the IP, so forging another
+        // user's id cannot drain that user's bucket, and the per-IP ceiling
+        // stops id rotation from bypassing the limit.
+        RateLimiter::for('telegram-mini-app', function (Request $request): array {
+            $ip = (string) $request->ip();
+
+            return [
+                Limit::perMinute(max(1, (int) config('rate_limits.telegram_mini_app.per_user_per_minute')))
+                    ->by('tg-mini-app:'.$ip.'|'.$this->claimedTelegramUserId($request)),
+                Limit::perMinute(max(1, (int) config('rate_limits.telegram_mini_app.per_ip_per_minute')))
+                    ->by('tg-mini-app-ip:'.$ip),
+            ];
+        });
+
+        // AI Gateway: one budget per gateway API key (a cost guard on paid
+        // provider fan-out), falling back to IP for unauthenticated callers.
+        // ThrottleRequests runs before AuthenticateAiGateway (middleware
+        // priority), so resolve via the shared memoized lookup instead of
+        // relying on state set in handle(). Expired keys still get their own
+        // bucket here; the middleware rejects them right after.
+        RateLimiter::for('ai-gateway', function (Request $request): Limit {
+            $key = AuthenticateAiGateway::resolveKey($request);
+
+            $limit = $key
+                ? Limit::perMinute(max(1, (int) config('rate_limits.ai_gateway.per_minute')))->by('ai-gateway-key:'.$key->getKey())
+                : Limit::perMinute(max(1, (int) config('rate_limits.ai_gateway.guest_per_minute')))->by('ai-gateway-ip:'.$request->ip());
+
+            // OpenAI-compatible clients parse error.code/type, so match that
+            // envelope rather than Laravel's default HTML/JSON 429.
+            return $limit->response(fn (Request $request, array $headers) => response()->json([
+                'error' => [
+                    'message' => 'Rate limit exceeded for this API key. Retry later.',
+                    'type' => 'rate_limit_error',
+                    'code' => 'rate_limit_exceeded',
+                ],
+            ], 429, $headers));
+        });
+    }
+
+    /**
+     * Best-effort, UNVERIFIED Telegram user id from Mini App init_data.
+     *
+     * Used only to subdivide an IP's rate-limit bucket. Never use it for
+     * authorization. Returns 'anon' when init_data is absent or malformed.
+     */
+    private function claimedTelegramUserId(Request $request): string
+    {
+        $initData = $request->input('init_data');
+        if (! is_string($initData) || $initData === '' || strlen($initData) > 8192) {
+            return 'anon';
+        }
+
+        parse_str($initData, $fields);
+        $user = is_string($fields['user'] ?? null) ? json_decode($fields['user'], true) : null;
+        $id = is_array($user) ? ($user['id'] ?? null) : null;
+
+        return is_int($id) || (is_string($id) && ctype_digit($id)) ? (string) $id : 'anon';
+    }
+
     private function registerBuiltInToolProviders(): void
     {
         $registry = $this->app->make(ToolRegistry::class);

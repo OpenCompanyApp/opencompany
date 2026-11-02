@@ -6,6 +6,21 @@ use App\Models\McpServer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Minimal Streamable-HTTP JSON-RPC client for one remote MCP server.
+ *
+ * Owns: request framing, session-id tracking, SSE/JSON response parsing, and
+ * the per-request SSRF enforcement for MCP egress.
+ *
+ * Does NOT own: permissions (McpRuntime/McpPermissionEvaluator), result
+ * labelling for the model (CodeExec labels model-visible output), or the
+ * private-network allowlist (config/mcp.php via McpUrlPolicy).
+ *
+ * Security invariant: every request re-validates the URL through
+ * McpUrlPolicy, never follows redirects, and pins the connection to the
+ * addresses that were just validated. Do not add a code path that sends HTTP
+ * to $this->url without going through sendRequest().
+ */
 class McpClient
 {
     private int $requestId = 0;
@@ -105,9 +120,24 @@ class McpClient
             $headers['Mcp-Session-Id'] = $this->sessionId;
         }
 
+        // SSRF guard: validate on every request (DNS can change after the
+        // server was saved). Redirects are disabled because a public endpoint
+        // could otherwise bounce the POST, including auth headers, to an
+        // internal address. CURLOPT_RESOLVE pins the connection to the vetted
+        // IPs so a DNS rebind between check and connect cannot swap targets.
+        $target = app(McpUrlPolicy::class)->assertAllowed($this->url);
+
         $response = Http::withHeaders($headers)
             ->timeout($this->timeout)
+            ->withoutRedirecting()
+            ->withOptions($this->pinnedResolveOptions($target))
             ->post($this->url, $body);
+
+        if ($response->redirect()) {
+            throw new \RuntimeException(
+                "MCP server returned a redirect (HTTP {$response->status()}); redirects are not followed for MCP servers. Update the server URL to the final endpoint."
+            );
+        }
 
         // Track session ID from response
         if ($sessionId = $response->header('Mcp-Session-Id')) {
@@ -139,6 +169,29 @@ class McpClient
         }
 
         return $data['result'] ?? [];
+    }
+
+    /**
+     * Build Guzzle options that pin the host to the IPs the guard just vetted.
+     *
+     * Only applied for host names on the cURL handler; IP-literal URLs need no
+     * pinning. Http::fake() ignores these options, so tests are unaffected.
+     *
+     * @param  array{host: string, port: int, ips: list<string>}  $target
+     * @return array<string, mixed>
+     */
+    private function pinnedResolveOptions(array $target): array
+    {
+        if (filter_var($target['host'], FILTER_VALIDATE_IP) || $target['ips'] === [] || ! defined('CURLOPT_RESOLVE')) {
+            return [];
+        }
+
+        $addresses = array_map(
+            fn (string $ip): string => str_contains($ip, ':') ? "[{$ip}]" : $ip,
+            $target['ips'],
+        );
+
+        return ['curl' => [CURLOPT_RESOLVE => [$target['host'].':'.$target['port'].':'.implode(',', $addresses)]]];
     }
 
     /**

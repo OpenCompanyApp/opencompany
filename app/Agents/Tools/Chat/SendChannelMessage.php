@@ -9,9 +9,22 @@ use App\Models\User;
 use App\Services\AgentPermissionService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
+use App\Agents\Runtime\ApprovedToolReplay;
+use App\Agents\Tools\ToolRegistry;
+use App\Domain\Authorization\Application\AgentPermissionResolver;
+use App\Models\ApprovalRequest;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Posts an agent message into a workspace channel.
+ *
+ * External channels (bridged to Telegram, Slack, ...) leave OpenCompany, so a
+ * send to an external channel other than the conversation the agent is
+ * currently answering requires approval regardless of behavior mode, unless
+ * an admin opted this tool out (see AgentPermissionResolver). Replying inside
+ * the current conversation is not gated.
+ */
 class SendChannelMessage implements Tool
 {
     public function __construct(
@@ -19,9 +32,21 @@ class SendChannelMessage implements Tool
         private AgentPermissionService $permissionService,
     ) {}
 
+    private function needsExternalSendApproval(Channel $channel): bool
+    {
+        if ($channel->type !== 'external' || ApprovedToolReplay::isApproved('send_channel_message')) {
+            return false;
+        }
+        if (app(ToolRegistry::class)->getChannelContext() === $channel->id) {
+            return false;
+        }
+
+        return app(AgentPermissionResolver::class)->requiresExternalChannelSendApproval($this->agent);
+    }
+
     public function description(): string
     {
-        return 'Send a message to any workspace channel, including external channels (Telegram, Slack). Messages to external channels are automatically delivered.';
+        return 'Send a message to any workspace channel. Messages to external channels (Telegram, Slack) other than the conversation you are answering require human approval before delivery.';
     }
 
     public function handle(Request $request): string
@@ -50,6 +75,28 @@ class SendChannelMessage implements Tool
             $channel = Channel::forWorkspace()->find($channelId);
             if (!$channel) {
                 return "Error: Channel '{$channelId}' not found.";
+            }
+
+            // Invariant: outbound delivery to a non-OpenCompany destination is
+            // an external mutation; a trigger or prompt is not consent.
+            if ($this->needsExternalSendApproval($channel)) {
+                $approval = ApprovalRequest::create([
+                    'id' => Str::uuid()->toString(),
+                    'type' => 'action',
+                    'workspace_id' => $this->agent->workspace_id,
+                    'title' => 'Tool: send_channel_message',
+                    'description' => "Agent {$this->agent->name} wants to send a message to external channel #{$channel->name}",
+                    'requester_id' => $this->agent->id,
+                    'status' => 'pending',
+                    'tool_execution_context' => [
+                        'tool_slug' => 'send_channel_message',
+                        'parameters' => $request->toArray(),
+                    ],
+                    'channel_id' => app(ToolRegistry::class)->getChannelContext(),
+                ]);
+
+                return "Sending to an external channel requires human approval. An approval request has been created (ID: {$approval->id}). "
+                    .'Call wait_for_approval with this ID if your next steps depend on it, or continue — it is delivered automatically if approved.';
             }
 
             $message = Message::create([

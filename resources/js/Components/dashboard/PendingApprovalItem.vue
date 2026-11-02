@@ -17,7 +17,8 @@
       </div>
 
       <!-- Actions -->
-      <div class="flex items-center gap-2 shrink-0">
+      <!-- Hidden when ApprovalResolutionPolicy says this viewer may not resolve. -->
+      <div v-if="approval.can_resolve !== false" class="flex items-center gap-2 shrink-0">
         <button
           type="button"
           class="px-3 py-1.5 text-xs font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors duration-150"

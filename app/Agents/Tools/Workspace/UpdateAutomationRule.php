@@ -27,7 +27,8 @@ class UpdateAutomationRule implements Tool
                 return 'ruleId is required.';
             }
 
-            $rule = ListAutomationRule::whereHas('template', fn($q) => $q->forWorkspace())->find($ruleId);
+            // Scope by the rule's own workspace (rules may have no template).
+            $rule = ListAutomationRule::forWorkspace()->find($ruleId);
             if (!$rule) {
                 return "Automation rule not found: {$ruleId}";
             }

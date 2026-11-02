@@ -17,7 +17,8 @@ class ListAutomationRules implements Tool
     public function handle(Request $request): string
     {
         try {
-            $rules = ListAutomationRule::with('template', 'createdBy')
+            // Invariant: rules are workspace-owned; never list another tenant's.
+            $rules = ListAutomationRule::forWorkspace()->with('template', 'createdBy')
                 ->orderBy('created_at', 'desc')
                 ->get();
 

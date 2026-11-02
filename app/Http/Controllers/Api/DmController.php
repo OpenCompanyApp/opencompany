@@ -11,11 +11,21 @@ use App\Models\DirectMessage;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Chat\DirectMessageParticipantRejected;
 use App\Services\Chat\DirectMessageResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * One-to-one direct message API for the authenticated user.
+ *
+ * Invariant: the authenticated user is always one participant. Conversations
+ * are opened only through DirectMessageResolver::openForActor(), which rejects
+ * self-DMs and targets outside the active workspace before any channel or
+ * metadata is created. Foreign/unknown targets are 404 (no existence oracle);
+ * self-DMs are 422.
+ */
 class DmController extends Controller
 {
     public function __construct(
@@ -27,11 +37,13 @@ class DmController extends Controller
      */
     public function show(string $userId): JsonResponse
     {
-        $currentUserId = auth()->id();
+        try {
+            $dm = $this->directMessages->openForActor(auth()->user(), $userId);
+        } catch (DirectMessageParticipantRejected $rejected) {
+            return $this->rejectedResponse($rejected);
+        }
 
-        $dm = $this->directMessages->getOrCreate($currentUserId, $userId);
-
-        $otherUser = User::find($userId);
+        $otherUser = User::findOrFail($userId);
 
         // Get messages for this conversation
         $messages = Message::with('author')
@@ -81,7 +93,11 @@ class DmController extends Controller
         $currentUserId = auth()->id();
         $currentUser = auth()->user();
 
-        $dm = $this->directMessages->getOrCreate($currentUserId, $userId);
+        try {
+            $dm = $this->directMessages->openForActor($currentUser, $userId);
+        } catch (DirectMessageParticipantRejected $rejected) {
+            return $this->rejectedResponse($rejected);
+        }
 
         // Create the message
         $message = Message::create([
@@ -125,6 +141,15 @@ class DmController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    private function rejectedResponse(DirectMessageParticipantRejected $rejected): JsonResponse
+    {
+        if ($rejected->reason === DirectMessageParticipantRejected::REASON_SELF) {
+            return response()->json(['message' => $rejected->getMessage(), 'error' => $rejected->reason], 422);
+        }
+
+        return response()->json(['message' => 'User not found.', 'error' => $rejected->reason], 404);
     }
 
     /**

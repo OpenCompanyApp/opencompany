@@ -8,6 +8,7 @@ use App\Agents\Runtime\AgentRunCancelled;
 use App\Agents\Runtime\AgentRunFailed;
 use App\Agents\Runtime\AgentRunOptions;
 use App\Agents\Runtime\AgentRunPaused;
+use App\Agents\Support\InboundMessageTrust;
 use App\Agents\Support\MessageAttachmentContext;
 use App\Domain\Ai\Usage\UsageRecorder;
 use App\Events\AgentStatusUpdated;
@@ -710,7 +711,11 @@ class RespondToChatMessage
 
         $authorName = $parent->author->name ?? 'Unknown';
         $time = $parent->created_at->format('Y-m-d H:i');
-        $content = Str::limit($parent->content, 500);
+        $content = app(InboundMessageTrust::class)->labelForModel(
+            $parent,
+            Str::limit((string) $parent->content, 500),
+            (string) $this->agent->workspace_id,
+        );
 
         return "[Replying to {$authorName}'s message from {$time}: \"{$content}\"]\n\n{$prompt}";
     }
@@ -724,7 +729,10 @@ class RespondToChatMessage
             $this->attachmentContext->textForMessage($message, $workspaceId),
         ]);
 
-        return trim(implode("\n\n", $parts));
+        // The current turn gets the same trust labelling as history: content
+        // from non-members (external chat users, adapters) is data, never
+        // instructions. Workspace members pass through unchanged.
+        return app(InboundMessageTrust::class)->labelForModel($message, trim(implode("\n\n", $parts)), $workspaceId, $channel);
     }
 
     /**

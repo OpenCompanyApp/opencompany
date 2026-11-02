@@ -337,7 +337,24 @@ class ChatBridge
             : null;
 
         $approvalService = app(ApprovalExecutionService::class);
-        if (! $approvalService->resolve($approval, $status, $responder)) {
+        try {
+            $resolved = $approvalService->resolve($approval, $status, $responder);
+        } catch (\App\Domain\Authorization\Application\ApprovalResolutionDenied $denied) {
+            // Unlinked/ephemeral external users are not workspace approvers, so
+            // the policy refuses them; the approval stays pending. Reply in the
+            // thread instead of failing the webhook.
+            if (isset($event->thread)) {
+                try {
+                    $event->adapter->postMessage($event->thread->id, PostableMessage::text($denied->getMessage()));
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to post approval refusal', ['error' => $e->getMessage()]);
+                }
+            }
+
+            return;
+        }
+
+        if (! $resolved) {
             return;
         }
 

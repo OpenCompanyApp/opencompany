@@ -2023,7 +2023,17 @@ class TelegramWebhookPipeline
         $status = $action === 'approve' ? 'approved' : 'rejected';
 
         $approvalService = app(ApprovalExecutionService::class);
-        if (! $approvalService->resolve($approval, $status, $responder)) {
+        try {
+            $resolved = $approvalService->resolve($approval, $status, $responder);
+        } catch (\App\Domain\Authorization\Application\ApprovalResolutionDenied $denied) {
+            // ApprovalResolutionPolicy refused (role, self-approval, agent):
+            // the approval stays pending and nothing executed. Tell the user why.
+            $this->answerCallback($callbackQuery, $denied->getMessage());
+
+            return;
+        }
+
+        if (! $resolved) {
             $this->answerCallback($callbackQuery, 'This approval has already been decided.');
 
             return;

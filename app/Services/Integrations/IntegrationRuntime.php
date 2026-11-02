@@ -166,6 +166,7 @@ class IntegrationRuntime
         return ApprovalRequest::create([
             'id' => Str::uuid()->toString(),
             'type' => 'action',
+            'workspace_id' => $agent->workspace_id,
             'title' => "Script callback: {$toolSlug}",
             'description' => "Agent {$agent->name} requested approval for one Code Mode callback.",
             'requester_id' => $agent->id,

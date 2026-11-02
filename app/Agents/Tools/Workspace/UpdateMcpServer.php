@@ -4,10 +4,18 @@ namespace App\Agents\Tools\Workspace;
 
 use App\Models\McpServer;
 use App\Models\User;
+use App\Services\Mcp\McpUrlPolicy;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Agent tool that edits a workspace MCP server's configuration.
+ *
+ * Changing the URL or enabling a server widens external exposure, so the
+ * approval floor in AgentPermissionResolver applies regardless of behavior
+ * mode. New URLs must pass McpUrlPolicy (SSRF) before they are saved.
+ */
 class UpdateMcpServer implements Tool
 {
     public function __construct(
@@ -35,6 +43,9 @@ class UpdateMcpServer implements Tool
             if (!empty($request['url'])) {
                 if (!filter_var($request['url'], FILTER_VALIDATE_URL)) {
                     return "Invalid URL: {$request['url']}";
+                }
+                if (($violation = app(McpUrlPolicy::class)->violation((string) $request['url'])) !== null) {
+                    return $violation;
                 }
                 $updates['url'] = $request['url'];
             }

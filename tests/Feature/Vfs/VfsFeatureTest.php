@@ -1413,7 +1413,7 @@ RUBY);
         $this->assertSame('vfs_exec', $approval->tool_execution_context['tool_slug']);
         $this->assertSame('vfs_write', $approval->tool_execution_context['vfs_approval']['approval_tool']);
 
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertTrue(WorkspaceFile::forWorkspace()->where('name', 'nope')->where('is_folder', true)->exists());
     }
@@ -1449,7 +1449,7 @@ RUBY);
             'requires_approval' => false,
         ]);
 
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertFalse(WorkspaceFile::forWorkspace()->where('name', 'approved-denied')->exists());
     }
@@ -1751,7 +1751,7 @@ RUBY);
         $this->assertSame('update_table_row', $approval->tool_execution_context['vfs_approval']['approval_tool']);
         $this->assertSame($rowPath, $approval->tool_execution_context['vfs_approval']['subject']);
 
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertSame('active', $row->fresh()->data[$column->id]);
     }
@@ -1965,7 +1965,7 @@ RUBY);
         $this->assertNotNull($approval);
         $this->assertSame('update_agent_identity_file', $approval->tool_execution_context['vfs_approval']['approval_tool']);
 
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertSame('Approved identity', Document::findOrFail($stat['backend_id'])->fresh()->content);
     }
@@ -2417,5 +2417,21 @@ RUBY);
         $this->assertIsArray($decoded, $output);
 
         return $decoded;
+    }
+
+    /**
+     * A human admin of the test workspace. ApprovalExecutionService::resolve()
+     * refuses unattributed (null) responders since ApprovalResolutionPolicy,
+     * so tests that resolve approvals directly must name an approver.
+     */
+    private function workspaceApprover(): User
+    {
+        $approver = User::factory()->create(['type' => 'human']);
+        \App\Models\WorkspaceMember::query()->firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'user_id' => $approver->id],
+            ['role' => 'admin'],
+        );
+
+        return $approver;
     }
 }

@@ -11,6 +11,7 @@ use App\Agents\Runtime\Permissions\OpenCompanyPermissionEvaluator;
 use App\Agents\Runtime\Subagents\SubagentDependencyGraph;
 use App\Agents\Runtime\Subagents\SubagentRun;
 use App\Ai\Prompting\SystemPromptBag;
+use App\Domain\Web\Safety\WebRequestGuard;
 use App\Models\AgentPermission;
 use App\Models\IntegrationSetting;
 use App\Models\McpServer;
@@ -144,6 +145,16 @@ class RuntimeServiceLayerTest extends TestCase
 
     public function test_mcp_runtime_permits_enabled_server_and_uses_canonical_permission_slug(): void
     {
+        // MCP egress is SSRF-guarded with real DNS; stub the fake host to a
+        // public documentation address so Http::fake() handles the call.
+        $this->app->instance(WebRequestGuard::class, new class extends WebRequestGuard
+        {
+            protected function resolveIpAddresses(string $host): array
+            {
+                return ['93.184.216.34'];
+            }
+        });
+
         $agent = User::factory()->create([
             'type' => 'agent',
             'workspace_id' => $this->workspace->id,

@@ -47,7 +47,16 @@ class DirectFetchProvider implements WebFetchProvider
         $timeout = $request->timeoutSeconds ?? (int) config('web.fetch.timeout_seconds', 30);
         $response = Http::withHeaders($this->headers())
             ->timeout($timeout)
-            ->withOptions(['allow_redirects' => ['track_redirects' => true, 'max' => 5]])
+            // Invariant: every redirect hop is vetted BEFORE it is requested,
+            // so a public URL cannot bounce the fetch into internal services.
+            // Guzzle calls on_redirect before following the Location.
+            ->withOptions(['allow_redirects' => [
+                'track_redirects' => true,
+                'max' => 5,
+                'on_redirect' => function ($request, $response, $uri): void {
+                    $this->guard->assertSafePublicUrl((string) $uri, allowConfiguredPrivateHosts: true);
+                },
+            ]])
             ->get($request->url);
 
         $body = $this->decodeBody($response->body(), (string) $response->header('content-encoding'));

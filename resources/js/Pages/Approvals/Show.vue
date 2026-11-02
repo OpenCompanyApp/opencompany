@@ -161,7 +161,8 @@
         </div>
 
         <!-- Action bar -->
-        <div v-if="approval.status === 'pending'" class="flex items-center gap-3 pt-2">
+        <!-- can_resolve is the server policy hint (admin/approver, not the requester). -->
+        <div v-if="approval.status === 'pending' && approval.can_resolve !== false" class="flex items-center gap-3 pt-2">
           <button
             type="button"
             class="px-4 py-2 text-sm font-medium rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
@@ -179,6 +180,9 @@
             Reject
           </button>
         </div>
+        <p v-else-if="approval.status === 'pending'" class="pt-2 text-sm text-neutral-500 dark:text-neutral-400">
+          Only workspace admins and approvers can resolve this request, and never the person who requested it.
+        </p>
       </div>
     </div>
   </div>

@@ -7,8 +7,17 @@ use App\Models\WorkspaceInvitation;
 use App\Models\WorkspaceMember;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 
+/**
+ * Lists workspace members and (behind EnsureWorkspaceAdmin) invites, re-roles
+ * and removes them in the active workspace.
+ *
+ * Roles are validated against WorkspaceMember::ROLES. The `approver` role is
+ * a member who may additionally resolve approval requests; the decision itself
+ * lives in ApprovalResolutionPolicy, not here.
+ */
 class WorkspaceMemberController extends Controller
 {
     public function index(): JsonResponse
@@ -42,7 +51,8 @@ class WorkspaceMemberController extends Controller
     {
         $validated = $request->validate([
             'email' => 'required|email',
-            'role' => 'sometimes|in:admin,member',
+            // Role allow-list is owned by WorkspaceMember::ROLES (admin, approver, member).
+            'role' => ['sometimes', Rule::in(WorkspaceMember::ROLES)],
         ]);
 
         $workspace = workspace();
@@ -78,7 +88,7 @@ class WorkspaceMemberController extends Controller
     public function updateRole(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
-            'role' => 'required|in:admin,member',
+            'role' => ['required', Rule::in(WorkspaceMember::ROLES)],
         ]);
 
         $member = WorkspaceMember::where('workspace_id', workspace()->id)

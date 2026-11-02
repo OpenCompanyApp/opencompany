@@ -35,6 +35,7 @@ class VfsApprovalRequestFactory
         $approval = ApprovalRequest::create([
             'id' => Str::uuid()->toString(),
             'type' => 'action',
+            'workspace_id' => $agent->workspace_id,
             'title' => $this->title($operation, $approvalTool),
             'description' => $this->description($agent, $operation, $subject, $approvalTool),
             'requester_id' => $agent->id,

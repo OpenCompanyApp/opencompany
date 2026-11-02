@@ -2,6 +2,7 @@
 
 namespace App\Agents\Tools\Agents;
 
+use App\Domain\AgentRuntime\Application\DelegationGuard;
 use App\Jobs\AgentRespondJob;
 use App\Models\ApprovalRequest;
 use App\Models\Task;
@@ -13,6 +14,17 @@ use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Asynchronous agent-to-agent communication: ask, delegate or notify a peer.
+ *
+ * Owns: permission/approval gating for contacting a peer, the durable
+ * delegation guard (depth + cycle, see DelegationGuard), the delegated Task
+ * and the queued AgentRespondJob for the target. Results of ask/delegate come
+ * back to the caller through RespondToChatMessage's delegation callback.
+ *
+ * Workspace boundary: target and caller must share the active workspace; the
+ * DM channel and all tasks are created in that workspace only.
+ */
 class ContactAgent implements Tool
 {
 
@@ -88,6 +100,7 @@ class ContactAgent implements Tool
                 $approval = ApprovalRequest::create([
                     'id' => Str::uuid()->toString(),
                     'type' => 'action',
+                    'workspace_id' => $this->agent->workspace_id,
                     'title' => "Contact Agent: {$target->name} ({$action})",
                     'description' => "Agent {$this->agent->name} wants to {$action} {$target->name}: {$message}",
                     'requester_id' => $this->agent->id,
@@ -114,6 +127,17 @@ class ContactAgent implements Tool
                 return "Error: {$target->name} is currently offline and cannot process requests.";
             }
 
+            // Invariant: the durable depth/cycle guard runs before any channel,
+            // message, task or job is created, so a refused delegation leaves
+            // no side effects. Lineage is read from the persisted current task.
+            $currentTask = $this->resolveCurrentTask();
+            try {
+                app(DelegationGuard::class)->assertCanDelegate($this->agent, $target, $currentTask, allowCycle: $action === 'notify');
+            } catch (\DomainException $refused) {
+                return "Error: {$refused->getMessage()}";
+            }
+            $lineage = app(DelegationGuard::class)->childContext($this->agent, $currentTask);
+
             // Get or create DM channel
             $channelId = $this->commService->getOrCreateDmChannel($this->agent, $target);
 
@@ -123,16 +147,41 @@ class ContactAgent implements Tool
             );
 
             return match ($action) {
-                'ask' => $this->handleAsk($target, $channelId, $message, $formattedMessage),
-                'delegate' => $this->handleDelegate($target, $channelId, $message, $formattedMessage, $context, $priority),
-                'notify' => $this->handleNotify($target, $channelId, $message, $formattedMessage),
+                'ask' => $this->handleAsk($target, $channelId, $message, $formattedMessage, $currentTask, $lineage),
+                'delegate' => $this->handleDelegate($target, $channelId, $message, $formattedMessage, $context, $priority, $currentTask, $lineage),
+                'notify' => $this->handleNotify($target, $channelId, $message, $formattedMessage, $lineage),
             };
         } catch (\Throwable $e) {
             return "Error contacting agent: {$e->getMessage()}";
         }
     }
 
-    private function handleAsk(User $target, string $channelId, string $message, string $formattedMessage): string
+    /**
+     * The task this agent is currently executing, scoped to its workspace.
+     * Prefers the explicit execution context; falls back to the newest active task.
+     */
+    private function resolveCurrentTask(): ?Task
+    {
+        if ($this->currentTaskId) {
+            $task = Task::query()
+                ->whereKey($this->currentTaskId)
+                ->where('workspace_id', $this->agent->workspace_id)
+                ->first();
+            if ($task !== null) {
+                return $task;
+            }
+        }
+
+        return Task::forWorkspace()->where('agent_id', $this->agent->id)
+            ->where('status', Task::STATUS_ACTIVE)
+            ->latest('started_at')
+            ->first();
+    }
+
+    /**
+     * @param  array{delegation_depth: int, delegation_chain: list<string>}  $lineage
+     */
+    private function handleAsk(User $target, string $channelId, string $message, string $formattedMessage, ?Task $currentTask, array $lineage): string
     {
         // Wake sleeping agent for ask (implies urgency)
         if ($target->sleeping_until) {
@@ -143,15 +192,7 @@ class ContactAgent implements Tool
             ]);
         }
 
-        // Use task ID from execution context, fall back to query
-        $parentTaskId = $this->currentTaskId;
-        if (!$parentTaskId) {
-            $currentTask = Task::forWorkspace()->where('agent_id', $this->agent->id)
-                ->where('status', Task::STATUS_ACTIVE)
-                ->latest('started_at')
-                ->first();
-            $parentTaskId = $currentTask?->id;
-        }
+        $parentTaskId = $currentTask?->id;
 
         // Create ask subtask
         $askTask = Task::create([
@@ -166,6 +207,7 @@ class ContactAgent implements Tool
             'requester_id' => $this->agent->id,
             'channel_id' => $channelId,
             'parent_task_id' => $parentTaskId,
+            'context' => $lineage,
             'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
@@ -192,16 +234,10 @@ class ContactAgent implements Tool
         string $formattedMessage,
         ?string $context,
         string $priority,
+        ?Task $currentTask,
+        array $lineage,
     ): string {
-        // Use task ID from execution context, fall back to query
-        $parentTaskId = $this->currentTaskId;
-        if (!$parentTaskId) {
-            $currentTask = Task::forWorkspace()->where('agent_id', $this->agent->id)
-                ->where('status', Task::STATUS_ACTIVE)
-                ->latest('started_at')
-                ->first();
-            $parentTaskId = $currentTask?->id;
-        }
+        $parentTaskId = $currentTask?->id;
 
         // Create subtask
         $subtask = Task::create([
@@ -216,7 +252,7 @@ class ContactAgent implements Tool
             'requester_id' => $this->agent->id,
             'channel_id' => $channelId,
             'parent_task_id' => $parentTaskId,
-            'context' => $context ? ['delegation_context' => $context] : null,
+            'context' => array_merge($lineage, $context ? ['delegation_context' => $context] : []),
             'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 
@@ -238,7 +274,10 @@ class ContactAgent implements Tool
         return "Delegated to {$target->name} (subtask {$subtask->id}). You'll receive the result automatically when {$target->name} finishes.";
     }
 
-    private function handleNotify(User $target, string $channelId, string $message, string $formattedMessage): string
+    /**
+     * @param  array{delegation_depth: int, delegation_chain: list<string>}  $lineage
+     */
+    private function handleNotify(User $target, string $channelId, string $message, string $formattedMessage, array $lineage): string
     {
         // Create standalone task (no parent — independent from caller's task)
         $task = Task::create([
@@ -252,6 +291,9 @@ class ContactAgent implements Tool
             'agent_id' => $target->id,
             'requester_id' => $this->agent->id,
             'channel_id' => $channelId,
+            // No parent (independent work), but lineage still bounds depth so
+            // notify chains cannot ping-pong forever.
+            'context' => $lineage,
             'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
         ]);
 

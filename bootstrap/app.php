@@ -14,7 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: '*');
+        // Invariant: no hard-wired proxy list here. TrustProxies (global
+        // middleware) falls back to config('trustedproxy.proxies') at request
+        // time, which is env-driven via TRUSTED_PROXIES and defaults to
+        // trusting no proxy. This callback runs before config is loaded, so
+        // an env()/config() lookup here would be wrong under config:cache.
+        // Never restore `trustProxies(at: '*')`: it lets any client spoof
+        // X-Forwarded-For and dodge IP-keyed rate limits.
 
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,

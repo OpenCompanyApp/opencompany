@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Domain\Integrations\Application\ManageMcpServers;
 use App\Http\Controllers\Controller;
+use App\Services\Mcp\McpUrlPolicy;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,7 +18,31 @@ use Illuminate\Http\Request;
  */
 class McpServerController extends Controller
 {
-    public function __construct(private ManageMcpServers $servers) {}
+    public function __construct(
+        private ManageMcpServers $servers,
+        private McpUrlPolicy $urlPolicy,
+    ) {}
+
+    /**
+     * Validation rule enforcing the MCP SSRF policy on user-supplied URLs.
+     *
+     * This gives an immediate 422 instead of saving an unreachable/blocked
+     * server. McpClient re-checks before every request, so this is the UX
+     * layer, not the only enforcement point.
+     */
+    private function safeUrlRule(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if (! is_string($value)) {
+                return;
+            }
+
+            $violation = $this->urlPolicy->violation($value);
+            if ($violation !== null) {
+                $fail($violation);
+            }
+        };
+    }
 
     /**
      * List all MCP servers.
@@ -33,7 +59,7 @@ class McpServerController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'url' => 'required|string|url',
+            'url' => ['required', 'string', 'url', $this->safeUrlRule()],
             'auth_type' => 'nullable|string|in:none,bearer,header',
             'auth_config' => 'nullable|array',
             'timeout' => 'nullable|integer|min:5|max:300',
@@ -61,7 +87,7 @@ class McpServerController extends Controller
     {
         $request->validate([
             'name' => 'nullable|string|max:255',
-            'url' => 'nullable|string|url',
+            'url' => ['nullable', 'string', 'url', $this->safeUrlRule()],
             'auth_type' => 'nullable|string|in:none,bearer,header',
             'auth_config' => 'nullable|array',
             'timeout' => 'nullable|integer|min:5|max:300',
@@ -92,6 +118,10 @@ class McpServerController extends Controller
      */
     public function testConnection(Request $request, string $id): JsonResponse
     {
+        $request->validate([
+            'url' => ['nullable', 'string', 'url', $this->safeUrlRule()],
+        ]);
+
         $result = $this->servers->testConnection($id, $request->only([
             'url', 'auth_type', 'auth_config', 'timeout',
         ]));
@@ -105,7 +135,7 @@ class McpServerController extends Controller
     public function testNewConnection(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'url' => 'required|string|url',
+            'url' => ['required', 'string', 'url', $this->safeUrlRule()],
             'auth_type' => 'nullable|string|in:none,bearer,header',
             'auth_config' => 'nullable|array',
             'timeout' => 'nullable|integer|min:5|max:300',
