@@ -4,6 +4,8 @@ namespace App\Services\Integrations;
 
 use App\Agents\Tools\ToolRegistry;
 use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
+use App\Domain\Vfs\Events\VfsOperationContext;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsPendingApproval;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\User;
@@ -112,7 +114,10 @@ class IntegrationRuntime
 
                 $normalized = $this->normalize($result->data);
             } else {
-                $raw = $tool->handle(new Request($this->snakeToCamel($args)));
+                // VFS helpers record their audit events with surface `code`.
+                $raw = $tool instanceof ReturnsVfsEnvelope
+                    ? app(VfsOperationContext::class)->runAs('code', fn () => $tool->handle(new Request($this->snakeToCamel($args))))
+                    : $tool->handle(new Request($this->snakeToCamel($args)));
 
                 if (! is_string($raw)) {
                     $normalized = $this->normalize($raw);
@@ -170,11 +175,19 @@ class IntegrationRuntime
      * unexpected shape falls back to `tool_error`. internal_error messages may
      * contain raw exception text, so they are replaced with a generic one.
      *
-     * @throws ScriptDispatchException approval-pending for approval_required
+     * @throws ScriptDispatchException approval-pending for a pending_approval envelope or approval_required
      * @throws ScriptBridgeException for every other ok:false
      */
     private function assertVfsEnvelopeSucceeded(string $toolSlug, mixed $envelope): void
     {
+        // Invariant: the VFS reports "waiting for a human" as the non-error
+        // pending_approval envelope (ok:true). It must still latch dispatch
+        // exactly like a gated callback; VfsPendingApproval::isPending is the
+        // single definition of that shape.
+        if (($approvalId = VfsPendingApproval::isPending($envelope)) !== null) {
+            throw ScriptDispatchException::approvalPending($approvalId);
+        }
+
         if (! is_array($envelope) || ($envelope['ok'] ?? null) !== false) {
             return;
         }

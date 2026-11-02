@@ -2,6 +2,7 @@
 
 namespace App\Domain\Vfs\OpenCompany\Approvals;
 
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\ApprovalRequest;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -12,9 +13,24 @@ use Illuminate\Support\Str;
  * Direct agent-tool approval remains owned by ToolRegistry/ApprovalWrappedTool.
  * This factory handles backing permissions such as update_table_row and also
  * protects direct domain-service calls that do not pass through a tool wrapper.
+ *
+ * Stored `vfs_approval` context (internal; replay and /approvals read it):
+ *   requester_id, direct_tool_slug, operation, subject, required_tools,
+ *   approval_tool, approved_tools, parameters_hash  — replay matching keys
+ *   action_class   — governance reversibility class (VfsActionClass)
+ *   preview        — what the approver sees (VfsApprovalPreviewBuilder)
+ *   base_version   — version of the object when the request was made; replay
+ *                    refuses to apply a non-anchored change to a moved object
+ *   origin         — {run_id, task_id, channel_id}; the outcome is posted to
+ *                    channel_id and a parked run is resumed there
  */
 class VfsApprovalRequestFactory
 {
+    public function __construct(
+        private readonly VfsApprovalOrigin $origin,
+        private readonly VfsApprovalPreviewBuilder $previews,
+    ) {}
+
     /**
      * Create one approval for a VFS operation, or return the identical one
      * that is still pending.
@@ -37,6 +53,7 @@ class VfsApprovalRequestFactory
      * @param  array<string, mixed>  $parameters
      * @param  array<string, mixed>|null  $preview
      * @param  list<string>  $approvalTools  Every gated tool; defaults to [$approvalTool]
+     * @param  string|null  $actionClass  Governance action class; derived when null
      */
     public function create(
         User $agent,
@@ -49,36 +66,54 @@ class VfsApprovalRequestFactory
         ?string $channelId = null,
         ?array $preview = null,
         array $approvalTools = [],
+        ?string $actionClass = null,
     ): ApprovalRequest {
         $approvalTools = array_values(array_unique($approvalTools === [] ? [$approvalTool] : $approvalTools));
         $hash = $this->hashParameters($parameters);
 
-        $approval = $this->pendingDuplicate($agent, $directToolSlug, $operation, $subject, $hash, $approvalTools)
-            ?? ApprovalRequest::create([
-                'id' => Str::uuid()->toString(),
-                'type' => 'action',
-                'workspace_id' => $agent->workspace_id,
-                'title' => $this->title($operation, $approvalTools),
-                'description' => $this->description($agent, $operation, $subject, $approvalTools),
-                'requester_id' => $agent->id,
-                'status' => 'pending',
-                'tool_execution_context' => [
-                    'tool_slug' => $directToolSlug,
-                    'parameters' => $parameters,
-                    'vfs_approval' => [
-                        'requester_id' => $agent->id,
-                        'direct_tool_slug' => $directToolSlug,
-                        'operation' => $operation,
-                        'subject' => $subject,
-                        'required_tools' => $requiredTools,
-                        'approval_tool' => $approvalTools[0],
-                        'approved_tools' => $approvalTools,
-                        'parameters_hash' => $hash,
-                        'preview' => $preview,
-                    ],
+        $existing = $this->pendingDuplicate($agent, $directToolSlug, $operation, $subject, $hash, $approvalTools);
+        if ($existing !== null) {
+            if ($agent->must_wait_for_approval) {
+                $agent->update(['awaiting_approval_id' => $existing->id]);
+            }
+
+            return $existing;
+        }
+
+        $actionClass ??= VfsActionClass::classify($operation, $subject, $requiredTools);
+        $origin = $this->origin->capture($agent, $parameters);
+        // Computed outside any write transaction (policy runs before the
+        // locked write), through the agent's own read authorization.
+        $built = $this->previews->build($agent, $directToolSlug, $operation, $subject, $parameters, $preview);
+
+        $approval = ApprovalRequest::create([
+            'id' => Str::uuid()->toString(),
+            'type' => 'action',
+            'workspace_id' => $agent->workspace_id,
+            'title' => $this->title($operation, $approvalTools),
+            'description' => $this->description($agent, $operation, $subject, $approvalTools),
+            'requester_id' => $agent->id,
+            'status' => 'pending',
+            'tool_execution_context' => [
+                'tool_slug' => $directToolSlug,
+                'parameters' => $parameters,
+                'vfs_approval' => [
+                    'requester_id' => $agent->id,
+                    'direct_tool_slug' => $directToolSlug,
+                    'operation' => $operation,
+                    'subject' => $subject,
+                    'required_tools' => $requiredTools,
+                    'approval_tool' => $approvalTools[0],
+                    'approved_tools' => $approvalTools,
+                    'parameters_hash' => $hash,
+                    'action_class' => $actionClass,
+                    'preview' => $built['preview'],
+                    'base_version' => $built['base_version'],
+                    'origin' => $origin,
                 ],
-                'channel_id' => $channelId,
-            ]);
+            ],
+            'channel_id' => $channelId ?? $origin['channel_id'],
+        ]);
 
         if ($agent->must_wait_for_approval) {
             $agent->update(['awaiting_approval_id' => $approval->id]);
@@ -159,6 +194,7 @@ class VfsApprovalRequestFactory
             default => $operation,
         };
         $permissions = implode(', ', $approvalTools);
+        $label = $operation === 'remove' ? 'move to trash' : $label;
         $noun = count($approvalTools) > 1 ? 'Required permissions (all covered by this approval)' : 'Required permission';
 
         return "Agent {$agent->name} wants to {$label} {$subject}. {$noun}: {$permissions}.";

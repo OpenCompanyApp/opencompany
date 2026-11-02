@@ -67,6 +67,11 @@ class VfsExec implements ReturnsVfsEnvelope, Tool
             return VfsToolEnvelope::encode($payload);
         } catch (\Throwable $e) {
             $payload = VfsToolEnvelope::fromThrowable($e, self::TOOL_SLUG);
+            // approval_required was already converted to the non-error
+            // pending shape by the shared encoder; pass it through as-is.
+            if (($payload['status'] ?? null) === 'pending_approval') {
+                return VfsToolEnvelope::encode($payload);
+            }
             $errorCode = $payload['error']['code'];
             // `2>&1` carries the merged output in the error context; surface
             // it once, at the top level, like a normal result.
@@ -176,6 +181,16 @@ class VfsExec implements ReturnsVfsEnvelope, Tool
         $stderr = (string) ($result['stderr'] ?? $inner['stderr'] ?? '');
         if ($stderr !== '') {
             $payload['stderr'] = $stderr;
+        }
+
+        // A pending approval inside a command line is reported in the shared
+        // non-error pending shape (see VfsToolEnvelope::error), keeping any
+        // stdout produced before the gated command.
+        if (! $ok && $error !== null && ($error['code'] ?? null) === 'approval_required') {
+            $pending = VfsToolEnvelope::error('approval_required', (string) ($error['message'] ?? ''), is_array($error['context'] ?? null) ? $error['context'] : []);
+            if (($pending['status'] ?? null) === 'pending_approval') {
+                return $pending + ['stdout' => $payload['stdout'], 'cwd' => $payload['cwd']];
+            }
         }
 
         if (! $ok && $error !== null) {

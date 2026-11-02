@@ -234,7 +234,8 @@ class VfsWorkspaceIsolationTest extends TestCase
         $exit = Artisan::call('vfs:atlas', ['--primitive' => 'write', '--arg' => ['path=/files/atlas-gated.txt', 'content=x']]);
 
         $this->assertSame(1, $exit);
-        $this->assertStringContainsString('requires human approval', Artisan::output());
+        // Phase 2: gated vfs_* primitives answer with the pending_approval JSON.
+        $this->assertStringContainsString('pending_approval', Artisan::output());
         $approval = ApprovalRequest::query()->where('requester_id', $this->agent->id)->sole();
         $this->assertSame('vfs_write', $approval->tool_execution_context['tool_slug']);
         $this->assertFalse(WorkspaceFile::forWorkspace()->where('name', 'atlas-gated.txt')->exists());

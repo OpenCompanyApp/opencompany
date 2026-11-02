@@ -12,11 +12,15 @@ use App\Domain\Ai\Runtime\OpenCompanyAiProviderRegistrar;
 use App\Domain\Ai\Usage\OpenRouterGenerationStore;
 use App\Domain\Chat\Telegram\Application\TelegramNotificationRouter;
 use App\Domain\Vfs\Core\VfsOperationLog;
+use App\Domain\Vfs\Events\DatabaseVfsEventSink;
+use App\Domain\Vfs\Events\VfsAuditor;
+use App\Domain\Vfs\Events\VfsEventSink;
+use App\Domain\Vfs\OpenCompany\AuditedOpenCompanyVfs;
+use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Events\TaskUpdated;
 use App\Http\Middleware\AuthenticateAiGateway;
 use App\Models\ApprovalRequest;
 use App\Models\Document;
-use App\Models\VfsOperationEvent;
 use App\Observers\ApprovalRequestObserver;
 use App\Observers\DocumentObserver;
 use App\Services\AgentFileStorageService;
@@ -38,7 +42,6 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
@@ -84,6 +87,13 @@ class AppServiceProvider extends ServiceProvider
         // Chat integration manager (workspace-scoped Chat instances)
         $this->app->singleton(ChatManager::class);
         $this->app->singleton(ChatBridge::class);
+
+        // VFS audit: every container-resolved facade is the audited one, and
+        // events go through one sink (table-backed until the workspace event
+        // log exists; rebinding VfsEventSink is the whole migration). The sink
+        // is a singleton because it buffers aggregated read events.
+        $this->app->bind(OpenCompanyVfs::class, AuditedOpenCompanyVfs::class);
+        $this->app->singleton(VfsEventSink::class, DatabaseVfsEventSink::class);
 
         $this->app->singleton(OpenCompanyAiProviderFactory::class);
         $this->app->singleton(OpenCompanyAiProviderRegistrar::class);
@@ -138,26 +148,18 @@ class AppServiceProvider extends ServiceProvider
                 ], now()->addDay());
             });
         }
+        // Tool-call telemetry from the vfs_* tool classes; object-level VFS
+        // events are recorded by AuditedOpenCompanyVfs. No per-event
+        // Schema::hasTable() probe: the table is part of the schema.
         Event::listen(VfsOperationLog::class, function (VfsOperationLog $event): void {
-            if (! Schema::hasTable('vfs_operation_events')) {
-                return;
-            }
-
-            VfsOperationEvent::query()->create([
-                'id' => $event->operationId,
-                'workspace_id' => $event->workspaceId,
-                'agent_id' => $event->agentId,
-                'surface' => $event->surface,
-                'operation' => $event->operation,
-                'path' => $event->path,
-                'cwd' => $event->cwd,
-                'success' => $event->ok,
-                'error_code' => $event->errorCode,
-                'duration_ms' => max(0, $event->durationMs),
-                'metadata' => $event->metadata,
-                'occurred_at' => now(),
-            ]);
+            $this->app->make(VfsAuditor::class)->toolCall($event);
         });
+        // Aggregated VFS read events are buffered; persist them at the end of
+        // every request and queue job.
+        $this->app->terminating(fn () => $this->app->make(VfsEventSink::class)->flush());
+        foreach ([JobProcessed::class, JobFailed::class] as $jobFinished) {
+            Event::listen($jobFinished, fn () => $this->app->make(VfsEventSink::class)->flush());
+        }
 
         // Disable JSON wrapping for API resources
         JsonResource::withoutWrapping();

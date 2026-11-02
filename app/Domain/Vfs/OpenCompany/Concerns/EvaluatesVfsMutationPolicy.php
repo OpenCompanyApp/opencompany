@@ -102,6 +102,12 @@ trait EvaluatesVfsMutationPolicy
     }
 
     /**
+     * Enforce the composed policy for one mutation (see VfsMutationPolicy).
+     *
+     * $actionClass is the governance reversibility class (VfsActionClass);
+     * pass it when the operation alone does not say it (e.g. a `delete` that
+     * is routed as `write`). Null derives it from operation and path.
+     *
      * @param  list<string>  $toolSlugs
      * @param  array<string, mixed>|null  $parameters
      * @param  array<string, mixed>|null  $preview
@@ -115,6 +121,7 @@ trait EvaluatesVfsMutationPolicy
         ?array $preview = null,
         string $operation = 'patch',
         string $hint = '',
+        ?string $actionClass = null,
     ): void {
         $this->mutationPolicy->assertAllowedOrRequestApproval(
             agent: $agent,
@@ -126,6 +133,7 @@ trait EvaluatesVfsMutationPolicy
             channelId: $channelId,
             hint: $hint,
             preview: $preview,
+            actionClass: $actionClass,
         );
     }
 

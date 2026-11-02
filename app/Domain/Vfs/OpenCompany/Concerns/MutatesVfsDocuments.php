@@ -100,7 +100,7 @@ trait MutatesVfsDocuments
             throw VfsError::permissionDenied($path, 'system documents require dedicated agent identity or memory tools');
         }
         if (! $this->canPatchDocument($agent, $doc)) {
-            throw VfsError::permissionDenied($path, 'document patch requires explicit folder scope');
+            throw VfsError::permissionDenied($path, $this->documentWriteDenial($agent, $doc, null) ?? 'document patch is not allowed');
         }
 
         return $doc;

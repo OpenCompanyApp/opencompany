@@ -3,6 +3,7 @@
 namespace App\Agents\Tools\Vfs\Support;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsPendingApproval;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -20,9 +21,12 @@ use Illuminate\Support\Str;
  *   logged with a correlation id and only that id reaches the model, because
  *   driver/SQL messages can leak schema, paths or other tenants' identifiers.
  *
- * Approval outcomes are whatever VfsMutationPolicy / ApprovalWrappedTool
- * produce (Stream C2 owns their shape); this class passes VfsError codes
- * through and never special-cases prose.
+ * Approval-pending is NOT an error. An `approval_required` VfsError is
+ * converted here, in the one encoder every VFS tool shares, into the
+ * non-error `{"ok":true,"status":"pending_approval",...}` shape owned by
+ * VfsPendingApproval. Do not add per-tool approval branches: keeping the
+ * conversion central is what guarantees one shape across all VFS tools,
+ * Code Mode (which latches on it) and future bridge/MCP surfaces.
  */
 final class VfsToolEnvelope
 {
@@ -43,6 +47,11 @@ final class VfsToolEnvelope
      */
     public static function error(string $code, string $message, array $context = []): array
     {
+        if ($code === 'approval_required'
+            && ($pending = VfsPendingApproval::fromError(new VfsError($code, $message, $context))) !== null) {
+            return $pending;
+        }
+
         return ['ok' => false, 'error' => ['code' => $code, 'message' => $message, 'context' => $context]];
     }
 

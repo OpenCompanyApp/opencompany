@@ -5,6 +5,7 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsSecretRedactor;
 use App\Models\ApprovalRequest;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -12,7 +13,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 /**
- * Approval-request mount with conservative redaction.
+ * Approval-request mount: the acting agent's own approvals.
+ *
+ * `/approvals/{id}.json` shows the stored request including the VFS block
+ * (operation, subject, required tools, action class, preview/diff, pinned
+ * base version, origin) and the replay disposition (`execution`), so an
+ * agent can tell its pending changes apart and learn what happened to them.
+ * Secrets are redacted precisely (VfsSecretRedactor); UUIDs, paths and
+ * hashes stay readable.
  */
 trait MountsVfsApprovals
 {
@@ -110,33 +118,12 @@ trait MountsVfsApprovals
         ];
     }
 
+    /**
+     * Precise secret redaction (VfsSecretRedactor): secret-like keys and known
+     * secret patterns only, so ids, paths, subjects and hashes stay readable.
+     */
     private function redactSecrets(mixed $value): mixed
     {
-        if (is_array($value)) {
-            $redacted = [];
-            foreach ($value as $key => $item) {
-                $keyString = (string) $key;
-                $redacted[$key] = preg_match('/(secret|token|auth|api[_-]?key|authorization|password|credential|bearer|cookie|session)/i', $keyString) === 1
-                    ? '[redacted]'
-                    : $this->redactSecrets($item);
-            }
-
-            return $redacted;
-        }
-
-        if (is_string($value)) {
-            $redacted = preg_replace('/\b(authorization\s*:\s*(?:bearer|basic)\s+)[^\r\n,;]+/i', '$1[redacted]', $value) ?? $value;
-            $redacted = preg_replace('/\b(secret|token|auth|api[_-]?key|authorization|password|credential|bearer|cookie|session)(\s*[:=]\s*)([^\s,&;]+)/i', '$1$2[redacted]', $redacted) ?? $redacted;
-            $redacted = preg_replace('/\b(bearer|basic)\s+([A-Za-z0-9._~+\/=-]+(?:\s+[A-Za-z0-9._~+\/=-]+)?)/i', '$1 [redacted]', $redacted) ?? $redacted;
-            $redacted = preg_replace('/([?&](?:access_token|client_secret|secret|token|auth|api[_-]?key|authorization|password|credential|bearer|session)=)([^&\s]+)/i', '$1[redacted]', $redacted) ?? $redacted;
-
-            if (preg_match('/(sk-[A-Za-z0-9_-]{12,}|[A-Za-z0-9_\/+=-]{32,})/', $redacted) === 1) {
-                return '[redacted]';
-            }
-
-            return $redacted;
-        }
-
-        return $value;
+        return VfsSecretRedactor::redact($value);
     }
 }

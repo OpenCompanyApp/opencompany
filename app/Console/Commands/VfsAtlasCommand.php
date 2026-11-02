@@ -6,6 +6,7 @@ use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Agents\Tools\ToolRegistry;
 use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsPendingApproval;
 use App\Domain\Vfs\Spec\VfsOperationSpecRegistry;
 use App\Models\User;
 use App\Models\Workspace;
@@ -144,7 +145,9 @@ class VfsAtlasCommand extends Command
             $this->renderPrimitiveResult($this->canonicalPrimitiveName($primitive), $agent, $payload, $response);
             $decoded = json_decode($response, true);
 
-            return ! is_array($decoded) || ($decoded['ok'] ?? true) === false
+            // pending_approval is ok:true for agents, but nothing ran: a CLI
+            // caller must see a non-zero exit.
+            return ! is_array($decoded) || ($decoded['ok'] ?? true) === false || VfsPendingApproval::isPending($decoded) !== null
                 ? self::FAILURE
                 : self::SUCCESS;
         } catch (VfsError $e) {

@@ -5,9 +5,15 @@ namespace App\Services;
 use App\Agents\Runtime\ApprovedToolReplay;
 use App\Agents\Support\UntrustedContent;
 use App\Agents\Tools\ToolRegistry;
-use App\Domain\Vfs\Core\VfsPath;
+use App\Domain\Authorization\Application\ApprovalResolutionDenied;
+use App\Domain\Authorization\Application\ApprovalResolutionPolicy;
+use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\Core\VfsTextPatch;
+use App\Domain\Vfs\Events\VfsOperationContext;
 use App\Domain\Vfs\OpenCompany\Approvals\VfsApprovalRequestFactory;
 use App\Domain\Vfs\OpenCompany\Approvals\VfsApprovedExecutionContext;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsDirectToolOperation;
+use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Jobs\AgentRespondJob;
 use App\Models\AgentPermission;
 use App\Models\ApprovalRequest;
@@ -54,7 +60,7 @@ class ApprovalExecutionService
      * callers and workspace members without the admin/approver role. Every
      * transport funnels through here, so this is the enforcement point.
      *
-     * @throws \App\Domain\Authorization\Application\ApprovalResolutionDenied
+     * @throws ApprovalResolutionDenied
      */
     public function resolve(ApprovalRequest $approval, string $status, ?User $responder = null): bool
     {
@@ -65,7 +71,7 @@ class ApprovalExecutionService
         // Invariant: authorization is checked BEFORE the atomic pending->status
         // claim below. A refused responder must leave the row pending with no
         // side effects. Do not move this after the claim or into a transport.
-        app(\App\Domain\Authorization\Application\ApprovalResolutionPolicy::class)->authorize($approval, $responder);
+        app(ApprovalResolutionPolicy::class)->authorize($approval, $responder);
 
         $claimed = ApprovalRequest::query()
             ->whereKey($approval->getKey())
@@ -162,6 +168,11 @@ class ApprovalExecutionService
             : null;
         $parameters = is_array($context['parameters'] ?? null) ? $context['parameters'] : [];
 
+        // VFS approvals (composed `vfs_approval` or wrapper `vfs_meta`) get
+        // the VFS replay UX: pinned-base check, outcome posted back to the
+        // originating conversation, and a persisted disposition.
+        $vfsMeta = $isScriptCallback ? null : $this->vfsApprovalMeta($context);
+
         // Invariant: full-chain re-evaluation happens before tool construction.
         $dispatch = $this->toolRegistry->resolveScriptToolForDispatch($toolSlug, $agent, $account);
         if ($dispatch['decision'] === 'deny') {
@@ -172,6 +183,11 @@ class ApprovalExecutionService
             ]);
             if ($isScriptCallback) {
                 $this->recordScriptCallbackDisposition($approval->id, $context, 'denied');
+            }
+            if ($vfsMeta !== null) {
+                $this->finishVfsReplay($approval, $agent, $agentIsWaiting, 'denied', 'permission_denied', '**Approved action not executed:** '.$toolSlug.' is no longer permitted for this agent ('.$dispatch['reason'].').');
+
+                return;
             }
             if ($agentIsWaiting) {
                 $agent->clearAwaitingApproval();
@@ -193,6 +209,27 @@ class ApprovalExecutionService
                 // unavailable result rather than an ambiguous external write.
                 $this->recordScriptCallbackDisposition($approval->id, $context, 'unavailable');
             }
+            if ($vfsMeta !== null) {
+                $this->finishVfsReplay($approval, $agent, $agentIsWaiting, 'unavailable', 'unavailable', "**Approved action not executed:** {$toolSlug} is not available.");
+            }
+
+            return;
+        }
+
+        // Invariant (pinned base): the human approved a change to the object
+        // as it was when the request was made. If it moved since, only an
+        // anchored edit (text search/replace that must still match exactly
+        // once, or a row patch with per-field `base`) may re-apply; anything
+        // else fails as `conflict` without executing.
+        if ($vfsMeta !== null && ($conflict = $this->vfsPinnedBaseConflict($agent, $toolSlug, $parameters, $vfsMeta)) !== null) {
+            $this->finishVfsReplay(
+                $approval,
+                $agent,
+                $agentIsWaiting,
+                'conflict',
+                'conflict',
+                '**Approved action not applied (conflict):** '.$conflict->getMessage().' '.json_encode(['ok' => false, 'error' => ['code' => $conflict->errorCode, 'message' => $conflict->getMessage(), 'context' => $conflict->context]], JSON_UNESCAPED_SLASHES),
+            );
 
             return;
         }
@@ -220,12 +257,14 @@ class ApprovalExecutionService
                 // inside the tool do not request approval a second time.
                 app()->instance(ApprovedToolReplay::class, new ApprovedToolReplay($approval->id, $toolSlug));
                 try {
-                    $result = $vfsContext === null
+                    // VFS events of the replay carry surface approval_replay
+                    // and this approval id.
+                    $result = app(VfsOperationContext::class)->runAs('approval_replay', fn () => $vfsContext === null
                         ? $tool->handle($toolRequest)
                         : ($this->vfsApprovedContext ?? app(VfsApprovedExecutionContext::class))->runWith(
                             $vfsContext,
                             fn () => $tool->handle($toolRequest),
-                        );
+                        ), $approval->id);
                 } finally {
                     app()->forgetInstance(ApprovedToolReplay::class);
                 }
@@ -242,6 +281,20 @@ class ApprovalExecutionService
 
             if ($isScriptCallback) {
                 $this->recordScriptCallbackDisposition($approval->id, $context, 'succeeded');
+            }
+
+            if ($vfsMeta !== null) {
+                $errorCode = $toolSucceeded ? null : (string) ($decodedResult['error']['code'] ?? 'tool_error');
+                $this->finishVfsReplay(
+                    $approval,
+                    $agent,
+                    $agentIsWaiting,
+                    $toolSucceeded ? 'succeeded' : ($errorCode === 'conflict' ? 'conflict' : 'failed'),
+                    $errorCode,
+                    ($toolSucceeded ? '**Approved action executed:** ' : '**Approved action failed:** ').$displayResult,
+                );
+
+                return;
             }
 
             // Post the result as a normal channel message so the resumed agent
@@ -283,9 +336,156 @@ class ApprovalExecutionService
                 $this->recordScriptCallbackDisposition($approval->id, $context, 'unknown');
             }
 
+            if ($vfsMeta !== null) {
+                // The write may or may not have committed; say so instead of
+                // claiming failure, and never auto-retry.
+                $this->finishVfsReplay($approval, $agent, $agentIsWaiting, 'unknown', 'internal_error', "**Approved action outcome unknown:** {$toolSlug} raised an internal error during execution. Verify the current state with a read before retrying.");
+
+                return;
+            }
+
             if ($agentIsWaiting) {
                 $agent->clearAwaitingApproval();
             }
+        }
+    }
+
+    /**
+     * VFS display/replay metadata of an approval: the composed policy block
+     * (`vfs_approval`) or the wrapper block (`vfs_meta`), else null.
+     *
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>|null
+     */
+    private function vfsApprovalMeta(array $context): ?array
+    {
+        $meta = $context['vfs_approval'] ?? $context['vfs_meta'] ?? null;
+
+        return is_array($meta) ? $meta : null;
+    }
+
+    /**
+     * Conflict when the approved object moved since the request was made and
+     * the change is not anchored (see the invariant at the call site). Null
+     * when nothing is pinned, the object is unchanged, or the change carries
+     * its own anchor (re-validated by the VFS during replay).
+     *
+     * @param  array<string, mixed>  $parameters
+     * @param  array<string, mixed>  $meta
+     */
+    private function vfsPinnedBaseConflict(User $agent, string $toolSlug, array $parameters, array $meta): ?VfsError
+    {
+        $base = $meta['base_version'] ?? null;
+        $subject = $meta['subject'] ?? null;
+        if (! is_string($base) || $base === '' || ! is_string($subject) || ! str_starts_with($subject, '/')) {
+            return null;
+        }
+
+        try {
+            $current = app(VfsOperationContext::class)->unaudited(fn (): array => app(OpenCompanyVfs::class)->stat($agent, $subject));
+            $currentVersion = is_string($current['version'] ?? null) ? $current['version'] : null;
+        } catch (VfsError $e) {
+            if ($e->errorCode !== 'not_found') {
+                // Unreadable now: let the replay produce the authoritative error.
+                return null;
+            }
+            $currentVersion = null;
+        }
+
+        if ($currentVersion !== null && hash_equals($base, $currentVersion)) {
+            return null;
+        }
+
+        if ($currentVersion !== null && $this->vfsChangeIsAnchored($toolSlug, $subject, $parameters)) {
+            return null;
+        }
+
+        return VfsError::conflict(
+            $subject,
+            $currentVersion,
+            $base,
+            'The object changed after this approval was requested, so the approved change was not applied. Read it again and request the change against the current version.',
+            ['approval_base_version' => $base],
+            "Approved change to {$subject} was not applied: the object changed after approval was requested.",
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
+    private function vfsChangeIsAnchored(string $toolSlug, string $subject, array $parameters): bool
+    {
+        if (! in_array($toolSlug, ['vfs_patch', 'vfs_edit'], true) || ! is_string($parameters['patch'] ?? null)) {
+            return false;
+        }
+
+        $isRecord = preg_match('#^/(?:tables/.+/rows/|tasks/|lists/|issues/)#', $subject) === 1;
+        if ($isRecord) {
+            $decoded = json_decode($parameters['patch'], true);
+
+            return is_array($decoded) && is_array($decoded['base'] ?? null) && $decoded['base'] !== [];
+        }
+
+        try {
+            VfsTextPatch::parse($parameters['patch']);
+
+            return true;
+        } catch (VfsError) {
+            return false;
+        }
+    }
+
+    /**
+     * Persist the disposition of a VFS approval replay, post the outcome to
+     * the originating conversation and resume a parked agent there.
+     *
+     * Disposition (tool_execution_context.execution): {disposition:
+     * succeeded|failed|conflict|denied|unavailable|unknown, error_code,
+     * recorded_at}. Without a conversation the outcome is still persisted and
+     * a parked agent is released (it can read /approvals/{id}.json).
+     */
+    private function finishVfsReplay(ApprovalRequest $approval, User $agent, bool $agentIsWaiting, string $disposition, ?string $errorCode, string $message): void
+    {
+        DB::transaction(function () use ($approval, $disposition, $errorCode): void {
+            $locked = ApprovalRequest::query()->lockForUpdate()->find($approval->id);
+            if ($locked === null) {
+                return;
+            }
+            $context = $locked->tool_execution_context ?? [];
+            $context['execution'] = [
+                'disposition' => $disposition,
+                'error_code' => $errorCode,
+                'recorded_at' => now()->toIso8601String(),
+            ];
+            $locked->tool_execution_context = $context;
+            $locked->save();
+        });
+
+        $channelId = $approval->channel_id ?? ($approval->tool_execution_context['parameters']['channelId'] ?? null);
+        $channel = is_string($channelId) ? $this->approvalChannel($agent, $channelId) : null;
+        if ($channel === null) {
+            if ($agentIsWaiting) {
+                $agent->clearAwaitingApproval();
+            }
+
+            return;
+        }
+
+        $resultMessage = Message::create([
+            'id' => Str::uuid()->toString(),
+            'content' => $message,
+            'channel_id' => $channel->id,
+            'author_id' => $agent->id,
+            'timestamp' => now(),
+        ]);
+        $channel->update(['last_message_at' => now()]);
+
+        // Resume only the agent that explicitly parked on this approval;
+        // non-waiting agents see the outcome in conversation history.
+        if ($agentIsWaiting) {
+            $agent->clearAwaitingApproval();
+            $task = Task::createPending($resultMessage, $agent, $channel->id);
+            AgentRespondJob::dispatch($resultMessage, $agent, $channel->id, $task->id);
         }
     }
 
@@ -530,7 +730,8 @@ class ApprovalExecutionService
      *   policy re-evaluates denial before consulting approvals.
      *
      * Invariant: subject normalization must match the policy exactly
-     * (VfsPath::normalize for paths, VfsPath::commandSubject for commands).
+     * (VfsDirectToolOperation uses VfsPath::normalize for paths and
+     * VfsPath::commandSubject for commands).
      *
      * @param  array<string, mixed>  $parameters  The parameters exactly as passed to the tool request
      * @param  array<string, mixed>  $context
@@ -542,57 +743,25 @@ class ApprovalExecutionService
             return $context['vfs_approval'];
         }
 
-        if (! in_array($toolSlug, ['vfs_exec', 'vfs_patch', 'vfs_write'], true)) {
+        if (! in_array($toolSlug, VfsDirectToolOperation::REPLAYABLE_TOOLS, true)) {
             return null;
         }
 
         $approvals = $this->vfsApprovals ?? app(VfsApprovalRequestFactory::class);
-        $operation = match ($toolSlug) {
-            'vfs_exec' => 'exec_write',
-            'vfs_write' => 'write',
-            default => 'patch',
-        };
-        $subject = $toolSlug === 'vfs_exec'
-            ? VfsPath::commandSubject((string) ($parameters['command'] ?? ''))
-            : VfsPath::normalize((string) ($parameters['path'] ?? ''));
-        $requiredTools = $this->vfsReplayRequiredTools($toolSlug, $subject);
+        $operation = VfsDirectToolOperation::fromToolCall($toolSlug, $parameters);
+        if ($operation === null) {
+            return null;
+        }
 
         return [
             'requester_id' => $agent->id,
             'direct_tool_slug' => $toolSlug,
-            'operation' => $operation,
-            'subject' => $subject,
-            'required_tools' => $requiredTools,
+            'operation' => $operation->operation,
+            'subject' => $operation->subject,
+            'required_tools' => $operation->requiredTools,
             'approval_tool' => $toolSlug,
-            'approved_tools' => $requiredTools,
+            'approved_tools' => $operation->requiredTools,
             'parameters_hash' => $approvals->hashParameters($parameters),
         ];
-    }
-
-    /**
-     * Mirror of the required tool sets the VFS mutation paths pass to policy
-     * (ExecutesVfsMutationCommands, MutatesVfsFiles, PatchesVfsRecords,
-     * EvaluatesVfsMutationPolicy). $path is already normalized.
-     *
-     * @return list<string>
-     */
-    private function vfsReplayRequiredTools(string $toolSlug, string $path): array
-    {
-        if ($toolSlug === 'vfs_exec') {
-            return ['vfs_exec', 'vfs_write'];
-        }
-
-        if ($toolSlug !== 'vfs_patch') {
-            return [$toolSlug];
-        }
-
-        if (str_starts_with($path, '/tables/') && str_contains($path, '/rows/by-id/')) {
-            return ['vfs_patch', 'update_table_row'];
-        }
-        if (str_starts_with($path, '/agents/') && str_contains($path, '/identity/')) {
-            return ['vfs_patch', 'update_agent_identity_file'];
-        }
-
-        return ['vfs_patch'];
     }
 }

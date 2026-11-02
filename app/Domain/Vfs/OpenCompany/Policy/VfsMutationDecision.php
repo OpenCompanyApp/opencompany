@@ -10,12 +10,18 @@ namespace App\Domain\Vfs\OpenCompany\Policy;
  * decision for enforcement. Keeping those two reads of policy together prevents
  * entries from advertising a capability that execution later rejects for a
  * different reason.
+ *
+ * `actionClass` is the governance-model reversibility class of the operation
+ * (see VfsActionClass). It is carried for the future policy engine and for
+ * audit; it does not change today's enforcement, which is tool permissions
+ * plus approvals.
  */
 final class VfsMutationDecision
 {
     /**
      * @param  list<string>  $requiredTools
-     * @param  list<string>  $approvalTools  Every required tool that is approval-gated and not yet approved, in requiredTools order. approvalTool is its first element (kept for metadata compatibility).
+     * @param  list<string>  $approvalTools  Every required tool that is approval-gated and not yet approved, in requiredTools order. approvalTool is its first element.
+     * @param  string|null  $actionClass  Governance action class; derived from operation/subject/tools when null
      */
     public function __construct(
         public readonly string $status,
@@ -27,7 +33,13 @@ final class VfsMutationDecision
         public readonly string $hint = '',
         public readonly ?string $deniedReason = null,
         public readonly array $approvalTools = [],
-    ) {}
+        ?string $actionClass = null,
+    ) {
+        $this->actionClass = $actionClass ?? VfsActionClass::classify($operation, $subject, $requiredTools);
+    }
+
+    /** One of VfsActionClass::ALL. */
+    public readonly string $actionClass;
 
     public function allowedForCapability(): bool
     {
@@ -45,6 +57,7 @@ final class VfsMutationDecision
             'mutation_hint' => $this->hint,
             'mutation_permission' => $this->status,
             'mutation_requires_approval' => $this->status === 'requires_approval',
+            'mutation_action_class' => $this->actionClass,
             ...($this->deniedTool ? ['mutation_denied_tool' => $this->deniedTool] : []),
             ...($this->approvalTool ? ['mutation_approval_tool' => $this->approvalTool] : []),
             ...($this->approvalTools !== [] ? ['mutation_approval_tools' => $this->approvalTools] : []),
@@ -68,6 +81,7 @@ final class VfsMutationDecision
             'hint' => $this->hint,
             'permission' => $this->status,
             'requires_approval' => $this->status === 'requires_approval',
+            'action_class' => $this->actionClass,
             ...($this->deniedTool ? ['denied_tool' => $this->deniedTool] : []),
             ...($this->approvalTool ? ['approval_tool' => $this->approvalTool] : []),
             ...($this->approvalTools !== [] ? ['approval_tools' => $this->approvalTools] : []),

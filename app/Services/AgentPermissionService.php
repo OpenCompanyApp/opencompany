@@ -51,6 +51,14 @@ class AgentPermissionService
     }
 
     /**
+     * @return list<string>
+     */
+    public function getDeniedFolderIds(User $agent): array
+    {
+        return $this->resolver->getDeniedFolderIds($agent);
+    }
+
+    /**
      * @return string[]
      */
     public function getEnabledIntegrations(User $agent): array

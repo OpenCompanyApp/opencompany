@@ -165,7 +165,7 @@ trait MountsVfsDocuments
                 ['vfs_patch'],
                 'Patch this document with vfs_patch using a targeted search/replace payload.',
                 $this->canPatchDocument($agent, $doc),
-                'Document patches require a non-system file inside an explicitly allowed document folder.',
+                $this->documentWriteDenial($agent, $doc, null),
             );
             $capabilities = $this->mutationCapabilities($capabilities, ['patch' => $patchDecision]);
             $metadata = [

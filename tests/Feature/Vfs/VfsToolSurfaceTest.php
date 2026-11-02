@@ -342,7 +342,8 @@ class VfsToolSurfaceTest extends TestCase
             'path' => "/docs/by-id/{$doc->id}",
             'edits' => [['old_text' => 'draft', 'new_text' => 'final']],
         ])), true);
-        $this->assertSame('approval_required', $response['error']['code']);
+        // Approval-pending is the shared non-error shape (Stream C2).
+        $this->assertSame('pending_approval', $response['status']);
 
         $approval = ApprovalRequest::query()->sole();
         $this->assertSame('vfs_patch', $approval->tool_execution_context['tool_slug']);
@@ -364,7 +365,8 @@ class VfsToolSurfaceTest extends TestCase
             'edits' => [['old_text' => 'loose', 'new_text' => 'strict']],
         ]);
 
-        $this->assertSame('approval_required', $response['error']['code']);
+        // Approval-pending is the shared non-error shape (Stream C2).
+        $this->assertSame('pending_approval', $response['status']);
         $this->assertSame("mode: loose\n", $doc->fresh()->content);
     }
 

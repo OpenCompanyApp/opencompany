@@ -63,8 +63,9 @@ class VfsApprovalCoverageTest extends TestCase
         $this->gate('update_table_row');
 
         $response = json_decode($this->patchTool()->handle(new Request(['path' => $path, 'patch' => json_encode(['data' => ['Status' => 'active']])])), true);
-        $this->assertSame('approval_required', $response['error']['code']);
-        $this->assertSame(['vfs_patch', 'update_table_row'], $response['error']['context']['tools']);
+        // Phase 2: approval-pending is the non-error pending_approval envelope.
+        $this->assertSame('pending_approval', $response['status']);
+        $this->assertSame(['vfs_patch', 'update_table_row'], $response['approval_tools']);
 
         $approval = ApprovalRequest::query()->sole();
         $this->assertSame(['vfs_patch', 'update_table_row'], $approval->tool_execution_context['vfs_approval']['approved_tools']);
@@ -85,7 +86,8 @@ class VfsApprovalCoverageTest extends TestCase
         $this->gate('update_table_row');
 
         $wrapped = new ApprovalWrappedTool($this->patchTool(), $this->agent, 'vfs_patch');
-        $this->assertStringContainsString('requires human approval', $wrapped->handle(new Request(['path' => $path, 'patch' => json_encode(['data' => ['Status' => 'active']])])));
+        // Phase 2: gated vfs_* primitives answer with the pending_approval JSON.
+        $this->assertStringContainsString('"status": "pending_approval"', $wrapped->handle(new Request(['path' => $path, 'patch' => json_encode(['data' => ['Status' => 'active']])])));
 
         app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->workspaceApprover());
 
@@ -107,7 +109,7 @@ class VfsApprovalCoverageTest extends TestCase
         $this->assertSame(1, ApprovalRequest::query()->count());
 
         $response = json_decode($this->execTool()->handle(new Request(['command' => 'mkdir /files/from-policy'])), true);
-        $this->assertSame(['vfs_exec', 'vfs_write'], $response['error']['context']['tools']);
+        $this->assertSame(['vfs_exec', 'vfs_write'], $response['approval_tools']);
         $approval = ApprovalRequest::query()->where('status', 'pending')->sole();
         app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
@@ -134,7 +136,7 @@ class VfsApprovalCoverageTest extends TestCase
             'path' => $path,
             'patch' => json_encode(['search' => 'Old identity', 'replace' => 'Approved identity']),
         ])), true);
-        $this->assertSame(['vfs_patch', 'update_agent_identity_file'], $response['error']['context']['tools']);
+        $this->assertSame(['vfs_patch', 'update_agent_identity_file'], $response['approval_tools']);
 
         app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->workspaceApprover());
 
@@ -171,8 +173,9 @@ class VfsApprovalCoverageTest extends TestCase
         $first = json_decode($this->patchTool()->handle(new Request($request)), true);
         $second = json_decode($this->patchTool()->handle(new Request($request)), true);
 
-        $this->assertSame('approval_required', $second['error']['code']);
-        $this->assertSame($first['error']['context']['approval_id'], $second['error']['context']['approval_id']);
+        // Phase 2: pending_approval envelope (non-error) instead of approval_required.
+        $this->assertSame('pending_approval', $second['status']);
+        $this->assertSame($first['approval_id'], $second['approval_id']);
         $this->assertSame(1, ApprovalRequest::query()->count());
 
         // A different payload is a different operation.
