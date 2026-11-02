@@ -32,6 +32,15 @@ class DirectMessageResolver
      */
     public function getOrCreate(string $userAId, string $userBId): DirectMessage
     {
+        // Invariant: participant validation runs before any lookup or repair,
+        // so a rejected pair can never touch (or create) channels/metadata.
+        if ($userAId === $userBId) {
+            throw new DirectMessageParticipantRejected(
+                'A direct message needs two different participants.',
+                DirectMessageParticipantRejected::REASON_SELF,
+            );
+        }
+
         $this->assertWorkspaceParticipant($userAId);
         $this->assertWorkspaceParticipant($userBId);
 
@@ -49,6 +58,20 @@ class DirectMessageResolver
         $this->ensureMembers($channel, [$userAId, $userBId]);
 
         return $this->createMetadata($channel, $userAId, $userBId);
+    }
+
+    /**
+     * Open (find or create) the DM between the authenticated actor and a target.
+     *
+     * This is the entry point for user-facing transports: the actor is always
+     * one of the two participants (never two arbitrary ids from the request),
+     * the pair must be distinct, and both must belong to the active workspace.
+     *
+     * @throws DirectMessageParticipantRejected
+     */
+    public function openForActor(User $actor, string $targetUserId): DirectMessage
+    {
+        return $this->getOrCreate((string) $actor->id, $targetUserId);
     }
 
     /**
@@ -227,7 +250,10 @@ class DirectMessageResolver
             ->exists();
 
         if (! $belongs) {
-            throw new \DomainException('Direct message participant is outside the active workspace.');
+            throw new DirectMessageParticipantRejected(
+                'Direct message participant is outside the active workspace.',
+                DirectMessageParticipantRejected::REASON_OUTSIDE_WORKSPACE,
+            );
         }
     }
 

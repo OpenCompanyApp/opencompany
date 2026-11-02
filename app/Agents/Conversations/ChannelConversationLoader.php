@@ -2,6 +2,7 @@
 
 namespace App\Agents\Conversations;
 
+use App\Agents\Support\InboundMessageTrust;
 use App\Agents\Support\MessageAttachmentContext;
 use App\Jobs\CompactConversationJob;
 use App\Models\Channel;
@@ -13,12 +14,26 @@ use App\Services\Memory\ConversationCompactionService;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\UserMessage;
 
+/**
+ * Builds an agent's model-visible conversation history for one channel.
+ *
+ * Owns: channel-access gating, compaction summary injection, author framing,
+ * and the untrusted-content label for messages from non-members. Does NOT own
+ * the current-turn prompt (RespondToChatMessage) or compaction itself.
+ *
+ * Invariant: messages from authors outside the channel's workspace (external
+ * chat senders such as unlinked Telegram users) are wrapped by
+ * InboundMessageTrust before reaching the model. Do not move that labelling
+ * into stored Message content; storage stays raw and labelling stays at the
+ * model-facing boundary.
+ */
 class ChannelConversationLoader
 {
     public function __construct(
         private ConversationCompactionService $compactionService,
         private AgentPermissionService $permissionService,
         private MessageAttachmentContext $attachmentContext,
+        private InboundMessageTrust $trust = new InboundMessageTrust,
     ) {}
 
     /**
@@ -65,7 +80,10 @@ class ChannelConversationLoader
             }
         }
 
-        foreach ($query->with(['author', 'attachments'])->get() as $message) {
+        $history = $query->with(['author', 'attachments'])->get();
+        $this->trust->warm($history->pluck('author'), $workspaceId);
+
+        foreach ($history as $message) {
             $content = $this->contentWithAttachments($message, $workspaceId);
             if ($content === '') {
                 continue;
@@ -75,6 +93,7 @@ class ChannelConversationLoader
                 $sdkMessages[] = new AssistantMessage($content);
             } else {
                 $authorName = $message->author->name ?? 'User';
+                $content = $this->trust->labelForModel($message, $content, $workspaceId, $channel);
                 $sdkMessages[] = new UserMessage("[{$authorName}]: {$content}");
             }
         }

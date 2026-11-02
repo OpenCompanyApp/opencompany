@@ -57,31 +57,49 @@ use App\Http\Controllers\Api\WorkspaceMemberController;
 use App\Http\Middleware\AuthenticateAiGateway;
 use Illuminate\Support\Facades\Route;
 
-// ─── Webhooks (external, no auth, no workspace) ───────────────────
-Route::post('/webhooks/chat/{adapter}', ChatWebhookController::class);
-Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']); // Retired legacy endpoint; use /webhooks/chat/telegram
-Route::post('/webhooks/{webhook}', IncomingIntegrationWebhookController::class);
-Route::post('/telegram/mini-app/workspaces', [TelegramMiniAppController::class, 'workspaces']);
-Route::post('/telegram/mini-app/session', [TelegramMiniAppController::class, 'session']);
-Route::post('/telegram/mini-app/panel', [TelegramMiniAppController::class, 'panel']);
-Route::post('/telegram/mini-app/action', [TelegramMiniAppController::class, 'action']);
+// Rate limiting invariant: every route in this file sits behind a named
+// limiter (`throttle:<name>`) registered in AppServiceProvider with budgets
+// from config/rate_limits.php. New routes must join one of the throttled
+// groups below; never add inline numeric `throttle:N,M` here.
 
-// OpenCompany AI Gateway (external, workspace resolved from bearer API key)
-Route::prefix('/ai-gateway/v1')->middleware(AuthenticateAiGateway::class)->group(function () {
+// ─── Webhooks (external, no auth, no workspace) ───────────────────
+// Chat webhooks are keyed per IP + adapter and kept generous for Telegram bursts.
+Route::middleware('throttle:chat-webhooks')->group(function () {
+    Route::post('/webhooks/chat/{adapter}', ChatWebhookController::class);
+    Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']); // Retired legacy endpoint; use /webhooks/chat/telegram
+});
+Route::post('/webhooks/{webhook}', IncomingIntegrationWebhookController::class)
+    ->middleware('throttle:integration-webhooks');
+
+// Telegram Mini App data endpoints (init_data verified in the controller).
+Route::middleware('throttle:telegram-mini-app')->group(function () {
+    Route::post('/telegram/mini-app/workspaces', [TelegramMiniAppController::class, 'workspaces']);
+    Route::post('/telegram/mini-app/session', [TelegramMiniAppController::class, 'session']);
+    Route::post('/telegram/mini-app/panel', [TelegramMiniAppController::class, 'panel']);
+    Route::post('/telegram/mini-app/action', [TelegramMiniAppController::class, 'action']);
+});
+
+// OpenCompany AI Gateway (external, workspace resolved from bearer API key).
+// Laravel's middleware priority may run the throttle before
+// AuthenticateAiGateway whatever order is listed here, so the limiter resolves
+// the key itself. The middleware separately enforces a per-IP auth-failure budget.
+Route::prefix('/ai-gateway/v1')->middleware([AuthenticateAiGateway::class, 'throttle:ai-gateway'])->group(function () {
     Route::get('/models', ModelsController::class);
     Route::post('/chat/completions', ChatCompletionsController::class);
     Route::post('/embeddings', EmbeddingsController::class);
 });
 
 // ─── Invitation acceptance (no workspace middleware needed) ───────
-Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept']);
+Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])
+    ->middleware('throttle:api');
 
 // ─── Workspace creation (auth required, no workspace context) ─────
 Route::post('/workspaces', [WorkspaceController::class, 'store'])
-    ->middleware(['auth', 'verified']);
+    ->middleware(['throttle:api', 'auth', 'verified']);
 
 // ─── All authenticated + workspace-scoped routes ──────────────────
-Route::middleware('resolve.workspace')->group(function () {
+// `throttle:api` keys by the session user (IP fallback for guests).
+Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
 
     // Users
     Route::get('/users', [UserController::class, 'index']);

@@ -201,7 +201,8 @@ final class MrubySandboxService
             'pending' => 'The callback was not executed. Wait for the recorded approval decision; do not automatically rerun this script.',
             'denied' => 'No callback ran. Update permissions or integration enablement before creating a new execution.',
             'unknown', 'succeeded' => 'Inspect confirmed and ambiguous effects before changing or rerunning this script.',
-            default => 'Check the source location and code_read_doc contract; use mode: validate before execution.',
+            default => $this->profileHint((string) ($error['message'] ?? ''))
+                ?? 'Check the source location and code_read_doc contract; use mode: validate before execution.',
         };
 
         return [...$error,
@@ -211,5 +212,23 @@ final class MrubySandboxService
             'retryable' => (bool) $effects['retryable'] && ! in_array($error['type'] ?? '', ['engine_unavailable', 'host_transport_error', 'cancelled', 'approval_pending', 'authorization_denied', 'callback_time_exceeded'], true),
             'effectStatus' => $effectStatus,
         ];
+    }
+
+    /**
+     * Targeted repair hints for restricted-profile errors that live models
+     * repeatedly hit (observed in the GLM Code Mode evals). Only applied when
+     * no effect occurred; effect-related guidance above always wins.
+     */
+    private function profileHint(string $message): ?string
+    {
+        return match (true) {
+            str_contains($message, 'Unknown Record field') => 'Records are read-only hash-like values: use record["key"], record.keys, record.values or record.fetch("key"). Iterate with record.keys.each { |k| v = record[k] } (no each/to_h/dig/merge).',
+            str_contains($message, "'__send__'") => 'Symbol-to-proc (&:name) is not supported; write an explicit block: list.map { |x| x["name"] }.',
+            str_contains($message, 'fiber required') => 'Enumerators need a block here: pass one directly, e.g. list.each_slice(2) { |pair| ... }.',
+            str_contains($message, 'Regexp') => 'Regular expressions are not available; use include?, start_with?, end_with?, split or downcase.',
+            str_contains($message, "method 'format'"), str_contains($message, "method '%' for String") => 'format and String#% are not available; build strings with + and .to_s (round numbers with .round(2)).',
+            str_contains($message, 'Unsupported result type') => 'puts/p and the final value accept only strings, numbers, booleans, nil, arrays and hashes; convert other objects with .to_s.',
+            default => null,
+        };
     }
 }

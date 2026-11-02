@@ -61,6 +61,29 @@ dynamic loading/evaluation, threads, fibers, class definitions, monkey-patching
 or arbitrary gems. Regular expressions are not part of this qualified profile.
 Supply timestamps as explicit data and use approved `app.*` tools for I/O.
 
+## Ruby pitfalls in this profile
+
+This is a small, restricted mruby. Common CRuby habits that fail here:
+
+| Instead of | Write |
+|---|---|
+| `rows.map(&:name)` (symbol-to-proc) | `rows.map { \|r\| r["name"] }` |
+| `format("%.2f", x)`, `"%s" % x` | `x.round(2).to_s`, `"Total: " + x.to_s` |
+| Regular expressions (`=~`, `scan(/../)`, `gsub(/../)`) | `include?`, `start_with?`, `end_with?`, `split`, `downcase` |
+| `rows.each_slice(2)` / `each_with_index` without a block | always pass a block: `rows.each_slice(2) { \|pair\| ... }` |
+| `record.each { \|k, v\| }`, `record.dig("a", "b")`, `record.to_h`, `record.merge(...)` | `record.keys.each { \|k\| v = record[k] }`; `record["a"] && record["a"]["b"]`; copy with `record.keys.map { \|k\| [k, record[k]] }.to_h` |
+| `puts(value.class)`, `puts(obj)` | `puts(value.class.to_s)`; `puts`/`p` accept only strings, numbers, booleans, `nil`, arrays and hashes |
+
+Values returned by `app.*` calls are frozen `Record`s (hash-like) and frozen
+arrays. Read them with brackets, build new hashes/arrays for your results.
+
+## Final answers
+
+Code Mode computes; it does not talk to the user. Return a small hash with the
+facts you need, then put the answer in your chat reply. Do not mark the task you
+are currently running as completed with task tools; it closes automatically
+after your reply.
+
 ## Host-owned budgets
 
 All profiles have a 32 MiB VM allocation budget and a separate 256 MiB process

@@ -59,6 +59,7 @@ class ApprovalWrappedTool implements Tool
             $approval = ApprovalRequest::create([
                 'id' => Str::uuid()->toString(),
                 'type' => $isBudget ? 'budget' : 'action',
+                'workspace_id' => $this->agent->workspace_id,
                 'title' => "Tool: {$this->toolSlug}",
                 'description' => "Agent {$this->agent->name} wants to execute {$this->toolSlug}{$amountLabel}",
                 'requester_id' => $this->agent->id,
@@ -134,6 +135,7 @@ class ApprovalWrappedTool implements Tool
         ApprovalRequest::create([
             'id' => Str::uuid()->toString(),
             'type' => 'budget',
+            'workspace_id' => $this->agent->workspace_id,
             'title' => "Tool: {$this->toolSlug}",
             'description' => "Agent {$this->agent->name} executed {$this->toolSlug} (\${$amount}) — auto-approved (below threshold)",
             'requester_id' => $this->agent->id,

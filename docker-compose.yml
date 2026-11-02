@@ -29,7 +29,11 @@ services:
       REVERB_APP_ID: ${REVERB_APP_ID:-1000001}
       REVERB_APP_KEY: ${SERVICE_PASSWORD_REVERBKEY}
       REVERB_APP_SECRET: ${SERVICE_PASSWORD_REVERBSECRET}
-      PRISM_REQUEST_TIMEOUT: "1800"
+      AI_REQUEST_TIMEOUT: "1800"
+      # This stack is normally published behind a reverse proxy on the Docker
+      # network (Coolify/Traefik). Trust private ranges by default so HTTPS and
+      # client IPs (rate limits) are detected; override for other topologies.
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}"
     volumes:
       - storage:/app/storage
     depends_on:

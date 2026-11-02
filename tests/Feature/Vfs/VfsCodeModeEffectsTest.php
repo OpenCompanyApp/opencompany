@@ -123,7 +123,7 @@ RUBY, $path));
         $this->assertSame('lead', $row->fresh()->data[$column->id]);
         $this->assertSame(['approval_pending'], $this->receiptDispositions());
 
-        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved');
+        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->workspaceApprover());
         $this->assertSame('active', $row->fresh()->data[$column->id]);
     }
 
@@ -235,5 +235,20 @@ RUBY, $doc->id));
             'permission' => 'allow',
             'requires_approval' => $requiresApproval,
         ]);
+    }
+
+    /**
+     * A human admin of the test workspace: ApprovalResolutionPolicy refuses
+     * unattributed (null) responders, so approvals are resolved by a member.
+     */
+    private function workspaceApprover(): User
+    {
+        $approver = User::factory()->create(['type' => 'human']);
+        \App\Models\WorkspaceMember::query()->firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'user_id' => $approver->id],
+            ['role' => 'admin'],
+        );
+
+        return $approver;
     }
 }

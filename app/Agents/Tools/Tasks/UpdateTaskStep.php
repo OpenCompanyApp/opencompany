@@ -42,7 +42,7 @@ class UpdateTaskStep implements Tool
         try {
             $taskId = $request['taskId'];
 
-            $task = Task::find($taskId);
+            $task = Task::query()->where('workspace_id', $this->agent->workspace_id)->find($taskId);
             if (!$task) {
                 return "Error: Task '{$taskId}' not found.";
             }

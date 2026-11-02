@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Web\Safety\WebRequestGuard;
 use App\Models\AgentPermission;
 use App\Models\McpServer;
 use App\Models\User;
@@ -20,6 +21,17 @@ class McpServerControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // MCP egress is SSRF-guarded with real DNS resolution. These fixtures
+        // use fake *.example.com hosts, so stub resolution to a public
+        // documentation address; Http::fake() still intercepts the request.
+        $this->app->instance(WebRequestGuard::class, new class extends WebRequestGuard
+        {
+            protected function resolveIpAddresses(string $host): array
+            {
+                return ['93.184.216.34'];
+            }
+        });
 
         $this->user = User::factory()->create();
     }

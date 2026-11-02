@@ -51,6 +51,7 @@ class CreateAgent implements Tool
             if ($mode !== 'autonomous') {
                 $approval = ApprovalRequest::create([
                     'id' => Str::uuid()->toString(),
+                    'workspace_id' => $this->agent->workspace_id,
                     'type' => 'spawn',
                     'title' => "Spawn agent: {$name}",
                     'description' => "{$this->agent->name} wants to create a new {$agentType} agent named {$name}",

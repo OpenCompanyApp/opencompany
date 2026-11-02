@@ -60,6 +60,7 @@ class TablesToolProvider implements BuiltInToolProvider
                 'name' => 'List Tables',
                 'description' => 'List all data tables in the workspace.',
                 'icon' => 'ph:table',
+                'returns' => ['type' => 'array', 'description' => 'One hash per table: id, name, description, columns (count), rows (count), createdBy.', 'properties' => ['id' => [], 'name' => [], 'description' => [], 'columns' => [], 'rows' => [], 'createdBy' => []]],
             ],
             'get_table' => [
                 'class' => GetTable::class,
@@ -67,13 +68,15 @@ class TablesToolProvider implements BuiltInToolProvider
                 'name' => 'Get Table',
                 'description' => 'Get a table structure and columns.',
                 'icon' => 'ph:table',
+                'returns' => ['type' => 'object', 'description' => 'Table metadata with columns: an array of hashes {id, name, type, required}.', 'properties' => ['id' => [], 'name' => [], 'description' => [], 'createdBy' => [], 'columns' => []]],
             ],
             'get_table_rows' => [
                 'class' => GetTableRows::class,
                 'type' => 'read',
                 'name' => 'Get Table Rows',
-                'description' => 'Retrieve rows from a data table.',
+                'description' => 'Retrieve one page of rows from a data table (default 25, max 100 per call; use offset to page).',
                 'icon' => 'ph:table',
+                'returns' => ['type' => 'array', 'description' => 'An ARRAY of row hashes keyed by column NAME (e.g. row["Amount"]), plus "_id" (row UUID). At most `limit` rows (default 25, max 100) starting at `offset`; page until a page returns fewer rows than the limit.', 'properties' => ['_id' => [], '<column name>' => []]],
             ],
             'search_table_rows' => [
                 'class' => SearchTableRows::class,
@@ -81,6 +84,7 @@ class TablesToolProvider implements BuiltInToolProvider
                 'name' => 'Search Table Rows',
                 'description' => 'Search rows by matching a term against row data.',
                 'icon' => 'ph:magnifying-glass',
+                'returns' => ['type' => 'array', 'description' => 'An ARRAY of matching row hashes keyed by column NAME, plus "_id".', 'properties' => ['_id' => [], '<column name>' => []]],
             ],
             'create_table' => [
                 'class' => CreateTable::class,
@@ -137,6 +141,7 @@ class TablesToolProvider implements BuiltInToolProvider
                 'name' => 'Add Table Row',
                 'description' => 'Add a row to a data table.',
                 'icon' => 'ph:rows',
+                'returns' => ['type' => 'object', 'description' => 'The created row id.', 'properties' => ['id' => [], 'message' => []]],
             ],
             'update_table_row' => [
                 'class' => UpdateTableRow::class,

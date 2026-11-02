@@ -102,8 +102,11 @@ class IntegrationWebhookController extends Controller
             'targetType' => $webhook->target_type,
             'targetId' => $webhook->target_id,
             'endpoint' => $endpoint,
-            'url' => $includeSecret ? $endpoint.'?secret='.$webhook->secret : $endpoint,
+            // The secret is never embedded in the URL: senders must pass it in
+            // the `X-Webhook-Secret` (or `Authorization: Bearer`) header.
+            'url' => $endpoint,
             'secret' => $includeSecret ? $webhook->secret : null,
+            'secretHeader' => 'X-Webhook-Secret',
             'lastTriggered' => $webhook->last_triggered_at?->diffForHumans(),
             'callCount' => $webhook->call_count,
         ];

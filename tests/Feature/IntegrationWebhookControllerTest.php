@@ -51,7 +51,9 @@ class IntegrationWebhookControllerTest extends TestCase
             ->assertJsonPath('webhook.name', 'GitHub Review Notifications')
             ->assertJsonPath('webhook.targetType', 'channel');
 
-        $this->postJson("/api/webhooks/{$id}?secret={$secret}", ['event' => 'opened'])
+        // Secrets travel only in headers; query strings leak into access logs.
+        $this->withHeader('X-Webhook-Secret', $secret)
+            ->postJson("/api/webhooks/{$id}", ['event' => 'opened'])
             ->assertAccepted();
 
         $webhook = IntegrationWebhook::findOrFail($id);

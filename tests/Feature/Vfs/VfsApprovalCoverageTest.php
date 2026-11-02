@@ -69,7 +69,7 @@ class VfsApprovalCoverageTest extends TestCase
         $approval = ApprovalRequest::query()->sole();
         $this->assertSame(['vfs_patch', 'update_table_row'], $approval->tool_execution_context['vfs_approval']['approved_tools']);
 
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertSame('active', $row->fresh()->data[$column->id]);
         $this->assertSame(1, ApprovalRequest::query()->count());
@@ -87,7 +87,7 @@ class VfsApprovalCoverageTest extends TestCase
         $wrapped = new ApprovalWrappedTool($this->patchTool(), $this->agent, 'vfs_patch');
         $this->assertStringContainsString('requires human approval', $wrapped->handle(new Request(['path' => $path, 'patch' => json_encode(['data' => ['Status' => 'active']])])));
 
-        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved');
+        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->workspaceApprover());
 
         $this->assertSame('active', $row->fresh()->data[$column->id]);
         $this->assertSame(1, ApprovalRequest::query()->count());
@@ -102,14 +102,14 @@ class VfsApprovalCoverageTest extends TestCase
 
         $wrapped = new ApprovalWrappedTool($this->execTool(), $this->agent, 'vfs_exec');
         $wrapped->handle(new Request(['command' => 'mkdir /files/from-wrapper']));
-        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved');
+        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->workspaceApprover());
         $this->assertTrue(WorkspaceFile::forWorkspace()->where('name', 'from-wrapper')->where('is_folder', true)->exists());
         $this->assertSame(1, ApprovalRequest::query()->count());
 
         $response = json_decode($this->execTool()->handle(new Request(['command' => 'mkdir /files/from-policy'])), true);
         $this->assertSame(['vfs_exec', 'vfs_write'], $response['error']['context']['tools']);
         $approval = ApprovalRequest::query()->where('status', 'pending')->sole();
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertTrue(WorkspaceFile::forWorkspace()->where('name', 'from-policy')->where('is_folder', true)->exists());
         $this->assertSame(2, ApprovalRequest::query()->count());
@@ -136,7 +136,7 @@ class VfsApprovalCoverageTest extends TestCase
         ])), true);
         $this->assertSame(['vfs_patch', 'update_agent_identity_file'], $response['error']['context']['tools']);
 
-        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved');
+        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->workspaceApprover());
 
         $this->assertSame('Approved identity', Document::findOrFail($docId)->content);
         $this->assertSame(1, ApprovalRequest::query()->count());
@@ -154,7 +154,7 @@ class VfsApprovalCoverageTest extends TestCase
         $wrapped = new ApprovalWrappedTool($this->patchTool(), $this->agent, 'vfs_patch');
         $wrapped->handle(new Request(['path' => "/docs//by-id/{$doc->id}/", 'patch' => json_encode(['search' => 'Old', 'replace' => 'New'])]));
 
-        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved');
+        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->workspaceApprover());
 
         $this->assertSame('New path', $doc->fresh()->content);
         $this->assertSame(1, ApprovalRequest::query()->count());
@@ -217,5 +217,20 @@ class VfsApprovalCoverageTest extends TestCase
             'permission' => 'allow',
             'requires_approval' => $requiresApproval,
         ]);
+    }
+
+    /**
+     * A human admin of the test workspace: ApprovalResolutionPolicy refuses
+     * unattributed (null) responders, so approvals are resolved by a member.
+     */
+    private function workspaceApprover(): User
+    {
+        $approver = User::factory()->create(['type' => 'human']);
+        \App\Models\WorkspaceMember::query()->firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'user_id' => $approver->id],
+            ['role' => 'admin'],
+        );
+
+        return $approver;
     }
 }

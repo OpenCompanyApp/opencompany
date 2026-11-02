@@ -1,0 +1,16 @@
+SPDX-License-Identifier: Apache-2.0
+
+Path notice
+===========
+
+The files in this directory (resources/code-docs/) — the OpenCompany Code Mode
+guides for the `opencompany-code-v1` restricted Ruby (mruby) profile and their
+examples — are licensed under the Apache License, Version 2.0. The full text is
+in LICENSES/Apache-2.0.txt at the repository root.
+
+This notice applies only to this directory. Everything else in this repository
+is licensed under GNU AGPL-3.0-only (see LICENSE.md) unless another path notice
+explicitly says otherwise. Contributions to this directory are accepted under
+Apache-2.0 (inbound = outbound, DCO; see CONTRIBUTING.md).
+
+Copyright 2026 Ginger Media BV and OpenCompany contributors.

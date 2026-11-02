@@ -22,7 +22,14 @@ return [
     'default_for_transcription' => 'openai',
     'default_for_embeddings' => 'openai',
     'default_for_reranking' => 'cohere',
-    'request_timeout' => env('AI_REQUEST_TIMEOUT', env('PRISM_REQUEST_TIMEOUT', 30)),
+
+    // Seconds for one non-streaming or streaming LLM request (agent turns and
+    // the AI Gateway). Long reasoning turns legitimately exceed 30s; this is
+    // the single source of truth — callers must not carry their own fallback.
+    'request_timeout' => (int) env('AI_REQUEST_TIMEOUT', 300),
+
+    // Embeddings are short requests on the memory/indexing path; fail fast.
+    'embedding_request_timeout' => (int) env('AI_EMBEDDING_REQUEST_TIMEOUT', 30),
 
     /*
     |--------------------------------------------------------------------------

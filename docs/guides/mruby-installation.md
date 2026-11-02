@@ -9,7 +9,9 @@ scripts/install-ruby-engine.sh
 
 The installer selects only macOS ARM64, Linux AMD64, or Linux ARM64, downloads
 the RC archive over HTTPS, verifies its pinned SHA-256 before extraction, and
-installs its sole executable under `.runtime/ruby-engine/v0.1.0-rc.1/`. It
+installs its sole executable under `.runtime/ruby-engine/v0.1.0-rc.1/` (gitignored).
+Code Mode, script automations and the mruby tests need this binary; without it
+`code_exec` fails closed with `engine_unavailable`. The installer
 prints configuration values but never writes `.env`. Set the printed values in
 your deployment environment, for example:
 

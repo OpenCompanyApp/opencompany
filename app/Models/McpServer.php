@@ -26,6 +26,7 @@ use Illuminate\Support\Str;
  * @property string|null $description
  * @property string $name
  * @property string $slug
+ * @property string $workspace_id
  * @property string $account_alias
  * @property Carbon|null $tools_discovered_at
  * @property Carbon|null $created_at

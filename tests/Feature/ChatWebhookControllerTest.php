@@ -1240,7 +1240,8 @@ class ChatWebhookControllerTest extends TestCase
         WorkspaceMember::create([
             'workspace_id' => $this->workspace->id,
             'user_id' => $responder->id,
-            'role' => 'member',
+            // Resolving approvals requires the admin/approver role (ApprovalResolutionPolicy).
+            'role' => 'approver',
         ]);
         UserExternalIdentity::create([
             'id' => Str::uuid()->toString(),
@@ -1505,7 +1506,8 @@ class ChatWebhookControllerTest extends TestCase
         WorkspaceMember::create([
             'workspace_id' => $this->workspace->id,
             'user_id' => $responder->id,
-            'role' => 'member',
+            // Resolving approvals requires the admin/approver role (ApprovalResolutionPolicy).
+            'role' => 'approver',
         ]);
         UserExternalIdentity::create([
             'id' => Str::uuid()->toString(),
@@ -1981,7 +1983,8 @@ class ChatWebhookControllerTest extends TestCase
         WorkspaceMember::create([
             'workspace_id' => $this->workspace->id,
             'user_id' => $user->id,
-            'role' => 'member',
+            // Resolving approvals requires the admin/approver role (ApprovalResolutionPolicy).
+            'role' => 'approver',
         ]);
         UserExternalIdentity::create([
             'id' => Str::uuid()->toString(),

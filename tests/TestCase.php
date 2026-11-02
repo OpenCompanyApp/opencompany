@@ -15,6 +15,11 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Backend tests assert server-rendered responses, not Vite's manifest
+        // lookup. Keep them deterministic in clean CI checkouts while the
+        // dedicated frontend job owns asset compilation and validation.
+        $this->withoutVite();
+
         // Create a test workspace for tests that use RefreshDatabase
         if (in_array(\Illuminate\Foundation\Testing\RefreshDatabase::class, class_uses_recursive($this))) {
             $this->workspace = Workspace::create([

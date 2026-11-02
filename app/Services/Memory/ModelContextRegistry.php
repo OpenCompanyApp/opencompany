@@ -23,9 +23,12 @@ class ModelContextRegistry
      * Lookup order:
      * 1. User overrides from AppSetting (admin-configurable)
      * 2. App-owned provider metadata when a provider is known
-     * 3. Local fallback registry: exact match, then longest prefix match
-     * 4. Levenshtein fuzzy match (closest known model within distance threshold)
-     * 5. Default (conservative 32K)
+     * 3. Catalog-wide match across every provider's models (plus overrides):
+     *    exact/longest prefix, then Levenshtein fuzzy within a threshold
+     * 4. Default (conservative 32K)
+     *
+     * Model metadata is owned by the AiCatalog; this class never carries its
+     * own table of model IDs.
      */
     public function getContextWindow(string $model, ?string $provider = null): int
     {
@@ -41,8 +44,7 @@ class ModelContextRegistry
             return $catalogModel->contextWindow;
         }
 
-        $builtIn = config('memory.context_windows.models', []);
-        $allModels = array_merge($builtIn, $overrides);
+        $allModels = array_merge($this->catalogWindows(), $overrides);
         $prefixResult = $this->longestPrefixMatch($model, $allModels);
         if ($prefixResult !== null) {
             return $prefixResult;
@@ -56,6 +58,23 @@ class ModelContextRegistry
 
         // 4. Default
         return config('memory.context_windows.default', 32_000);
+    }
+
+    /**
+     * Every catalog model ID mapped to its context window.
+     *
+     * @return array<string, int>
+     */
+    private function catalogWindows(): array
+    {
+        $windows = [];
+        foreach ($this->catalog->providers() as $provider) {
+            foreach ($provider->models as $id => $model) {
+                $windows[(string) $id] ??= $model->contextWindow;
+            }
+        }
+
+        return $windows;
     }
 
     /**

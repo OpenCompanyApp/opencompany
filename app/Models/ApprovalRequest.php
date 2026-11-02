@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use Database\Factories\ApprovalRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * executed after approval. Treat it as sensitive runtime data: it explains what
  * the human approved and lets ApprovalExecutionService resume the waiting agent.
  *
+ * Tenancy: `workspace_id` is the authoritative tenant link. Approvals may have
+ * no channel (e.g. ContactAgent access requests), so scoping through
+ * `channel.workspace_id` silently hid them; always use `forWorkspace()`.
+ * ApprovalExecutionService refuses to execute an approval whose workspace_id
+ * differs from the requesting agent's workspace. Who may resolve an approval is
+ * decided by ApprovalResolutionPolicy, not by this model.
+ *
  * @property array<string, mixed>|null $tool_execution_context
  * @property-read User|null $requester
  * @property-read User|null $respondedBy
@@ -21,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ApprovalRequest extends Model
 {
     /** @use HasFactory<ApprovalRequestFactory> */
+    use BelongsToWorkspace;
     use HasFactory;
 
     protected $keyType = 'string';
@@ -29,6 +38,7 @@ class ApprovalRequest extends Model
 
     protected $fillable = [
         'id',
+        'workspace_id',
         'type',
         'title',
         'description',
@@ -40,6 +50,38 @@ class ApprovalRequest extends Model
         'tool_execution_context',
         'channel_id',
     ];
+
+    /**
+     * Safety net: derive a missing workspace_id at creation time.
+     *
+     * Creation sites set workspace_id explicitly; this hook protects future or
+     * forgotten creators. Order: channel workspace -> requesting agent's
+     * workspace -> active workspace. Rows that still end up NULL are invisible
+     * to every scoped API (fail closed).
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $approval): void {
+            if ($approval->workspace_id) {
+                return;
+            }
+
+            if ($approval->channel_id) {
+                $approval->workspace_id = Channel::query()->whereKey($approval->channel_id)->value('workspace_id');
+            }
+
+            if (! $approval->workspace_id && $approval->requester_id) {
+                $approval->workspace_id = User::query()
+                    ->whereKey($approval->requester_id)
+                    ->where('type', 'agent')
+                    ->value('workspace_id');
+            }
+
+            if (! $approval->workspace_id && app()->bound('currentWorkspace')) {
+                $approval->workspace_id = app('currentWorkspace')->id;
+            }
+        });
+    }
 
     protected function casts(): array
     {

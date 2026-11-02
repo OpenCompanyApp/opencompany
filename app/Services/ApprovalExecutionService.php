@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Agents\Runtime\ApprovedToolReplay;
+use App\Agents\Support\UntrustedContent;
 use App\Agents\Tools\ToolRegistry;
 use App\Domain\Vfs\Core\VfsPath;
 use App\Domain\Vfs\OpenCompany\Approvals\VfsApprovalRequestFactory;
@@ -45,12 +47,25 @@ class ApprovalExecutionService
      * only the request that changes `pending` may execute the approved action
      * or resume the waiting agent. Side effects deliberately run after the
      * decision is durable so a slow provider call does not hold a DB lock.
+     *
+     * Returns false when the approval was no longer pending (lost the race).
+     * Throws ApprovalResolutionDenied (403-mapped AuthorizationException) when
+     * the responder may not resolve it: agents, self-approval, unattributed
+     * callers and workspace members without the admin/approver role. Every
+     * transport funnels through here, so this is the enforcement point.
+     *
+     * @throws \App\Domain\Authorization\Application\ApprovalResolutionDenied
      */
     public function resolve(ApprovalRequest $approval, string $status, ?User $responder = null): bool
     {
         if (! in_array($status, ['approved', 'rejected'], true)) {
             throw new \InvalidArgumentException('Approval status must be approved or rejected.');
         }
+
+        // Invariant: authorization is checked BEFORE the atomic pending->status
+        // claim below. A refused responder must leave the row pending with no
+        // side effects. Do not move this after the claim or into a transport.
+        app(\App\Domain\Authorization\Application\ApprovalResolutionPolicy::class)->authorize($approval, $responder);
 
         $claimed = ApprovalRequest::query()
             ->whereKey($approval->getKey())
@@ -201,15 +216,28 @@ class ApprovalExecutionService
                 // $request->toArray(), so a snake_case script payload must be
                 // hashed after the same camelCase conversion.
                 $vfsContext = $this->vfsReplayContext($agent, $toolSlug, $toolParameters, $context);
-                $result = $vfsContext === null
-                    ? $tool->handle($toolRequest)
-                    : ($this->vfsApprovedContext ?? app(VfsApprovedExecutionContext::class))->runWith(
-                        $vfsContext,
-                        fn () => $tool->handle($toolRequest),
-                    );
+                // Mark this exact call as the approved replay so per-call gates
+                // inside the tool do not request approval a second time.
+                app()->instance(ApprovedToolReplay::class, new ApprovedToolReplay($approval->id, $toolSlug));
+                try {
+                    $result = $vfsContext === null
+                        ? $tool->handle($toolRequest)
+                        : ($this->vfsApprovedContext ?? app(VfsApprovedExecutionContext::class))->runWith(
+                            $vfsContext,
+                            fn () => $tool->handle($toolRequest),
+                        );
+                } finally {
+                    app()->forgetInstance(ApprovedToolReplay::class);
+                }
             }
             $result = (string) $result;
             $decodedResult = json_decode($result, true);
+            // Results of external tools re-enter conversation history as an
+            // agent-authored message; label them so the resumed agent treats
+            // them as data, not instructions.
+            $displayResult = ($tool instanceof IntegrationTool || str_starts_with($toolSlug, 'mcp_'))
+                ? UntrustedContent::wrap($result, 'approved_tool_result', $toolSlug)
+                : $result;
             $toolSucceeded = ! (is_array($decodedResult) && ($decodedResult['ok'] ?? true) === false);
 
             if ($isScriptCallback) {
@@ -224,7 +252,7 @@ class ApprovalExecutionService
                 if ($channel) {
                     $resultMessage = Message::create([
                         'id' => Str::uuid()->toString(),
-                        'content' => ($toolSucceeded ? '**Approved action executed:** ' : '**Approved action failed:** ').$result,
+                        'content' => ($toolSucceeded ? '**Approved action executed:** ' : '**Approved action failed:** ').$displayResult,
                         'channel_id' => $channelId,
                         'author_id' => $agent->id,
                         'timestamp' => now(),

@@ -72,7 +72,8 @@ and compliant competing hosting. Modified network deployments must provide Corre
 their users as required by AGPL section 13.
 
 Reusable protocols, schemas, SDKs, integration kits, examples, and templates are intended to use
-Apache-2.0 where their path notices say so. Separate OpenCompany Cloud operations may remain
+Apache-2.0 where their path notices say so; today that is `resources/code-docs/` (Code Mode guides
+and examples, see [the notice](resources/code-docs/LICENSE)). Separate OpenCompany Cloud operations may remain
 proprietary, but the self-hosted application remains complete and open source. Historical BSL or
 FSL releases retain the exact terms shipped with those versions.
 

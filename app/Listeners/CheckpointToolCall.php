@@ -54,8 +54,20 @@ class CheckpointToolCall
             // CodeExec exposes telemetry through the invoked tool instance. Do
             // not embed hidden markers in model-visible tool output merely to
             // transport UI metadata to this synchronous listener.
-            $rawCodeMeta = method_exists($event->tool, 'lastExecutionMetadata')
-                ? $event->tool->lastExecutionMetadata()
+            // Inside durable runs tools are wrapped (RunGuardedTool,
+            // ApprovalWrappedTool); read telemetry from the innermost tool.
+            $innerTool = $event->tool;
+            for ($depth = 0; $depth < 4; $depth++) {
+                if (method_exists($innerTool, 'innerTool')) {
+                    $innerTool = $innerTool->innerTool();
+                } elseif (method_exists($innerTool, 'getInnerTool')) {
+                    $innerTool = $innerTool->getInnerTool();
+                } else {
+                    break;
+                }
+            }
+            $rawCodeMeta = method_exists($innerTool, 'lastExecutionMetadata')
+                ? $innerTool->lastExecutionMetadata()
                 : null;
             $codeMeta = is_array($rawCodeMeta) ? $rawCodeMeta : null;
 

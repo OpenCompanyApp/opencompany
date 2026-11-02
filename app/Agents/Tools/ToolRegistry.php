@@ -73,6 +73,29 @@ class ToolRegistry
         private AgentPermissionService $permissionService,
     ) {}
 
+    /** Workspace the merged caches were built for (MCP tools are workspace-owned). */
+    private ?string $cachedForWorkspace = null;
+
+    /**
+     * Invariant: this registry is a process singleton (queue workers, Octane),
+     * while MCP providers expose only the bound workspace's servers. Merged
+     * caches built for one workspace must never serve another.
+     */
+    private function resetCachesOnWorkspaceChange(): void
+    {
+        $workspaceId = app()->bound('currentWorkspace') ? (string) app('currentWorkspace')->id : null;
+        if ($workspaceId === $this->cachedForWorkspace) {
+            return;
+        }
+
+        $this->cachedForWorkspace = $workspaceId;
+        $this->effectiveToolMap = null;
+        $this->effectiveAppGroups = null;
+        $this->effectiveIntegrationApps = null;
+        $this->effectiveAppIcons = null;
+        $this->effectiveIntegrationLogos = null;
+    }
+
     /**
      * Register a built-in tool provider.
      */
@@ -129,6 +152,7 @@ class ToolRegistry
     /** @return array<string, array<string, mixed>> */
     private function getEffectiveToolMap(): array
     {
+        $this->resetCachesOnWorkspaceChange();
         if ($this->effectiveToolMap === null) {
             $this->effectiveToolMap = [];
 
@@ -162,6 +186,7 @@ class ToolRegistry
     /** @return array<string, array<string, mixed>> */
     private function getEffectiveAppGroups(): array
     {
+        $this->resetCachesOnWorkspaceChange();
         if ($this->effectiveAppGroups === null) {
             $this->effectiveAppGroups = [];
 
@@ -192,6 +217,7 @@ class ToolRegistry
     /** @return string[] */
     public function getEffectiveIntegrationApps(): array
     {
+        $this->resetCachesOnWorkspaceChange();
         if ($this->effectiveIntegrationApps === null) {
             $this->effectiveIntegrationApps = self::INTEGRATION_APPS;
             foreach ($this->integrationProviders() as $provider) {
@@ -207,6 +233,7 @@ class ToolRegistry
     /** @return array<string, string> */
     private function getEffectiveAppIcons(): array
     {
+        $this->resetCachesOnWorkspaceChange();
         if ($this->effectiveAppIcons === null) {
             $this->effectiveAppIcons = [];
 
@@ -228,6 +255,7 @@ class ToolRegistry
     /** @return array<string, string> */
     private function getEffectiveIntegrationLogos(): array
     {
+        $this->resetCachesOnWorkspaceChange();
         if ($this->effectiveIntegrationLogos === null) {
             $this->effectiveIntegrationLogos = [];
             foreach ($this->integrationProviders() as $provider) {
@@ -557,9 +585,15 @@ class ToolRegistry
                 }
 
                 $catalogTool = $isIntegration ? $this->catalogToolDefinition($slug) : null;
-                if ($catalogTool !== null) {
+                // The generated catalog misses constant-defined schemas (about
+                // 24k tools have `parameters: []`). On the agent-discovery path
+                // an empty catalog schema must not hide the live one: ScriptBridge
+                // skips argument validation for an empty parameter list. The
+                // unfiltered developer catalog keeps the cheap catalog data.
+                $catalogParameters = $catalogTool !== null ? $this->normalizeCatalogParameters($catalogTool['parameters'] ?? []) : [];
+                if ($catalogTool !== null && ($catalogParameters !== [] || ! $scriptCapabilitiesOnly)) {
                     $toolData['fullDescription'] = (string) ($catalogTool['description'] ?? $meta['description']);
-                    $toolData['parameters'] = $this->normalizeCatalogParameters($catalogTool['parameters'] ?? []);
+                    $toolData['parameters'] = $catalogParameters;
                     $toolData['returns'] = is_array($catalogTool['returns'] ?? null)
                         ? $catalogTool['returns']
                         : $toolData['returns'];

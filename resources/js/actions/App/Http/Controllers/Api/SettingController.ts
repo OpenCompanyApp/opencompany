@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\SettingController::index
-* @see app/Http/Controllers/Api/SettingController.php:31
+* @see app/Http/Controllers/Api/SettingController.php:33
 * @route '/api/settings'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::index
-* @see app/Http/Controllers/Api/SettingController.php:31
+* @see app/Http/Controllers/Api/SettingController.php:33
 * @route '/api/settings'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::index
-* @see app/Http/Controllers/Api/SettingController.php:31
+* @see app/Http/Controllers/Api/SettingController.php:33
 * @route '/api/settings'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::index
-* @see app/Http/Controllers/Api/SettingController.php:31
+* @see app/Http/Controllers/Api/SettingController.php:33
 * @route '/api/settings'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::update
-* @see app/Http/Controllers/Api/SettingController.php:39
+* @see app/Http/Controllers/Api/SettingController.php:41
 * @route '/api/settings'
 */
 export const update = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -60,7 +60,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::update
-* @see app/Http/Controllers/Api/SettingController.php:39
+* @see app/Http/Controllers/Api/SettingController.php:41
 * @route '/api/settings'
 */
 update.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ update.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::update
-* @see app/Http/Controllers/Api/SettingController.php:39
+* @see app/Http/Controllers/Api/SettingController.php:41
 * @route '/api/settings'
 */
 update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -79,7 +79,7 @@ update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::dangerAction
-* @see app/Http/Controllers/Api/SettingController.php:85
+* @see app/Http/Controllers/Api/SettingController.php:87
 * @route '/api/settings/danger-action'
 */
 export const dangerAction = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -94,7 +94,7 @@ dangerAction.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::dangerAction
-* @see app/Http/Controllers/Api/SettingController.php:85
+* @see app/Http/Controllers/Api/SettingController.php:87
 * @route '/api/settings/danger-action'
 */
 dangerAction.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ dangerAction.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::dangerAction
-* @see app/Http/Controllers/Api/SettingController.php:85
+* @see app/Http/Controllers/Api/SettingController.php:87
 * @route '/api/settings/danger-action'
 */
 dangerAction.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -113,7 +113,7 @@ dangerAction.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::debug
-* @see app/Http/Controllers/Api/SettingController.php:296
+* @see app/Http/Controllers/Api/SettingController.php:369
 * @route '/api/settings/debug'
 */
 export const debug = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -128,7 +128,7 @@ debug.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::debug
-* @see app/Http/Controllers/Api/SettingController.php:296
+* @see app/Http/Controllers/Api/SettingController.php:369
 * @route '/api/settings/debug'
 */
 debug.url = (options?: RouteQueryOptions) => {
@@ -137,7 +137,7 @@ debug.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::debug
-* @see app/Http/Controllers/Api/SettingController.php:296
+* @see app/Http/Controllers/Api/SettingController.php:369
 * @route '/api/settings/debug'
 */
 debug.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -147,7 +147,7 @@ debug.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\SettingController::debug
-* @see app/Http/Controllers/Api/SettingController.php:296
+* @see app/Http/Controllers/Api/SettingController.php:369
 * @route '/api/settings/debug'
 */
 debug.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

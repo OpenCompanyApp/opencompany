@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Authorization\Application\ApprovalResolutionDenied;
+use App\Domain\Authorization\Application\ApprovalResolutionPolicy;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
@@ -10,29 +12,47 @@ use App\Services\ApprovalExecutionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * Web/API surface for human approval requests in the active workspace.
+ *
+ * Visibility invariant: every lookup is `ApprovalRequest::forWorkspace()`
+ * (approvals.workspace_id). Do not scope through `channel.workspace_id`:
+ * channel-less approvals (e.g. ContactAgent access requests) would become
+ * unreachable, and a foreign id must always be a 404.
+ *
+ * Resolution authority (admin/approver role, no self-approval, no agents) is
+ * NOT decided here; ApprovalExecutionService::resolve() enforces
+ * ApprovalResolutionPolicy for every transport. This controller only maps a
+ * refusal to a 403 and exposes `can_resolve` so the UI can hide buttons.
+ */
 class ApprovalController extends Controller
 {
     public function __construct(
         private ApprovalExecutionService $approvalService,
+        private ApprovalResolutionPolicy $resolutionPolicy,
     ) {}
 
     public function index(Request $request): mixed
     {
-        $query = ApprovalRequest::with(['requester', 'respondedBy'])
-            ->whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id));
+        $query = ApprovalRequest::forWorkspace()->with(['requester', 'respondedBy', 'channel']);
 
         if ($request->has('status')) {
             $query->where('status', $request->input('status'));
         }
 
-        return $query->orderBy('created_at', 'desc')->get();
+        return $query->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn (ApprovalRequest $approval): array => $this->present($approval, $request->user()))
+            ->values();
     }
 
-    public function show(string $id): ApprovalRequest
+    public function show(Request $request, string $id): mixed
     {
-        return ApprovalRequest::with(['requester', 'respondedBy'])
-            ->whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+        $approval = ApprovalRequest::forWorkspace()
+            ->with(['requester', 'respondedBy', 'channel'])
             ->findOrFail($id);
+
+        return $this->present($approval, $request->user());
     }
 
     public function store(Request $request): mixed
@@ -63,6 +83,7 @@ class ApprovalController extends Controller
 
         $approval = ApprovalRequest::create([
             'id' => Str::uuid()->toString(),
+            'workspace_id' => workspace()->id,
             'type' => $data['type'],
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
@@ -82,10 +103,19 @@ class ApprovalController extends Controller
             'status' => ['required', 'string', 'in:approved,rejected'],
         ]);
 
-        $approval = ApprovalRequest::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
-            ->findOrFail($id);
+        $approval = ApprovalRequest::forWorkspace()->findOrFail($id);
 
-        if (! $this->approvalService->resolve($approval, $data['status'], $request->user())) {
+        try {
+            $resolved = $this->approvalService->resolve($approval, $data['status'], $request->user());
+        } catch (ApprovalResolutionDenied $denied) {
+            return response()->json([
+                'ok' => false,
+                'error' => $denied->reason,
+                'message' => $denied->getMessage(),
+            ], 403);
+        }
+
+        if (! $resolved) {
             return response()->json([
                 'ok' => false,
                 'error' => 'approval_already_resolved',
@@ -93,6 +123,23 @@ class ApprovalController extends Controller
             ], 422);
         }
 
-        return $approval->fresh(['requester', 'respondedBy']);
+        return $this->present($approval->fresh(['requester', 'respondedBy', 'channel']) ?? $approval, $request->user());
+    }
+
+    /**
+     * Serialize an approval (secret-redacted via ApprovalRequest::toArray())
+     * plus `can_resolve`: true only while pending AND the policy allows the
+     * viewer. It is a UI hint; resolve() re-checks authoritatively.
+     *
+     * @return array<string, mixed>
+     */
+    private function present(ApprovalRequest $approval, ?User $viewer): array
+    {
+        $payload = $approval->toArray();
+        unset($payload['channel']);
+        $payload['can_resolve'] = $approval->status === 'pending'
+            && $this->resolutionPolicy->canResolve($approval, $viewer);
+
+        return $payload;
     }
 }

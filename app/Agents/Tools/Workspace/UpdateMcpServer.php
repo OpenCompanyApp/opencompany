@@ -2,12 +2,22 @@
 
 namespace App\Agents\Tools\Workspace;
 
+use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Services\Mcp\McpServerRegistrar;
 use App\Models\McpServer;
 use App\Models\User;
+use App\Services\Mcp\McpUrlPolicy;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Agent tool that edits a workspace MCP server's configuration.
+ *
+ * Changing the URL or enabling a server widens external exposure, so the
+ * approval floor in AgentPermissionResolver applies regardless of behavior
+ * mode. New URLs must pass McpUrlPolicy (SSRF) before they are saved.
+ */
 class UpdateMcpServer implements Tool
 {
     public function __construct(
@@ -36,6 +46,9 @@ class UpdateMcpServer implements Tool
                 if (!filter_var($request['url'], FILTER_VALIDATE_URL)) {
                     return "Invalid URL: {$request['url']}";
                 }
+                if (($violation = app(McpUrlPolicy::class)->violation((string) $request['url'])) !== null) {
+                    return $violation;
+                }
                 $updates['url'] = $request['url'];
             }
             if (!empty($request['icon'])) {
@@ -56,6 +69,10 @@ class UpdateMcpServer implements Tool
             }
 
             $server->update($updates);
+            $fresh = $server->fresh();
+            $fresh->enabled && $fresh->discovered_tools !== null
+                ? McpServerRegistrar::register(app(ToolProviderRegistry::class), $fresh)
+                : McpServerRegistrar::forget(app(ToolProviderRegistry::class), $fresh);
 
             return "MCP server updated: {$server->name} (ID: {$server->id}). Updated fields: " . implode(', ', array_keys($updates)) . '.';
         } catch (\Throwable $e) {

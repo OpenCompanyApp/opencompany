@@ -69,6 +69,23 @@ class VfsFeatureTest extends TestCase
         ]);
     }
 
+    // Eval finding: models reach for GNU long flags (`rg --files-with-matches`).
+    // They map onto the implemented short flags instead of failing preflight;
+    // quoted patterns that look like flags stay literal.
+    public function test_grep_and_rg_accept_common_long_flag_synonyms(): void
+    {
+        Document::factory()->create(['title' => 'Refund Policy', 'content' => "Refund within 30 days.\n", 'author_id' => $this->agent->id]);
+        Document::factory()->create(['title' => 'Other', 'content' => 'Nothing here.', 'author_id' => $this->agent->id]);
+        $exec = app(ToolRegistry::class)->instantiateToolBySlug('vfs_exec', $this->agent);
+
+        $long = json_decode($exec->handle(new Request(['command' => 'rg --files-with-matches --ignore-case refund /docs'])), true);
+        $short = json_decode($exec->handle(new Request(['command' => 'rg -l -i refund /docs'])), true);
+
+        $this->assertTrue($long['ok'], json_encode($long));
+        $this->assertSame($short['stdout'], $long['stdout']);
+        $this->assertStringContainsString('/docs/', $long['stdout']);
+    }
+
     public function test_vfs_tools_are_registered_as_direct_agent_tools(): void
     {
         $slugs = app(ToolRegistry::class)->getToolSlugsForAgent($this->agent);
@@ -1413,7 +1430,7 @@ RUBY);
         $this->assertSame('vfs_exec', $approval->tool_execution_context['tool_slug']);
         $this->assertSame('vfs_write', $approval->tool_execution_context['vfs_approval']['approval_tool']);
 
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertTrue(WorkspaceFile::forWorkspace()->where('name', 'nope')->where('is_folder', true)->exists());
     }
@@ -1449,7 +1466,7 @@ RUBY);
             'requires_approval' => false,
         ]);
 
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertFalse(WorkspaceFile::forWorkspace()->where('name', 'approved-denied')->exists());
     }
@@ -1755,7 +1772,7 @@ RUBY);
         $this->assertSame('update_table_row', $approval->tool_execution_context['vfs_approval']['approval_tool']);
         $this->assertSame($rowPath, $approval->tool_execution_context['vfs_approval']['subject']);
 
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertSame('active', $row->fresh()->data[$column->id]);
     }
@@ -1969,7 +1986,7 @@ RUBY);
         $this->assertNotNull($approval);
         $this->assertSame('update_agent_identity_file', $approval->tool_execution_context['vfs_approval']['approval_tool']);
 
-        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved', $this->workspaceApprover());
 
         $this->assertSame('Approved identity', Document::findOrFail($stat['backend_id'])->fresh()->content);
     }
@@ -2421,5 +2438,21 @@ RUBY);
         $this->assertIsArray($decoded, $output);
 
         return $decoded;
+    }
+
+    /**
+     * A human admin of the test workspace. ApprovalExecutionService::resolve()
+     * refuses unattributed (null) responders since ApprovalResolutionPolicy,
+     * so tests that resolve approvals directly must name an approver.
+     */
+    private function workspaceApprover(): User
+    {
+        $approver = User::factory()->create(['type' => 'human']);
+        \App\Models\WorkspaceMember::query()->firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'user_id' => $approver->id],
+            ['role' => 'admin'],
+        );
+
+        return $approver;
     }
 }

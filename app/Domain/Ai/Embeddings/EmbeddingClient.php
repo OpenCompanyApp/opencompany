@@ -40,7 +40,7 @@ class EmbeddingClient
             inputs: $inputs,
             dimensions: $this->dimensions(),
             model: $resolved['model'],
-            timeout: (int) config('ai.request_timeout', 30),
+            timeout: (int) config('ai.embedding_request_timeout'),
         );
 
         return array_values(array_map(

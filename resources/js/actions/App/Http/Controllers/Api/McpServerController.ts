@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\McpServerController::index
-* @see app/Http/Controllers/Api/McpServerController.php:24
+* @see app/Http/Controllers/Api/McpServerController.php:50
 * @route '/api/mcp-servers'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::index
-* @see app/Http/Controllers/Api/McpServerController.php:24
+* @see app/Http/Controllers/Api/McpServerController.php:50
 * @route '/api/mcp-servers'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::index
-* @see app/Http/Controllers/Api/McpServerController.php:24
+* @see app/Http/Controllers/Api/McpServerController.php:50
 * @route '/api/mcp-servers'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::index
-* @see app/Http/Controllers/Api/McpServerController.php:24
+* @see app/Http/Controllers/Api/McpServerController.php:50
 * @route '/api/mcp-servers'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::store
-* @see app/Http/Controllers/Api/McpServerController.php:32
+* @see app/Http/Controllers/Api/McpServerController.php:58
 * @route '/api/mcp-servers'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -60,7 +60,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::store
-* @see app/Http/Controllers/Api/McpServerController.php:32
+* @see app/Http/Controllers/Api/McpServerController.php:58
 * @route '/api/mcp-servers'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::store
-* @see app/Http/Controllers/Api/McpServerController.php:32
+* @see app/Http/Controllers/Api/McpServerController.php:58
 * @route '/api/mcp-servers'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -79,7 +79,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::testNewConnection
-* @see app/Http/Controllers/Api/McpServerController.php:105
+* @see app/Http/Controllers/Api/McpServerController.php:135
 * @route '/api/mcp-servers/test-new'
 */
 export const testNewConnection = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -94,7 +94,7 @@ testNewConnection.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::testNewConnection
-* @see app/Http/Controllers/Api/McpServerController.php:105
+* @see app/Http/Controllers/Api/McpServerController.php:135
 * @route '/api/mcp-servers/test-new'
 */
 testNewConnection.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ testNewConnection.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::testNewConnection
-* @see app/Http/Controllers/Api/McpServerController.php:105
+* @see app/Http/Controllers/Api/McpServerController.php:135
 * @route '/api/mcp-servers/test-new'
 */
 testNewConnection.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -113,7 +113,7 @@ testNewConnection.post = (options?: RouteQueryOptions): RouteDefinition<'post'> 
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::show
-* @see app/Http/Controllers/Api/McpServerController.php:52
+* @see app/Http/Controllers/Api/McpServerController.php:78
 * @route '/api/mcp-servers/{id}'
 */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -128,7 +128,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::show
-* @see app/Http/Controllers/Api/McpServerController.php:52
+* @see app/Http/Controllers/Api/McpServerController.php:78
 * @route '/api/mcp-servers/{id}'
 */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -155,7 +155,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::show
-* @see app/Http/Controllers/Api/McpServerController.php:52
+* @see app/Http/Controllers/Api/McpServerController.php:78
 * @route '/api/mcp-servers/{id}'
 */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -165,7 +165,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::show
-* @see app/Http/Controllers/Api/McpServerController.php:52
+* @see app/Http/Controllers/Api/McpServerController.php:78
 * @route '/api/mcp-servers/{id}'
 */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -175,7 +175,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::update
-* @see app/Http/Controllers/Api/McpServerController.php:60
+* @see app/Http/Controllers/Api/McpServerController.php:86
 * @route '/api/mcp-servers/{id}'
 */
 export const update = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -190,7 +190,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::update
-* @see app/Http/Controllers/Api/McpServerController.php:60
+* @see app/Http/Controllers/Api/McpServerController.php:86
 * @route '/api/mcp-servers/{id}'
 */
 update.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -217,7 +217,7 @@ update.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::update
-* @see app/Http/Controllers/Api/McpServerController.php:60
+* @see app/Http/Controllers/Api/McpServerController.php:86
 * @route '/api/mcp-servers/{id}'
 */
 update.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -227,7 +227,7 @@ update.patch = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::destroy
-* @see app/Http/Controllers/Api/McpServerController.php:83
+* @see app/Http/Controllers/Api/McpServerController.php:109
 * @route '/api/mcp-servers/{id}'
 */
 export const destroy = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -242,7 +242,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::destroy
-* @see app/Http/Controllers/Api/McpServerController.php:83
+* @see app/Http/Controllers/Api/McpServerController.php:109
 * @route '/api/mcp-servers/{id}'
 */
 destroy.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -269,7 +269,7 @@ destroy.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::destroy
-* @see app/Http/Controllers/Api/McpServerController.php:83
+* @see app/Http/Controllers/Api/McpServerController.php:109
 * @route '/api/mcp-servers/{id}'
 */
 destroy.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -279,7 +279,7 @@ destroy.delete = (args: { id: string | number } | [id: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::testConnection
-* @see app/Http/Controllers/Api/McpServerController.php:93
+* @see app/Http/Controllers/Api/McpServerController.php:119
 * @route '/api/mcp-servers/{id}/test'
 */
 export const testConnection = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -294,7 +294,7 @@ testConnection.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::testConnection
-* @see app/Http/Controllers/Api/McpServerController.php:93
+* @see app/Http/Controllers/Api/McpServerController.php:119
 * @route '/api/mcp-servers/{id}/test'
 */
 testConnection.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -321,7 +321,7 @@ testConnection.url = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::testConnection
-* @see app/Http/Controllers/Api/McpServerController.php:93
+* @see app/Http/Controllers/Api/McpServerController.php:119
 * @route '/api/mcp-servers/{id}/test'
 */
 testConnection.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -331,7 +331,7 @@ testConnection.post = (args: { id: string | number } | [id: string | number ] | 
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::discoverTools
-* @see app/Http/Controllers/Api/McpServerController.php:122
+* @see app/Http/Controllers/Api/McpServerController.php:152
 * @route '/api/mcp-servers/{id}/discover'
 */
 export const discoverTools = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -346,7 +346,7 @@ discoverTools.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::discoverTools
-* @see app/Http/Controllers/Api/McpServerController.php:122
+* @see app/Http/Controllers/Api/McpServerController.php:152
 * @route '/api/mcp-servers/{id}/discover'
 */
 discoverTools.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -373,7 +373,7 @@ discoverTools.url = (args: { id: string | number } | [id: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\McpServerController::discoverTools
-* @see app/Http/Controllers/Api/McpServerController.php:122
+* @see app/Http/Controllers/Api/McpServerController.php:152
 * @route '/api/mcp-servers/{id}/discover'
 */
 discoverTools.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({

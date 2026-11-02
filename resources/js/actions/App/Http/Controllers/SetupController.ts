@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\SetupController::store
-* @see app/Http/Controllers/SetupController.php:19
+* @see app/Http/Controllers/SetupController.php:18
 * @route '/setup'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\SetupController::store
-* @see app/Http/Controllers/SetupController.php:19
+* @see app/Http/Controllers/SetupController.php:18
 * @route '/setup'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\SetupController::store
-* @see app/Http/Controllers/SetupController.php:19
+* @see app/Http/Controllers/SetupController.php:18
 * @route '/setup'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({

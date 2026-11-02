@@ -150,6 +150,12 @@ export interface ApprovalRequest {
   source?: string
   urgent?: boolean
   createdAt?: Date
+  /**
+   * Server-computed UI hint from ApprovalResolutionPolicy: true only while the
+   * approval is pending and the viewer is a workspace admin/approver who did
+   * not request it. The API re-checks on resolve, so this only hides buttons.
+   */
+  can_resolve?: boolean
 }
 
 export interface ListStatus {

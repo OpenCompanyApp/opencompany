@@ -55,7 +55,7 @@ class AiGateway
             tools: [],
             schema: null,
             options: $options,
-            timeout: (int) config('ai.request_timeout', 30),
+            timeout: (int) config('ai.request_timeout'),
         );
 
         $this->recordUsage(

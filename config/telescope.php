@@ -11,6 +11,11 @@ return [
 
     'path' => env('TELESCOPE_PATH', 'telescope'),
 
+    // Outside `local`, only human users with these emails pass the
+    // viewTelescope gate (TelescopeServiceProvider). Comma-separated; empty
+    // means nobody. Workspace roles never grant access.
+    'allowed_emails' => env('TELESCOPE_ALLOWED_EMAILS', ''),
+
     'driver' => env('TELESCOPE_DRIVER', 'database'),
 
     'storage' => [

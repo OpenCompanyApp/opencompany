@@ -704,7 +704,18 @@ class TelegramMiniAppController extends Controller
         $status = $data['action'] === 'approve_approval' ? 'approved' : 'rejected';
         $approvalService = app(ApprovalExecutionService::class);
         $responder = User::query()->find($identity->user_id);
-        if (! $approvalService->resolve($approval, $status, $responder)) {
+        try {
+            $resolved = $approvalService->resolve($approval, $status, $responder);
+        } catch (\App\Domain\Authorization\Application\ApprovalResolutionDenied $denied) {
+            // Policy refusal happens before the pending claim: nothing executed.
+            return response()->json([
+                'ok' => false,
+                'error' => $denied->reason,
+                'message' => $denied->getMessage(),
+            ], 403);
+        }
+
+        if (! $resolved) {
             return response()->json([
                 'ok' => false,
                 'error' => 'telegram_approval_already_resolved',

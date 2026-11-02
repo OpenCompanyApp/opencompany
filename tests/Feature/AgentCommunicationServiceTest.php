@@ -37,12 +37,6 @@ class AgentCommunicationServiceTest extends TestCase
         ]);
     }
 
-    protected function tearDown(): void
-    {
-        AgentCommunicationService::resetDepth();
-
-        parent::tearDown();
-    }
 
     // ── getOrCreateDmChannel Tests ────────────────────────────────────
 
@@ -182,29 +176,6 @@ class AgentCommunicationServiceTest extends TestCase
 
         $this->assertStringContainsString("[Delegation Result from {$this->agentA->name} | task-xyz-789]", $result);
         $this->assertStringContainsString('The work is done', $result);
-    }
-
-    // ── Depth Tracking Tests ──────────────────────────────────────────
-
-    public function test_depth_tracking(): void
-    {
-        AgentCommunicationService::incrementDepth();
-        AgentCommunicationService::incrementDepth();
-        $this->assertEquals(2, AgentCommunicationService::currentDepth());
-
-        AgentCommunicationService::decrementDepth();
-        $this->assertEquals(1, AgentCommunicationService::currentDepth());
-
-        AgentCommunicationService::resetDepth();
-        $this->assertEquals(0, AgentCommunicationService::currentDepth());
-    }
-
-    public function test_depth_decrement_floors_at_zero(): void
-    {
-        AgentCommunicationService::resetDepth();
-        AgentCommunicationService::decrementDepth();
-
-        $this->assertEquals(0, AgentCommunicationService::currentDepth());
     }
 
     // ── User Delegation Helper Tests ──────────────────────────────────

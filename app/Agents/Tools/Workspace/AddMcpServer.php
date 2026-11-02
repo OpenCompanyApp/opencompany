@@ -2,16 +2,26 @@
 
 namespace App\Agents\Tools\Workspace;
 
+use App\Services\Mcp\McpServerRegistrar;
 use App\Models\McpServer;
 use App\Models\User;
 use App\Services\Mcp\McpClient;
 use App\Services\Mcp\McpToolProvider;
+use App\Services\Mcp\McpUrlPolicy;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
+/**
+ * Agent tool that registers a workspace MCP server and discovers its tools.
+ *
+ * Widens the workspace's external exposure, so AgentPermissionResolver treats
+ * it as an approval-floor tool regardless of behavior mode. The URL must pass
+ * McpUrlPolicy (SSRF) before anything is saved; McpClient re-checks on every
+ * request.
+ */
 class AddMcpServer implements Tool
 {
     public function __construct(
@@ -35,6 +45,12 @@ class AddMcpServer implements Tool
 
             if (!filter_var($url, FILTER_VALIDATE_URL)) {
                 return "Invalid URL: {$url}";
+            }
+
+            // SSRF policy before persisting: never store a server that points
+            // at private/metadata addresses unless the operator allowlisted it.
+            if (($violation = app(McpUrlPolicy::class)->violation($url)) !== null) {
+                return $violation;
             }
 
             $slug = Str::slug($name, '_');
@@ -83,7 +99,7 @@ class AddMcpServer implements Tool
                 ]);
 
                 $registry = app(ToolProviderRegistry::class);
-                $registry->register(new McpToolProvider($server));
+                McpServerRegistrar::register($registry, $server);
 
                 $toolCount = count($tools);
                 $toolNames = collect($tools)->pluck('name')->implode(', ');

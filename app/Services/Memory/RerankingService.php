@@ -5,6 +5,7 @@ namespace App\Services\Memory;
 use App\Agents\Providers\DynamicProviderResolver;
 use App\Ai\Agents\OneShotTextAgent;
 use App\Models\AppSetting;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Reranking;
@@ -76,13 +77,25 @@ class RerankingService
     {
         $url = config('ai.providers.ollama.url', 'http://localhost:11434');
 
-        // Quick connectivity check to avoid N slow timeouts
+        // Quick connectivity check to avoid N slow timeouts. A negative result
+        // is cached briefly so installs without Ollama (reranking is on by
+        // default) do not pay a 2s probe on every memory search; retrieval
+        // degrades to the original hybrid-search order instead.
+        $unavailableKey = 'memory:reranker:ollama-unavailable:'.md5((string) $url);
+        if (Cache::has($unavailableKey)) {
+            return $this->passThrough($documents);
+        }
         try {
             $check = Http::timeout(2)->get($url.'/api/tags');
             if (! $check->successful()) {
+                Cache::put($unavailableKey, true, now()->addSeconds(60));
+
                 return $this->passThrough($documents);
             }
         } catch (\Throwable) {
+            Cache::put($unavailableKey, true, now()->addSeconds(60));
+            Log::info('Memory reranker unavailable; using hybrid-search order for 60s.', ['url' => $url]);
+
             return $this->passThrough($documents);
         }
 

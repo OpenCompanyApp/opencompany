@@ -516,6 +516,15 @@
                       <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-mono">
                         POST {{ webhook.endpoint || `/api/webhooks/${webhook.id}` }}
                       </p>
+                      <!-- The secret is returned only once, on creation. It must be
+                           sent as a header; query-string secrets are rejected. -->
+                      <p
+                        v-if="webhook.secret"
+                        class="text-xs text-amber-700 dark:text-amber-400 mt-1 break-all"
+                      >
+                        Send header <span class="font-mono">{{ webhook.secretHeader || 'X-Webhook-Secret' }}: {{ webhook.secret }}</span>
+                        — copy it now, it is not shown again.
+                      </p>
                       <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
                         Last triggered: {{ webhook.lastTriggered || 'Never' }}
                         <span v-if="webhook.callCount"> · {{ webhook.callCount }} calls this week</span>
@@ -899,6 +908,7 @@ interface Webhook {
   endpoint?: string
   url?: string
   secret?: string | null
+  secretHeader?: string
   lastTriggered?: string
   callCount?: number
 }

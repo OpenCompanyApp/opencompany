@@ -15,6 +15,7 @@ final readonly class ProviderInfo
      * @param  list<string>  $aliases
      * @param  array<string, ModelInfo>  $models
      * @param  array<string, mixed>  $cacheOptions
+     * @param  array<string, array<string, string>>  $aliasModelReplacements  alias => [model prefix => replacement]
      */
     public function __construct(
         public string $id,
@@ -36,7 +37,23 @@ final readonly class ProviderInfo
         public bool $supportsStreamingByDefault = true,
         public bool $supportsPromptCacheByDefault = false,
         public array $cacheOptions = [],
+        public array $aliasModelReplacements = [],
     ) {}
+
+    /**
+     * Replacement model for a brain stored under a legacy alias, if the
+     * catalog declares one (prefix match on the model ID).
+     */
+    public function replacementForAlias(string $alias, string $model): ?string
+    {
+        foreach ($this->aliasModelReplacements[strtolower($alias)] ?? [] as $prefix => $replacement) {
+            if (str_starts_with($model, (string) $prefix)) {
+                return (string) $replacement;
+            }
+        }
+
+        return null;
+    }
 
     /**
      * @param  array<string, mixed>  $data
@@ -70,6 +87,9 @@ final readonly class ProviderInfo
             supportsStreamingByDefault: (bool) ($data['supports_streaming_by_default'] ?? true),
             supportsPromptCacheByDefault: (bool) ($data['supports_prompt_cache_by_default'] ?? false),
             cacheOptions: is_array($data['cache_options'] ?? null) ? $data['cache_options'] : [],
+            aliasModelReplacements: array_change_key_case(
+                is_array($data['alias_model_replacements'] ?? null) ? $data['alias_model_replacements'] : [],
+            ),
         );
     }
 
