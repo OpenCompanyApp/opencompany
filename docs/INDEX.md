@@ -110,7 +110,7 @@ release candidate are published; full qualification and local cutover are not co
 | [codex-subscription-auth.md](planning/codex-subscription-auth.md) | Codex subscription authentication planning | Working on Codex integration |
 | [dream-vfs.md](planning/dream-vfs.md) | Dream memory-consolidation plan plus the historical VFS route; current VFS behavior lives in tools/vfs.md | Planning Dream and later memory lifecycle work |
 | [unified-vfs-overview.md](planning/unified-vfs-overview.md) | Implemented VFS baseline plus target architecture for later mounts, indexing, permissions UX, and production hardening | Understanding why the VFS is shaped this way or planning extensions |
-| [vfs.md](tools/vfs.md) | Current VFS runtime reference — unix-like command subset, redirection/glob/jq behavior, budgets, and Lua helper envelope | Using or testing the implemented VFS surface |
+| [vfs.md](tools/vfs.md) | Current VFS runtime reference — the five tools (exec, read, edit, write, patch), envelope and error codes, edit semantics, budgets, cursors, offloading, Code Mode, generated spec reference | Using or testing the implemented VFS surface |
 | [integration-refactor.md](planning/integration-refactor.md) | Integration refactor strategy and implementation notes | Working on package/runtime integration cleanup |
 | [integrations.md](planning/integrations.md) | Integrations product and architecture planning | Planning integration features or package scope |
 | [laravel-mcp-client.md](planning/laravel-mcp-client.md) | Laravel MCP client planning | Building or evaluating MCP client support |
