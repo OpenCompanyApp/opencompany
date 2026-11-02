@@ -164,7 +164,9 @@ trait ExecutesVfsListCommands
 
                 return;
             }
-            $path = $entry->canonicalPath ?? $entry->path;
+            // Headers follow the traversed (friendly) path, like GNU ls -R;
+            // every listed entry path is listable (mount naming contract).
+            $path = $entry->path;
             try {
                 $remaining = $budget->maxEntries - $returned;
                 $children = $this->vfs->listBounded($agent, $path, $budget->with(['maxEntries' => min(1_000, $remaining + 1)]));

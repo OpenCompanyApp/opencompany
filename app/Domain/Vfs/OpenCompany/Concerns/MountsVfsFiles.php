@@ -45,18 +45,23 @@ trait MountsVfsFiles
     private function pageFiles(User $agent, array $segments, string $path, VfsBudget $budget, array $state): array
     {
         $prefix = null;
+        $byIdNames = false;
 
         if (($segments[1] ?? null) === '.trash') {
             return $this->paginateVfsStaticEntries($this->listFileTrash($agent, $segments, $path, $budget), $budget->maxEntries, $state);
         }
 
         if (count($segments) === 1) {
-            $prefix = new VfsEntry('by-id', '/files/by-id', 'directory', capabilities: ['browse']);
+            // by-id re-lists every file flat: an alias for recursive walkers
+            // (VfsEntry::isAlias()), which reach every file by its path.
+            $prefix = new VfsEntry('by-id', '/files/by-id', 'directory', capabilities: ['browse'], metadata: ['alias' => true]);
             $query = WorkspaceFile::forWorkspace()->whereNull('parent_id');
             $entryPath = fn (WorkspaceFile $file): string => '/files'.rtrim($file->getVirtualPath(), '/');
         } elseif (($segments[1] ?? null) === 'by-id' && ! isset($segments[2])) {
             $query = WorkspaceFile::forWorkspace();
             $entryPath = fn (WorkspaceFile $file): string => "/files/by-id/{$file->id}";
+            // by-id lists ids (the names that open under /files/by-id/).
+            $byIdNames = true;
         } else {
             $resolved = $this->resolveWorkspaceFilePath($agent, $path);
             $folder = $resolved['file'] ?? throw VfsError::notFound($path);
@@ -81,7 +86,7 @@ trait MountsVfsFiles
             scanLimit: $budget->maxFiles,
             state: $state,
             canAccess: fn (WorkspaceFile $file): bool => $this->permissions->canAccessFilePath($agent, $file),
-            toEntry: fn (WorkspaceFile $file): VfsEntry => $this->fileEntry($agent, $file, $entryPath($file)),
+            toEntry: fn (WorkspaceFile $file): VfsEntry => $this->fileEntry($agent, $file, $entryPath($file), $byIdNames ? (string) $file->id : null),
             prefixEntry: $prefix,
         );
     }
@@ -136,7 +141,10 @@ trait MountsVfsFiles
         return VfsText::fit($content, $budget, $path);
     }
 
-    private function fileEntry(User $agent, WorkspaceFile $file, string $path): VfsEntry
+    /**
+     * @param  string|null  $name  listing name; defaults to the file name
+     */
+    private function fileEntry(User $agent, WorkspaceFile $file, string $path, ?string $name = null): VfsEntry
     {
         $isTextFile = ! $file->is_folder && $this->isTextFile($file);
         $baseCapabilities = $file->is_folder
@@ -182,7 +190,7 @@ trait MountsVfsFiles
         }
 
         return new VfsEntry(
-            name: $file->name,
+            name: $name ?? $file->name,
             path: $path,
             type: $file->is_folder ? 'directory' : 'file',
             canonicalPath: "/files/by-id/{$file->id}",

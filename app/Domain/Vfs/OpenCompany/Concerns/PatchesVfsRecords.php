@@ -34,11 +34,10 @@ trait PatchesVfsRecords
      */
     private function patchTask(User $agent, array $segments, string $path, string $patch, ?string $version, array $toolParameters): array
     {
-        if (($segments[1] ?? null) !== 'by-id' || ! isset($segments[2]) || isset($segments[3])) {
-            throw VfsError::notWritable($path);
-        }
+        // Any listed task name patches the task it names (MountsVfsTasks naming contract).
+        $file = $this->taskFileSegments($segments, $path) ?? throw VfsError::notWritable($path);
 
-        $task = Task::forWorkspace()->find($segments[2]) ?? throw VfsError::notFound($path);
+        $task = Task::forWorkspace()->find($file[2]) ?? throw VfsError::notFound($path);
         if ($task->agent_id !== $agent->id) {
             throw VfsError::permissionDenied($path, 'task is not assigned to this agent');
         }
@@ -186,12 +185,17 @@ trait PatchesVfsRecords
             return $fresh;
         });
 
+        // `fields` uses column names, the same keys the agent reads in
+        // rows/by-id; `field_ids` maps them to the stable column ids.
+        $fieldNames = $this->tableColumnNames($table, array_keys($resolved));
+
         return [
             'status' => 'updated',
             'path' => $path,
             'canonical_path' => $this->tableRowCanonicalPath($table, $fresh),
             'version' => $this->tableRowVersion($fresh),
-            'fields' => array_keys($resolved),
+            'fields' => $fieldNames,
+            'field_ids' => array_combine($fieldNames, array_map(fn (string|int $id): string => (string) $id, array_keys($resolved))),
         ];
     }
 
@@ -234,17 +238,69 @@ trait PatchesVfsRecords
     }
 
     /**
-     * Compare a stored cell with a caller-supplied base value. Numbers compare
-     * numerically (JSON round-trips may turn 1 into 1.0 or "1"); everything
-     * else compares by JSON value.
+     * Compare a stored cell with a caller-supplied base value, exactly.
+     *
+     * - Two strings compare as strings: "007" and "7" are different values,
+     *   and long numeric identifiers must never collide.
+     * - When at least one side is a JSON number, numbers compare by exact
+     *   decimal value (JSON round-trips may turn 1 into 1.0 or "1"). Never
+     *   cast to float: 9007199254740992 and 9007199254740993 are the same
+     *   IEEE double, and a stale base would then pass and overwrite a
+     *   human's edit.
+     * - Everything else compares by JSON value.
      */
     private function sameCellValue(mixed $actual, mixed $expected): bool
     {
-        if (is_numeric($actual) && is_numeric($expected)) {
-            return (float) $actual === (float) $expected;
+        if (is_string($actual) && is_string($expected)) {
+            return $actual === $expected;
+        }
+
+        $left = $this->canonicalDecimal($actual);
+        $right = $this->canonicalDecimal($expected);
+        if ($left !== null && $right !== null) {
+            return $left === $right;
         }
 
         return json_encode($actual) === json_encode($expected);
+    }
+
+    /**
+     * Exact canonical form `[-]digits e exponent` of an int, a finite float
+     * (its shortest round-trip repr) or a numeric string, or null for
+     * anything else. "1", 1, 1.0, "1.00" and "1e0" all map to "1e0".
+     */
+    private function canonicalDecimal(mixed $value): ?string
+    {
+        if (is_int($value)) {
+            $text = (string) $value;
+        } elseif (is_float($value)) {
+            if (! is_finite($value)) {
+                return null;
+            }
+            $text = json_encode($value);
+            if (! is_string($text)) {
+                return null;
+            }
+        } elseif (is_string($value)) {
+            $text = trim($value);
+        } else {
+            return null;
+        }
+
+        if (preg_match('/^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/', $text, $m) !== 1 || ($m[2] === '' && ($m[3] ?? '') === '')) {
+            return null;
+        }
+
+        $fraction = $m[3] ?? '';
+        $digits = ltrim($m[2].$fraction, '0');
+        if ($digits === '') {
+            return '0';
+        }
+        $exponent = (int) ($m[4] ?? 0) - strlen($fraction);
+        $trimmed = rtrim($digits, '0');
+        $exponent += strlen($digits) - strlen($trimmed);
+
+        return ($m[1] === '-' ? '-' : '').$trimmed.'e'.$exponent;
     }
 
     private function taskVersion(Task $task): string
@@ -370,11 +426,20 @@ trait PatchesVfsRecords
                 ->filter(fn (DataTableColumn $column): bool => mb_strtolower($column->name) === mb_strtolower((string) $key))
                 ->values();
 
+            // Errors name the valid columns so the next call can succeed
+            // without another schema read.
             if ($matches->isEmpty()) {
-                throw VfsError::invalid("Unknown table column: {$key}");
+                throw VfsError::invalid("Unknown table column: {$key}", [
+                    'field' => (string) $key,
+                    'columns' => $columns->pluck('name')->map(fn (mixed $name): string => (string) $name)->values()->all(),
+                    'hint' => 'Use one of the column names listed in `columns` (case-insensitive), or a column id from schema.json.',
+                ]);
             }
             if ($matches->count() > 1) {
-                throw VfsError::invalid("Ambiguous table column name: {$key}. Use the column UUID.");
+                throw VfsError::invalid("Ambiguous table column name: {$key}. Use the column UUID.", [
+                    'field' => (string) $key,
+                    'column_ids' => $matches->pluck('id')->map(fn (mixed $id): string => (string) $id)->values()->all(),
+                ]);
             }
 
             $resolved[$matches->first()->id] = $value;
