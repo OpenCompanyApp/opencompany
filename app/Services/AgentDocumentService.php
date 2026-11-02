@@ -167,8 +167,10 @@ class AgentDocumentService
         // guards intentionally protect system files from normal delete paths.
         $this->recursivelyUnsetSystemFlag($agentFolder);
 
-        // Delete — cascade handles children
-        $agentFolder->delete();
+        // Purge, not trash: Document is soft-deleting, but agent teardown
+        // relies on the database cascade to remove the whole tree. A soft
+        // delete would leave the (now non-system) children live and visible.
+        $agentFolder->forceDelete();
     }
 
     /**
