@@ -1,6 +1,9 @@
 # Standalone Artifact Service Investigation
 
 Date: 2026-05-25
+Status: Research and product planning, reconciled 2026-08-09. The core VFS now
+exists in the OpenCompany working tree; the Artifact domain, endpoint runtime,
+viewer, version model, and standalone service remain unimplemented.
 
 Question: should OpenCompany split artifact generation/runtime into a standalone, no-build, VFS-backed service that can store bundles in S3-compatible object storage and use very cheap current models such as DeepSeek for generation and maintenance?
 
@@ -39,12 +42,12 @@ The surrounding docs add important constraints:
 - `docs/planning/lua-scripting.md` says Lua script automations already exist partially through `LuaSandboxService`, `LuaBridge`, `RunScriptAutomationJob`, and `ExecuteScriptAutomation`.
 - `WorkspaceDisk`, `WorkspaceFile`, and `FileSystemService` already support workspace-scoped storage and configurable `local`, `s3`, and `sftp` disks.
 
-Current implementation gaps:
+Current implementation gaps after the VFS baseline landed:
 
 - no `Artifact` model yet
 - no artifact routes/viewer/catalog
 - no endpoint trigger type or artifact endpoint runner
-- no `app/Domain/Vfs`
+- no `/artifacts` VFS adapter or artifact bundle projection
 - no artifact-specific file/version table
 - automation validation still assumes cron-style scheduling
 

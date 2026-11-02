@@ -1,5 +1,11 @@
 # Maintainability Refactor Audit - 2026-05-19
 
+Status: Active audit backlog, reconciled 2026-08-09. The structural advice
+remains useful, but line counts and file inventories are dated. Durable agent
+run records, per-agent locking, guarded tool execution, and VFS services are
+meaningful progress; response delivery and orchestration still leave
+`RespondToChatMessage` at about 772 lines in the current working tree.
+
 ## Scope
 
 This audit reviewed the current OpenCompany app structure after the first DDD modular-monolith pass. It focused on maintainability, readability, refactor boundaries, and code that is likely to become harder to change as the product grows.
@@ -66,7 +72,10 @@ class CalendarEventController extends Controller
 
 ### 1. Split `RespondToChatMessage` Again
 
-`app/Domain/AgentRuntime/Application/RespondToChatMessage.php` is still about 560 lines. The previous pass extracted task resolution, duplicate-delivery checks, and message delivery, but it still owns too much runtime detail.
+`app/Domain/AgentRuntime/Application/RespondToChatMessage.php` is about 772
+lines in the 2026-08-09 working tree. The previous passes extracted task
+resolution, duplicate-delivery checks, message delivery, and durable run
+services, but it still owns too much runtime detail.
 
 Recommended next splits:
 

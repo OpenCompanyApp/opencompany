@@ -1,6 +1,6 @@
 # OpenCompany
 
-**The operating system for AI-powered teams.** Self-hosted platform where humans and AI agents collaborate as persistent team members — not just API calls.
+**A self-hosted workspace for AI-powered teams.** Humans and durable AI agents collaborate through shared chat, tasks, documents, tools, and approvals.
 
 [Website](https://opencompany.app) · [Docs](https://docs.opencompany.app) · [Discord](https://discord.gg/opencompany)
 
@@ -8,24 +8,26 @@
 
 ## What is OpenCompany?
 
-OpenCompany is a self-hosted collaboration platform — think Slack, but half the users are AI agents. Agents live in channels 24/7, remember past conversations, learn from interactions, and work alongside humans as true team members.
+OpenCompany is a self-hosted collaboration platform where humans and AI agents work in the same workspace. Agents respond to chat, assigned tasks, schedules, automations, and delegated work; durable memory and run records preserve useful context and execution state across those interactions.
 
 Built with Laravel 12, Vue 3, and Inertia.js.
 
 ## Features
 
-- **Persistent AI Agents** — Agents that run 24/7 with memory, not stateless API calls
+- **Durable AI Agents** — Workspace agents with identity, memory, queued run state, retries, cancellation, and task history
 - **Multi-Provider LLM** — OpenAI, Anthropic, Gemini, Groq, xAI, OpenRouter, Codex, and more through the app-owned provider catalog
 - **Real-Time Chat** — Channels, DMs, threads, @mentions — humans and agents side by side
 - **Agent Memory** — Short-term + long-term memory with hybrid vector/keyword search
-- **Multi-Agent Orchestration** — Dynamic spawning, task delegation, result aggregation
+- **Multi-Agent Delegation** — Existing workspace agents can receive isolated delegated work with child task/run tracking and sequential result aggregation
 - **Task Management** — Full lifecycle tracking with Kanban boards and workload monitoring
-- **Org Chart** — Visual hierarchy with drag-and-drop for humans and agents
+- **Organization View** — Visual hierarchy for humans and agents
 - **Documents & Knowledge** — Shared knowledge base accessible to all agents
 - **Approvals & Governance** — Human-in-the-loop approval workflows
 - **External Integrations** — Package integrations, MCP-connected tools, and Telegram runtime support
-- **Multi-Workspace** — Isolated workspaces with RBAC
+- **Multi-Workspace** — Workspace isolation, admin/member roles, and agent-specific permissions; full human RBAC remains planned
 - **MCP Client Runtime** — Connect workspace-scoped MCP servers as agent tools
+
+For a precise shipped/partial/planned breakdown, see [Current State](docs/CURRENT_STATE.md). Active security, reliability, and product work is tracked in [Roadmap and Open Audits](docs/ROADMAP.md).
 
 ## Quick Start
 
@@ -56,16 +58,22 @@ composer dev
 
 ## License
 
-OpenCompany is source-available under the [Business Source License 1.1](LICENSE.md).
+The working tree is prepared for a future open-source release under
+[AGPL-3.0-only](LICENSE.md). AGPL permits self-hosting, modification, redistribution, commercial use,
+and compliant competing hosting. Modified network deployments must provide Corresponding Source to
+their users as required by AGPL section 13.
 
-- **Allowed without a separate commercial agreement**: internal self-hosting, affiliate internal use, and single-customer managed operation under the Additional Use Grant in [LICENSE.md](LICENSE.md)
-- **Commercial features**: some premium capabilities may require a commercial agreement and valid license key; see [LICENSE_EE.md](LICENSE_EE.md)
-- **Commercial / hosted use outside the Additional Use Grant**: [Contact us](mailto:enterprise@opencompany.app)
+Reusable protocols, schemas, SDKs, integration kits, examples, and templates are intended to use
+Apache-2.0 where their path notices say so. Separate OpenCompany Cloud operations may remain
+proprietary, but the self-hosted application remains complete and open source. Historical BSL or
+FSL releases retain the exact terms shipped with those versions.
 
 See also:
 
 - [Licensing FAQ](LICENSING.md)
 - [Commercial Use](COMMERCIAL_USE.md)
+- [Trademark and Compatibility Policy](TRADEMARKS.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## Star History
 

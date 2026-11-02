@@ -1,6 +1,13 @@
 # VFS Unix Command Gap Analysis
 
 Date: 2026-05-26
+Status: Historical gap audit with current reconciliation.
+Verified: 2026-08-09. The current working tree now has
+`VfsCommandSpecRegistry`, registry-backed help/catalog/validation, additional
+commands, pagination, and capability tests. The original comparison tables are
+retained as the decision record; use `docs/tools/vfs.md` and the runtime command
+registry for current support rather than treating every "missing" row below as
+open.
 
 ## Scope
 
@@ -21,6 +28,12 @@ Sources inspected:
 | OpenCompany | current `feat/vfs` worktree | `app/Domain/Vfs/Core/*`, `docs/tools/vfs.md` | Current executor, catalog, docs, parser |
 
 ## Executive Summary
+
+Current resolution: the central recommendation from this audit has been
+implemented. A shared command-spec registry now owns aliases, flags, help,
+classification, and discovery, and the router/validator/catalog consume it.
+The remaining value of this document is its compatibility backlog and the
+intentional boundary between safe VFS commands and host/network execution.
 
 OpenCompany already has a strong core VFS shell shape: `pwd`, `cd`, `ls`, `tree`, `find`, `cat`, `head`, `tail`, `wc`, `stat`, `file`, `du`, path transforms, `grep`, `rg`, `jq`, common text transforms, checksums, write commands, pipes, `;`, `&&`, `||`, simple globs, and stdout/stderr redirection.
 
@@ -44,12 +57,12 @@ Current shell syntax:
 | Pipes | Supported, quote-aware split | Good |
 | `;` | Supported | Good |
 | `&&` / `||` | Supported and skipped branches are preflighted | Good concept, but preflight coverage drifts for some flags |
-| Redirection | `>`, `>>`, `1>`, `1>>`, `/dev/null`, `2>/dev/null`, `2>&1` | No stdin redirect, heredoc, here-string, or stderr file targets |
+| Redirection | `<`, `>`, `>>`, `1>`, `1>>`, `/dev/null`, `2>/dev/null`, `2>&1` | No heredoc, here-string, process substitution, or stderr file targets |
 | Quoting/escaping | Single/double quotes and backslash handling | Good enough for VFS shell, but not tree-sitter-bash level |
 | Globs | One-parent `*`, `?`, character classes; quoted globs stay literal | Missing recursive `**` and first-class `glob` command/API surface |
 | Unsupported shell features | `$VAR`, `$()`, backticks, process substitution, subshells, background `&` rejected | Correct for safety |
 
-## Drift Inside OpenCompany
+## Drift Inside OpenCompany At Audit Time
 
 These are not Mirage gaps; they are internal consistency gaps that will make agent UX feel unreliable.
 
@@ -62,7 +75,12 @@ These are not Mirage gaps; they are internal consistency gaps that will make age
 | `truncate -s` | Supported and preflighted, but broader docs should clarify only size `0` is supported | Keep as explicit safe subset |
 | Support discovery | `which`, `type`, `/tools/vfs/commands.json`, docs, and runtime validation can drift | Generate catalog/docs/tests from command specs |
 
-Best architectural correction: introduce a single VFS command spec registry that owns aliases, flags, value options, command class, safety class, permission behavior, docs text, and test cases. `RoutesVfsCommands`, `VfsCommandCatalog`, `/tools/vfs.md`, Lua docs, and preflight validation should consume it rather than duplicating allowed flags.
+Resolution on 2026-08-09: a single VFS command spec registry now owns aliases,
+flags, value options, command class, safety class, and help/catalog metadata.
+`RoutesVfsCommands`, option validation, path parsing, help, and
+`VfsCommandCatalog` consume it, with focused capability-truth tests. Generated
+human and Lua reference drift still needs continued validation whenever the
+registry changes.
 
 ## Mirage Command And Flag Gap Table
 
@@ -114,18 +132,18 @@ Legend:
 | `seq` | `-s -w -f` | missing | Missing | Add bounded sequence generator. |
 | `base64` | `-d -D -w` | missing | Missing | Add encode/decode over stdin/files with max bytes. |
 | `sha256sum` | `-c` | digest only | Partial | Add check mode. |
-| `xxd` | `-r -p -l -c -s -g -u` | missing | Missing | Add bounded hex dump; add reverse plain hex only if useful. |
-| `tar` | `-c -x -t -z -j -J -v -f -C --strip-components --exclude` | missing | Later / restricted | Recognize. Listing/extracting archives is useful later for `/files`; creation/extraction should be permission-aware and bounded. |
-| `gzip` | `-d -k -f -c -1..-9` | missing | Later | Add only when binary `/files` support is strong. |
-| `gunzip` | `-k -f -c -t` | missing | Later | Same as gzip. |
-| `zip` | `-r -j -q` | missing | Later | Same as tar. |
-| `unzip` | `-o -l -d -q -p -t` | missing | Later | Prioritize `unzip -l` and `unzip -p`; extraction needs write permission. |
+| `xxd` | `-r -p -l -c -s -g -u` | bounded text-backed hex dump and reverse plain hex | Covered safe subset | Keep bounded over readable VFS content. `-r` intentionally supports plain hex only (`-r -p`) because reconstructing canonical dumps is not useful enough to complicate the shell. |
+| `tar` | `-c -x -t -z -j -J -v -f -C --strip-components --exclude` | bounded create/list/extract with gzip support; bzip2/xz rejected | Covered safe subset | Archive writes and extraction are permission-aware and bounded. `-j`/`-J` are recognized but rejected because bzip2/xz support is not worth the runtime surface yet. |
+| `gzip` | `-d -k -f -c -1..-9` | gzip/gunzip pipeline support over stdin/readable paths | Covered safe subset | Keep stdout/stdin compression and decompression. File replacement behavior remains out of scope; use redirection to `/files` for explicit writes. |
+| `gunzip` | `-k -f -c -t` | decompression/test mode over stdin/readable paths | Covered safe subset | Keep read-transform semantics; no implicit source deletion or replacement. |
+| `zip` | `-r -j -q` | bounded create to `/files` | Covered safe subset | Requires `vfs_write`; `-j` is supported for junked paths, and `-r` is accepted because VFS archive creation already recurses bounded directories. |
+| `unzip` | `-o -l -d -q -p -t` | bounded list/test/print/extract | Covered safe subset | Extraction writes only under `/files`, rejects unsafe archive paths, and requires `vfs_write`. |
 | `basename` | no flags | Covered | Covered | Keep. |
 | `dirname` | no flags | Covered | Covered | Keep. |
 | `realpath` | `-e -m` | normalize only | Partial | Add `-e` existence check and `-m` missing-ok normalization. |
 | `readlink` | `-f -e -m -n` | missing | Missing | Add after symlink/path-alias contract is defined. `-f/-e/-m` can map to realpath behavior; `-n` suppresses newline. |
-| `ln` | `-s -f -n -v` | missing | Missing | Add symbolic links only for `/files` or VFS aliases after adapter contract supports link entries. Reject hard links. |
-| `split` | `-l -b -n -d -a` | missing | Missing | Add later for `/files` writes; requires multi-output write semantics and permissions. |
+| `ln` | `-s -f -n -v` | hard-link-like file copy; `-s` rejected | Covered restricted subset | Non-symlink `ln` is implemented as a permission-aware copy because VFS has no inode/link model. `ln -s` stays explicitly rejected until adapter entries can represent symlinks. |
+| `split` | `-l -b -n -d -a` | bounded line/byte split to `/files` | Covered safe subset | Multi-output writes are now permission-gated through `vfs_write`; `-n` is recognized but currently not semantically distinct from line/byte split. |
 | `patch` | `-p -R -i -N` | missing as shell command; direct `vfs_patch` exists | Reject intentionally | Keep as separate tool. Recognize `patch` and reject with `vfs_patch` suggestion so agents do not try shell patching. |
 | `shuf` | `-n -e -z -r` | missing | Missing | Add bounded deterministic/random shuffle; consider seeded behavior for reproducibility. |
 | `comm` | `-1 -2 -3 --check-order --nocheck-order` | common lines only | Partial | Implement real three-column `comm` and suppress flags. |
@@ -133,17 +151,17 @@ Legend:
 | `fold` | `-w -s` | missing | Missing | Add text wrap. |
 | `fmt` | `-w` | missing | Missing | Add paragraph reflow. |
 | `cmp` | `-l -s -n -b -i` | basic differs message | Partial | Add silent, byte limit, skip offsets, byte diagnostics. |
-| `iconv` | `-f -t -c -o` | missing | Later | Only needed when binary/encoding extraction is in scope. Recognize and reject for now. |
-| `strings` | `-n` | missing | Later | Useful after binary files/extraction; low priority now. |
+| `iconv` | `-f -t -c -o` | text-backed conversion over stdin/readable paths; `-o` rejected | Covered safe subset | Keep conversion as a read-transform. Writes should use stdout redirection to `/files`, not `iconv -o`, so write permission remains centralized. |
+| `strings` | `-n` | printable run extraction over readable content | Covered safe subset | Keep bounded over current VFS reads; this becomes more useful when binary file reads land. |
 | `rev` | no flags | Covered | Covered | Keep. |
-| `zcat` | no flags | missing | Later | Needs compressed file read support. |
-| `zgrep` | grep flags over gzip | missing | Later | Needs compressed file read support; can delegate to gzip+grep later. |
-| `mktemp` | `-d -p -t` | missing | Later / restricted | Useful for scripts if `/tmp` exists in `/files`; add only with temp lifecycle and permissions. |
+| `zcat` | no flags | gzip decompression to stdout | Covered safe subset | Reads compressed stdin or readable VFS paths; no archive extraction. |
+| `zgrep` | grep flags over gzip | gzip decompression plus grep subset | Covered safe subset | Delegates to safe grep matching after bounded decompression. |
+| `mktemp` | `-d -p -t` | permission-aware `/files` temp creation | Covered safe subset | Defaults to `/files/tmp`, supports custom `/files` parent with `-p`, and creates files or directories through `vfs_write` permission. |
 | `bc` | `-l -q` | missing | Missing | Add small calculator or reject in favor of Lua. Useful but not VFS-specific. |
 | `expr` | expressions | missing | Missing | Add simple POSIX expression evaluator or reject in favor of Lua. |
 | `history` | `-c` | missing | Product-specific | If command history is exposed, implement read/clear through permissions. Otherwise recognize and reject. |
 | `date` | `-d -u -I -R` | current ISO time only | Partial | Add UTC, ISO/RFC output, and safe parse/format `-d`. |
-| `csplit` | `-f -n -b -k -s` | missing | Later | Requires multi-output write semantics. |
+| `csplit` | `-f -n -b -k -s` | bounded numeric line and `/regex/` split to `/files` | Covered safe subset | `-f` and `-n` are implemented. `-k`, `-s`, and `-b` are recognized compatibility flags with minimal/no formatting effect. |
 | `expand` | `-t -i` | missing | Missing | Add tabs-to-spaces transform. |
 | `unexpand` | `-t -a` | missing | Missing | Add spaces-to-tabs transform. |
 | `tsort` | topological sort | missing | Missing | Add text transform. |
@@ -192,7 +210,7 @@ Recommended command states:
 | Accepted no-op compatibility | Flag has no meaningful VFS distinction but common commands should not fail | `pwd -P`, `pwd -L`, maybe `rg --hidden` until hidden entries exist |
 | Recognized unsupported | Parser knows it and returns a targeted error | `bash -c`, `python -c`, `curl`, `wget`, `sleep`, `patch`, `sed -i` |
 | Permission-gated | Command can mutate only after the same tool permission/approval as direct tools | `rm -r`, `cp -R`, `tee`, redirection to `/files` |
-| Later binary/archive phase | Useful but depends on binary file support, extraction, or archive boundaries | `tar`, `zip`, `unzip`, `gzip`, `zgrep`, `strings`, `iconv` |
+| Archive and multi-output write phase | Safe subset is implemented; remaining gaps are richer archive formats and exact suffix/format controls | `tar`, `zip`, `unzip`, `split`, `csplit` |
 
 For AX, unsupported should still be "covered" in discovery:
 
@@ -214,7 +232,7 @@ OpenCompany should stay simpler, but add these targeted improvements:
 | --- | --- |
 | `&&` / `||` | Keep current behavior. Add regression tests that skipped branches still validate supported flags through the shared spec. |
 | Heredoc / here-string | Defer. They are useful but increase parser complexity. If added, only feed bounded stdin to VFS commands; never host shell. |
-| Stdin redirect `< file` | Consider adding before heredoc because it is common and maps cleanly to `cat file | command`. |
+| Stdin redirect `< file` | Implemented as a bounded VFS read feeding command stdin. `/dev/null` maps to empty input. |
 | Recursive glob `**` | Add budgeted recursive glob expansion. It is valuable for `rg **/*.md`, `ls **/*.pdf`, and future integration mounts. |
 | Brace expansion | Keep unsupported. Agents can use `find`, `xargs`, or Lua. |
 | Variables / command substitution | Keep unsupported. It makes the VFS shell too much like a real shell and weakens predictability. |
@@ -260,8 +278,8 @@ grep -R -n -A2 -B2 -e invoice /docs
 | Phase 1: Spec unification | Shared command specs, catalog/docs generation, preflight drift fixes, recognize-and-reject unsafe Mirage commands |
 | Phase 2: Core unix parity | `ls/tree/find/grep/rg/du/cat/wc/file/stat/date` flags |
 | Phase 3: Text tool belt | `tac`, `seq`, `base64`, `column`, `fold`, `fmt`, `expand`, `unexpand`, `join`, `comm`, `cmp`, `sort`, `uniq`, `cut`, `tr`, `paste` parity |
-| Phase 4: `/files` mutation parity | `cp`, `mv`, `rm`, `mkdir`, `touch`, recursive and no-clobber flags, temp directory convention |
-| Phase 5: Binary/archive phase | `tar`, `zip`, `unzip`, `gzip`, `zcat`, `zgrep`, `strings`, `xxd`, `iconv` after binary/extraction scope is ready |
-| Phase 6: Future adapter semantics | `readlink`, `ln -s`, `lstat`, mounts, overlay behavior, integration-backed read/write capability declarations |
+| Phase 4: `/files` mutation parity | `cp`, `mv`, `rm`, `mkdir`, `touch`, `mktemp`, recursive and no-clobber flags, temp directory convention |
+| Phase 5: Binary/archive phase | Implemented safe subset for `tar`, `zip`, `unzip`, `split`, and `csplit`; keep richer archive formats, exact suffix templates, and large binary extraction for a later adapter pass. `gzip`, `gunzip`, `zcat`, `zgrep`, `xxd`, `strings`, and `iconv` operate as bounded text-backed inspection transforms. |
+| Phase 6: Future adapter semantics | `ln -s`, true hard links, `lstat`, mounts, overlay behavior, integration-backed read/write capability declarations |
 
 The best OpenCompany-specific target is not "Mirage clone". It is: Mirage-level command familiarity, OpenCompany-level permissions, structured metadata, budgets, and direct-tool handoffs where a real unix command would be unsafe or outside the VFS domain.

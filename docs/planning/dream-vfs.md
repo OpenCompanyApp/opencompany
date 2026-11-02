@@ -1,7 +1,11 @@
 # Dream (Memory Consolidation) + VFS (Virtual Filesystem) for Agent Retrieval
 
 Date: 2026-04-07
-Status: Planning. The identity/memory folder refactor and app file tools now exist; Dream consolidation, temporal decay, cache pruning, and unix-style `grep`/`glob`/`head` VFS tools remain proposed enhancements.
+Status: Partial foundation plus planning, reconciled 2026-08-09. The
+identity/memory baseline and a broad Unix-like VFS now exist. Dream
+consolidation, temporal decay, contradiction resolution, cache pruning, and
+vector-optional writes remain proposed. For current VFS behavior use
+`docs/tools/vfs.md`; the older VFS implementation sketches below are historical.
 Depends on: Identity + Memory Refactor (implemented baseline)
 
 ---
@@ -13,7 +17,7 @@ This document covers two complementary enhancements to the agent memory system:
 1. **Dream** — Offline memory consolidation: pruning, merging, and curating long-term memory that grows unboundedly over time.
 2. **VFS** — Virtual filesystem tools (`grep`, `glob`, `head`) alongside existing RAG, giving agents unix-like retrieval capabilities.
 
-Both are designed to layer on top of the implemented **Identity + Memory Refactor** (which introduced `topics/`, `logs/`, `peers/` directories, `edit_memory`, and `forget_memory` tools). Current app file tools provide `list_files`, `read_file`, `search_files`, and write/move/copy/delete operations over `WorkspaceFile` virtual paths; this document's unix-style `grep`/`glob`/`head` tools and Dream lifecycle management are still roadmap items.
+Both are designed to layer on top of the implemented **Identity + Memory Refactor** (which introduced `topics/`, `logs/`, `peers/` directories, `edit_memory`, and `forget_memory` tools). The current VFS provides broad bounded read, search, transform, and mutation commands over workspace projections. Dream lifecycle management remains a roadmap item; the VFS design in Part 2 records the route taken and later extensions.
 
 ---
 

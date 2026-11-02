@@ -1,7 +1,15 @@
 # Docs/Code Alignment Audit
 
 Date: 2026-05-24
-Status: In progress. This audit records code-backed documentation alignment work; it is not a claim that every Markdown file has been fully checked yet.
+Status: Historical evidence snapshot, closed on 2026-08-09. Its counts and
+remaining-work list describe the May 24 checkout. Current implementation truth,
+priorities, and documentation ownership now live in `docs/CURRENT_STATE.md`,
+`docs/ROADMAP.md`, and `docs/README.md`.
+
+Licensing note (2026-08-31): references below to BSL 1.1 and its Additional Use Grant record the
+posture at the time of this historical audit. The current working tree is prepared prospectively
+for AGPL-3.0-only; previously published BSL versions and any version actually published under FSL
+retain the terms shipped with those versions.
 
 ## Current Evidence Pass
 

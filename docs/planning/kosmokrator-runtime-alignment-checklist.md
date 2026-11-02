@@ -1,6 +1,8 @@
 # KosmoKrator Runtime Alignment Checklist
 
-> Historical implementation checklist for aligning OpenCompany's context, compaction, pruning, and prompt-caching runtime with reusable KosmoKrator ideas. AI provider/runtime ownership was superseded on 2026-05-24 by the app-owned OpenCompany AI Runtime in `docs/architecture/ai-provider-runtime-architecture.md`.
+> Historical implementation checklist, reconciled 2026-08-09, for aligning
+> OpenCompany's context, compaction, pruning, and prompt-caching runtime with
+> reusable KosmoKrator ideas. Current priorities live in `docs/ROADMAP.md`.
 
 ## Status
 
@@ -12,7 +14,7 @@ Phases 1-5 are largely complete. Remaining open items are tracked in the [OpenCo
 | OC-18 | ContextPruner: protect recent user turns and already-truncated entries | 3 |
 | OC-19 | CompactionPlan: preserve protected context during compaction | 4 |
 | OC-20 | Missing test coverage: compaction plan building + memory extraction | 4 |
-| OC-48 | Prompt cache metrics not wired to token metrics path | 5 |
+| OC-48 | ~~Prompt cache metrics not wired to token metrics path~~ — resolved in current app-owned gateway/usage paths; live provider verification remains | 5 |
 
 ## Completed work
 

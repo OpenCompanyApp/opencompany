@@ -75,3 +75,31 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 - Docs index: `docs/INDEX.md`
 - Runtime audit: `docs/architecture/runtime-alignment-implementation-audit.md`
 - Plane tool is available via `mcp-cli`
+
+## Licensing
+
+- The current working tree is prepared prospectively for `AGPL-3.0-only` on the complete
+  self-hosted application. Historical releases retain the BSL or FSL terms actually shipped.
+- Public protocols, schemas, SDKs, integration/provider kits, examples, and templates should use
+  Apache-2.0 only when their path notices explicitly establish that boundary.
+- Separate Cloud operations may remain proprietary, but they must not privately fork, patch, copy,
+  or replace functionality required by the complete AGPL self-hosted application.
+- Contributions default to inbound equals outbound with DCO certification. Do not infer copyright
+  assignment or proprietary relicensing authority from a pull request.
+- Keep `AGENTS.md` and `CLAUDE.md` byte-for-byte identical.
+
+## Browser Automation
+
+Use `playwright-cli` from the shell for all browser work; never use the Playwright MCP server. The CLI is more token-efficient and keeps concurrent agents isolated, while MCP's shared browser profile can cause lock conflicts and lost login state.
+
+Always use the named session `-s=browser`. Open it persistently with `playwright-cli -s=browser open <url> --persistent`; add `--headed` only when the user must see or interact with the browser.
+
+Load `.auth/state.json` with `playwright-cli -s=browser state-load .auth/state.json` when that file is available. If login is required or the saved state has expired, open the session headed, ask the user to log in manually, then save the refreshed state with `playwright-cli -s=browser state-save .auth/state.json`. Treat this file as a secret and ensure it is gitignored.
+
+Use `playwright-cli -s=browser snapshot` and its element refs for interactions. Reuse refs until navigation or a major page update makes them stale; then take a fresh snapshot. Use CSS or role selectors only when refs are unavailable.
+
+Inspect failures with `playwright-cli -s=browser console`, `requests`, `screenshot`, or `run-code`. Close only your session with `playwright-cli -s=browser close`; never use `kill-all` or `close-all` unless the user confirms that no other agents are running.
+
+If `playwright-cli` is unavailable, try `npx --no-install playwright-cli` first. If that is unavailable too, install it globally with `npm install -g @playwright/cli@latest`.
+
+Follow any project-specific target URL, sign-in, and live-verification requirements documented elsewhere in this file.

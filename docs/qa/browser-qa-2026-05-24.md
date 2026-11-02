@@ -1,5 +1,11 @@
 # Browser QA Report - 2026-05-24
 
+Status: Historical browser evidence, reconciled 2026-08-09. All migrations are
+applied in the inspected local database, resolving this report's missing-table
+condition. Other findings are either still open or need fresh browser
+verification and are consolidated in `docs/ROADMAP.md`; screenshots and route
+state below describe the May 24 run only.
+
 ## Scope
 
 This QA pass used the local app at `http://opencompany.test` with the built-in browser/Playwright browser surface. The pass focused on the authenticated OpenCompany shell, workspace routing, AI chat UI, integrations, dark/light mode, responsive layout, and safe rollback handling.

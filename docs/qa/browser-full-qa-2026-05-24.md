@@ -1,5 +1,12 @@
 # Browser QA Checkup - 2026-05-24
 
+Status: Historical browser evidence, reconciled 2026-08-09. The missing
+`integration_webhooks` migration is resolved in the current local database and
+several UI fixes have landed since this run. Session-expiry recovery,
+workspace-safe chat selection, live approval badges, self-DM prevention, and
+the other browser findings in `docs/ROADMAP.md` remain open or require fresh
+browser verification. Do not treat the screenshots as current UI truth.
+
 ## Scope
 
 Deep manual browser QA for the local OpenCompany app at `http://opencompany.test`, focused on the new AI chat UI but covering the main authenticated app surfaces:

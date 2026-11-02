@@ -1,8 +1,12 @@
 # Automation Endpoints & Agent-Built Artifacts
 
-Status: Planning, code-audited 2026-05-25. This document describes a future endpoint/artifact surface. It supersedes the older "dashboards" framing: dashboards are one artifact type, not the whole product surface.
+Status: Planning, reconciled with the current checkout on 2026-08-09. This
+document describes a future endpoint/artifact surface. It supersedes the older
+"dashboards" framing: dashboards are one artifact type, not the whole product
+surface. The VFS foundation now exists; endpoint automations and the Artifact
+domain do not.
 
-Related: `docs/planning/lua-scripting.md`, `docs/planning/unified-vfs-overview.md`, `docs/ui/pages/automation.md`, `docs/ui/pages/files.md`, `docs/ui/pages/tables.md`
+Related: `docs/planning/lua-scripting.md`, `docs/planning/unified-vfs-overview.md`, `docs/architecture/cloudflare-os-opencompany-investigation-2026-08-09.md`, `docs/ui/pages/automation.md`, `docs/ui/pages/files.md`, `docs/ui/pages/tables.md`
 
 ## Current Code Snapshot
 
@@ -15,9 +19,15 @@ The pieces below exist today and should be reused instead of rebuilt:
 - API routes expose automation CRUD, manual runs, file CRUD, document CRUD, table CRUD, Lua console execution, and tool catalog data under the current workspace context.
 - Workspace files are backed by `WorkspaceFile`, `WorkspaceDisk`, and `FileSystemService`; agents can already create text files through `write_file`, and server-side importers can write binary files. This is useful infrastructure, but it should not be the canonical product home for artifacts.
 - The SVG tool already returns generated PNG artifacts as a conversion primitive, but there is no first-class `Artifact` model, artifact route, artifact viewer, or artifact catalog.
-- There is no `app/Domain/Vfs` implementation yet. The unified VFS document is still the target architecture.
+- `app/Domain/Vfs` now implements a permission-aware VFS baseline over current
+  workspace resources, including command discovery, pagination, budgets,
+  approvals, and mutation events. There is still no `/artifacts` mount or
+  first-class Artifact domain.
 
-Implication: build Artifacts as a first-class domain over scheduled script automations, tables, documents, and the future VFS. File storage can be reused internally where helpful, but humans and agents should think in `/artifacts`, not `/files/generated`.
+Implication: build Artifacts as a first-class domain over scheduled script
+automations, tables, documents, files, and the current VFS foundation. File
+storage can be reused internally where helpful, but humans and agents should
+think in `/artifacts`, not `/files/generated`.
 
 ## Vision
 
@@ -44,7 +54,7 @@ Assets = shared CSS/JS plus optional no-build browser libraries
 Lua = backend endpoint scripts
 Tables/docs/files/tasks/channels = workspace data and side effects
 Lab = operations, publishing, versions, logs, schedules, approvals
-VFS = future read/patch/write surface over the artifact bundle
+VFS = implemented foundation; `/artifacts` projection remains future work
 ```
 
 The differentiator:
@@ -68,6 +78,11 @@ Artifacts bridge conversational agents and real operational mini-apps.
 | Liquid template | A safe, restricted template file used for pages, layouts, and partials. OpenCompany controls the allowed objects, tags, filters, and URL helpers. |
 | Backend script | A Lua source file inside `backend/` that is exposed as an artifact-scoped endpoint by the artifact runtime. |
 | No-build SPA | A multi-file artifact that feels like a single-page app through OpenCompany runtime navigation and shared assets, without `node_modules` or a compile step. |
+| Binding requirement | A portable, named declaration of a resource an artifact needs, the operations it requests, and whether it is required. It contains no credentials or concrete cross-workspace identifiers. |
+| Artifact binding | A workspace-scoped resolution of a binding requirement to one concrete table, document, file scope, channel, integration resource, or later another supported resource. |
+| Artifact template | A reusable, versioned snapshot of artifact source, tests, assets, and binding requirements. This is distinct from a Liquid rendering template. |
+| Artifact change set | A base-versioned group of proposed file, manifest, and binding edits that can be reviewed and applied to one draft as a unit. |
+| Endpoint catalog | A generated, permission-filtered description of callable artifact endpoints and their typed contracts. It is a discovery surface, not a new execution runtime or permission grant. |
 | VFS path | The stable agent-facing path that later exposes artifacts, files, documents, tables, automations, and endpoint definitions through one filesystem model. |
 
 ## Product Shape
@@ -162,19 +177,54 @@ An artifact should look like a small repo. The root folder is canonical for agen
   "endpoints": [
     {
       "slug": "feedback.list",
+      "description": "List feedback visible to the current workspace member",
       "method": "GET",
       "script": "backend/list-feedback.lua",
-      "auth": "workspace"
+      "auth_mode": "session",
+      "side_effect": "read",
+      "bindings": ["FEEDBACK_TABLE"],
+      "response_schema": {
+        "type": "array",
+        "items": { "type": "object" }
+      }
     },
     {
       "slug": "feedback.create",
+      "description": "Create one feedback item",
       "method": "POST",
       "script": "backend/create-feedback.lua",
-      "auth": "workspace"
+      "auth_mode": "session",
+      "side_effect": "write",
+      "bindings": ["FEEDBACK_TABLE"],
+      "request_schema": {
+        "type": "object",
+        "required": ["title"],
+        "properties": { "title": { "type": "string" } }
+      },
+      "response_schema": { "type": "object" }
     }
   ],
+  "bindings": {
+    "FEEDBACK_TABLE": {
+      "kind": "workspace_resource",
+      "resource_type": "table",
+      "operations": ["read", "create"],
+      "required": true,
+      "description": "Table that stores feedback submissions",
+      "suggested": { "slug": "feedback_tracker" }
+    },
+    "NOTIFICATIONS": {
+      "kind": "integration_resource",
+      "provider": "slack",
+      "resource_type": "channel",
+      "operations": ["send"],
+      "required": false,
+      "description": "Optional channel for new-feedback notifications"
+    }
+  },
   "permissions": {
-    "tables": ["feedback_tracker"],
+    "tables": ["read", "create"],
+    "channels": ["send"],
     "files": ["self"],
     "network": []
   }
@@ -379,11 +429,12 @@ Endpoint execution should:
 2. Find an active `Artifact::forWorkspace()` record by slug.
 3. Read and validate `artifact.json`.
 4. Resolve the endpoint entry to a Lua file under the same artifact root.
-5. Check the endpoint method allowlist, auth mode, artifact status, and artifact permissions.
-6. Build a request context and pass it to `LuaSandboxService` as `ctx.request` and `ctx.artifact`.
-7. Use `LuaBridge` so endpoint scripts call the same agent-visible tools and permission checks as normal Lua.
-8. Return JSON with a bounded body, status code, headers allowlist, execution metadata, and clear errors.
-9. Record success/failure without assuming endpoint calls should always create long-lived task conversation output.
+5. Resolve every named binding against the workspace-scoped binding registry and fail closed when a required binding is missing, revoked, or outside its allowed operations.
+6. Check the endpoint method allowlist, auth mode, side-effect class, artifact status, artifact permissions, and binding operations.
+7. Build a request context and pass it to `LuaSandboxService` as `ctx.request`, `ctx.artifact`, and opaque `ctx.bindings` handles.
+8. Use `LuaBridge` so endpoint scripts call the same agent-visible tools and permission checks as normal Lua.
+9. Return JSON with a bounded body, status code, headers allowlist, execution metadata, and clear errors.
+10. Record success/failure without assuming endpoint calls should always create long-lived task conversation output.
 
 Request context should be explicit:
 
@@ -407,13 +458,56 @@ Endpoint manifest fields:
 | Field | Purpose |
 |---|---|
 | `slug` | Human-friendly endpoint name, unique inside the artifact. |
+| `description` | Short purpose statement used in Lab, generated docs, and the agent endpoint catalog. |
 | `method` / `methods` | Allowed methods, usually `GET`, `POST`, or both. |
 | `script` | Relative path to a Lua file under `backend/`. |
 | `auth_mode` | `session`, `token`, `signed`, or later `public`. |
+| `side_effect` | Required declaration: `read`, `write`, or `external`; checked against script capabilities and used in approval/catalog UX. |
+| `bindings` | Names of manifest binding requirements this endpoint may use. |
 | `request_schema` | Optional JSON schema used for validation and agent docs. |
 | `response_schema` | Optional JSON schema used by artifact builders and tests. |
 | `rate_limit` | Per-user/workspace throttle for endpoint calls. |
 | `cache_ttl_seconds` | Optional read endpoint cache for dashboards and reports. |
+
+### Agent-Callable Endpoint Catalog
+
+Automations and HTTP endpoints are already the planned execution surfaces. The catalog adds the missing discovery and typing surface; it tells an agent what can be called before the agent chooses an invocation path.
+
+| Surface | Responsibility |
+|---|---|
+| Artifact endpoint runner | The one canonical workspace-scoped Lua execution path. |
+| HTTP route | Invokes the runner from an authenticated, signed, or later public request. |
+| Automation binding | Invokes the same source through a schedule, manual run, or background workflow. |
+| Agent endpoint catalog | Lists and describes the endpoints the current principal may discover and call. It does not execute code or grant authority. |
+
+The catalog should be generated from the validated, versioned manifest rather than maintained as another source file. A catalog projection can expose:
+
+```json
+{
+  "artifact": "feedback-tracker",
+  "version": 12,
+  "endpoints": [
+    {
+      "slug": "feedback.create",
+      "description": "Create one feedback item",
+      "methods": ["POST"],
+      "side_effect": "write",
+      "request_schema": { "type": "object" },
+      "response_schema": { "type": "object" },
+      "required_bindings": ["FEEDBACK_TABLE"],
+      "invocation_modes": ["http", "automation", "agent"]
+    }
+  ]
+}
+```
+
+Discovery rules:
+
+- Filter the projection at read time by workspace, artifact visibility, version, actor/agent permission, endpoint auth mode, and binding availability. A cached manifest descriptor must not become an authorization decision.
+- Expose it as a read-only virtual VFS projection such as `/artifacts/{slug}/catalog/endpoints.json` and through bounded `list_artifact_endpoints` / `describe_artifact_endpoint` agent operations.
+- Keep `run_artifact_endpoint` as the invocation operation. It must call the canonical endpoint runner and recheck all permissions, bindings, budgets, schemas, and approvals at execution time.
+- Do not register every artifact endpoint as a permanent top-level tool. Catalog discovery plus one typed call operation avoids tool-list explosion and stale tool definitions.
+- Include concise schemas and summaries only. Large examples and fixtures stay in the artifact bundle and can be read on demand.
 
 If endpoint automations are still added as first-class automation triggers, keep `cron_expression` nullable or conditionally required once `trigger_type = endpoint` exists. Current controller and UI validation require cron for all automations, so this remains a code change for automation-bound endpoints.
 
@@ -457,6 +551,57 @@ Recommended storage approach:
 2. If speed matters, reuse `WorkspaceFile` internally by pointing `artifacts.root_folder_id` at a hidden folder. Hide that folder from the normal Files UI and expose it through `ArtifactService`.
 3. Do not store generated HTML, CSS, JS, or Lua directly in `artifacts` columns. Keep source files patchable and inspectable as files.
 4. Do not make `/files/generated/artifacts` the agent-facing path. That makes Artifacts feel like file clutter instead of a first-class workspace object.
+
+## Binding Requirements And Resolutions
+
+Artifact source should depend on named bindings instead of embedded workspace IDs, provider connection IDs, or credentials. The manifest declaration is portable; the database resolution is workspace-local.
+
+```text
+artifact.json requirement
+  FEEDBACK_TABLE: table, read + create, required
+          |
+          v install/configure inside one workspace
+artifact_bindings resolution
+  FEEDBACK_TABLE -> Table 7d1..., allowed: read + create
+          |
+          v runtime permission intersection
+opaque ctx.bindings.FEEDBACK_TABLE handle
+```
+
+Suggested runtime table:
+
+```text
+artifact_bindings
+  id
+  workspace_id
+  artifact_id
+  binding_name
+  kind: workspace_resource|integration_resource
+  resource_type
+  resource_id nullable
+  integration_connection_id nullable
+  operations
+  status: unresolved|active|revoked|invalid
+  configured_by_id nullable
+  configured_at nullable
+  revoked_at nullable
+  metadata
+  created_at
+  updated_at
+```
+
+Binding rules:
+
+- A requirement declares purpose, resource type, requested operations, and whether it is required. `suggested` metadata may help create or locate a resource, but it is never authority.
+- A resolution belongs to the same workspace as the artifact and points to one concrete resource through an app-owned relation. Never store a provider credential, token, webhook secret, or raw connection configuration in `artifact.json`, version snapshots, templates, or run logs.
+- Installation offers three explicit choices per requirement: select an existing permitted resource, create the suggested workspace resource through its normal approval path, or leave an optional binding unresolved.
+- Required unresolved, revoked, deleted, or type-mismatched bindings block publishing and fail closed at runtime. Optional unresolved bindings must have an intentional code path and an observable disabled state.
+- Requested operations are a ceiling, not a grant. They must be a subset of manifest capabilities and are intersected with actor, agent, artifact, workspace, integration, and tool permissions on every call.
+- Rebinding changes configuration without rewriting source. Binding additions, removals, target changes, or operation expansion are audited and enter the approval flow when they increase authority.
+- Lua receives an opaque typed handle, for example `app.tables.insert(ctx.bindings.FEEDBACK_TABLE, row)`. The bridge resolves and authorizes the handle; the script never receives credentials and should not need a portable resource to have the same database ID in every workspace.
+- V1 should support the resources Artifacts already need: tables, documents, artifact-owned files, channels, and named integration resources. Add further kinds only with a typed resolver, authorization policy, redaction policy, and revocation behavior.
+
+This adds concrete-resource least privilege to the existing manifest capability ceiling. The manifest says what classes of operations the Artifact may attempt; bindings say exactly which resource each portable name resolves to.
 
 ## Artifact Viewer
 
@@ -509,6 +654,63 @@ Versioning rules:
 - Run logs must include `artifact_version_id` so failures can be reproduced against the exact source that ran.
 
 This keeps artifact behavior stable for viewers while still allowing agents to iterate in a draft.
+
+## Artifact Templates And Installation
+
+Artifact templates should turn a proven Artifact into an installable starting point without copying its authority or runtime history. This use of "template" means an Artifact bundle template; it is distinct from the Liquid template engine used to render pages.
+
+Suggested records:
+
+```text
+artifact_templates
+  id
+  workspace_id nullable
+  name
+  slug
+  description
+  visibility: built_in|workspace
+  latest_version_id
+  created_by_id nullable
+  status: draft|published|archived
+  metadata
+  created_at
+  updated_at
+
+artifact_template_versions
+  id
+  artifact_template_id
+  version_number
+  source_artifact_version_id nullable
+  manifest_snapshot
+  file_tree_snapshot
+  binding_requirements_snapshot
+  change_summary
+  created_by_id nullable
+  created_at
+```
+
+A template version includes:
+
+- Manifest, pages, layouts, assets, backend scripts, tests, and safe example data required to understand the bundle.
+- Binding requirements, requested operations, descriptions, and optional resource-creation suggestions.
+- Presentation metadata such as category, preview image, supported Artifact types, and expected setup time.
+
+A template version excludes:
+
+- Concrete binding resolutions, workspace IDs, integration connection IDs, credentials, secrets, signed/share tokens, and custom-domain state.
+- Production rows, private documents/files, customer data, run logs, schedules, approvals, conversations, agent memory, or source Artifact permissions.
+- Generated seed data unless it is explicitly marked safe, reviewed, bounded, and part of the template source.
+
+Installation flow:
+
+1. Choose an immutable template version.
+2. Create a new workspace-owned Artifact draft and copy the versioned bundle into it.
+3. Review every binding requirement; select an existing resource, explicitly create a suggested resource through its owning domain, or leave an optional requirement unresolved.
+4. Apply the source and binding resolutions through an Artifact change set so a failed install cannot leave a half-written draft.
+5. Validate the manifest, compile scripts, run fixtures, render a preview, and show requested capabilities and unresolved optional features.
+6. Publish and enable schedules/shares separately. Installation never carries over a prior workspace's runtime authority.
+
+Templates should initially be built-in or workspace-private. A cross-workspace marketplace adds provenance, malware review, publisher trust, update policy, licensing, and data-safety concerns and should come only after the install and binding model is proven.
 
 ## Runs And Logs
 
@@ -573,8 +775,8 @@ Manifest capabilities:
 ```json
 {
   "permissions": {
-    "tables": ["feedback_tracker"],
-    "channels": ["general"],
+    "tables": ["read", "create"],
+    "channels": ["send"],
     "files": ["self"],
     "network": [],
     "tasks": ["create"]
@@ -589,11 +791,12 @@ actor permissions
 agent permissions
 artifact permissions
 manifest capabilities
+resolved binding operations and concrete resource scope
 workspace policy
 tool permissions
 ```
 
-The manifest can only reduce scope. It must never grant more access than the actor, assigned agent, workspace policy, or underlying tool permission already allows.
+The manifest and its resolved bindings can only reduce scope. They must never grant more access than the actor, assigned agent, workspace policy, integration connection, or underlying tool permission already allows.
 
 ## Sandboxing And Endpoint Security
 
@@ -1160,6 +1363,70 @@ Payment security rules:
 - Payment runs must include artifact version, endpoint slug, actor/share context, Stripe object IDs, and idempotency key.
 - Refunds, cancellations, and subscription mutations should require stricter approval or admin-only artifact permissions.
 
+## Atomic Proposed Changes
+
+Agent-authored Artifact edits should be staged as a coherent proposal before they mutate a draft. This gives the human one reviewable diff and prevents a multi-file change from leaving `artifact.json`, frontend files, backend scripts, tests, and bindings out of sync.
+
+Suggested records:
+
+```text
+artifact_change_sets
+  id
+  workspace_id
+  artifact_id
+  agent_run_id nullable
+  chat_id nullable
+  base_artifact_version_id nullable
+  base_draft_revision
+  status: open|ready|accepted|rejected|conflicted|applied|failed
+  summary
+  proposed_by_id
+  resolved_by_id nullable
+  resolved_at nullable
+  applied_at nullable
+  failure_summary nullable
+  created_at
+  updated_at
+
+artifact_change_operations
+  id
+  artifact_change_set_id
+  sequence
+  kind: file_create|file_replace|file_patch|file_delete|manifest_patch|binding_set|binding_remove
+  target
+  base_checksum nullable
+  payload
+  preview_summary
+  status: pending|validated|applied|failed
+  created_at
+```
+
+Change-set rules:
+
+- Scope one change set to one Artifact draft. It may include bundle files, manifest edits, and Artifact binding resolutions, but not arbitrary cross-domain data changes or external side effects.
+- Record the draft revision and per-target checksum observed by the proposer. Acceptance rechecks both; drift produces `conflicted` and requires a fresh proposal or an explicit rebase, never a silent overwrite.
+- Validate paths, manifest shape, binding types, requested operations, scripts, schemas, permissions, and all operation payloads before writing any live draft state.
+- Apply database-backed source and metadata in one transaction. If source bytes use object storage, upload immutable candidate blobs first, atomically switch their database pointers with the other draft records, and clean up unreferenced candidates afterward. The user-visible draft must never expose a partially applied set.
+- Do not create tables, mutate integration resources, send messages, call external APIs, publish, enable schedules, or change shares while building or applying a proposal. Those actions stay in their owning workflows with their own permission and approval checks.
+- Acceptance authorizes only the exact operations shown and only against the mutable draft. It is not publish approval, capability-expansion approval, or permission to execute the resulting endpoints.
+- Keep the accepted proposal, rendered diff, validation result, actor/agent attribution, and apply outcome in the audit trail. Redact secrets and avoid storing full private data in operation previews.
+
+The initial UI can be compact:
+
+```text
+Proposed Artifact change
+  Summary: Add feedback submission flow
+  Base: draft revision 14
+  Files: +2 ~3 -0
+  Manifest: +feedback.create endpoint
+  Bindings: FEEDBACK_TABLE -> feedback_tracker
+  Capabilities: table create added
+
+  [Preview] [Reject] [Apply to draft]
+```
+
+This is intentionally narrower than a general-purpose workspace transaction system. Table rows, documents, tasks, channels, and integration mutations remain normal runtime/domain operations; the change set protects the deployable Artifact definition.
+
 ## Publishing Gates
 
 Separate draft from published. Before publishing:
@@ -1168,10 +1435,12 @@ Separate draft from published. Before publishing:
 2. Validate all referenced files exist.
 3. Validate endpoint scripts compile.
 4. Run request fixtures/tests from `tests/`.
-5. Check permissions and manifest capabilities.
-6. Scan rendered pages, templates, and frontend assets for disallowed APIs and external origins.
-7. Generate an immutable version snapshot.
-8. Require approval when capabilities are high risk.
+5. Resolve every required binding and validate its type, workspace, current status, and operation ceiling.
+6. Check permissions and manifest capabilities.
+7. Generate the permission-filtered endpoint catalog and validate request/response schemas and side-effect declarations.
+8. Scan rendered pages, templates, and frontend assets for disallowed APIs and external origins.
+9. Generate an immutable version snapshot.
+10. Require approval when capabilities are high risk.
 
 High-risk capability changes:
 
@@ -1202,6 +1471,7 @@ Approval-required changes:
 - New write endpoint.
 - New schedule.
 - Capability expansion.
+- Required binding addition, rebinding to a more sensitive resource, or binding operation expansion.
 - Public/signed share.
 - Password-gated share.
 - Custom domain activation.
@@ -1210,6 +1480,8 @@ Approval-required changes:
 - Integration mutation.
 - Channel send.
 - File delete/overwrite outside the artifact bundle.
+
+Applying an accepted Artifact change set updates only the draft. Publishing gates and any capability, binding, integration, sharing, schedule, or payment approvals still run independently against the exact resulting draft.
 
 Approval prompt should show a readable diff:
 
@@ -1360,7 +1632,7 @@ Canonical open/view routes:
 Canonical VFS paths:
 
 ```text
-/artifacts/{artifact-slug}/manifest.json
+/artifacts/{artifact-slug}/artifact.json
 /artifacts/{artifact-slug}/README.md
 /artifacts/{artifact-slug}/pages/index.liquid
 /artifacts/{artifact-slug}/pages/admin.liquid
@@ -1370,6 +1642,7 @@ Canonical VFS paths:
 /artifacts/{artifact-slug}/backend/create-feedback.lua
 /artifacts/{artifact-slug}/data/sample-response.json
 /artifacts/{artifact-slug}/tests/create-feedback.request.json
+/artifacts/{artifact-slug}/catalog/endpoints.json   # generated, read-only
 ```
 
 Files app behavior:
@@ -1446,15 +1719,20 @@ Agent AX should feel like working in a small repo:
 
 ```text
 create_artifact(name: "Feedback Tracker", slug: "feedback-tracker", type: "app")
-write_artifact_file("feedback-tracker", "artifact.json", manifest)
-write_artifact_file("feedback-tracker", "pages/index.liquid", liquid)
-write_artifact_file("feedback-tracker", "assets/styles.css", css)
-write_artifact_file("feedback-tracker", "backend/list-feedback.lua", lua)
+change_set = begin_artifact_change_set("feedback-tracker", summary: "Build feedback submission flow")
+stage_artifact_file(change_set, "artifact.json", manifest)
+stage_artifact_file(change_set, "pages/index.liquid", liquid)
+stage_artifact_file(change_set, "assets/styles.css", css)
+stage_artifact_file(change_set, "backend/list-feedback.lua", lua)
+stage_artifact_binding(change_set, "FEEDBACK_TABLE", table: "feedback_tracker")
+preview_artifact_change_set(change_set)
+apply_artifact_change_set(change_set)
+describe_artifact_endpoint("feedback-tracker", "feedback.list")
 run_artifact_endpoint("feedback-tracker", "feedback.list", { method: "GET" })
 publish_artifact("feedback-tracker")
 ```
 
-Once VFS exists, the same flow becomes:
+Once the Artifact VFS mount exists, inspection and explicitly authorized low-level edits can also use:
 
 ```text
 vfs_exec("tree /artifacts/feedback-tracker")
@@ -1472,12 +1750,13 @@ User: "Build me a feedback tracker with a submission form and a table of all sub
 The agent should:
 
 1. Create a table called `feedback_tracker` with columns for title, category, status, submitter, and timestamps.
-2. Create an artifact bundle at `/artifacts/feedback-tracker`.
-3. Write `artifact.json`, `pages/index.liquid`, `assets/styles.css`, and any shared JS.
-4. Write `backend/list-feedback.lua` and `backend/create-feedback.lua`.
-5. Bind those backend scripts as artifact endpoints in `artifact.json`.
-6. Test endpoint responses and artifact rendering.
-7. Publish the artifact when the preview, endpoints, and manifest validate.
+2. Create an Artifact draft at `/artifacts/feedback-tracker` and declare the portable `FEEDBACK_TABLE` binding requirement.
+3. Resolve `FEEDBACK_TABLE` to the newly created table through a workspace-scoped Artifact binding; do not put its database ID or credentials in source.
+4. Open one Artifact change set against the current draft revision.
+5. Stage `artifact.json`, `pages/index.liquid`, `assets/styles.css`, shared JS, `backend/list-feedback.lua`, `backend/create-feedback.lua`, tests, and the binding resolution in that change set.
+6. Present one manifest/file/binding/capability diff and apply the accepted operations atomically to the draft.
+7. Read the generated endpoint catalog, then test the typed endpoint contracts and Artifact rendering through the canonical runner.
+8. Publish the Artifact only when the preview, endpoints, bindings, schemas, tests, manifest, and any required capability approvals validate.
 
 ## Implementation Backlog
 
@@ -1487,16 +1766,20 @@ The agent should:
 | Artifact model + policy | Medium | Workspace-scoped metadata, type/status, owner, root folder, manifest path/cache, source automation, publish state. |
 | Artifact file tree | Medium | Prefer `artifact_files`; alternatively hide internal `WorkspaceFile` folders behind `ArtifactService`. |
 | Artifact versions | Medium | Immutable published snapshots, draft workflow, rollback, manifest/file diffs, and version-bound endpoint execution. |
+| Artifact binding registry | Medium | Parse portable requirements, resolve workspace-local typed resources, expose opaque runtime handles, support revocation/rebinding, and audit every authority change without persisting credentials in source. |
+| Artifact templates + installer | Medium | Version source/tests/assets and binding requirements, create a fresh Artifact draft, guide binding resolution, validate the install, and keep credentials/runtime data out of snapshots. |
+| Artifact change sets | Medium | Base-revision/checksum conflict checks, multi-file/manifest/binding preview, full pre-validation, logically atomic draft apply, redacted audit records, and no proposal-time side effects. |
 | Artifact runs | Medium | Unified run log for http, schedule, manual, preview, and test triggers with redaction and bounded payloads. |
 | Artifact events | Small | Append-only audit trail for lifecycle, file, endpoint, capability, publish, rollback, approval, and schedule changes. |
-| Artifact manifest parser | Medium | Validate `artifact.json`, entry page, pages, assets, endpoint scripts, permissions, and test fixtures. |
+| Artifact manifest parser | Medium | Validate `artifact.json`, entry page, pages, assets, endpoint scripts, side-effect declarations, schemas, binding requirements, permissions, and test fixtures. |
 | Liquid template renderer | Medium | Add a restricted Liquid renderer wrapper with approved tags, filters, layouts, partials, URL helpers, escaping rules, caching, and actionable render errors. |
 | Artifact SPA runtime | Medium | Ship a no-build frontend runtime for link interception, page swaps, history, endpoint helpers, loading/error states, and page initializers. |
 | Library preset registry | Small | Maintain approved no-build libraries with local/CDN source, integrity, allowed origins, CSP policy, purpose, and approval requirements for custom URLs. |
-| Artifact endpoint router | Medium | Resolve artifact + manifest endpoint + Lua script, then execute with request/artifact context. |
-| Security gate evaluator | Medium | Intersect actor, agent, artifact, manifest, workspace, and tool permissions before reads/writes. |
-| Publishing gates | Medium | Validate manifest/files/scripts/tests/capabilities, generate immutable version, and require approval for high-risk changes. |
-| Approval integration | Medium | Reuse approval flow for capability expansion, write endpoints, scheduled writes, public sharing, and integration mutations. |
+| Artifact endpoint router | Medium | Resolve Artifact + manifest endpoint + Lua script + typed bindings, then execute every HTTP, automation, test, and agent call through one request/artifact context. |
+| Agent endpoint catalog | Small | Generate a permission-filtered, schema-backed virtual descriptor from the validated manifest; expose VFS list/describe reads without registering one permanent tool per endpoint. |
+| Security gate evaluator | Medium | Intersect actor, agent, Artifact, manifest, concrete binding, integration, workspace, and tool permissions before reads/writes. |
+| Publishing gates | Medium | Validate manifest/files/scripts/tests/bindings/catalog/capabilities, generate an immutable version, and require approval for high-risk changes. |
+| Approval integration | Medium | Reuse approval flow for capability or binding expansion, write endpoints, scheduled writes, public sharing, and integration mutations; keep change-set acceptance distinct from publish approval. |
 | Optional automation bindings | Medium | Let scheduled/manual automations point to artifact backend scripts without moving source out of the artifact bundle. |
 | Lab page + route aliases | Medium | Evolve `/automation` into `/lab` with Automations, Artifacts, and Runs/Logs tabs; keep `/automation` as an alias during migration. |
 | Artifact open routes | Small | Add standalone `/artifacts/{slug}` viewer routes for published/previewable artifacts. |
@@ -1510,12 +1793,14 @@ The agent should:
 | Asset runtime/CSP | Medium | Serve approved local runtime assets, apply strict iframe CSP, and block arbitrary external origins in v1. |
 | Rate limits and budgets | Small | Per-user/workspace rates, Lua execution limits, tool-call budgets, response/log byte caps, and overlap behavior. |
 | Agent tool: `create_artifact` | Medium | Creates artifact record, root folder, manifest, and initial file tree. |
-| Agent tool: `write_artifact_file` | Small | Create/update a file inside the artifact bundle with path validation. |
+| Agent operations: Artifact change sets | Medium | Begin, stage file/manifest/binding operations, preview, accept/reject, rebase after conflict, and apply to one draft. The default agent edit path should use these operations. |
+| Agent tool: `write_artifact_file` | Small | Low-level create/update inside an Artifact draft with path and expected-revision validation; use change sets for multi-file agent work. |
+| Agent tools: endpoint discovery | Small | List/describe the current principal's callable Artifact endpoints from the generated catalog. |
 | Agent tool: `run_artifact_endpoint` | Small | Smoke-test a backend endpoint with request fixtures. |
 | Agent tool: `publish_artifact` | Small | Validate manifest, pages, endpoints, and status transition. |
 | Lua docs | Small | Extend `lua_read_doc()` docs for endpoint request context and artifact/VFS patterns. |
-| VFS integration | Large | Add `app/Domain/Vfs`, then expose artifacts through top-level `/artifacts`. |
-| Tests | Medium | Feature tests for endpoint auth/method/schema, artifact viewer, workspace isolation, and iframe/proxy security. |
+| VFS integration | Medium | Extend the implemented `app/Domain/Vfs` with top-level `/artifacts`, bundle file mutation events, change-set-aware revision checks, and a read-only generated endpoint catalog. |
+| Tests | Medium | Feature tests for endpoint auth/method/schema/catalog, binding isolation/revocation, template sanitization/install, change-set conflict/atomicity, Artifact viewer, workspace isolation, and iframe/proxy security. |
 
 ## Design Principles
 
@@ -1526,7 +1811,11 @@ The agent should:
 - **First-class VFS home**: Artifacts live under VFS `/artifacts`, not under Files.
 - **Reuse current domains**: Lua executes scripts, tables store rows, documents store docs, file storage may store bytes, VFS projects them.
 - **No runtime fork**: endpoint scripts use the same Lua sandbox and tool bridge as scheduled script automations.
+- **One runner, several entry points**: HTTP, automations, tests, previews, and agent calls invoke one endpoint runner; the generated catalog only describes it.
 - **Workspace-safe**: every lookup uses `forWorkspace()`, workspace-bound routes, or the future VFS authorizer.
+- **Bind resources, never credentials**: portable source names required resources while workspace-local typed bindings resolve them and can only reduce authority.
+- **Portable reuse**: Artifact templates copy versioned source and binding requirements, never another workspace's data, runtime state, or authority.
+- **Atomic draft proposals**: multi-file agent changes are reviewed and conflict-checked as one change set before the mutable draft changes.
 - **Inspectable**: artifacts should have source files, manifests, endpoint bindings, and run logs agents can inspect.
 - **Patchable later**: structure artifacts so future `vfs_patch` and `vfs_write` can update them safely with version checks.
 - **Bounded output**: endpoint and artifact generation must enforce response size, execution time, rate limits, and cache policy.
@@ -1535,6 +1824,10 @@ The agent should:
 ## Open Questions
 
 - Should endpoint calls create a `Task` record every time, only on failure, or only when invoked manually from the UI?
+- Which concrete binding kinds belong in v1 beyond tables, documents, Artifact-owned files, channels, and named integration resources?
+- Should every agent-authored Artifact mutation require a change set, or may low-risk single-file edits use expected-revision writes under workspace policy?
+- Should the generated endpoint catalog describe draft endpoints to editors, published endpoints to runners, or both through separate version-qualified views?
+- Which safe seed-data formats may ship in a template, and must suggested resource creation always be a separate accepted proposal?
 - Should `/automation` remain a permanent alias after Lab ships, or only exist during a route migration window?
 - Which libraries should ship as approved no-build presets in v1, and which custom external URLs require approval?
 - Should v1 use dedicated `artifact_files`, or hidden `WorkspaceFile` folders behind `ArtifactService`?
@@ -1552,12 +1845,11 @@ The agent should:
 ## Future Considerations
 
 - Visual artifact editor for non-code users.
-- Artifact templates for reports, forms, tables, KPI pages, and agent activity monitors.
 - WebSocket or event-stream refresh for live dashboard artifacts.
 - Public/shareable artifacts with explicit publish controls.
 - Paid custom domains for published artifacts after v1 security hardening.
 - Git import/export and PR-backed artifact review workflows.
 - Stripe Checkout/Billing and agentic-commerce artifacts.
 - Artifact version history and rollback.
-- Artifact marketplace or workspace template gallery.
+- Cross-workspace Artifact marketplace with provenance, security review, publisher trust, licensing, and update policy. Built-in and workspace-private templates come first.
 - QuickJS only if Luau plus Liquid/HTML artifacts are insufficient; do not add a second script runtime casually.

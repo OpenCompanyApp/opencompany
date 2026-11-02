@@ -1,7 +1,7 @@
 # Pest Browser Testing Implementation Plan
 
 Date: 2026-05-10
-Status: Partly implemented / active migration plan. The current tree has both
+Status: Partly implemented / active migration plan, reconciled 2026-08-09. The current tree has both
 Laravel Dusk browser coverage (`tests/DuskTestCase.php`, existing
 `tests/Browser/*Test.php` classes) and Pest Browser/Playwright dependencies plus
 new Pest-style browser specs (`tests/Pest.php`, `tests/Browser/WorkspaceSmokeTest.php`,

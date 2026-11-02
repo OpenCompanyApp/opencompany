@@ -1,7 +1,12 @@
 # Unified Virtual Filesystem Overview
 
 Date: 2026-05-25
-Status: Planning. This document captures the preferred top-level direction for a full OpenCompany virtual filesystem. Dreaming and memory consolidation are intentionally treated as later consumers, not part of the first implementation scope.
+Status: Implemented baseline plus target architecture.
+Verified: 2026-08-09. The domain-owned VFS, command-spec registry, workspace
+mounts, pagination, capability truth, budgets, operation events, and guarded
+mutations exist in the current working tree. Sections that say "proposed",
+"recommended", "later", or "remaining" are roadmap material, not shipped
+claims. Use `docs/tools/vfs.md` for the current executable contract.
 Related: `docs/planning/dream-vfs.md`, `docs/planning/memory-implementation.md`, `docs/planning/vector-optional.md`
 
 ---
@@ -70,7 +75,12 @@ Direct tools own fast domain actions.
 
 ---
 
-## Proposed Namespace
+## Target Namespace
+
+The implemented baseline currently projects agents, approvals, automations,
+channels, documents, files, lists, tables, tasks, tools, and workspace state.
+`/skills` and `/artifacts` remain target mounts. The larger tree below is the
+destination model and must not be read as a list of currently mounted paths.
 
 Initial top-level namespace:
 
@@ -901,6 +911,8 @@ Directory operations need consistent collection semantics:
 - `cat` on a collection path should fail with a clear "directory is too large; use ls/find/rg or a paged export" message.
 - Lua helpers must expose cursor arguments and must not loop through every page unless the script gives an explicit maximum.
 
+Current implementation status: structured `vfs_ls` and `vfs_count` calls for every database-backed listing mount (`/docs`, `/files`, `/tasks`, `/lists`, `/agents`, `/channels`, `/tables`, `/approvals`, and `/automations`) use encrypted, path/workspace/agent-bound mount cursors. Permission, workspace, relationship, status, agent, assignee, project, parent, channel, and table filters remain inside every continuation query. Keysets preserve each collection's domain order with an immutable id tie-breaker; supporting composite indexes mirror those query prefixes. Only finite synthetic roots use the compatibility adapter. Generated channel transcripts, table-row NDJSON, and workspace-member JSON use `vfs_read` continuation cursors, keep every chunk syntactically valid, and admit only complete records within `maxBytes` before advancing their keysets. An oversized leading record returns its exact `minimum_bytes` retry requirement rather than a corrupt or non-progressing page. Structured `vfs_find` now resumes depth-first traversal frames instead of replaying offsets, while bounded shell traversal consumers drain mount pages only within their operation budgets. Concurrent inserts/deletes before a keyset do not create offset drift; changes to mutable sort fields still require a fresh traversal for strict snapshot semantics.
+
 Suggested collection result shape:
 
 ```json
@@ -1183,6 +1195,8 @@ The VFS must preserve existing OpenCompany boundaries:
 - Admin-only settings stay admin-only.
 - Approval-required operations should be wrapped the same way as direct tools.
 - Private agent memory and peer cards must not leak into public channels.
+
+VFS mutation permissions are composed from existing controls rather than adding duplicate domain-specific VFS toggles. A table row patch requires `vfs_patch` plus the normal `update_table_row` permission; an agent identity patch requires `vfs_patch` plus `update_agent_identity_file`; mutating `/files` commands through `vfs_exec` require `vfs_exec` plus `vfs_write`. If any required permission is approval-gated, VFS creates a normal approval request that stores the original operation and replays it after approval through the same primitive tool.
 
 Recursive operations need a shared permission-expansion primitive. Existing file-folder permissions already check descendants for many file paths, while document tools mostly check the immediate parent folder. Unix-like operations such as `tree`, `find`, `rg -R`, and `grep -R` need consistent behavior across domains:
 
@@ -1883,6 +1897,30 @@ Provider scopes remain the hard lower-level guard. VFS permissions are the OpenC
 
 ---
 
+## Production Readiness Gates
+
+The VFS should be treated as good to go only when these gates stay green:
+
+- Broad VFS PHPStan target passes without ignores or baseline changes:
+
+```bash
+./vendor/bin/phpstan analyse app/Domain/Vfs/OpenCompany app/Agents/Tools/Vfs app/Console/Commands/VfsAtlasCommand.php --memory-limit=1G --no-progress
+```
+
+- The focused VFS feature suite passes:
+
+```bash
+php artisan test tests/Feature/Vfs/VfsFeatureTest.php
+```
+
+- Capability metadata remains executable truth. Representative entries across `/docs`, `/files`, `/agents`, `/tasks`, `/lists`, `/tables`, `/tools`, and `/workspace` must prove that every advertised `patch` or `write` capability either executes on the exact visible path or creates the normal approval request. Generated/read-only entries must not advertise mutation capabilities and should include `metadata.read_only_reason` plus a useful mutation hint.
+- Atlas smoke coverage should exercise both shell and primitive paths through `php artisan vfs:atlas`: root browse, command help/specs, table row stat/read, generated read truncation, display `/files` writes, canonical `/files/by-id/{folder}` writes, read-only write rejection, unsupported-command help, and `&&`/redirection behavior.
+- Large generated reads must honor budgets. If `truncated` is true, generated JSON may be intentionally invalid JSON because the final string was budget-limited; agents should request more bytes when they need the full parseable JSON document.
+
+Intentional current limits are part of the readiness contract: generated snapshots stay read-only, command mutations write only through `/files`, symbolic links are recognized but not created, host shell/network/process commands stay unsupported, and OCR/Tika/PaddleOCR-style extraction plus embeddings remain separate services/tools.
+
+---
+
 ## Suggested Implementation Order
 
 1. Create the VFS subsystem skeleton: contracts, context, router, stat/list/read/search actions.
@@ -1901,8 +1939,8 @@ Provider scopes remain the hard lower-level guard. VFS permissions are the OpenC
 14. Add `vfs_write` for valid file-like create/overwrite paths.
 15. Add `/tasks` read projection and limited patch/status projection.
 16. Add `/lists` read projection and limited patch/status projection.
-17. Add large-folder collection semantics for `/tasks`, `/lists`, `/channels`, `/tables`, `/approvals`, and automation histories: counts, cursors, max page sizes, query hints, and safe truncation.
-18. Add read-only `/tools`, `/channels`, `/tables`, `/approvals`, and `/workspace` projections with pagination/cursor limits.
+17. Completed: large-folder collection semantics for `/tasks`, `/lists`, `/channels`, `/tables`, `/approvals`, and automations now include encrypted cursors, bounded pages, exact final counts, and safe continuation for generated collection reads.
+18. Completed: read-only `/tools`, `/channels`, `/tables`, `/approvals`, and `/workspace` projections are present; database-backed collections and the workspace roster use cursor limits.
 19. Keep command mutations carefully gated: current `/files` mutations route through `vfs_write`; broader adapter mutations need dynamic command permission classification plus adapter-specific dry runs.
 20. Revisit Dream after the VFS is stable and useful for normal agent retrieval.
 

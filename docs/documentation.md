@@ -1,5 +1,10 @@
 # Documentation Structure
 
+Status: Product documentation-site blueprint, reconciled 2026-08-09. This is
+an information architecture and content backlog, not the current engineering
+documentation index or a shipped-feature list. Use `docs/INDEX.md` for repo
+navigation and `docs/CURRENT_STATE.md` for product truth.
+
 > Master blueprint for the OpenCompany documentation site.
 > Each entry maps to a page (MDX file) on the website.
 
