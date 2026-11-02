@@ -223,7 +223,12 @@ manifest model.
 - **A manifest declares:** record types (schema-locked tables with relations); views from a fixed
   catalog (list, board/pipeline, table, calendar, mail thread, record detail, timeline, **form**);
   **artifacts** acting as the app's custom views and endpoints; routine templates; an agent pack;
-  required connections; roles; emitted events.
+  required connections; roles; emitted events; and **`approval_rules`**, the field-level business
+  rules, for example `{ when: "discount > 20", applies_to: [human, agent], approver:
+  role:sales-lead }`. Tables can declare the same rules in table settings. They apply to humans
+  and agents alike, run on the policy engine (cards, audit, decision trace) and only add gates.
+  See [governance model](../architecture/governance-model.md#field-level-approval-rules-business-rules)
+  and story 14 in [example flows](example-flows.md).
 - **One manifest family:** apps and artifacts share it (see the manifest section of
   [Artifacts and Forms](artifacts-and-forms.md)). An artifact can graduate into an app
   (artifact-to-app packaging and templates, Phase 4).

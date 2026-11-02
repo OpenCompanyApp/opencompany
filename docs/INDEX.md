@@ -63,6 +63,7 @@ Each is a plan, not an implementation claim.
 | [governance-model.md](architecture/governance-model.md) | Active | Pillar 5: policy model replacing behaviour modes (Phase 0), roles, approver policies, hard-deny floor, budgets, run audit, trigger and read-only rules (Phase 3) |
 | [agent-native-work-apps.md](planning/agent-native-work-apps.md) | Active | Pillar 7 / Phase 4: Tables, Issues and Docs made agent-native; Workload and Dashboard deleted, Lists folds into Issues |
 | [opencompany-cloud.md](planning/opencompany-cloud.md) | Active | Phase 5 hosted Cloud with managed computers and self-host parity |
+| [example-flows.md](planning/example-flows.md) | Active | User stories and end-to-end examples (Code Mode, CLI, client onboarding, a 2 a.m. incident, CRM and Issues); story 14 shows a field-level approval rule in a CRM manifest |
 | [agent-primitives-catalog.md](planning/agent-primitives-catalog.md) | Active (accepted requirements) | Pillar 6 agent primitives: vault, secure forms, credential broker, takeover for CAPTCHAs and sign-in, password-manager connectors, agent inbox and one-time codes, pause/stop/kill switch, spend caps, routines and daily brief, memory controls; phased Phase 2 / Phase 3 / Later |
 
 ## Research and evidence
