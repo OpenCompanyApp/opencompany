@@ -94,19 +94,25 @@ trait RecordsVfsHistory
     }
 
     /**
-     * Store a file's previous bytes as the next version. Bytes above the
-     * content ceiling are not snapshotted (the history then has a gap rather
-     * than a truncated copy); non-UTF-8 bytes are stored base64 encoded.
-     * Call while holding the file row lock.
+     * Store a file's previous bytes as the next version. Call while holding
+     * the file row lock, inside the transaction that changes the file.
+     *
+     * Never silently skips: bytes above the content ceiling throw (the
+     * writer rejects such overwrites up front, see assertFileHistoryFits),
+     * so a committed change always has its snapshot.
+     *
+     * Encoding: `utf8` only for valid UTF-8 WITHOUT NUL bytes; everything
+     * else is stored base64. PostgreSQL `text` cannot hold NUL, and valid
+     * UTF-8 may contain it, so the UTF-8 check alone is not enough.
+     *
+     * @throws VfsError not_writable when the bytes exceed the history ceiling
      */
-    private function snapshotWorkspaceFileVersion(WorkspaceFile $file, string $previousBytes, User $agent, ?string $beforeVersion, ?string $afterVersion, string $description): ?WorkspaceFileVersion
+    private function snapshotWorkspaceFileVersion(WorkspaceFile $file, string $previousBytes, User $agent, ?string $beforeVersion, ?string $afterVersion, string $description): WorkspaceFileVersion
     {
-        if (strlen($previousBytes) > (int) config('vfs.max_content_bytes', 20 * 1024 * 1024)) {
-            return null;
-        }
+        $this->assertFileHistoryFits($file, strlen($previousBytes), '/files/by-id/'.$file->id);
 
         $attribution = $this->vfsWriteAttribution($agent);
-        $isUtf8 = mb_check_encoding($previousBytes, 'UTF-8');
+        $isUtf8 = mb_check_encoding($previousBytes, 'UTF-8') && ! str_contains($previousBytes, "\0");
 
         /** @var WorkspaceFileVersion */
         return $this->insertNumberedSnapshot(

@@ -8,6 +8,7 @@ use App\Models\WorkspaceFile;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -209,7 +210,20 @@ class FileSystemService
     }
 
     /**
-     * Write text content as a file.
+     * Write text content as a file (create, or overwrite by folder + name).
+     *
+     * Overwrite never touches the bytes the committed row points at: the new
+     * content goes to a NEW storage object and the row's storage_path is
+     * swapped in the same (caller's) transaction. The old object is deleted
+     * only after that transaction commits; on rollback the new object is
+     * deleted and the row still points at the untouched old bytes. This is
+     * what lets the VFS write history snapshots and version state in one
+     * transaction with the byte change: if any of it fails, nothing changed.
+     *
+     * Nested transactions: the cleanup callbacks attach to the innermost
+     * open transaction. If that one commits as a savepoint and an outer one
+     * rolls back, the row and the old bytes are still intact; only the new
+     * object is left behind as unreferenced storage (a leak, never a loss).
      */
     public function writeFile(
         string $workspaceId,
@@ -235,11 +249,31 @@ class FileSystemService
 
         if ($existing) {
             $disk = $this->getDiskForFile($existing);
-            $disk->put($existing->storage_path, $content);
-            $existing->update([
-                'size' => strlen($content),
-                'mime_type' => $mimeType,
-            ]);
+            $oldPath = $existing->storage_path;
+            $newPath = $this->generateStoragePath($workspaceId, $extension);
+            // Invariant: new object first, pointer swap second, old object
+            // deleted only after commit. Never put() over $oldPath.
+            $disk->put($newPath, $content);
+            DB::afterRollBack(fn () => $disk->delete($newPath));
+
+            try {
+                $existing->update([
+                    'storage_path' => $newPath,
+                    'size' => strlen($content),
+                    'mime_type' => $mimeType,
+                ]);
+            } catch (\Throwable $e) {
+                if (DB::transactionLevel() === 0) {
+                    $disk->delete($newPath);
+                }
+
+                throw $e;
+            }
+
+            if (is_string($oldPath) && $oldPath !== '' && $oldPath !== $newPath) {
+                // Runs immediately when no transaction is open.
+                DB::afterCommit(fn () => $disk->delete($oldPath));
+            }
 
             return $existing->fresh();
         }
