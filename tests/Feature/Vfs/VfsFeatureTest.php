@@ -29,12 +29,13 @@ use App\Models\VfsOperationEvent;
 use App\Models\Workspace;
 use App\Models\WorkspaceDisk;
 use App\Models\WorkspaceFile;
+use App\Models\WorkspaceMember;
 use App\Services\AgentDocumentService;
 use App\Services\ApprovalExecutionService;
-use App\Services\FileSystemService;
 use App\Services\CodeApiDocGenerator;
 use App\Services\CodeBridge;
 use App\Services\CodeExecutionResult;
+use App\Services\FileSystemService;
 use App\Services\MrubySandboxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -667,8 +668,10 @@ class VfsFeatureTest extends TestCase
             'includeCommandSpec' => true,
         ])), true);
         $this->assertTrue($structured['ok']);
-        $this->assertSame($structured['stdout'], $structured['result']['stdout']);
-        $this->assertSame('stat', $structured['data']['command_spec']['name']);
+        // Phase 2 envelope: stdout appears once; no echoed `result` block, and
+        // the command spec lives only in diagnostics.
+        $this->assertArrayNotHasKey('result', $structured);
+        $this->assertSame('stat', $structured['data']['command']);
         $this->assertSame('stat', $structured['diagnostics']['command_spec']['name']);
         $this->assertSame($doc->id, $structured['data']['stat']['backend_id']);
     }
@@ -834,7 +837,8 @@ class VfsFeatureTest extends TestCase
         $this->assertSame('3', trim($executor->execute($this->agent, 'expr 1 + 2')['stdout']));
 
         $directIgnoreCase = app(ToolRegistry::class)->instantiateToolBySlug('vfs_rg', $this->agent)->handle(new Request(['pattern' => 'ALPHA', 'paths' => ['/docs/by-id/'.$first->id], 'ignore_case' => true]));
-        $directSearchIgnoreCase = app(ToolRegistry::class)->instantiateToolBySlug('vfs_search', $this->agent)->handle(new Request(['query' => 'ALPHA', 'paths' => ['/docs/by-id/'.$first->id], 'case_insensitive' => true]));
+        // vfs_search was removed in Phase 2 (it was vfs_rg with regex: false).
+        $directSearchIgnoreCase = app(ToolRegistry::class)->instantiateToolBySlug('vfs_rg', $this->agent)->handle(new Request(['query' => 'ALPHA', 'regex' => false, 'paths' => ['/docs/by-id/'.$first->id], 'caseInsensitive' => true]));
         $this->assertGreaterThanOrEqual(1, json_decode($directIgnoreCase, true)['result']['count']);
         $this->assertGreaterThanOrEqual(1, json_decode($directSearchIgnoreCase, true)['result']['count']);
     }
@@ -974,9 +978,11 @@ class VfsFeatureTest extends TestCase
         $this->assertCount(2, $findSecond['result']['items']);
         $this->assertNotSame($findFirst['result']['items'][0]['backend_id'], $findSecond['result']['items'][0]['backend_id']);
 
-        $count = json_decode(app(ToolRegistry::class)->instantiateToolBySlug('vfs_count', $this->agent)->handle(new Request(['path' => '/docs/by-id', 'limit' => 100])), true);
-        $this->assertTrue($count['result']['count_is_exact']);
-        $this->assertSame($count['result']['count'], $count['result']['total_count']);
+        // vfs_count was removed in Phase 2: a final vfs_ls page carries the
+        // exact count.
+        $count = json_decode(app(ToolRegistry::class)->instantiateToolBySlug('vfs_ls', $this->agent)->handle(new Request(['path' => '/docs/by-id', 'limit' => 100])), true);
+        $this->assertNull($count['result']['next_cursor']);
+        $this->assertSame($count['result']['count'], count($count['result']['items']));
     }
 
     /**
@@ -1025,9 +1031,12 @@ class VfsFeatureTest extends TestCase
         $this->assertSame('vfs_rg', $functionMap['vfs.rg']);
         $this->assertSame('vfs_rg', $functionMap['vfs.grep']);
         $this->assertSame('vfs_find', $functionMap['vfs.find']);
-        $this->assertSame('vfs_search', $functionMap['vfs.search']);
         $this->assertSame('vfs_exists', $functionMap['vfs.exists']);
-        $this->assertSame('vfs_count', $functionMap['vfs.count']);
+        $this->assertSame('vfs_edit', $functionMap['vfs.edit']);
+        $this->assertSame('vfs_exec', $functionMap['vfs.shell']);
+        // Phase 2 removed the redundant search/count helpers.
+        $this->assertArrayNotHasKey('vfs.search', $functionMap);
+        $this->assertArrayNotHasKey('vfs.count', $functionMap);
         $modelTools = array_map(fn ($tool) => method_exists($tool, 'name') ? $tool->name() : class_basename($tool), app(ToolRegistry::class)->getToolsForAgent($this->agent));
         $this->assertNotContains('vfs_rg', $modelTools);
 
@@ -1038,7 +1047,7 @@ read = app.vfs.read(path: "/docs/by-id/%s", max_bytes: 1000)
 cat = app.vfs.cat(path: "/docs/by-id/%s", max_bytes: 1000)
 hits = app.vfs.rg(pattern: "refund", paths: ["/docs"], max_matches: 10)
 literal = app.vfs.grep(pattern: "a.b", paths: ["/docs/by-id/%s"], max_matches: 10)
-lexical = app.vfs.search(query: "refund", paths: ["/docs"], max_matches: 10)
+lexical = app.vfs.grep(pattern: "refund", paths: ["/docs"], max_matches: 10)
 found = app.vfs.find(paths: ["/docs"], name: "*Ruby*", limit: 10)
 exec = app.vfs.shell(command: "stat /docs/by-id/%s", response_format: "structured", include_command_spec: true)
 {
@@ -1051,7 +1060,7 @@ exec = app.vfs.shell(command: "stat /docs/by-id/%s", response_format: "structure
   lexical_count: lexical[:result][:count],
   literal_count: literal[:result][:count],
   found_count: found[:result][:count],
-  exec_command: exec[:data][:command_spec][:name],
+  exec_command: exec[:diagnostics][:command_spec][:name],
   exec_backend_id: exec[:data][:stat][:backend_id],
 }
 RUBY, $doc->id, $doc->id, $doc->id, $doc->id, $doc->id));
@@ -1061,7 +1070,9 @@ RUBY, $doc->id, $doc->id, $doc->id, $doc->id, $doc->id));
         $this->assertNotEmpty($payload['version']);
         $this->assertSame(1, $payload['limited_count']);
         $this->assertStringContainsString('refund', $payload['content']);
-        $this->assertStringContainsString('refund', $payload['cat_content']);
+        // cat is the raw alias of read: no line-number prefixes.
+        $this->assertSame("alpha\nbeta\nrefund", $payload['cat_content']);
+        $this->assertStringContainsString("     3\trefund", $payload['content']);
         $this->assertSame('refund', $payload['first_hit']);
         $this->assertGreaterThanOrEqual(1, $payload['hit_count']);
         $this->assertGreaterThanOrEqual(1, $payload['lexical_count']);
@@ -1088,7 +1099,7 @@ RUBY, $doc->id, $doc->id, $doc->id, $doc->id, $doc->id));
 app.vfs.mkdir(path: "/files/ruby-ax")
 app.vfs.write(path: "/files/ruby-ax/a.txt", content: "alpha", mode: "overwrite")
 before = app.vfs.exists(path: "/files/ruby-ax/a.txt")
-count = app.vfs.count(path: "/files/ruby-ax")
+count = app.vfs.ls(path: "/files/ruby-ax")
 app.vfs.cp(source: "/files/ruby-ax/a.txt", destination: "/files/ruby-ax/b.txt")
 app.vfs.mv(source: "/files/ruby-ax/b.txt", destination: "/files/ruby-ax/c.txt")
 app.vfs.rm(path: "/files/ruby-ax/c.txt")
@@ -1134,6 +1145,9 @@ RUBY);
         $this->assertTrue($read['ok']);
         $this->assertTrue($read['result']['truncated']);
         $this->assertLessThanOrEqual(200, strlen($read['result']['content']));
+        // Phase 2: vfs_read pages on whole lines and says where to continue;
+        // the shell's display read still cuts at bytes with the marker line.
+        $this->assertSame($read['result']['returned_lines'] + 1, $read['result']['next_offset']);
 
         $execTool = app(ToolRegistry::class)->instantiateToolBySlug('vfs_exec', $this->agent);
         $exec = json_decode($execTool->handle(new Request([
@@ -1142,7 +1156,8 @@ RUBY);
         ])), true);
 
         $this->assertTrue($exec['ok']);
-        $this->assertSame($read['result']['content'], $exec['stdout']);
+        $this->assertLessThanOrEqual(200, strlen($exec['stdout']));
+        $this->assertStringEndsWith('[... truncated]', $exec['stdout']);
 
         $commands = app(OpenCompanyVfs::class)->read($this->agent, '/tools/vfs/commands.json', new VfsBudget(maxBytes: 200));
         $settings = app(OpenCompanyVfs::class)->read($this->agent, '/workspace/settings.json', new VfsBudget(maxBytes: 10));
@@ -1217,6 +1232,7 @@ RUBY);
 
         $read = json_decode(app(ToolRegistry::class)->instantiateToolBySlug('vfs_read', $this->agent)->handle(new Request([
             'path' => $canonicalFile,
+            'raw' => true,
         ])), true);
         $this->assertSame('hi', $read['result']['content']);
 
@@ -2042,7 +2058,9 @@ RUBY);
         ])), true);
         $this->assertTrue($read['ok']);
         $this->assertSame(['read'], $read['result']['capabilities']);
-        $this->assertSame('Automation JSON is a generated automation record.', $read['result']['metadata']['read_only_reason']);
+        // Phase 2: vfs_read carries compact capabilities only; the full
+        // metadata stays on stat.
+        $this->assertSame('Automation JSON is a generated automation record.', $automationStat['metadata']['read_only_reason']);
 
         try {
             $vfs->patch($this->agent, '/tables/metadata-table/schema.json', json_encode(['search' => 'Metadata', 'replace' => 'Changed'], JSON_THROW_ON_ERROR));
@@ -2313,25 +2331,18 @@ RUBY);
         $this->assertStringContainsString('rg', $executor->execute($this->agent, 'cat /tools/vfs/commands.json')['stdout']);
         $this->assertStringContainsString('members.json', $executor->execute($this->agent, 'ls /workspace/*.json')['stdout']);
         $this->assertStringContainsString('settings.json', $executor->execute($this->agent, 'ls /workspace/*.json')['stdout']);
-        $this->assertStringContainsString('index.json', $executor->execute($this->agent, 'ls /tools/apps')['stdout']);
-        $this->assertStringContainsString('README.md', $executor->execute($this->agent, 'ls /tools/apps')['stdout']);
-        $this->assertStringContainsString('app tools', $executor->execute($this->agent, 'cat /tools/apps/README.md')['stdout']);
-        $this->assertStringContainsString('"kind": "app_tools"', $executor->execute($this->agent, 'cat /tools/apps/index.json')['stdout']);
-        $this->assertStringContainsString('"vfs_exec"', $executor->execute($this->agent, 'cat /tools/apps/index.json', '/', new VfsBudget(maxBytes: 2_000_000))['stdout']);
-        $this->assertStringContainsString('index.json', $executor->execute($this->agent, 'ls /tools/integrations')['stdout']);
-        $this->assertStringContainsString('README.md', $executor->execute($this->agent, 'ls /tools/integrations')['stdout']);
-        $this->assertStringContainsString('"kind": "integration_tools"', $executor->execute($this->agent, 'cat /tools/integrations/index.json')['stdout']);
-        $this->assertStringContainsString('README.md', $executor->execute($this->agent, 'ls /tools/mcp')['stdout']);
-        $this->assertStringContainsString('MCP tools', $executor->execute($this->agent, 'cat /tools/mcp/README.md')['stdout']);
-        $this->assertStringContainsString('"kind": "mcp_tools"', $executor->execute($this->agent, 'cat /tools/mcp/index.json')['stdout']);
-        $this->assertFalse($executor->execute($this->agent, 'ls /tools/apps', '/', new VfsBudget(maxEntries: 2))['result']['truncated']);
-        $this->assertTrue($executor->execute($this->agent, 'ls /tools/apps', '/', new VfsBudget(maxEntries: 1))['result']['truncated']);
-        $this->assertFalse($executor->execute($this->agent, 'tree /tools/apps', '/', new VfsBudget(maxEntries: 2, maxDepth: 1))['result']['truncated']);
-        $this->assertTrue($executor->execute($this->agent, 'tree /tools/apps', '/', new VfsBudget(maxEntries: 1, maxDepth: 1))['result']['truncated']);
+        // Phase 2: /tools/apps|integrations|mcp (integration package
+        // indexes) were replaced by the agent's effective tool surface.
+        $this->assertStringContainsString('index.json', $executor->execute($this->agent, 'ls /tools')['stdout']);
+        $this->assertStringContainsString('"kind": "tool_surface"', $executor->execute($this->agent, 'cat /tools/index.json')['stdout']);
+        $this->assertStringContainsString('"vfs_exec"', $executor->execute($this->agent, 'cat /tools/index.json', '/', new VfsBudget(maxBytes: 2_000_000))['stdout']);
+        $this->assertStringContainsString('vfs_read', $executor->execute($this->agent, 'cat /tools/catalog.md', '/', new VfsBudget(maxBytes: 2_000_000))['stdout']);
+        $this->assertFalse($executor->execute($this->agent, 'ls /tools', '/', new VfsBudget(maxEntries: 4))['result']['truncated']);
+        $this->assertTrue($executor->execute($this->agent, 'ls /tools', '/', new VfsBudget(maxEntries: 1))['result']['truncated']);
         $this->assertStringContainsString($automationA->id, $executor->execute($this->agent, 'cat /automations/'.$automationA->id.'.json')['stdout']);
         $this->assertStringContainsString('daily-sync--', $executor->execute($this->agent, 'ls /automations')['stdout']);
         $this->assertStringContainsString('"truncated"', $executor->execute($this->agent, 'stat /docs')['stdout']);
-        $this->assertStringContainsString('"count_is_exact": true', $executor->execute($this->agent, 'stat /tools/apps')['stdout']);
+        $this->assertStringContainsString('"count_is_exact": true', $executor->execute($this->agent, 'stat /tools/vfs')['stdout']);
         $this->assertStringNotContainsString('count_sample', $executor->execute($this->agent, 'stat /docs')['stdout']);
 
         $directFind = app(ToolRegistry::class)->instantiateToolBySlug('vfs_find', $this->agent)->handle(new Request(['paths' => ['/tasks'], 'maxDepth' => 0, 'limit' => 10]));
@@ -2448,7 +2459,7 @@ RUBY);
     private function workspaceApprover(): User
     {
         $approver = User::factory()->create(['type' => 'human']);
-        \App\Models\WorkspaceMember::query()->firstOrCreate(
+        WorkspaceMember::query()->firstOrCreate(
             ['workspace_id' => $this->workspace->id, 'user_id' => $approver->id],
             ['role' => 'admin'],
         );

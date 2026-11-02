@@ -282,7 +282,7 @@ class VfsContentIntegrityTest extends TestCase
     {
         $doc = $this->patchableDocument('Versioned', 'v1 content');
         $read = json_decode(app(VfsRead::class, ['agent' => $this->agent, 'vfs' => $this->vfs])
-            ->handle(new Request(['path' => "/docs/by-id/{$doc->id}"])), true);
+            ->handle(new Request(['path' => "/docs/by-id/{$doc->id}", 'raw' => true])), true);
 
         $this->assertSame('v1 content', $read['result']['content']);
         $this->assertSame($this->vfs->stat($this->agent, "/docs/by-id/{$doc->id}")['version'], $read['result']['version']);
