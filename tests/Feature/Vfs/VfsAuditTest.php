@@ -192,7 +192,10 @@ class VfsAuditTest extends TestCase
         $this->assertSame($reader->id, $lines[1]['actor_id']);
         $this->assertStringStartsWith('/files/by-id/', $lines[1]['path']);
         $this->assertNotNull($lines[1]['version']);
-        $this->assertSame(1, $page->skipped);
+        // Skipped: Atlas's public.txt and the /files/agents folder its
+        // mkdir created implicitly (audited since the governance review).
+        $this->assertSame(2, $page->skipped);
+        $this->assertSame(1, VfsOperationEvent::query()->where('type', 'vfs.directory.created')->where('path', '/files/agents')->count());
         // Drained, but still resumable for polling.
         $this->assertFalse($page->truncated);
         $this->assertNotNull($page->nextCursor);

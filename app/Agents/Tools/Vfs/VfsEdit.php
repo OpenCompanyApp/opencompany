@@ -8,6 +8,7 @@ use App\Agents\Tools\Vfs\Support\VfsTextEditPlan;
 use App\Agents\Tools\Vfs\Support\VfsUnifiedDiff;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsOperationLog;
+use App\Domain\Vfs\Events\VfsOperationContext;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Domain\Vfs\Spec\VfsOperationSpecRegistry;
 use App\Models\User;
@@ -123,7 +124,9 @@ class VfsEdit implements ReturnsVfsEnvelope, Tool
         } finally {
             event(VfsOperationLog::forAgent(
                 $this->agent,
-                'tool',
+                // The caller's surface (tool, code, computer, approval_replay, …),
+                // the same one the facade's object events carry.
+                app(VfsOperationContext::class)->surface(),
                 self::TOOL_SLUG,
                 $path !== '' ? $path : (string) ($request['path'] ?? ''),
                 null,

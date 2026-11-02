@@ -23,10 +23,12 @@ use Illuminate\Support\Facades\Log;
  *   (VfsOperationContext::enter); nested reads are part of their parent.
  * - Reads: one aggregated `vfs.read` per (actor, run or agent-minute,
  *   operation, path). Not-found and other non-permission read failures are
- *   not recorded; permission denials are (`vfs.denied`).
+ *   not recorded; permission denials always are (`vfs.denied`, one row
+ *   each: the sink never aggregates or drops a denial).
  * - Writes: every attempt that reached a decision is recorded: committed
  *   (`vfs.file.*`, `vfs.record.*`, `vfs.directory.*`, with before/after
- *   versions), denied, approval_required (`vfs.approval_requested`) or failed
+ *   versions and the backend id; parent folders a write created implicitly
+ *   get their own `vfs.directory.created`), denied, approval_required (`vfs.approval_requested`) or failed
  *   (`vfs.operation.failed` with the error code). A committed write also
  *   broadcasts VfsObjectChanged.
  * - Auditing never changes the outcome: sink failures are logged by the sink
@@ -125,9 +127,11 @@ class VfsAuditor
 
         $started = microtime(true);
         $before = null;
+        $missingParents = [];
 
         try {
             $before = $statQuietly($path);
+            $missingParents = $this->missingParents($operationName, $path, $destination, $before, $statQuietly);
             $result = $operation();
         } catch (VfsError $e) {
             $this->context->leave();
@@ -142,9 +146,20 @@ class VfsAuditor
         }
 
         try {
+            // Parents first: they were created before the object inside them.
+            foreach ($missingParents as $parent) {
+                $this->recordImplicitDirectory($agent, $parent, $destination ?? $path, $statQuietly, $started);
+            }
+
             $target = $destination ?? $path;
+            // The result is enough only when it already identifies the object
+            // (canonical path, version AND backend). Create results carry no
+            // backend_type/backend_id, and a created event without them cannot
+            // be joined to its object by change-set or revert builders.
             $after = $operationName === 'remove' ? null : (
-                isset($result['canonical_path'], $result['version']) ? $result : ($statQuietly((string) ($result['canonical_path'] ?? $result['path'] ?? $target)) ?? $result)
+                isset($result['canonical_path'], $result['version'], $result['backend_type'], $result['backend_id'])
+                    ? $result
+                    : ($statQuietly((string) ($result['canonical_path'] ?? $result['path'] ?? $target)) ?? $result)
             );
             $canonical = (string) ($after['canonical_path'] ?? $before['canonical_path'] ?? $result['canonical_path'] ?? $target);
             $key = $this->writeIdempotencyKey($agent, $operationName, $path, $toolParameters);
@@ -184,6 +199,79 @@ class VfsAuditor
         }
 
         return $result;
+    }
+
+    /**
+     * Ancestors of a not-yet-existing target that do not exist either, the
+     * outermost first. Writes create them implicitly (files: ensureFolderPath;
+     * docs: mkdir -p), and each one is a committed object the audit trail
+     * and change sets must see.
+     *
+     * Only computed when the target is new (one extra stat of its parent per
+     * create; none for edits of existing objects). Mount roots and
+     * top-level views (`/files`, `/docs`, `/docs/by-id`) are never "created".
+     *
+     * @param  array<string, mixed>|null  $before
+     * @param  callable(string): (array<string, mixed>|null)  $statQuietly
+     * @return list<string>
+     */
+    private function missingParents(string $operationName, string $path, ?string $destination, ?array $before, callable $statQuietly): array
+    {
+        if (! in_array($operationName, ['write', 'mkdir', 'touch', 'copy', 'move'], true)) {
+            return [];
+        }
+
+        $target = $destination ?? $path;
+        $targetExists = $destination === null ? $before !== null : $statQuietly($destination) !== null;
+        if ($targetExists) {
+            return [];
+        }
+
+        $missing = [];
+        $segments = array_values(array_filter(explode('/', $target), fn (string $segment): bool => $segment !== ''));
+        // Bounded walk: deep implicit trees are rare and each step is a stat.
+        for ($depth = count($segments) - 1; $depth >= 2 && count($missing) < 10; $depth--) {
+            $parent = '/'.implode('/', array_slice($segments, 0, $depth));
+            if ($statQuietly($parent) !== null) {
+                break;
+            }
+            array_unshift($missing, $parent);
+        }
+
+        return $missing;
+    }
+
+    /**
+     * Record `vfs.directory.created` for a parent a write created
+     * implicitly; skipped when the parent still does not exist (the
+     * operation took another route, e.g. a mount without folders).
+     *
+     * @param  callable(string): (array<string, mixed>|null)  $statQuietly
+     */
+    private function recordImplicitDirectory(User $agent, string $parent, string $target, callable $statQuietly, float $started): void
+    {
+        $stat = $statQuietly($parent);
+        if ($stat === null) {
+            return;
+        }
+
+        $canonical = (string) ($stat['canonical_path'] ?? $parent);
+        $event = $this->event(
+            $agent,
+            'vfs.directory.created',
+            'mkdir',
+            'write',
+            'allowed',
+            $parent,
+            $canonical,
+            $started,
+            backendType: is_string($stat['backend_type'] ?? null) ? $stat['backend_type'] : null,
+            backendId: is_string($stat['backend_id'] ?? null) ? $stat['backend_id'] : null,
+            actionClass: VfsActionClass::classify('mkdir', $canonical),
+            payload: ['implicit' => true, 'created_for' => $target],
+        );
+        $this->sink->record($event);
+        event(VfsObjectChanged::fromEvent($event));
     }
 
     /**

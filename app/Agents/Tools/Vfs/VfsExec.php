@@ -11,6 +11,7 @@ use App\Domain\Vfs\Core\VfsCommandHelp;
 use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsOperationLog;
+use App\Domain\Vfs\Events\VfsOperationContext;
 use App\Models\User;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
@@ -90,7 +91,9 @@ class VfsExec implements ReturnsVfsEnvelope, Tool
         } finally {
             event(VfsOperationLog::forAgent(
                 $this->agent,
-                'tool',
+                // The caller's surface (tool, code, computer, approval_replay, …),
+                // the same one the facade's object events carry.
+                app(VfsOperationContext::class)->surface(),
                 self::TOOL_SLUG,
                 null,
                 (string) ($request['cwd'] ?? '/'),
