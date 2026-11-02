@@ -83,8 +83,9 @@ jobs:
           cp scripts/testing/mruby.env.testing .env.testing
           php -r "file_put_contents('.env', 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL);"
 
-      # One process accumulates the ~41k-tool integration catalog across the
-      # suite and exceeds 1 GiB; paratest isolates suites per process.
+      # A single process exceeds 1 GiB across the whole suite; paratest
+      # isolates suites per process. The SQLite schema baseline
+      # (database/schema/sqlite-schema.sql) is loaded instead of migrations.
       - name: Run the backend suite
         run: php artisan test --parallel --processes=4
 
@@ -120,6 +121,9 @@ jobs:
           cp scripts/testing/mruby.env.testing .env.testing
           php -r "file_put_contents('.env', 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL);"
 
+      # Loads database/schema/pgsql-schema.sql with the runner's psql.
+      # Known pre-existing failures (2026-11-02): enum check constraints and
+      # non-uuid fixture ids in some Memory/VFS tests.
       - name: Run memory, retrieval and document suites on PostgreSQL
         env:
           DB_CONNECTION: pgsql
@@ -142,8 +146,7 @@ jobs:
       - *setup-php
       - *composer-install
 
-      # The app plus several hundred path-based integration packages exceeds
-      # 512 MiB during parallel analysis on hosted runners.
+      # Parallel analysis exceeds 512 MiB on hosted runners.
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
 

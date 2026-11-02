@@ -79,6 +79,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     # SVG to PNG rendering for the built-in render_svg tool
     librsvg2-bin \
+    # psql: `artisan migrate` loads the squashed baseline
+    # (database/schema/pgsql-schema.sql) on a fresh database
+    postgresql-client \
     && docker-php-ext-install pdo_pgsql pgsql pcntl \
     && pecl install redis && docker-php-ext-enable redis \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
