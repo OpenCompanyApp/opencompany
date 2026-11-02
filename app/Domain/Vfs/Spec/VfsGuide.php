@@ -40,10 +40,10 @@ The VFS is a permission-aware, unix-like view of OpenCompany workspace data. It 
 
 ## Tools
 
-- `vfs_exec`: run a command line. `ls`, `tree`, `find`, `rg` (regex), `grep` (literal), `cat`, `head`, `tail`, `wc`, `stat`, `jq`, `diff` and more; pipes, `;`, `&&`, `||`, globs, `>` and `>>` into `/files`. Returns `{ok, exit_code, stdout, cwd}`.
+- `vfs_exec`: run a command line. `ls`, `tree`, `find`, `rg` (regex), `grep` (literal), `cat`, `head`, `tail`, `wc`, `stat`, `jq`, `diff` and more; pipes, `;`, `&&`, `||`, globs, `>` and `>>` into writable files. `rm` moves to the trash; `mv` out of a `.trash/` folder restores. Returns `{ok, exit_code, stdout, cwd}`.
 - `vfs_read`: read one file with numbered lines (`     N<TAB>text`), `offset`/`limit` paging, `version` and `total_lines`; paged collection files (`rows.ndjson`, channel day transcripts, `members.json`) page with `cursor`. `raw: true` drops the numbers.
 - `vfs_edit`: change text by exact replacement. `edits: [{old_text, new_text, replace_all?}]`, applied in order, all or nothing; `dry_run: true` returns a unified diff.
-- `vfs_write`: `create` (default), `overwrite` (needs `version` when the file exists) or `append` whole content.
+- `vfs_write`: `create` (default), `overwrite` (needs `version` when it exists) or `append` whole content: files, documents (`/docs/<folder>/<Title>.md`), table rows (`rows/new.json` with `{"data":{...}}`), list items (`new.md` in a project) and your `/me/notes`, `/me/todo.md`. Optional `idempotency_key` makes a retry safe.
 - `vfs_patch`: records. Task and list fields `{"status":"completed"}`; table rows `{"data":{"Status":"active"},"base":{"Status":"lead"}}` (send only changed columns; `base` turns a concurrent change into `conflict`).
 
 In Code Mode (`code_exec`) the same operations are `app.vfs.*`: see `/tools/vfs/code.json` and `code_read_doc("vfs")`.
@@ -59,6 +59,8 @@ If the object changed since your read, record patches and overwrites fail with `
 
 ## Results
 
+Paths in output (`find`, `grep -r`, `rg`, `vfs_rg`) are readable friendly paths; duplicate names carry a `--1a2b3c4d` suffix, and structured results add the stable `canonical_path`.
+
 Success is `{"ok":true,"result":{...}}` (`vfs_exec` is flat). Failure is `{"ok":false,"error":{"code","message","context"}}`; branch on `error.code`: `not_found`, `not_readable`, `not_writable`, `permission_denied`, `unsupported`, `approval_required`, `invalid_request`, `conflict`, `ambiguous_match`, `internal_error`. `context.hint` says what to do next. Full table: `/tools/vfs/reference.md`.
 
 ## Approvals
@@ -71,7 +73,7 @@ Budgets bound every call (`maxEntries`, `maxBytes`, ...). When output is cut, `t
 
 ## Permissions
 
-Three capability toggles govern the tools: `vfs_exec` (all reads: exec, read and the Code Mode read helpers), `vfs_patch` (vfs_edit and vfs_patch) and `vfs_write` (vfs_write and file mutations, including shell `mkdir`/`cp`/`mv`/`rm`/`>`). Domain records also need their own permission: table rows `update_table_row`, agent identity files `update_agent_identity_file`. `/docs` writes need an allowed document folder.
+Three capability toggles govern the tools: `vfs_exec` (all reads: exec, read and the Code Mode read helpers), `vfs_patch` (vfs_edit and vfs_patch) and `vfs_write` (vfs_write and mutations, including shell `mkdir`/`cp`/`mv`/`rm`/`>`). Records also need their domain permission: documents `create_document`/`update_document`/`delete_document`, table rows `add_table_row`/`update_table_row`/`delete_table_row`, list items `create_list_item`/`update_list_item`/`delete_list_item`, agent identity files `update_agent_identity_file`. `/docs` writes need an allowed document folder.
 
 ## Discovery
 

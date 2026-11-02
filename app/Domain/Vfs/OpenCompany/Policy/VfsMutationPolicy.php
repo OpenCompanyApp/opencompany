@@ -36,10 +36,14 @@ class VfsMutationPolicy
      * approval cover the whole operation instead of ping-ponging one approval
      * per gated permission.
      *
-     * $actionClass is the governance reversibility class (VfsActionClass);
-     * null derives it from operation/subject/tools. It never changes the
-     * outcome today; it is carried into the decision, the approval context
-     * and audit so the future policy engine can gate by reversibility.
+     * $actionClass is the governance reversibility class (VfsActionClass)
+     * the caller declares (a command spec's class, a record operation's
+     * class). It is a floor, never a downgrade: the decision carries the
+     * strictest of it and the per-path classification, so a declared
+     * `reversible_edit` on an identity file is still `governance`. Null uses
+     * the derived class alone. It never changes the outcome today; it is
+     * carried into the decision, the approval context and audit so the
+     * future policy engine can gate by reversibility.
      *
      * @param  list<string>  $requiredTools
      * @param  array<string, mixed>  $parameters
@@ -54,7 +58,9 @@ class VfsMutationPolicy
         string $hint = '',
         ?string $actionClass = null,
     ): VfsMutationDecision {
-        $actionClass ??= VfsActionClass::classify($operation, $subject, $requiredTools);
+        // Invariant: declared class first, per-path classifier second, the
+        // stricter wins (see VfsActionClass class docblock).
+        $actionClass = VfsActionClass::strictest($actionClass, VfsActionClass::classify($operation, $subject, $requiredTools));
         $approvalTools = [];
         $parametersHash = $this->approvals->hashParameters($parameters);
 

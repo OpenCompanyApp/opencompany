@@ -3,6 +3,7 @@
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\User;
 use App\Models\WorkspaceFile;
 use Illuminate\Support\Facades\DB;
@@ -97,6 +98,7 @@ trait MutatesVfsFiles
                 ['kind' => 'workspace_file', 'mode' => $mode, 'name' => $name],
                 'write',
                 'Raw workspace-file writes require vfs_write.',
+                VfsActionClass::REVERSIBLE_EDIT,
             );
         }
 

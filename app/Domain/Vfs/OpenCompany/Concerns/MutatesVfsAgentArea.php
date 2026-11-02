@@ -3,6 +3,7 @@
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\Document;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -62,7 +63,7 @@ trait MutatesVfsAgentArea
             $this->assertVersion($version, $this->documentVersionToken($existing), $path);
             $this->assertMutationToolsAllowed($agent, $path, ['vfs_write'], $toolParameters, $this->channelIdFrom($toolParameters), [
                 'kind' => 'agent_note', 'action_class' => 'reversible_edit', 'mode' => 'overwrite', 'title' => $existing->title,
-            ], 'write');
+            ], 'write', actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
             $fresh = DB::transaction(function () use ($agent, $existing, $content, $version, $path): Document {
                 $locked = Document::forWorkspace()->whereKey($existing->id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
@@ -89,7 +90,7 @@ trait MutatesVfsAgentArea
 
         $this->assertMutationToolsAllowed($agent, $path, ['vfs_write'], $toolParameters, $this->channelIdFrom($toolParameters), [
             'kind' => 'agent_note', 'action_class' => 'reversible_edit', 'mode' => 'create', 'title' => $title,
-        ], 'write');
+        ], 'write', actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         $doc = DB::transaction(function () use ($agent, $root, $remaining, $title, $content, $path): Document {
             // Lazily create notes/ and any intermediate folders on this write.
@@ -149,7 +150,14 @@ trait MutatesVfsAgentArea
 
         Document::withTrashed()->whereKey($doc->id)->toBase()->update(['deleted_at' => now(), 'deleted_by' => $agent->id]);
 
-        return ['status' => 'trashed', 'path' => $path, 'canonical_path' => "/agents/by-id/{$target->id}/".implode('/', $remaining)];
+        // Known gap (Phase 3 follow-up): agent-area notes have no `.trash/`
+        // view or mv restore yet; say so instead of implying one exists.
+        return [
+            'status' => 'trashed',
+            'path' => $path,
+            'canonical_path' => "/agents/by-id/{$target->id}/".implode('/', $remaining),
+            'restore_hint' => 'No VFS restore for notes yet; a human can restore it from the app trash.',
+        ];
     }
 
     /**

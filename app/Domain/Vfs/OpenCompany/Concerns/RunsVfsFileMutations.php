@@ -3,6 +3,7 @@
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\User;
 use App\Models\WorkspaceFile;
 use Illuminate\Support\Facades\DB;
@@ -45,11 +46,11 @@ trait RunsVfsFileMutations
         $toolParameters ??= ['path' => $path];
 
         return $this->withIdempotency($agent, $toolParameters, 'mkdir', $path, function () use ($agent, $path, $toolParameters): array {
-            if (($this->segments($path)[0] ?? null) === 'docs') {
-                return $this->makeDocumentFolderPath($agent, $path, $toolParameters);
-            }
+            $segments = $this->segments($path);
+            $mount = $this->mounts()->resolve($segments) ?? throw VfsError::notWritable($path);
+            $this->governMountMutation($mount, $agent, 'mkdir', $path, $toolParameters);
 
-            return $this->makeFilesDirectory($agent, $path);
+            return $mount->makeDirectory($agent, $segments, $path, $toolParameters);
         });
     }
 
@@ -132,13 +133,11 @@ trait RunsVfsFileMutations
             throw VfsError::invalid('Trash and history entries cannot be removed through the VFS (purging is not a VFS operation).', ['path' => $path]);
         }
 
-        return $this->withIdempotency($agent, $toolParameters, 'rm', $path, fn (): array => match ($segments[0] ?? null) {
-            'files' => $this->trashWorkspaceFilePath($agent, $path, $toolParameters),
-            'docs' => $this->trashDocumentPath($agent, $segments, $path, $toolParameters),
-            'tables' => $this->trashTableRowPath($agent, $segments, $path, $toolParameters),
-            'lists' => $this->trashListItemPath($agent, $segments, $path, $toolParameters),
-            'agents' => $this->trashAgentAreaPath($agent, $segments, $path),
-            default => throw VfsError::notWritable($path),
+        return $this->withIdempotency($agent, $toolParameters, 'rm', $path, function () use ($agent, $segments, $path, $toolParameters): array {
+            $mount = $this->mounts()->resolve($segments) ?? throw VfsError::notWritable($path);
+            $this->governMountMutation($mount, $agent, 'remove', $path, $toolParameters);
+
+            return $mount->remove($agent, $segments, $path, $toolParameters);
         });
     }
 
@@ -163,6 +162,7 @@ trait RunsVfsFileMutations
             channelId: $this->channelIdFrom($toolParameters),
             hint: 'Moving a file to the trash requires delete_file.',
             preview: ['kind' => $file->is_folder ? 'folder' : 'workspace_file', 'action_class' => 'delete', 'name' => $file->name, 'id' => $file->id],
+            actionClass: VfsActionClass::DELETE,
         );
 
         $count = DB::transaction(function () use ($agent, $file, $path): int {
@@ -245,19 +245,25 @@ trait RunsVfsFileMutations
         $destination = $this->routePath($agent, $destination);
         $toolParameters ??= ['source' => $source, 'destination' => $destination];
         $segments = $this->segments($source);
-        $root = $segments[0] ?? null;
+        $destinationSegments = $this->segments($destination);
+        $mount = $this->mounts()->resolve($segments);
 
-        if ($root !== ($this->segments($destination)[0] ?? null)) {
+        // One mount per move: both ends must resolve to the same mount prefix
+        // (so nested mounts cannot be crossed either). Unmounted paths
+        // compare by their first segment, as before the registry.
+        $sourceKey = $mount?->prefix() ?? '/'.($segments[0] ?? '');
+        $destinationKey = $this->mounts()->resolve($destinationSegments)?->prefix() ?? '/'.($destinationSegments[0] ?? '');
+        if ($sourceKey !== $destinationKey) {
             throw VfsError::unsupported('mv works within one mount; read the source and vfs_write it elsewhere instead.', ['source' => $source, 'destination' => $destination]);
         }
 
-        return $this->withIdempotency($agent, $toolParameters, 'mv', "{$source} -> {$destination}", fn (): array => match (true) {
-            $root === 'files' && ($segments[1] ?? null) === '.trash' => $this->restoreWorkspaceFilePath($agent, $source, $destination, $toolParameters),
-            $root === 'files' => $this->moveWorkspaceFilePath($agent, $source, $destination),
-            $root === 'docs' => $this->moveDocumentPath($agent, $source, $destination, $toolParameters),
-            $root === 'tables' => $this->restoreTableRowPath($agent, $source, $destination, $toolParameters),
-            $root === 'lists' => $this->restoreListItemPath($agent, $source, $destination, $toolParameters),
-            default => throw VfsError::notWritable($source),
+        return $this->withIdempotency($agent, $toolParameters, 'mv', "{$source} -> {$destination}", function () use ($agent, $mount, $segments, $source, $destination, $toolParameters): array {
+            if ($mount === null) {
+                throw VfsError::notWritable($source);
+            }
+            $this->governMountMutation($mount, $agent, 'move', $source, $toolParameters);
+
+            return $mount->move($agent, $segments, $source, $destination, $toolParameters);
         });
     }
 
@@ -323,6 +329,7 @@ trait RunsVfsFileMutations
             channelId: $this->channelIdFrom($toolParameters),
             hint: 'Restoring a trashed file requires delete_file.',
             preview: ['kind' => 'workspace_file', 'action_class' => 'reversible_edit', 'name' => $originalName, 'to' => $name],
+            actionClass: VfsActionClass::REVERSIBLE_EDIT,
         );
 
         $restored = DB::transaction(function () use ($file, $parentId, $name, $source): WorkspaceFile {

@@ -185,6 +185,10 @@ trait ExecutesVfsMetadataCommands
             $entries = [];
         }
         foreach ($entries as $entry) {
+            // Alias mounts (/me) would count their objects twice (VfsEntry::isAlias()).
+            if ($entry->isAlias()) {
+                continue;
+            }
             $entryPath = $entry->canonicalPath ?? $entry->path;
             [$bytes, $childLines] = $this->duCollect($agent, $entryPath, $budget, $includeFiles, $printDepth, $depth + 1, $state, $entry->jsonSerialize());
             $total += $bytes;

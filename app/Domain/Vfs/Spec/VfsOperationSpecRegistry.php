@@ -218,13 +218,13 @@ final class VfsOperationSpecRegistry
             permission: 'vfs_exec',
             composedPermissions: [
                 'read commands' => ['vfs_exec'],
-                '/files mutations (mkdir, touch, tee, cp, mv, rm, >, >>)' => ['vfs_exec', 'vfs_write'],
+                'mutations (mkdir, touch, tee, cp, mv, rm, >, >>)' => ['vfs_exec', 'vfs_write'],
             ],
             summary: 'Run unix-like commands over the virtual filesystem (ls, find, rg, cat, jq, ...).',
             description: 'Run a unix-like command in the OpenCompany virtual filesystem (not a host shell). '
                 .'Navigate and inspect with ls, tree, find, cat, head, tail, grep (literal), rg (regex), wc, stat, jq, diff and more; '
-                .'pipes, ;, &&, ||, globs and > or >> into /files work. '
-                .'/files mutations (mkdir, touch, tee, cp, mv, rm) also need vfs_write. '
+                .'pipes, ;, &&, ||, globs and > or >> into writable files work. '
+                .'Mutations (mkdir, touch, tee, cp, mv, rm, >) also need vfs_write; rm moves to the trash. '
                 .'Returns {ok, exit_code, stdout, cwd}; when truncated is true, hint says how to continue '
                 .'(pass next_cursor as cursor, raise a budget, or narrow the path). '
                 .'Start with `cat /README.md` or `help`. Use vfs_read and vfs_edit for file content.',
@@ -266,6 +266,7 @@ final class VfsOperationSpecRegistry
             ],
             notes: [
                 'grep is literal and rg is regex, in the shell and in Code Mode.',
+                'Record mutations (documents, rows, list items) also compose the same domain tool as vfs_write, vfs_rm and vfs_mv.',
                 'No $VAR, command substitution, process substitution or host programs.',
                 'A command that cannot run fails the whole line with error; a later group after ; or || still runs and exit_code reflects the last command.',
             ],
@@ -372,6 +373,7 @@ final class VfsOperationSpecRegistry
                 ]),
                 new VfsParameterSpec('version', 'string', 'version from vfs_read; enables conflict detection.'),
                 new VfsParameterSpec('dry_run', 'boolean', 'Return the unified diff without writing or requesting approval.', default: false),
+                new VfsParameterSpec('idempotency_key', 'string', 'Optional key; a retry with the same key returns the first result instead of applying twice.'),
             ],
             resultFields: [
                 'status' => 'updated, unchanged or dry_run',
@@ -413,17 +415,29 @@ final class VfsOperationSpecRegistry
             registryType: 'write',
             actionClass: 'per_path',
             permission: 'vfs_write',
-            composedPermissions: ['/files' => ['vfs_write']],
-            summary: 'Create, overwrite or append whole text content where a path allows writes.',
-            description: 'Create, overwrite or append whole text content where the path allows writes (stat lists the write capability; today /files). '
-                .'mode: create (default, fails if the file exists), overwrite (requires version from vfs_read when the file exists), '
+            composedPermissions: [
+                '/files' => ['vfs_write'],
+                '/docs (create)' => ['vfs_write', 'create_document'],
+                '/docs (overwrite)' => ['vfs_write', 'update_document'],
+                '/tables/{table}/rows/new.json' => ['vfs_write', 'add_table_row'],
+                '/tables/{table}/rows/by-id/*' => ['vfs_write', 'update_table_row'],
+                '/lists/projects/{project}/new.md' => ['vfs_write', 'create_list_item'],
+                '/lists items' => ['vfs_write', 'update_list_item'],
+                '/me/notes/*, /me/todo.md' => ['vfs_write'],
+            ],
+            summary: 'Create, overwrite or append whole content: files, documents, table rows, list items, your notes.',
+            description: 'Create, overwrite or append whole content where the path allows writes (stat lists the write capability): '
+                .'/files, documents (/docs/<folder>/<Title>.md), table rows (rows/new.json creates, rows/by-id/<id>.json overwrites, {"data":{...}}), '
+                .'list items (front-matter markdown; new.md in a project creates) and your /me/notes and /me/todo.md. '
+                .'mode: create (default, fails if it exists), overwrite (requires version from vfs_read when it exists), '
                 .'or append (adds to the end, creating the file if missing). '
-                .'For changes inside an existing file use vfs_edit.',
+                .'For changes inside an existing file use vfs_edit; for record fields use vfs_patch.',
             parameters: [
                 new VfsParameterSpec('path', 'string', 'Path to write, e.g. /files/reports/q3.md.', required: true),
                 new VfsParameterSpec('content', 'string', 'Text to write.', required: true),
                 new VfsParameterSpec('mode', 'string', 'create, overwrite or append.', enum: ['create', 'overwrite', 'append'], default: 'create'),
                 new VfsParameterSpec('version', 'string', 'version from vfs_read; required to overwrite an existing file, optional for append.'),
+                new VfsParameterSpec('idempotency_key', 'string', 'Optional key; a retry with the same key returns the first result instead of applying twice.'),
             ],
             resultFields: [
                 'status' => 'created or updated',
@@ -437,13 +451,16 @@ final class VfsOperationSpecRegistry
                 '{"path": "/files/reports/q3.md", "content": "# Q3\n"}',
                 '{"path": "/files/reports/q3.md", "mode": "overwrite", "version": "<version>", "content": "# Q3 (final)\n"}',
                 '{"path": "/files/logs/run.log", "mode": "append", "content": "done\n"}',
+                '{"path": "/docs/reports/Weekly.md", "content": "# Weekly\n"}',
+                '{"path": "/tables/customers/rows/new.json", "content": "{\"data\":{\"Name\":\"Acme\"}}"}',
             ],
             rubyExamples: [
                 'app.vfs.write(path: "/files/generated/report.md", content: "# Report\n", mode: "create")',
             ],
             notes: [
                 'append is version-checked against the content it read, so concurrent appends never lose data (one fails with conflict).',
-                'An idempotency_key argument is forwarded to the write path unchanged.',
+                'Overwriting a document, row, list item or note requires the version from a read; /files keeps it optional.',
+                'Every overwrite stores the previous content as a version under <path>/.history/.',
             ],
         );
     }
@@ -463,7 +480,8 @@ final class VfsOperationSpecRegistry
             actionClass: 'per_path',
             permission: 'vfs_patch',
             composedPermissions: [
-                '/tasks, /lists, /docs, /files' => ['vfs_patch'],
+                '/tasks, /docs, /files, /me/notes' => ['vfs_patch'],
+                '/lists items' => ['vfs_patch', 'update_list_item'],
                 '/tables/{table}/rows/by-id/*' => ['vfs_patch', 'update_table_row'],
                 '/agents/{agent}/identity/*' => ['vfs_patch', 'update_agent_identity_file'],
             ],
@@ -478,6 +496,7 @@ final class VfsOperationSpecRegistry
                 new VfsParameterSpec('path', 'string', 'Record path, preferably canonical (by-id).', required: true),
                 new VfsParameterSpec('patch', 'string', 'JSON patch as a string: field map, {"data":...,"base":...} for rows, or {"search","replace"} for text.', required: true),
                 new VfsParameterSpec('version', 'string', 'version from vfs_read; stale versions fail with conflict for records.'),
+                new VfsParameterSpec('idempotency_key', 'string', 'Optional key; a retry with the same key returns the first result instead of applying twice.'),
             ],
             resultFields: [
                 'status' => 'updated',
@@ -608,9 +627,16 @@ final class VfsOperationSpecRegistry
             'VFS Mkdir',
             'ph:folder-plus',
             'reversible_edit',
-            'Create a writable directory (idempotent).',
-            [new VfsParameterSpec('path', 'string', 'Directory path under /files.', required: true)],
-            ['app.vfs.mkdir(path: "/files/generated")'],
+            'Create a folder under /files or /docs, with missing parents (idempotent).',
+            [
+                new VfsParameterSpec('path', 'string', 'Folder path under /files or /docs.', required: true),
+                new VfsParameterSpec('idempotency_key', 'string', 'Optional retry key; a repeat returns the first result.'),
+            ],
+            ['app.vfs.mkdir(path: "/files/generated")', 'app.vfs.mkdir(path: "/docs/Reports/2026")'],
+            [
+                '/files' => ['vfs_write'],
+                '/docs' => ['vfs_write', 'create_document'],
+            ],
         );
     }
 
@@ -637,12 +663,21 @@ final class VfsOperationSpecRegistry
             'VFS Mv',
             'ph:arrows-out-line-horizontal',
             'reversible_edit',
-            'Move or rename a writable file.',
+            'Move or rename a file or document within its mount; restore a trashed object from <mount>/.trash/.',
             [
                 new VfsParameterSpec('source', 'string', 'Source path.', required: true, aliases: ['src']),
                 new VfsParameterSpec('destination', 'string', 'Destination path or directory.', required: true, aliases: ['dst', 'dest']),
+                new VfsParameterSpec('idempotency_key', 'string', 'Optional retry key; a repeat returns the first result.'),
             ],
-            ['app.vfs.mv(source: "/files/a.md", destination: "/files/archive/a.md")'],
+            ['app.vfs.mv(source: "/files/a.md", destination: "/files/archive/a.md")', 'app.vfs.mv(source: "/docs/.trash/DOC_ID", destination: "/docs/Reports/")'],
+            [
+                '/files' => ['vfs_write'],
+                '/docs (move, rename)' => ['vfs_write', 'update_document'],
+                '/files/.trash/* (restore)' => ['vfs_write', 'delete_file'],
+                '/docs/.trash/* (restore)' => ['vfs_write', 'delete_document'],
+                '/tables/{table}/rows/.trash/* (restore)' => ['vfs_write', 'delete_table_row'],
+                '/lists/.trash/* (restore)' => ['vfs_write', 'delete_list_item'],
+            ],
         );
     }
 
@@ -653,9 +688,19 @@ final class VfsOperationSpecRegistry
             'VFS Rm',
             'ph:trash',
             'delete',
-            'Delete a writable file.',
-            [new VfsParameterSpec('path', 'string', 'File path.', required: true)],
-            ['app.vfs.rm(path: "/files/tmp/scratch.txt")'],
+            'Move a file, document, table row, list item or your note to the trash (never a hard delete; restore with mv).',
+            [
+                new VfsParameterSpec('path', 'string', 'Path of the object to trash.', required: true),
+                new VfsParameterSpec('idempotency_key', 'string', 'Optional retry key; a repeat returns the first result.'),
+            ],
+            ['app.vfs.rm(path: "/files/tmp/scratch.txt")', 'app.vfs.rm(path: "/tables/customers/rows/by-id/ROW_ID.json")'],
+            [
+                '/files' => ['vfs_write', 'delete_file'],
+                '/docs' => ['vfs_write', 'delete_document'],
+                '/tables/{table}/rows/by-id/*' => ['vfs_write', 'delete_table_row'],
+                '/lists items' => ['vfs_write', 'delete_list_item'],
+                '/me/notes/*, /me/todo.md' => ['vfs_write'],
+            ],
         );
     }
 
@@ -700,8 +745,9 @@ final class VfsOperationSpecRegistry
      * @param  'reversible_edit'|'delete'  $actionClass
      * @param  list<VfsParameterSpec>  $parameters
      * @param  list<string>  $rubyExamples
+     * @param  array<string, list<string>>  $composedPermissions  Scope => tools the mutation path composes (mirror of the OpenCompanyVfs record paths)
      */
-    private static function scriptWrite(string $name, string $title, string $icon, string $actionClass, string $summary, array $parameters, array $rubyExamples): VfsOperationSpec
+    private static function scriptWrite(string $name, string $title, string $icon, string $actionClass, string $summary, array $parameters, array $rubyExamples, array $composedPermissions = ['/files' => ['vfs_write']]): VfsOperationSpec
     {
         return new VfsOperationSpec(
             name: $name,
@@ -715,7 +761,7 @@ final class VfsOperationSpecRegistry
             registryType: 'write',
             actionClass: $actionClass,
             permission: 'vfs_write',
-            composedPermissions: ['/files' => ['vfs_write']],
+            composedPermissions: $composedPermissions,
             summary: $summary,
             description: 'Code Mode helper. '.$summary,
             parameters: $parameters,

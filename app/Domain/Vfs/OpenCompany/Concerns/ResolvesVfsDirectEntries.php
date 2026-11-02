@@ -9,9 +9,10 @@ use App\Models\User;
 /**
  * Direct stat/read lookup helpers for canonical and alias VFS paths.
  *
- * This trait owns only generic direct-entry dispatch. Resource-specific entry
- * builders live in sibling concerns so adding a mount does not turn direct
- * lookup into another cross-domain god file.
+ * This trait owns only generic direct-entry dispatch: the owning VfsMount's
+ * entry() (see RegistersVfsBuiltinMounts). Resource-specific entry builders
+ * live in sibling concerns so adding a mount does not turn direct lookup
+ * into another cross-domain god file.
  */
 trait ResolvesVfsDirectEntries
 {
@@ -37,19 +38,6 @@ trait ResolvesVfsDirectEntries
     {
         $segments = $this->segments($path);
 
-        return match ($segments[0] ?? null) {
-            'agents' => $this->directAgentEntry($agent, $segments, $path),
-            'docs' => $this->directDocumentEntry($agent, $segments, $path),
-            'files' => $this->directFileEntry($agent, $segments, $path),
-            'tasks' => $this->directTaskEntry($agent, $segments),
-            'lists' => $this->directListEntry($agent, $segments),
-            'channels' => $this->directChannelEntry($agent, $segments, $path),
-            'tables' => $this->directTableEntry($agent, $segments, $path),
-            'approvals' => $this->directApprovalEntry($agent, $segments, $path),
-            'automations' => $this->directAutomationEntry($segments, $path),
-            'workspace' => $this->directWorkspaceEntry($segments, $path),
-            'tools' => $this->directToolEntry($path),
-            default => null,
-        };
+        return $this->mounts()->resolve($segments)?->entry($agent, $segments, $path);
     }
 }

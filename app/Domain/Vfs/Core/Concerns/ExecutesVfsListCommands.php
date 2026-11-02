@@ -155,7 +155,8 @@ trait ExecutesVfsListCommands
     private function appendRecursiveLs(User $agent, array $entries, VfsBudget $budget, array &$blocks, bool $byTime, bool $bySize, bool $reverse, bool $showHidden, int $depth, int &$returned, bool &$truncated): void
     {
         foreach ($entries as $entry) {
-            if ($entry->type !== 'directory' || in_array($entry->name, ['.', '..'], true)) {
+            // Alias mounts (/me) are listed but never descended (VfsEntry::isAlias()).
+            if ($entry->type !== 'directory' || $entry->isAlias() || in_array($entry->name, ['.', '..'], true)) {
                 continue;
             }
             if ($depth > $budget->maxDepth || $returned >= $budget->maxEntries) {

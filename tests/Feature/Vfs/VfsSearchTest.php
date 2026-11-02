@@ -54,7 +54,9 @@ class VfsSearchTest extends TestCase
 
         $this->assertSame('source_index+live', $result['backend']);
         $this->assertSame(1, $result['count']);
-        $this->assertSame("/docs/by-id/{$target->id}", $result['matches'][0]['path']);
+        // Readable friendly path for output; canonical by-id for structure.
+        $this->assertSame('/docs/zulu', $result['matches'][0]['path']);
+        $this->assertSame("/docs/by-id/{$target->id}", $result['matches'][0]['canonical_path']);
         $this->assertSame(2, $result['matches'][0]['line']);
         // Files were left unscanned, and the result says so.
         $this->assertTrue($result['truncated']);
@@ -76,7 +78,8 @@ class VfsSearchTest extends TestCase
         $result = $this->vfs->searchWithMetadata($this->agent, 'okapi', ['/docs/policies'], new VfsBudget(maxFiles: 1));
 
         $this->assertSame('source_index+live', $result['backend']);
-        $this->assertSame(["/docs/by-id/{$inside->id}"], array_column($result['matches'], 'path'));
+        $this->assertSame(['/docs/policies/travel/per-diem'], array_column($result['matches'], 'path'));
+        $this->assertSame(["/docs/by-id/{$inside->id}"], array_column($result['matches'], 'canonical_path'));
     }
 
     // Table rows used to be searchable only through the first page of
@@ -95,10 +98,13 @@ class VfsSearchTest extends TestCase
         // rows.ndjson when the row happens to be on its first page.
         $this->assertSame("/tables/leads/rows/by-id/{$row->id}.json", $result['matches'][0]['path'] ?? null);
 
+        $this->assertSame("/tables/by-id/{$table->id}/rows/by-id/{$row->id}.json", $result['matches'][0]['canonical_path'] ?? null);
+
         // Stored row JSON escapes non-ASCII (\u00e9); the candidate query
-        // matches the escaped form too.
+        // matches the escaped form too. Candidates are canonical by-id
+        // paths (table slugs may collide).
         $this->assertSame(
-            ["/tables/leads/rows/by-id/{$row->id}.json"],
+            ["/tables/by-id/{$table->id}/rows/by-id/{$row->id}.json"],
             app(VfsTextSearchService::class)->candidatePaths($this->agent, 'Café', ['/tables'], new VfsBudget(maxFiles: 5)),
         );
 
@@ -159,7 +165,8 @@ class VfsSearchTest extends TestCase
 
         $result = $this->vfs->searchWithMetadata($this->agent, 'tapir', ['/']);
 
-        $this->assertSame(["/docs/by-id/{$visible->id}"], array_values(array_unique(array_column($result['matches'], 'path'))));
+        $this->assertSame(["/docs/by-id/{$visible->id}"], array_values(array_unique(array_column($result['matches'], 'canonical_path'))));
+        $this->assertSame(['/docs/open/a'], array_values(array_unique(array_column($result['matches'], 'path'))));
         $this->assertGreaterThanOrEqual(1, $result['skipped']);
     }
 

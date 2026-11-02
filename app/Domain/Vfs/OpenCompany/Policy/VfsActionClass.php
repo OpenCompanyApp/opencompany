@@ -44,6 +44,20 @@ final class VfsActionClass
         self::GOVERNANCE,
     ];
 
+    /**
+     * Strictness rank, lowest first. strictest() and classify() agree on
+     * this order: governance > structural > delete > reversible_edit > read.
+     *
+     * @var array<string, int>
+     */
+    private const RANK = [
+        self::READ => 0,
+        self::REVERSIBLE_EDIT => 1,
+        self::DELETE => 2,
+        self::STRUCTURAL => 3,
+        self::GOVERNANCE => 4,
+    ];
+
     /** Tools whose effect is a governance change regardless of the VFS verb. */
     private const GOVERNANCE_TOOLS = [
         'update_agent_identity_file',
@@ -73,7 +87,9 @@ final class VfsActionClass
             return self::READ;
         }
 
-        if (array_intersect($requiredTools, self::GOVERNANCE_TOOLS) !== [] || self::isAgentGovernancePath($subject)) {
+        if (array_intersect($requiredTools, self::GOVERNANCE_TOOLS) !== []
+            || self::isAgentGovernancePath($subject)
+            || ($operation === 'exec_write' && self::commandTouchesGovernancePath($subject))) {
             return self::GOVERNANCE;
         }
 
@@ -93,6 +109,31 @@ final class VfsActionClass
     }
 
     /**
+     * The strictest of several classes (nulls and unknown values ignored).
+     *
+     * Used wherever a caller declares a class (a command spec, a C1 record
+     * operation) while the per-path classifier also has an opinion: a
+     * declared class is a floor, never a downgrade, so an `rm` declared
+     * `delete` of an identity file stays `governance`. Returns
+     * reversible_edit when nothing usable was given, matching classify()'s
+     * fallback for writes.
+     */
+    public static function strictest(?string ...$classes): string
+    {
+        $best = null;
+        foreach ($classes as $class) {
+            if ($class === null || ! isset(self::RANK[$class])) {
+                continue;
+            }
+            if ($best === null || self::RANK[$class] > self::RANK[$best]) {
+                $best = $class;
+            }
+        }
+
+        return $best ?? self::REVERSIBLE_EDIT;
+    }
+
+    /**
      * Agent identity, instructions and memory files are governance objects:
      * they change who an agent is and what it remembers.
      */
@@ -105,6 +146,16 @@ final class VfsActionClass
     private static function isStructuralPath(string $subject): bool
     {
         return preg_match('#^/tables/(?:by-id/)?[^/]+/(?:schema\.json|columns(?:/|$)|views(?:/|$))#', $subject) === 1;
+    }
+
+    /**
+     * True when a shell line names an agent identity or memory path as any
+     * word (operand, redirect target, `-o` value). Like commandDeletes this
+     * is lexical and errs strict: a mere mention can only raise the class.
+     */
+    private static function commandTouchesGovernancePath(string $command): bool
+    {
+        return preg_match('#(?:^|[\s\'"=>])/(?:agents/(?:by-id/)?[^/\s\'"]+|me)/(?:identity|memory)(?:[/\s\'"]|$)#', $command) === 1;
     }
 
     /**

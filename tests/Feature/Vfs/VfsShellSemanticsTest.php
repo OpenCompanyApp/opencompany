@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Vfs;
 
+use App\Agents\Tools\ToolRegistry;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsCommandExecutor;
+use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
-use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
+use App\Domain\Vfs\OpenCompany\Policy\VfsMutationPolicy;
+use App\Domain\Vfs\OpenCompany\VfsTextSearchService;
 use App\Models\AgentPermission;
 use App\Models\ApprovalRequest;
 use App\Models\DataTable;
@@ -15,6 +18,8 @@ use App\Models\Document;
 use App\Models\User;
 use App\Models\WorkspaceDisk;
 use App\Models\WorkspaceFile;
+use App\Services\AgentPermissionService;
+use App\Services\FileSystemService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -197,7 +202,7 @@ class VfsShellSemanticsTest extends TestCase
         $this->assertSame("[one] 1\n", $this->sh("sed -n -e 's/one/[&]/' -e '1p' /files/e/x.txt")['stdout']);
         $this->assertSame("ONE 1\n", $this->sh("echo 'One 1' | sed 's/one/ONE/I'")['stdout']);
         $this->assertSame("aXa\n", $this->sh("echo aaa | sed 's/a/X/2'")['stdout']);
-        $this->assertSame("one 1\ntwo 2\n", $this->sh("sed 2q /files/e/x.txt")['stdout']);
+        $this->assertSame("one 1\ntwo 2\n", $this->sh('sed 2q /files/e/x.txt')['stdout']);
         $this->assertSame('unsupported', $this->shErr("sed ':a;N;ba' /files/e/x.txt")->errorCode);
 
         // /files: the edit goes through the version-checked file write path.
@@ -335,8 +340,9 @@ class VfsShellSemanticsTest extends TestCase
 
         // Recursive grep has full flag parity with single-file grep. Paths
         // are the stable canonical paths (the facade search contract).
-        $a = $this->vfs->stat($this->agent, '/files/r/a.md')['canonical_path'];
-        $b = $this->vfs->stat($this->agent, '/files/r/sub/b.md')['canonical_path'];
+        // Recursive search prints readable friendly paths (Phase 3 decision).
+        $a = '/files/r/a.md';
+        $b = '/files/r/sub/b.md';
         $inverted = $this->lines($this->sh("grep -rv -i --include='*.md' alpha /files/r")['stdout']);
         sort($inverted);
         $expected = ["{$a}:beta two", "{$a}:gamma", "{$b}:delta"];
@@ -544,7 +550,7 @@ class VfsShellSemanticsTest extends TestCase
         foreach (range(1, 4) as $n) {
             Document::factory()->create(['title' => "Perf {$n}", 'content' => str_repeat('x', 1_000), 'author_id' => $this->agent->id]);
         }
-        $counting = new class(app(\App\Services\AgentPermissionService::class), app(\App\Services\FileSystemService::class), app(\App\Agents\Tools\ToolRegistry::class), app(\App\Domain\Vfs\OpenCompany\VfsTextSearchService::class), app(\App\Domain\Vfs\OpenCompany\Policy\VfsMutationPolicy::class)) extends OpenCompanyVfs
+        $counting = new class(app(AgentPermissionService::class), app(FileSystemService::class), app(ToolRegistry::class), app(VfsTextSearchService::class), app(VfsMutationPolicy::class)) extends OpenCompanyVfs
         {
             public int $reads = 0;
 
@@ -555,7 +561,7 @@ class VfsShellSemanticsTest extends TestCase
                 return parent::read($agent, $path, $budget);
             }
         };
-        $executor = new VfsCommandExecutor($counting, app(\App\Domain\Vfs\OpenCompany\Policy\VfsMutationPolicy::class));
+        $executor = new VfsCommandExecutor($counting, app(VfsMutationPolicy::class));
 
         $executor->execute($this->agent, 'find /docs -name "Perf*" -type f');
         $this->assertSame(0, $counting->reads);

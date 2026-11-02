@@ -5,6 +5,7 @@ namespace Tests\Feature\Jobs;
 use App\Jobs\IndexDocumentJob;
 use App\Models\Document;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\Memory\DocumentIndexingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
@@ -122,5 +123,60 @@ class IndexDocumentJobTest extends TestCase
         // but our try-catch logs the warning and rethrows so the job fails visibly
         $job = new IndexDocumentJob($doc);
         $job->handle($indexer);
+    }
+
+    // Regression: the job bound the document's workspace as currentWorkspace
+    // and never restored the caller's binding. On the sync queue (VFS writes,
+    // tests) that leaked a foreign workspace into the request, which the VFS
+    // workspace assertion then rejected. The document's workspace must be
+    // bound only while indexing, on success and on failure.
+    public function test_job_restores_the_callers_workspace_binding(): void
+    {
+        $other = Workspace::create(['name' => 'Other Workspace', 'slug' => 'other']);
+        $doc = Document::withoutEvents(fn () => Document::create([
+            'id' => Str::uuid()->toString(),
+            'title' => 'Foreign Doc',
+            'content' => 'x',
+            'is_folder' => false,
+            'author_id' => $this->user->id,
+            'workspace_id' => $other->id,
+        ]));
+
+        $boundDuringIndex = null;
+        $indexer = Mockery::mock(DocumentIndexingService::class);
+        $indexer->shouldReceive('index')->once()->andReturnUsing(function () use (&$boundDuringIndex): void {
+            $boundDuringIndex = app('currentWorkspace')->id;
+        });
+
+        (new IndexDocumentJob($doc))->handle($indexer);
+
+        $this->assertSame($other->id, $boundDuringIndex);
+        $this->assertSame($this->workspace->id, app('currentWorkspace')->id);
+
+        $failing = Mockery::mock(DocumentIndexingService::class);
+        $failing->shouldReceive('index')->once()->andThrow(new \RuntimeException('down'));
+
+        try {
+            (new IndexDocumentJob($doc))->handle($failing);
+            $this->fail('expected the indexer exception to propagate');
+        } catch (\RuntimeException) {
+            // rethrown for queue retries
+        }
+
+        $this->assertSame($this->workspace->id, app('currentWorkspace')->id);
+    }
+
+    // With nothing bound before (a fresh queue worker), nothing stays bound.
+    public function test_job_leaves_no_binding_when_none_existed(): void
+    {
+        $doc = $this->createDocument();
+        app()->forgetInstance('currentWorkspace');
+
+        $indexer = Mockery::mock(DocumentIndexingService::class);
+        $indexer->shouldReceive('index')->once();
+
+        (new IndexDocumentJob($doc))->handle($indexer);
+
+        $this->assertFalse(app()->bound('currentWorkspace'));
     }
 }

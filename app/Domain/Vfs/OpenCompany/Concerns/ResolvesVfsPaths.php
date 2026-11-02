@@ -4,9 +4,13 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsPath;
+use App\Domain\Vfs\OpenCompany\Mounts\VfsMount;
 
 /**
- * Path normalization and root mount discovery for OpenCompanyVfs.
+ * Path normalization, the `/` listing and the root README for OpenCompanyVfs.
+ *
+ * The mount list itself is owned by the mount registry
+ * (RegistersVfsBuiltinMounts + VfsMountRegistry); this trait only renders it.
  */
 trait ResolvesVfsPaths
 {
@@ -28,27 +32,14 @@ trait ResolvesVfsPaths
     }
 
     /**
-     * One line per root mount: what lives there and how it is addressed.
-     * Also the source of the mount map in /README.md, so the two never drift.
+     * `ls /`: README.md, then one entry per top-level mount in registration
+     * order (VfsMountRegistry), described by VfsMount::description(). The
+     * same list renders the README mount map, so the two never drift.
      *
-     * @var array<string, string>
-     */
-    private const ROOT_MOUNTS = [
-        'me' => 'Your own area: memory/, notes/, todo.md, scratch/, results/, pending/ approvals.',
-        'agents' => 'Agents: identity, memory, notes, todo.md and tasks (relationship-gated).',
-        'docs' => 'Documents and folders by title; read, write, edit, rm (trash), mv, mkdir.',
-        'files' => 'Workspace files and folders; full read/write file semantics.',
-        'tables' => 'Data tables: schema.json, rows.ndjson, rows.csv, rows/by-id/{id}.json.',
-        'lists' => 'List items as markdown with front matter, grouped by project/status/assignee.',
-        'tasks' => 'Agent task (run) records: open, completed, by-status, by-agent.',
-        'channels' => 'Channel transcripts by day (read-only).',
-        'tools' => 'Your tool catalog and the VFS reference (vfs.md).',
-        'automations' => 'Automations (read-only).',
-        'approvals' => 'Your approval requests (read-only).',
-        'workspace' => 'Workspace members and settings (read-only).',
-    ];
-
-    /**
+     * Alias mounts (`/me`) carry metadata `alias: true`; recursive walks and
+     * searches from `/` skip them (VfsEntry::isAlias()) so objects are not
+     * visited twice.
+     *
      * @return list<VfsEntry>
      */
     private function rootEntries(): array
@@ -56,8 +47,14 @@ trait ResolvesVfsPaths
         $entries = [new VfsEntry('README.md', '/README.md', 'file', '/README.md', capabilities: ['read'], metadata: [
             'description' => 'Start here: mount map, path rules, edit workflow, approvals.',
         ])];
-        foreach (self::ROOT_MOUNTS as $name => $description) {
-            $entries[] = new VfsEntry($name, "/{$name}", 'directory', capabilities: ['browse', 'read', 'search'], metadata: ['description' => $description]);
+        foreach ($this->mounts()->topLevel() as $mount) {
+            $entries[] = new VfsEntry(
+                ltrim($mount->prefix(), '/'),
+                $mount->prefix(),
+                'directory',
+                capabilities: ['browse', 'read', 'search'],
+                metadata: ['description' => $mount->description(), ...($mount->isAlias() ? ['alias' => true] : [])],
+            );
         }
 
         return $entries;
@@ -70,9 +67,8 @@ trait ResolvesVfsPaths
     private function rootReadme(): string
     {
         $mounts = implode("\n", array_map(
-            fn (string $name, string $description): string => sprintf('- /%-12s %s', $name, $description),
-            array_keys(self::ROOT_MOUNTS),
-            self::ROOT_MOUNTS,
+            fn (VfsMount $mount): string => sprintf('- /%-12s %s', ltrim($mount->prefix(), '/'), $mount->description()),
+            $this->mounts()->topLevel(),
         ));
 
         return <<<MD
@@ -114,12 +110,20 @@ A stale `version` fails with `conflict` (someone else changed it): re-read and d
   (`/docs/.trash/`, `/files/.trash/`, `/lists/.trash/`, `/tables/<table>/rows/.trash/`).
   Restore with `mv <trash entry> <destination>`. Nothing is deleted permanently through the VFS.
 - `mv` renames or moves documents and files.
+- `rm /me/notes/<note>` and `rm /me/todo.md` also trash; there is no VFS restore view for
+  them yet (a human restores from the app's trash), so rewrite a note instead of removing it.
 
 ## History
 
 Append `/.history/` to a document, file or table row path to list its versions,
 `v{n}--{author}--{time}`, newest first. `v{n}` is the content that change n replaced.
 To restore one, read it and write that content back with the object's current `version`.
+
+## Changes
+
+- /workspace/changes.ndjson — committed changes you can read, oldest first; keep next_cursor to poll for newer ones.
+  One JSON line per change (path, operation, type, version, actor_id, run_id; never content).
+  Read it with `vfs_read`; pass the returned `next_cursor` as `cursor` next time.
 
 ## Approvals
 

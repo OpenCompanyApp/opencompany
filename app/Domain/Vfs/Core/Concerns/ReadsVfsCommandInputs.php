@@ -5,6 +5,7 @@ namespace App\Domain\Vfs\Core\Concerns;
 use App\Domain\Vfs\Core\VfsArgs;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
+use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsPath;
 use App\Models\User;
@@ -152,7 +153,7 @@ trait ReadsVfsCommandInputs
     }
 
     /**
-     * @return list<\App\Domain\Vfs\Core\VfsEntry>
+     * @return list<VfsEntry>
      */
     private function globList(string $directory, int &$listed): array
     {
@@ -356,10 +357,9 @@ trait ReadsVfsCommandInputs
      * @param  list<string>  $roots
      * @param  (callable(string, string): bool)|null  $include  receives (path, name) for files
      * @param  bool  $includeHidden  include entries whose name starts with "."
-     * `files` are display paths under the roots (relative structure for cp -r,
-     * tar, diff -r); `canonical` maps each to the object's canonical path,
-     * which search output uses because it is stable (e.g. /docs/by-id/<id>).
-     *
+     *                               `files` are display paths under the roots (relative structure for cp -r,
+     *                               tar, diff -r); `canonical` maps each to the object's canonical path,
+     *                               which search output uses because it is stable (e.g. /docs/by-id/<id>).
      * @return array{files: list<string>, canonical: array<string, string>, truncated: bool, truncated_files: bool, truncated_depth: bool, skipped: int, directories: list<string>}
      */
     private function walkFiles(User $agent, array $roots, VfsBudget $budget, ?callable $include = null, bool $includeHidden = true): array
@@ -413,7 +413,8 @@ trait ReadsVfsCommandInputs
                 continue;
             }
             foreach ($entries as $entry) {
-                if (! $includeHidden && str_starts_with($entry->name, '.')) {
+                // Alias mounts (/me) duplicate canonical objects (VfsEntry::isAlias()).
+                if ($entry->isAlias() || (! $includeHidden && str_starts_with($entry->name, '.'))) {
                     continue;
                 }
                 // Report display paths under the walked root (so relative

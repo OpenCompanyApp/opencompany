@@ -22,6 +22,7 @@ use App\Domain\Vfs\Core\Concerns\ReadsVfsCommandInputs;
 use App\Domain\Vfs\Core\Concerns\ResolvesVfsRedirectionEffects;
 use App\Domain\Vfs\Core\Concerns\RoutesVfsCommands;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Domain\Vfs\OpenCompany\Policy\VfsMutationPolicy;
 use App\Models\User;
 
@@ -108,6 +109,13 @@ class VfsCommandExecutor
     private string $currentCommand = '';
 
     /**
+     * Governance action class of the whole line now executing (strictest
+     * command spec class; see lineActionClass()). One approval covers the
+     * line, so the class is per line, not per command.
+     */
+    private ?string $currentActionClass = null;
+
+    /**
      * Budget of the execution in progress. Its truncation counter tells the
      * write paths whether stdout may carry a display truncation line.
      */
@@ -190,6 +198,40 @@ class VfsCommandExecutor
         return 'read';
     }
 
+    /**
+     * Declared governance class of a parsed line: the strictest
+     * VfsCommandSpec::actionClass() of every command in it (xargs argv
+     * included), `reversible_edit` for `sed -i` and file redirects. Read
+     * classes never lower it; a line with no declared write class yields
+     * reversible_edit (it only matters once a write is being asserted).
+     *
+     * This is the declared class only. The policy combines it with the
+     * per-subject classifier (VfsActionClass::classify on exec_write), and
+     * the stricter wins, so a write into an identity file stays governance.
+     *
+     * @param  list<array{operator: string|null, pipeline: list<VfsShellCommand>}>  $groups
+     */
+    private function lineActionClass(array $groups): string
+    {
+        $classes = [];
+        foreach ($groups as $group) {
+            foreach ($group['pipeline'] as $segment) {
+                $name = (string) $segment->name();
+                $candidates = VfsCommandSpecRegistry::canonical($name) === 'xargs' ? $segment->words : [$name];
+                foreach ($candidates as $candidate) {
+                    $classes[] = VfsCommandSpecRegistry::get((string) $candidate)?->actionClass();
+                }
+                foreach ($segment->redirections as $redirect) {
+                    if ($redirect['stream'] !== 'stdin' && $redirect['mode'] !== 'merge' && $redirect['path'] !== '/dev/null') {
+                        $classes[] = VfsActionClass::REVERSIBLE_EDIT;
+                    }
+                }
+            }
+        }
+
+        return VfsActionClass::strictest(...$classes);
+    }
+
     private function agentForPathExpansion(): User
     {
         return $this->currentAgent ?? throw VfsError::invalid('VFS command has no active agent context.');
@@ -227,6 +269,7 @@ class VfsCommandExecutor
         $cwd = $this->vfs->normalizePath($cwd);
 
         $groups = VfsShellLexer::parse($command);
+        $this->currentActionClass = $this->lineActionClass($groups);
         // Invariant: every command and flag in the line is validated before
         // anything runs, including branches && / || may skip, so an
         // unsupported flag can never hide behind a condition or follow a write.

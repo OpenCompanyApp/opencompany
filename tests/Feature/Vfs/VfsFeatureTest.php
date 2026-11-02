@@ -230,8 +230,9 @@ class VfsFeatureTest extends TestCase
         $content = $executor->execute($this->agent, "cat /docs/by-id/{$doc->id}");
         $this->assertStringContainsString('Refunds require approval', $content['stdout']);
 
+        // Search output uses readable friendly paths (canonical in result data).
         $search = $executor->execute($this->agent, 'rg enterprise /docs');
-        $this->assertStringContainsString("/docs/by-id/{$doc->id}", $search['stdout']);
+        $this->assertStringContainsString('/docs/refund-policy', $search['stdout']);
 
         $structured = app(OpenCompanyVfs::class)->search($this->agent, 'enterprise', ['/docs']);
         $this->assertSame('source_index+live', $structured[0]['backend']);
@@ -814,8 +815,11 @@ class VfsFeatureTest extends TestCase
         $this->assertSame('a\\b', $executor->execute($this->agent, 'printf "%s" "a\\\\b"')['stdout']);
         $this->assertStringContainsString("\t", $executor->execute($this->agent, 'paste /docs/by-id/'.$first->id.' /docs/by-id/'.$csv->id)['stdout']);
         $this->assertStringContainsString(',', $executor->execute($this->agent, 'paste -d, /docs/by-id/'.$first->id.' /docs/by-id/'.$csv->id)['stdout']);
-        $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'rg alpha /docs --max-count 1')['stdout']);
-        $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'rg alpha /docs --max-depth 2 --max-count 1')['stdout']);
+        // Recursive search prints friendly paths; the by-id path is in result.canonical_paths.
+        $rg = $executor->execute($this->agent, 'rg alpha /docs --max-count 1');
+        $this->assertStringContainsString('/docs/alpha-ax-notes:', $rg['stdout']);
+        $this->assertSame('/docs/by-id/'.$first->id, $rg['result']['canonical_paths']['/docs/alpha-ax-notes']);
+        $this->assertStringContainsString('/docs/alpha-ax-notes:', $executor->execute($this->agent, 'rg alpha /docs --max-depth 2 --max-count 1')['stdout']);
         // Phase 2: like ripgrep, a single file operand prints no file name.
         $this->assertSame('alpha 2', trim($executor->execute($this->agent, 'rg alpha /docs/by-id/'.$first->id.' -m1')['stdout']));
         $this->assertSame("alpha\nalpha", trim($executor->execute($this->agent, 'grep -o alpha /docs/by-id/'.$first->id)['stdout']));

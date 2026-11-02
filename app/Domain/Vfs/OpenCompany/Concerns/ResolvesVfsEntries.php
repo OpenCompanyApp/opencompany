@@ -15,17 +15,32 @@ use Illuminate\Support\Str;
 trait ResolvesVfsEntries
 {
     /**
-     * @return \Generator<int, string>
+     * Readable files under $path for search, as friendly display path =>
+     * path to read (canonical when known; the search loop falls back to the
+     * display path when a canonical path does not resolve on its own).
+     *
+     * Directories are walked by their friendly path, like the shell's
+     * walkFiles, so child paths come straight from the listing and stay
+     * valid friendly paths (names are disambiguated as `name--1a2b3c4d`).
+     * Each directory is isolated: a child that fails to resolve or list is
+     * skipped without ending the walk of its siblings. Alias entries (/me)
+     * are skipped (VfsEntry::isAlias()).
+     *
+     * @return \Generator<string, string>
      */
-    private function walkReadableFiles(User $agent, string $path, VfsBudget $budget, int $depth = 0): \Generator
+    private function walkReadableFiles(User $agent, string $path, VfsBudget $budget, int $depth = 0, ?string $readPath = null): \Generator
     {
         if ($depth > $budget->maxDepth) {
             return;
         }
 
-        $entry = $this->directEntryForPath($agent, $path) ?? $this->entryForPath($agent, $path);
+        try {
+            $entry = $this->directEntryForPath($agent, $path) ?? $this->entryForPath($agent, $path);
+        } catch (VfsError) {
+            return;
+        }
         if ($entry?->type === 'file') {
-            yield $path;
+            yield $path => $readPath ?? $path;
 
             return;
         }
@@ -36,15 +51,22 @@ trait ResolvesVfsEntries
 
         try {
             $entries = $this->listBounded($agent, $path, $budget);
-            foreach ($entries as $entry) {
-                if ($entry->type === 'file') {
-                    yield $entry->canonicalPath ?? $entry->path;
-                } elseif ($entry->type === 'directory') {
-                    yield from $this->walkReadableFiles($agent, $entry->canonicalPath ?? $entry->path, $budget, $depth + 1);
-                }
-            }
         } catch (VfsError) {
             return;
+        }
+
+        $prefix = rtrim($path, '/').'/';
+        foreach ($entries as $child) {
+            // Alias mounts (/me) duplicate canonical objects (VfsEntry::isAlias()).
+            if ($child->isAlias()) {
+                continue;
+            }
+            $childPath = str_starts_with($child->path, $prefix) ? $child->path : $prefix.$child->name;
+            if ($child->type === 'file') {
+                yield $childPath => $child->canonicalPath ?? $childPath;
+            } elseif ($child->type === 'directory') {
+                yield from $this->walkReadableFiles($agent, $childPath, $budget, $depth + 1, $child->canonicalPath);
+            }
         }
     }
 

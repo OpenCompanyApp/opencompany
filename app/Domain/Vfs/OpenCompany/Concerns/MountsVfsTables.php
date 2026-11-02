@@ -236,7 +236,7 @@ trait MountsVfsTables
         if ($rest === ['schema.json']) {
             $budget->recordCanonicalPath("/tables/by-id/{$table->id}/schema.json");
 
-            return json_encode($this->tableSchemaPayload($table), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            return json_encode($this->tableSchemaPayload($table), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
 
         if ($rest === ['rows.ndjson']) {
@@ -251,14 +251,14 @@ trait MountsVfsTables
             if (($rest[1] ?? null) === '.trash' && count($rest) === 3) {
                 $row = $this->resolveTrashedTableRow($table, $rest[2], $path);
 
-                return json_encode($this->tableRowPayload($table, $row), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                return json_encode($this->tableRowPayload($table, $row), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             }
 
             $row = $this->resolveTableRowFromRest($table, $rest, $path, $base);
             $budget->recordReadVersion($this->tableRowVersion($row));
             $budget->recordCanonicalPath($this->tableRowCanonicalPath($table, $row));
 
-            return json_encode($this->tableRowPayload($table, $row), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            return json_encode($this->tableRowPayload($table, $row), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
 
         if ($leaf === 'views' && count($rest) === 2) {
@@ -276,7 +276,7 @@ trait MountsVfsTables
                 'sorts' => $view->sorts,
                 'hiddenColumns' => $view->hidden_columns,
                 'config' => $view->config,
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
 
         throw $this->tableNotFound($path, $base);
@@ -396,9 +396,11 @@ trait MountsVfsTables
     private function pageTableRowsExport(DataTable $table, string $path, VfsBudget $budget, array $state): array
     {
         $table->loadMissing('columns');
-        $page = $this->pageTableRowRecords($table, $path, $budget, $state, fn (DataTableRow $row): string => $this->tableRowsExportRecord($table, $row));
+        $page = $this->pageTableRowRecords($table, $path, $budget, $state, fn (DataTableRow $row): string => $this->tableRowsExportRecord($table, $row), terminated: true);
 
-        return [...$page, 'content' => implode("\n", $page['records'])];
+        // Every record ends with "\n" (POSIX text, `wc -l` = records) so
+        // concatenated pages stay valid NDJSON; an empty page is "".
+        return [...$page, 'content' => implode('', array_map(fn (string $record): string => $record."\n", $page['records']))];
     }
 
     /**
@@ -432,7 +434,7 @@ trait MountsVfsTables
      * @param  callable(DataTableRow): string  $render
      * @return array{records: list<string>, returned: int, has_more: bool, next_state: array<string, mixed>, scanned: int, skipped: int}
      */
-    private function pageTableRowRecords(DataTable $table, string $path, VfsBudget $budget, array $state, callable $render): array
+    private function pageTableRowRecords(DataTable $table, string $path, VfsBudget $budget, array $state, callable $render, bool $terminated = false): array
     {
         $usedBytes = 0;
         $rendered = [];
@@ -449,9 +451,11 @@ trait MountsVfsTables
                 backendId: $row->id,
                 metadata: ['record' => $render($row)],
             ),
-            acceptEntry: function (array $entries, VfsEntry $candidate) use ($path, $budget, &$usedBytes): bool {
+            acceptEntry: function (array $entries, VfsEntry $candidate) use ($path, $budget, &$usedBytes, $terminated): bool {
                 $record = (string) $candidate->metadata['record'];
-                $additionalBytes = strlen($record) + ($entries === [] ? 0 : 1);
+                // Separator bytes: one newline between records, or after
+                // every record when the format is newline-terminated.
+                $additionalBytes = strlen($record) + ($terminated || $entries !== [] ? 1 : 0);
                 if (! $this->vfsRecordFitsByteBudget(
                     $path,
                     $budget->maxBytes,
@@ -559,7 +563,7 @@ trait MountsVfsTables
             'version' => $this->tableRowVersion($row),
             'data' => $this->tableRowDataByColumnName($table->columns, $data)['data'],
             'data_by_column_id' => (object) $data,
-        ], JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
     }
 
     private function tableRowEntry(User $agent, DataTable $table, DataTableRow $row, ?string $path = null): VfsEntry

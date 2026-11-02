@@ -198,6 +198,37 @@ class VfsApprovalUxTest extends TestCase
         $this->assertSame(['password' => '[redacted]', 'author_id' => 'u1', 'max_tokens' => 5], VfsSecretRedactor::redact(['password' => 'hunter2', 'author_id' => 'u1', 'max_tokens' => 5]));
     }
 
+    // Regression: ApprovalRequest::toArray() (API serialization) used the
+    // "any 32+ character token" heuristic and redacted UUIDs, sha256 hashes
+    // and by-id paths, so approvals were indistinguishable over the API. It
+    // now uses the same precise redactor as the VFS /approvals view.
+    public function test_api_serialization_keeps_ids_and_hashes_but_redacts_secrets(): void
+    {
+        $uuid = (string) Str::uuid();
+        $hash = hash('sha256', 'parameters');
+        $approval = ApprovalRequest::factory()->create([
+            'requester_id' => $this->agent->id,
+            'title' => "Approve vfs_write /docs/by-id/{$uuid}",
+            'description' => 'Uses sk-live-abcdefghijklmnop1234 for the call',
+            'tool_execution_context' => [
+                'parameters' => ['path' => "/docs/by-id/{$uuid}", 'api_key' => 'plain-key-value'],
+                'vfs_approval' => ['subject' => "/docs/by-id/{$uuid}", 'parameters_hash' => $hash, 'preview' => ['id' => $uuid, 'password' => 'hunter2']],
+            ],
+        ]);
+
+        $array = $approval->fresh()->toArray();
+        $json = json_encode($array, JSON_UNESCAPED_SLASHES);
+
+        $this->assertSame("Approve vfs_write /docs/by-id/{$uuid}", $array['title']);
+        $this->assertSame("/docs/by-id/{$uuid}", $array['tool_execution_context']['parameters']['path']);
+        $this->assertSame($hash, $array['tool_execution_context']['vfs_approval']['parameters_hash']);
+        $this->assertSame('[redacted]', $array['tool_execution_context']['parameters']['api_key']);
+        $this->assertStringContainsString($uuid, $array['details']);
+        $this->assertStringNotContainsString('sk-live-abcdefghijklmnop1234', $json);
+        $this->assertStringNotContainsString('hunter2', $json);
+        $this->assertStringNotContainsString('plain-key-value', $json);
+    }
+
     /** @return array{0: Document, 1: string} */
     private function editableDoc(string $content): array
     {

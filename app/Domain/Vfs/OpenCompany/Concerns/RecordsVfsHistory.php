@@ -15,6 +15,7 @@ use App\Models\DocumentVersion;
 use App\Models\User;
 use App\Models\WorkspaceFile;
 use App\Models\WorkspaceFileVersion;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -305,9 +306,9 @@ trait RecordsVfsHistory
 
     /**
      * @param  array{type: string, id: string}  $target
-     * @return \Illuminate\Database\Eloquent\Builder<covariant Model>
+     * @return Builder<covariant Model>
      */
-    private function historyVersionQuery(array $target): \Illuminate\Database\Eloquent\Builder
+    private function historyVersionQuery(array $target): Builder
     {
         return match ($target['type']) {
             'document' => DocumentVersion::query()->where('document_id', $target['id']),
@@ -346,6 +347,6 @@ trait RecordsVfsHistory
             'version_number' => (int) $version->getAttribute('version_number'),
             'data' => $named,
             'data_by_column_id' => $data,
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?: '{}';
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: '{}';
     }
 }

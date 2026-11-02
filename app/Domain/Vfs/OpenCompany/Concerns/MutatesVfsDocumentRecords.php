@@ -6,6 +6,7 @@ use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsText;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\Document;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -139,7 +140,7 @@ trait MutatesVfsDocumentRecords
             'mode' => 'overwrite',
             'title' => $doc->title,
             'bytes' => strlen($content),
-        ], 'write', 'Overwriting a document requires vfs_write and update_document.');
+        ], 'write', 'Overwriting a document requires vfs_write and update_document.', actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         $fresh = DB::transaction(function () use ($agent, $doc, $path, $content, $version): Document {
             // Invariant: lock, then read, then compare, then write + snapshot.
@@ -187,6 +188,7 @@ trait MutatesVfsDocumentRecords
                 'folder' => $folder?->title,
                 'bytes' => strlen($content),
             ],
+            actionClass: VfsActionClass::REVERSIBLE_EDIT,
         );
 
         $doc = DB::transaction(function () use ($agent, $folder, $title, $content, $isFolder, $path): Document {
@@ -326,6 +328,7 @@ trait MutatesVfsDocumentRecords
             channelId: $this->channelIdFrom($toolParameters),
             hint: 'Moving a document to the trash requires delete_document.',
             preview: ['kind' => $doc->is_folder ? 'document_folder' : 'document', 'action_class' => 'delete', 'title' => $doc->title, 'id' => $doc->id],
+            actionClass: VfsActionClass::DELETE,
         );
 
         $count = DB::transaction(function () use ($agent, $doc, $path): int {
@@ -426,6 +429,7 @@ trait MutatesVfsDocumentRecords
             channelId: $this->channelIdFrom($toolParameters),
             hint: $fromTrash ? 'Restoring a trashed document requires delete_document.' : 'Moving or renaming a document requires update_document.',
             preview: ['kind' => 'document', 'action_class' => 'reversible_edit', 'title' => $doc->title, 'to_title' => $title, 'to_folder' => $folder?->title],
+            actionClass: VfsActionClass::REVERSIBLE_EDIT,
         );
 
         $fresh = DB::transaction(function () use ($agent, $doc, $folder, $title, $fromTrash, $source): Document {

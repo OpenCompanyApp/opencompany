@@ -20,8 +20,8 @@ use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsAutomations;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsCollaboration;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsDocuments;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsFiles;
-use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsMe;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsLists;
+use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsMe;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsTasks;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsTools;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsWorkspace;
@@ -29,6 +29,7 @@ use App\Domain\Vfs\OpenCompany\Concerns\MutatesVfsContent;
 use App\Domain\Vfs\OpenCompany\Concerns\MutatesVfsOpenCompanyModels;
 use App\Domain\Vfs\OpenCompany\Concerns\PaginatesVfsMountQueries;
 use App\Domain\Vfs\OpenCompany\Concerns\RecordsVfsHistory;
+use App\Domain\Vfs\OpenCompany\Concerns\RegistersVfsBuiltinMounts;
 use App\Domain\Vfs\OpenCompany\Concerns\RemembersVfsIdempotency;
 use App\Domain\Vfs\OpenCompany\Concerns\ResolvesVfsDirectEntries;
 use App\Domain\Vfs\OpenCompany\Concerns\ResolvesVfsDocumentFileEntries;
@@ -67,6 +68,14 @@ use App\Services\FileSystemService;
  * aliases inherit the backing mount's checks. `<object>/.history/` views are
  * dispatched before the mounts (RecordsVfsHistory); `<mount>/.trash/` views
  * are served by their mounts. `/README.md` is the root orientation file.
+ *
+ * Mount dispatch: every per-path operation resolves its VfsMount through
+ * mounts() (longest prefix; built-ins from RegistersVfsBuiltinMounts plus the
+ * container's VfsMountRegistry). Governance stays here, around the mount:
+ * workspace assertion, routing, idempotency, the mutation policy for mounts
+ * that do not govern their own mutations (governMountMutation), and — in
+ * AuditedOpenCompanyVfs — audit and events. Never add a per-root `match`
+ * back; register a mount instead.
  */
 class OpenCompanyVfs
 {
@@ -89,6 +98,7 @@ class OpenCompanyVfs
     use MutatesVfsOpenCompanyModels;
     use PaginatesVfsMountQueries;
     use RecordsVfsHistory;
+    use RegistersVfsBuiltinMounts;
     use RemembersVfsIdempotency;
     use ResolvesVfsDirectEntries;
     use ResolvesVfsDocumentFileEntries;
@@ -166,21 +176,8 @@ class OpenCompanyVfs
             throw VfsError::notReadable($path);
         }
 
-        $entries = match ($segments[0]) {
-            'me' => $this->listMe($agent, $segments, $path, $budget),
-            'docs' => $this->listDocs($agent, $segments, $path, $budget),
-            'files' => $this->listFiles($agent, $segments, $path, $budget),
-            'agents' => $this->listAgents($agent, $segments, $path, $budget),
-            'tasks' => $this->listTasks($agent, $segments, $path, $budget),
-            'lists' => $this->listLists($agent, $segments, $path, $budget),
-            'channels' => $this->listChannels($agent, $segments, $path, $budget),
-            'tables' => $this->listTables($agent, $segments, $path, $budget),
-            'tools' => $this->listTools($path),
-            'approvals' => $this->listApprovals($agent, $segments, $path, $budget),
-            'automations' => $this->listAutomations($agent, $segments, $path, $budget),
-            'workspace' => $this->listWorkspace($path),
-            default => throw VfsError::notFound($path),
-        };
+        $mount = $this->mounts()->resolve($segments) ?? throw VfsError::notFound($path);
+        $entries = $mount->list($agent, $segments, $path, $budget);
 
         return array_slice($entries, 0, $budget->maxEntries);
     }
@@ -201,33 +198,15 @@ class OpenCompanyVfs
         $budget ??= new VfsBudget;
         $path = $this->routePath($agent, $path);
         $segments = $this->segments($path);
-        $adapter = $this->isHistoryPath($segments) ? 'compatibility-offset-v1' : match ($segments[0] ?? null) {
-            'docs' => 'documents-keyset-v1',
-            'files' => 'workspace-files-keyset-v1',
-            'tasks' => 'tasks-paged-v1',
-            'lists' => 'lists-paged-v1',
-            'agents' => 'agents-paged-v1',
-            'channels' => 'channels-paged-v1',
-            'tables' => 'tables-paged-v1',
-            'approvals' => 'approvals-paged-v1',
-            'automations' => 'automations-paged-v1',
-            default => 'compatibility-offset-v1',
-        };
+        // History views and the root are finite: offset compatibility pages.
+        $mount = $this->isHistoryPath($segments) ? null : $this->mounts()->resolve($segments);
+        $adapter = $mount?->pageAdapter($segments) ?? 'compatibility-offset-v1';
         $scope = $this->paginationScope($agent);
         $cursorPayload = VfsPageCursor::decode($cursor, $path, $adapter, $scope);
 
-        $page = match ($adapter) {
-            'documents-keyset-v1' => $this->pageDocs($agent, $segments, $path, $budget, $cursorPayload['state']),
-            'workspace-files-keyset-v1' => $this->pageFiles($agent, $segments, $path, $budget, $cursorPayload['state']),
-            'tasks-paged-v1' => $this->pageTasks($agent, $segments, $path, $budget, $cursorPayload['state']),
-            'lists-paged-v1' => $this->pageLists($agent, $segments, $path, $budget, $cursorPayload['state']),
-            'agents-paged-v1' => $this->pageAgents($agent, $segments, $path, $budget, $cursorPayload['state']),
-            'channels-paged-v1' => $this->pageChannels($agent, $segments, $path, $budget, $cursorPayload['state']),
-            'tables-paged-v1' => $this->pageTables($agent, $segments, $path, $budget, $cursorPayload['state']),
-            'approvals-paged-v1' => $this->pageApprovals($agent, $segments, $path, $budget, $cursorPayload['state']),
-            'automations-paged-v1' => $this->pageAutomations($agent, $segments, $path, $budget, $cursorPayload['state']),
-            default => $this->compatibilityPage($agent, $path, $budget, $cursorPayload['state']),
-        };
+        $page = $mount !== null && $adapter !== 'compatibility-offset-v1'
+            ? $mount->page($agent, $segments, $path, $budget, $cursorPayload['state'])
+            : $this->compatibilityPage($agent, $path, $budget, $cursorPayload['state']);
 
         $nextCursor = $page['has_more']
             ? VfsPageCursor::encode(
@@ -341,23 +320,20 @@ class OpenCompanyVfs
         $budget ??= new VfsBudget;
         $path = $this->routePath($agent, $path);
         $segments = $this->segments($path);
-        $adapter = $this->readPageAdapter($segments);
+        $mount = $this->mounts()->resolve($segments);
+        $adapter = $mount?->readPageAdapter($segments) ?? 'plain-read-v1';
         $payload = VfsPageCursor::decode($cursor, $path, $adapter, $this->paginationScope($agent));
 
-        $page = match ($adapter) {
-            'channel-transcript-keyset-v1' => $this->readChannelTranscriptPage($agent, $segments, $path, $budget, $payload['state']),
-            'table-rows-export-keyset-v1' => $this->readTableRowsExportPage($segments, $path, $budget, $payload['state']),
-            'workspace-members-keyset-v1' => $this->pageWorkspaceMembersExport($agent, $budget, $payload['state']),
-            'workspace-changes-keyset-v1' => $this->pageWorkspaceChanges($agent, $budget, $payload['state']),
-            default => [
+        $page = $mount !== null && $adapter !== 'plain-read-v1'
+            ? $mount->readPage($agent, $segments, $path, $budget, $payload['state'], $adapter)
+            : [
                 'content' => $this->read($agent, $path, $budget),
                 'returned' => 1,
                 'has_more' => false,
                 'next_state' => [],
                 'scanned' => 1,
                 'skipped' => 0,
-            ],
-        };
+            ];
 
         // `resumable` collections (the change feed) always return a cursor so
         // a drained feed can be polled again later from where it stopped.
@@ -380,25 +356,6 @@ class OpenCompanyVfs
             scanned: $page['scanned'],
             skipped: $page['skipped'],
         );
-    }
-
-    /** @param list<string> $segments */
-    private function readPageAdapter(array $segments): string
-    {
-        if (($segments[0] ?? null) === 'channels' && in_array('messages', $segments, true) && preg_match('/^\d{4}-\d{2}-\d{2}\.md$/', end($segments) ?: '') === 1) {
-            return 'channel-transcript-keyset-v1';
-        }
-        if (! $this->isHistoryPath($segments) && $this->isTableRowsExportPath($segments)) {
-            return 'table-rows-export-keyset-v1';
-        }
-        if ($segments === ['workspace', 'members.json']) {
-            return 'workspace-members-keyset-v1';
-        }
-        if ($segments === ['workspace', 'changes.ndjson']) {
-            return 'workspace-changes-keyset-v1';
-        }
-
-        return 'plain-read-v1';
     }
 
     private function paginationScope(User $agent): string
@@ -430,21 +387,9 @@ class OpenCompanyVfs
             return $this->readHistory($agent, $segments, $path, $budget);
         }
 
-        return match ($segments[0]) {
-            'me' => $this->readMe($agent, $segments, $path, $budget),
-            'docs' => $this->readDocs($agent, $segments, $path, $budget),
-            'files' => $this->readFiles($agent, $segments, $path, $budget),
-            'agents' => $this->readAgents($agent, $segments, $path, $budget),
-            'tasks' => $this->readTasks($agent, $segments, $path, $budget),
-            'lists' => $this->readLists($agent, $segments, $path, $budget),
-            'channels' => $this->readChannels($agent, $segments, $path, $budget),
-            'tables' => $this->readTables($agent, $segments, $path, $budget),
-            'tools' => $this->readTools($agent, $path, $budget),
-            'approvals' => $this->readApprovals($agent, $segments, $path, $budget),
-            'automations' => $this->readAutomations($agent, $segments, $path, $budget),
-            'workspace' => $this->readWorkspace($agent, $segments, $path, $budget),
-            default => throw VfsError::notFound($path),
-        };
+        $mount = $this->mounts()->resolve($segments) ?? throw VfsError::notFound($path);
+
+        return $mount->read($agent, $segments, $path, $budget);
     }
 
     /**
