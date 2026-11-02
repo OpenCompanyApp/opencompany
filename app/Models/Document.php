@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Models\Concerns\TrashesInBatches;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Workspace document or folder.
@@ -19,14 +21,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * Deletes are soft (governance model: delete means trash). `deleted_by`
  * records who trashed it; the VFS `/docs/.trash/` view restores. Purging is a
- * retention concern outside the VFS (forceDelete).
+ * retention concern outside the VFS (forceDelete). Trashing a folder trashes
+ * its live subtree as one batch and restore brings back exactly that batch
+ * (TrashesInBatches), so plain `$folder->delete()` callers stay correct.
  *
- * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property Carbon|null $deleted_at
  */
 class Document extends Model
 {
     /** @use HasFactory<Factory<static>> */
-    use BelongsToWorkspace, HasFactory, SoftDeletes;
+    use BelongsToWorkspace, HasFactory, SoftDeletes, TrashesInBatches;
 
     protected $keyType = 'string';
 

@@ -9,6 +9,7 @@ use App\Domain\Vfs\Core\VfsText;
 use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\Document;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -195,9 +196,7 @@ trait MutatesVfsDocumentRecords
             // Re-check the sibling under the parent lock: a concurrent create
             // of the same title must not produce two "same name" documents
             // from one VFS path.
-            if ($folder !== null) {
-                Document::forWorkspace()->whereKey($folder->id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
-            }
+            $this->lockDocumentDestination($agent, $folder, $path);
             $exists = Document::forWorkspace()
                 ->where('parent_id', $folder?->id)
                 ->where('is_system', false)
@@ -304,8 +303,8 @@ trait MutatesVfsDocumentRecords
 
     /**
      * Move a live document to the trash (soft delete). Folders take their
-     * whole subtree with them, stamped with one deleted_at so restore brings
-     * back exactly that batch.
+     * live subtree with them, stamped with one trash_batch_id so restore
+     * brings back exactly that batch (never something trashed on its own).
      *
      * @param  list<string>  $segments
      * @param  array<string, mixed>  $toolParameters
@@ -341,17 +340,12 @@ trait MutatesVfsDocumentRecords
             // Re-check under the lock: a descendant added or restricted
             // since the pre-check must still block the whole operation.
             $this->assertDocumentSubtreeWritable($agent, $locked, $descendants, $path, 'trash');
-            $ids = [$locked->id, ...$descendants];
-            $stamp = now();
+            // Model delete so observers drop search chunks; the model owns the
+            // subtree cascade and stamps one trash_batch_id on every member
+            // (TrashesInBatches), which is what restore selects by.
+            $batchId = $locked->trashAsBatch((string) $agent->id);
 
-            foreach (Document::forWorkspace()->whereKey($ids)->get() as $member) {
-                // Model delete so observers drop search chunks; SoftDeletes
-                // turns it into a trash move.
-                $member->delete();
-            }
-            Document::withTrashed()->whereKey($ids)->toBase()->update(['deleted_at' => $stamp, 'deleted_by' => $agent->id]);
-
-            return count($ids);
+            return Document::onlyTrashed()->where('workspace_id', $agent->workspace_id)->where('trash_batch_id', $batchId)->count();
         });
 
         return [
@@ -483,7 +477,12 @@ trait MutatesVfsDocumentRecords
             actionClass: VfsActionClass::REVERSIBLE_EDIT,
         );
 
-        $fresh = DB::transaction(function () use ($agent, $doc, $folder, $title, $fromTrash, $source): Document {
+        $fresh = DB::transaction(function () use ($agent, $doc, $folder, $title, $fromTrash, $source, $destination): Document {
+            // Invariant: destination parent first, then the source. Every
+            // writer that adds a name under a parent takes the same parent
+            // lock, so the clash check below cannot race another move or
+            // create into that folder.
+            $this->lockDocumentDestination($agent, $folder, $destination);
             $query = $fromTrash ? Document::withTrashed()->where('workspace_id', $agent->workspace_id) : Document::forWorkspace();
             $locked = $query->whereKey($doc->id)->lockForUpdate()->first() ?? throw VfsError::notFound($source);
 
@@ -513,6 +512,27 @@ trait MutatesVfsDocumentRecords
         });
 
         return $this->documentWriteResult($fromTrash ? 'restored' : 'moved', $fresh);
+    }
+
+    /**
+     * Serialize every writer that adds a name under one document parent.
+     *
+     * Documents have no (parent, title) unique index (system documents and
+     * pre-VFS data may legitimately share titles), so sibling-name uniqueness
+     * for VFS creates and moves is enforced by check-under-lock. The lock is
+     * the destination folder row, or the workspace row for the root, which
+     * has no folder row to lock. Call inside the transaction, before the
+     * clash check.
+     */
+    private function lockDocumentDestination(User $agent, ?Document $folder, string $path): void
+    {
+        if ($folder !== null) {
+            Document::forWorkspace()->whereKey($folder->id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
+
+            return;
+        }
+
+        Workspace::query()->whereKey($agent->workspace_id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
     }
 
     /**
@@ -667,11 +687,14 @@ trait MutatesVfsDocumentRecords
                 throw VfsError::notReadable($path);
             }
 
-            // Children of a readable trashed folder are filtered one by one:
-            // a child deny or sharing row hides that child as it would live.
+            // Only members of this folder's batch: a child trashed on its own
+            // earlier is its own trash entry and does not come back with it.
+            // Children of a readable trashed folder are then filtered one by
+            // one: a child deny or sharing row hides that child as it would live.
             return Document::onlyTrashed()
                 ->where('workspace_id', $agent->workspace_id)
                 ->where('parent_id', $doc->id)
+                ->where('trash_batch_id', $doc->getAttribute('trash_batch_id'))
                 ->where('is_system', false)
                 ->orderBy('title')
                 ->limit(max(1, $budget->maxFiles))
@@ -775,9 +798,11 @@ trait MutatesVfsDocumentRecords
 
         $parent = Document::withTrashed()->find($doc->parent_id);
 
+        // Batch membership is the trash_batch_id, never a timestamp match.
         return $parent === null
             || $parent->deleted_at === null
-            || $parent->deleted_at->ne($doc->deleted_at);
+            || $parent->getAttribute('trash_batch_id') === null
+            || $parent->getAttribute('trash_batch_id') !== $doc->getAttribute('trash_batch_id');
     }
 
     /**
@@ -804,7 +829,10 @@ trait MutatesVfsDocumentRecords
      */
     private function trashedBatchDescendantIds(Document $doc): array
     {
-        if (! $doc->is_folder || $doc->deleted_at === null) {
+        // Batch membership is the trash_batch_id stamped by TrashesInBatches,
+        // never the (second-resolution) deleted_at timestamp.
+        $batchId = $doc->getAttribute('trash_batch_id');
+        if (! $doc->is_folder || $doc->deleted_at === null || $batchId === null) {
             return [];
         }
 
@@ -813,7 +841,7 @@ trait MutatesVfsDocumentRecords
         for ($depth = 0; $frontier !== [] && $depth < 30; $depth++) {
             $children = Document::onlyTrashed()
                 ->whereIn('parent_id', $frontier)
-                ->where('deleted_at', $doc->deleted_at)
+                ->where('trash_batch_id', $batchId)
                 ->pluck('id')
                 ->map(fn ($id): string => (string) $id)
                 ->all();
@@ -826,16 +854,12 @@ trait MutatesVfsDocumentRecords
 
     /**
      * Restore a trashed document and every descendant trashed in the same
-     * batch (same deleted_at). Call inside the move transaction.
+     * batch (same trash_batch_id; the model's restore cascade owns the
+     * selection). Call inside the move transaction.
      */
     private function restoreDocumentBatch(Document $doc): void
     {
-        $ids = [$doc->id, ...$this->trashedBatchDescendantIds($doc)];
-
-        foreach (Document::onlyTrashed()->whereKey($ids)->get() as $member) {
-            $member->forceFill(['deleted_by' => null]);
-            $member->restore();
-        }
+        $doc->restore();
         $doc->refresh();
     }
 }

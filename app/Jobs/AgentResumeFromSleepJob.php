@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\AgentStatusUpdated;
-use App\Models\Task;
+use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Bus\Queueable;
@@ -13,9 +13,15 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Wakes a sleeping agent (status back to idle) and broadcasts the change.
+ *
+ * Workspace: runs with the agent's workspace bound via withWorkspaceBinding()
+ * and restores the caller's binding afterwards.
+ */
 class AgentResumeFromSleepJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, SetsWorkspaceContext;
 
     public int $tries = 1;
 
@@ -25,14 +31,14 @@ class AgentResumeFromSleepJob implements ShouldQueue
 
     public function handle(): void
     {
-        // Set workspace context from agent
-        if ($this->agent->workspace_id) {
-            $workspace = Workspace::find($this->agent->workspace_id);
-            if ($workspace) {
-                app()->instance('currentWorkspace', $workspace);
-            }
-        }
+        // Bound for the job only; the caller's binding is restored after.
+        $workspace = $this->agent->workspace_id ? Workspace::find($this->agent->workspace_id) : null;
 
+        $this->withWorkspaceBinding($workspace, fn () => $this->resume());
+    }
+
+    private function resume(): void
+    {
         $this->agent->refresh();
 
         if ($this->agent->status !== 'sleeping') {

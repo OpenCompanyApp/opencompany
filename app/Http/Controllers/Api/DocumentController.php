@@ -202,7 +202,11 @@ class DocumentController extends Controller
             return response()->json(['error' => 'System documents cannot be deleted.'], 403);
         }
 
-        $document->delete();
+        // Trash, not purge; a folder takes its live subtree with it as one
+        // restorable batch (TrashesInBatches). Never a bare UPDATE here: the
+        // old physical delete cascaded through parent_id, a soft delete only
+        // does so through the model.
+        $document->trashAsBatch(auth()->id() !== null ? (string) auth()->id() : null);
 
         return response()->json(['success' => true]);
     }

@@ -108,6 +108,14 @@ One rule for `find`, `grep -r` / `rg` (shell), `vfs_rg` / `app.vfs.rg` / `app.vf
 
 `rows.ndjson` ends every record with a newline (an empty page is empty), so `wc -l` equals the record count and concatenated cursor pages stay valid NDJSON. Row JSON (`rows/by-id/*.json`, `rows.ndjson`, history views) keeps non-ASCII text unescaped (`Café`, not `Caf\u00e9`), so a text search for it matches.
 
+Every name `ls` shows opens at `{directory}/{name}` (stat, and read for files). Task listings name a task `{title-slug}--{id8}.md` and `/tasks/by-id/` lists `{uuid}.md`; under any task listing the full id, `{id}.md` or a `--{id8}` name resolves. `/docs/by-id/` and `/files/by-id/` list ids, and they (like `/agents/by-id/`) are aliases for recursive walkers, so `ls -R`, `find` and `grep -r` print the friendly paths (`ls -R` headers follow the traversed path). Agent-area entries keep file names (`/agents/{agent}/notes/plan.md`) and their `canonical_path` stays under `/agents/by-id/{id}/…`.
+
+Trash is batched: one `rm` stamps one trash batch on the object and everything it takes with it, and a restore brings back exactly that batch (something trashed on its own earlier stays in the trash). Deleting a document folder or list project anywhere in the app (API, domain tools) trashes its live subtree the same way. Your own trashed notes and `todo.md` are under `/me/.trash/`; `mv /me/.trash/<id> /me/notes/<name>` restores one (only the agent itself restores).
+
+Overwrites keep the previous content in `.history/`. A workspace file larger than `config('vfs.max_content_bytes')` cannot be overwritten through the VFS (`not_writable`), because its previous content could not be kept; `rm` it (the trash keeps it) and create the new content instead. Row patch results list `fields` by column name with `field_ids` (name => column id); an unknown column error lists the valid `columns`.
+
+`/workspace/changes.ndjson` pages on the event's database id (not its timestamp), so a polled cursor never skips a late-inserted change; every line ends with a newline. Deletions are visible to agents that can read where the object was.
+
 ## Mounts
 
 The VFS is a set of mounts resolved by longest path prefix (`app/Domain/Vfs/OpenCompany/Mounts/`):

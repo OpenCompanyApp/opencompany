@@ -8,6 +8,8 @@ use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsText;
 use App\Models\Document;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Agent document mount operations for OpenCompanyVfs.
@@ -49,7 +51,9 @@ trait MountsVfsAgents
                 $budget->maxEntries,
                 $state,
                 fn (User $target): VfsEntry => new VfsEntry($this->agentToken($agent, $target), '/agents/'.$this->agentToken($agent, $target), 'directory', "/agents/by-id/{$target->id}", 'agent', $target->id, capabilities: ['browse', 'read']),
-                new VfsEntry('by-id', '/agents/by-id', 'directory', capabilities: ['browse']),
+                // by-id re-lists every agent: an alias for recursive walkers,
+                // so `find /` prints the friendly /agents/{name}/… forms.
+                new VfsEntry('by-id', '/agents/by-id', 'directory', capabilities: ['browse'], metadata: ['alias' => true]),
             );
         }
 
@@ -96,6 +100,16 @@ trait MountsVfsAgents
             return $this->paginateVfsStaticEntries($entries, $budget->maxEntries, $state);
         }
 
+        if ($remaining[0] === '.trash') {
+            if (isset($remaining[1])) {
+                $this->resolveAgentAreaTrashed($target, $remaining[1], $path);
+
+                throw VfsError::notReadable($path);
+            }
+
+            return $this->paginateVfsStaticEntries($this->listAgentAreaTrash($agent, $target, $path, $budget), $budget->maxEntries, $state);
+        }
+
         if ($remaining[0] === 'tasks') {
             $taskSegments = ['tasks', 'by-agent', $this->agentToken($agent, $target), ...array_slice($remaining, 1)];
 
@@ -115,7 +129,7 @@ trait MountsVfsAgents
                 scanLimit: $budget->maxFiles,
                 state: $state,
                 canAccess: fn (Document $doc): bool => $this->canAccessDocument($agent, $doc),
-                toEntry: fn (Document $doc): VfsEntry => $this->documentEntry($agent, $doc, rtrim($path, '/').'/'.$this->slug($doc->title)),
+                toEntry: fn (Document $doc): VfsEntry => $this->documentEntry($agent, $doc, rtrim($path, '/').'/'.$this->documentToken($doc)),
             );
         }
 
@@ -151,6 +165,23 @@ trait MountsVfsAgents
 
         if ($remaining === []) {
             return $this->entriesToText($this->listAgents($agent, $segments, $path, $budget));
+        }
+
+        if ($remaining[0] === '.trash') {
+            if (! isset($remaining[1])) {
+                if ($budget->isContentRead()) {
+                    throw VfsError::notReadable($path);
+                }
+
+                return $this->entriesToText($this->listAgentAreaTrash($agent, $target, $path, $budget));
+            }
+            if (isset($remaining[2])) {
+                throw VfsError::notFound($path);
+            }
+            $trashed = $this->resolveAgentAreaTrashed($target, $remaining[1], $path);
+            $budget->recordCanonicalPath("/agents/by-id/{$target->id}/.trash/{$trashed->id}");
+
+            return VfsText::fit((string) $trashed->content, $budget, $path);
         }
 
         if ($remaining[0] === 'tasks') {
@@ -213,7 +244,7 @@ trait MountsVfsAgents
             (string) ($parts[0] ?? ''),
             '/agents',
             $path,
-            fn (\Illuminate\Database\Eloquent\Model $candidate): string => "/agents/by-id/{$candidate->getKey()}",
+            fn (Model $candidate): string => "/agents/by-id/{$candidate->getKey()}",
         );
 
         return $target instanceof User ? $target : throw VfsError::notFound($path);
@@ -222,9 +253,9 @@ trait MountsVfsAgents
     /**
      * Agents of the viewer's workspace, the sibling set for /agents names.
      *
-     * @return \Illuminate\Database\Eloquent\Builder<User>
+     * @return Builder<User>
      */
-    private function agentSiblingsQuery(User $viewer): \Illuminate\Database\Eloquent\Builder
+    private function agentSiblingsQuery(User $viewer): Builder
     {
         return User::query()->where('workspace_id', $viewer->workspace_id)->where('type', 'agent');
     }
@@ -321,8 +352,22 @@ trait MountsVfsAgents
             scanLimit: $budget->maxFiles,
             state: $state,
             canAccess: fn (Document $doc): bool => true,
-            toEntry: fn (Document $doc): VfsEntry => $this->agentDocumentEntry($viewer, $target, $doc, rtrim($path, '/').'/'.$this->slug($doc->title)),
+            toEntry: fn (Document $doc): VfsEntry => $this->agentDocumentEntry($viewer, $target, $doc, rtrim($path, '/').'/'.$this->agentDocumentPathToken($doc)),
         );
+    }
+
+    /**
+     * Path segment for an agent-area document. Titles that are already safe
+     * path tokens (`MEMORY.md`, `plan.md`, `todo.md`) are used as-is; a slug
+     * would drop the dot (`plan.md` → `planmd`) and the listed path would no
+     * longer look like the file the agent wrote. Other titles are slugged.
+     * Both forms resolve (exact title or slug).
+     */
+    private function agentDocumentPathToken(Document $doc): string
+    {
+        $title = (string) $doc->title;
+
+        return preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]*$/', $title) === 1 ? $title : $this->slug($title);
     }
 
     private function agentDocumentEntry(User $viewer, User $target, Document $doc, string $path): VfsEntry
@@ -376,11 +421,14 @@ trait MountsVfsAgents
             $capabilities[] = 'patch';
         }
 
+        // Canonical form stays inside /agents: agent documents are system
+        // documents, which /docs/by-id refuses to read.
+
         return new VfsEntry(
             name: $doc->title,
             path: $path,
             type: $doc->is_folder ? 'directory' : 'file',
-            canonicalPath: "/docs/by-id/{$doc->id}",
+            canonicalPath: rtrim("/agents/by-id/{$target->id}/".implode('/', $remaining), '/'),
             backendType: 'document',
             backendId: $doc->id,
             version: $this->version($doc->updated_at?->toIso8601String(), $doc->content ?? ''),

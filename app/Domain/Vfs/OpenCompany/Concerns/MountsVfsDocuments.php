@@ -44,13 +44,17 @@ trait MountsVfsDocuments
     private function pageDocs(User $agent, array $segments, string $path, VfsBudget $budget, array $state): array
     {
         $prefix = null;
+        $entryName = null;
 
         if (($segments[1] ?? null) === '.trash') {
             return $this->paginateVfsStaticEntries($this->listDocumentTrash($agent, $segments, $path, $budget), $budget->maxEntries, $state);
         }
 
         if (count($segments) === 1) {
-            $prefix = new VfsEntry('by-id', '/docs/by-id', 'directory', capabilities: ['browse']);
+            // by-id re-lists every document flat: an alias for recursive
+            // walkers (ls -R, find, grep -r), which must not visit each
+            // document again through it (VfsEntry::isAlias()).
+            $prefix = new VfsEntry('by-id', '/docs/by-id', 'directory', capabilities: ['browse'], metadata: ['alias' => true]);
             $query = Document::forWorkspace()
                 ->whereNull('parent_id')
                 ->where('is_system', false);
@@ -58,6 +62,8 @@ trait MountsVfsDocuments
         } elseif (($segments[1] ?? null) === 'by-id' && ! isset($segments[2])) {
             $query = Document::forWorkspace()->where('is_system', false);
             $entryPath = fn (Document $doc): string => "/docs/by-id/{$doc->id}";
+            // by-id lists ids (the names that open under /docs/by-id/), not titles.
+            $entryName = fn (Document $doc): string => (string) $doc->id;
         } else {
             $folder = ($segments[1] ?? null) === 'by-id'
                 ? $this->documentFromByIdSegments($agent, $segments, $path)
@@ -89,7 +95,7 @@ trait MountsVfsDocuments
             scanLimit: $budget->maxFiles,
             state: $state,
             canAccess: fn (Document $doc): bool => $this->canAccessDocument($agent, $doc),
-            toEntry: fn (Document $doc): VfsEntry => $this->documentEntry($agent, $doc, $entryPath($doc)),
+            toEntry: fn (Document $doc): VfsEntry => $this->documentEntry($agent, $doc, $entryPath($doc), $entryName !== null ? $entryName($doc) : null),
             prefixEntry: $prefix,
         );
     }
@@ -167,7 +173,11 @@ trait MountsVfsDocuments
         )['entries'];
     }
 
-    private function documentEntry(User $agent, Document $doc, string $path): VfsEntry
+    /**
+     * @param  string|null  $name  listing name; defaults to the title (which
+     *                             resolves among its siblings)
+     */
+    private function documentEntry(User $agent, Document $doc, string $path, ?string $name = null): VfsEntry
     {
         $capabilities = $doc->is_folder ? ['browse', 'read', 'search'] : ['read', 'search'];
         $metadata = [
@@ -196,7 +206,7 @@ trait MountsVfsDocuments
         }
 
         return new VfsEntry(
-            name: $doc->title,
+            name: $name ?? $doc->title,
             path: $path,
             type: $doc->is_folder ? 'directory' : 'file',
             canonicalPath: "/docs/by-id/{$doc->id}",

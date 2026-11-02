@@ -9,6 +9,13 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Domain tool: move a workspace document or folder to the trash.
+ *
+ * Trash, not purge: the document stays restorable from the VFS
+ * `/docs/.trash/` view, and a folder takes its live subtree with it as one
+ * trash batch (TrashesInBatches). System documents are refused.
+ */
 class DeleteDocument implements Tool
 {
     public function __construct(
@@ -37,7 +44,8 @@ class DeleteDocument implements Tool
             }
 
             $title = $document->title;
-            $document->delete();
+            // Trash with its live subtree as one restorable batch.
+            $document->trashAsBatch((string) $this->agent->id);
 
             return "Document deleted: '{$title}'";
         } catch (\Throwable $e) {

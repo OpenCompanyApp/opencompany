@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Models\ConversationSummary;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,12 +17,21 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * Flushes memory for a channel conversation and compacts it into a summary,
+ * optionally reporting the result to Telegram.
+ *
+ * Workspace: runs with the agent's workspace bound via withWorkspaceBinding()
+ * and restores the caller's binding afterwards.
+ */
 class CompactConversationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, SetsWorkspaceContext;
 
     public int $tries = 2;
+
     public int $timeout = 300;
+
     /** @var array<int, int> */
     public array $backoff = [15];
 
@@ -33,14 +43,17 @@ class CompactConversationJob implements ShouldQueue
 
     public function handle(ConversationCompactionService $compactor, MemoryFlushService $flusher): void
     {
-        // Set workspace context from agent
-        if ($this->agent->workspace_id) {
-            $workspace = Workspace::find($this->agent->workspace_id);
-            if ($workspace) {
-                app()->instance('currentWorkspace', $workspace);
-            }
-        }
+        // The agent's workspace is bound for the job and the caller's binding
+        // is restored afterwards, also on failure: on the sync queue this job
+        // runs inside another request or job, and a leaked binding would make
+        // the next workspace-scoped query (and the VFS) see the wrong tenant.
+        $workspace = $this->agent->workspace_id ? Workspace::find($this->agent->workspace_id) : null;
 
+        $this->withWorkspaceBinding($workspace, fn () => $this->compactInWorkspace($compactor, $flusher));
+    }
+
+    private function compactInWorkspace(ConversationCompactionService $compactor, MemoryFlushService $flusher): void
+    {
         // Ensure memory flush before compaction (race condition safety net:
         // AgentRespondJob dispatches this job before its own flush runs)
         try {
@@ -86,18 +99,19 @@ class CompactConversationJob implements ShouldQueue
         try {
             $telegram = app(TelegramService::class);
 
-            if (!$summary) {
+            if (! $summary) {
                 $telegram->sendMessage($this->telegramChatId, 'Nothing to compact (fewer than 5 messages).');
+
                 return;
             }
 
             $telegram->sendMessage($this->telegramChatId,
                 "<b>Compaction complete</b>\n\n"
-                . "Messages summarized: <b>{$summary->messages_summarized}</b>\n"
-                . "Tokens before: {$summary->tokens_before}\n"
-                . "Tokens after: {$summary->tokens_after}\n"
-                . "Compaction #: {$summary->compaction_count}\n\n"
-                . "<i>" . Str::limit($summary->summary, 200) . "</i>"
+                ."Messages summarized: <b>{$summary->messages_summarized}</b>\n"
+                ."Tokens before: {$summary->tokens_before}\n"
+                ."Tokens after: {$summary->tokens_after}\n"
+                ."Compaction #: {$summary->compaction_count}\n\n"
+                .'<i>'.Str::limit($summary->summary, 200).'</i>'
             );
         } catch (\Throwable $e) {
             Log::warning('Failed to send compaction result to Telegram', ['error' => $e->getMessage()]);
@@ -108,7 +122,7 @@ class CompactConversationJob implements ShouldQueue
     {
         try {
             $telegram = app(TelegramService::class);
-            $telegram->sendMessage($this->telegramChatId, 'Compaction failed: ' . Str::limit($error->getMessage(), 200));
+            $telegram->sendMessage($this->telegramChatId, 'Compaction failed: '.Str::limit($error->getMessage(), 200));
         } catch (\Throwable $e) {
             Log::warning('Failed to send compaction error to Telegram', ['error' => $e->getMessage()]);
         }

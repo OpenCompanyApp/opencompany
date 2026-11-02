@@ -62,6 +62,8 @@ trait RegistersVfsBuiltinMounts
             write: fn (User $agent, array $segments, string $path, string $content, string $mode, ?string $version, array $toolParameters): array => $this->writeAgentAreaPath($agent, $segments, $path, $content, $mode, $version, $toolParameters),
             patch: $this->patchAgentDocument(...),
             remove: fn (User $agent, array $segments, string $path): array => $this->trashAgentAreaPath($agent, $segments, $path),
+            // Only restore from the agent's own .trash/ (MutatesVfsAgentArea).
+            move: fn (User $agent, array $segments, string $source, string $destination, array $toolParameters): array => $this->restoreAgentAreaPath($agent, $segments, $source, $destination, $toolParameters),
         ));
         $registry->register(new BuiltinVfsMount(
             prefix: '/docs',
@@ -131,7 +133,7 @@ trait RegistersVfsBuiltinMounts
             description: 'Agent task (run) records: open, completed, by-status, by-agent.',
             list: $this->listTasks(...),
             read: $this->readTasks(...),
-            entry: fn (User $agent, array $segments): ?VfsEntry => $this->directTaskEntry($agent, $segments),
+            entry: fn (User $agent, array $segments, string $path): ?VfsEntry => $this->directTaskEntry($agent, $segments, $path),
             pageAdapter: 'tasks-paged-v1',
             page: $this->pageTasks(...),
             patch: $this->patchTask(...),
