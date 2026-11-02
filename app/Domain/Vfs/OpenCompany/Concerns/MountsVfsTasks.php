@@ -10,6 +10,12 @@ use App\Models\User;
 
 /**
  * Task mount operations for OpenCompanyVfs.
+ *
+ * Tasks are agent run records, created by the runtime when work is assigned;
+ * there is no create_task domain tool, so the VFS deliberately offers no task
+ * create or delete either (an agent "filing work" should create a list
+ * item/issue). Patches keep their semantics: the assigned agent may change
+ * title, description, status and priority (PatchesVfsRecords).
  */
 trait MountsVfsTasks
 {

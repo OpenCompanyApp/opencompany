@@ -88,10 +88,11 @@ trait MountsVfsTables
         }
 
         if ($rest === ['rows']) {
+            // rows/.trash is reachable by path but not listed, so recursive
+            // walks (find, rg) never surface trashed rows.
             return $this->paginateVfsStaticEntries([
-                new VfsEntry('by-id', "{$base}/rows/by-id", 'directory', "{$canonical}/rows/by-id", 'data_table', $table->id, capabilities: ['browse', 'read', 'search']),
-                new VfsEntry('.trash', "{$base}/rows/.trash", 'directory', "{$canonical}/rows/.trash", 'data_table', $table->id, capabilities: ['browse', 'read'], metadata: [
-                    'description' => 'Trashed rows; mv one out of here to restore it.',
+                new VfsEntry('by-id', "{$base}/rows/by-id", 'directory', "{$canonical}/rows/by-id", 'data_table', $table->id, capabilities: ['browse', 'read', 'search'], metadata: [
+                    'description' => 'Rows by id; vfs_write ../new.json with {"data":{…}} creates one; rm trashes into rows/.trash.',
                 ]),
             ], $budget->maxEntries, $state);
         }

@@ -163,10 +163,10 @@ trait MountsVfsLists
             new VfsEntry('by-id', '/lists/by-id', 'directory', capabilities: ['browse', 'read']),
             new VfsEntry('by-status', '/lists/by-status', 'directory', capabilities: ['browse', 'read']),
             new VfsEntry('by-assignee', '/lists/by-assignee', 'directory', capabilities: ['browse', 'read']),
+            // `.trash` is deliberately not listed (like every trash view) so
+            // recursive find/rg walks never surface trashed items; it is
+            // documented in /README.md and reachable by path.
             new VfsEntry('counts.json', '/lists/counts.json', 'file', capabilities: ['read']),
-            new VfsEntry('.trash', '/lists/.trash', 'directory', capabilities: ['browse', 'read'], metadata: [
-                'description' => 'Trashed list items; mv one out of here to restore it.',
-            ]),
         ];
     }
 
@@ -226,8 +226,8 @@ trait MountsVfsLists
                 $agent,
                 $path,
                 'patch',
-                ['vfs_patch'],
-                'Patch this list item with vfs_patch; only the supported list fields may be changed.',
+                ['vfs_patch', 'update_list_item'],
+                'Patch fields with vfs_patch (title, description, status, priority, assignee, due_date), or overwrite the front-matter markdown with vfs_write and the version.',
                 $item->creator_id === $agent->id || $item->assignee_id === $agent->id,
                 'Only an item creator or assignee can patch the item through VFS.',
             );
