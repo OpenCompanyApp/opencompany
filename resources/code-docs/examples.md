@@ -21,16 +21,37 @@ data = JSON.parse('{"items":[{"id":1,"active":false}]}')
 {items: data[:items].map { |row| {id: row[:id], active: row[:active]} }}
 ```
 
-## Read a bounded workspace table
+## Find a table by name and aggregate every row
+
+`app.tables.get_rows` returns an ARRAY of rows keyed by column name, plus
+`"_id"`. One call returns at most `limit` rows (default 25, max 100), so page
+with `offset` until a short page. Compute in Ruby and return a small summary.
 
 ```ruby
-rows = app.tables.get_rows(table_id: "00000000-0000-4000-8000-000000000001", limit: 10)
-{count: rows.length, sample: rows.take(3)}
+table = app.tables.list.find { |t| t["name"] == "Deals" }
+rows = []
+offset = 0
+20.times do                      # hard cap: 20 pages x 100 rows
+  page = app.tables.get_rows(table_id: table["id"], limit: 100, offset: offset)
+  rows.concat(page)
+  break if page.length < 100
+  offset += 100
+end
+won = rows.select { |r| r["Stage"] == "won" }
+{rows: rows.length, won_count: won.length, won_total: won.sum { |r| r["Amount"].to_i }}
 ```
 
-For paginated tools, request a small page, return its next cursor and process a
-bounded number of pages. Never assume every response has a `data` or `results`
-field. A compiler pass cannot establish the provider's response shape.
+Group and sum per key with a plain hash:
+
+```ruby
+totals = Hash.new(0)
+rows.each { |r| totals[r["Owner"]] += r["Amount"].to_i }
+totals.sort_by { |_owner, amount| -amount }.to_h
+```
+
+When you do not know a result shape yet, return a tiny sample
+(`{sample: page.first(2)}`) in one execution, then write the real program.
+Read `Returns:` in `code_read_doc` first; never assume a `data` or `results` key.
 
 ## Small reusable transformations
 

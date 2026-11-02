@@ -69,6 +69,23 @@ class VfsFeatureTest extends TestCase
         ]);
     }
 
+    // Eval finding: models reach for GNU long flags (`rg --files-with-matches`).
+    // They map onto the implemented short flags instead of failing preflight;
+    // quoted patterns that look like flags stay literal.
+    public function test_grep_and_rg_accept_common_long_flag_synonyms(): void
+    {
+        Document::factory()->create(['title' => 'Refund Policy', 'content' => "Refund within 30 days.\n", 'author_id' => $this->agent->id]);
+        Document::factory()->create(['title' => 'Other', 'content' => 'Nothing here.', 'author_id' => $this->agent->id]);
+        $exec = app(ToolRegistry::class)->instantiateToolBySlug('vfs_exec', $this->agent);
+
+        $long = json_decode($exec->handle(new Request(['command' => 'rg --files-with-matches --ignore-case refund /docs'])), true);
+        $short = json_decode($exec->handle(new Request(['command' => 'rg -l -i refund /docs'])), true);
+
+        $this->assertTrue($long['ok'], json_encode($long));
+        $this->assertSame($short['stdout'], $long['stdout']);
+        $this->assertStringContainsString('/docs/', $long['stdout']);
+    }
+
     public function test_vfs_tools_are_registered_as_direct_agent_tools(): void
     {
         $slugs = app(ToolRegistry::class)->getToolSlugsForAgent($this->agent);

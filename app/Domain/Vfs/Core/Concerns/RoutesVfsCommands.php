@@ -27,6 +27,9 @@ trait RoutesVfsCommands
         $cmd = $cmd === 'dir' || $cmd === 'll' ? 'ls' : $cmd;
         $cmd = $cmd === 'more' || $cmd === 'less' ? 'cat' : $cmd;
         $cmd = $cmd === 'md5' ? 'md5sum' : $cmd;
+        if (in_array($cmd, ['grep', 'fgrep', 'egrep', 'rg', 'search'], true)) {
+            $tokens = $this->normalizeSearchLongFlags($tokens);
+        }
         if (in_array('--help', $tokens, true)) {
             return [
                 'stdout' => VfsCommandHelp::commandMarkdown($cmd),
@@ -175,5 +178,45 @@ trait RoutesVfsCommands
             'status' => $spec?->status,
             'suggestion' => $spec?->suggestion ?? 'Use pwd, ls, tree, find, rg, grep, cat, head, tail, wc, stat, file, du, jq, diff, or the vfs_patch/vfs_write tools for edits.',
         ]);
+    }
+
+    /**
+     * Map common GNU grep / ripgrep long flags onto the short flags the VFS
+     * implements, so agents' habitual spellings (e.g. `rg --files-with-matches`)
+     * work instead of failing preflight. Value options and unknown flags are
+     * left untouched for normal validation. Tokens after `--` are operands.
+     *
+     * @param  list<string>  $tokens
+     * @return list<string>
+     */
+    private function normalizeSearchLongFlags(array $tokens): array
+    {
+        $synonyms = [
+            '--files-with-matches' => '-l',
+            '--count' => '-c',
+            '--ignore-case' => '-i',
+            '--line-number' => '-n',
+            '--invert-match' => '-v',
+            '--word-regexp' => '-w',
+            '--fixed-strings' => '-F',
+            '--only-matching' => '-o',
+            '--quiet' => '-q',
+            '--with-filename' => '-H',
+            '--no-filename' => '-h',
+            '--recursive' => '-r',
+        ];
+
+        $normalized = [];
+        $operands = false;
+        foreach ($tokens as $index => $token) {
+            if ($token === '--') {
+                $operands = true;
+            }
+            // Quoted tokens are literal patterns/paths, never flags.
+            $quoted = (bool) ($this->lastTokenQuoteMask[$index] ?? false);
+            $normalized[] = (! $operands && ! $quoted && isset($synonyms[$token])) ? $synonyms[$token] : $token;
+        }
+
+        return $normalized;
     }
 }
