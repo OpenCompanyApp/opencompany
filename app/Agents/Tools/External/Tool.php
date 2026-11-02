@@ -14,7 +14,7 @@ use App\Agents\Tools\External\ToolResult;
 interface Tool
 {
     /**
-     * Tool slug used for routing (e.g., 'render_mermaid', 'send_message').
+     * Tool slug used for routing (e.g., 'mcp_github__create_issue').
      */
     public function name(): string;
 

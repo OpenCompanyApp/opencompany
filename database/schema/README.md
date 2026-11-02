@@ -30,5 +30,13 @@ clients and servers load the dump cleanly:
 sed -i -E '/^\\(un)?restrict /d; /^SET transaction_timeout = 0;$/d' database/schema/pgsql-schema.sql
 ```
 
+Finally regenerate the static-analysis column list. Larastan's parser only
+reads MySQL syntax, so PHPStan uses `larastan/tables.sql` (plus any files in
+`database/migrations/`); Laravel never loads it:
+
+```bash
+php scripts/dev/larastan-schema.php
+```
+
 Every new table or column still needs a normal migration file. Data
 sovereignty applies: new primitives must also round-trip through exports.

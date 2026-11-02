@@ -11,7 +11,7 @@ use Laravel\Ai\Contracts\Tool;
  *
  * Built-in tools implement Laravel\Ai\Contracts\Tool (for the agent loop).
  * This is separate from the external (MCP) ToolProvider contract which returns
- * framework-agnostic IntegrationCore\Contracts\Tool instances.
+ * app-owned External\Tool instances.
  */
 interface BuiltInToolProvider
 {

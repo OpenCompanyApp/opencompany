@@ -387,9 +387,10 @@ class SyncToChat implements ShouldQueue
             }
         }
 
-        // Public storage paths are legacy generated artifacts. They can be sent
-        // directly from disk, but keep them separate from workspace-file links
-        // because they do not go through FileSystemService permissions.
+        // Public storage paths: human uploads and images generated before
+        // render_svg moved to workspace files. Sent directly from disk, kept
+        // separate from workspace-file links because they do not go through
+        // FileSystemService permissions.
         if (preg_match_all('/!\[([^\]]*)\]\((\/storage\/[^)]+)\)/', $content, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
                 $alt = $match[1];
@@ -403,9 +404,7 @@ class SyncToChat implements ShouldQueue
                         continue;
                     }
 
-                    $isDocument = str_contains($url, '/storage/mermaid/')
-                        || str_contains($url, '/storage/plantuml/')
-                        || str_contains($url, '/storage/typst/');
+                    $isDocument = str_ends_with(strtolower($filePath), '.pdf');
 
                     $adapter->sendFile($threadId, FileUpload::fromPath(
                         $filePath,
@@ -488,9 +487,7 @@ class SyncToChat implements ShouldQueue
                         continue;
                     }
 
-                    $isDocument = str_contains($url, '/storage/mermaid/')
-                        || str_contains($url, '/storage/plantuml/')
-                        || str_contains($url, '/storage/typst/');
+                    $isDocument = $mime === 'application/pdf';
 
                     $adapter->sendFile($threadId, FileUpload::fromPath(
                         $filePath,

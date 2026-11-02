@@ -47,7 +47,7 @@ class SvgToolProvider implements BuiltInToolProvider
 
     public function createTool(string $class, User $agent, array $context = []): Tool
     {
-        // RenderSvg is stateless and does not need the acting agent directly.
-        return new RenderSvg;
+        // The agent decides the workspace the rendered image is stored in.
+        return new RenderSvg($agent);
     }
 }

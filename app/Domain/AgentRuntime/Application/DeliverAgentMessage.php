@@ -9,6 +9,7 @@ use App\Models\DirectMessage;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\User;
+use App\Models\WorkspaceFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Responses\AgentResponse;
@@ -51,31 +52,44 @@ class DeliverAgentMessage
         return $agentMessage;
     }
 
+    /**
+     * Attach images rendered by render_svg during this turn to the message.
+     *
+     * RenderSvg stores its PNG as a workspace file and returns an
+     * `/api/files/{id}/download` link; the file is looked up in the agent's
+     * own workspace, so a link can never attach another workspace's file. The
+     * package renderers (Mermaid, PlantUML, Typst, Vega-Lite) were removed
+     * with the package system and are deliberately not matched here.
+     */
     private function saveImageAttachments(User $agent, AgentResponse $response, Message $message): void
     {
         try {
             foreach ($response->steps as $step) {
                 foreach ($step->toolResults as $toolResult) {
-                    if (! in_array($toolResult->name, ['RenderSvg', 'RenderMermaid', 'RenderPlantUml', 'RenderTypst', 'RenderVegaLite'], true)) {
+                    if (! in_array($toolResult->name, ['RenderSvg', 'render_svg'], true)) {
                         continue;
                     }
 
-                    $result = $toolResult->result ?? '';
-                    if (! preg_match('#(/storage/(?:svg|mermaid|plantuml|vegalite)/[a-f0-9-]+\.png|/storage/typst/[a-f0-9-]+\.pdf)#', $result, $m)) {
+                    $result = (string) ($toolResult->result ?? '');
+                    if (! preg_match('#/api/files/([0-9A-Za-z-]+)/download#', $result, $m)) {
                         continue;
                     }
 
-                    $url = $m[1];
-                    $filePath = storage_path('app/public/'.str_replace('/storage/', '', $url));
+                    $file = WorkspaceFile::query()
+                        ->where('workspace_id', $agent->workspace_id)
+                        ->find($m[1]);
+                    if ($file === null) {
+                        continue;
+                    }
 
                     MessageAttachment::create([
                         'id' => Str::uuid()->toString(),
                         'message_id' => $message->id,
-                        'filename' => basename($url),
-                        'original_name' => basename($url),
-                        'mime_type' => str_ends_with($url, '.pdf') ? 'application/pdf' : 'image/png',
-                        'size' => file_exists($filePath) ? filesize($filePath) : 0,
-                        'url' => $url,
+                        'filename' => $file->name,
+                        'original_name' => $file->name,
+                        'mime_type' => $file->mime_type ?? 'image/png',
+                        'size' => (int) ($file->size ?? 0),
+                        'url' => "/api/files/{$file->id}/download",
                         'uploaded_by_id' => $agent->id,
                     ]);
                 }

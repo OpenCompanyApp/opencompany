@@ -5,7 +5,7 @@ namespace App\Agents\Tools\External;
 interface ToolProvider
 {
     /**
-     * The app/group identifier (e.g., 'mermaid', 'clickup', 'gmail').
+     * The app/group identifier (e.g., 'mcp_github').
      */
     public function appName(): string;
 
@@ -14,7 +14,7 @@ interface ToolProvider
      *
      * Expected keys:
      *   'label'       => string  (e.g., 'diagrams, flowcharts, sequences')
-     *   'description' => string  (e.g., 'Mermaid diagram rendering')
+     *   'description' => string  (e.g., 'GitHub MCP server')
      *   'icon'        => string  (e.g., 'ph:graph')
      *   'logo'        => string  (optional, brand logo icon)
      *

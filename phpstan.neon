@@ -11,3 +11,11 @@ parameters:
     paths:
         - app/
     level: 6
+    # Model columns: migrations were squashed on 2026-11-02 and Larastan's
+    # MySQL-only parser cannot read the pgsql/sqlite dumps, so it reads a
+    # generated MySQL-style column list (scripts/dev/larastan-schema.php).
+    # Regenerate it whenever the schema baseline changes.
+    squashedMigrationsPath:
+        - %currentWorkingDirectory%/database/schema/larastan
+    databaseMigrationsPath:
+        - %currentWorkingDirectory%/database/migrations

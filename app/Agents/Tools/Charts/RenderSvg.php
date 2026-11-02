@@ -2,11 +2,12 @@
 
 namespace App\Agents\Tools\Charts;
 
+use App\Models\User;
 use App\Services\CodeExecutionBudget;
 use App\Services\CodeExecutionCancelled;
 use App\Services\CodeExecutionDeadlineExceeded;
+use App\Services\FileSystemService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
@@ -15,12 +16,21 @@ use Symfony\Component\Process\Process;
 /**
  * Renders caller-supplied SVG through the host's bounded rsvg subprocess.
  *
- * The tool owns its temporary input and public image output, not authorization
- * or workspace policy. Code Mode dispatch supplies those boundaries and its
- * active execution budget; direct tool calls retain the normal renderer limit.
+ * The tool owns its temporary renderer files and stores the PNG as a workspace
+ * file in the acting agent's workspace (`/Generated`), served only through the
+ * authenticated, workspace-scoped `/api/files/{id}/download` route. It never
+ * writes to the public disk. Authorization and the execution budget come from
+ * the caller (tool permission checks, Code Mode dispatch).
+ *
+ * Agent breadcrumb: the package renderers (Mermaid, PlantUML, Typst,
+ * Vega-Lite) were deleted with the package system on purpose. Do not rebuild
+ * them here; charts and diagrams are planned as client-side Artifact blocks
+ * and Typst as PDF export into Files (docs/planning/artifacts-and-forms.md).
  */
 class RenderSvg implements Tool
 {
+    public function __construct(private readonly User $agent) {}
+
     public function description(): string
     {
         return <<<'DESC'
@@ -52,18 +62,17 @@ DESC;
         $width = max(100, min(4000, (int) ($request['width'] ?? 1400)));
         $height = isset($request['height']) ? max(100, min(4000, (int) $request['height'])) : null;
 
+        if ($this->agent->workspace_id === null) {
+            return 'Error: rendering needs a workspace to store the image in.';
+        }
+
         try {
-            Storage::disk('public')->makeDirectory('svg');
-
-            $uuid = Str::uuid()->toString();
-            $outputRelative = 'svg/'.$uuid.'.png';
-            $outputPath = Storage::disk('public')->path($outputRelative);
-
-            // Use the file tempnam actually reserved. Appending an extension
+            // Use the files tempnam actually reserved. Appending an extension
             // would leak the original file and lose its atomic ownership.
             $tmpSvg = tempnam(sys_get_temp_dir(), 'svg_');
-            if ($tmpSvg === false) {
-                throw new \RuntimeException('Could not reserve renderer input.');
+            $tmpPng = tempnam(sys_get_temp_dir(), 'png_');
+            if ($tmpSvg === false || $tmpPng === false) {
+                throw new \RuntimeException('Could not reserve renderer files.');
             }
 
             try {
@@ -79,7 +88,7 @@ DESC;
                     $command[] = (string) $height;
                 }
                 $command[] = '-o';
-                $command[] = $outputPath;
+                $command[] = $tmpPng;
                 $command[] = $tmpSvg;
 
                 $process = new Process($command);
@@ -91,16 +100,23 @@ DESC;
                     return 'SVG rendering error: '.trim($error);
                 }
 
-                if (! file_exists($outputPath) || filesize($outputPath) === 0) {
+                $png = (string) file_get_contents($tmpPng);
+                if ($png === '') {
                     return 'Error: rsvg-convert produced no output.';
                 }
             } finally {
                 @unlink($tmpSvg);
+                @unlink($tmpPng);
             }
 
-            $url = '/storage/'.$outputRelative;
+            $files = app(FileSystemService::class);
+            $workspaceId = (string) $this->agent->workspace_id;
+            $folder = $files->ensureFolderPath('Generated', $workspaceId, (string) $this->agent->id);
+            $name = (Str::slug((string) $title) ?: 'image').'-'.Str::lower(Str::random(8)).'.png';
+            $file = $files->writeBinaryFile($workspaceId, $folder->id, $name, $png, (string) $this->agent->id, 'image/png',
+                metadata: ['source' => 'render_svg']);
 
-            return "![{$title}]({$url})";
+            return "![{$title}](/api/files/{$file->id}/download)";
         } catch (CodeExecutionCancelled|CodeExecutionDeadlineExceeded $e) {
             // Returning an ordinary string would let Ruby treat an expired
             // renderer as a successful callback. Preserve the typed boundary.

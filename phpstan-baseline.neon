@@ -1,12 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Agents/Conversations/ChannelConversationLoader.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>workspace_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -95,12 +89,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Agents/Runtime/Subagents/SubagentRun.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between int\|string and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Agents/Support/MessageAttachmentContext.php
 
 		-
 			message: '#^Method App\\Agents\\Support\\UntrustedOutputTool\:\:handle\(\) never returns Stringable so it can be removed from the return type\.$#'
@@ -209,12 +197,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Agents/Tools/Chat/ReadPinnedMessages.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Channel\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Channel\>\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Agents/Tools/Chat/ReadRecentMessages.php
 
 		-
 			message: '#^Method App\\Agents\\Tools\\Chat\\ReadRecentMessages\:\:formatMessage\(\) return type has no value type specified in iterable type array\.$#'
@@ -811,12 +793,6 @@ parameters:
 			path: app/Domain/AgentRuntime/Application/ExecuteAssignedTask.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domain/AgentRuntime/Application/RespondToChatMessage.php
-
-		-
 			message: '#^Call to an undefined method Laravel\\Ai\\Streaming\\Events\\StreamEvent\:\:toArray\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -905,12 +881,6 @@ parameters:
 			identifier: deadCode.unreachable
 			count: 1
 			path: app/Domain/Authorization/Application/AgentPermissionResolver.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domain/Authorization/Application/ApprovalResolutionPolicy.php
 
 		-
 			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
@@ -1099,12 +1069,6 @@ parameters:
 			path: app/Domain/Chat/Telegram/Application/TelegramDigestService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
-
-		-
 			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
@@ -1163,12 +1127,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 3
 			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$content\.$#'
@@ -1279,12 +1237,6 @@ parameters:
 			path: app/Domain/Chat/Telegram/Application/TelegramOperationsService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Domain/Chat/Telegram/Application/TelegramOutboundSync.php
-
-		-
 			message: '#^Offset ''chat_id'' on array\{\}\|string in isset\(\) does not exist\.$#'
 			identifier: isset.offset
 			count: 1
@@ -1325,12 +1277,6 @@ parameters:
 			identifier: nullCoalesce.offset
 			count: 1
 			path: app/Domain/Chat/Telegram/Application/TelegramSetupService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
 
 		-
 			message: '#^Call to function in_array\(\) with arguments '''', array\{''approve'', ''reject''\} and true will always evaluate to false\.$#'
@@ -3391,18 +3337,6 @@ parameters:
 			path: app/Jobs/ExecuteAgentTaskJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Document\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/IndexDocumentJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/SendApprovalToTelegramJob.php
-
-		-
 			message: '#^Access to constant STATUS_PENDING on an unknown class App\\Listeners\\TaskStep\.$#'
 			identifier: class.notFound
 			count: 1
@@ -3473,12 +3407,6 @@ parameters:
 			identifier: generics.wrongParent
 			count: 1
 			path: app/Models/ApprovalRequest.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ListItem\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/ListItem.php
 
 		-
 			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
@@ -3661,12 +3589,6 @@ parameters:
 			path: app/Services/Chat/ChatBridge.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/Chat/DirectMessageResolver.php
-
-		-
 			message: '#^PHPDoc tag @return with type array\<int, string\> is incompatible with native type string\.$#'
 			identifier: return.phpDocType
 			count: 1
@@ -3767,12 +3689,6 @@ parameters:
 			identifier: nullCoalesce.offset
 			count: 1
 			path: app/Services/Memory/CompactionMemoryExtractor.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Document\:\:\$workspace_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Memory/DocumentIndexingService.php
 
 		-
 			message: '#^Method App\\Services\\ScriptAdmission\:\:admit\(\) return type has no value type specified in iterable type array\.$#'

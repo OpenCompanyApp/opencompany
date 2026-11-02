@@ -38,7 +38,22 @@ class FileSystemService
             ->where('is_default', true)
             ->firstOr(fn () => WorkspaceDisk::where('workspace_id', $workspaceId)
                 ->where('enabled', true)
-                ->firstOrFail());
+                ->firstOr(fn () => $this->createDefaultLocalDisk($workspaceId)));
+    }
+
+    /**
+     * A workspace with no disk at all gets the app's private `local` disk
+     * as its default on first use, so files (uploads, Telegram captures,
+     * rendered images) work in a fresh workspace without setup. Never the
+     * public disk. If an admin disabled an existing "Local" disk, that row is
+     * returned as is (not re-enabled).
+     */
+    private function createDefaultLocalDisk(string $workspaceId): WorkspaceDisk
+    {
+        return WorkspaceDisk::firstOrCreate(
+            ['workspace_id' => $workspaceId, 'name' => 'Local'],
+            ['id' => (string) Str::uuid(), 'driver' => 'local', 'config' => [], 'is_default' => true, 'enabled' => true],
+        );
     }
 
     /**
