@@ -3,6 +3,8 @@
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Mounts\VfsMount;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Domain\Vfs\OpenCompany\Policy\VfsMutationDecision;
 use App\Models\Document;
 use App\Models\User;
@@ -138,6 +140,66 @@ trait EvaluatesVfsMutationPolicy
     }
 
     /**
+     * Facade-side policy for a mount that does not govern its own mutations
+     * (VfsMount::governsMutations() false): compose the mount's
+     * mutationTools() for the operation through VfsMutationPolicy before the
+     * mount runs. This is what makes a newly registered mount governed with
+     * no code of its own: denial → permission_denied, a gated tool → one
+     * approval and approval_required, exactly as for built-in /files.
+     *
+     * Built-in mounts return early: their record paths call the policy at
+     * their own ordering point (MutatesVfsContent invariant).
+     *
+     * $permissionAlreadyChecked: the shell already composed vfs_exec +
+     * vfs_write for the whole command line, so vfs_write is not asked again
+     * (mirrors built-in /files writes); any additional mount tool still is.
+     *
+     * Side effects: may create an ApprovalRequest (outside any transaction).
+     *
+     * @param  'write'|'patch'|'remove'|'move'|'mkdir'  $operation
+     * @param  array<string, mixed>  $toolParameters
+     *
+     * @throws VfsError permission_denied | approval_required
+     */
+    private function governMountMutation(VfsMount $mount, User $agent, string $operation, string $path, array $toolParameters, bool $permissionAlreadyChecked = false): void
+    {
+        if ($mount->governsMutations()) {
+            return;
+        }
+
+        $tools = $mount->mutationTools($operation, $path);
+        if ($permissionAlreadyChecked) {
+            $tools = array_values(array_diff($tools, ['vfs_write']));
+        }
+        if ($tools === []) {
+            return;
+        }
+
+        // Direct tool and policy operation must match what approval replay
+        // derives for the same call (VfsDirectToolOperation).
+        [$directTool, $policyOperation] = match ($operation) {
+            'write' => ['vfs_write', 'write'],
+            'patch' => ['vfs_patch', 'patch'],
+            'remove' => ['vfs_rm', 'delete'],
+            'move' => ['vfs_mv', 'move'],
+            'mkdir' => ['vfs_mkdir', 'mkdir'],
+        };
+
+        $this->mutationPolicy->assertAllowedOrRequestApproval(
+            agent: $agent,
+            directToolSlug: $directTool,
+            operation: $policyOperation,
+            subject: $path,
+            requiredTools: $tools,
+            parameters: $toolParameters,
+            channelId: $this->channelIdFrom($toolParameters),
+            hint: "Changes under {$mount->prefix()} require ".implode(' and ', $tools).'.',
+            preview: ['kind' => 'vfs_mount', 'mount' => $mount->prefix(), 'operation' => $operation],
+            actionClass: $operation === 'remove' ? VfsActionClass::DELETE : VfsActionClass::REVERSIBLE_EDIT,
+        );
+    }
+
+    /**
      * @param  list<string>  $toolSlugs
      * @return array<string, mixed>
      */
@@ -220,6 +282,9 @@ trait EvaluatesVfsMutationPolicy
             throw VfsError::permissionDenied($path, 'agent document patch is not allowed for this relationship or path');
         }
 
-        $this->assertMutationToolsAllowed($viewer, $path, $tools, $parameters, isset($parameters['channelId']) && is_string($parameters['channelId']) ? $parameters['channelId'] : null, $preview);
+        // Identity and memory change who an agent is: governance. Notes and
+        // todo.md are the agent's own working state: reversible_edit.
+        $actionClass = in_array($remaining[0], ['identity', 'memory'], true) ? VfsActionClass::GOVERNANCE : VfsActionClass::REVERSIBLE_EDIT;
+        $this->assertMutationToolsAllowed($viewer, $path, $tools, $parameters, isset($parameters['channelId']) && is_string($parameters['channelId']) ? $parameters['channelId'] : null, $preview, actionClass: $actionClass);
     }
 }

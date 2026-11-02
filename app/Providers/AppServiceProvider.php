@@ -16,6 +16,7 @@ use App\Domain\Vfs\Events\DatabaseVfsEventSink;
 use App\Domain\Vfs\Events\VfsAuditor;
 use App\Domain\Vfs\Events\VfsEventSink;
 use App\Domain\Vfs\OpenCompany\AuditedOpenCompanyVfs;
+use App\Domain\Vfs\OpenCompany\Mounts\VfsMountRegistry;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Events\TaskUpdated;
 use App\Http\Middleware\AuthenticateAiGateway;
@@ -94,6 +95,10 @@ class AppServiceProvider extends ServiceProvider
         // is a singleton because it buffers aggregated read events.
         $this->app->bind(OpenCompanyVfs::class, AuditedOpenCompanyVfs::class);
         $this->app->singleton(VfsEventSink::class, DatabaseVfsEventSink::class);
+        // Additional VFS mounts (future connection, skills and app mounts;
+        // tests). Built-in mounts are declared by OpenCompanyVfs itself
+        // (RegistersVfsBuiltinMounts); governance wraps every mount.
+        $this->app->singleton(VfsMountRegistry::class);
 
         $this->app->singleton(OpenCompanyAiProviderFactory::class);
         $this->app->singleton(OpenCompanyAiProviderRegistrar::class);

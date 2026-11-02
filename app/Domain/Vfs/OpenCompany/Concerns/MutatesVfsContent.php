@@ -4,6 +4,7 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsTextPatch;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\User;
 
 /**
@@ -86,15 +87,11 @@ trait MutatesVfsContent
         // Record writes always compose vfs_write with their domain tool: a
         // gated vfs_write after a shell approval then yields one more
         // approval for the backing write, never a silent bypass.
-        return $this->withIdempotency($agent, $toolParameters, 'write', $path, fn (): array => match ($segments[0]) {
-            'files' => ($segments[1] ?? null) === '.trash'
-                ? throw new VfsError('not_writable', "Path is not writable through VFS: {$path}", ['path' => $path, 'hint' => 'Trash is read-only. Restore with mv.'])
-                : $this->writeWorkspaceFile($agent, $segments, $path, $content, $mode, $version, $toolParameters, ! $permissionAlreadyChecked),
-            'docs' => $this->writeDocumentPath($agent, $segments, $path, $content, $mode, $version, $toolParameters),
-            'tables' => $this->writeTablePath($agent, $segments, $path, $content, $mode, $version, $toolParameters),
-            'lists' => $this->writeListPath($agent, $segments, $path, $content, $mode, $version, $toolParameters),
-            'agents' => $this->writeAgentAreaPath($agent, $segments, $path, $content, $mode, $version, $toolParameters),
-            default => throw VfsError::notWritable($path),
+        return $this->withIdempotency($agent, $toolParameters, 'write', $path, function () use ($agent, $segments, $path, $content, $mode, $version, $toolParameters, $permissionAlreadyChecked): array {
+            $mount = $this->mounts()->resolve($segments) ?? throw VfsError::notWritable($path);
+            $this->governMountMutation($mount, $agent, 'write', $path, $toolParameters, $permissionAlreadyChecked);
+
+            return $mount->write($agent, $segments, $path, $content, $mode, $version, $toolParameters, $permissionAlreadyChecked);
         });
     }
 
@@ -126,39 +123,26 @@ trait MutatesVfsContent
             throw VfsError::notWritable($path);
         }
 
-        return $this->withIdempotency($agent, $toolParameters, 'patch', $path, fn (): array => $this->patchRouted($agent, $segments, $path, $patch, $version, $toolParameters));
+        return $this->withIdempotency($agent, $toolParameters, 'patch', $path, function () use ($agent, $segments, $path, $patch, $version, $toolParameters): array {
+            $mount = $this->mounts()->resolve($segments) ?? throw VfsError::notWritable($path);
+            $this->governMountMutation($mount, $agent, 'patch', $path, $toolParameters);
+
+            return $mount->patch($agent, $segments, $path, $patch, $version, $toolParameters);
+        });
     }
 
     /**
+     * Text patch of a /docs document or /files file (the built-in text
+     * mounts' patch; record mounts have their own: patchTask, patchListItem,
+     * patchTableRow, patchAgentDocument).
+     *
      * @param  list<string>  $segments
      * @param  array<string, mixed>  $toolParameters
      * @return array<string, mixed>
      */
-    private function patchRouted(User $agent, array $segments, string $path, string $patch, ?string $version, array $toolParameters): array
+    private function patchTextPath(User $agent, array $segments, string $path, string $patch, ?string $version, array $toolParameters): array
     {
-        $root = $segments[0];
-
-        if ($root === 'tasks') {
-            return $this->patchTask($agent, $segments, $path, $patch, $version, $toolParameters);
-        }
-
-        if ($root === 'lists') {
-            return $this->patchListItem($agent, $segments, $path, $patch, $version, $toolParameters);
-        }
-
-        if ($root === 'tables') {
-            return $this->patchTableRow($agent, $segments, $path, $patch, $version, $toolParameters);
-        }
-
-        if ($root === 'agents') {
-            return $this->patchAgentDocument($agent, $segments, $path, $patch, $version, $toolParameters);
-        }
-
-        if ($root !== 'docs' && $root !== 'files') {
-            throw VfsError::notWritable($path);
-        }
-
-        $document = $root === 'docs' ? $this->resolvePatchableDocument($agent, $segments, $path) : null;
+        $document = $segments[0] === 'docs' ? $this->resolvePatchableDocument($agent, $segments, $path) : null;
         $textPatch = VfsTextPatch::parse($patch);
 
         // Preflight on a full content read (never a truncated display read)
@@ -167,7 +151,9 @@ trait MutatesVfsContent
         $current = $this->readContentWithVersion($agent, $path);
         $textPatch->applyAgainstBase($current['content'], $path, $current['version'], $version);
 
-        $this->assertMutationToolsAllowed($agent, $path, ['vfs_patch'], $toolParameters, $this->channelIdFrom($toolParameters));
+        // Declared reversible_edit; the policy raises it to governance for
+        // agent identity/memory paths (per-path classifier wins upward).
+        $this->assertMutationToolsAllowed($agent, $path, ['vfs_patch'], $toolParameters, $this->channelIdFrom($toolParameters), actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         if ($document !== null) {
             return $this->patchDocumentContent($agent, $document, $path, $textPatch, $version, 'VFS patch snapshot before update');
