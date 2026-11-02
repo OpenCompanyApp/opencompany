@@ -24,36 +24,21 @@ class McpServerRegistrar
             return;
         }
 
-        // Group by slug — default account first
-        $grouped = [];
+        // One provider per slug holds every workspace's servers; the provider
+        // itself only ever exposes the bound workspace's group (see
+        // McpToolProvider). Tool slugs stay `mcp_{slug}__{tool}` so existing
+        // permission rows keep matching.
+        $providers = [];
         foreach ($servers as $server) {
-            $grouped[$server->slug][] = $server;
+            if (! isset($providers[$server->slug])) {
+                $providers[$server->slug] = new McpToolProvider($server);
+
+                continue;
+            }
+            $providers[$server->slug]->addServer($server);
         }
 
-        foreach ($grouped as $slug => $group) {
-            // Find the default server (account_alias = '')
-            $default = null;
-            $accounts = [];
-
-            foreach ($group as $server) {
-                if ($server->account_alias === '' || $server->account_alias === null) {
-                    $default = $server;
-                } else {
-                    $accounts[$server->account_alias] = $server;
-                }
-            }
-
-            // Fall back to first server if no explicit default
-            if ($default === null) {
-                $default = $group[0];
-            }
-
-            $provider = new McpToolProvider($default);
-
-            foreach ($accounts as $alias => $accountServer) {
-                $provider->addAccountServer($alias, $accountServer);
-            }
-
+        foreach ($providers as $provider) {
             $registry->register($provider);
         }
     }

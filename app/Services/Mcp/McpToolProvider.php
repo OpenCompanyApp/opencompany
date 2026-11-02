@@ -17,19 +17,70 @@ use OpenCompany\IntegrationCore\Contracts\ToolProvider;
  */
 class McpToolProvider implements ToolProvider
 {
-    /** @var array<string, McpServer>  account_alias => server */
-    private array $accountServers = [];
+    /**
+     * Servers sharing this slug, grouped by OWNING workspace.
+     *
+     * Invariant: the tool registry is process-wide, but MCP servers are
+     * workspace-owned. Catalog metadata, tool lists and calls only ever use
+     * the group of the currently bound workspace; with no workspace bound the
+     * provider exposes nothing. Another tenant's server is never selected.
+     *
+     * @var array<string, array{default: ?McpServer, accounts: array<string, McpServer>}>
+     */
+    private array $workspaces = [];
 
     public function __construct(
         private McpServer $server,
-    ) {}
+    ) {
+        $this->addServer($server);
+    }
+
+    /**
+     * Register another server with this slug (any workspace, any account).
+     */
+    public function addServer(McpServer $server): void
+    {
+        $workspaceId = (string) $server->workspace_id;
+        $this->workspaces[$workspaceId] ??= ['default' => null, 'accounts' => []];
+        $alias = (string) ($server->account_alias ?? '');
+        if ($alias === '') {
+            $this->workspaces[$workspaceId]['default'] = $server;
+        } else {
+            $this->workspaces[$workspaceId]['accounts'][$alias] = $server;
+        }
+    }
 
     /**
      * Register an additional account server for this provider.
      */
     public function addAccountServer(string $account, McpServer $server): void
     {
-        $this->accountServers[$account] = $server;
+        $workspaceId = (string) $server->workspace_id;
+        $this->workspaces[$workspaceId] ??= ['default' => null, 'accounts' => []];
+        $this->workspaces[$workspaceId]['accounts'][$account] = $server;
+    }
+
+    /**
+     * Default server of the currently bound workspace, if it has one.
+     */
+    private function currentServer(): ?McpServer
+    {
+        $group = $this->currentGroup();
+        if ($group === null) {
+            return null;
+        }
+
+        return $group['default'] ?? (array_values($group['accounts'])[0] ?? null);
+    }
+
+    /** @return array{default: ?McpServer, accounts: array<string, McpServer>}|null */
+    private function currentGroup(): ?array
+    {
+        if (! app()->bound('currentWorkspace')) {
+            return null;
+        }
+
+        return $this->workspaces[(string) app('currentWorkspace')->id] ?? null;
     }
 
     public function appName(): string
@@ -39,22 +90,32 @@ class McpToolProvider implements ToolProvider
 
     public function appMeta(): array
     {
-        $toolNames = collect($this->server->discovered_tools ?? [])
+        $server = $this->currentServer();
+        if ($server === null) {
+            return ['label' => 'not configured in this workspace', 'description' => 'MCP server', 'icon' => 'ph:plugs'];
+        }
+
+        $toolNames = collect($server->discovered_tools ?? [])
             ->pluck('name')
             ->map(fn ($n) => Str::snake(str_replace('-', '_', $n)))
             ->implode(', ');
 
         return [
             'label' => $toolNames ?: 'no tools discovered',
-            'description' => $this->server->description ?? 'MCP: '.$this->server->name,
-            'icon' => $this->server->icon,
+            'description' => $server->description ?? 'MCP: '.$server->name,
+            'icon' => $server->icon,
         ];
     }
 
     public function tools(): array
     {
+        $server = $this->currentServer();
+        if ($server === null) {
+            return [];
+        }
+
         $tools = [];
-        foreach ($this->server->discovered_tools ?? [] as $mcpTool) {
+        foreach ($server->discovered_tools ?? [] as $mcpTool) {
             // Catalog keys are permission slugs, not remote MCP names. Keep the
             // original name in metadata so createTool can recover the exact
             // server-side identifier even when hyphens/case were normalized.
@@ -64,7 +125,7 @@ class McpToolProvider implements ToolProvider
                 'type' => 'write',
                 'name' => $mcpTool['name'],
                 'description' => Str::limit($mcpTool['description'] ?? '', 120),
-                'icon' => $this->server->icon,
+                'icon' => $server->icon,
             ];
         }
 
@@ -115,11 +176,13 @@ class McpToolProvider implements ToolProvider
      */
     private function resolveServer(?string $account): McpServer
     {
-        if ($account !== null && $account !== '' && isset($this->accountServers[$account])) {
-            return $this->accountServers[$account];
+        $group = $this->currentGroup();
+        if ($group !== null && $account !== null && $account !== '' && isset($group['accounts'][$account])) {
+            return $group['accounts'][$account];
         }
 
-        return $this->server;
+        return $this->currentServer()
+            ?? throw new \RuntimeException("MCP server {$this->server->slug} is not configured in this workspace.");
     }
 
     private function toolSlug(string $mcpToolName): string
@@ -146,7 +209,8 @@ class McpToolProvider implements ToolProvider
      */
     private function findToolDef(string $mcpToolName, ?McpServer $server = null): array
     {
-        $tools = ($server ?? $this->server)->discovered_tools ?? [];
+        $server ??= $this->currentServer();
+        $tools = $server !== null ? ($server->discovered_tools ?? []) : [];
 
         foreach ($tools as $tool) {
             if (Str::snake(str_replace('-', '_', $tool['name'])) === $mcpToolName || $tool['name'] === $mcpToolName) {
