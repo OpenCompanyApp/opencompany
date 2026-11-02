@@ -483,6 +483,44 @@ Connections ──produce──▶ Events ──match──▶ Triggers ──st
     - an MCP-resources mount;
     - optional managed connectors attached as MCP servers: Activepieces (MIT, self-hosted
       sidecar), or Composio, Pipedream or Zapier with the user's own key. Never a hard dependency.
+- **Agent connections: outside agents as delegates** (locked 2026-11-02).
+  - **What they are.** A teammate or a human delegates a task to an outside agent. The agent runs in
+    its own environment, and the result comes back through change sets, approvals and audit. Grok
+    Bot follows the same pattern: it launches Cursor Cloud Agents in the user's own Cursor account,
+    billed to that plan.
+  - **Provider-neutral contract.** Every provider implements one `ExternalAgentProvider` contract:
+    - launch: task, context, repo or environment, and an optional model;
+    - follow up;
+    - stop;
+    - status and events, by webhook or polling, into the event log;
+    - results: a PR, diff, files, logs and cost.
+  - **Three routes:**
+    1. **Hosted cloud-agent providers over their APIs:** Cursor Cloud Agents (public beta, API
+       still changing), the GitHub Copilot coding agent through the GitHub connection, OpenAI
+       Codex cloud, Google Jules, and Claude Code cloud tasks (HTTP trigger), as each API allows.
+    2. **Coding-agent CLIs over ACP** (Agent Client Protocol) on an agent's computer or a connected
+       host: Claude Code, Codex CLI, Gemini/Antigravity CLI, Grok Build, OpenCode or Goose, using
+       the user's own subscriptions. This route is self-host friendly. The computer's egress rules,
+       the VFS projection, approvals and audit all apply.
+    3. **Bowerbird Agents** (future), through the Bowerbird connection. See "Relationship to
+       Bowerbird".
+  - **Messenger.** "@Cursor fix the flaky test", or a teammate decides to delegate. A run card
+    tracks the outside agent's status. Results arrive as PR links, change sets or artifacts, with
+    "revert this run" where possible.
+  - **Governance.**
+    - Launching an outside agent sends company context outside, so it is an **external action**.
+      It asks the first time per provider and repository, then offers a one-tap "always".
+    - Admins can restrict which providers and repositories are allowed.
+    - Provider keys are the user's own, kept in the vault and injected per call. Reported usage feeds
+      the agent's budget.
+    - A trigger is never consent, so a routine cannot silently send code to an outside agent.
+  - **Sequencing.**
+
+    | Phase | Work |
+    |---|---|
+    | 2 (needs computers) | The ACP runner on computers and hosts; the Copilot coding agent through the GitHub connection |
+    | 3 | Cursor Cloud Agents once its API settles; Codex, Jules and Claude Code where their APIs allow |
+    | With Bowerbird S1 or later | Bowerbird Agents |
 - **Events:** one durable, append-only workspace log with a standard envelope: type, source, subject,
   actor, time, idempotency key, untrusted payload, and causality chain and depth. Sources are internal
   domain changes, connections, channels and time. The log replaces the scattered per-feature event
@@ -705,6 +743,15 @@ Bowerbird provider follows when its sandboxes are live.
   errors, schema and guide, and the eval harness. They live in Bowerbird's public client track under
   Apache-2.0, and `oc` consumes them.
 - **Roost** stays neutral. OpenCompany's computer-provider picker may show live Roost prices.
+- **Bowerbird Agents (future Bowerbird product idea, locked as direction 2026-11-02).**
+  - **What it is:** managed coding agents. Any ACP-compatible coding CLI runs in Bowerbird S1
+    sandboxes, connected to Bowerbird CI, Runners and evidence. Results come back as PRs with proof
+    that checks passed, billed per second from the wallet.
+  - **Why it fits:** it falls on Bowerbird's side of the workload split, because coding is software
+    delivery.
+  - **Relationship:** OpenCompany ↔ Bowerbird mirrors Grok Bot ↔ Cursor, except both sides are ours
+    and the integration stays provider-neutral. OpenCompany reaches Bowerbird Agents through the same
+    `ExternalAgentProvider` contract as Cursor or Copilot, and they are never exclusive.
 - **Cross-sell, both ways:**
   - "Managed computer, powered by Bowerbird" when an agent gets a computer.
   - Connecting GitHub suggests the Bowerbird connection, which leads to Runners and Cache.
@@ -727,6 +774,7 @@ Bowerbird provider follows when its sandboxes are live.
   - **Phase 2 with S1:** the Bowerbird computer driver.
   - **Phases 3–4:** the Bowerbird connection, pipeline graduation, planning in Issues.
   - **Phase 5 with C4/C5:** the shared account and wallet, and bundles.
+  - **After S1:** Bowerbird Agents as an external agent provider.
 - **Open:** which GitHub org and legal entity hold OpenCompany (`OpenCompanyApp`,
   `BowerbirdHQ`/`bowerbird-si`, Ginger Media BV, or another structure), and the wallet currency.
 
