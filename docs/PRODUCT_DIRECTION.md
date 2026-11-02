@@ -3,7 +3,8 @@
 Status: **Locked product direction.** Accepted by the owner on 2026-11-02, with the final
 recommendation (connections, events and routines; integration tiers; nuclear cleanup) accepted the
 same day. The UI structure, sidebar, anti-mess rules, the core-primitives-plus-apps model, and the
-governance presets with gating by reversibility were accepted the same day as well.
+governance presets with gating by reversibility were accepted the same day as well, and so were
+Artifacts as a core primitive and Forms as a Table view type.
 Supersedes: earlier positioning ("A Company in a Box", "Slack/Discord where half the team is AI",
 the Reader-first modular company OS, the AI app builder framing) and the earlier integration and
 automation plans, wherever they conflict with this document.
@@ -106,7 +107,7 @@ It is aimed at teams and companies, not individuals.
     - People;
     - Groups and channels;
     - **Apps** (add-ons such as Mail and CRM);
-    - Spaces, each with the same five tools;
+    - Spaces, each with the same six tools;
     - a footer with Team and Admin.
 
     On mobile, a bottom bar holds Home, Chats, Spaces and Team. The mockups are
@@ -257,14 +258,14 @@ Telegram, anything secret goes through the Mini App.
 
 OpenCompany avoids Notion's "everything is a page" sprawl by being structured by default.
 
-- **Fixed core primitives, always on:** Threads, Issues, Tables and Records, Docs, Files, Routines,
-  Agents and People. There is no generic "page" and no user-defined object kind. Docs are not
-  containers.
+- **Fixed core primitives, always on:** Threads, Issues, Tables and Records, Docs, Files,
+  **Artifacts**, Routines, Agents and People. There is no generic "page" and no user-defined object
+  kind. Docs are not containers. Artifacts are the only code-bearing primitive.
 - **Issues, Tables and Docs are agent-native.** Every record is mentionable, assignable to an agent,
   and can emit events that trigger routines. Issues is core, not an add-on.
 - **One level of containers:** Workspace → **Spaces** (flat, never nested) → objects. Every Space has
-  the same five tools: Issues, Tables, Docs, Files and Routines. Only Files keeps folders, because it
-  mirrors real file systems and mounts.
+  the same six tools: Issues, Tables, Docs, Files, Artifacts and Routines. Only Files keeps folders,
+  because it mirrors real file systems and mounts.
 - **Typed everything:**
   - Docs have template types with properties.
   - Tables gain Person/Agent, Relation, Attachment and Long-text columns.
@@ -276,6 +277,10 @@ OpenCompany avoids Notion's "everything is a page" sprawl by being structured by
 - **Governed creation:** agents create records, issues and doc drafts within policy. Creating
   Spaces, Tables, fields or relations, changing a schema, and deleting anything are always proposals
   that a human approves.
+  *Reconciliation note (2026-11-02):* pillar 5, locked later, governs deletes. Deleting moves items
+  to a 30-day trash, which auto-applies in Personal and Team and is a proposal in Company. Purge
+  needs approval. Schema changes are proposals in Team and Company per the pillar 5 table. The
+  Personal default for structural changes is not yet specified.
 - **System files are not content.** Agent identity and memory live on the agent profile and under
   the VFS `/agents` mount, not in Docs.
 - **One concept per job:**
@@ -297,7 +302,8 @@ OpenCompany avoids Notion's "everything is a page" sprawl by being structured by
   - **Manifest.** Each app is a manifest declaring:
     - typed record types, which are schema-locked tables with relations;
     - views from a fixed catalog: list, board/pipeline, table, calendar, mail thread, record detail,
-      timeline;
+      timeline, form;
+    - artifacts, which act as the app's custom views and endpoints;
     - routine templates;
     - an agent pack;
     - the connections it requires;
@@ -313,10 +319,58 @@ OpenCompany avoids Notion's "everything is a page" sprawl by being structured by
     2. Calendar (Phase 3).
     3. CRM (Phase 4).
     4. Helpdesk, Recruiting and Invoices later.
-  - **Third-party apps** come only as signed, declarative manifests, reviewed before install.
-    Custom views come later, as sandboxed MCP Apps-style UI.
-- Artifacts (agent-built apps and endpoints) stay on the roadmap behind the messenger, computer and
-  governance work.
+  - **Third-party apps** come only as signed, declarative manifests, reviewed before install. Their
+    custom views are interactive artifacts.
+- **Artifacts** (locked 2026-11-02; full design in [Artifacts and Forms](planning/artifacts-and-forms.md)).
+  Artifacts are where OpenCompany's strengths become visible output: governed live data, mruby server
+  logic, routines, agents with computers, approvals, and self-hosting.
+  - **Two kinds, one model:**
+    - **Pages** are declarative reports and dashboards built from blocks (text, live views, charts,
+      KPIs, queries, diagrams, timelines). They are live, or snapshotted on a schedule, and contain
+      no code.
+    - **Interactive artifacts** are custom HTML UIs plus optional mruby endpoints.
+  - **No private storage.** Artifacts bind to Tables and other primitives through named bindings. An
+    artifact that needs state gets an artifact-owned Table, which is visible and governed.
+  - **Runtime:**
+    - Interactive UI runs in a sandboxed iframe on a separate user-content origin with no cookies,
+      using a default-deny CSP and the **MCP Apps bridge**.
+    - Server logic runs as mruby endpoints under a new short `endpoint` profile.
+    - Agents with a computer may publish the static build output of real frameworks.
+    - Generated JavaScript never runs on the server.
+    - Self-hosters set `ARTIFACT_ORIGIN`. Without it, a reduced-isolation fallback applies and is
+      shown in Admin.
+  - **Access and governance:**
+    - A workspace member's access is the artifact's bindings ∩ the viewer's own access.
+    - Edits go through platform change sets. Published versions are immutable at a stable URL.
+      Calls are runs and events.
+    - Every artifact has an owner, last-viewed tracking, a stale sweep, and an `/artifacts` mount
+      in the VFS.
+    - Remixing is allowed only inside the workspace.
+  - **Publishing ladder:** draft → Space → workspace → signed link → public.
+    - Signed links and public publishing are `exposure_widening` and always need approval.
+    - **Public publishing is off per workspace** until an admin enables it.
+    - External visitors get only share-safe endpoints, approved read-only published queries and form
+      submission. They get no AI or connections by default.
+    - Admin keeps a published-surfaces registry with a kill switch, abuse controls and a report link.
+  - **Apps and artifacts share one manifest family.** An artifact can graduate into an app.
+  - **Built-in blocks replace the deleted renderer packages:** Vega-Lite charts and Mermaid diagrams
+    are rendered client-side; Typst PDF export goes into Files.
+  - **Later:** OpenCompany's MCP server exposes interactive artifacts as `ui://` resources, so they
+    render in Claude and ChatGPT.
+- **Forms are a view type on any Table, not a separate app or artifact type** (locked 2026-11-02).
+  - **One pipeline:**
+    1. A public origin with no cookies.
+    2. A captcha (ALTCHA by default; Turnstile, hCaptcha and reCAPTCHA pluggable), a honeypot and
+       rate limits.
+    3. Schema, logic and consent validation.
+    4. Upload quarantine.
+    5. A record created as a change set by the form-visitor principal.
+    6. A `form.submitted` event, marked untrusted, that can start routines.
+  - **Render modes:** a Tally-style page, one question at a time, conversational agent intake (its
+    only tool is submit), embeds, and internal or Telegram forms.
+  - **Artifacts may render custom form UIs**, but must submit through the form's endpoint.
+  - **Agents generate forms** through plan, preview and approve.
+  - **Retention and data rights:** retention, auto-delete, and export and erasure for submitters.
 
 ### 8. Open source first, hosted second
 
@@ -425,12 +479,12 @@ OpenCompany has no users yet, so it breaks compatibility freely:
 
 | Phase | Scope | Exit criteria |
 |---|---|---|
-| 0 · Foundation (in progress) | Part 1 audit fixes: P0 authorization and security, including the cross-workspace credential singleton bug and MCP isolation and SSRF. Land the run control plane and VFS. mruby-only Code Mode. AGPL licensing. Honest website. Tests in CI. Nuclear cleanup: migration squash, package-system deletion, Connections model with vault and credential broker, event log with causality chain, policy model replacing behaviour modes | No known cross-workspace flaws; CI runs tests; one application license; website claims match `CURRENT_STATE.md`; package system gone; event log and Connections model in the baseline schema |
-| 1 · Messenger | API-first messenger client and realtime stream; activity feed from the event log; routines created from chat (Automations migrated to Routines); rebuilt MCP client; Google Drive storage mount as the flagship deep connector | A team can do a full day's work with agents from chat alone, including Drive files |
-| 2 · Computer v1 | `ComputerProvider` with local Docker and boat; shell, files, browser, takeover viewer; secure forms; egress allowlist; VFS projection; idle stop and snapshots; Gmail and agent inbox; inbound webhooks; script and hybrid routines; API manifests; skills and plugin import. Ships with the money-movement and password-change hard-deny entries and a basic compute cap | An agent completes a browser-and-shell task on its own computer with takeover and approvals; VFS-only agents unaffected |
-| 3 · Governance | Human roles and approver policies; full hard-deny floor; budgets that pause work; run replay and audit; 1Password, then Bitwarden/Vaultwarden; scoped and non-blocking approvals; heartbeats, monitors and daily briefs; save a task as a routine; OneDrive/SharePoint and calendars | An admin can answer "who allowed what, at what cost" for any agent action |
-| 4 · Work apps and apps platform | Agent-native Tables, Issues and Docs: mentions, assignment, record-change events and triggers, change sets for every object. Spaces and the anti-mess rules. App manifest runtime with CRM as the first schema-only app; Mail (Phase 2) and Calendar (Phase 3) are delivered on the same manifest model | Agents run real workflows in Tables and Issues without connections; CRM installs from a manifest with no app-specific storage |
-| 5 · Cloud | Hosted OpenCompany Cloud with managed computers on boat (needs a partner agreement), moving to Bowerbird sandboxes; OpenCompany as an MCP server; MCP Apps cards; A2A | Paying pilot workspaces on hosted Cloud; self-host parity maintained |
+| 0 · Foundation (in progress) | Part 1 audit fixes: P0 authorization and security, including the cross-workspace credential singleton bug and MCP isolation and SSRF. Land the run control plane and VFS. mruby-only Code Mode. AGPL licensing. Honest website. Tests in CI. Nuclear cleanup: migration squash, package-system deletion, Connections model with vault and credential broker, event log with causality chain, policy model replacing behaviour modes. Artifacts groundwork: user-content origin and sandbox proxy design, Code Mode bridge re-homed into the app, renderer outputs moved into Files with permissions | No known cross-workspace flaws; CI runs tests; one application license; website claims match `CURRENT_STATE.md`; package system gone; event log and Connections model in the baseline schema |
+| 1 · Messenger | API-first messenger client and realtime stream; activity feed from the event log; routines created from chat (Automations migrated to Routines); rebuilt MCP client; Google Drive storage mount as the flagship deep connector. Artifacts v1: Pages (blocks, live views, charts, diagrams, snapshots) and interactive artifacts at private, Space and workspace level with read bindings; artifact cards and live preview in the context pane; versions and stable URLs; `/artifacts` mount in the VFS | A team can do a full day's work with agents from chat alone, including Drive files |
+| 2 · Computer v1 | `ComputerProvider` with local Docker and boat; shell, files, browser, takeover viewer; secure forms; egress allowlist; VFS projection; idle stop and snapshots; Gmail and agent inbox; inbound webhooks; script and hybrid routines; API manifests; skills and plugin import. Ships with the money-movement and password-change hard-deny entries and a basic compute cap. Artifact mruby `endpoint` profile, write bindings through change sets, AI bridge with quotas, static bundles from computers. **Forms v1**: form view, page mode, internal and public submission, captcha, uploads, `form.submitted` events | An agent completes a browser-and-shell task on its own computer with takeover and approvals; VFS-only agents unaffected |
+| 3 · Governance | Human roles and approver policies; full hard-deny floor; budgets that pause work; run replay and audit; 1Password, then Bitwarden/Vaultwarden; scoped and non-blocking approvals; heartbeats, monitors and daily briefs; save a task as a routine; OneDrive/SharePoint and calendars. Signed and public artifact publishing with published queries; published-surfaces registry, abuse controls and kill switch; artifact lifecycle sweeps. **Forms v2**: logic, partial saves, one-question mode, conversational intake, embeds, consent and retention | An admin can answer "who allowed what, at what cost" for any agent action |
+| 4 · Work apps and apps platform | Agent-native Tables, Issues and Docs: mentions, assignment, record-change events and triggers, change sets for every object. Spaces and the anti-mess rules. App manifest runtime with CRM as the first schema-only app; Mail (Phase 2) and Calendar (Phase 3) are delivered on the same manifest model. Artifacts as custom views in app manifests; artifact-to-app packaging; artifact templates | Agents run real workflows in Tables and Issues without connections; CRM installs from a manifest with no app-specific storage |
+| 5 · Cloud | Hosted OpenCompany Cloud with managed computers on boat (needs a partner agreement), moving to Bowerbird sandboxes; OpenCompany as an MCP server; MCP Apps cards; A2A. Custom domains, MCP Apps export of artifacts to Claude and ChatGPT, Git export, payments in forms and artifacts | Paying pilot workspaces on hosted Cloud; self-host parity maintained |
 
 Phases may overlap. Phase 0 security work always takes priority over new surfaces.
 
@@ -440,7 +494,7 @@ Phases may overlap. Phase 0 security work always takes priority over new surface
 |---|---|
 | "A Company in a Box", "Inspired by OpenClaw" website messaging | Replaced by the one-sentence decision above |
 | Reader-first modular company OS and Allbase lab ([plan](planning/modular-platform-and-allbase-lab.md)) | Replaced by add-on apps built only from core primitives (pillar 7). Reader is not the first product; Mail, Calendar and CRM are the first apps |
-| AI app builder positioning ([market research](market/ai-app-builder-market-research-2026-05-25.md)) | Not the product. Artifacts remain a later feature |
+| AI app builder positioning ([market research](market/ai-app-builder-market-research-2026-05-25.md)) | Not the product. Artifacts are a core primitive bound to governed workspace data, not a standalone app builder |
 | Lua scripting and the QuickJS branch | Retired. mruby is the only Code Mode runtime |
 | Embedded Chromium browser in the app | Replaced by the browser on the agent's computer |
 | Positioning against Zapier, n8n, Make and Activepieces | Secondary. Primary competitors are Grok Bot and its clones, Paperclip, Multica and Plane agents. Activepieces is an optional connector |
