@@ -22,6 +22,11 @@ use Laravel\Ai\Tools\Request;
  *   lines [offset, offset+limit) capped at maxBytes on whole lines, numbered
  *   `cat -n` style unless raw. Continuation is explicit: truncated +
  *   next_offset + hint. raw pages are byte-exact slices of the file.
+ *   A line longer than the byte budget is cut on a UTF-8 boundary and the
+ *   page says so (truncated + line_cut); the continuation stays ON that
+ *   line (next_offset = the cut line, next_line_byte_offset = where the cut
+ *   happened), so a paging loop that follows next_offset /
+ *   next_line_byte_offset reads every byte exactly once.
  * - Paged collection files (rows.ndjson, channel day transcripts,
  *   members.json): OpenCompanyVfs::readPage() with the cursor; records are
  *   returned raw and never split; `limit` is the record count.
@@ -88,6 +93,7 @@ class VfsRead implements ReturnsVfsEnvelope, Tool
         }
 
         $offset = $input->int('offset', 1);
+        $lineByteOffset = $input->int('line_byte_offset', 0);
         $limit = $input->int('limit', 1, self::MAX_LINES);
         $maxBytes = $input->int('maxBytes', 1, 2_000_000);
         $raw = $input->bool('raw');
@@ -119,23 +125,42 @@ class VfsRead implements ReturnsVfsEnvelope, Tool
                 'hint' => "offset {$offset} is past the end of the file ({$total} lines).",
             ];
         }
+        if ($lineByteOffset > 0) {
+            $lineLength = $offset <= $total ? ($starts[$offset] ?? strlen($content)) - $starts[$offset - 1] : 0;
+            if ($lineByteOffset >= $lineLength) {
+                throw VfsError::invalid("line_byte_offset {$lineByteOffset} is not inside line {$offset} ({$lineLength} bytes).", [
+                    'field' => 'line_byte_offset',
+                    'path' => $this->vfs->normalizePath($path),
+                ]);
+            }
+            $base['line_byte_offset'] = $lineByteOffset;
+        }
 
         $lines = [];
         $bytes = 0;
-        $lineCut = false;
         $last = $offset - 1;
+        $cutAt = null;
         for ($index = $offset - 1; $index < $total && $index < $offset - 1 + $limit; $index++) {
             $end = $starts[$index + 1] ?? strlen($content);
-            $line = substr($content, $starts[$index], $end - $starts[$index]);
-            $rendered = $raw ? $line : sprintf('%6d', $index + 1)."\t".rtrim($line, "\n")."\n";
+            // Only the first line of the page can start mid-line.
+            $start = $starts[$index] + ($index === $offset - 1 ? $lineByteOffset : 0);
+            $line = substr($content, $start, $end - $start);
+            $prefix = $raw ? '' : sprintf('%6d', $index + 1)."\t";
+            $rendered = $raw ? $line : $prefix.rtrim($line, "\n")."\n";
 
             if ($bytes + strlen($rendered) > $maxBytes) {
                 if ($lines === []) {
                     // A single line longer than the whole budget: return a
-                    // UTF-8-safe prefix instead of nothing.
-                    $lines[] = mb_strcut($rendered, 0, $maxBytes, 'UTF-8');
-                    $lineCut = true;
-                    $last = $index + 1;
+                    // UTF-8-safe prefix of it (at least one character, so
+                    // paging always advances) and continue on this line.
+                    $room = max(1, $maxBytes - strlen($prefix) - ($raw ? 0 : 1));
+                    $piece = mb_strcut($line, 0, $room, 'UTF-8');
+                    if ($piece === '') {
+                        $piece = mb_substr($line, 0, 1, 'UTF-8');
+                    }
+                    $lines[] = $raw ? $piece : $prefix.$piece."\n";
+                    $cutAt = $start - $starts[$index] + strlen($piece);
+                    $last = $index;
                 }
                 break;
             }
@@ -145,18 +170,24 @@ class VfsRead implements ReturnsVfsEnvelope, Tool
             $last = $index + 1;
         }
 
-        $truncated = $last < $total;
         $text = implode('', $lines);
+        $truncated = $cutAt !== null || $last < $total;
         $page = $base + [
             'content' => $text,
             'bytes' => strlen($text),
-            'returned_lines' => max(0, $last - $offset + 1),
+            // Lines whose bytes appear in content; a cut line counts once.
+            'returned_lines' => max(0, $last - $offset + 1) + ($cutAt !== null ? 1 : 0),
             'truncated' => $truncated,
         ];
-        if ($lineCut) {
+        if ($cutAt !== null) {
+            $lineNumber = $last + 1;
+            $lineLength = ($starts[$last + 1] ?? strlen($content)) - $starts[$last];
             $page['line_cut'] = true;
-        }
-        if ($truncated) {
+            $page['next_offset'] = $lineNumber;
+            $page['next_line_byte_offset'] = $cutAt;
+            $page['hint'] = "Line {$lineNumber} is longer than maxBytes; showed its bytes up to {$cutAt} of {$lineLength}. "
+                ."Continue with offset={$lineNumber}, line_byte_offset={$cutAt} (or raise maxBytes).";
+        } elseif ($truncated) {
             $page['next_offset'] = $last + 1;
             $page['hint'] = "Showing lines {$offset}-{$last} of {$total}. Continue with offset=".($last + 1).'.';
         }

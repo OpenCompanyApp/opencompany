@@ -12,6 +12,11 @@ namespace App\Agents\Tools\Vfs\Support;
  * delete+insert block (still a valid diff, just less minimal). Output is
  * capped in bytes with an explicit truncation line; it is a preview, never
  * applied back.
+ *
+ * EOF invariant: a change of only the final newline ("x" vs "x\n") is a real
+ * edit the plan applies, so it must render as a hunk. Lines are compared by
+ * key, and when the two sides disagree on the trailing newline the last
+ * line's key carries that state; rendering always uses the original text.
  */
 final class VfsUnifiedDiff
 {
@@ -27,13 +32,20 @@ final class VfsUnifiedDiff
 
         [$a, $aNoEol] = self::lines($old);
         [$b, $bNoEol] = self::lines($new);
-        $ops = self::operations($a, $b);
+        $aKeys = $a;
+        $bKeys = $b;
+        if ($a !== [] && $b !== [] && $aNoEol !== $bNoEol) {
+            $aKeys[count($a) - 1] .= $aNoEol ? "\0no-eol" : '';
+            $bKeys[count($b) - 1] .= $bNoEol ? "\0no-eol" : '';
+        }
+        $ops = self::operations($aKeys, $bKeys);
 
         $out = ['--- a'.$path, '+++ b'.$path];
         foreach (self::hunks($ops) as $hunk) {
             $out[] = $hunk['header'];
-            foreach ($hunk['lines'] as [$tag, $text, $oldIndex, $newIndex]) {
-                $out[] = $tag.$text;
+            foreach ($hunk['lines'] as [$tag, , $oldIndex, $newIndex]) {
+                // Render the original line, never the comparison key.
+                $out[] = $tag.($tag === '+' ? $b[(int) $newIndex] : $a[(int) $oldIndex]);
                 $lastOld = $oldIndex !== null && $oldIndex === count($a) - 1;
                 $lastNew = $newIndex !== null && $newIndex === count($b) - 1;
                 if (($tag !== '+' && $lastOld && $aNoEol) || ($tag !== '-' && $lastNew && $bNoEol)) {
