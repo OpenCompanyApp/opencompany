@@ -6,6 +6,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
+use Tests\Evals\Vfs\Support\BridgeShim;
+use Tests\Evals\Vfs\Support\EvalWorld;
 use Tests\Evals\Vfs\Support\RunsVfsEvalCases;
 use Tests\TestCase;
 
@@ -43,6 +45,26 @@ class VfsEvalOracleTest extends TestCase
 
             return isset($task['scripted']) || isset($task[$agentMode === 'computer_with_bridge' ? 'oracle_computer' : 'oracle']);
         });
+    }
+
+    // The shim is the only route from the fake computer to company data:
+    // globs expand locally (pilot finding: unexpanded *.json made the
+    // computer arm fail for harness reasons), the snapshot is read-only and
+    // host programs that could reach real systems are refused.
+    public function test_bridge_shim_shell_contract(): void
+    {
+        $world = EvalWorld::build($this->workspace, []);
+        $shim = new BridgeShim($world->atlas);
+        $run = fn (string $command): array => json_decode($shim->run($command), true);
+
+        $hits = $run('grep -l Globex /mnt/oc/tables/customers/rows/by-id/*.json');
+        $this->assertSame(0, $hits['exit_code'], json_encode($hits));
+        $this->assertStringContainsString($world->ids['row.globex'], $hits['stdout']);
+        $this->assertStringContainsString('Read-only file system', $run('echo x > /mnt/oc/docs/handbook/roadmap')['stderr']);
+        $this->assertSame(127, $run('curl http://opencompany.test')['exit_code']);
+        $this->assertSame(127, $run('php artisan tinker')['exit_code']);
+        $this->assertStringNotContainsString('CONFIDENTIAL', $run('grep -r CONFIDENTIAL /mnt/oc')['stdout']);
+        $this->assertSame("a b\n", $run("echo 'a b' | cat")['stdout']);
     }
 
     #[DataProvider('oracleCases')]

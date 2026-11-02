@@ -222,7 +222,7 @@ final class BridgeShim
         $pipeline = [];
         $groups = [];
         foreach ($tokens as $token) {
-            if (is_array($token) && in_array($token['op'], [';', '&&', '||'], true)) {
+            if (is_array($token) && in_array($token['op'] ?? null, [';', '&&', '||'], true)) {
                 $groups[] = [$connector, $pipeline];
                 $connector = $token['op'];
                 $pipeline = [];
@@ -258,7 +258,7 @@ final class BridgeShim
     {
         $commands = [[]];
         foreach ($tokens as $token) {
-            if (is_array($token) && $token['op'] === '|') {
+            if (is_array($token) && ($token['op'] ?? null) === '|') {
                 $commands[] = [];
 
                 continue;
@@ -278,6 +278,11 @@ final class BridgeShim
             $useHeredoc = false;
             for ($i = 0; $i < count($command); $i++) {
                 $token = $command[$i];
+                if (is_array($token) && isset($token['glob'])) {
+                    array_push($argv, ...$this->expandGlob($token['glob']));
+
+                    continue;
+                }
                 if (is_array($token)) {
                     $next = $command[$i + 1] ?? null;
                     match ($token['op']) {
@@ -1029,6 +1034,19 @@ final class BridgeShim
         return '/'.implode('/', $parts);
     }
 
+    /** @return list<string> matching local paths, or the literal word when none match */
+    private function expandGlob(string $word): array
+    {
+        $pattern = $this->abs($word);
+        $matches = array_values(array_filter(
+            array_merge(array_keys($this->files), array_keys($this->allDirs())),
+            fn (string $path): bool => fnmatch($pattern, $path, FNM_PATHNAME),
+        ));
+        sort($matches);
+
+        return $matches === [] ? [$word] : array_values(array_unique($matches));
+    }
+
     private function readLocal(string $path): ?string
     {
         return $this->files[$this->abs($path)]['content'] ?? null;
@@ -1149,13 +1167,23 @@ final class BridgeShim
      * Bash-like tokenizer: quotes, backslash escapes, and the operators
      * | ; && || > >> < 2> 2>&1 <<.
      *
-     * @return list<string|array{op: string}>|null null on an unterminated quote
+     * @return list<string|array{op: string}|array{glob: string}>|null null on an unterminated quote
      */
     private function tokenize(string $line): ?array
     {
         $tokens = [];
         $current = '';
         $hasCurrent = false;
+        $quoted = false;
+        // Unquoted words with glob characters are emitted as ['glob' => word]
+        // and expanded against the local filesystem (bash semantics: no
+        // match keeps the literal word).
+        $emit = function () use (&$tokens, &$current, &$hasCurrent, &$quoted): void {
+            $tokens[] = ! $quoted && preg_match('/[*?\[]/', $current) === 1 ? ['glob' => $current] : $current;
+            $current = '';
+            $hasCurrent = false;
+            $quoted = false;
+        };
         $length = strlen($line);
         for ($i = 0; $i < $length; $i++) {
             $c = $line[$i];
@@ -1174,6 +1202,7 @@ final class BridgeShim
                 }
                 $current .= $buffer;
                 $hasCurrent = true;
+                $quoted = true;
                 $i = $end;
 
                 continue;
@@ -1193,9 +1222,7 @@ final class BridgeShim
             }
             if ($op !== null || ctype_space($c)) {
                 if ($hasCurrent) {
-                    $tokens[] = $current;
-                    $current = '';
-                    $hasCurrent = false;
+                    $emit();
                 }
                 if ($op !== null) {
                     $tokens[] = ['op' => $op];
@@ -1208,7 +1235,7 @@ final class BridgeShim
             $hasCurrent = true;
         }
         if ($hasCurrent) {
-            $tokens[] = $current;
+            $emit();
         }
 
         return $tokens;
