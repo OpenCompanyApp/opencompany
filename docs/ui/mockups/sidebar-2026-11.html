@@ -1,0 +1,104 @@
+<!doctype html>
+<!--
+  OpenCompany sidebar mockup (accepted 2026-11-02).
+  Source of truth: docs/PRODUCT_DIRECTION.md pillar 4 and docs/planning/ui-structure-and-agent-editing.md, Appendix A.
+  Static design artifact only; not application code. Open directly in a browser.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>OpenCompany sidebar mockup (2026-11)</title><style>
+:root{--font-sans:Inter,ui-sans-serif,system-ui,sans-serif;--font-mono:ui-monospace,SFMono-Regular,monospace;--radius:10px;
+--background:#0b0b0c;--foreground:#ececee;--muted-foreground:#9a9aa3;--card:#141416;--border:#2a2a2e;--secondary:#232327;--secondary-foreground:#ececee;
+--primary:#3b82f6;--primary-foreground:#fff;--warning:#f59e0b;--success:#22c55e;--info:#3b82f6}
+@media (prefers-color-scheme: light){:root{--background:#fafafa;--foreground:#18181b;--muted-foreground:#6b6b74;--card:#fff;--border:#e4e4e7;--secondary:#f1f1f3;--secondary-foreground:#18181b}}
+body{margin:0;padding:24px;max-width:780px;background:var(--background);font-family:var(--font-sans);color:var(--foreground)}
+.wrap{display:flex;gap:20px;align-items:flex-start}
+.sb{width:260px;flex:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 10px;font-size:13px}
+.ws{display:flex;align-items:center;gap:8px;padding:4px 6px 10px;font-weight:600}
+.logo{width:22px;height:22px;border-radius:6px;background:var(--primary);color:var(--primary-foreground);display:grid;place-items:center;font-size:12px}
+.ws .chev{color:var(--muted-foreground);font-weight:400;margin-left:-4px}
+.ws .new{margin-left:auto;width:24px;height:24px;border-radius:6px;border:1px solid var(--border);display:grid;place-items:center;color:var(--muted-foreground)}
+.search{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--muted-foreground);margin-bottom:8px}
+.search kbd{margin-left:auto;font-family:var(--font-mono);font-size:11px;border:1px solid var(--border);border-radius:4px;padding:0 4px}
+.row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;white-space:nowrap}
+.row.active{background:var(--secondary);color:var(--secondary-foreground);font-weight:600}
+.row .ic{width:18px;text-align:center;color:var(--muted-foreground);flex:none}
+.row .r{margin-left:auto;display:flex;gap:5px;align-items:center}
+.badge{font-size:11px;font-weight:600;border-radius:10px;padding:0 6px;line-height:17px}
+.badge.need{background:var(--warning);color:#1b1300}
+.badge.unread{background:var(--primary);color:var(--primary-foreground)}
+.sec{margin:12px 6px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-foreground);display:flex}
+.sec span{margin-left:auto;text-transform:none;letter-spacing:0}
+.av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;position:relative;flex:none;color:#fff}
+.av.agent{border-radius:6px}
+.dot{position:absolute;right:-2px;bottom:-2px;width:8px;height:8px;border-radius:50%;border:2px solid var(--card)}
+.on{background:var(--success)}.work{background:var(--info)}.needd{background:var(--warning)}.off{background:var(--muted-foreground)}
+.tag{font-size:10px;border:1px solid var(--border);border-radius:4px;padding:0 4px;color:var(--muted-foreground)}
+.pc{font-size:11px;color:var(--muted-foreground)}
+.status{font-size:11px;color:var(--muted-foreground);overflow:hidden;text-overflow:ellipsis;max-width:90px}
+.sub{padding-left:30px}
+.sub .ic{width:14px}
+.foot{border-top:1px solid var(--border);margin-top:10px;padding-top:8px}
+.notes{flex:1;font-size:13px;line-height:1.45}
+.note{border-left:3px solid var(--border);padding:2px 0 2px 10px;margin-bottom:12px}
+.note b{display:block;margin-bottom:2px}
+.note.k{border-color:var(--warning)} .note.p{border-color:var(--primary)} .note.i{border-color:var(--info)} .note.s{border-color:var(--success)}
+.muted{color:var(--muted-foreground)}
+</style></head><body><div class="wrap">
+<div class="sb">
+ <div class="ws"><div class="logo">A</div>Acme <span class="chev">▾</span><div class="new" title="New chat">✎</div></div>
+ <div class="search">⌕ Search or jump to… <kbd>⌘K</kbd></div>
+
+ <div class="row active"><span class="ic">◉</span>Home<span class="r"><span class="badge need">3 need you</span></span></div>
+
+ <div class="sec">Pinned</div>
+ <div class="row"><span class="ic">#</span>launch-q4<span class="r"><span class="badge unread">4</span></span></div>
+ <div class="row"><span class="ic">▦</span>Leads<span class="r"><span class="pc">Sales</span></span></div>
+ <div class="row"><span class="ic">◇</span>OPS-142 Renew insurance</div>
+
+ <div class="sec">Agents <span>+ hire</span></div>
+ <div class="row"><span class="av agent" style="background:#7c5cff">A<i class="dot work"></i></span>Ada<span class="tag">🖥</span><span class="r"><span class="status">editing Leads…</span><span class="badge unread">2</span></span></div>
+ <div class="row"><span class="av agent" style="background:#e0812c">B<i class="dot needd"></i></span>Bram<span class="tag">🖥</span><span class="r"><span class="badge need">!</span></span></div>
+ <div class="row"><span class="av agent" style="background:#1f9d8a">C<i class="dot on"></i></span>Cleo<span class="r"><span class="status">idle</span></span></div>
+ <div class="row"><span class="av agent" style="background:#5b6b7f">F<i class="dot off"></i></span>Finn<span class="r"><span class="status">paused</span></span></div>
+
+ <div class="sec">People</div>
+ <div class="row"><span class="av" style="background:#3b82f6">S<i class="dot on"></i></span>Sanne<span class="r"><span class="badge unread">1</span></span></div>
+ <div class="row"><span class="av" style="background:#94a3b8">J<i class="dot off"></i></span>Jonas</div>
+
+ <div class="sec">Groups &amp; channels</div>
+ <div class="row"><span class="ic">#</span>general</div>
+ <div class="row"><span class="ic">#</span>sales</div>
+ <div class="row"><span class="ic">◎</span>Ada, Bram, Sanne</div>
+
+ <div class="sec">Apps <span>+ add</span></div>
+ <div class="row"><span class="ic">✉</span>Mail<span class="r"><span class="badge unread">12</span></span></div>
+ <div class="row"><span class="ic">◈</span>CRM<span class="r"><span class="pc">8 deals due</span></span></div>
+
+ <div class="sec">Spaces <span>+</span></div>
+ <div class="row"><span class="ic">▾</span><b>Sales</b></div>
+ <div class="row sub"><span class="ic">◇</span>Issues<span class="r"><span class="pc">12</span></span></div>
+ <div class="row sub"><span class="ic">▦</span>Tables</div>
+ <div class="row sub"><span class="ic">≡</span>Docs</div>
+ <div class="row sub"><span class="ic">▤</span>Files<span class="r"><span class="pc">Drive</span></span></div>
+ <div class="row sub"><span class="ic">↻</span>Routines<span class="r"><span class="pc">5</span></span></div>
+ <div class="row sub"><span class="ic">◈</span>Deals<span class="r"><span class="pc">CRM</span></span></div>
+ <div class="row"><span class="ic">▸</span>Engineering</div>
+ <div class="row"><span class="ic">▸</span>Operations</div>
+
+ <div class="foot">
+  <div class="row"><span class="ic">◍</span>Team</div>
+  <div class="row"><span class="ic">⚙</span>Admin</div>
+  <div class="row"><span class="av" style="background:#0f766e">R<i class="dot on"></i></span>Rutger<span class="r"><span class="pc">⋯</span></span></div>
+ </div>
+</div>
+
+<div class="notes">
+ <div class="note k"><b>Home is the attention page</b><span class="muted">Approvals, questions, takeovers and sign-in requests rank first ("3 need you"), then results, then FYI. It replaces Dashboard, Activity and Workload, and the daily brief lands here. It isn't called "Inbox", so it doesn't get confused with the Mail app or agents' own inboxes.</span></div>
+ <div class="note p"><b>Pinned</b><span class="muted">Pins are per person and can be any thread, table, issue or doc. Pinning is the only way an object appears at the top level of the rail.</span></div>
+ <div class="note i"><b>Agents are teammates</b><span class="muted">Clicking an agent opens a DM with it, not its profile. The status dot shows working (with the current task), needs you (!), idle or paused. 🖥 means the agent has its own computer; Cleo is VFS-only. The rail shows about 5 recent agents, and the rest are in Team or ⌘K.</span></div>
+ <div class="note s"><b>People, groups, channels</b><span class="muted">These work like a normal messenger, with presence, unread counts and mentions. A group chat can mix agents and people.</span></div>
+ <div class="note"><b>Apps</b><span class="muted">Optional add-ons such as Mail, CRM, Calendar and Helpdesk, built only from the core primitives.</span></div>
+ <div class="note"><b>Spaces are flat, with fixed tools</b><span class="muted">Every Space has the same five tools (Issues, Tables, Docs, Files, Routines), plus scoped views from installed apps, such as Deals here. Spaces don't nest inside each other and there are no pages inside pages.</span></div>
+ <div class="note"><b>Footer</b><span class="muted">Team is the directory of people and agents, and holds agent profiles. Admin holds connections, policies, members and billing.</span></div>
+ <div class="note"><b>Mobile</b><span class="muted">A bottom bar with Home · Chats · Spaces · Team. Cards open as full-screen sheets.</span></div>
+</div>
+</div></body></html>

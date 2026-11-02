@@ -1,0 +1,74 @@
+<!doctype html>
+<!--
+  OpenCompany core primitives + add-on apps mockup (accepted 2026-11-02).
+  Source of truth: docs/PRODUCT_DIRECTION.md pillar 7 and docs/planning/ui-structure-and-agent-editing.md, Appendix B.
+  Static design artifact only; not application code. Open directly in a browser.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>OpenCompany primitives and apps mockup (2026-11)</title><style>
+:root{--font-sans:Inter,ui-sans-serif,system-ui,sans-serif;--radius:10px;
+--background:#0b0b0c;--foreground:#ececee;--muted-foreground:#9a9aa3;--card:#141416;--border:#2a2a2e;--secondary:#232327;
+--primary:#3b82f6;--primary-foreground:#fff;--warning:#f59e0b;--chart-1:#3b82f6;--chart-2:#14b8a6;--chart-3:#f59e0b;--chart-4:#a855f7}
+@media (prefers-color-scheme: light){:root{--background:#fafafa;--foreground:#18181b;--muted-foreground:#6b6b74;--card:#fff;--border:#e4e4e7;--secondary:#f1f1f3}}
+body{margin:0;padding:24px;max-width:780px;background:var(--background);font-family:var(--font-sans);color:var(--foreground)}
+.wrap{display:flex;gap:20px;align-items:flex-start}
+.sb{width:240px;flex:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 10px;font-size:13px}
+.row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;white-space:nowrap}
+.row.active{background:var(--secondary);font-weight:600}
+.ic{width:18px;text-align:center;color:var(--muted-foreground);flex:none}
+.r{margin-left:auto;display:flex;gap:5px;align-items:center}
+.badge{font-size:11px;font-weight:600;border-radius:10px;padding:0 6px;line-height:17px}
+.need{background:var(--warning);color:#1b1300}
+.unread{background:var(--primary);color:var(--primary-foreground)}
+.sec{margin:12px 6px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-foreground);display:flex}
+.sec span{margin-left:auto;text-transform:none;letter-spacing:0}
+.pc{font-size:11px;color:var(--muted-foreground)}
+.new{outline:2px dashed var(--primary);outline-offset:2px;border-radius:8px;padding:2px 0;margin:4px 0}
+.dim{color:var(--muted-foreground);font-size:12px;padding:4px 6px}
+.stack{flex:1;display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+.layer{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;background:var(--card)}
+.layer h4{margin:0 0 6px;font-size:13px;display:flex;gap:8px;align-items:center}
+.pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:1px 8px;margin:2px 3px 2px 0;font-size:12px}
+.l1{border-left:4px solid var(--chart-1)} .l2{border-left:4px solid var(--chart-2)} .l3{border-left:4px solid var(--chart-3)} .l4{border-left:4px solid var(--chart-4)}
+.k{font-size:11px;color:var(--muted-foreground);font-weight:400}
+.arrow{text-align:center;color:var(--muted-foreground);font-size:11px;margin:-4px 0}
+</style></head><body><div class="wrap">
+<div class="sb">
+ <div class="row active"><span class="ic">◉</span>Home<span class="r"><span class="badge need">3 need you</span></span></div>
+ <div class="sec">Pinned</div>
+ <div class="dim">…</div>
+ <div class="sec">Agents</div>
+ <div class="dim">Ada · Bram · Cleo …</div>
+ <div class="sec">People · Groups · Channels</div>
+ <div class="dim">…</div>
+ <div class="new">
+ <div class="sec">Apps <span>+ add</span></div>
+ <div class="row"><span class="ic">✉</span>Mail<span class="r"><span class="badge unread">12</span></span></div>
+ <div class="row"><span class="ic">◈</span>CRM<span class="r"><span class="pc">8 deals due</span></span></div>
+ <div class="row"><span class="ic">▦</span>Calendar<span class="r"><span class="pc">3 today</span></span></div>
+ <div class="row"><span class="ic">?</span>Helpdesk<span class="r"><span class="badge unread">5</span></span></div>
+ </div>
+ <div class="sec">Spaces</div>
+ <div class="row"><span class="ic">▾</span><b>Sales</b></div>
+ <div class="row" style="padding-left:30px"><span class="ic">◇</span>Issues</div>
+ <div class="row" style="padding-left:30px"><span class="ic">▦</span>Tables</div>
+ <div class="row" style="padding-left:30px"><span class="ic">≡</span>Docs</div>
+ <div class="row" style="padding-left:30px"><span class="ic">▤</span>Files</div>
+ <div class="row" style="padding-left:30px"><span class="ic">↻</span>Routines</div>
+ <div class="row" style="padding-left:30px"><span class="ic">◈</span>Deals <span class="r"><span class="pc">CRM</span></span></div>
+</div>
+<div class="stack">
+ <div class="layer l4"><h4>Apps <span class="k">optional add-ons, installed per workspace</span></h4>
+  <span class="pill">Mail</span><span class="pill">CRM</span><span class="pill">Calendar</span><span class="pill">Helpdesk</span><span class="pill">Recruiting</span><span class="pill">Invoices</span><span class="pill">…third-party later</span>
+  <div class="k" style="margin-top:6px">Each app is a manifest. It adds typed record types, views from a fixed catalog, routine templates, an agent pack, the connections it needs, and roles. An app never brings its own storage.</div></div>
+ <div class="arrow">built only from ↓</div>
+ <div class="layer l1"><h4>Core primitives <span class="k">always on, fixed</span></h4>
+  <span class="pill">Threads</span><span class="pill">Issues</span><span class="pill">Tables · Records</span><span class="pill">Docs</span><span class="pill">Files</span><span class="pill">Routines</span><span class="pill">Agents</span><span class="pill">People</span>
+  <div class="k" style="margin-top:6px">Agents read and write everything the same way, through the VFS, the API and change sets.</div></div>
+ <div class="arrow">fed by ↓</div>
+ <div class="layer l2"><h4>Connections <span class="k">pillar 9</span></h4>
+  <span class="pill">Gmail / Outlook</span><span class="pill">Google / MS Calendar</span><span class="pill">Drive / OneDrive</span><span class="pill">MCP</span><span class="pill">API manifests</span><span class="pill">Webhooks</span></div>
+ <div class="arrow">governed by ↓</div>
+ <div class="layer l3"><h4>Policy, event log, vault <span class="k">one layer for everything</span></h4>
+  <span class="k">Approvals · roles · budgets · audit · change sets · revert a run</span></div>
+</div>
+</div></body></html>
