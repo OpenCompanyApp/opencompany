@@ -8,6 +8,13 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Domain tool: move a list item (or a whole project) to the trash.
+ *
+ * Trash, not purge: the item stays restorable from the VFS `/lists/.trash/`
+ * view. A project takes its live items with it as one trash batch
+ * (TrashesInBatches), so they never stay behind as live orphans.
+ */
 class DeleteListItem implements Tool
 {
     public function __construct(
@@ -16,7 +23,7 @@ class DeleteListItem implements Tool
 
     public function description(): string
     {
-        return 'Delete a list item by its ID. This action is permanent.';
+        return 'Delete a list item (or a project with its items) by its ID. It moves to the trash and can be restored.';
     }
 
     public function handle(Request $request): string
@@ -24,9 +31,9 @@ class DeleteListItem implements Tool
         try {
             $item = ListItem::forWorkspace()->findOrFail($request['listItemId']);
             $title = $item->title;
-            $item->delete();
+            $item->trashAsBatch((string) $this->agent->id);
 
-            return "List item '{$title}' deleted.";
+            return "List item '{$title}' deleted (moved to the trash; restorable).";
         } catch (\Throwable $e) {
             return "Error deleting list item: {$e->getMessage()}";
         }

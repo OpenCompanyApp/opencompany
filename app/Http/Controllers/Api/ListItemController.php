@@ -32,7 +32,7 @@ class ListItemController extends Controller
         $isFolder = $request->input('isFolder', false);
         $parentId = $request->input('parentId');
 
-        if (!$isFolder && !$parentId) {
+        if (! $isFolder && ! $parentId) {
             return response()->json(['error' => 'Items must belong to a project (parentId is required).'], 422);
         }
 
@@ -112,10 +112,10 @@ class ListItemController extends Controller
         if (isset($data['status'])) {
             $newStatus = ListStatus::forWorkspace()->where('slug', $data['status'])->first();
             if ($newStatus) {
-                if ($newStatus->is_done && !$listItem->completed_at) {
+                if ($newStatus->is_done && ! $listItem->completed_at) {
                     $data['completed_at'] = now();
                 }
-                if (!$newStatus->is_done && $listItem->completed_at) {
+                if (! $newStatus->is_done && $listItem->completed_at) {
                     $data['completed_at'] = null;
                 }
             }
@@ -140,7 +140,9 @@ class ListItemController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        ListItem::forWorkspace()->findOrFail($id)->delete();
+        // Trash, not purge; a project takes its live items with it as one
+        // restorable batch (TrashesInBatches).
+        ListItem::forWorkspace()->findOrFail($id)->trashAsBatch(auth()->id() !== null ? (string) auth()->id() : null);
 
         return response()->json(['success' => true]);
     }

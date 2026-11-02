@@ -7,6 +7,7 @@ use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\User;
 use App\Models\WorkspaceFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Public structural VFS operations: mkdir, touch, rm, cp, mv, truncate.
@@ -180,12 +181,18 @@ trait RunsVfsFileMutations
             // their names: their parent row is what moved out of the way.
             $metadata = is_array($locked->metadata) ? $locked->metadata : [];
             $metadata['trash'] = ['original_name' => $locked->name, 'original_parent_id' => $locked->parent_id];
-            $stamp = now();
             WorkspaceFile::withTrashed()->whereKey($locked->id)->toBase()->update([
                 'name' => $locked->name.'.trashed-'.$this->idSuffix($locked->id),
                 'metadata' => json_encode($metadata, JSON_UNESCAPED_SLASHES),
             ]);
-            WorkspaceFile::withTrashed()->whereKey($ids)->toBase()->update(['deleted_at' => $stamp, 'deleted_by' => $agent->id]);
+            // One fresh batch id for the whole subtree: restore selects by
+            // it, never by deleted_at (second precision would sweep in a
+            // child trashed on its own a moment earlier).
+            WorkspaceFile::withTrashed()->whereKey($ids)->toBase()->update([
+                'deleted_at' => now(),
+                'deleted_by' => $agent->id,
+                'trash_batch_id' => (string) Str::uuid(),
+            ]);
 
             return count($ids);
         });
@@ -335,18 +342,21 @@ trait RunsVfsFileMutations
         $restored = DB::transaction(function () use ($file, $parentId, $name, $source): WorkspaceFile {
             $locked = WorkspaceFile::onlyTrashed()->where('workspace_id', $file->workspace_id)->whereKey($file->id)->lockForUpdate()->first()
                 ?? throw VfsError::notFound($source);
-            $stamp = $locked->deleted_at;
+            // Exactly the batch this root was trashed in. A descendant
+            // trashed on its own earlier has another batch id (and its own
+            // `.trashed-` name) and stays in the trash.
+            $batchId = $locked->getAttribute('trash_batch_id');
             $ids = [$locked->id];
-            $frontier = [$locked->id];
+            $frontier = $batchId === null ? [] : [$locked->id];
             for ($depth = 0; $frontier !== [] && $depth < 50; $depth++) {
-                $children = WorkspaceFile::onlyTrashed()->whereIn('parent_id', $frontier)->where('deleted_at', $stamp)->pluck('id')->map(fn ($id): string => (string) $id)->all();
+                $children = WorkspaceFile::onlyTrashed()->whereIn('parent_id', $frontier)->where('trash_batch_id', $batchId)->pluck('id')->map(fn ($id): string => (string) $id)->all();
                 array_push($ids, ...$children);
                 $frontier = $children;
             }
 
             $metadata = is_array($locked->metadata) ? $locked->metadata : [];
             unset($metadata['trash']);
-            WorkspaceFile::withTrashed()->whereKey($ids)->toBase()->update(['deleted_at' => null, 'deleted_by' => null]);
+            WorkspaceFile::withTrashed()->whereKey($ids)->toBase()->update(['deleted_at' => null, 'deleted_by' => null, 'trash_batch_id' => null]);
             $fresh = WorkspaceFile::forWorkspace()->findOrFail($locked->id);
             $fresh->forceFill(['parent_id' => $parentId, 'name' => $name, 'metadata' => $metadata === [] ? null : $metadata])->save();
 
