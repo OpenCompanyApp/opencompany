@@ -227,7 +227,7 @@ class VfsShellSemanticsTest extends TestCase
 
         $error = $this->shErr("echo before; sed -i 's/draft/final/' /docs/by-id/{$doc->id}; echo after");
         $this->assertSame('approval_required', $error->errorCode);
-        $this->assertSame('approval_pending', $error->context['status']);
+        $this->assertSame('pending_approval', $error->context['status']);
         $this->assertSame("before\n", $error->context['stdout']);
         $this->assertSame("a draft\n", $doc->fresh()->content);
         // The approval replays the governed vfs_patch, not the shell line.
@@ -488,7 +488,7 @@ class VfsShellSemanticsTest extends TestCase
         foreach (['echo x > /files/gated.txt || echo swallowed', 'echo first; echo x > /files/gated.txt; echo later'] as $command) {
             $approval = $this->shErr($command);
             $this->assertSame('approval_required', $approval->errorCode, $command);
-            $this->assertSame('approval_pending', $approval->context['status']);
+            $this->assertSame('pending_approval', $approval->context['status']);
             $this->assertStringNotContainsString('swallowed', (string) ($approval->context['stdout'] ?? ''));
             $this->assertStringNotContainsString('later', (string) ($approval->context['stdout'] ?? ''));
         }

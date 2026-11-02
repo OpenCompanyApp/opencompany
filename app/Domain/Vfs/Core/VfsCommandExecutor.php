@@ -62,7 +62,7 @@ use App\Models\User;
  *   `exit_code` 2;
  * - `approval_required` and `unsupported` abort the whole line immediately,
  *   never swallowed by `||` or `;`; context gains `stdout`/`stderr` and, for
- *   approvals, `status: "approval_pending"`;
+ *   approvals, `status: "pending_approval"`;
  * - binary or non-UTF-8 stdout fails with invalid_request and a hint.
  */
 class VfsCommandExecutor
@@ -471,7 +471,7 @@ class VfsCommandExecutor
             $context['stderr'] = $this->stderr;
         }
         if ($error->errorCode === 'approval_required') {
-            $context['status'] = 'approval_pending';
+            $context['status'] = 'pending_approval';
         } elseif ($exitCode !== null) {
             $context['exit_code'] = $exitCode;
         }

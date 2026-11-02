@@ -257,7 +257,15 @@ trait ExecutesVfsListCommands
         $sizeWidth = max(array_map(fn (array $row): int => strlen($row[1]), $rows) ?: [1]);
         $timeWidth = max(array_map(fn (array $row): int => strlen($row[2]), $rows) ?: [1]);
 
-        return array_map(fn (array $row): string => $row[0].' '.str_pad($row[1], $sizeWidth, ' ', STR_PAD_LEFT).' '.str_pad($row[2], $timeWidth).' '.$row[3], $rows);
+        return array_map(function (array $row, VfsEntry $entry) use ($sizeWidth, $timeWidth): string {
+            $line = $row[0].' '.str_pad($row[1], $sizeWidth, ' ', STR_PAD_LEFT).' '.str_pad($row[2], $timeWidth).' '.$row[3];
+            // Entries that carry a one-line description (root mounts, /me)
+            // show it after the name so `ls -l /` doubles as a mount map
+            // (Stream C1's addition to the old formatter, kept here).
+            $description = $entry->metadata['description'] ?? null;
+
+            return is_string($description) && $description !== '' ? "{$line}  # {$description}" : $line;
+        }, $rows, $entries);
     }
 
     /**
