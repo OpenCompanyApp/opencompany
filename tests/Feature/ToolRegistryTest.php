@@ -123,6 +123,11 @@ class ToolRegistryTest extends TestCase
         foreach ($tools as $tool) {
             if ($tool instanceof ApprovalWrappedTool) {
                 $wrappedCount++;
+            } elseif (method_exists($tool, 'name') && $tool->name() === 'vfs_edit') {
+                // Self-governed: vfs_edit is deliberately never wrapped because
+                // its VFS policy creates the one replayable approval itself
+                // (ToolRegistry `selfGoverned`); it is still approval-gated.
+                continue;
             } else {
                 $unwrappedCount++;
             }
