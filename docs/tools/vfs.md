@@ -24,6 +24,15 @@ Approvals: if any composed permission requires approval, the VFS creates one nor
 
 Every entry point requires the bound workspace to be the acting agent's workspace; otherwise it fails with `permission_denied` (`context.reason: workspace_binding_mismatch`).
 
+Governance invariants the VFS keeps (regressions in `VfsReviewFixesGovernanceTest`):
+
+- Hidden stays hidden. `/docs/.trash` applies the full document read policy (folder denies, folder allows, sharing rows) over the parent chain including trashed ancestors. `not_found` suggestions (`did_you_mean`, `by_id`) and `ambiguous_match` lists only name documents you may read, at every path segment.
+- Recursive `rm`, `mv` and trash restore of a `/docs` folder are all or nothing: if any descendant is denied, shared without you, read-only for you or a system document, nothing changes and `permission_denied` carries `context.blocked_descendants` (and `first_blocked` only when you can read it).
+- Reads never serve more than the backing tool would without a human: when `list_members` or `get_automation` is allowed only with approval, `/workspace/members.json` redacts human emails (`email_redaction` names the tool) and `/automations/{id}.json` redacts bodies. Reads never create approval requests.
+- `/approvals` and `/me/pending` are scoped by the approval's own workspace, not the requester's current one. `/approvals/{id}.json` redacts credentials in quoted (JSON, nested JSON) and unquoted forms; the stored replay parameters are never rewritten.
+- Approval wrappers and replay resolve `/me/…` to the backing subject the policy sees (`OpenCompanyVfs::policySubject`). A replay that returns another `pending_approval` is recorded as `execution.disposition: approval_pending` with `pending_approval_id`, says so in the conversation, and keeps the agent parked on the new approval.
+- Audit: every denial is its own `vfs.denied` row (read denials are never aggregated or dropped); `vfs.tool_call` rows carry the caller's surface (`tool`, `code`, `computer`, `approval_replay`, …); created objects carry `backend_type`/`backend_id`; parent folders a write creates implicitly get their own `vfs.directory.created` (`payload.implicit: true`).
+
 ## Result envelope
 
 All VFS tools return compact JSON (no pretty printing) and never an empty string.
