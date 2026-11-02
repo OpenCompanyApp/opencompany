@@ -20,6 +20,21 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 class CodeApiDocGenerator
 {
     /**
+     * Host-owned argument defaults for alias paths, applied by CodeBridge
+     * before dispatch (caller values win).
+     *
+     * `vfs.grep` aliases vfs_rg, whose `regex` defaults to true; grep is
+     * documented as literal, so the alias defaults `regex: false`. Keep this
+     * in sync with the aliases in buildFunctionMap(). A constant (not a
+     * method) so it holds even when the generator is mocked.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    public const ALIAS_ARGUMENT_DEFAULTS = [
+        'vfs.grep' => ['regex' => false],
+    ];
+
+    /**
      * @var array<string, array{
      *     description: string,
      *     functions: array<int, array{

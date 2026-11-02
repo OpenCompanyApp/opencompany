@@ -72,6 +72,60 @@ class VfsCommandExecutor
      */
     private ?VfsBudget $currentBudget = null;
 
+    /**
+     * Classify a command line's effect without executing it: 'write' when any
+     * command in any group or pipeline can mutate, else 'read'.
+     *
+     * Used by Code Mode (CodeBridge) to give `app.vfs.shell(...)` a durable
+     * write receipt and a `write` effect in the call ledger: the registry
+     * types vfs_exec as a read because most commands are. A command counts
+     * as a write when its spec class is write, destructive, or binary-archive
+     * (archive list modes included, conservatively), when it declares
+     * `writes`, when xargs could run a writing command, or when stdout/stderr
+     * is redirected to a file. Anything that fails to parse is a write: an
+     * unclassifiable command must never be logged as a retryable read.
+     *
+     * Pure: no agent, workspace, or storage access.
+     *
+     * @return 'read'|'write'
+     */
+    public function classifyEffect(string $command): string
+    {
+        try {
+            $this->assertNoUnsupportedShellSyntax($command);
+            foreach ($this->splitCommandGroups($command) as $group) {
+                foreach ($this->splitPipes($group['command']) as $segment) {
+                    $tokens = $this->tokenize($segment);
+                    if ($tokens === []) {
+                        continue;
+                    }
+
+                    [$tokens, $redirections] = $this->extractRedirections($tokens, '/');
+                    foreach ($redirections as $redirect) {
+                        if ($redirect['stream'] !== 'stdin' && $redirect['mode'] !== 'merge' && $redirect['path'] !== '/dev/null') {
+                            return 'write';
+                        }
+                    }
+
+                    $name = (string) ($tokens[0] ?? '');
+                    // xargs runs its argv as a command; any writing command
+                    // name among its tokens makes the whole call a write.
+                    $candidates = VfsCommandSpecRegistry::canonical($name) === 'xargs' ? $tokens : [$name];
+                    foreach ($candidates as $candidate) {
+                        $spec = VfsCommandSpecRegistry::get((string) $candidate);
+                        if ($spec !== null && (in_array($spec->class, ['write', 'destructive', 'binary-archive'], true) || $spec->writes !== null)) {
+                            return 'write';
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable) {
+            return 'write';
+        }
+
+        return 'read';
+    }
+
     private function agentForPathExpansion(): User
     {
         return $this->currentAgent ?? throw VfsError::invalid('VFS command has no active agent context.');

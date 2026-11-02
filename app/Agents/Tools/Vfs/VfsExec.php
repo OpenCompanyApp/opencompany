@@ -2,6 +2,7 @@
 
 namespace App\Agents\Tools\Vfs;
 
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsCommandExecutor;
 use App\Domain\Vfs\Core\VfsCommandHelp;
@@ -13,7 +14,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class VfsExec implements Tool
+class VfsExec implements ReturnsVfsEnvelope, Tool
 {
     public function __construct(
         private readonly User $agent,
