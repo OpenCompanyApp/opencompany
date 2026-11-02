@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Workspace document or folder.
@@ -15,11 +16,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Documents serve both user-authored knowledge and system-owned agent identity
  * files. System documents are guarded from ordinary deletion because deleting
  * an agent's identity/memory tree can break prompt assembly.
+ *
+ * Deletes are soft (governance model: delete means trash). `deleted_by`
+ * records who trashed it; the VFS `/docs/.trash/` view restores. Purging is a
+ * retention concern outside the VFS (forceDelete).
+ *
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class Document extends Model
 {
     /** @use HasFactory<Factory<static>> */
-    use BelongsToWorkspace, HasFactory;
+    use BelongsToWorkspace, HasFactory, SoftDeletes;
 
     protected $keyType = 'string';
 

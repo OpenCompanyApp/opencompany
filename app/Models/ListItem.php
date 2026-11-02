@@ -7,11 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Concerns\BelongsToWorkspace;
 
 /**
  * ListItem - Items in a kanban board/list (renamed from Task)
  * For discrete work tracking, see the Task model instead.
+ *
+ * Deletes are soft (governance model: delete means trash); the VFS
+ * `/lists/.trash/` view restores them.
  *
  * @property string $title
  * @property string|null $description
@@ -28,11 +32,13 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property \Carbon\Carbon|null $updated_at
  * @property \Carbon\Carbon|null $completed_at
  * @property \Carbon\Carbon|null $due_date
+ * @property string $workspace_id
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class ListItem extends Model
 {
     /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
-    use HasFactory, BelongsToWorkspace;
+    use BelongsToWorkspace, HasFactory, SoftDeletes;
 
     protected $table = 'list_items';
     protected $keyType = 'string';

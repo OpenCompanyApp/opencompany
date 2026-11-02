@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $name
  * @property string $type
  * @property bool $required
+ * @property array<string, mixed>|null $options
  */
 class DataTableColumn extends Model
 {

@@ -15,6 +15,7 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property string|null $icon
  * @property int $columnsCount
  * @property int $rowsCount
+ * @property string $workspace_id
  */
 class DataTable extends Model
 {
