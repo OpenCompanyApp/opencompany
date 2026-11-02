@@ -31,9 +31,21 @@ gone, including `opencompany.si`, which a speculator holds.
 - **In-product wording:** "teammates" or "agents", for example "hire an Avok teammate". Individual
   agents keep their own names.
 - **CLI:** the binary becomes `avok`, replacing `oc`.
-- **Domains:** `avok.si` is primary. `avok.ai` comes next if the budget allows. `opencompany.app` is
-  kept as a redirect. The install line can be `avok.si/install` until a dedicated install domain is
-  worth buying.
+- **Domain plan** (locked 2026-11-02, on a budget; **not yet registered**, the owner will register
+  them later):
+
+  | Priority | Domain | Purpose |
+  |---|---|---|
+  | Must | `avok.si` | Primary brand domain, next to `bowerbird.si` |
+  | Must | `odil.si` | Reserved for a future product |
+  | Strongly recommended | `avok.ai` | Main AI-category domain; registrars often require a 2-year minimum |
+  | Later | `avok.io`, `avok.app`, a price quote for `avok.com` (listed on Atom.com) | Once there is budget or traction |
+
+  - Skip `.sh`, `.co`, `.so` and extra Odil TLDs for now. The installer lives at
+    `avok.si/install`.
+  - `opencompany.app` (already owned) becomes a redirect.
+  - Use the registrar that holds `bowerbird.si`, with auto-renew and registrar lock.
+  - All the domains above were available on 2026-11-02; `avok.dev` was already taken.
 - **Odil** (`odil.si`) is reserved for a possible future product.
 - **Pending before public announcement:** a trademark clearance search (EUIPO/TMview, USPTO, WIPO;
   classes 9, 38, 42), with the neighbouring AVOKA and AVOKE marks as the specific question, and a
