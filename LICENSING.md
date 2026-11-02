@@ -63,10 +63,17 @@ A path is Apache-2.0 only if it carries its own notice. In this repository today
 |---|---|---|
 | `resources/code-docs/` | Code Mode guides and examples for the `opencompany-code-v1` Ruby profile | [`resources/code-docs/LICENSE`](resources/code-docs/LICENSE) |
 
-The Apache-2.0 text is in [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). Official SDKs and
-standalone protocol/schema packages do not exist yet; they will carry their own notices when
-published. Integration packages live in the separate `integrations` repository and are licensed by
-that repository's own notices.
+The Apache-2.0 text is in [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt).
+
+Official clients and SDKs live outside this repository under Apache-2.0:
+
+| Repository | Contents | License |
+|---|---|---|
+| `opencompany-cli` | The Rust `oc` CLI: terminal client and connected-host daemon, using only the public versioned API and realtime stream ([plan](docs/planning/oc-cli-and-hosts.md)) | Apache-2.0, by that repository's own notices |
+
+Standalone protocol/schema packages and other SDKs do not exist yet; they will carry their own
+notices when published. The former `integrations` package repository is archived read-only and keeps
+the terms in its own notices; OpenCompany no longer depends on it.
 
 ## What remains proprietary?
 
