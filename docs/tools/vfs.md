@@ -52,7 +52,7 @@ All VFS tools return compact JSON (no pretty printing) and never an empty string
 
 ## Reading
 
-`vfs_read` serves ordinary files from one full content read (never the truncated display read), so `version` describes exactly the bytes returned and `total_lines` is exact. Lines come numbered like `cat -n` (`%6d<TAB>line`); the prefix is not part of the file. `offset` is a 1-based line, `limit` a line count (default 2000), `maxBytes` (default 50,000) caps the page on whole lines; a single longer line is cut UTF-8-safely and flagged `line_cut`. A truncated page returns `next_offset` and a `hint` ("Showing lines 1-200 of 5310. Continue with offset=201."). `raw: true` returns byte-exact text without numbers (`app.vfs.cat` defaults to it). Directories fail with `not_readable`; binary or non-UTF-8 content fails with `invalid_request` and a hint to use `xxd`, `base64` or `iconv`.
+`vfs_read` serves ordinary files from one full content read (never the truncated display read), so `version` describes exactly the bytes returned and `total_lines` is exact. Lines come numbered like `cat -n` (`%6d<TAB>line`); the prefix is not part of the file. `offset` is a 1-based line, `limit` a line count (default 2000), `maxBytes` (default 50,000) caps the page on whole lines; a single longer line is cut UTF-8-safely: the page is `truncated` with `line_cut: true`, and `next_offset` stays on that line with `next_line_byte_offset`, so passing both back (`offset`, `line_byte_offset`) reads the rest of the line without skipping bytes. A truncated page returns `next_offset` and a `hint` ("Showing lines 1-200 of 5310. Continue with offset=201."). `raw: true` returns byte-exact text without numbers (`app.vfs.cat` defaults to it). Directories fail with `not_readable`; binary or non-UTF-8 content fails with `invalid_request` and a hint to use `xxd`, `base64` or `iconv`.
 
 Paged collection files (`/tables/{table}/rows.ndjson`, `/channels/{channel}/messages/YYYY-MM-DD.md`, `/workspace/members.json`, stat metadata `paged_collection: true`) page by `cursor` instead: `limit` is a record count, records are returned raw and never split, `next_cursor` is always present (null on the last page). Using `offset` there, or `cursor` on an ordinary file, is `invalid_request`.
 
@@ -198,12 +198,13 @@ Read a text file. Lines come numbered like cat -n ("     N<TAB>text"); the prefi
 |---|---|---|---|---|
 | `path` | string | yes |  | File path, e.g. /docs/handbook/onboarding or /files/report.md. |
 | `offset` | integer | no | `1` | First line to return (1-based). |
+| `line_byte_offset` | integer | no | `0` | Byte position inside line `offset` to start at; pass next_line_byte_offset to continue a line that was cut. |
 | `limit` | integer | no | `2000` | Lines to return (records for paged collection files). |
 | `cursor` | string | no |  | next_cursor from the previous page of a paged collection file. |
 | `maxBytes` | integer | no | `50000` | Byte cap for the returned text. |
 | `raw` | boolean | no | `false` | Return text without line numbers. |
 
-Result: `path` (normalized path), `canonical_path` (stable path to reuse (by-id where available)), `content` (the requested lines (numbered unless raw)), `bytes` (byte length of content), `version` (version of exactly these bytes; null for generated files), `offset` (first line returned), `returned_lines` (lines returned), `total_lines` (lines in the whole file (ordinary files)), `truncated` (more content exists), `next_offset` (offset to continue with (ordinary files)), `next_cursor` (cursor to continue with, null on the last page (paged collection files)), `returned` (records returned (paged collection files)), `hint` (how to continue when truncated), `capabilities` (what you may do with the path (read, patch, write, ...)).
+Result: `path` (normalized path), `canonical_path` (stable path to reuse (by-id where available)), `content` (the requested lines (numbered unless raw)), `bytes` (byte length of content), `version` (version of exactly these bytes; null for generated files), `offset` (first line returned), `returned_lines` (lines returned), `total_lines` (lines in the whole file (ordinary files)), `truncated` (more content exists), `next_offset` (offset to continue with (ordinary files)), `line_cut` (true when the last line in content was cut at maxBytes), `next_line_byte_offset` (with line_cut: line_byte_offset to continue the cut line with), `next_cursor` (cursor to continue with, null on the last page (paged collection files)), `returned` (records returned (paged collection files)), `hint` (how to continue when truncated), `capabilities` (what you may do with the path (read, patch, write, ...)).
 
 Permissions: all paths: `vfs_exec`.
 
@@ -211,7 +212,7 @@ Errors: `not_found`, `not_readable`, `permission_denied`, `invalid_request`, `in
 
 - version describes the bytes returned by this same read.
 - Paged collection files return raw records; offset applies to ordinary files only.
-- A line longer than maxBytes is cut at maxBytes (line_cut: true); use vfs_exec head -c or a larger maxBytes.
+- A line longer than maxBytes is cut at maxBytes on a character boundary: truncated is true, line_cut is true, and next_offset stays on that line with next_line_byte_offset; pass both back (offset, line_byte_offset) to read the rest of the line, or raise maxBytes.
 
 ```json
 {"path": "/docs/handbook/onboarding"}

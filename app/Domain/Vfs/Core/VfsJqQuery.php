@@ -20,6 +20,14 @@ namespace App\Domain\Vfs\Core;
  * operators (`=`, `|=`, `+=`, `del`) — use Code Mode for JSON rewrites.
  *
  * Bounded by MAX_STEPS evaluations and MAX_OUTPUTS results.
+ *
+ * Resource invariant: MAX_STEPS bounds evaluations, not memory. One step
+ * can materialize a huge value (`range(100000000)`, a doubling `. + .`,
+ * a `gsub`, the cartesian product of two generators), so every generated
+ * list is held to MAX_ITEMS and every built string, array or JSON encoding
+ * to the run's byte limit (the VFS content ceiling), each checked BEFORE
+ * the allocation is made. Exceeding a cap is an invalid_request VfsError,
+ * never a PHP memory fatal.
  */
 final class VfsJqQuery
 {
@@ -27,7 +35,13 @@ final class VfsJqQuery
 
     private const MAX_OUTPUTS = 100_000;
 
+    /** Largest list one expression may generate (range, pipes, `..`, flatten). */
+    public const MAX_ITEMS = 1_000_000;
+
     private int $steps = 0;
+
+    /** Byte limit of the run in progress for strings, arrays and encodings. */
+    private int $maxBytes = PHP_INT_MAX;
 
     /** @param array<string, mixed> $ast */
     private function __construct(private readonly array $ast) {}
@@ -38,11 +52,19 @@ final class VfsJqQuery
     }
 
     /**
+     * Evaluate the program over one input value.
+     *
+     * $maxBytes bounds every string, array and JSON encoding the program
+     * builds (the executor passes the VFS content ceiling).
+     *
      * @return list<mixed>
+     *
+     * @throws VfsError invalid_request when a step, item or byte cap is exceeded.
      */
-    public function run(mixed $input): array
+    public function run(mixed $input, int $maxBytes): array
     {
         $this->steps = 0;
+        $this->maxBytes = max(1, $maxBytes);
         $outputs = $this->eval($this->ast, $input);
         if (count($outputs) > self::MAX_OUTPUTS) {
             throw VfsError::invalid('jq produced too many results for the VFS budget.');
@@ -53,9 +75,20 @@ final class VfsJqQuery
 
     /**
      * Encode a value as jq does: 2-space pretty printing or compact.
+     *
+     * With $maxBytes, the value's encoded size is estimated first (a walk
+     * that stops as soon as it passes the limit), so a small value that
+     * shares one large array many times cannot make json_encode allocate
+     * gigabytes.
+     *
+     * @throws VfsError invalid_request when the value cannot be encoded or is too large.
      */
-    public static function encode(mixed $value, bool $compact): string
+    public static function encode(mixed $value, bool $compact, int $maxBytes = PHP_INT_MAX): string
     {
+        if ($maxBytes < PHP_INT_MAX) {
+            // Pretty printing at most triples the compact size (indentation).
+            self::assertEncodedSizeWithin($value, $compact ? $maxBytes : intdiv($maxBytes, 3));
+        }
         $json = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | ($compact ? 0 : JSON_PRETTY_PRINT));
         if ($json === false) {
             throw VfsError::invalid('jq: value cannot be encoded as JSON.');
@@ -132,20 +165,25 @@ final class VfsJqQuery
             case 'pipe':
                 $out = [];
                 foreach ($this->eval($node['l'], $input) as $value) {
-                    foreach ($this->eval($node['r'], $value) as $result) {
-                        $out[] = $result;
-                    }
+                    $results = $this->eval($node['r'], $value);
+                    $this->assertItems(count($out) + count($results));
+                    array_push($out, ...$results);
                 }
 
                 return $out;
             case 'comma':
-                return [...$this->eval($node['l'], $input), ...$this->eval($node['r'], $input)];
+                $left = $this->eval($node['l'], $input);
+                $right = $this->eval($node['r'], $input);
+                $this->assertItems(count($left) + count($right));
+
+                return [...$left, ...$right];
             case 'field':
                 return array_map(fn (mixed $value): mixed => $this->field($value, $node['name'], $node['optional'] ?? false), $this->eval($node['target'], $input));
             case 'index':
                 $out = [];
                 foreach ($this->eval($node['target'], $input) as $value) {
                     foreach ($this->eval($node['index'], $input) as $key) {
+                        $this->assertItems(count($out) + 1);
                         try {
                             $out[] = $this->indexValue($value, $key);
                         } catch (VfsError $e) {
@@ -170,8 +208,10 @@ final class VfsJqQuery
                 $out = [];
                 foreach ($this->eval($node['target'], $input) as $value) {
                     if (is_array($value)) {
+                        $this->assertItems(count($out) + count($value));
                         array_push($out, ...$value);
                     } elseif ($value instanceof \stdClass) {
+                        $this->assertItems(count($out) + count(get_object_vars($value)));
                         array_push($out, ...array_values(get_object_vars($value)));
                     } elseif (! ($node['optional'] ?? false)) {
                         throw VfsError::invalid('jq: cannot iterate over '.$this->typeOf($value).'.');
@@ -219,6 +259,7 @@ final class VfsJqQuery
                         continue;
                     }
                     foreach ($this->eval($node['r'], $input) as $right) {
+                        $this->assertItems(count($out) + 1);
                         $out[] = $this->truthy($right);
                     }
                 }
@@ -238,10 +279,10 @@ final class VfsJqQuery
             case 'if':
                 $out = [];
                 foreach ($this->eval($node['cond'], $input) as $condition) {
-                    if ($this->truthy($condition)) {
-                        array_push($out, ...$this->eval($node['then'], $input));
-                    } elseif ($node['else'] !== null) {
-                        array_push($out, ...$this->eval($node['else'], $input));
+                    if ($this->truthy($condition) || $node['else'] !== null) {
+                        $branch = $this->eval($this->truthy($condition) ? $node['then'] : $node['else'], $input);
+                        $this->assertItems(count($out) + count($branch));
+                        array_push($out, ...$branch);
                     } else {
                         $out[] = $input;
                     }
@@ -365,11 +406,14 @@ final class VfsJqQuery
                 return [true];
             case 'range/1':
                 $upto = (int) $one(0);
+                // Invariant: the count is checked before range() allocates.
+                $this->assertItems(max(0, $upto), 'range');
 
                 return $upto <= 0 ? [] : range(0, $upto - 1);
             case 'range/2':
                 $from = (int) $one(0);
                 $to = (int) $one(1);
+                $this->assertItems($to <= $from ? 0 : (int) min((float) PHP_INT_MAX, (float) $to - (float) $from), 'range');
 
                 return $to <= $from ? [] : range($from, $to - 1);
             case 'floor/0': return [(int) floor($this->requireNumber($input, $name))];
@@ -377,7 +421,7 @@ final class VfsJqQuery
             case 'round/0': return [(int) round($this->requireNumber($input, $name))];
             case 'abs/0': return [abs($this->requireNumber($input, $name))];
             case 'sqrt/0': return [sqrt($this->requireNumber($input, $name))];
-            case 'tostring/0': return [is_string($input) ? $input : self::encode($input, true)];
+            case 'tostring/0': return [is_string($input) ? $input : self::encode($input, true, $this->maxBytes)];
             case 'tonumber/0':
                 if (is_int($input) || is_float($input)) {
                     return [$input];
@@ -426,13 +470,27 @@ final class VfsJqQuery
                 $flags = $arity === 3 ? (string) $one(2) : '';
                 $limit = $name === 'gsub' || str_contains($flags, 'g') ? -1 : 1;
                 $replacement = (string) $one(1);
+                $subject = $this->requireString($input, $name);
+                // Running size checked per match, before the result exists.
+                $size = strlen($subject);
+                $result = preg_replace_callback($this->regex((string) $one(0), str_replace('g', '', $flags)), function (array $match) use ($replacement, $name, &$size): string {
+                    $size += strlen($replacement) - strlen($match[0]);
+                    $this->assertBytes($size, $name);
 
-                return [preg_replace($this->regex((string) $one(0), str_replace('g', '', $flags)), str_replace(['\\', '$'], ['\\\\', '\\$'], $replacement), $this->requireString($input, $name), $limit)];
+                    return $replacement;
+                }, $subject, $limit);
+                if ($result === null) {
+                    throw VfsError::invalid("jq: {$name} regex failed to run (too complex or invalid).");
+                }
+
+                return [$result];
             case 'contains/1': return [$this->contains($input, $one(0))];
             case 'inside/1': return [$this->contains($one(0), $input)];
             case 'flatten/0':
             case 'flatten/1':
-                return [$this->flatten($this->requireArray($input, $name), $arity === 1 ? (int) $one(0) : 1_000)];
+                $count = 0;
+
+                return [$this->flatten($this->requireArray($input, $name), $arity === 1 ? (int) $one(0) : 1_000, $count)];
             case 'reverse/0': return [is_string($input) ? implode('', array_reverse(mb_str_split($input))) : array_reverse($this->requireArray($input ?? [], $name))];
             case 'sort/0':
                 $items = $this->requireArray($input, $name);
@@ -520,7 +578,7 @@ final class VfsJqQuery
                 }
 
                 return $this->call('from_entries', [], $mapped);
-            case 'tojson/0': return [self::encode($input, true)];
+            case 'tojson/0': return [self::encode($input, true, $this->maxBytes)];
             case 'fromjson/0':
                 $decoded = json_decode($this->requireString($input, $name), false);
                 if (json_last_error() !== JSON_ERROR_NONE) {
@@ -585,6 +643,72 @@ final class VfsJqQuery
     }
 
     /**
+     * Fail before a list of $count items is built when it passes MAX_ITEMS.
+     *
+     * @throws VfsError
+     */
+    private function assertItems(int $count, string $what = 'expression'): void
+    {
+        if ($count > self::MAX_ITEMS) {
+            throw VfsError::invalid("jq {$what} would produce {$count} values; the VFS limit is ".self::MAX_ITEMS.'.', [
+                'hint' => 'Narrow the input or use limit/first on a smaller range.',
+            ]);
+        }
+    }
+
+    /**
+     * Fail before a string or encoding of $bytes bytes is built when it
+     * passes the run's byte limit.
+     *
+     * @throws VfsError
+     */
+    private function assertBytes(int $bytes, string $what): void
+    {
+        if ($bytes > $this->maxBytes) {
+            throw VfsError::invalid("jq {$what} would exceed {$this->maxBytes} bytes.", ['max_bytes' => $this->maxBytes]);
+        }
+    }
+
+    /**
+     * Estimate the compact JSON size of $value and fail once it passes
+     * $maxBytes. The walk stops at the limit, so its own cost is bounded
+     * by $maxBytes even when the value shares one array many times.
+     *
+     * @throws VfsError
+     */
+    private static function assertEncodedSizeWithin(mixed $value, int $maxBytes): void
+    {
+        $size = 0;
+        $stack = [$value];
+        while ($stack !== []) {
+            $item = array_pop($stack);
+            if (is_array($item) || $item instanceof \stdClass) {
+                $members = is_array($item) ? $item : get_object_vars($item);
+                $size += 2 + count($members);
+                if (! is_array($item)) {
+                    foreach (array_keys($members) as $key) {
+                        $size += strlen((string) $key) + 3;
+                    }
+                }
+                if ($size > $maxBytes) {
+                    break;
+                }
+                foreach ($members as $member) {
+                    $stack[] = $member;
+                }
+            } else {
+                $size += is_string($item) ? strlen($item) + 2 : 24;
+            }
+            if ($size > $maxBytes) {
+                break;
+            }
+        }
+        if ($size > $maxBytes) {
+            throw VfsError::invalid("jq value is too large to encode (over {$maxBytes} bytes).", ['max_bytes' => $maxBytes, 'hint' => 'Select a smaller part of the input.']);
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $node
      * @return list<mixed>
      */
@@ -593,6 +717,7 @@ final class VfsJqQuery
         $out = [];
         foreach ($this->eval($node['r'], $input) as $right) {
             foreach ($this->eval($node['l'], $input) as $left) {
+                $this->assertItems(count($out) + 1);
                 $out[] = match ($node['op']) {
                     '+' => $this->add($left, $right),
                     '-' => $this->subtract($left, $right),
@@ -625,9 +750,13 @@ final class VfsJqQuery
             return $a + $b;
         }
         if (is_string($a) && is_string($b)) {
+            $this->assertBytes(strlen($a) + strlen($b), 'string');
+
             return $a.$b;
         }
         if (is_array($a) && is_array($b)) {
+            $this->assertItems(count($a) + count($b), 'array');
+
             return [...$a, ...$b];
         }
         if ($a instanceof \stdClass && $b instanceof \stdClass) {
@@ -800,13 +929,16 @@ final class VfsJqQuery
      * @param  list<mixed>  $items
      * @return list<mixed>
      */
-    private function flatten(array $items, int $depth): array
+    private function flatten(array $items, int $depth, int &$count): array
     {
         $out = [];
         foreach ($items as $item) {
             if (is_array($item) && $depth > 0) {
-                array_push($out, ...$this->flatten($item, $depth - 1));
+                array_push($out, ...$this->flatten($item, $depth - 1, $count));
             } else {
+                // $count spans the whole flatten: nested shared arrays cannot
+                // multiply past MAX_ITEMS.
+                $this->assertItems(++$count, 'flatten');
                 $out[] = $item;
             }
         }
@@ -913,13 +1045,11 @@ final class VfsJqQuery
     private function recurseValues(mixed $value): array
     {
         $out = [$value];
-        if (is_array($value)) {
-            foreach ($value as $item) {
-                array_push($out, ...$this->recurseValues($item));
-            }
-        } elseif ($value instanceof \stdClass) {
-            foreach (get_object_vars($value) as $item) {
-                array_push($out, ...$this->recurseValues($item));
+        if (is_array($value) || $value instanceof \stdClass) {
+            foreach (is_array($value) ? $value : get_object_vars($value) as $item) {
+                $inner = $this->recurseValues($item);
+                $this->assertItems(count($out) + count($inner), '..');
+                array_push($out, ...$inner);
             }
         }
 
@@ -942,7 +1072,10 @@ final class VfsJqQuery
             $next = [];
             foreach ($results as $prefix) {
                 foreach ($this->eval($part, $input) as $value) {
-                    $next[] = $prefix.(is_string($value) ? $value : self::encode($value, true));
+                    $this->assertItems(count($next) + 1);
+                    $text = is_string($value) ? $value : self::encode($value, true, $this->maxBytes);
+                    $this->assertBytes(strlen($prefix) + strlen($text), 'string interpolation');
+                    $next[] = $prefix.$text;
                 }
             }
             $results = $next;
@@ -965,7 +1098,7 @@ final class VfsJqQuery
             'text' => $scalar($input),
             'json' => self::encode($input, true),
             'csv' => implode(',', array_map(fn (mixed $v): string => is_string($v) ? '"'.str_replace('"', '""', $v).'"' : $scalar($v), $this->requireArray($input, '@csv'))),
-            'tsv' => implode("\t", array_map(fn (mixed $v): string => strtr($scalar($v), ["\\" => '\\\\', "\t" => '\\t', "\n" => '\\n', "\r" => '\\r']), $this->requireArray($input, '@tsv'))),
+            'tsv' => implode("\t", array_map(fn (mixed $v): string => strtr($scalar($v), ['\\' => '\\\\', "\t" => '\\t', "\n" => '\\n', "\r" => '\\r']), $this->requireArray($input, '@tsv'))),
             'base64' => base64_encode($scalar($input)),
             'base64d' => (string) base64_decode($scalar($input)),
             'uri' => rawurlencode($scalar($input)),

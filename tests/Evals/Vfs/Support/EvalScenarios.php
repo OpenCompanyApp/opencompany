@@ -88,14 +88,14 @@ final class EvalScenarios
             return $result;
         };
 
-        $atlas = $record('VfsEdit', ['atlas' => true], $this->atlasTools()->callSlug('vfs_edit', [
+        $atlas = $record('vfs_edit', ['atlas' => true], $this->atlasTools()->callSlug('vfs_edit', [
             'path' => '/docs/handbook/refund-policy',
             'edits' => [['old_text' => 'support@acme.test', 'new_text' => 'billing@acme.test']],
         ]));
         $push = $record(BridgeShim::TOOL_NAME, ['command' => 'push'], $shim->run(
             "cp /mnt/oc/docs/handbook/refund-policy ~/work/rp.md && sed -i 's/14 days/21 days/' ~/work/rp.md && oc vfs push ~/work/rp.md /docs/handbook/refund-policy",
         ));
-        $unversioned = $record('VfsWrite', ['forge' => true], $shim->toolbox()->callSlug('vfs_write', [
+        $unversioned = $record('vfs_write', ['forge' => true], $shim->toolbox()->callSlug('vfs_write', [
             'path' => '/docs/handbook/refund-policy',
             'mode' => 'overwrite',
             'content' => "stale copy\n",

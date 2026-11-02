@@ -37,7 +37,10 @@ trait RoutesVfsCommands
     private function runCommand(User $agent, array $words, string $cwd, VfsBudget $budget, ?string $stdin): array
     {
         $name = (string) array_shift($words);
-        [$cmd, $words] = $this->normalizeInvocation($name, $words);
+        [$cmd, $words, $note] = $this->normalizeInvocation($name, $words);
+        if ($note !== null) {
+            $this->appendStderr($note);
+        }
         if ($this->wantsHelp($words)) {
             return [
                 'stdout' => VfsCommandHelp::commandMarkdown($cmd)."\n",
@@ -131,8 +134,12 @@ trait RoutesVfsCommands
     /**
      * Map aliases onto canonical commands with the flags they imply.
      *
+     * The third element is a note for stderr when the invocation was
+     * reinterpreted (today only rg's -r/-R, see normalizeRgRecursiveFlags());
+     * only runCommand() prints it, so preflight does not duplicate it.
+     *
      * @param  list<string>  $words
-     * @return array{0: string, 1: list<string>}
+     * @return array{0: string, 1: list<string>, 2: string|null}
      */
     private function normalizeInvocation(string $name, array $words): array
     {
@@ -161,7 +168,120 @@ trait RoutesVfsCommands
             $canonical = 'grep';
         }
 
-        return [$canonical, $words];
+        $note = null;
+        if ($canonical === 'rg') {
+            [$words, $note] = $this->normalizeRgRecursiveFlags($words);
+        }
+
+        return [$canonical, $words, $note];
+    }
+
+    /**
+     * The rg -r/-R rule (documented in the rg command notes).
+     *
+     * rg always recurses. Models write `rg -r`, `rg -rn` and `rg -ril`
+     * meaning "recursive" (grep's -r); in ripgrep, -r is --replace and takes
+     * a value. The VFS does not support --replace, so -r/-R never mean
+     * replace here:
+     *
+     * - `-R`, and `r` inside a flag cluster before other letters (`-rn`,
+     *   `-ril`), are dropped as a no-op: ripgrep would read the rest of the
+     *   cluster as the replacement text, which nobody means.
+     * - A standalone `-r` or a cluster ending in r (`-nr`) would make ripgrep
+     *   take the NEXT word as the replacement. With at most one operand
+     *   after it (and no -e), that reading leaves no pattern, so recursion is
+     *   the only meaning and it is dropped. With two or more operands both
+     *   readings are valid and search different text, so the call fails with
+     *   invalid_request naming the fix instead of guessing.
+     *
+     * A dropped flag adds a stderr note, so the reinterpretation is never
+     * silent. Literal (quoted, xargs-supplied) words are never touched.
+     *
+     * @param  list<string>  $words  argv without the command name
+     * @return array{0: list<string>, 1: string|null}
+     *
+     * @throws VfsError invalid_request for the ambiguous form.
+     */
+    private function normalizeRgRecursiveFlags(array $words): array
+    {
+        $valueOptions = ['-m', '-A', '-B', '-C', '-e', '--max-depth', '-g', '--glob', '-t', '--type', '--regexp', '--max-count', '--context', '--after-context', '--before-context'];
+        $patternFromOption = false;
+        foreach ($words as $index => $word) {
+            if (! ($this->argLiteral[$index] ?? false) && ($word === '-e' || $word === '--regexp' || str_starts_with($word, '--regexp=') || preg_match('/^-e./', $word) === 1)) {
+                $patternFromOption = true;
+            }
+        }
+
+        $kept = [];
+        $literal = [];
+        $glob = [];
+        $dropped = false;
+        $optionsEnded = false;
+        foreach ($words as $index => $word) {
+            $isLiteral = $this->argLiteral[$index] ?? false;
+            if ($word === '--' && ! $isLiteral) {
+                $optionsEnded = true;
+            }
+            $cluster = ! $optionsEnded && ! $isLiteral && preg_match('/^-[A-Za-z]+$/', $word) === 1 ? substr($word, 1) : null;
+            if ($cluster === null || ! preg_match('/[rR]/', $cluster)) {
+                $kept[] = $word;
+                $literal[] = $isLiteral;
+                $glob[] = $this->argGlob[$index] ?? false;
+
+                continue;
+            }
+            if (str_ends_with($cluster, 'r') && ! $patternFromOption && $this->rgOperandsAfter($words, $index + 1, $valueOptions) >= 2) {
+                throw VfsError::invalid('rg -r is ambiguous here: in ripgrep -r means --replace and takes the next word as the replacement, which would search for different text. rg always recurses; drop -r.', [
+                    'command' => 'rg',
+                    'hint' => 'Write rg PATTERN PATH (it is recursive), e.g. rg -n "needle" /docs. To rewrite text use sed.',
+                ]);
+            }
+            $rest = str_replace(['r', 'R'], '', $cluster);
+            $dropped = true;
+            if ($rest !== '') {
+                $kept[] = '-'.$rest;
+                $literal[] = false;
+                $glob[] = false;
+            }
+        }
+        if (! $dropped) {
+            return [$words, null];
+        }
+        $this->argLiteral = $literal;
+        $this->argGlob = $glob;
+
+        return [$kept, 'rg: ignored -r/-R: rg always recurses (in ripgrep -r means --replace, which the VFS does not support).'];
+    }
+
+    /**
+     * Operands (non-option words, skipping option values) from $start on.
+     *
+     * @param  list<string>  $words
+     * @param  list<string>  $valueOptions
+     */
+    private function rgOperandsAfter(array $words, int $start, array $valueOptions): int
+    {
+        $count = 0;
+        $optionsEnded = false;
+        for ($i = $start; $i < count($words); $i++) {
+            $word = $words[$i];
+            $isLiteral = $this->argLiteral[$i] ?? false;
+            if (! $optionsEnded && ! $isLiteral && $word === '--') {
+                $optionsEnded = true;
+
+                continue;
+            }
+            if (! $optionsEnded && ! $isLiteral && str_starts_with($word, '-') && $word !== '-') {
+                if (in_array($word, $valueOptions, true)) {
+                    $i++;
+                }
+
+                continue;
+            }
+            $count++;
+        }
+
+        return $count;
     }
 
     /**
@@ -372,6 +492,7 @@ trait RoutesVfsCommands
             $cmd === 'diff' && ($hasShort('e') || in_array('--ed', $options, true)) => ['diff -e editor scripts are not supported.', 'Use diff -u for a unified diff.'],
             $cmd === 'sed' && $this->sedInPlaceSuffix($words) !== null => ['sed -i with a backup suffix ('.$this->sedInPlaceSuffix($words).') is not supported.', 'Use plain -i; every governed write is versioned, or copy the file first with cp.'],
             $cmd === 'cd' && in_array('-', $words, true) => ['cd - (previous directory) is not supported.', 'cd to an explicit path.'],
+            $cmd === 'rg' && array_filter($options, fn (string $option): bool => $option === '--replace' || str_starts_with($option, '--replace=')) !== [] => ['rg --replace is not supported by VFS rg.', "Rewrite matches with sed, e.g. rg -l old /docs | xargs sed -i 's/old/new/g', or extract them with rg -o."],
             default => null,
         };
         if ($refusal !== null) {

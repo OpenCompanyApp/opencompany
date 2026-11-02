@@ -285,14 +285,16 @@ class ToolRegistry
      * Checkpointed tool events expose the runtime tool class name rather than
      * the registry slug, so runtime timelines use this helper to keep labels
      * aligned with the catalog without persisting package-owned implementation
-     * details in the UI.
+     * details in the UI. Tools that declare name() (the VFS tools expose
+     * their slug, e.g. `vfs_exec`) report that name instead, so the registry
+     * slug matches too.
      *
      * @return array{icon: string, name: string}
      */
     public function getToolMetaByClassName(string $className): array
     {
-        foreach ($this->getEffectiveToolMap() as $meta) {
-            if (class_basename($meta['class']) === $className) {
+        foreach ($this->getEffectiveToolMap() as $slug => $meta) {
+            if (class_basename($meta['class']) === $className || $slug === $className) {
                 return [
                     'icon' => $meta['icon'] ?? 'ph:wrench',
                     'name' => $meta['name'] ?? Str::headline($className),

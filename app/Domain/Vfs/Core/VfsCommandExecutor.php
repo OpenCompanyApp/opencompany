@@ -156,10 +156,15 @@ class VfsCommandExecutor
      * types vfs_exec as a read because most commands are. A command counts
      * as a write when its spec class is write, destructive, or binary-archive
      * (archive list modes included, conservatively), when it declares
-     * `writes`, when it is `sed -i`, when xargs could run a writing command, or
-     * when stdout/stderr is redirected to a file. Anything that fails to parse
-     * is a write: an unclassifiable command must never be logged as a
-     * retryable read.
+     * `writes`, when it is `sed -i`, or when stdout/stderr is redirected to a
+     * file. Anything that fails to parse is a write: an unclassifiable
+     * command must never be logged as a retryable read.
+     *
+     * Indirection (see effectInvocations()): the only way one VFS command
+     * runs another is xargs, nested to any depth (`xargs -n1 xargs sed -i`).
+     * `env CMD` and `command CMD` are refused at preflight, `find -exec` is
+     * refused, and there is no eval/sh/subshell, so the xargs unwrapping is
+     * the complete list. Add any new command-running command there.
      *
      * Pure: no agent, workspace, or storage access.
      *
@@ -176,18 +181,20 @@ class VfsCommandExecutor
                         }
                     }
 
-                    $name = (string) $segment->name();
-                    // xargs runs its argv as a command; any writing command
-                    // name among its tokens makes the whole call a write.
-                    $candidates = VfsCommandSpecRegistry::canonical($name) === 'xargs' ? $segment->words : [$name];
-                    foreach ($candidates as $candidate) {
-                        $spec = VfsCommandSpecRegistry::get((string) $candidate);
+                    $invocations = self::effectInvocations($segment->words, $segment->literal);
+                    if ($invocations === null) {
+                        // An xargs option we cannot parse: preflight will
+                        // refuse it, but classification stays conservative.
+                        return 'write';
+                    }
+                    foreach ($invocations as [$name, $args, $literal]) {
+                        $spec = VfsCommandSpecRegistry::get($name);
                         if ($spec !== null && (in_array($spec->class, ['write', 'destructive', 'binary-archive'], true) || $spec->writes !== null)) {
                             return 'write';
                         }
-                    }
-                    if (VfsCommandSpecRegistry::canonical($name) === 'sed' && $this->sedInPlaceRequested(array_slice($segment->words, 1), array_slice($segment->literal, 1))) {
-                        return 'write';
+                        if (VfsCommandSpecRegistry::canonical($name) === 'sed' && $this->sedInPlaceRequested($args, $literal)) {
+                            return 'write';
+                        }
                     }
                 }
             }
@@ -199,11 +206,86 @@ class VfsCommandExecutor
     }
 
     /**
+     * Every command one pipeline segment can run: the segment itself and,
+     * when it is xargs, the command xargs runs (unwrapped recursively, so
+     * `xargs xargs sed -i` yields xargs, xargs and sed). Each entry is
+     * [name, args, literal mask of args].
+     *
+     * The xargs option skip mirrors ExecutesVfsFieldTransforms::xargs() and
+     * RoutesVfsCommands::assertXargsSupported(): options end at the first
+     * literal word, the first non-dash word, or `--`. Items from stdin are
+     * appended as literal words at run time, so they can never turn a read
+     * into `sed -i`; only the typed argv decides the effect.
+     *
+     * Returns null when an xargs option is not one xargs accepts (the line
+     * would be refused at preflight; callers classify it conservatively).
+     *
+     * @param  list<string>  $words  Full argv, command name first.
+     * @param  list<bool>  $literal  Literal mask aligned with $words.
+     * @return list<array{0: string, 1: list<string>, 2: list<bool>}>|null
+     */
+    private static function effectInvocations(array $words, array $literal): ?array
+    {
+        $invocations = [];
+        while ($words !== []) {
+            $name = (string) $words[0];
+            $args = array_slice($words, 1);
+            $argLiteral = array_slice($literal, 1);
+            $invocations[] = [$name, $args, $argLiteral];
+            if (VfsCommandSpecRegistry::canonical($name) !== 'xargs') {
+                break;
+            }
+            $start = self::xargsCommandStart($args, $argLiteral);
+            if ($start === null) {
+                return null;
+            }
+            $words = array_slice($args, $start);
+            $literal = array_slice($argLiteral, $start);
+        }
+
+        return $invocations;
+    }
+
+    /**
+     * Index in xargs' argv (without the name) where the inner command
+     * starts, or null when an option is not an xargs option. Keep in step
+     * with ExecutesVfsFieldTransforms::xargs().
+     *
+     * @param  list<string>  $words
+     * @param  list<bool>  $literal
+     */
+    private static function xargsCommandStart(array $words, array $literal): ?int
+    {
+        for ($i = 0; $i < count($words); $i++) {
+            $word = $words[$i];
+            if (($literal[$i] ?? false) || ! str_starts_with($word, '-') || $word === '-') {
+                return $i;
+            }
+            if ($word === '--') {
+                return $i + 1;
+            }
+            if (in_array($word, ['-0', '--null', '-r', '--no-run-if-empty'], true) || preg_match('/^(-I|-n|-d)./', $word) === 1 || str_starts_with($word, '--max-args=') || str_starts_with($word, '--delimiter=')) {
+                continue;
+            }
+            if (in_array($word, ['-I', '-n', '-d', '--max-args'], true)) {
+                $i++;
+
+                continue;
+            }
+
+            return null;
+        }
+
+        return count($words);
+    }
+
+    /**
      * Declared governance class of a parsed line: the strictest
-     * VfsCommandSpec::actionClass() of every command in it (xargs argv
-     * included), `reversible_edit` for `sed -i` and file redirects. Read
-     * classes never lower it; a line with no declared write class yields
-     * reversible_edit (it only matters once a write is being asserted).
+     * VfsCommandSpec::actionClass() of every command in it (commands run by
+     * xargs included, see effectInvocations()), `reversible_edit` for file
+     * redirects. Read classes never lower it; a line with no declared write
+     * class yields reversible_edit (it only matters once a write is being
+     * asserted).
      *
      * This is the declared class only. The policy combines it with the
      * per-subject classifier (VfsActionClass::classify on exec_write), and
@@ -216,10 +298,12 @@ class VfsCommandExecutor
         $classes = [];
         foreach ($groups as $group) {
             foreach ($group['pipeline'] as $segment) {
-                $name = (string) $segment->name();
-                $candidates = VfsCommandSpecRegistry::canonical($name) === 'xargs' ? $segment->words : [$name];
-                foreach ($candidates as $candidate) {
-                    $classes[] = VfsCommandSpecRegistry::get((string) $candidate)?->actionClass();
+                // An unparsable xargs line is refused at preflight; until
+                // then fall back to every word so no writer is missed.
+                $invocations = self::effectInvocations($segment->words, $segment->literal)
+                    ?? array_map(fn (string $word): array => [$word, [], []], $segment->words);
+                foreach ($invocations as [$name]) {
+                    $classes[] = VfsCommandSpecRegistry::get($name)?->actionClass();
                 }
                 foreach ($segment->redirections as $redirect) {
                     if ($redirect['stream'] !== 'stdin' && $redirect['mode'] !== 'merge' && $redirect['path'] !== '/dev/null') {
@@ -365,6 +449,7 @@ class VfsCommandExecutor
                 }
                 $this->argLiteral = array_slice($segment->literal, 1);
                 $this->argGlob = array_slice($segment->glob, 1);
+                $this->operandGlobTruncated = false;
                 $result = $this->runCommand($agent, $words, $cwd, $budget, $stdin);
                 $status = (int) ($result['exit_code'] ?? 0);
             } catch (VfsError $e) {

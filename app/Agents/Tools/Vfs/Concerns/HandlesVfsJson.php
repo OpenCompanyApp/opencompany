@@ -22,9 +22,21 @@ use Laravel\Ai\Tools\Request;
  *
  * Agent breadcrumb: do not add a hand-written description() or schema() to a
  * VFS tool; change the spec instead and run `php artisan vfs:spec --write-docs`.
+ *
+ * name(): the model-facing tool name is the slug (`vfs_exec`, ...), the
+ * name every description, hint, error and doc uses. Without it laravel/ai's
+ * ToolNameResolver falls back to the class basename (`VfsExec`), so the
+ * model would see one name in the tool list and another in the guidance.
+ * Wrappers (ApprovalWrappedTool, RunGuardedTool, VfsOffloadingTool)
+ * delegate name() to this.
  */
 trait HandlesVfsJson
 {
+    public function name(): string
+    {
+        return static::TOOL_SLUG;
+    }
+
     public function description(): string
     {
         return $this->spec()->description;

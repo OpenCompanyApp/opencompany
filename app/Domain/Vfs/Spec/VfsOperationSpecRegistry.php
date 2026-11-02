@@ -298,6 +298,7 @@ final class VfsOperationSpecRegistry
             parameters: [
                 new VfsParameterSpec('path', 'string', 'File path, e.g. /docs/handbook/onboarding or /files/report.md.', required: true),
                 new VfsParameterSpec('offset', 'integer', 'First line to return (1-based).', default: 1),
+                new VfsParameterSpec('line_byte_offset', 'integer', 'Byte position inside line `offset` to start at; pass next_line_byte_offset to continue a line that was cut.', default: 0),
                 new VfsParameterSpec('limit', 'integer', 'Lines to return (records for paged collection files).', default: 2000),
                 new VfsParameterSpec('cursor', 'string', 'next_cursor from the previous page of a paged collection file.'),
                 new VfsParameterSpec('maxBytes', 'integer', 'Byte cap for the returned text.', default: 50000),
@@ -314,6 +315,8 @@ final class VfsOperationSpecRegistry
                 'total_lines' => 'lines in the whole file (ordinary files)',
                 'truncated' => 'more content exists',
                 'next_offset' => 'offset to continue with (ordinary files)',
+                'line_cut' => 'true when the last line in content was cut at maxBytes',
+                'next_line_byte_offset' => 'with line_cut: line_byte_offset to continue the cut line with',
                 'next_cursor' => 'cursor to continue with, null on the last page (paged collection files)',
                 'returned' => 'records returned (paged collection files)',
                 'hint' => 'how to continue when truncated',
@@ -332,7 +335,7 @@ final class VfsOperationSpecRegistry
             notes: [
                 'version describes the bytes returned by this same read.',
                 'Paged collection files return raw records; offset applies to ordinary files only.',
-                'A line longer than maxBytes is cut at maxBytes (line_cut: true); use vfs_exec head -c or a larger maxBytes.',
+                'A line longer than maxBytes is cut at maxBytes on a character boundary: truncated is true, line_cut is true, and next_offset stays on that line with next_line_byte_offset; pass both back (offset, line_byte_offset) to read the rest of the line, or raise maxBytes.',
             ],
         );
     }

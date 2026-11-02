@@ -154,7 +154,7 @@ Generated from `app/Domain/Vfs/Spec/VfsOperationSpecRegistry.php`; edit the spec
 | Ruby | Tool | Effect | Summary |
 |---|---|---|---|
 | `app.vfs.shell(command:, cwd:, cursor:, response_format:, max_entries:, max_depth:, max_bytes:, max_files:, max_matches:, max_line_length:, include_command_spec:)` | `vfs_exec` | per_command | Run unix-like commands over the virtual filesystem (ls, find, rg, cat, jq, ...). |
-| `app.vfs.read(path:, offset:, limit:, cursor:, max_bytes:, raw:)` | `vfs_read` | read | Read a text file with line numbers, paging and its version. |
+| `app.vfs.read(path:, offset:, line_byte_offset:, limit:, cursor:, max_bytes:, raw:)` | `vfs_read` | read | Read a text file with line numbers, paging and its version. |
 | `app.vfs.edit(path:, edits:, version:, dry_run:, idempotency_key:)` | `vfs_edit` | write | Edit text files by exact replacement: several edits, all or nothing, with dry-run diff. |
 | `app.vfs.write(path:, content:, mode:, version:, idempotency_key:)` | `vfs_write` | write | Create, overwrite or append whole content: files, documents, table rows, list items, your notes. |
 | `app.vfs.patch(path:, patch:, version:, idempotency_key:)` | `vfs_patch` | write | Patch structured records: task/list fields and table rows, version-checked. |

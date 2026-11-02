@@ -60,13 +60,14 @@ trait ExecutesVfsStructuredTransforms
         if ($args->has('s')) {
             $out = '';
             foreach ($this->inputsFrom($agent, $args, $cwd, $stdin, $offset) as $input) {
-                $out .= $program->run($input['content'], $quiet);
+                // One output limit across all files, so -s cannot multiply it.
+                $out .= $program->run($input['content'], $quiet, max(1, $this->contentCeiling() - strlen($out)));
             }
 
             return ['stdout' => $out, 'class' => 'read-transform'];
         }
 
-        return ['stdout' => $program->run($this->inputFrom($agent, $args, $cwd, $stdin, $offset), $quiet), 'class' => 'read-transform'];
+        return ['stdout' => $program->run($this->inputFrom($agent, $args, $cwd, $stdin, $offset), $quiet, $this->contentCeiling()), 'class' => 'read-transform'];
     }
 
     /**
@@ -86,7 +87,7 @@ trait ExecutesVfsStructuredTransforms
             $this->assertWriteCommandAllowed($agent, 'vfs_write');
         }
         $current = $this->vfs->readContentWithVersion($agent, $path);
-        $updated = $program->run($current['content'], $quiet);
+        $updated = $program->run($current['content'], $quiet, $this->contentCeiling());
         if ($updated === $current['content']) {
             return false;
         }
@@ -226,9 +227,18 @@ trait ExecutesVfsStructuredTransforms
         $outputs = [];
         $last = null;
         $produced = false;
+        // Invariant: the engine and the encoder are bounded by the content
+        // ceiling, and so is the joined output, checked before each append.
+        $ceiling = $this->contentCeiling();
+        $bytes = 0;
         foreach ($values as $value) {
-            foreach ($query->run($value) as $result) {
-                $outputs[] = $raw && is_string($result) ? $result : VfsJqQuery::encode($result, $compact);
+            foreach ($query->run($value, $ceiling) as $result) {
+                $encoded = $raw && is_string($result) ? $result : VfsJqQuery::encode($result, $compact, $ceiling);
+                $bytes += strlen($encoded) + 1;
+                if ($bytes > $ceiling) {
+                    throw VfsError::invalid("jq output would exceed {$ceiling} bytes.", ['max_bytes' => $ceiling, 'hint' => 'Select less, or redirect a smaller result.']);
+                }
+                $outputs[] = $encoded;
                 $last = $result;
                 $produced = true;
             }

@@ -432,6 +432,15 @@ trait ExecutesVfsMutationCommands
      */
     private function assertWriteCommandAllowed(User $agent, string $toolSlug): void
     {
+        // Invariant: a mutation never runs on a glob match set that a budget
+        // cut short; refusing here (before policy) also keeps an approval
+        // from being requested for, and replayed with, a partial set.
+        if ($this->operandGlobTruncated) {
+            throw VfsError::invalid('A glob in this command matched more paths than the VFS expands at once, so the write was refused instead of acting on a partial set.', [
+                'command' => $this->currentCommand,
+                'hint' => 'Narrow the pattern, or list the matches (ls/find) and mutate them in batches with xargs.',
+            ]);
+        }
         $this->mutationPolicy->assertAllowedOrRequestApproval(
             agent: $agent,
             directToolSlug: 'vfs_exec',
