@@ -27,16 +27,24 @@ class IntegrationSettingCredentialResolver implements CredentialResolver
 
     public function getAccounts(string $integration): array
     {
+        if (! app()->bound('currentWorkspace')) {
+            return IntegrationSetting::query()->whereNull('workspace_id')
+                ->where('integration_id', $integration)
+                ->where('account_alias', '!=', '')
+                ->pluck('account_alias')->values()->all();
+        }
+
         return IntegrationSetting::getAccountsFor($integration);
     }
 
     private function findSetting(string $integration, ?string $account): ?IntegrationSetting
     {
-        // Runtime calls inside a workspace must stay tenant-scoped. CLI/catalog
-        // calls without currentWorkspace can still inspect global settings.
+        // Invariant: runtime calls inside a workspace stay tenant-scoped. With
+        // no workspace bound (CLI, misconfigured queue path) only global rows
+        // (workspace_id NULL) are visible — never another tenant's credentials.
         $query = app()->bound('currentWorkspace')
             ? IntegrationSetting::forWorkspace()
-            : IntegrationSetting::query();
+            : IntegrationSetting::query()->whereNull('workspace_id');
 
         return $query
             ->where('integration_id', $integration)
