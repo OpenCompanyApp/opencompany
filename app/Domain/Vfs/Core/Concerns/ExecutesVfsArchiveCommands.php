@@ -394,24 +394,57 @@ trait ExecutesVfsArchiveCommands
     }
 
     /**
+     * Parse a ustar/v7 tar stream into member name => content.
+     *
+     * Integrity contract (an incomplete download must never become a
+     * silently shortened file): every non-zero header block must carry a
+     * valid header checksum and an octal size; each regular member's body
+     * must be fully present; a trailing partial block that is not all NULs
+     * is a truncated archive. Input that is not tar at all (a text file,
+     * a few bytes) therefore fails with invalid_request instead of listing
+     * nothing with exit 0. A zero-length input is an empty archive, as in
+     * GNU tar. Non-regular members (directories, links, pax/GNU extension
+     * headers) are skipped but their bodies are still bounds-checked.
+     *
      * @return array<string, string>
+     *
+     * @throws VfsError invalid_request on a damaged, truncated or non-tar input.
      */
     private function parseTarArchive(string $archive, VfsBudget $budget): array
     {
         $entries = [];
-        for ($offset = 0; $offset + 512 <= strlen($archive);) {
+        $length = strlen($archive);
+        $offset = 0;
+        $ended = false;
+        while ($offset + 512 <= $length) {
             $header = substr($archive, $offset, 512);
             if (trim($header, "\0") === '') {
+                $ended = true;
+
                 break;
+            }
+            if (! $this->tarHeaderChecksumValid($header)) {
+                throw VfsError::invalid($offset === 0
+                    ? 'Input is not a tar archive (no valid tar header).'
+                    : "tar archive is damaged: bad header checksum at byte {$offset}.", ['hint' => 'Check that the file is a complete, uncompressed tar (use -z for .tar.gz).']);
             }
             $name = rtrim(substr($header, 0, 100), "\0");
             $prefix = rtrim(substr($header, 345, 155), "\0");
             if ($prefix !== '' && substr($header, 257, 5) === 'ustar') {
                 $name = $prefix.'/'.$name;
             }
-            $size = (int) octdec(trim(substr($header, 124, 12), " \0") ?: '0');
+            $sizeField = trim(substr($header, 124, 12), " \0");
+            if (preg_match('/^[0-7]*$/', $sizeField) !== 1) {
+                throw VfsError::invalid("tar archive is damaged: member {$name} has an unreadable size field.");
+            }
+            $size = (int) octdec($sizeField === '' ? '0' : $sizeField);
             $type = substr($header, 156, 1);
             $offset += 512;
+            // Invariant: the declared body must be fully present before any
+            // byte of it is used, or a truncated archive extracts a short file.
+            if ($size > $length - $offset) {
+                throw VfsError::invalid("tar archive is truncated: member {$name} declares {$size} bytes but only ".($length - $offset).' remain.', ['hint' => 'The archive is incomplete; fetch or create it again.']);
+            }
             if (in_array($type, ['0', "\0", ''], true) && $name !== '') {
                 if (count($entries) >= $budget->maxFiles) {
                     throw VfsError::invalid("tar archive has more than maxFiles ({$budget->maxFiles}) members.", ['hint' => 'Raise maxFiles to list or extract it.']);
@@ -420,8 +453,39 @@ trait ExecutesVfsArchiveCommands
             }
             $offset += (int) (ceil($size / 512) * 512);
         }
+        // A tail shorter than one block is only acceptable as NUL padding
+        // (some writers omit or shorten the end-of-archive blocks).
+        if (! $ended && $offset < $length && trim(substr($archive, $offset), "\0") !== '') {
+            throw VfsError::invalid($offset === 0
+                ? 'Input is not a tar archive (shorter than one 512-byte header).'
+                : "tar archive is truncated: partial header at byte {$offset}.", ['hint' => 'The archive is incomplete; fetch or create it again.']);
+        }
 
         return $entries;
+    }
+
+    /**
+     * Whether a 512-byte tar header's checksum field matches its bytes.
+     * The checksum is the sum of all header bytes with the 8-byte checksum
+     * field counted as spaces; historic writers used signed bytes, so both
+     * the unsigned and the signed sum are accepted (as GNU tar does).
+     */
+    private function tarHeaderChecksumValid(string $header): bool
+    {
+        $field = trim(substr($header, 148, 8), " \0");
+        if ($field === '' || preg_match('/^[0-7]+$/', $field) !== 1) {
+            return false;
+        }
+        $expected = (int) octdec($field);
+        $blank = substr_replace($header, '        ', 148, 8);
+        $unsigned = 0;
+        $signed = 0;
+        foreach (unpack('C*', $blank) ?: [] as $byte) {
+            $unsigned += $byte;
+            $signed += $byte > 127 ? $byte - 256 : $byte;
+        }
+
+        return $expected === $unsigned || $expected === $signed;
     }
 
     private function archiveInput(User $agent, ?string $file, VfsArgs $args, string $cwd, ?string $stdin): string

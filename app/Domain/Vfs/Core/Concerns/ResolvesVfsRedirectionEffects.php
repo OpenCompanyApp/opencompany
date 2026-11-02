@@ -20,6 +20,13 @@ use App\Models\User;
  *   so a concurrent change fails with `conflict` instead of being lost.
  * - A command that failed never truncates its `>` target: the file is only
  *   written when there is something to write or the command succeeded.
+ * - Every file a redirection names is opened, left to right, as in bash:
+ *   `printf x > a > b` creates/truncates `a` and writes `x` to `b`; a
+ *   superseded `>>` target is created when missing. Each one goes through
+ *   the same governed write, so an earlier target the agent may not write
+ *   fails the command before later targets are written (VFS deviation:
+ *   commands run before their redirections are delivered, so the command
+ *   itself has already run).
  */
 trait ResolvesVfsRedirectionEffects
 {
@@ -123,7 +130,10 @@ trait ResolvesVfsRedirectionEffects
             }
         }
 
-        foreach ($files as $path => $file) {
+        // Invariant: targets are opened in the order the redirections name
+        // them, including targets a later redirection superseded.
+        foreach ($this->redirectTargetsInOrder($redirections) as $path => $openMode) {
+            $file = $files[$path] ?? ['mode' => $openMode, 'content' => ''];
             if ($error !== null && $file['content'] === '') {
                 continue;
             }
@@ -131,6 +141,26 @@ trait ResolvesVfsRedirectionEffects
         }
 
         return ['stdout' => $out, 'stderr' => $err, 'error_handled' => $errorHandled];
+    }
+
+    /**
+     * Every file target named by an output redirection, in first-appearance
+     * order, with the mode it was opened with ('overwrite' or 'append').
+     *
+     * @param  list<array{stream: string, mode: string, path: string}>  $redirections
+     * @return array<string, string>
+     */
+    private function redirectTargetsInOrder(array $redirections): array
+    {
+        $targets = [];
+        foreach ($redirections as $redirect) {
+            if ($redirect['stream'] === 'stdin' || $redirect['mode'] === 'merge' || $redirect['path'] === '/dev/null') {
+                continue;
+            }
+            $targets[$redirect['path']] ??= $redirect['mode'];
+        }
+
+        return $targets;
     }
 
     /**
@@ -143,6 +173,11 @@ trait ResolvesVfsRedirectionEffects
         $version = null;
         if ($mode === 'append') {
             [$existing, $version] = $this->existingContentForAppend($agent, $path);
+            if ($content === '' && $version !== null) {
+                // Opening an existing file for append with nothing to add
+                // leaves it unchanged (no new version).
+                return;
+            }
             $content = $existing.$content;
         }
 

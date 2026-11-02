@@ -30,6 +30,20 @@ trait ReadsVfsCommandInputs
     /** Bound on directories one glob expansion may list. */
     private int $globDirectoryBudget = 50;
 
+    /** Bound on entries read from one directory during glob expansion. */
+    private int $globEntryBudget = 1_000;
+
+    /** Bound on candidate paths one glob's literal tail may stat. */
+    private int $globStatBudget = 1_000;
+
+    /**
+     * Whether a glob in the running command's operands was cut by one of
+     * the budgets above. Reset before each command (runPipeline); a set
+     * flag makes assertWriteCommandAllowed refuse the write, so `rm` or
+     * `cp` never acts on a silently partial match set.
+     */
+    private bool $operandGlobTruncated = false;
+
     /**
      * Parse the running command's argv with its spec.
      *
@@ -134,7 +148,13 @@ trait ReadsVfsCommandInputs
         if ($literalTail) {
             // Literal segments after the last glob were appended blindly;
             // keep only paths that exist (bash never returns phantom matches).
-            $candidates = array_values(array_filter(array_slice($candidates, 0, 200), function (string $candidate): bool {
+            // Invariant: candidates past the stat budget are reported as a
+            // truncation, never dropped silently.
+            if (count($candidates) > $this->globStatBudget) {
+                $this->noteGlobTruncation("glob expansion checked {$this->globStatBudget} of ".count($candidates)." candidate paths for {$token}; narrow the pattern.");
+                $candidates = array_slice($candidates, 0, $this->globStatBudget);
+            }
+            $candidates = array_values(array_filter($candidates, function (string $candidate): bool {
                 try {
                     $this->vfs->stat($this->agentForPathExpansion(), $candidate);
 
@@ -158,12 +178,19 @@ trait ReadsVfsCommandInputs
     private function globList(string $directory, int &$listed): array
     {
         if (++$listed > $this->globDirectoryBudget) {
-            $this->noteTruncation('glob expansion listed '.$this->globDirectoryBudget.' directories and stopped; narrow the pattern.');
+            $this->noteGlobTruncation('glob expansion listed '.$this->globDirectoryBudget.' directories and stopped; narrow the pattern.');
 
             return [];
         }
         try {
-            return $this->vfs->listBounded($this->agentForPathExpansion(), $directory, new VfsBudget(maxEntries: 1_000, maxFiles: 2_000));
+            // One entry over the budget tells a full directory from a cut one.
+            $entries = $this->vfs->listBounded($this->agentForPathExpansion(), $directory, new VfsBudget(maxEntries: $this->globEntryBudget + 1, maxFiles: 2 * $this->globEntryBudget + 2));
+            if (count($entries) > $this->globEntryBudget) {
+                $this->noteGlobTruncation("glob expansion read the first {$this->globEntryBudget} entries of {$directory}; narrow the pattern.");
+                $entries = array_slice($entries, 0, $this->globEntryBudget);
+            }
+
+            return $entries;
         } catch (VfsError $e) {
             if (in_array($e->errorCode, ['not_found', 'not_readable'], true)) {
                 return [];
@@ -460,6 +487,17 @@ trait ReadsVfsCommandInputs
      * Record a budget truncation the agent must see: shown as a line in
      * stdout when the command's output is displayed, otherwise in stderr.
      */
+    /**
+     * Report a glob expansion cut by a budget: a truncation note for the
+     * caller, plus the flag that stops a mutating command from acting on
+     * the partial match set.
+     */
+    private function noteGlobTruncation(string $message): void
+    {
+        $this->operandGlobTruncated = true;
+        $this->noteTruncation($message);
+    }
+
     private function noteTruncation(string $message): void
     {
         $this->anyTruncated = true;

@@ -632,7 +632,9 @@ final class VfsShellLexer
     /**
      * After an unquoted newline, consume the bodies of queued heredocs line by
      * line until each delimiter line. Bodies are never expanded (VFS has no
-     * variables), so quoted and bare delimiters behave the same.
+     * variables), so quoted and bare delimiters behave the same. CRLF line
+     * endings are read as LF; otherwise the terminator line must be exactly
+     * the delimiter (`<<-` strips leading tabs only).
      */
     private function readHeredocBodies(): void
     {
@@ -647,7 +649,11 @@ final class VfsShellLexer
                 if ($heredoc['strip_tabs']) {
                     $line = ltrim($line, "\t");
                 }
-                if (rtrim($line, " \t") === $heredoc['delimiter']) {
+                // Invariant: the delimiter line must equal the delimiter exactly
+                // (after the `<<-` leading-tab strip above). `EOF   ` is body
+                // text, as in bash; trimming it would end the body early and
+                // hand the remaining body lines to the command parser.
+                if ($line === $heredoc['delimiter']) {
                     $closed = true;
 
                     break;
