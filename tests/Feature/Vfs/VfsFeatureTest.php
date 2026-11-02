@@ -1424,9 +1424,9 @@ RUBY);
 
         $decoded = json_decode($raw, true);
 
-        $this->assertFalse($decoded['ok']);
-        $this->assertSame('approval_required', $decoded['error']['code']);
-        $this->assertSame('vfs_write', $decoded['error']['context']['tool']);
+        // Phase 2: approval-pending is the non-error pending_approval envelope.
+        $this->assertSame('pending_approval', $decoded['status']);
+        $this->assertSame(['vfs_write'], $decoded['approval_tools']);
         $approval = ApprovalRequest::query()->latest()->first();
         $this->assertNotNull($approval);
         $this->assertSame('vfs_exec', $approval->tool_execution_context['tool_slug']);

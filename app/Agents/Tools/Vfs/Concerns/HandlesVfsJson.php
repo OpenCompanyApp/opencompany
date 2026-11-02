@@ -4,6 +4,7 @@ namespace App\Agents\Tools\Vfs\Concerns;
 
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsPendingApproval;
 
 /**
  * Shared JSON response helpers for VFS tools.
@@ -30,6 +31,12 @@ trait HandlesVfsJson
      */
     private function encodeError(string $code, string $message, array $context = []): string
     {
+        // Approval-pending is not an error: one shape for every VFS tool
+        // (owned by VfsPendingApproval, Stream C2).
+        if ($code === 'approval_required' && ($pending = VfsPendingApproval::fromError(new VfsError($code, $message, $context))) !== null) {
+            return json_encode($pending, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        }
+
         return json_encode([
             'ok' => false,
             'error' => [

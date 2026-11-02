@@ -269,6 +269,25 @@ class AgentPermissionResolver
     }
 
     /**
+     * Document folder ids explicitly denied to this agent (scope `folder`,
+     * permission `deny`). A deny covers the folder and every descendant and
+     * wins over any allow (governance decision order: explicit deny before
+     * grants). Empty when there are none.
+     *
+     * @return list<string>
+     */
+    public function getDeniedFolderIds(User $agent): array
+    {
+        return AgentPermission::forAgent($agent->id)
+            ->folders()
+            ->denied()
+            ->pluck('scope_key')
+            ->map(fn (mixed $id): string => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return string[]
      */
     public function getEnabledIntegrations(User $agent): array

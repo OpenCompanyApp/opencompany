@@ -16,6 +16,20 @@ use Illuminate\Database\Eloquent\Builder;
  * This concern owns channel routing, permission-scoped channel listing, and
  * day-based message exports. Table/data collaboration mounts intentionally live
  * in a sibling concern to keep each mount family locally understandable.
+ *
+ * Visibility (allowedChannels) is the chat tools' rule, plus one tightening:
+ * - channel allow rows (AgentPermission scope `channel`) restrict the set
+ *   exactly like canAccessChannel/ListChannels;
+ * - direct-message channels (`type = dm`) are never visible because they
+ *   exist (ListChannels excludes them): only DMs the agent is a member of, or
+ *   that an admin explicitly allowed by id, are. Other principals' DM
+ *   transcripts are therefore unreachable through /channels, by-id guessing
+ *   and search candidates alike.
+ *
+ * Paths: `/channels/{slug}` is unique per agent view. When two visible
+ * channels slug the same, both are listed as `{slug}--{id8}` (first 8 chars
+ * of the id, deterministic), the bare slug fails with ambiguous_match listing
+ * the suffixed paths, and `/channels/by-id/{id}` always works.
  */
 trait MountsVfsChannels
 {
@@ -40,12 +54,14 @@ trait MountsVfsChannels
     private function pageChannels(User $agent, array $segments, string $path, VfsBudget $budget, array $state): array
     {
         if (count($segments) === 1) {
+            $collisions = $this->channelSlugCollisions($agent);
+
             return $this->paginateVfsLabelQuery(
                 $this->allowedChannels($agent),
                 'name',
                 $budget->maxEntries,
                 $state,
-                fn (Channel $channel): VfsEntry => $this->channelEntry($channel),
+                fn (Channel $channel): VfsEntry => $this->channelEntry($channel, $collisions),
                 new VfsEntry('by-id', '/channels/by-id', 'directory', capabilities: ['browse']),
             );
         }
@@ -282,6 +298,9 @@ trait MountsVfsChannels
     }
 
     /**
+     * Channels the agent may see, as one query (so pagination, by-id lookups
+     * and search candidates share it). See the class docblock for the rule.
+     *
      * @return Builder<Channel>
      */
     private function allowedChannels(User $agent): Builder
@@ -292,7 +311,43 @@ trait MountsVfsChannels
             $query->whereIn('id', $allowed);
         }
 
+        // Invariant: other principals' DMs stay hidden by default. Only the
+        // agent's own DMs or DMs an admin allowed by explicit id pass.
+        $query->where(function (Builder $visible) use ($agent, $allowed): void {
+            $visible->whereNull('type')
+                ->orWhere('type', '!=', 'dm')
+                ->orWhereHas('members', fn (Builder $members) => $members->where('user_id', $agent->id));
+            if ($allowed !== null) {
+                $visible->orWhereIn('id', $allowed);
+            }
+        });
+
         return $query;
+    }
+
+    /**
+     * Slugs shared by more than one visible channel => their channel ids.
+     *
+     * @return array<string, list<string>>
+     */
+    private function channelSlugCollisions(User $agent): array
+    {
+        $bySlug = [];
+        foreach ($this->allowedChannels($agent)->toBase()->get(['id', 'name']) as $row) {
+            $bySlug[$this->slug((string) $row->name)][] = (string) $row->id;
+        }
+
+        return array_filter($bySlug, fn (array $ids): bool => count($ids) > 1);
+    }
+
+    /**
+     * @param  array<string, list<string>>  $collisions
+     */
+    private function channelFriendlyName(Channel $channel, array $collisions): string
+    {
+        $slug = $this->slug($channel->name);
+
+        return isset($collisions[$slug]) ? $slug.'--'.substr((string) $channel->id, 0, 8) : $slug;
     }
 
     /**
@@ -308,12 +363,37 @@ trait MountsVfsChannels
             return $channel ?? throw VfsError::notFound($path);
         }
 
-        $slug = $parts[0] ?? '';
+        $token = $parts[0] ?? '';
 
-        foreach ($query->lazy(100) as $channel) {
-            if ($this->slug($channel->name) === $slug) {
-                return $channel;
+        // Deterministic collision suffix: {slug}--{first 8 chars of the id}.
+        if (preg_match('/^(.*)--([0-9a-z]{8})$/i', $token, $suffixed) === 1) {
+            foreach ((clone $query)->where('id', 'like', strtolower($suffixed[2]).'%')->get() as $channel) {
+                if ($this->slug($channel->name) === $suffixed[1]) {
+                    return $channel;
+                }
             }
+        }
+
+        $matches = [];
+        foreach ($query->lazy(100) as $channel) {
+            if ($this->slug($channel->name) === $token) {
+                $matches[] = $channel;
+            }
+        }
+
+        if (count($matches) === 1) {
+            return $matches[0];
+        }
+
+        if (count($matches) > 1) {
+            $candidates = array_map(fn (Channel $channel): string => '/channels/'.$token.'--'.substr((string) $channel->id, 0, 8), $matches);
+
+            throw new VfsError('ambiguous_match', "Channel name is ambiguous: {$token} matches ".count($matches).' channels.', [
+                'path' => $path,
+                'count' => count($matches),
+                'candidates' => $candidates,
+                'hint' => 'Use one of the suffixed paths in candidates, or /channels/by-id/{id}.',
+            ]);
         }
 
         throw VfsError::notFound($path);
@@ -346,11 +426,14 @@ trait MountsVfsChannels
         ];
     }
 
-    private function channelEntry(Channel $channel): VfsEntry
+    /**
+     * @param  array<string, list<string>>  $collisions  From channelSlugCollisions()
+     */
+    private function channelEntry(Channel $channel, array $collisions = []): VfsEntry
     {
         return new VfsEntry(
             name: $channel->name,
-            path: '/channels/'.$this->slug($channel->name),
+            path: '/channels/'.$this->channelFriendlyName($channel, $collisions),
             type: 'directory',
             canonicalPath: "/channels/by-id/{$channel->id}",
             backendType: 'channel',

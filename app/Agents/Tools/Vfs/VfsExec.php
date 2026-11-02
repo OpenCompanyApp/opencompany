@@ -9,6 +9,7 @@ use App\Domain\Vfs\Core\VfsCommandHelp;
 use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsOperationLog;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsPendingApproval;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
@@ -136,6 +137,12 @@ class VfsExec implements ReturnsVfsEnvelope, Tool
      */
     private function encodeError(string $code, string $message, array $context = []): string
     {
+        // Approval-pending is not an error: one shape for every VFS tool
+        // (owned by VfsPendingApproval, Stream C2).
+        if ($code === 'approval_required' && ($pending = VfsPendingApproval::fromError(new VfsError($code, $message, $context))) !== null) {
+            return json_encode($pending, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        }
+
         $payload = [
             'ok' => false,
             'error' => [

@@ -11,9 +11,23 @@ use Illuminate\Support\Str;
 
 /**
  * Read-only automation mount.
+ *
+ * Automations are being replaced by Routines (docs/PRODUCT_DIRECTION.md);
+ * this mount gets minimal care. Listing metadata (name, active) stays visible
+ * to every agent. The body fields that carry instructions, code or external
+ * data (AUTOMATION_PRIVATE_FIELDS) are only served to agents allowed the
+ * automation read tool (`get_automation`), so the VFS never shows more than
+ * the domain tool would.
  */
 trait MountsVfsAutomations
 {
+    /**
+     * Fields hidden unless the agent may use get_automation.
+     *
+     * @var list<string>
+     */
+    private static array $automationPrivateFields = ['script', 'prompt', 'last_result', 'content', 'config'];
+
     /**
      * @param  list<string>  $segments
      * @return list<VfsEntry>
@@ -61,8 +75,21 @@ trait MountsVfsAutomations
         }
 
         $automation = $this->resolveAutomationToken(Str::before($segments[1], '.json'), $path);
+        $payload = $automation->toArray();
 
-        return json_encode($automation->toArray(), JSON_PRETTY_PRINT);
+        if (! $this->permissions->resolveToolPermission($agent, 'get_automation', 'read')['allowed']) {
+            $hidden = [];
+            foreach (self::$automationPrivateFields as $field) {
+                if (array_key_exists($field, $payload)) {
+                    unset($payload[$field]);
+                    $hidden[] = $field;
+                }
+            }
+            $payload['redacted_fields'] = $hidden;
+            $payload['redaction_reason'] = 'Automation instructions, code and results require the get_automation tool permission.';
+        }
+
+        return json_encode($payload, JSON_PRETTY_PRINT);
     }
 
     private function automationEntry(Automation $automation, string $path): VfsEntry
