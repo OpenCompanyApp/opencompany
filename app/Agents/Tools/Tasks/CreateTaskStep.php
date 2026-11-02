@@ -26,7 +26,7 @@ class CreateTaskStep implements Tool
             $description = $request['description'];
             $stepType = $request['stepType'] ?? 'action';
 
-            $task = Task::find($taskId);
+            $task = Task::query()->where('workspace_id', $this->agent->workspace_id)->find($taskId);
             if (!$task) {
                 return "Error: Task '{$taskId}' not found.";
             }

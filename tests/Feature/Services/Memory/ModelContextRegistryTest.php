@@ -45,10 +45,26 @@ class ModelContextRegistryTest extends TestCase
 
     public function test_levenshtein_match_within_threshold(): void
     {
-        // 'claude-sonnt-4' is a typo for 'claude-sonnet-4' (distance 2)
-        $result = $this->registry->getContextWindow('claude-sonnt-4');
+        // Without a provider, a near-miss of a catalog model ID (one character
+        // dropped) resolves through the catalog-wide fuzzy match.
+        [$id, $window] = $this->catalogModel();
+        $result = $this->registry->getContextWindow(substr($id, 0, -1).'X');
 
-        $this->assertEquals(200_000, $result);
+        $this->assertEquals($window, $result);
+    }
+
+    /**
+     * A real catalog model with a distinctive, non-default window.
+     *
+     * @return array{0: string, 1: int}
+     */
+    private function catalogModel(): array
+    {
+        $info = app(\App\Domain\Ai\Catalog\AiCatalog::class)->model('z', 'glm-5.1');
+        $this->assertNotNull($info);
+        $this->assertNotSame(32_000, $info->contextWindow);
+
+        return [$info->id, $info->contextWindow];
     }
 
     public function test_unknown_model_returns_default(): void
@@ -86,10 +102,11 @@ class ModelContextRegistryTest extends TestCase
 
     public function test_prefix_match_prefers_longer_prefix(): void
     {
-        // 'gpt-4-turbo-2024-04-09' should match 'gpt-4-turbo' (128K)
-        // not 'gpt-4' (8K) — longer prefix wins
-        $result = $this->registry->getContextWindow('gpt-4-turbo-2024-04-09');
+        // A dated variant of a catalog model ID inherits that model's window
+        // through the longest catalog prefix (no hardcoded model table).
+        [$id, $window] = $this->catalogModel();
+        $result = $this->registry->getContextWindow($id.'-20260101');
 
-        $this->assertEquals(128_000, $result);
+        $this->assertEquals($window, $result);
     }
 }

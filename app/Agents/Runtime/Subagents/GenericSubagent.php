@@ -6,6 +6,7 @@ use App\Agents\Conversations\ChannelConversationLoader;
 use App\Agents\Runtime\ActiveAgentRun;
 use App\Agents\Tools\System\RunGuardedTool;
 use App\Agents\Tools\ToolRegistry;
+use App\Domain\AgentRuntime\Application\DelegationGuard;
 use App\Events\TaskUpdated;
 use App\Models\AgentRunRecord;
 use App\Models\Channel;
@@ -255,6 +256,19 @@ class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
                 throw new \RuntimeException('The delegated channel does not match the parent task.');
             }
 
+            // Synchronous subagent calls are delegation hops too. The parent's
+            // agent is the delegator; refuse depth/cycle violations before the
+            // child task exists.
+            $delegator = User::query()->find($parent->agent_id);
+            $guard = app(DelegationGuard::class);
+            if ($delegator instanceof User) {
+                try {
+                    $guard->assertCanDelegate($delegator, $this->agent, $parent);
+                } catch (\DomainException $refused) {
+                    throw new \RuntimeException($refused->getMessage(), previous: $refused);
+                }
+            }
+
             $child = Task::create([
                 'id' => Str::uuid()->toString(),
                 'workspace_id' => $this->agent->workspace_id,
@@ -269,6 +283,7 @@ class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
                 'channel_id' => $this->channelId,
                 'parent_task_id' => $parent->id,
                 'started_at' => now(),
+                'context' => $delegator instanceof User ? $guard->childContext($delegator, $parent) : null,
             ]);
 
             return [$parent, $child];

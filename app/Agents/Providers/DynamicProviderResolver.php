@@ -2,6 +2,7 @@
 
 namespace App\Agents\Providers;
 
+use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Services\Ai\ModelCatalog;
@@ -75,17 +76,20 @@ class DynamicProviderResolver
     }
 
     /**
+     * Canonicalize a provider alias and apply catalog-declared legacy model
+     * upgrades for brains stored under that alias. No provider or model IDs
+     * live here; they belong to the app-owned catalog (overrides/providers.php).
+     *
      * @return array{0: string, 1: string}
      */
     private function normalizeLegacyBrain(string $providerKey, string $model): array
     {
-        return match ($providerKey) {
-            // Older Atlas brains used a synthetic provider key for GLM coding.
-            // Keep them working, but route through the current Z.ai provider and
-            // upgrade obsolete GLM 4.x defaults to the supported GLM 5.1 model.
-            'glm-coding' => ['z', str_starts_with($model, 'glm-4.') ? 'glm-5.1' : $model],
-            default => [$providerKey, $model],
-        };
+        $provider = app(AiCatalog::class)->provider($providerKey);
+        if ($provider === null || $provider->id === strtolower($providerKey)) {
+            return [$providerKey, $model];
+        }
+
+        return [$provider->id, $provider->replacementForAlias($providerKey, $model) ?? $model];
     }
 
     /**

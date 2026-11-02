@@ -89,7 +89,12 @@ class OrchestrateSubagents implements Tool
             ];
         }
 
-        $stats = $this->orchestrator->runSequential($definitions, $this->channelId, $this->taskId);
+        try {
+            $stats = $this->orchestrator->runSequential($definitions, $this->channelId, $this->taskId);
+        } catch (\InvalidArgumentException $invalidPlan) {
+            // Plan validation happens before any subagent runs.
+            return "Error: {$invalidPlan->getMessage()} No subagent was run; fix the plan and retry.";
+        }
 
         // Return structured JSON rather than prose so the calling model can
         // inspect which subagent failed or produced output before deciding how

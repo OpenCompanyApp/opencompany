@@ -14,37 +14,14 @@ use Illuminate\Support\Str;
 /**
  * Creates internal agent-to-agent communication channels and message envelopes.
  *
- * This service handles durable chat records only. Queueing the recipient agent,
- * depth guards around nested delegation, and task lifecycle are owned by the
- * tools/jobs that call it.
+ * This service handles durable chat records only. Queueing the recipient agent
+ * and task lifecycle are owned by the tools/jobs that call it; the durable
+ * delegation depth/cycle guard lives in DelegationGuard (persisted on tasks,
+ * not in process memory, so it holds across queued jobs).
  */
 class AgentCommunicationService
 {
-    private static int $depth = 0;
-
     public function __construct(private DirectMessageResolver $directMessages) {}
-
-    public static function incrementDepth(): int
-    {
-        return ++self::$depth;
-    }
-
-    public static function decrementDepth(): int
-    {
-        self::$depth = max(0, self::$depth - 1);
-
-        return self::$depth;
-    }
-
-    public static function currentDepth(): int
-    {
-        return self::$depth;
-    }
-
-    public static function resetDepth(): void
-    {
-        self::$depth = 0;
-    }
 
     /**
      * Get or create a DM channel between two agents.
