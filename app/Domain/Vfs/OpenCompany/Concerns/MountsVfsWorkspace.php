@@ -8,8 +8,13 @@ use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsText;
 use App\Domain\Vfs\Events\VfsOperationContext;
 use App\Models\AgentPermission;
+use App\Models\DataTable;
+use App\Models\DataTableRow;
+use App\Models\Document;
+use App\Models\ListItem;
 use App\Models\User;
 use App\Models\VfsOperationEvent;
+use App\Models\WorkspaceFile;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\JoinClause;
@@ -182,16 +187,26 @@ trait MountsVfsWorkspace
      * can refresh copies they pulled earlier without rescanning.
      *
      * - Source: committed write events (`vfs_operation_events.committed`),
-     *   keyset-paged on (occurred_at, id); `id` is monotonic, so a saved
-     *   next_cursor resumes exactly after the last delivered change and can be
-     *   polled again later for newer ones (cursors are actor-bound).
+     *   keyset-paged on the database `id` ALONE. `occurred_at` is assigned in
+     *   PHP before the insert, so a writer that pauses between building and
+     *   inserting its event can land a lower timestamp after a later one was
+     *   delivered; a cursor led by the timestamp would skip it forever. The
+     *   auto-increment id is assigned at insert, so a saved next_cursor
+     *   resumes after the last delivered row and can be polled again later
+     *   (cursors are actor-bound). Residual window: on PostgreSQL an id is
+     *   taken at INSERT but visible at COMMIT; write events are inserted by
+     *   the auditor right after the facade call returned (its own
+     *   transaction already committed), so outside an enclosing transaction
+     *   that window is the duration of a single INSERT.
      * - Permission: re-checked per object at read time by stat'ing the
      *   object's canonical path as the agent (unaudited); invisible objects are
-     *   skipped, not redacted. Deletes are shown only to their actor or when
-     *   the deleted object's parent directory is readable (the object itself
-     *   no longer resolves).
+     *   skipped, not redacted. Deletes are shown to their actor, or when the
+     *   agent can read the place the object was deleted FROM (its original
+     *   parent, resolved from the trashed record whatever alias the writer
+     *   used), see changeIsVisible().
      * - Line shape: {id, occurred_at, type, operation, path, backend_type,
-     *   backend_id, version, actor_id, run_id}. No content, ever.
+     *   backend_id, version, actor_id, run_id}. No content, ever. Every line,
+     *   including the last, ends with a newline (NDJSON).
      *
      * The workspace event log will replace the audit table; this view then
      * becomes a subject-prefix query on the log with the same contract.
@@ -203,7 +218,7 @@ trait MountsVfsWorkspace
     {
         $path = '/workspace/changes.ndjson';
         $after = $state['after'] ?? null;
-        if ($after !== null && (! is_array($after) || ! is_string($after['occurred_at'] ?? null) || ! is_int($after['id'] ?? null))) {
+        if ($after !== null && (! is_array($after) || ! is_int($after['id'] ?? null))) {
             throw $this->invalidVfsPageCursor();
         }
 
@@ -219,15 +234,7 @@ trait MountsVfsWorkspace
             $batch = VfsOperationEvent::query()
                 ->where('workspace_id', $agent->workspace_id)
                 ->where('committed', true)
-                ->when(is_array($cursor), function (Builder $query) use ($cursor): void {
-                    $query->where(function (Builder $query) use ($cursor): void {
-                        $query->where('occurred_at', '>', $cursor['occurred_at'])
-                            ->orWhere(function (Builder $query) use ($cursor): void {
-                                $query->where('occurred_at', $cursor['occurred_at'])->where('id', '>', $cursor['id']);
-                            });
-                    });
-                })
-                ->orderBy('occurred_at')
+                ->when(is_array($cursor), fn (Builder $query): Builder => $query->where('id', '>', $cursor['id']))
                 ->orderBy('id')
                 ->limit(min(200, $budget->maxFiles - $scanned + 1))
                 ->get();
@@ -244,7 +251,7 @@ trait MountsVfsWorkspace
                 }
 
                 $scanned++;
-                $position = ['occurred_at' => (string) $event->getRawOriginal('occurred_at'), 'id' => (int) $event->id];
+                $position = ['id' => (int) $event->id];
 
                 if (! $context->unaudited(fn (): bool => $this->changeIsVisible($agent, $event))) {
                     $skipped++;
@@ -265,7 +272,7 @@ trait MountsVfsWorkspace
                     'actor_id' => $event->agent_id,
                     'run_id' => $event->run_id,
                 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: '{}';
-                $additionalBytes = strlen($line) + ($lines === [] ? 0 : 1);
+                $additionalBytes = strlen($line) + 1;
                 if (! $this->vfsRecordFitsByteBudget($path, $budget->maxBytes, $usedBytes, $additionalBytes, count($lines), $event->event_id)) {
                     $hasMore = true;
 
@@ -283,7 +290,7 @@ trait MountsVfsWorkspace
         // later with it returns only newer changes, and an empty or fully
         // filtered page still advances past what was scanned.
         return [
-            'content' => implode("\n", $lines),
+            'content' => $lines === [] ? '' : implode("\n", $lines)."\n",
             'returned' => count($lines),
             'has_more' => $hasMore,
             'resumable' => true,
@@ -299,8 +306,20 @@ trait MountsVfsWorkspace
             if ($event->agent_id === $agent->id) {
                 return true;
             }
+
+            // Deletion visibility comes from where the object WAS, looked up
+            // from the backend record, so it does not depend on which alias
+            // (friendly or by-id) the writer happened to use.
+            $fromRecord = $this->deletedObjectIsVisible($agent, (string) $event->backend_type, (string) $event->backend_id);
+            if ($fromRecord !== null) {
+                return $fromRecord;
+            }
+
+            // Purged or unknown backend: fall back to the written path's
+            // parent. A by-id parent or a mount root says nothing about the
+            // object's scope, so it never grants visibility.
             $parent = dirname((string) $event->path);
-            if ($parent === '/' || str_ends_with($parent, '/by-id') || $parent === '.') {
+            if ($parent === '/' || str_ends_with($parent, '/by-id') || $parent === '.' || substr_count($parent, '/') < 2) {
                 return false;
             }
 
@@ -308,6 +327,35 @@ trait MountsVfsWorkspace
         }
 
         return $this->pathIsReadable($agent, (string) ($event->canonical_path ?? $event->path));
+    }
+
+    /**
+     * Whether the agent may learn that this deleted object existed: the same
+     * read rule as the object's original location. Null when the backend
+     * record is gone (purged) or the backend type is not a trashable record.
+     */
+    private function deletedObjectIsVisible(User $agent, string $backendType, string $backendId): ?bool
+    {
+        if ($backendId === '') {
+            return null;
+        }
+
+        return match ($backendType) {
+            'workspace_file' => ($file = WorkspaceFile::withTrashed()->where('workspace_id', $agent->workspace_id)->find($backendId)) === null
+                ? null
+                : ($file->trashed() ? $this->canAccessTrashedFile($agent, $file) : $this->pathIsReadable($agent, "/files/by-id/{$file->id}")),
+            'document' => ($doc = Document::withTrashed()->where('workspace_id', $agent->workspace_id)->find($backendId)) === null
+                ? null
+                : ($doc->trashed() ? $this->canAccessTrashedDocument($agent, $doc) : $this->pathIsReadable($agent, "/docs/by-id/{$doc->id}")),
+            'list_item' => ($item = ListItem::withTrashed()->where('workspace_id', $agent->workspace_id)->find($backendId)) === null
+                ? null
+                : ($item->parent_id !== null && $this->pathIsReadable($agent, "/lists/by-id/{$item->parent_id}")),
+            'data_table_row' => ($row = DataTableRow::withTrashed()->find($backendId)) === null
+                || ($table = DataTable::forWorkspace()->find($row->table_id)) === null
+                ? null
+                : $this->pathIsReadable($agent, "/tables/by-id/{$table->id}"),
+            default => null,
+        };
     }
 
     private function pathIsReadable(User $agent, string $path): bool
