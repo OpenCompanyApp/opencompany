@@ -35,7 +35,7 @@ trait ResolvesVfsEntries
         }
 
         try {
-            $entries = $this->list($agent, $path, $budget);
+            $entries = $this->listBounded($agent, $path, $budget);
             foreach ($entries as $entry) {
                 if ($entry->type === 'file') {
                     yield $entry->canonicalPath ?? $entry->path;

@@ -15,8 +15,8 @@ trait ExecutesVfsJqTransforms
 
     private function jq(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin): array
     {
-        $this->assertSupportedOptions($tokens, 'jq', ['r', 'c'], [], ['--raw-output', '--compact-output']);
-        [$args, $argQuoteMask, $compact] = $this->jqArguments($tokens);
+        $this->assertSupportedOptionsForCommand($tokens, 'jq');
+        [$args, $argQuoteMask, $compact, $slurp] = $this->jqArguments($tokens);
         $expr = $args[0] ?? '.';
         $quoteMask = $this->lastTokenQuoteMask;
         $this->lastTokenQuoteMask = array_values(array_slice($argQuoteMask, 1));
@@ -33,7 +33,8 @@ trait ExecutesVfsJqTransforms
 
         $outputs = [];
         foreach ($inputs as $json) {
-            foreach ($this->decodeJqInputs($json) as $data) {
+            $decoded = $this->decodeJqInputs($json);
+            foreach ($slurp ? [$decoded] : $decoded as $data) {
                 $result = $this->evaluateJqExpression((string) $expr, $data);
                 foreach (is_array($result) && array_key_exists('__vfs_jq_stream', $result) ? $result['__vfs_jq_stream'] : [$result] as $value) {
                     $outputs[] = $this->formatJqValue($value, $compact);
@@ -86,13 +87,14 @@ trait ExecutesVfsJqTransforms
     }
 
     /**
-     * @return array{0: list<string>, 1: list<bool>, 2: bool}
+     * @return array{0: list<string>, 1: list<bool>, 2: bool, 3: bool}
      */
     private function jqArguments(array $tokens): array
     {
         $args = [];
         $quoteMask = [];
         $compact = false;
+        $slurp = false;
 
         foreach ($tokens as $index => $token) {
             $quoted = $this->lastTokenQuoteMask[$index] ?? false;
@@ -104,8 +106,14 @@ trait ExecutesVfsJqTransforms
 
                 continue;
             }
-            if (! $quoted && preg_match('/^-[rc]+$/', $token) === 1) {
+            if (! $quoted && in_array($token, ['-s', '--slurp'], true)) {
+                $slurp = true;
+
+                continue;
+            }
+            if (! $quoted && preg_match('/^-[rcs]+$/', $token) === 1) {
                 $compact = $compact || str_contains($token, 'c');
+                $slurp = $slurp || str_contains($token, 's');
 
                 continue;
             }
@@ -114,6 +122,6 @@ trait ExecutesVfsJqTransforms
             $quoteMask[] = $quoted;
         }
 
-        return [$args, $quoteMask, $compact];
+        return [$args, $quoteMask, $compact, $slurp];
     }
 }

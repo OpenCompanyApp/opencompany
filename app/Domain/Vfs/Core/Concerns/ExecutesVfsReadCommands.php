@@ -18,21 +18,26 @@ trait ExecutesVfsReadCommands
 {
     private function cat(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin): array
     {
-        $this->assertSupportedOptions($tokens, 'cat');
+        $this->assertSupportedOptionsForCommand($tokens, 'cat');
+        $number = $this->shortFlags($tokens, ['n'])['n'] ?? false;
         $paths = $this->pathArgsWithValueOptions($tokens, $cwd, []);
         if ($paths === [] && $stdin !== null) {
-            return ['stdout' => $stdin, 'cwd' => $cwd, 'class' => 'read'];
+            return ['stdout' => $number ? $this->numberLines($stdin) : $stdin, 'cwd' => $cwd, 'class' => 'read'];
         }
 
         $chunks = array_map(fn (string $path): string => $this->vfs->read($agent, $path, $budget), $paths ?: [$cwd]);
+        $stdout = implode("\n", $chunks);
 
-        return ['stdout' => implode("\n", $chunks), 'cwd' => $cwd, 'class' => 'read'];
+        return ['stdout' => $number ? $this->numberLines($stdout) : $stdout, 'cwd' => $cwd, 'class' => 'read'];
     }
 
     private function headTail(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin, bool $head): array
     {
         $command = $head ? 'head' : 'tail';
-        $this->assertSupportedOptions($tokens, $command, ['-N'], ['-n', '--lines', '-c', '--bytes'], []);
+        $this->assertSupportedOptionsForCommand($tokens, $command);
+        if (! $head && (in_array('-f', $tokens, true) || in_array('--follow', $tokens, true))) {
+            throw VfsError::unsupported('tail --follow is not supported by bounded VFS exec.');
+        }
         $shorthand = $this->headTailShorthand($tokens);
         $lineOption = $this->headTailOptionValue($tokens, ['-n', '--lines']);
         $byteOption = $this->headTailOptionValue($tokens, ['-c', '--bytes']);
@@ -146,7 +151,7 @@ trait ExecutesVfsReadCommands
 
     private function wc(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin): array
     {
-        $this->assertSupportedOptions($tokens, 'wc', ['l', 'w', 'c']);
+        $this->assertSupportedOptionsForCommand($tokens, 'wc');
         $content = $stdin;
         $paths = $this->pathArgsWithValueOptions($tokens, $cwd, []);
         if ($paths !== []) {
@@ -162,7 +167,9 @@ trait ExecutesVfsReadCommands
         $lines = substr_count($content, "\n");
         $words = str_word_count($content);
         $bytes = strlen($content);
-        $flags = $this->shortFlags($tokens, ['l', 'w', 'c']);
+        $chars = mb_strlen($content);
+        $maxLine = max(array_map('strlen', VfsText::lines($content)) ?: [0]);
+        $flags = $this->shortFlags($tokens, ['l', 'w', 'c', 'm', 'L']);
         if ($flags !== []) {
             $parts = [];
             if ($flags['l'] ?? false) {
@@ -174,10 +181,25 @@ trait ExecutesVfsReadCommands
             if ($flags['c'] ?? false) {
                 $parts[] = (string) $bytes;
             }
+            if ($flags['m'] ?? false) {
+                $parts[] = (string) $chars;
+            }
+            if ($flags['L'] ?? false) {
+                $parts[] = (string) $maxLine;
+            }
 
             return ['stdout' => implode(' ', $parts), 'cwd' => $cwd, 'class' => 'read'];
         }
 
         return ['stdout' => "{$lines} {$words} {$bytes}", 'cwd' => $cwd, 'class' => 'read'];
+    }
+
+    private function numberLines(string $content): string
+    {
+        return implode("\n", array_map(
+            fn (string $line, int $index): string => str_pad((string) ($index + 1), 6, ' ', STR_PAD_LEFT)."\t".$line,
+            VfsText::lines($content),
+            array_keys(VfsText::lines($content)),
+        ));
     }
 }

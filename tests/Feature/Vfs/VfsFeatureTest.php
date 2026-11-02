@@ -6,6 +6,7 @@ use App\Agents\Tools\ToolRegistry;
 use App\Agents\Tools\Vfs\VfsExec;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsCommandExecutor;
+use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsOperationLog;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
@@ -14,9 +15,11 @@ use App\Models\ApprovalRequest;
 use App\Models\Automation;
 use App\Models\Channel;
 use App\Models\DataTable;
+use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
 use App\Models\DataTableView;
 use App\Models\Document;
+use App\Models\DocumentChunk;
 use App\Models\DocumentVersion;
 use App\Models\ListItem;
 use App\Models\Message;
@@ -26,12 +29,14 @@ use App\Models\VfsOperationEvent;
 use App\Models\Workspace;
 use App\Models\WorkspaceDisk;
 use App\Models\WorkspaceFile;
+use App\Services\AgentDocumentService;
 use App\Services\ApprovalExecutionService;
 use App\Services\FileSystemService;
 use App\Services\LuaApiDocGenerator;
 use App\Services\LuaBridge;
 use App\Services\LuaSandboxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
@@ -76,6 +81,117 @@ class VfsFeatureTest extends TestCase
         $toolMeta = collect(app(ToolRegistry::class)->getAllToolsMeta($this->agent))->pluck('id')->all();
         $this->assertContains('vfs_exec', $toolMeta);
         $this->assertNotContains('vfs_ls', $toolMeta);
+    }
+
+    public function test_vfs_atlas_artisan_helper_executes_commands_as_atlas(): void
+    {
+        $otherWorkspace = Workspace::create(['name' => 'Other Atlas Workspace', 'slug' => 'other-atlas']);
+        User::factory()->agent()->create([
+            'workspace_id' => $otherWorkspace->id,
+            'name' => 'Atlas',
+        ]);
+
+        $exit = Artisan::call('vfs:atlas', [
+            'vfsCommand' => ['pwd'],
+            '--json' => true,
+        ]);
+        $output = Artisan::output();
+
+        $this->assertSame(0, $exit);
+        $this->assertStringContainsString('"id": "'.$this->agent->id.'"', $output);
+        $this->assertStringContainsString('"name": "Atlas"', $output);
+        $this->assertStringContainsString('"command": "pwd"', $output);
+        $this->assertStringContainsString('"stdout": "/"', $output);
+
+        $primitiveExit = Artisan::call('vfs:atlas', [
+            '--primitive' => 'stat',
+            '--arg' => ['path=/'],
+            '--json' => true,
+        ]);
+        $primitiveOutput = Artisan::output();
+
+        $this->assertSame(0, $primitiveExit);
+        $this->assertStringContainsString('"primitive": "vfs_stat"', $primitiveOutput);
+        $this->assertStringContainsString('"path": "/"', $primitiveOutput);
+
+        $missingExit = Artisan::call('vfs:atlas', [
+            'vfsCommand' => ['pwd'],
+            '--agent' => 'missing-agent',
+        ]);
+
+        $this->assertSame(1, $missingExit);
+    }
+
+    public function test_vfs_atlas_artisan_helper_smoke_matrix_covers_shell_and_primitives(): void
+    {
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'file_folder',
+            'scope_key' => '*',
+            'permission' => 'allow',
+            'requires_approval' => false,
+        ]);
+
+        $table = DataTable::create([
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Atlas Smoke',
+            'created_by' => $this->agent->id,
+        ]);
+        $column = DataTableColumn::create([
+            'table_id' => $table->id,
+            'name' => 'Status',
+            'type' => 'text',
+            'order' => 0,
+            'required' => false,
+        ]);
+        $row = DataTableRow::create([
+            'table_id' => $table->id,
+            'data' => [$column->id => 'lead'],
+            'created_by' => $this->agent->id,
+        ]);
+        $canonicalFolder = app(FileSystemService::class)->createFolder($this->workspace->id, null, 'atlas-canonical', $this->agent->id);
+
+        $root = $this->runAtlasCommand('ls /');
+        $this->assertTrue($root['ok']);
+        $this->assertStringContainsString('tools/', $root['stdout']);
+
+        $help = $this->runAtlasCommand('help grep', ['--spec' => true]);
+        $this->assertTrue($help['ok']);
+        $this->assertStringContainsString('Search literal or regex text.', $help['stdout']);
+        $this->assertArrayHasKey('command_spec', $help['diagnostics']);
+
+        $unsupportedHelp = $this->runAtlasCommand('curl --help');
+        $this->assertTrue($unsupportedHelp['ok']);
+        $this->assertStringContainsString('unsupported', strtolower($unsupportedHelp['stdout']));
+
+        $tableStat = $this->runAtlasPrimitive('stat', ['path' => "/tables/atlas-smoke/rows/by-id/{$row->id}.json"]);
+        $this->assertTrue($tableStat['ok']);
+        $this->assertContains('patch', $tableStat['response']['result']['capabilities']);
+
+        $tableRead = $this->runAtlasPrimitive('read', ['path' => "/tables/atlas-smoke/rows/by-id/{$row->id}.json"]);
+        $this->assertTrue($tableRead['ok']);
+        $this->assertStringContainsString('"Status"', $tableRead['response']['result']['content']);
+
+        $generatedRead = $this->runAtlasPrimitive('read', ['path' => '/tools/vfs.md', 'maxBytes' => 120]);
+        $this->assertTrue($generatedRead['ok']);
+        $this->assertTrue($generatedRead['response']['result']['truncated']);
+
+        $displayWrite = $this->runAtlasCommand('mkdir /files/atlas-smoke && printf display > /files/atlas-smoke/display.txt && cat /files/atlas-smoke/display.txt');
+        $this->assertTrue($displayWrite['ok']);
+        $this->assertStringEndsWith('display', $displayWrite['stdout']);
+
+        $canonicalWrite = $this->runAtlasCommand("printf canonical > /files/by-id/{$canonicalFolder->id}/canonical.txt && cat /files/by-id/{$canonicalFolder->id}/canonical.txt");
+        $this->assertTrue($canonicalWrite['ok']);
+        $this->assertStringEndsWith('canonical', $canonicalWrite['stdout']);
+
+        $readOnlyWrite = $this->runAtlasCommand('printf nope > /workspace/settings.json', expectedExit: 1);
+        $this->assertFalse($readOnlyWrite['ok']);
+
+        $chained = $this->runAtlasCommand('false && printf skipped > /files/atlas-smoke/skipped.txt || printf fallback');
+        $this->assertTrue($chained['ok']);
+        $this->assertSame('fallback', $chained['stdout']);
+        $this->assertFalse(WorkspaceFile::forWorkspace()->where('name', 'skipped.txt')->exists());
     }
 
     public function test_vfs_exec_browses_reads_and_searches_documents(): void
@@ -371,14 +487,12 @@ class VfsFeatureTest extends TestCase
             'find /docs -exec echo {} ;',
             'tail --follow /docs',
             'cat --show-all /docs',
-            'du -h /docs',
-            'stat --format=%n /docs',
-            'file --mime /docs',
-            'cut --complement',
-            'tr -s a b',
-            'paste -d, /docs /docs',
             'which -a rg',
             'env -0',
+            'sed -i s/a/b/ /docs',
+            'python -c "print(1)"',
+            'curl https://example.com',
+            'tar -tf /files/archive.tar',
             'find /docs -delete || echo ignored',
             'find /docs -delete; echo ignored',
             'true || find /docs -delete',
@@ -458,6 +572,89 @@ class VfsFeatureTest extends TestCase
         $this->assertStringContainsString('alpha', $executor->execute($this->agent, 'comm /docs/by-id/'.$first->id.' /docs/by-id/'.$second->id)['stdout']);
     }
 
+    public function test_vfs_command_registry_recognizes_mirage_unix_surface(): void
+    {
+        $mirageCommands = [
+            'ls', 'stat', 'pwd', 'find', 'tree', 'du', 'cat', 'head', 'tail', 'wc',
+            'md5', 'diff', 'file', 'python', 'python3', 'nl', 'grep', 'rg', 'sort', 'uniq',
+            'cut', 'mkdir', 'touch', 'cp', 'mv', 'rm', 'sed', 'echo', 'tee', 'tr',
+            'curl', 'wget', 'jq', 'awk', 'paste', 'tac', 'printf', 'seq', 'base64', 'sha256sum',
+            'xxd', 'tar', 'gzip', 'gunzip', 'zip', 'unzip', 'basename', 'dirname', 'realpath', 'readlink',
+            'ln', 'split', 'patch', 'shuf', 'comm', 'column', 'fold', 'fmt', 'cmp', 'iconv',
+            'strings', 'rev', 'zcat', 'zgrep', 'mktemp', 'bc', 'expr', 'history', 'date', 'csplit',
+            'expand', 'unexpand', 'tsort', 'look', 'sleep', 'bash', 'join',
+        ];
+
+        foreach ($mirageCommands as $command) {
+            $this->assertNotNull(VfsCommandSpecRegistry::get($command), $command);
+        }
+
+        $tool = app(ToolRegistry::class)->instantiateToolBySlug('vfs_exec', $this->agent);
+        foreach ([
+            'bash -c "echo hi"',
+            'python -c "print(1)"',
+            'curl https://example.com',
+            'tar -tf /files/archive.tar',
+            'patch -p1',
+            'history',
+        ] as $command) {
+            $decoded = json_decode($tool->handle(new Request(['command' => $command])), true);
+
+            $this->assertFalse($decoded['ok'], $command);
+            $this->assertSame('unsupported', $decoded['error']['code'], $command);
+        }
+    }
+
+    public function test_vfs_command_help_and_structured_discovery_are_available(): void
+    {
+        $doc = Document::factory()->create([
+            'title' => 'Discovery Notes',
+            'content' => 'refund discovery',
+            'author_id' => $this->agent->id,
+        ]);
+        $executor = app(VfsCommandExecutor::class);
+        $tool = app(ToolRegistry::class)->instantiateToolBySlug('vfs_exec', $this->agent);
+
+        $this->assertStringContainsString('VFS Commands', $executor->execute($this->agent, 'help')['stdout']);
+        $this->assertStringContainsString('Short flags', $executor->execute($this->agent, 'help grep')['stdout']);
+        $this->assertStringContainsString('grep', $executor->execute($this->agent, 'man grep')['stdout']);
+        $this->assertStringContainsString('Short flags', $executor->execute($this->agent, 'grep --help')['stdout']);
+        $this->assertStringContainsString('vfs_write', $executor->execute($this->agent, 'rm --help')['stdout']);
+        $this->assertStringContainsString('Network commands are outside VFS', $executor->execute($this->agent, 'curl --help')['stdout']);
+
+        $beforeFiles = WorkspaceFile::count();
+        $this->assertStringContainsString('Delete a workspace file', $executor->execute($this->agent, 'rm --help')['stdout']);
+        $this->assertSame($beforeFiles, WorkspaceFile::count());
+
+        try {
+            $executor->execute($this->agent, 'help does-not-exist');
+            $this->fail('Unknown command help should fail with a structured VFS error.');
+        } catch (VfsError $e) {
+            $this->assertSame('not_found', $e->errorCode);
+        }
+
+        $this->assertStringContainsString('status=recognized_unsupported', $executor->execute($this->agent, 'type curl')['stdout']);
+        $catalog = json_decode($executor->execute($this->agent, 'cat /tools/vfs/commands.json')['stdout'], true);
+        $this->assertContains('-n', $catalog['grep']['short_flags']);
+        $this->assertContains('-A', $catalog['grep']['value_options']);
+        $this->assertSame('recognized_unsupported', $catalog['curl']['status']);
+        $grepSpec = json_decode($executor->execute($this->agent, 'cat /tools/vfs/commands/grep/grep.json')['stdout'], true);
+        $this->assertSame('grep', $grepSpec['name']);
+        $this->assertContains('-n', $grepSpec['short_flags']);
+        $this->assertStringContainsString('Examples', $executor->execute($this->agent, 'cat /tools/vfs/commands/grep/grep.md')['stdout']);
+
+        $structured = json_decode($tool->handle(new Request([
+            'command' => "stat /docs/by-id/{$doc->id}",
+            'responseFormat' => 'structured',
+            'includeCommandSpec' => true,
+        ])), true);
+        $this->assertTrue($structured['ok']);
+        $this->assertSame($structured['stdout'], $structured['result']['stdout']);
+        $this->assertSame('stat', $structured['data']['command_spec']['name']);
+        $this->assertSame('stat', $structured['diagnostics']['command_spec']['name']);
+        $this->assertSame($doc->id, $structured['data']['stat']['backend_id']);
+    }
+
     public function test_vfs_exec_covers_ax_audit_unix_gaps_and_conditionals(): void
     {
         $first = Document::factory()->create([
@@ -513,6 +710,7 @@ class VfsFeatureTest extends TestCase
         $this->assertStringContainsString('/docs/by-id/', $executor->execute($this->agent, 'find /docs -name "*.md" -type f 2>/dev/null | head -n 1')['stdout']);
 
         $this->assertSame('2', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | grep -c alpha')['stdout']));
+        $this->assertSame('2', trim($executor->execute($this->agent, 'grep -c alpha < /docs/by-id/'.$first->id)['stdout']));
         $this->assertStringContainsString('2:alpha 2', $executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | grep -n alpha')['stdout']);
         $this->assertSame('/docs/by-id/'.$first->id, trim($executor->execute($this->agent, 'grep -l alpha /docs/by-id/'.$first->id)['stdout']));
         $this->assertSame('zeta', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | head -c 4')['stdout']));
@@ -529,6 +727,8 @@ class VfsFeatureTest extends TestCase
         $this->assertSame('ta 3', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | tail -c +3 | head -c4')['stdout']));
         $this->assertSame('3', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | wc -l')['stdout']));
         $this->assertSame('30', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | wc -c')['stdout']));
+        $this->assertSame('30', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | wc -m')['stdout']));
+        $this->assertSame('7', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | wc -L')['stdout']));
         foreach (['echo ok | wc /missing', 'wc /docs/by-id/'.$first->id.' /missing'] as $command) {
             try {
                 $executor->execute($this->agent, $command);
@@ -548,19 +748,31 @@ class VfsFeatureTest extends TestCase
         $this->assertSame("score\n10\n2", $executor->execute($this->agent, 'cat /docs/by-id/'.$csv->id.' | awk -F , "{print $2}"')['stdout']);
         $this->assertSame('cba', trim($executor->execute($this->agent, 'echo abc | rev')['stdout']));
         $this->assertSame('b', trim($executor->execute($this->agent, 'echo "a b c" | cut -d\' \' -f2')['stdout']));
+        $this->assertSame('bcd', trim($executor->execute($this->agent, 'echo abcde | cut -c2-4')['stdout']));
+        $this->assertSame('ae', trim($executor->execute($this->agent, 'echo abcde | cut -c2-4 --complement')['stdout']));
         $this->assertSame("a\nb\nc", trim($executor->execute($this->agent, 'echo "a;b;c" | tr ";" "\n"')['stdout']));
         $this->assertSame('HELLO', trim($executor->execute($this->agent, 'echo hello | tr "a-z" "A-Z"')['stdout']));
         $this->assertSame('hll wrld', trim($executor->execute($this->agent, 'echo "hello world" | tr -d "aeiou"')['stdout']));
+        $this->assertSame('hello', trim($executor->execute($this->agent, 'echo heeello | tr -s e')['stdout']));
         $this->assertStringContainsString('alpha 1', $executor->execute($this->agent, 'sort /docs/by-id/'.$first->id.' | head -n 1')['stdout']);
         $this->assertStringContainsString('alice,10', $executor->execute($this->agent, 'sort /docs/by-id/'.$first->id.' /docs/by-id/'.$csv->id)['stdout']);
         $this->assertStringContainsString('Alpha AX Notes', $executor->execute($this->agent, 'find /docs/by-id -name "Alpha AX*" | xargs -n 1 stat')['stdout']);
+        $this->assertStringContainsString($first->id, $executor->execute($this->agent, 'find /docs/by-id -name "Alpha AX*" -print0 | xargs -0 -n 1 basename')['stdout']);
+        $this->assertStringContainsString($csv->id, $executor->execute($this->agent, 'find /docs/by-id -name "Missing*" -o -name "CSV AX*"')['stdout']);
+        $this->assertStringNotContainsString($first->id, $executor->execute($this->agent, 'find /docs/by-id -not -name "Alpha AX*"')['stdout']);
+        $this->assertStringContainsString($first->id, $executor->execute($this->agent, 'find /docs/by-id -type f -size +1c -mtime -1')['stdout']);
         $this->assertSame('a\\b', $executor->execute($this->agent, 'printf "%s" "a\\\\b"')['stdout']);
         $this->assertStringContainsString("\t", $executor->execute($this->agent, 'paste /docs/by-id/'.$first->id.' /docs/by-id/'.$csv->id)['stdout']);
+        $this->assertStringContainsString(',', $executor->execute($this->agent, 'paste -d, /docs/by-id/'.$first->id.' /docs/by-id/'.$csv->id)['stdout']);
         $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'rg alpha /docs --max-count 1')['stdout']);
         $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'rg alpha /docs --max-depth 2 --max-count 1')['stdout']);
         $this->assertSame('/docs/by-id/'.$first->id.':alpha 2', trim($executor->execute($this->agent, 'rg alpha /docs/by-id/'.$first->id.' -m1')['stdout']));
         $this->assertSame("alpha\nalpha", trim($executor->execute($this->agent, 'grep -o alpha /docs/by-id/'.$first->id)['stdout']));
         $this->assertSame('2', trim($executor->execute($this->agent, 'grep -c alpha /docs/by-id/'.$first->id)['stdout']));
+        $this->assertStringNotContainsString('alpha', $executor->execute($this->agent, 'grep -v alpha /docs/by-id/'.$first->id)['stdout']);
+        $this->assertStringContainsString('alpha 2', $executor->execute($this->agent, 'grep -w alpha /docs/by-id/'.$first->id)['stdout']);
+        $this->assertStringContainsString('zeta 3', $executor->execute($this->agent, 'grep -A1 zeta /docs/by-id/'.$first->id)['stdout']);
+        $this->assertStringContainsString('alpha 1', $executor->execute($this->agent, 'grep -B1 beta /docs/by-id/'.$first->id)['stdout']);
         $this->assertSame('0', trim($executor->execute($this->agent, 'grep -c missing /docs/by-id/'.$first->id)['stdout']));
         $this->assertSame('', trim($executor->execute($this->agent, 'printf "alpha\n" | grep --max-count 0 alpha')['stdout']));
         $this->assertSame('0', trim($executor->execute($this->agent, 'printf "alpha\n" | grep -c --max-count 0 alpha')['stdout']));
@@ -574,7 +786,34 @@ class VfsFeatureTest extends TestCase
         $this->assertStringContainsString('VFS=OpenCompany', $executor->execute($this->agent, 'env')['stdout']);
         $this->assertStringContainsString((string) $this->workspace->id, $executor->execute($this->agent, 'printenv WORKSPACE_ID')['stdout']);
         $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T/', $executor->execute($this->agent, 'date')['stdout']);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', trim($executor->execute($this->agent, 'date -I')['stdout']));
+        $this->assertSame('/docs', trim($executor->execute($this->agent, 'readlink -f /docs')['stdout']));
+        $this->assertSame($first->id, trim($executor->execute($this->agent, 'stat -c %n /docs/by-id/'.$first->id.' | xargs basename')['stdout']));
+        $this->assertSame('markdown', trim($executor->execute($this->agent, 'file -b /docs/by-id/'.$first->id)['stdout']));
+        $this->assertStringContainsString('B', $executor->execute($this->agent, 'du -h /docs/by-id/'.$first->id)['stdout']);
+        $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'du -a --max-depth 2 /docs')['stdout']);
+        $this->assertStringContainsString("1\tzeta", $executor->execute($this->agent, 'cat -n /docs/by-id/'.$first->id)['stdout']);
         $this->assertStringContainsString('  /docs/by-id/'.$first->id, $executor->execute($this->agent, 'checksum /docs/by-id/'.$first->id)['stdout']);
+
+        $this->assertSame("3\n4\n5", trim($executor->execute($this->agent, 'seq 3 5')['stdout']));
+        $this->assertSame('aGVsbG8=', trim($executor->execute($this->agent, 'printf hello | base64')['stdout']));
+        $this->assertSame('hello', trim($executor->execute($this->agent, 'printf aGVsbG8= | base64 -d')['stdout']));
+        $this->assertSame('hello', trim($executor->execute($this->agent, 'printf hello | gzip -c | gunzip -c')['stdout']));
+        $this->assertSame('hello', trim($executor->execute($this->agent, 'printf hello | gzip -c | zcat')['stdout']));
+        $this->assertSame('alpha', trim($executor->execute($this->agent, 'printf "alpha\nbeta" | gzip -c | zgrep alpha')['stdout']));
+        $this->assertSame('68656c6c6f', trim($executor->execute($this->agent, 'printf hello | xxd -p')['stdout']));
+        $this->assertSame('hello', trim($executor->execute($this->agent, 'printf 68656c6c6f | xxd -r -p')['stdout']));
+        $this->assertStringContainsString('hello', $executor->execute($this->agent, 'printf "hi\0hello world\0ok" | strings -n 5')['stdout']);
+        $this->assertSame('hello', trim($executor->execute($this->agent, 'printf hello | iconv -f UTF-8 -t UTF-8')['stdout']));
+        $this->assertSame("c\nb\na", trim($executor->execute($this->agent, 'printf "a\nb\nc" | tac')['stdout']));
+        $this->assertMatchesRegularExpression('/^a\s+1$/m', $executor->execute($this->agent, 'printf "a 1\nbbb 22" | column -t')['stdout']);
+        $this->assertStringContainsString("\n", $executor->execute($this->agent, 'printf abcdef | fold -w 3')['stdout']);
+        $this->assertSame('a b c', trim($executor->execute($this->agent, 'printf "a    b\nc" | fmt -w 20')['stdout']));
+        $this->assertSame('a    b', trim($executor->execute($this->agent, 'printf "a\tb" | expand -t 4')['stdout']));
+        $this->assertSame("a\tb", trim($executor->execute($this->agent, 'printf "a    b" | unexpand -t 4')['stdout']));
+        $this->assertSame('3', trim($executor->execute($this->agent, 'printf "1+2" | bc')['stdout']));
+        $this->assertSame('14', trim($executor->execute($this->agent, 'printf "2*(3+4)" | bc')['stdout']));
+        $this->assertSame('3', trim($executor->execute($this->agent, 'expr 1 + 2')['stdout']));
 
         $directIgnoreCase = app(ToolRegistry::class)->instantiateToolBySlug('vfs_rg', $this->agent)->handle(new Request(['pattern' => 'ALPHA', 'paths' => ['/docs/by-id/'.$first->id], 'ignore_case' => true]));
         $directSearchIgnoreCase = app(ToolRegistry::class)->instantiateToolBySlug('vfs_search', $this->agent)->handle(new Request(['query' => 'ALPHA', 'paths' => ['/docs/by-id/'.$first->id], 'case_insensitive' => true]));
@@ -756,6 +995,7 @@ local lexical_hits = app.vfs.search("refund", { "/docs" }, { max_matches = 10 })
 local found = app.vfs.find({ "/docs" }, { name = "*Lua*", limit = 10 })
 local markdown = app.vfs.find({ "/docs" }, { name = "*.md", type = "file", limit = 10 })
 local markdown_by_string = app.vfs.find("/docs", { glob = "*.md", type = "file", limit = 10 })
+local exec_stat = app.vfs.exec("stat /docs/by-id/%s", { response_format = "structured", include_command_spec = true })
 return {
   version = stat.result.version,
   limited_len = #limited,
@@ -773,8 +1013,11 @@ return {
   found_count = found.result.count,
   markdown_count = markdown.result.count,
   markdown_string_count = markdown_by_string.result.count,
+  exec_command = exec_stat.data.command_spec.name,
+  exec_backend_id = exec_stat.data.stat.backend_id,
+  exec_diag_command = exec_stat.diagnostics.command_spec.name,
 }
-LUA, $doc->id, $doc->id, $doc->id, $doc->id);
+LUA, $doc->id, $doc->id, $doc->id, $doc->id, $doc->id);
 
         $result = app(LuaSandboxService::class)->execute($code, bridge: $bridge);
 
@@ -797,6 +1040,9 @@ LUA, $doc->id, $doc->id, $doc->id, $doc->id);
         $this->assertGreaterThanOrEqual(1, $payload['found_count']);
         $this->assertGreaterThanOrEqual(1, $payload['markdown_count']);
         $this->assertGreaterThanOrEqual(1, $payload['markdown_string_count']);
+        $this->assertSame('stat', $payload['exec_command']);
+        $this->assertSame($doc->id, $payload['exec_backend_id']);
+        $this->assertSame('stat', $payload['exec_diag_command']);
     }
 
     public function test_vfs_lua_mutation_helpers_share_primitive_permissions(): void
@@ -855,6 +1101,50 @@ LUA;
         $this->assertStringContainsString('Permission denied', $result->error);
     }
 
+    public function test_generated_vfs_reads_respect_max_bytes_budgets(): void
+    {
+        $readTool = app(ToolRegistry::class)->instantiateToolBySlug('vfs_read', $this->agent);
+        $read = json_decode($readTool->handle(new Request([
+            'path' => '/tools/vfs.md',
+            'maxBytes' => 200,
+        ])), true);
+
+        $this->assertTrue($read['ok']);
+        $this->assertTrue($read['result']['truncated']);
+        $this->assertLessThanOrEqual(200, strlen($read['result']['content']));
+
+        $execTool = app(ToolRegistry::class)->instantiateToolBySlug('vfs_exec', $this->agent);
+        $exec = json_decode($execTool->handle(new Request([
+            'command' => 'cat /tools/vfs.md',
+            'maxBytes' => 200,
+        ])), true);
+
+        $this->assertTrue($exec['ok']);
+        $this->assertSame($read['result']['content'], $exec['stdout']);
+
+        $commands = app(OpenCompanyVfs::class)->read($this->agent, '/tools/vfs/commands.json', new VfsBudget(maxBytes: 200));
+        $settings = app(OpenCompanyVfs::class)->read($this->agent, '/workspace/settings.json', new VfsBudget(maxBytes: 10));
+        // Paged JSON never splits a principal, so this budget must fit both
+        // the valid roster envelope and the first complete principal record.
+        $members = app(OpenCompanyVfs::class)->read($this->agent, '/workspace/members.json', new VfsBudget(maxBytes: 1_000));
+
+        $this->assertLessThanOrEqual(200, strlen($commands));
+        $this->assertStringEndsWith("\n[... truncated]", $commands);
+        $this->assertLessThanOrEqual(10, strlen($settings));
+        $this->assertLessThanOrEqual(1_000, strlen($members));
+
+        $bridge = new LuaBridge($this->agent, app(ToolRegistry::class), app(LuaApiDocGenerator::class));
+        $result = app(LuaSandboxService::class)->execute(
+            'local read = app.vfs.read("/tools/vfs.md", { max_bytes = 200 }); return { content = read.result.content, truncated = read.result.truncated }',
+            bridge: $bridge,
+        );
+
+        $this->assertNull($result->error);
+        $payload = $result->result[0] ?? $result->result;
+        $this->assertTrue($payload['truncated']);
+        $this->assertSame($read['result']['content'], $payload['content']);
+    }
+
     public function test_vfs_write_creates_workspace_files_inside_allowed_folder_scope(): void
     {
         AgentPermission::create([
@@ -876,6 +1166,62 @@ LUA;
 
         $read = app(VfsCommandExecutor::class)->execute($this->agent, 'cat /files/generated/report.md');
         $this->assertStringContainsString('VFS write works', $read['stdout']);
+    }
+
+    public function test_vfs_file_canonical_folder_children_behave_like_display_paths(): void
+    {
+        $allowedFolder = app(FileSystemService::class)->createFolder($this->workspace->id, null, 'allowed', $this->agent->id);
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'file_folder',
+            'scope_key' => $allowedFolder->id,
+            'permission' => 'allow',
+            'requires_approval' => false,
+        ]);
+
+        $executor = app(VfsCommandExecutor::class);
+        $vfs = app(OpenCompanyVfs::class);
+
+        $this->assertStringContainsString('created', $executor->execute($this->agent, 'mkdir /files/allowed/display-smoke')['stdout']);
+        $this->assertStringContainsString('created', $executor->execute($this->agent, "mkdir /files/by-id/{$allowedFolder->id}/canonical-smoke")['stdout']);
+        $executor->execute($this->agent, "printf hi > /files/by-id/{$allowedFolder->id}/canonical-smoke/hello.txt");
+
+        $canonicalFile = "/files/by-id/{$allowedFolder->id}/canonical-smoke/hello.txt";
+        $this->assertSame('hi', $executor->execute($this->agent, "cat {$canonicalFile}")['stdout']);
+        $this->assertStringContainsString('hello.txt', $executor->execute($this->agent, "ls /files/by-id/{$allowedFolder->id}/canonical-smoke")['stdout']);
+
+        $stat = $vfs->stat($this->agent, $canonicalFile);
+        $this->assertSame('file', $stat['type']);
+        $this->assertSame('hello.txt', $stat['name']);
+
+        $read = json_decode(app(ToolRegistry::class)->instantiateToolBySlug('vfs_read', $this->agent)->handle(new Request([
+            'path' => $canonicalFile,
+        ])), true);
+        $this->assertSame('hi', $read['result']['content']);
+
+        $patched = $vfs->patch($this->agent, $canonicalFile, '{"search":"hi","replace":"hello"}');
+        $this->assertSame('updated', $patched['status']);
+        $this->assertSame('hello', $executor->execute($this->agent, "cat {$canonicalFile}")['stdout']);
+
+        try {
+            $vfs->write($this->agent, "/files/by-id/{$stat['backend_id']}/junk", 'bad');
+            $this->fail('Children under a canonical file path should not write through the parent file.');
+        } catch (VfsError $e) {
+            $this->assertSame('not_found', $e->errorCode);
+        }
+
+        $blockedFolder = app(FileSystemService::class)->createFolder($this->workspace->id, null, 'blocked-base', $this->agent->id);
+        try {
+            $executor->execute($this->agent, "mkdir /files/by-id/{$blockedFolder->id}/nope");
+            $this->fail('Denied canonical folder children should not be created.');
+        } catch (VfsError $e) {
+            $this->assertSame('permission_denied', $e->errorCode);
+        }
+        $this->assertFalse(WorkspaceFile::forWorkspace()->where('parent_id', $blockedFolder->id)->where('name', 'nope')->exists());
+
+        $this->assertStringContainsString('deleted', $executor->execute($this->agent, "rm {$canonicalFile}")['stdout']);
+        $this->assertStringContainsString('deleted', $executor->execute($this->agent, "rm -d /files/by-id/{$allowedFolder->id}/canonical-smoke")['stdout']);
     }
 
     public function test_vfs_write_rejects_invalid_modes_without_overwriting(): void
@@ -977,18 +1323,55 @@ LUA;
                 $this->assertSame('invalid_request', $e->errorCode);
             }
         }
+        $executor->execute($this->agent, 'printf force > /files/tmp-vfs/force-src.txt');
+        $executor->execute($this->agent, 'printf old > /files/tmp-vfs/force-dest.txt');
+        $this->assertStringContainsString('copied', $executor->execute($this->agent, 'cp -f /files/tmp-vfs/force-src.txt /files/tmp-vfs/force-dest.txt')['stdout']);
+        $this->assertSame('force', $executor->execute($this->agent, 'cat /files/tmp-vfs/force-dest.txt')['stdout']);
+        $executor->execute($this->agent, 'printf move-force > /files/tmp-vfs/move-src.txt');
+        $executor->execute($this->agent, 'printf old > /files/tmp-vfs/move-dest.txt');
+        $this->assertStringContainsString('moved', $executor->execute($this->agent, 'mv -f /files/tmp-vfs/move-src.txt /files/tmp-vfs/move-dest.txt')['stdout']);
+        $this->assertSame('move-force', $executor->execute($this->agent, 'cat /files/tmp-vfs/move-dest.txt')['stdout']);
         $sameMove = $executor->execute($this->agent, 'mv /files/tmp-vfs/a.txt /files/tmp-vfs/a.txt');
         $this->assertStringContainsString('unchanged', $sameMove['stdout']);
         $this->assertStringContainsString('moved', $executor->execute($this->agent, 'mv /files/tmp-vfs/b.txt /files/tmp-vfs/c.txt')['stdout']);
         $this->assertStringContainsString('updated', $executor->execute($this->agent, 'truncate -s 0 /files/tmp-vfs/c.txt')['stdout']);
         $this->assertStringContainsString('updated', $executor->execute($this->agent, 'truncate -s0 /files/tmp-vfs/c.txt')['stdout']);
-        foreach (['truncate /files/tmp-vfs/c.txt', 'truncate -s abc /files/tmp-vfs/c.txt', 'rm -rf /files/tmp-vfs/c.txt', 'tee --bad /files/tmp-vfs/c.txt'] as $command) {
+        foreach (['truncate /files/tmp-vfs/c.txt', 'truncate -s abc /files/tmp-vfs/c.txt', 'tee --bad /files/tmp-vfs/c.txt', 'touch -d tomorrow /files/tmp-vfs/c.txt'] as $command) {
             try {
                 $executor->execute($this->agent, $command);
                 $this->fail("{$command} should fail.");
             } catch (VfsError $e) {
                 $this->assertContains($e->errorCode, ['invalid_request', 'unsupported']);
             }
+        }
+        $this->assertStringContainsString('created', $executor->execute($this->agent, 'mkdir -p /files/tmp-vfs/deep/nested')['stdout']);
+        $this->assertStringContainsString('created', $executor->execute($this->agent, 'touch /files/tmp-vfs/deep/nested/file.txt')['stdout']);
+        $this->assertStringContainsString('deleted', $executor->execute($this->agent, 'rm -rf /files/tmp-vfs/deep')['stdout']);
+        $tempFile = trim($executor->execute($this->agent, 'mktemp -p /files/tmp-vfs temp.XXXXXX')['stdout']);
+        $tempDir = trim($executor->execute($this->agent, 'mktemp -d -p /files/tmp-vfs dir.XXXXXX')['stdout']);
+        $this->assertMatchesRegularExpression('#^/files/tmp-vfs/temp\.[A-Za-z0-9]{6}$#', $tempFile);
+        $this->assertMatchesRegularExpression('#^/files/tmp-vfs/dir\.[A-Za-z0-9]{6}$#', $tempDir);
+        $this->assertSame('file', app(OpenCompanyVfs::class)->stat($this->agent, $tempFile)['type']);
+        $this->assertSame('directory', app(OpenCompanyVfs::class)->stat($this->agent, $tempDir)['type']);
+        $this->assertSame('', $executor->execute($this->agent, 'tar -c -f /files/tmp-vfs/archive.tar /files/tmp-vfs/a.txt')['stdout']);
+        $this->assertStringContainsString('a.txt', $executor->execute($this->agent, 'tar -t -f /files/tmp-vfs/archive.tar')['stdout']);
+        $this->assertStringContainsString('/files/tmp-vfs/extract/a.txt', $executor->execute($this->agent, 'tar -x -f /files/tmp-vfs/archive.tar -C /files/tmp-vfs/extract')['stdout']);
+        $this->assertStringContainsString('appended', $executor->execute($this->agent, 'cat /files/tmp-vfs/extract/a.txt')['stdout']);
+        $this->assertSame('', $executor->execute($this->agent, 'zip -r /files/tmp-vfs/archive.zip /files/tmp-vfs/a.txt')['stdout']);
+        $this->assertStringContainsString('a.txt', $executor->execute($this->agent, 'unzip -l /files/tmp-vfs/archive.zip')['stdout']);
+        $this->assertStringContainsString('/files/tmp-vfs/unzip/a.txt', $executor->execute($this->agent, 'unzip -o /files/tmp-vfs/archive.zip -d /files/tmp-vfs/unzip')['stdout']);
+        $this->assertStringContainsString('appended', $executor->execute($this->agent, 'cat /files/tmp-vfs/unzip/a.txt')['stdout']);
+        $this->assertStringContainsString('/files/tmp-vfs/part-aa', $executor->execute($this->agent, 'split -l 1 /files/tmp-vfs/a.txt /files/tmp-vfs/part-')['stdout']);
+        $this->assertStringContainsString('appended', $executor->execute($this->agent, 'cat /files/tmp-vfs/part-aa')['stdout']);
+        $this->assertStringContainsString("\n", $executor->execute($this->agent, 'csplit -f /files/tmp-vfs/cs- /files/tmp-vfs/a.txt /appended/')['stdout']);
+        $this->assertStringContainsString('appended', $executor->execute($this->agent, 'cat /files/tmp-vfs/cs-01')['stdout']);
+        $this->assertStringContainsString('copied', $executor->execute($this->agent, 'ln /files/tmp-vfs/a.txt /files/tmp-vfs/hard-link.txt')['stdout']);
+        $this->assertStringContainsString('appended', $executor->execute($this->agent, 'cat /files/tmp-vfs/hard-link.txt')['stdout']);
+        try {
+            $executor->execute($this->agent, 'ln -s /files/tmp-vfs/a.txt /files/tmp-vfs/symlink.txt');
+            $this->fail('ln -s should remain explicit until VFS has real symlink entries.');
+        } catch (VfsError $e) {
+            $this->assertSame('unsupported', $e->errorCode);
         }
         $fileId = app(OpenCompanyVfs::class)->stat($this->agent, '/files/tmp-vfs/a.txt')['backend_id'];
         try {
@@ -1003,6 +1386,14 @@ LUA;
     public function test_vfs_exec_file_mutations_do_not_bypass_approval_required_write_tool(): void
     {
         $this->agent->update(['behavior_mode' => 'supervised']);
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'file_folder',
+            'scope_key' => '*',
+            'permission' => 'allow',
+            'requires_approval' => false,
+        ]);
 
         $raw = app(VfsExec::class, [
             'agent' => $this->agent,
@@ -1013,6 +1404,15 @@ LUA;
 
         $this->assertFalse($decoded['ok']);
         $this->assertSame('approval_required', $decoded['error']['code']);
+        $this->assertSame('vfs_write', $decoded['error']['context']['tool']);
+        $approval = ApprovalRequest::query()->latest()->first();
+        $this->assertNotNull($approval);
+        $this->assertSame('vfs_exec', $approval->tool_execution_context['tool_slug']);
+        $this->assertSame('vfs_write', $approval->tool_execution_context['vfs_approval']['approval_tool']);
+
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+
+        $this->assertTrue(WorkspaceFile::forWorkspace()->where('name', 'nope')->where('is_folder', true)->exists());
     }
 
     public function test_approved_vfs_write_revalidates_tool_permission_before_execution(): void
@@ -1157,6 +1557,601 @@ LUA;
         $this->assertSame('Should not mutate', $otherItem->fresh()->description);
     }
 
+    public function test_vfs_table_rows_are_patchable_records_not_bulk_exports(): void
+    {
+        $table = DataTable::create([
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Customers',
+            'description' => 'Customer list',
+            'created_by' => $this->agent->id,
+        ]);
+        $emailColumn = DataTableColumn::create([
+            'table_id' => $table->id,
+            'name' => 'Email',
+            'type' => 'email',
+            'order' => 0,
+            'required' => false,
+        ]);
+        $statusColumn = DataTableColumn::create([
+            'table_id' => $table->id,
+            'name' => 'Status',
+            'type' => 'text',
+            'order' => 1,
+            'required' => false,
+        ]);
+        $row = DataTableRow::create([
+            'table_id' => $table->id,
+            'data' => [$emailColumn->id => 'old@example.com', $statusColumn->id => 'lead'],
+            'created_by' => $this->agent->id,
+        ]);
+
+        $vfs = app(OpenCompanyVfs::class);
+        $rowPath = "/tables/customers/rows/by-id/{$row->id}.json";
+
+        $this->assertStringContainsString('rows/', app(VfsCommandExecutor::class)->execute($this->agent, 'ls /tables/customers')['stdout']);
+        $rowsListing = $vfs->list($this->agent, '/tables/customers/rows/by-id');
+        $this->assertSame($rowPath, $rowsListing[0]->path);
+        $this->assertContains('patch', $rowsListing[0]->capabilities);
+
+        $payload = json_decode($vfs->read($this->agent, $rowPath), true);
+        $this->assertSame('old@example.com', $payload['data']['Email']);
+        $this->assertSame('old@example.com', $payload['data_by_column_id'][$emailColumn->id]);
+        $this->assertSame($row->id, $payload['id']);
+
+        $stat = $vfs->stat($this->agent, $rowPath);
+        $this->assertContains('patch', $stat['capabilities']);
+        $this->assertSame('allowed', $stat['metadata']['mutation_permission']);
+        $bulkStat = $vfs->stat($this->agent, '/tables/customers/rows.ndjson');
+        $this->assertNotContains('patch', $bulkStat['capabilities']);
+        $this->assertSame('rows.ndjson is a bulk export and cannot be patched safely.', $bulkStat['metadata']['read_only_reason']);
+
+        $vfs->patch($this->agent, $rowPath, json_encode(['data' => ['email' => 'new@example.com']], JSON_THROW_ON_ERROR), $payload['version']);
+        $this->assertSame('new@example.com', $row->fresh()->data[$emailColumn->id]);
+
+        $vfs->patch($this->agent, $rowPath, json_encode(['data' => [$statusColumn->id => 'active']], JSON_THROW_ON_ERROR));
+        $this->assertSame('active', $row->fresh()->data[$statusColumn->id]);
+
+        try {
+            $vfs->patch($this->agent, $rowPath, json_encode(['data' => ['unknown' => 'value']], JSON_THROW_ON_ERROR));
+            $this->fail('Unknown table columns should be rejected.');
+        } catch (VfsError $e) {
+            $this->assertSame('invalid_request', $e->errorCode);
+        }
+
+        DataTableColumn::create([
+            'table_id' => $table->id,
+            'name' => 'status',
+            'type' => 'text',
+            'order' => 2,
+            'required' => false,
+        ]);
+        $ambiguousPayload = json_decode($vfs->read($this->agent, $rowPath), true);
+        $this->assertContains('Status', $ambiguousPayload['ambiguous_column_names']);
+        $this->assertArrayNotHasKey('Status', $ambiguousPayload['data']);
+        try {
+            $vfs->patch($this->agent, $rowPath, json_encode(['data' => ['status' => 'blocked']], JSON_THROW_ON_ERROR));
+            $this->fail('Ambiguous column names should require a UUID.');
+        } catch (VfsError $e) {
+            $this->assertSame('invalid_request', $e->errorCode);
+        }
+
+        try {
+            $vfs->patch($this->agent, $rowPath, json_encode(['data' => ['Email' => 'stale@example.com']], JSON_THROW_ON_ERROR), $payload['version']);
+            $this->fail('Stale row versions should fail.');
+        } catch (VfsError $e) {
+            $this->assertSame('invalid_request', $e->errorCode);
+        }
+
+        try {
+            $vfs->patch($this->agent, '/tables/customers/rows.ndjson', json_encode(['data' => ['Email' => 'bad@example.com']], JSON_THROW_ON_ERROR));
+            $this->fail('Bulk exports should not be patchable.');
+        } catch (VfsError $e) {
+            $this->assertSame('not_writable', $e->errorCode);
+        }
+    }
+
+    public function test_vfs_table_row_patch_follows_update_table_row_permission(): void
+    {
+        $table = DataTable::create([
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Permissioned Customers',
+            'created_by' => $this->agent->id,
+        ]);
+        $column = DataTableColumn::create([
+            'table_id' => $table->id,
+            'name' => 'Status',
+            'type' => 'text',
+            'order' => 0,
+            'required' => false,
+        ]);
+        $row = DataTableRow::create([
+            'table_id' => $table->id,
+            'data' => [$column->id => 'lead'],
+            'created_by' => $this->agent->id,
+        ]);
+        $rowPath = "/tables/permissioned-customers/rows/by-id/{$row->id}.json";
+
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'tool',
+            'scope_key' => 'update_table_row',
+            'permission' => 'deny',
+            'requires_approval' => false,
+        ]);
+
+        $vfs = app(OpenCompanyVfs::class);
+        $stat = $vfs->stat($this->agent, $rowPath);
+        $this->assertNotContains('patch', $stat['capabilities']);
+        $this->assertSame('denied', $stat['metadata']['mutation_permission']);
+        $this->assertSame('update_table_row', $stat['metadata']['mutation_denied_tool']);
+
+        try {
+            $vfs->patch($this->agent, $rowPath, json_encode(['data' => ['Status' => 'active']], JSON_THROW_ON_ERROR));
+            $this->fail('Denied update_table_row permission should block VFS row patching.');
+        } catch (VfsError $e) {
+            $this->assertSame('permission_denied', $e->errorCode);
+        }
+
+        $this->assertSame('lead', $row->fresh()->data[$column->id]);
+    }
+
+    public function test_vfs_table_row_patch_surfaces_update_table_row_approval(): void
+    {
+        $table = DataTable::create([
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Approval Customers',
+            'created_by' => $this->agent->id,
+        ]);
+        $column = DataTableColumn::create([
+            'table_id' => $table->id,
+            'name' => 'Status',
+            'type' => 'text',
+            'order' => 0,
+            'required' => false,
+        ]);
+        $row = DataTableRow::create([
+            'table_id' => $table->id,
+            'data' => [$column->id => 'lead'],
+            'created_by' => $this->agent->id,
+        ]);
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'tool',
+            'scope_key' => 'update_table_row',
+            'permission' => 'allow',
+            'requires_approval' => true,
+        ]);
+
+        $vfs = app(OpenCompanyVfs::class);
+        $rowPath = "/tables/approval-customers/rows/by-id/{$row->id}.json";
+        $stat = $vfs->stat($this->agent, $rowPath);
+        $this->assertContains('patch', $stat['capabilities']);
+        $this->assertTrue($stat['metadata']['mutation_requires_approval']);
+        $this->assertSame('update_table_row', $stat['metadata']['mutation_approval_tool']);
+
+        try {
+            $vfs->patch($this->agent, $rowPath, json_encode(['data' => ['Status' => 'active']], JSON_THROW_ON_ERROR));
+            $this->fail('Approval-required table row mutation should not be bypassed by VFS.');
+        } catch (VfsError $e) {
+            $this->assertSame('approval_required', $e->errorCode);
+            $this->assertSame('update_table_row', $e->context['tool']);
+            $this->assertNotEmpty($e->context['approval_id']);
+        }
+
+        $this->assertSame('lead', $row->fresh()->data[$column->id]);
+
+        $approval = ApprovalRequest::query()->latest()->first();
+        $this->assertNotNull($approval);
+        $this->assertSame('vfs_patch', $approval->tool_execution_context['tool_slug']);
+        $this->assertSame('update_table_row', $approval->tool_execution_context['vfs_approval']['approval_tool']);
+        $this->assertSame($rowPath, $approval->tool_execution_context['vfs_approval']['subject']);
+
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+
+        $this->assertSame('active', $row->fresh()->data[$column->id]);
+    }
+
+    public function test_vfs_list_display_paths_patch_same_record_as_canonical_paths(): void
+    {
+        $project = ListItem::create([
+            'id' => 'display-path-project',
+            'workspace_id' => $this->workspace->id,
+            'title' => 'Display Path Project',
+            'description' => 'Project folder',
+            'is_folder' => true,
+            'status' => 'backlog',
+            'creator_id' => $this->agent->id,
+        ]);
+        $item = ListItem::create([
+            'id' => 'display-path-item',
+            'workspace_id' => $this->workspace->id,
+            'parent_id' => $project->id,
+            'title' => 'Add VFS',
+            'description' => 'Original child description',
+            'is_folder' => false,
+            'status' => 'backlog',
+            'priority' => 'low',
+            'creator_id' => $this->agent->id,
+        ]);
+
+        $vfs = app(OpenCompanyVfs::class);
+        $folderStat = $vfs->stat($this->agent, "/lists/by-id/{$project->id}");
+        $displayPath = "/lists/by-id/{$project->id}/add-vfs.md";
+        $displayStat = $vfs->stat($this->agent, $displayPath);
+
+        $this->assertNotContains('patch', $folderStat['capabilities']);
+        $this->assertContains('patch', $displayStat['capabilities']);
+        $this->assertSame("/lists/by-id/{$item->id}", $displayStat['canonical_path']);
+
+        $displayResult = $vfs->patch($this->agent, $displayPath, json_encode(['description' => 'Updated through display path'], JSON_THROW_ON_ERROR));
+        $this->assertSame("/lists/by-id/{$item->id}", $displayResult['canonical_path']);
+        $this->assertSame('Updated through display path', $item->fresh()->description);
+
+        $vfs->patch($this->agent, "/lists/by-id/{$item->id}", json_encode(['priority' => 'urgent'], JSON_THROW_ON_ERROR));
+        $this->assertSame('urgent', $item->fresh()->priority);
+    }
+
+    public function test_vfs_agent_memory_files_are_patchable_but_memory_directories_are_not(): void
+    {
+        $agentFolder = app(AgentDocumentService::class)->createAgentDocumentStructure($this->agent, [
+            'MEMORY' => 'Old durable memory',
+        ]);
+        $this->agent->update(['docs_folder_id' => $agentFolder->id]);
+        $this->agent->refresh();
+
+        $vfs = app(OpenCompanyVfs::class);
+        $memoryDir = "/agents/by-id/{$this->agent->id}/memory";
+        $memoryPath = "{$memoryDir}/MEMORY.md";
+
+        $directoryStat = $vfs->stat($this->agent, $memoryDir);
+        $fileStat = $vfs->stat($this->agent, $memoryPath);
+
+        $this->assertNotContains('patch', $directoryStat['capabilities']);
+        $this->assertContains('patch', $fileStat['capabilities']);
+
+        $result = $vfs->patch(
+            $this->agent,
+            $memoryPath,
+            json_encode(['search' => 'Old durable', 'replace' => 'Updated durable'], JSON_THROW_ON_ERROR),
+            $fileStat['version'],
+        );
+
+        $memoryDoc = Document::findOrFail($fileStat['backend_id']);
+        $this->assertSame('updated', $result['status']);
+        $this->assertStringContainsString('Updated durable memory', $memoryDoc->fresh()->content);
+        $this->assertSame('Old durable memory', DocumentVersion::where('document_id', $memoryDoc->id)->first()?->content);
+        $this->assertTrue(DocumentChunk::where('document_id', $memoryDoc->id)->where('collection', 'memory')->where('agent_id', $this->agent->id)->exists());
+
+        $stranger = User::factory()->agent()->create(['workspace_id' => $this->workspace->id]);
+        try {
+            $vfs->stat($stranger, $memoryPath);
+            $this->fail('Unrelated agents should not see private memory paths.');
+        } catch (VfsError $e) {
+            $this->assertSame('permission_denied', $e->errorCode);
+        }
+    }
+
+    public function test_vfs_agent_identity_and_manager_memory_patch_rules_are_enforced(): void
+    {
+        $directReport = User::factory()->agent()->create([
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Report Agent',
+            'manager_id' => $this->agent->id,
+        ]);
+        $agentFolder = app(AgentDocumentService::class)->createAgentDocumentStructure($directReport, [
+            'IDENTITY' => 'Old identity',
+            'MEMORY' => 'Old core memory',
+        ]);
+        $directReport->update(['docs_folder_id' => $agentFolder->id]);
+        $directReport->refresh();
+
+        $memoryFolder = Document::where('parent_id', $agentFolder->id)->where('title', 'memory')->firstOrFail();
+        $topicsFolder = Document::where('parent_id', $memoryFolder->id)->where('title', 'topics')->firstOrFail();
+        $topic = Document::create([
+            'id' => (string) Str::uuid(),
+            'workspace_id' => $this->workspace->id,
+            'title' => 'roadmap.md',
+            'parent_id' => $topicsFolder->id,
+            'content' => 'Old topic memory',
+            'author_id' => $directReport->id,
+            'is_folder' => false,
+            'is_system' => true,
+        ]);
+
+        $vfs = app(OpenCompanyVfs::class);
+        $identityPath = "/agents/by-id/{$directReport->id}/identity/IDENTITY.md";
+        $memoryPath = "/agents/by-id/{$directReport->id}/memory/MEMORY.md";
+        $topicPath = "/agents/by-id/{$directReport->id}/memory/topics/roadmap.md";
+
+        $identityStat = $vfs->stat($this->agent, $identityPath);
+        $memoryStat = $vfs->stat($this->agent, $memoryPath);
+        $topicStat = $vfs->stat($this->agent, $topicPath);
+
+        $this->assertContains('patch', $identityStat['capabilities']);
+        $this->assertContains('patch', $memoryStat['capabilities']);
+        $this->assertNotContains('patch', $topicStat['capabilities']);
+
+        $vfs->patch($this->agent, $identityPath, json_encode(['search' => 'Old identity', 'replace' => 'Manager adjusted identity'], JSON_THROW_ON_ERROR));
+        $vfs->patch($this->agent, $memoryPath, json_encode(['search' => 'Old core', 'replace' => 'Manager adjusted core'], JSON_THROW_ON_ERROR));
+
+        $this->assertStringContainsString('Manager adjusted identity', Document::findOrFail($identityStat['backend_id'])->content);
+        $this->assertStringContainsString('Manager adjusted core memory', Document::findOrFail($memoryStat['backend_id'])->content);
+
+        try {
+            $vfs->patch($this->agent, $topicPath, json_encode(['search' => 'Old topic', 'replace' => 'Mutated topic'], JSON_THROW_ON_ERROR));
+            $this->fail('Managers should not patch direct report topic memory through VFS.');
+        } catch (VfsError $e) {
+            $this->assertSame('permission_denied', $e->errorCode);
+        }
+        $this->assertSame('Old topic memory', $topic->fresh()->content);
+    }
+
+    public function test_vfs_direct_reports_cannot_patch_manager_agent_documents(): void
+    {
+        $managerFolder = app(AgentDocumentService::class)->createAgentDocumentStructure($this->agent, [
+            'IDENTITY' => 'Manager identity',
+            'MEMORY' => 'Manager memory',
+        ]);
+        $this->agent->update(['docs_folder_id' => $managerFolder->id]);
+        $this->agent->refresh();
+
+        $directReport = User::factory()->agent()->create([
+            'workspace_id' => $this->workspace->id,
+            'manager_id' => $this->agent->id,
+        ]);
+
+        $vfs = app(OpenCompanyVfs::class);
+        $identityPath = "/agents/by-id/{$this->agent->id}/identity/IDENTITY.md";
+        $memoryPath = "/agents/by-id/{$this->agent->id}/memory/MEMORY.md";
+
+        $this->assertNotContains('patch', $vfs->stat($directReport, $identityPath)['capabilities']);
+        $this->assertNotContains('patch', $vfs->stat($directReport, $memoryPath)['capabilities']);
+
+        foreach ([$identityPath, $memoryPath] as $path) {
+            try {
+                $vfs->patch($directReport, $path, json_encode(['search' => 'Manager', 'replace' => 'Mutated'], JSON_THROW_ON_ERROR));
+                $this->fail('Direct reports should not patch manager agent documents.');
+            } catch (VfsError $e) {
+                $this->assertSame('permission_denied', $e->errorCode);
+            }
+        }
+    }
+
+    public function test_vfs_agent_identity_patch_creates_and_replays_backing_approval(): void
+    {
+        $directReport = User::factory()->agent()->create([
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Approval Report',
+            'manager_id' => $this->agent->id,
+        ]);
+        $agentFolder = app(AgentDocumentService::class)->createAgentDocumentStructure($directReport, [
+            'IDENTITY' => 'Old identity',
+        ]);
+        $directReport->update(['docs_folder_id' => $agentFolder->id]);
+
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'tool',
+            'scope_key' => 'update_agent_identity_file',
+            'permission' => 'allow',
+            'requires_approval' => true,
+        ]);
+
+        $vfs = app(OpenCompanyVfs::class);
+        $identityPath = "/agents/by-id/{$directReport->id}/identity/IDENTITY.md";
+        $stat = $vfs->stat($this->agent, $identityPath);
+
+        $this->assertContains('patch', $stat['capabilities']);
+        $this->assertSame('requires_approval', $stat['metadata']['mutation_permission']);
+        $this->assertSame('update_agent_identity_file', $stat['metadata']['mutation_approval_tool']);
+
+        try {
+            $vfs->patch($this->agent, $identityPath, json_encode(['search' => 'Old identity', 'replace' => 'Approved identity'], JSON_THROW_ON_ERROR));
+            $this->fail('Identity backing approval should create a request before mutating.');
+        } catch (VfsError $e) {
+            $this->assertSame('approval_required', $e->errorCode);
+            $this->assertSame('update_agent_identity_file', $e->context['tool']);
+        }
+
+        $this->assertSame('Old identity', Document::findOrFail($stat['backend_id'])->content);
+
+        $approval = ApprovalRequest::query()->latest()->first();
+        $this->assertNotNull($approval);
+        $this->assertSame('update_agent_identity_file', $approval->tool_execution_context['vfs_approval']['approval_tool']);
+
+        app(ApprovalExecutionService::class)->resolve($approval, 'approved');
+
+        $this->assertSame('Approved identity', Document::findOrFail($stat['backend_id'])->fresh()->content);
+    }
+
+    public function test_vfs_read_only_metadata_and_read_capabilities_are_visible(): void
+    {
+        $channel = Channel::factory()->public()->create(['name' => 'metadata-general', 'creator_id' => $this->agent->id]);
+        Message::factory()->create([
+            'channel_id' => $channel->id,
+            'author_id' => $this->agent->id,
+            'content' => 'Read-only metadata transcript',
+            'timestamp' => now(),
+        ]);
+        $approval = ApprovalRequest::factory()->create([
+            'requester_id' => $this->agent->id,
+            'title' => 'Approve metadata test',
+        ]);
+        $automation = Automation::create([
+            'id' => (string) Str::uuid(),
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Metadata Automation',
+            'execution_type' => 'prompt',
+            'agent_id' => $this->agent->id,
+            'prompt' => 'Run metadata',
+            'cron_expression' => '0 9 * * *',
+            'timezone' => 'UTC',
+            'created_by_id' => $this->agent->id,
+            'is_active' => true,
+            'keep_history' => true,
+        ]);
+        $table = DataTable::create([
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Metadata Table',
+            'created_by' => $this->agent->id,
+        ]);
+
+        $vfs = app(OpenCompanyVfs::class);
+        $channelStat = $vfs->stat($this->agent, '/channels/metadata-general/messages/'.now()->toDateString().'.md');
+        $approvalStat = $vfs->stat($this->agent, "/approvals/{$approval->id}.json");
+        $automationStat = $vfs->stat($this->agent, "/automations/{$automation->id}.json");
+        $workspaceStat = $vfs->stat($this->agent, '/workspace/settings.json');
+        $tableStat = $vfs->stat($this->agent, '/tables/metadata-table/schema.json');
+        $toolsStat = $vfs->stat($this->agent, '/tools/vfs/commands.json');
+
+        foreach ([$channelStat, $approvalStat, $automationStat, $workspaceStat, $tableStat, $toolsStat] as $stat) {
+            $this->assertArrayHasKey('read_only_reason', $stat['metadata']);
+            $this->assertNotContains('patch', $stat['capabilities']);
+            $this->assertNotContains('write', $stat['capabilities']);
+        }
+
+        $read = json_decode(app(ToolRegistry::class)->instantiateToolBySlug('vfs_read', $this->agent)->handle(new Request([
+            'path' => "/automations/{$automation->id}.json",
+        ])), true);
+        $this->assertTrue($read['ok']);
+        $this->assertSame(['read'], $read['result']['capabilities']);
+        $this->assertSame('Automation JSON is a generated automation record.', $read['result']['metadata']['read_only_reason']);
+
+        try {
+            $vfs->patch($this->agent, '/tables/metadata-table/schema.json', json_encode(['search' => 'Metadata', 'replace' => 'Changed'], JSON_THROW_ON_ERROR));
+            $this->fail('Generated schema snapshots should not be patchable.');
+        } catch (VfsError $e) {
+            $this->assertSame('not_writable', $e->errorCode);
+        }
+    }
+
+    public function test_vfs_capability_truth_contract_for_representative_mount_entries(): void
+    {
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'file_folder',
+            'scope_key' => '*',
+            'permission' => 'allow',
+            'requires_approval' => false,
+        ]);
+
+        $docFolder = Document::factory()->create(['title' => 'Contract Docs', 'is_folder' => true, 'author_id' => $this->agent->id]);
+        $doc = Document::factory()->create([
+            'title' => 'Contract Doc',
+            'parent_id' => $docFolder->id,
+            'content' => 'contract document old',
+            'author_id' => $this->agent->id,
+        ]);
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'folder',
+            'scope_key' => $docFolder->id,
+            'permission' => 'allow',
+            'requires_approval' => false,
+        ]);
+
+        $fileFolder = app(FileSystemService::class)->createFolder($this->workspace->id, null, 'contract-files', $this->agent->id);
+        app(FileSystemService::class)->writeFile($this->workspace->id, $fileFolder->id, 'note.md', 'contract file old', $this->agent->id);
+
+        $task = Task::create([
+            'id' => 'contract-task',
+            'workspace_id' => $this->workspace->id,
+            'title' => 'Contract Task',
+            'description' => 'contract task old',
+            'type' => Task::TYPE_CUSTOM,
+            'status' => Task::STATUS_ACTIVE,
+            'priority' => Task::PRIORITY_NORMAL,
+            'agent_id' => $this->agent->id,
+            'requester_id' => $this->agent->id,
+            'source' => Task::SOURCE_MANUAL,
+        ]);
+        $project = ListItem::create([
+            'id' => 'contract-project',
+            'workspace_id' => $this->workspace->id,
+            'title' => 'Contract Project',
+            'description' => 'contract project',
+            'is_folder' => true,
+            'status' => 'backlog',
+            'creator_id' => $this->agent->id,
+        ]);
+        $list = ListItem::create([
+            'id' => 'contract-list',
+            'workspace_id' => $this->workspace->id,
+            'parent_id' => $project->id,
+            'title' => 'Contract List',
+            'description' => 'contract list old',
+            'status' => 'backlog',
+            'creator_id' => $this->agent->id,
+            'assignee_id' => $this->agent->id,
+        ]);
+        $table = DataTable::create([
+            'workspace_id' => $this->workspace->id,
+            'name' => 'Contract Table',
+            'created_by' => $this->agent->id,
+        ]);
+        $column = DataTableColumn::create([
+            'table_id' => $table->id,
+            'name' => 'Status',
+            'type' => 'text',
+            'order' => 0,
+            'required' => false,
+        ]);
+        $row = DataTableRow::create([
+            'table_id' => $table->id,
+            'data' => [$column->id => 'old'],
+            'created_by' => $this->agent->id,
+        ]);
+        $agentFolder = app(AgentDocumentService::class)->createAgentDocumentStructure($this->agent, [
+            'IDENTITY' => 'contract identity old',
+            'MEMORY' => 'contract memory old',
+        ]);
+        $this->agent->update(['docs_folder_id' => $agentFolder->id]);
+        $this->agent->refresh();
+
+        $vfs = app(OpenCompanyVfs::class);
+
+        $patchCases = [
+            "/docs/by-id/{$doc->id}" => ['search' => 'old', 'replace' => 'new'],
+            '/files/contract-files/note.md' => ['search' => 'old', 'replace' => 'new'],
+            "/tasks/by-id/{$task->id}" => ['description' => 'contract task new'],
+            "/lists/by-id/{$list->id}" => ['description' => 'contract list new'],
+            "/tables/contract-table/rows/by-id/{$row->id}.json" => ['data' => ['Status' => 'new']],
+            "/agents/by-id/{$this->agent->id}/identity/IDENTITY.md" => ['search' => 'old', 'replace' => 'new'],
+            "/agents/by-id/{$this->agent->id}/memory/MEMORY.md" => ['search' => 'old', 'replace' => 'new'],
+        ];
+
+        foreach ($patchCases as $path => $patch) {
+            $stat = $vfs->stat($this->agent, $path);
+            $this->assertContains('patch', $stat['capabilities'], $path);
+
+            $result = $vfs->patch($this->agent, $path, json_encode($patch, JSON_THROW_ON_ERROR), $stat['version'] ?? null);
+            $this->assertSame('updated', $result['status'], $path);
+        }
+
+        $writeDirStat = $vfs->stat($this->agent, "/files/by-id/{$fileFolder->id}");
+        $this->assertContains('write', $writeDirStat['capabilities']);
+        $writeResult = $vfs->write($this->agent, "/files/by-id/{$fileFolder->id}/created-through-contract.txt", 'ok');
+        $this->assertSame('created', $writeResult['status']);
+
+        foreach ([
+            '/workspace/settings.json',
+            '/tools/vfs/commands.json',
+            '/tables/contract-table/schema.json',
+            '/tables/contract-table/rows.ndjson',
+        ] as $path) {
+            $stat = $vfs->stat($this->agent, $path);
+            $this->assertNotContains('patch', $stat['capabilities'], $path);
+            $this->assertNotContains('write', $stat['capabilities'], $path);
+            $this->assertArrayHasKey('read_only_reason', $stat['metadata'], $path);
+            $this->assertArrayHasKey('mutation_hint', $stat['metadata'], $path);
+        }
+    }
+
     public function test_vfs_reads_tasks_lists_channels_tables_approvals_automations_and_workspace(): void
     {
         $task = Task::create([
@@ -1298,7 +2293,7 @@ LUA;
         $this->assertStringContainsString('README.md', $executor->execute($this->agent, 'ls /tools/apps')['stdout']);
         $this->assertStringContainsString('app tools', $executor->execute($this->agent, 'cat /tools/apps/README.md')['stdout']);
         $this->assertStringContainsString('"kind": "app_tools"', $executor->execute($this->agent, 'cat /tools/apps/index.json')['stdout']);
-        $this->assertStringContainsString('"vfs_exec"', $executor->execute($this->agent, 'cat /tools/apps/index.json')['stdout']);
+        $this->assertStringContainsString('"vfs_exec"', $executor->execute($this->agent, 'cat /tools/apps/index.json', '/', new VfsBudget(maxBytes: 2_000_000))['stdout']);
         $this->assertStringContainsString('index.json', $executor->execute($this->agent, 'ls /tools/integrations')['stdout']);
         $this->assertStringContainsString('README.md', $executor->execute($this->agent, 'ls /tools/integrations')['stdout']);
         $this->assertStringContainsString('"kind": "integration_tools"', $executor->execute($this->agent, 'cat /tools/integrations/index.json')['stdout']);
@@ -1375,5 +2370,49 @@ LUA;
 
         $emptyArg = app(VfsCommandExecutor::class)->execute($this->agent, 'printf "[%s]" ""');
         $this->assertSame('[]', $emptyArg['stdout']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function runAtlasCommand(string $command, array $options = [], int $expectedExit = 0): array
+    {
+        $exit = Artisan::call('vfs:atlas', [
+            'vfsCommand' => [$command],
+            '--json' => true,
+            ...$options,
+        ]);
+        $output = Artisan::output();
+        $this->assertSame($expectedExit, $exit, $output);
+
+        $decoded = json_decode($output, true);
+        $this->assertIsArray($decoded, $output);
+
+        return $decoded;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function runAtlasPrimitive(string $primitive, array $payload, int $expectedExit = 0): array
+    {
+        $args = [];
+        foreach ($payload as $key => $value) {
+            $args[] = $key.'='.(is_scalar($value) ? (string) $value : json_encode($value, JSON_THROW_ON_ERROR));
+        }
+
+        $exit = Artisan::call('vfs:atlas', [
+            '--primitive' => $primitive,
+            '--arg' => $args,
+            '--json' => true,
+        ]);
+        $output = Artisan::output();
+        $this->assertSame($expectedExit, $exit, $output);
+
+        $decoded = json_decode($output, true);
+        $this->assertIsArray($decoded, $output);
+
+        return $decoded;
     }
 }

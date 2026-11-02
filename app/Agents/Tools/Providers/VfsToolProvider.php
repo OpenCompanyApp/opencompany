@@ -56,7 +56,7 @@ class VfsToolProvider implements BuiltInToolProvider
                 'class' => VfsExec::class,
                 'type' => 'read',
                 'name' => 'VFS Exec',
-                'description' => 'Run safe unix-like VFS commands. Read/navigation commands use read permission; /files mutations such as mkdir, touch, tee, cp, mv, rm, and truncate require vfs_write.',
+                'description' => 'Run safe unix-like VFS commands. Read/navigation commands use read permission; /files mutations such as mkdir, touch, tee, cp, mv, rm, and truncate compose vfs_exec with vfs_write.',
                 'icon' => 'ph:terminal-window',
                 'canMutateWith' => 'vfs_write',
             ],
@@ -64,7 +64,7 @@ class VfsToolProvider implements BuiltInToolProvider
                 'class' => VfsPatch::class,
                 'type' => 'write',
                 'name' => 'VFS Patch',
-                'description' => 'Patch virtual file content with version-aware search/replace semantics.',
+                'description' => 'Patch virtual content with version-aware semantics. Domain-backed paths compose with existing domain permissions and approvals.',
                 'icon' => 'ph:file-dashed',
             ],
             'vfs_write' => [

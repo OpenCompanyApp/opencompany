@@ -25,6 +25,21 @@ trait ResolvesVfsRedirectionEffects
     /**
      * @param  list<array{stream: string, mode: string, path: string}>  $redirections
      */
+    private function stdinRedirectPath(array $redirections): ?string
+    {
+        $path = null;
+        foreach ($redirections as $redirect) {
+            if ($redirect['stream'] === 'stdin') {
+                $path = $redirect['path'];
+            }
+        }
+
+        return $path;
+    }
+
+    /**
+     * @param  list<array{stream: string, mode: string, path: string}>  $redirections
+     */
     private function stderrSuppressed(array $redirections): bool
     {
         return collect($redirections)->contains(fn (array $redirect): bool => $redirect['stream'] === 'stderr' && $redirect['path'] === '/dev/null');
@@ -103,6 +118,6 @@ trait ResolvesVfsRedirectionEffects
             }
         }
 
-        $this->vfs->write($agent, $target['path'], $content, 'overwrite');
+        $this->vfs->write($agent, $target['path'], $content, 'overwrite', permissionAlreadyChecked: true);
     }
 }

@@ -59,11 +59,18 @@ trait ExecutesVfsOutputTransforms
         return ['stdout' => $stdout, 'class' => 'read-transform'];
     }
 
-    private function nl(?string $stdin): array
+    private function nl(array $tokens, ?string $stdin): array
     {
+        $this->assertSupportedOptionsForCommand($tokens, 'nl');
+        $start = (int) ($this->optionValue($tokens, ['-v']) ?? 1);
+        $increment = max(1, (int) ($this->optionValue($tokens, ['-i']) ?? 1));
+        $width = max(1, (int) ($this->optionValue($tokens, ['-w']) ?? 6));
+        $separator = $this->optionValue($tokens, ['-s']) ?? "\t";
         $lines = [];
+        $number = $start;
         foreach (VfsText::lines($stdin ?? '') as $index => $line) {
-            $lines[] = str_pad((string) ($index + 1), 6, ' ', STR_PAD_LEFT)."\t".$line;
+            $lines[] = str_pad((string) $number, $width, ' ', STR_PAD_LEFT).$separator.$line;
+            $number += $increment;
         }
 
         return ['stdout' => implode("\n", $lines), 'class' => 'read-transform'];

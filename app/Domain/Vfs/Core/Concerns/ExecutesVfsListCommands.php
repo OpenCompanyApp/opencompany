@@ -15,14 +15,14 @@ trait ExecutesVfsListCommands
     private function cd(User $agent, array $tokens, string $cwd): array
     {
         $path = $this->path($tokens[0] ?? '/', $cwd);
-        $this->vfs->list($agent, $path, new VfsBudget(maxEntries: 1));
+        $this->vfs->listBounded($agent, $path, new VfsBudget(maxEntries: 1));
 
         return ['stdout' => '', 'cwd' => $path, 'class' => 'browse'];
     }
 
     private function ls(User $agent, array $tokens, string $cwd, VfsBudget $budget): array
     {
-        [$flags, $paths] = $this->flagsAndPathArgs($tokens, $cwd, ['1', 'a', 'l', 'R']);
+        [$flags, $paths] = $this->flagsAndPathArgs($tokens, $cwd, ['1', 'a', 'A', 'l', 'R', 'F', 'd', 'h', 't', 'S', 'r']);
         $paths = $paths === [] ? [$cwd] : $paths;
         $lines = [];
         $returned = 0;
@@ -36,8 +36,15 @@ trait ExecutesVfsListCommands
             }
 
             try {
+                if ($flags['d'] ?? false) {
+                    $stat = $this->vfs->stat($agent, $path);
+                    $lines[] = $this->formatLsStat($stat, $flags['l'] ?? false);
+                    $returned++;
+
+                    continue;
+                }
                 $remaining = max(0, $budget->maxEntries - $returned);
-                $entries = $this->vfs->list($agent, $path, $this->pageProbeBudget($budget, $remaining));
+                $entries = $this->vfs->listBounded($agent, $path, $this->pageProbeBudget($budget, $remaining));
             } catch (VfsError $e) {
                 if ($e->errorCode !== 'not_readable') {
                     throw $e;
@@ -53,6 +60,7 @@ trait ExecutesVfsListCommands
                 $truncated = true;
                 $entries = array_slice($entries, 0, $remaining);
             }
+            $this->sortLsEntries($entries, $flags);
             $returned += count($entries);
             if (count($paths) > 1) {
                 $lines[] = "{$path}:";
@@ -101,7 +109,7 @@ trait ExecutesVfsListCommands
 
         try {
             $remaining = max(0, $budget->maxEntries - $returned);
-            $entries = $this->vfs->list($agent, $path, $this->pageProbeBudget($budget, $remaining));
+            $entries = $this->vfs->listBounded($agent, $path, $this->pageProbeBudget($budget, $remaining));
         } catch (VfsError) {
             return;
         }
@@ -110,6 +118,7 @@ trait ExecutesVfsListCommands
             $truncated = true;
             $entries = array_slice($entries, 0, $remaining);
         }
+        $this->sortLsEntries($entries, $flags);
         $returned += count($entries);
         $lines[] = '';
         $lines[] = "{$path}:";
@@ -136,6 +145,25 @@ trait ExecutesVfsListCommands
         $version = $entry->version ?? '-';
 
         return sprintf('%s %-24s %-36s %s', $type, $capabilities, $version, $name);
+    }
+
+    private function sortLsEntries(array &$entries, array $flags): void
+    {
+        usort($entries, function (VfsEntry $a, VfsEntry $b) use ($flags): int {
+            $left = match (true) {
+                $flags['S'] ?? false => (int) ($a->metadata['size'] ?? 0),
+                $flags['t'] ?? false => (string) ($a->metadata['updated_at'] ?? $a->version ?? ''),
+                default => strtolower($a->name),
+            };
+            $right = match (true) {
+                $flags['S'] ?? false => (int) ($b->metadata['size'] ?? 0),
+                $flags['t'] ?? false => (string) ($b->metadata['updated_at'] ?? $b->version ?? ''),
+                default => strtolower($b->name),
+            };
+            $comparison = $left <=> $right;
+
+            return ($flags['r'] ?? false) ? -$comparison : $comparison;
+        });
     }
 
     /**

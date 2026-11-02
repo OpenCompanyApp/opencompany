@@ -5,13 +5,15 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Models\User;
-use App\Models\WorkspaceFile;
 
 /**
  * Direct entry builders for document-backed and workspace-file-backed paths.
  */
 trait ResolvesVfsDocumentFileEntries
 {
+    /**
+     * @param  list<string>  $segments
+     */
     private function directDocumentEntry(User $agent, array $segments, string $path): ?VfsEntry
     {
         try {
@@ -36,24 +38,32 @@ trait ResolvesVfsDocumentFileEntries
         return $this->documentEntry($agent, $doc, $path);
     }
 
+    /**
+     * @param  list<string>  $segments
+     */
     private function directFileEntry(User $agent, array $segments, string $path): ?VfsEntry
     {
-        if (($segments[1] ?? null) === 'by-id' && isset($segments[3])) {
+        if (($segments[1] ?? null) === 'by-id' && ! isset($segments[2])) {
             return null;
         }
 
-        $file = (($segments[1] ?? null) === 'by-id' && isset($segments[2]))
-            ? WorkspaceFile::forWorkspace()->find($segments[2])
-            : $this->files->resolveVirtualPath('/'.implode('/', array_slice($segments, 1)), $agent->workspace_id);
+        try {
+            $file = $this->resolveWorkspaceFilePath($agent, $path)['file'];
+        } catch (VfsError $e) {
+            if ($e->errorCode === 'not_found') {
+                return null;
+            }
+
+            throw $e;
+        }
 
         if (! $file) {
             return null;
         }
-
         if (! $this->permissions->canAccessFilePath($agent, $file)) {
             throw VfsError::permissionDenied($path, 'file folder scope');
         }
 
-        return $this->fileEntry($file, $path);
+        return $this->fileEntry($agent, $file, $path);
     }
 }

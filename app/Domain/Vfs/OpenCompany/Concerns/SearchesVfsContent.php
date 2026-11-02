@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 trait SearchesVfsContent
 {
     /**
+     * @param  list<string>  $paths
      * @return list<array{path: string, line?: int, snippet: string, match?: string, backend: string}>
      */
     public function search(User $agent, string $pattern, array $paths, ?VfsBudget $budget = null, bool $regex = false, bool $caseInsensitive = false): array
@@ -25,6 +26,7 @@ trait SearchesVfsContent
     }
 
     /**
+     * @param  list<string>  $paths
      * @return array{matches: list<array{path: string, line?: int, snippet: string, match?: string, backend: string}>, scanned: int, max_files: int, skipped: int, truncated: bool, backend: string}
      */
     public function searchWithMetadata(User $agent, string $pattern, array $paths, ?VfsBudget $budget = null, bool $regex = false, bool $caseInsensitive = false): array
@@ -145,7 +147,7 @@ trait SearchesVfsContent
         }
 
         foreach ($captures[0] ?? [] as $capture) {
-            $matches[(int) ($capture[1] ?? count($matches))] = (string) ($capture[0] ?? '');
+            $matches[(int) $capture[1]] = (string) $capture[0];
         }
 
         return $matches;

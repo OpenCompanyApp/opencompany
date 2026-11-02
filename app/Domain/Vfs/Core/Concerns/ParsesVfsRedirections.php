@@ -43,6 +43,21 @@ trait ParsesVfsRedirections
 
                 continue;
             }
+            if ($token === '<') {
+                $target = $tokens[$i + 1] ?? null;
+                if ($target === null || ($this->lastTokenQuoteMask[$i + 1] ?? false) === false && $this->looksLikeRedirectionToken((string) $target)) {
+                    throw VfsError::invalid('Redirection < requires a target path.');
+                }
+
+                $redirections[] = [
+                    'stream' => 'stdin',
+                    'mode' => 'read',
+                    'path' => $this->path((string) $target, $cwd),
+                ];
+                $i++;
+
+                continue;
+            }
             if (in_array($token, ['>', '1>', '>>', '1>>', '2>', '2>>'], true)) {
                 $target = $tokens[$i + 1] ?? null;
                 if ($target === null || ($this->lastTokenQuoteMask[$i + 1] ?? false) === false && $this->looksLikeRedirectionToken((string) $target)) {
@@ -76,6 +91,15 @@ trait ParsesVfsRedirections
 
                 continue;
             }
+            if (preg_match('/^<(.+)$/', $token, $matches) === 1) {
+                $redirections[] = [
+                    'stream' => 'stdin',
+                    'mode' => 'read',
+                    'path' => $this->path($matches[1], $cwd),
+                ];
+
+                continue;
+            }
             if (preg_match('/^\d+(?:>>?|>&)/', $token) === 1) {
                 throw VfsError::unsupported("Unsupported file descriptor redirection: {$token}");
             }
@@ -92,8 +116,9 @@ trait ParsesVfsRedirections
     private function looksLikeRedirectionToken(string $token): bool
     {
         return $token === '2>&1'
-            || in_array($token, ['>', '1>', '>>', '1>>', '2>', '2>>'], true)
+            || in_array($token, ['<', '>', '1>', '>>', '1>>', '2>', '2>>'], true)
             || preg_match('/^(2|1)>&(1|2)$/', $token) === 1
-            || preg_match('/^(2|1)?(>>?)(.+)$/', $token) === 1;
+            || preg_match('/^(2|1)?(>>?)(.+)$/', $token) === 1
+            || preg_match('/^<(.+)$/', $token) === 1;
     }
 }

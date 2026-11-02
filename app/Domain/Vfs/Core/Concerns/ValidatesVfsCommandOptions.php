@@ -3,6 +3,7 @@
 namespace App\Domain\Vfs\Core\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 
 /**
  * Guards command option coverage before commands execute.
@@ -13,6 +14,21 @@ use App\Domain\Vfs\Core\VfsError;
  */
 trait ValidatesVfsCommandOptions
 {
+    private function assertSupportedOptionsForCommand(array $tokens, string $command): void
+    {
+        $spec = VfsCommandSpecRegistry::get($command);
+        if ($spec === null) {
+            throw VfsError::unsupported("Unsupported VFS command: {$command}");
+        }
+
+        $allowedShort = $spec->shortFlags;
+        if ($spec->numericShorthand) {
+            $allowedShort[] = '-N';
+        }
+
+        $this->assertSupportedOptions($tokens, $command, $allowedShort, $spec->valueOptions, $spec->longFlags);
+    }
+
     /**
      * @param  list<string>  $allowedShort
      * @param  list<string>  $allowedValueOptions

@@ -13,6 +13,10 @@ class VfsText
             return $content;
         }
 
+        if (strlen($suffix) >= $maxBytes) {
+            return substr($suffix, 0, $maxBytes);
+        }
+
         return substr($content, 0, max(0, $maxBytes - strlen($suffix))).$suffix;
     }
 

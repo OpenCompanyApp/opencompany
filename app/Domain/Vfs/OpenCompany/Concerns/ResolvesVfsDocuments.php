@@ -19,6 +19,9 @@ trait ResolvesVfsDocuments
         return Document::forWorkspace()->find($id) ?? throw VfsError::notFound($path);
     }
 
+    /**
+     * @param  list<string>  $segments
+     */
     private function documentFromByIdSegments(array $segments, string $path): Document
     {
         $doc = $this->findDocument($segments[2], $path);
@@ -32,11 +35,17 @@ trait ResolvesVfsDocuments
         return $this->resolveDocumentPathFromParent($doc->id, array_slice($segments, 3), $path);
     }
 
+    /**
+     * @param  list<string>  $parts
+     */
     private function resolveDocumentPath(array $parts, string $path): Document
     {
         return $this->resolveDocumentPathFromParent(null, $parts, $path);
     }
 
+    /**
+     * @param  list<string>  $parts
+     */
     private function resolveDocumentPathFromParent(?string $parentId, array $parts, string $path): Document
     {
         $doc = null;

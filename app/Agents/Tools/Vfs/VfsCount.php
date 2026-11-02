@@ -3,7 +3,6 @@
 namespace App\Agents\Tools\Vfs;
 
 use App\Agents\Tools\Vfs\Concerns\HandlesVfsJson;
-use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -29,31 +28,25 @@ class VfsCount implements Tool
         try {
             $path = (string) ($request['path'] ?? '/');
             $budget = $this->budgetFromRequest($request);
-            $offset = $this->cursorOffset($request);
-            $probeBudget = new VfsBudget(
-                maxEntries: min($offset + $budget->maxEntries + 1, 1_000),
-                maxDepth: $budget->maxDepth,
-                maxBytes: $budget->maxBytes,
-                maxFiles: $budget->maxFiles,
-                maxMatches: $budget->maxMatches,
-                maxLineLength: $budget->maxLineLength,
-            );
-            $rawEntries = $this->vfs->list($this->agent, $path, $probeBudget);
-            $entries = array_slice($rawEntries, $offset, $budget->maxEntries);
-            $truncated = count($rawEntries) > $offset + $budget->maxEntries;
+            $cursor = $this->pageCursor($request);
+            $page = $this->vfs->listPage($this->agent, $path, $budget, $cursor);
+            $count = count($page->entries);
 
             return $this->encodeResult([
                 'path' => $this->vfs->normalizePath($path),
-                'count' => count($entries),
-                'sampled_count' => count($entries),
-                'total_count' => $truncated ? null : $offset + count($entries),
-                'count_mode' => $truncated ? 'sampled' : 'exact',
-                'returned' => count($entries),
+                'count' => $count,
+                'sampled_count' => $count,
+                'total_count' => $page->truncated ? null : $page->seenBefore + $count,
+                'count_mode' => $page->truncated ? 'sampled' : 'exact',
+                'returned' => $count,
                 'limit' => $budget->maxEntries,
-                'cursor' => $request['cursor'] ?? null,
-                'next_cursor' => $this->nextCursor($offset, count($entries), $truncated),
-                'truncated' => $truncated,
-                'count_is_exact' => ! $truncated,
+                'cursor' => $cursor,
+                'next_cursor' => $page->nextCursor,
+                'truncated' => $page->truncated,
+                'count_is_exact' => ! $page->truncated,
+                'seen_before' => $page->seenBefore,
+                'scanned' => $page->scanned,
+                'skipped' => $page->skipped,
             ]);
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
@@ -65,6 +58,7 @@ class VfsCount implements Tool
         return [
             'path' => $schema->string()->required()->description('Directory path to count.'),
             'limit' => $schema->integer()->description('Maximum entries to count. Default: 100.'),
+            'maxFiles' => $schema->integer()->description('Requested backend scan ceiling when permissions hide entries; the effective ceiling is never below limit. Default: 100.'),
             'cursor' => $schema->string()->description('Opaque cursor from a previous truncated response.'),
         ];
     }

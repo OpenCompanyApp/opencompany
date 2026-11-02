@@ -2,6 +2,7 @@
 
 namespace App\Domain\Vfs\Core\Concerns;
 
+use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
 
 /**
@@ -12,17 +13,33 @@ trait ParsesVfsCommandOptions
     private function shortFlags(array $tokens, array $allowed): array
     {
         $flags = [];
+        $knownValueOptions = [];
+        $knownLongFlags = [];
+        foreach (VfsCommandSpecRegistry::all() as $spec) {
+            array_push($knownValueOptions, ...$spec->valueOptions);
+            array_push($knownLongFlags, ...$spec->longFlags);
+        }
+        $knownValueOptions = array_values(array_unique($knownValueOptions));
         foreach ($tokens as $token) {
             if (! str_starts_with($token, '-') || $token === '-') {
                 continue;
             }
-            if (in_array($token, ['-name', '-type', '-maxdepth', '-maxDepth', '--max-depth', '-L', '--level', '-k', '-F', '--max-count', '-m', '-n', '--lines', '-c', '--bytes', '-s', '--size'], true)) {
+            if (in_array($token, $knownValueOptions, true)) {
                 $short = ltrim($token, '-');
                 if (str_starts_with($token, '--') || strlen($short) !== 1 || ! in_array($short, $allowed, true)) {
                     continue;
                 }
             }
-            if ($this->isInlineValueOption($token, ['--lines=', '--bytes=', '--level=', '--max-depth=', '--max-count=', '--size='])) {
+            if ($this->isInlineValueOption($token, array_map(
+                fn (string $option): string => $option.'=',
+                array_filter($knownValueOptions, fn (string $option): bool => str_starts_with($option, '--')),
+            ))) {
+                continue;
+            }
+            if (preg_match('/^-([A-Za-z])(.+)$/', $token, $matches) === 1 && in_array('-'.$matches[1], $knownValueOptions, true) && ! in_array($matches[1], $allowed, true)) {
+                continue;
+            }
+            if (in_array($token, $knownLongFlags, true) && ! (strlen($token) === 2 && in_array(ltrim($token, '-'), $allowed, true))) {
                 continue;
             }
             if (preg_match('/^-[A-Za-z][+0-9]/', $token) === 1) {

@@ -3,6 +3,7 @@
 namespace App\Domain\Vfs\Core\Concerns;
 
 use App\Domain\Vfs\Core\VfsBudget;
+use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
 
 /**
@@ -13,14 +14,15 @@ trait ParsesVfsPathArguments
     private function pathArgs(array $tokens, string $cwd): array
     {
         $paths = [];
+        $valueOptions = $this->knownValueOptions();
         for ($i = 0; $i < count($tokens); $i++) {
             $token = $tokens[$i];
-            if (in_array($token, ['-n', '--lines', '-c', '--bytes', '-d', '-f', '-name', '-type', '-maxdepth', '-maxDepth', '--max-depth', '-L', '--level', '-k', '-F', '--max-count', '-m', '-s', '--size'], true)) {
+            if (in_array($token, $valueOptions, true)) {
                 $i++;
 
                 continue;
             }
-            if ($this->isInlineValueOption($token, ['--lines=', '--bytes=', '--level=', '--max-depth=', '--max-count=', '--size='])) {
+            if ($this->isInlineValueOption($token, $this->knownInlineValuePrefixes($valueOptions))) {
                 continue;
             }
             if (str_starts_with($token, '-')) {
@@ -52,6 +54,34 @@ trait ParsesVfsPathArguments
         }
 
         return $paths;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function knownValueOptions(): array
+    {
+        $options = [];
+        foreach (VfsCommandSpecRegistry::all() as $spec) {
+            array_push($options, ...array_filter(
+                $spec->valueOptions,
+                fn (string $option): bool => str_starts_with($option, '--') || strlen($option) > 2,
+            ));
+        }
+
+        return array_values(array_unique($options));
+    }
+
+    /**
+     * @param  list<string>  $valueOptions
+     * @return list<string>
+     */
+    private function knownInlineValuePrefixes(array $valueOptions): array
+    {
+        return array_values(array_map(
+            fn (string $option): string => $option.'=',
+            array_filter($valueOptions, fn (string $option): bool => str_starts_with($option, '--')),
+        ));
     }
 
     private function flagsAndPathArgs(array $tokens, string $cwd, array $allowed): array
@@ -103,7 +133,7 @@ trait ParsesVfsPathArguments
 
         try {
             $matches = [];
-            foreach ($this->vfs->list($this->currentAgent, $parent, new VfsBudget(maxEntries: 1_000)) as $entry) {
+            foreach ($this->vfs->listBounded($this->agentForPathExpansion(), $parent, new VfsBudget(maxEntries: 1_000, maxFiles: 2_000)) as $entry) {
                 if (fnmatch($pattern, $entry->name)) {
                     $matches[] = $entry->path;
                 }

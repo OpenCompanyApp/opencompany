@@ -41,6 +41,7 @@ class VfsWrite implements Tool
                 (string) ($request['content'] ?? ''),
                 (string) ($request['mode'] ?? 'create'),
                 $request['version'] ?? null,
+                $request->toArray(),
             );
             $ok = true;
 
@@ -81,6 +82,9 @@ class VfsWrite implements Tool
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $context
+     */
     private function encodeError(string $code, string $message, array $context = []): string
     {
         return json_encode(['ok' => false, 'error' => ['code' => $code, 'message' => $message, 'context' => $context]], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

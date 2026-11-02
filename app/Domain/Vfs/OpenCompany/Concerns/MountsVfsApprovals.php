@@ -7,6 +7,7 @@ use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Models\ApprovalRequest;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
@@ -16,24 +17,53 @@ use Illuminate\Support\Str;
 trait MountsVfsApprovals
 {
     /**
+     * @param  list<string>  $segments
      * @return list<VfsEntry>
      */
     private function listApprovals(User $agent, array $segments, string $path, VfsBudget $budget): array
+    {
+        return $this->pageApprovals($agent, $segments, $path, $budget, [])['entries'];
+    }
+
+    /**
+     * Page only approvals requested by the acting agent. Requester workspace
+     * validation remains inside every continuation query rather than trusting
+     * the actor binding stored in the cursor.
+     *
+     * @param  list<string>  $segments
+     * @param  array<string, mixed>  $state
+     * @return array{entries: list<VfsEntry>, has_more: bool, next_state: array<string, mixed>, scanned: int, skipped: int}
+     */
+    private function pageApprovals(User $agent, array $segments, string $path, VfsBudget $budget, array $state): array
     {
         if (count($segments) > 1) {
             throw VfsError::notReadable($path);
         }
 
-        return ApprovalRequest::query()
-            ->where('requester_id', $agent->id)
-            ->whereHas('requester', fn (Builder $query) => $query->where('workspace_id', $agent->workspace_id))
-            ->latest()
-            ->limit($budget->maxEntries)
-            ->get()
-            ->map(fn (ApprovalRequest $approval): VfsEntry => new VfsEntry($approval->id.'.json', "/approvals/{$approval->id}.json", 'file', backendType: 'approval', backendId: $approval->id, capabilities: ['read'], metadata: ['status' => $approval->status, 'title' => $this->redactSecrets($approval->title)]))
-            ->all();
+        return $this->paginateVfsTimestampQuery(
+            ApprovalRequest::query()
+                ->where('requester_id', $agent->id)
+                ->whereHas('requester', fn (Builder $query) => $query->where('workspace_id', $agent->workspace_id)),
+            'created_at',
+            'desc',
+            $budget->maxEntries,
+            $budget->maxFiles,
+            $state,
+            fn (ApprovalRequest $approval): VfsEntry => new VfsEntry($approval->id.'.json', "/approvals/{$approval->id}.json", 'file', backendType: 'approval', backendId: $approval->id, capabilities: ['read'], metadata: [
+                'status' => $approval->status,
+                'title' => $this->redactSecrets($approval->title),
+                ...$this->readOnlyMetadata(
+                    'Approval JSON is a generated approval record.',
+                    'approval tools',
+                    'Use approval tools to approve, reject, or inspect approval state.',
+                ),
+            ]),
+        );
     }
 
+    /**
+     * @param  list<string>  $segments
+     */
     private function readApprovals(User $agent, array $segments, string $path, VfsBudget $budget): string
     {
         if (count($segments) === 1) {
@@ -43,7 +73,7 @@ trait MountsVfsApprovals
             throw VfsError::notFound($path);
         }
 
-        $id = Str::before($segments[1] ?? '', '.json');
+        $id = Str::before($segments[1], '.json');
         $approval = ApprovalRequest::query()
             ->where('id', $id)
             ->where('requester_id', $agent->id)
@@ -61,6 +91,8 @@ trait MountsVfsApprovals
      */
     private function approvalPayload(ApprovalRequest $approval): array
     {
+        $respondedAt = $approval->getAttribute('responded_at');
+
         return [
             'id' => $approval->id,
             'type' => $approval->type,
@@ -70,7 +102,7 @@ trait MountsVfsApprovals
             'amount' => $approval->amount,
             'status' => $approval->status,
             'responded_by_id' => $approval->responded_by_id,
-            'responded_at' => $approval->responded_at?->toIso8601String(),
+            'responded_at' => $respondedAt instanceof CarbonInterface ? $respondedAt->toIso8601String() : null,
             'channel_id' => $approval->channel_id,
             'tool_execution_context' => $this->redactSecrets($approval->tool_execution_context ?? []),
             'created_at' => $approval->created_at?->toIso8601String(),

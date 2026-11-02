@@ -14,10 +14,13 @@ use App\Models\User;
  */
 trait RunsVfsFileMutations
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function makeDirectory(User $agent, string $path): array
     {
         $path = $this->normalizePath($path);
-        $relative = $this->filesRelativePath($path);
+        $relative = $this->filesRelativePath($agent, $path);
         if ($relative === '') {
             throw VfsError::invalid('mkdir requires a path under /files.');
         }
@@ -34,6 +37,9 @@ trait RunsVfsFileMutations
                 'canonical_path' => "/files/by-id/{$existing->id}",
             ];
         }
+        if ($existing) {
+            throw VfsError::invalid("Path already exists and is not a directory: {$path}", ['path' => $path]);
+        }
 
         $this->assertCanCreateFilePath($agent, $relative, $path);
         $folder = $this->files->ensureFolderPath($relative, $agent->workspace_id, $agent->id);
@@ -45,10 +51,13 @@ trait RunsVfsFileMutations
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function touch(User $agent, string $path): array
     {
         $path = $this->normalizePath($path);
-        $relative = $this->filesRelativePath($path);
+        $relative = $this->filesRelativePath($agent, $path);
         $file = $this->files->resolveVirtualPath('/'.$relative, $agent->workspace_id);
 
         if ($file) {
@@ -67,6 +76,9 @@ trait RunsVfsFileMutations
         return $this->writeWorkspaceFile($agent, ['files', ...explode('/', $relative)], $path, '', 'create', null);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function remove(User $agent, string $path): array
     {
         $path = $this->normalizePath($path);
@@ -80,6 +92,9 @@ trait RunsVfsFileMutations
         return ['status' => 'deleted', 'path' => $path];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function copy(User $agent, string $source, string $destination): array
     {
         $source = $this->normalizePath($source);
@@ -106,6 +121,9 @@ trait RunsVfsFileMutations
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function move(User $agent, string $source, string $destination): array
     {
         $source = $this->normalizePath($source);
@@ -136,8 +154,11 @@ trait RunsVfsFileMutations
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function truncate(User $agent, string $path): array
     {
-        return $this->write($agent, $path, '', 'overwrite');
+        return $this->write($agent, $path, '', 'overwrite', permissionAlreadyChecked: true);
     }
 }

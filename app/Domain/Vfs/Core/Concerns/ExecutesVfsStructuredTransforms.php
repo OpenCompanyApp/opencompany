@@ -13,12 +13,21 @@ trait ExecutesVfsStructuredTransforms
 
     private function sed(array $tokens, ?string $stdin): array
     {
-        $this->assertSupportedOptions($tokens, 'sed');
-        $expr = $tokens[0] ?? null;
+        $this->assertSupportedOptionsForCommand($tokens, 'sed');
+        if (in_array('-i', $tokens, true)) {
+            throw VfsError::unsupported('sed -i is not supported; use vfs_patch for targeted edits.');
+        }
+        $quiet = $this->shortFlags($tokens, ['n', 'E'])['n'] ?? false;
+        $expr = $this->optionValue($tokens, ['-e']) ?? ($tokens[0] ?? null);
         if (! is_string($expr) || preg_match('#^s(.)(.*?)\1(.*?)\1g?$#', $expr, $matches) !== 1) {
-            throw VfsError::unsupported('Only safe sed substitution expressions are supported, e.g. sed s/foo/bar/g.');
+            if ($expr === 'p') {
+                return ['stdout' => $stdin ?? '', 'class' => 'read-transform'];
+            }
+            throw VfsError::unsupported('Only safe sed substitution and print expressions are supported, e.g. sed s/foo/bar/g.');
         }
 
-        return ['stdout' => preg_replace('/'.preg_quote($matches[2], '/').'/', $matches[3], $stdin ?? '') ?? '', 'class' => 'read-transform'];
+        $stdout = preg_replace('/'.preg_quote($matches[2], '/').'/', $matches[3], $stdin ?? '') ?? '';
+
+        return ['stdout' => $quiet ? '' : $stdout, 'class' => 'read-transform'];
     }
 }

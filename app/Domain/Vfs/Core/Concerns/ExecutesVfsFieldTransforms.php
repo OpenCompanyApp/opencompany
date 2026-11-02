@@ -14,12 +14,25 @@ trait ExecutesVfsFieldTransforms
 {
     private function awk(array $tokens, ?string $stdin): array
     {
-        $this->assertSupportedOptions($tokens, 'awk', [], ['-F']);
+        $this->assertSupportedOptionsForCommand($tokens, 'awk');
+        if (in_array('-f', $tokens, true)) {
+            throw VfsError::unsupported('awk -f programs are not supported by the safe VFS awk subset.');
+        }
         $delimiter = null;
+        $variables = [];
         $program = null;
         for ($i = 0; $i < count($tokens); $i++) {
             if ($tokens[$i] === '-F') {
                 $delimiter = (string) ($tokens[$i + 1] ?? '');
+                $i++;
+
+                continue;
+            }
+            if ($tokens[$i] === '-v') {
+                [$key, $value] = array_pad(explode('=', (string) ($tokens[$i + 1] ?? ''), 2), 2, '');
+                if ($key !== '') {
+                    $variables[$key] = $value;
+                }
                 $i++;
 
                 continue;
@@ -37,14 +50,17 @@ trait ExecutesVfsFieldTransforms
         }
 
         $selectors = array_map('trim', explode(',', $matches[1]));
-        $lines = array_map(function (string $line) use ($delimiter, $selectors): string {
+        $lines = array_map(function (string $line) use ($delimiter, $selectors, $variables): string {
             $fields = $delimiter === null || $delimiter === ''
                 ? preg_split('/\s+/', trim($line)) ?: []
                 : explode($delimiter, $line);
 
-            return implode(' ', array_map(function (string $selector) use ($fields): string {
+            return implode(' ', array_map(function (string $selector) use ($fields, $variables): string {
                 if ($selector === '$0') {
                     return implode(' ', $fields);
+                }
+                if (array_key_exists($selector, $variables)) {
+                    return $variables[$selector];
                 }
                 if (preg_match('/^\$(\d+)$/', $selector, $fieldMatch) !== 1) {
                     throw VfsError::unsupported('Only awk print field selectors like $1 and $2 are supported.');
@@ -59,7 +75,11 @@ trait ExecutesVfsFieldTransforms
 
     private function xargs(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin): array
     {
-        $items = array_values(array_filter(array_map('trim', VfsText::lines($stdin ?? '')), fn (string $line): bool => $line !== ''));
+        $nullSeparated = in_array('-0', $tokens, true);
+        $rawItems = $nullSeparated
+            ? explode("\0", rtrim($stdin ?? '', "\0"))
+            : array_map('trim', VfsText::lines($stdin ?? ''));
+        $items = array_values(array_filter($rawItems, fn (string $line): bool => $line !== ''));
         $items = array_slice($items, 0, $budget->maxEntries);
         $placeholder = null;
         $maxArgs = 1;
@@ -93,6 +113,9 @@ trait ExecutesVfsFieldTransforms
                 }
                 $maxArgs = max(1, (int) $value);
 
+                continue;
+            }
+            if ($token === '-0') {
                 continue;
             }
             if (str_starts_with($token, '-')) {
@@ -144,17 +167,22 @@ trait ExecutesVfsFieldTransforms
 
     private function paste(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin): array
     {
-        $this->assertSupportedOptions($tokens, 'paste');
+        $this->assertSupportedOptionsForCommand($tokens, 'paste');
+        $delimiter = $this->optionValue($tokens, ['-d']) ?? "\t";
+        $serial = $this->shortFlags($tokens, ['s'])['s'] ?? false;
         $paths = $this->pathArgs($tokens, $cwd);
         if ($paths === []) {
-            return ['stdout' => implode("\t", VfsText::lines($stdin ?? '')), 'cwd' => $cwd, 'class' => 'read-transform'];
+            return ['stdout' => implode($delimiter, VfsText::lines($stdin ?? '')), 'cwd' => $cwd, 'class' => 'read-transform'];
         }
 
         $columns = array_map(fn (string $path): array => VfsText::lines($this->vfs->read($agent, $path, $budget)), $paths);
+        if ($serial) {
+            return ['stdout' => implode("\n", array_map(fn (array $column): string => implode($delimiter, $column), $columns)), 'cwd' => $cwd, 'class' => 'read-transform'];
+        }
         $max = max(array_map('count', $columns));
         $lines = [];
         for ($row = 0; $row < $max; $row++) {
-            $lines[] = implode("\t", array_map(fn (array $column): string => $column[$row] ?? '', $columns));
+            $lines[] = implode($delimiter, array_map(fn (array $column): string => $column[$row] ?? '', $columns));
         }
 
         return ['stdout' => implode("\n", $lines), 'cwd' => $cwd, 'class' => 'read-transform'];

@@ -77,32 +77,18 @@ trait HandlesVfsJson
         return $default;
     }
 
-    private function cursorOffset(mixed $request): int
+    private function pageCursor(mixed $request): ?string
     {
         $cursor = $request['cursor'] ?? null;
         if ($cursor === null || $cursor === '') {
-            return 0;
+            return null;
         }
 
         if (! is_string($cursor)) {
             throw VfsError::invalid('cursor must be an opaque string.', ['field' => 'cursor']);
         }
 
-        $decoded = json_decode(base64_decode($cursor, true) ?: '', true);
-        if (! is_array($decoded) || ! is_int($decoded['offset'] ?? null) || ($decoded['offset'] ?? 0) < 0) {
-            throw VfsError::invalid('cursor is invalid or expired.', ['field' => 'cursor']);
-        }
-
-        return $decoded['offset'];
-    }
-
-    private function nextCursor(int $offset, int $returned, bool $truncated): ?string
-    {
-        if (! $truncated || $returned <= 0) {
-            return null;
-        }
-
-        return base64_encode(json_encode(['offset' => $offset + $returned], JSON_THROW_ON_ERROR));
+        return $cursor;
     }
 
     private function errorResponse(\Throwable $e): string

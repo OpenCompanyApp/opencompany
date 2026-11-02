@@ -15,73 +15,86 @@ use App\Models\User;
 trait MountsVfsDocuments
 {
     /**
+     * @param  list<string>  $segments
      * @return list<VfsEntry>
      */
     private function listDocs(User $agent, array $segments, string $path, VfsBudget $budget): array
     {
+        return $this->pageDocs($agent, $segments, $path, $budget, [])['entries'];
+    }
+
+    /**
+     * Return an adapter-owned document page before cursor encoding.
+     *
+     * @param  list<string>  $segments
+     * @param  array<string, mixed>  $state
+     * @return array{
+     *     entries: list<VfsEntry>,
+     *     has_more: bool,
+     *     next_state: array<string, mixed>,
+     *     scanned: int,
+     *     skipped: int
+     * }
+     */
+    private function pageDocs(User $agent, array $segments, string $path, VfsBudget $budget, array $state): array
+    {
+        $prefix = null;
+
         if (count($segments) === 1) {
-            $entries = [
-                new VfsEntry('by-id', '/docs/by-id', 'directory', capabilities: ['browse']),
-            ];
-            $remaining = max(0, $budget->maxEntries - count($entries));
-            if ($remaining === 0) {
-                return $entries;
-            }
-
-            $docs = Document::forWorkspace()
+            $prefix = new VfsEntry('by-id', '/docs/by-id', 'directory', capabilities: ['browse']);
+            $query = Document::forWorkspace()
                 ->whereNull('parent_id')
-                ->where('is_system', false)
-                ->orderByDesc('is_folder')
-                ->orderBy('title')
-                ->limit($remaining)
-                ->get();
+                ->where('is_system', false);
+            $entryPath = fn (Document $doc): string => '/docs/'.$this->slug($doc->title);
+        } elseif (($segments[1] ?? null) === 'by-id' && ! isset($segments[2])) {
+            $query = Document::forWorkspace()->where('is_system', false);
+            $entryPath = fn (Document $doc): string => "/docs/by-id/{$doc->id}";
+        } else {
+            $folder = ($segments[1] ?? null) === 'by-id'
+                ? $this->documentFromByIdSegments($segments, $path)
+                : $this->resolveDocumentPath(array_slice($segments, 1), $path);
 
-            foreach ($docs as $doc) {
-                if ($this->canAccessDocument($agent, $doc)) {
-                    $entries[] = $this->documentEntry($agent, $doc, '/docs/'.$this->slug($doc->title));
-                }
+            if (! $this->canAccessDocument($agent, $folder)) {
+                throw VfsError::permissionDenied($path, 'document folder scope');
             }
-
-            return $entries;
-        }
-
-        if (($segments[1] ?? null) === 'by-id') {
-            if (! isset($segments[2])) {
-                return Document::forWorkspace()
-                    ->where('is_system', false)
-                    ->orderByDesc('is_folder')
-                    ->orderBy('title')
-                    ->limit($budget->maxEntries)
-                    ->get()
-                    ->filter(fn (Document $doc): bool => $this->canAccessDocument($agent, $doc))
-                    ->map(fn (Document $doc): VfsEntry => $this->documentEntry($agent, $doc, "/docs/by-id/{$doc->id}"))
-                    ->values()
-                    ->all();
+            if ($folder->is_system) {
+                throw VfsError::permissionDenied($path, 'system document');
             }
-
-            $doc = $this->documentFromByIdSegments($segments, $path);
-            if (! $doc->is_folder) {
+            if (! $folder->is_folder) {
                 throw VfsError::notReadable($path);
             }
 
-            return $this->documentChildren($agent, $doc, "/docs/by-id/{$doc->id}", $budget);
+            $query = Document::forWorkspace()
+                ->where('parent_id', $folder->id)
+                ->where('is_system', false);
+            $basePath = ($segments[1] ?? null) === 'by-id'
+                ? "/docs/by-id/{$folder->id}"
+                : $path;
+            $entryPath = fn (Document $doc): string => rtrim($basePath, '/').'/'.$this->slug($doc->title);
         }
 
-        $doc = $this->resolveDocumentPath(array_slice($segments, 1), $path);
-        if (! $doc->is_folder) {
-            throw VfsError::notReadable($path);
-        }
-
-        return $this->documentChildren($agent, $doc, $path, $budget);
+        return $this->paginateVfsMountQuery(
+            baseQuery: $query,
+            labelColumn: 'title',
+            limit: $budget->maxEntries,
+            scanLimit: $budget->maxFiles,
+            state: $state,
+            canAccess: fn (Document $doc): bool => $this->canAccessDocument($agent, $doc),
+            toEntry: fn (Document $doc): VfsEntry => $this->documentEntry($agent, $doc, $entryPath($doc)),
+            prefixEntry: $prefix,
+        );
     }
 
+    /**
+     * @param  list<string>  $segments
+     */
     private function readDocs(User $agent, array $segments, string $path, VfsBudget $budget): string
     {
         if (count($segments) === 1) {
             return $this->entriesToText($this->listDocs($agent, $segments, $path, $budget));
         }
 
-        $doc = (($segments[1] ?? null) === 'by-id' && isset($segments[2]))
+        $doc = (isset($segments[1], $segments[2]) && $segments[1] === 'by-id')
             ? $this->documentFromByIdSegments($segments, $path)
             : $this->resolveDocumentPath(array_slice($segments, 1), $path);
 
@@ -108,21 +121,51 @@ trait MountsVfsDocuments
             throw VfsError::permissionDenied($path, 'document folder scope');
         }
 
-        return Document::forWorkspace()
-            ->where('parent_id', $folder->id)
-            ->where('is_system', false)
-            ->orderByDesc('is_folder')
-            ->orderBy('title')
-            ->limit($budget->maxEntries)
-            ->get()
-            ->filter(fn (Document $doc): bool => $this->canAccessDocument($agent, $doc))
-            ->map(fn (Document $doc): VfsEntry => $this->documentEntry($agent, $doc, rtrim($path, '/').'/'.$this->slug($doc->title)))
-            ->values()
-            ->all();
+        return $this->paginateVfsMountQuery(
+            baseQuery: Document::forWorkspace()
+                ->where('parent_id', $folder->id)
+                ->where('is_system', false),
+            labelColumn: 'title',
+            limit: $budget->maxEntries,
+            scanLimit: $budget->maxFiles,
+            state: [],
+            canAccess: fn (Document $doc): bool => $this->canAccessDocument($agent, $doc),
+            toEntry: fn (Document $doc): VfsEntry => $this->documentEntry(
+                $agent,
+                $doc,
+                rtrim($path, '/').'/'.$this->slug($doc->title),
+            ),
+        )['entries'];
     }
 
     private function documentEntry(User $agent, Document $doc, string $path): VfsEntry
     {
+        $capabilities = $doc->is_folder ? ['browse', 'read', 'search'] : ['read', 'search'];
+        $metadata = [
+            'title' => $doc->title,
+            'is_system' => $doc->is_system,
+            'content_format' => $doc->content_format ?? 'markdown',
+            'updated_at' => $doc->updated_at?->toIso8601String(),
+        ];
+
+        if (! $doc->is_folder) {
+            $patchDecision = $this->entryMutationDecision(
+                $agent,
+                $path,
+                'patch',
+                ['vfs_patch'],
+                'Patch this document with vfs_patch using a targeted search/replace payload.',
+                $this->canPatchDocument($agent, $doc),
+                'Document patches require a non-system file inside an explicitly allowed document folder.',
+            );
+            $capabilities = $this->mutationCapabilities($capabilities, ['patch' => $patchDecision]);
+            $metadata = [
+                ...$metadata,
+                ...$patchDecision->metadata(),
+                ...$this->mutationActionsMetadata(['patch' => $patchDecision]),
+            ];
+        }
+
         return new VfsEntry(
             name: $doc->title,
             path: $path,
@@ -131,13 +174,8 @@ trait MountsVfsDocuments
             backendType: 'document',
             backendId: $doc->id,
             version: $this->version($doc->updated_at?->toIso8601String(), $doc->content ?? ''),
-            capabilities: $doc->is_folder ? ['browse', 'read', 'search'] : array_values(array_filter(['read', 'search', $this->canPatchDocument($agent, $doc) ? 'patch' : null])),
-            metadata: [
-                'title' => $doc->title,
-                'is_system' => $doc->is_system,
-                'content_format' => $doc->content_format ?? 'markdown',
-                'updated_at' => $doc->updated_at?->toIso8601String(),
-            ],
+            capabilities: $capabilities,
+            metadata: $metadata,
         );
     }
 }

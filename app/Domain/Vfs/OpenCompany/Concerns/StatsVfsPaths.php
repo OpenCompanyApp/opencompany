@@ -11,6 +11,9 @@ use App\Models\User;
  */
 trait StatsVfsPaths
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function stat(User $agent, string $path): array
     {
         $path = $this->normalizePath($path);

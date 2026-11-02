@@ -15,22 +15,42 @@ use Illuminate\Support\Str;
 trait MountsVfsAutomations
 {
     /**
+     * @param  list<string>  $segments
      * @return list<VfsEntry>
      */
     private function listAutomations(User $agent, array $segments, string $path, VfsBudget $budget): array
+    {
+        return $this->pageAutomations($agent, $segments, $path, $budget, [])['entries'];
+    }
+
+    /**
+     * Page workspace-owned automations by creation time and id. Updated runtime
+     * fields such as next_run_at must not move records across a browse cursor.
+     *
+     * @param  list<string>  $segments
+     * @param  array<string, mixed>  $state
+     * @return array{entries: list<VfsEntry>, has_more: bool, next_state: array<string, mixed>, scanned: int, skipped: int}
+     */
+    private function pageAutomations(User $agent, array $segments, string $path, VfsBudget $budget, array $state): array
     {
         if (count($segments) > 1) {
             throw VfsError::notReadable($path);
         }
 
-        return Automation::forWorkspace()
-            ->latest()
-            ->limit($budget->maxEntries)
-            ->get()
-            ->map(fn (Automation $automation): VfsEntry => $this->automationEntry($automation, "/automations/{$automation->id}.json"))
-            ->all();
+        return $this->paginateVfsTimestampQuery(
+            Automation::forWorkspace(),
+            'created_at',
+            'desc',
+            $budget->maxEntries,
+            $budget->maxFiles,
+            $state,
+            fn (Automation $automation): VfsEntry => $this->automationEntry($automation, "/automations/{$automation->id}.json"),
+        );
     }
 
+    /**
+     * @param  list<string>  $segments
+     */
     private function readAutomations(User $agent, array $segments, string $path, VfsBudget $budget): string
     {
         if (count($segments) === 1) {
@@ -40,7 +60,7 @@ trait MountsVfsAutomations
             throw VfsError::notFound($path);
         }
 
-        $automation = $this->resolveAutomationToken(Str::before($segments[1] ?? '', '.json'), $path);
+        $automation = $this->resolveAutomationToken(Str::before($segments[1], '.json'), $path);
 
         return json_encode($automation->toArray(), JSON_PRETTY_PRINT);
     }
@@ -55,7 +75,15 @@ trait MountsVfsAutomations
             'automation',
             $automation->id,
             capabilities: ['read'],
-            metadata: ['name' => $automation->name, 'active' => $automation->is_active],
+            metadata: [
+                'name' => $automation->name,
+                'active' => $automation->is_active,
+                ...$this->readOnlyMetadata(
+                    'Automation JSON is a generated automation record.',
+                    'automation tools',
+                    'Use automation tools to create, update, run, pause, or delete automations.',
+                ),
+            ],
         );
     }
 
@@ -74,7 +102,10 @@ trait MountsVfsAutomations
             return $byId;
         }
 
-        $matches = Automation::forWorkspace()->get()->filter(fn (Automation $candidate): bool => $this->slug($candidate->name) === $token);
+        $matches = Automation::forWorkspace()
+            ->lazy(100)
+            ->filter(fn (Automation $candidate): bool => $this->slug($candidate->name) === $token)
+            ->take(2);
         if ($matches->count() === 1) {
             return $matches->first();
         }

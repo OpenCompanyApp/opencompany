@@ -28,7 +28,9 @@ class VfsRead implements Tool
         try {
             $path = (string) ($request['path'] ?? '');
             $budget = $this->budgetFromRequest($request);
-            $content = $this->vfs->read($this->agent, $path, $budget);
+            $cursor = $this->pageCursor($request);
+            $page = $this->vfs->readPage($this->agent, $path, $budget, $cursor);
+            $content = $page->content;
             $stat = $this->vfs->stat($this->agent, $path);
 
             return $this->encodeResult([
@@ -36,9 +38,17 @@ class VfsRead implements Tool
                 'content' => $content,
                 'bytes' => strlen($content),
                 'version' => $stat['version'] ?? null,
+                'capabilities' => $stat['capabilities'] ?? [],
+                'metadata' => $stat['metadata'] ?? [],
                 'mime' => $stat['metadata']['mime_type'] ?? 'text/plain',
                 'encoding' => 'utf-8',
-                'truncated' => str_ends_with($content, "\n[... truncated]"),
+                'cursor' => $cursor,
+                'next_cursor' => $page->nextCursor,
+                'seen_before' => $page->seenBefore,
+                'returned' => $page->returned,
+                'scanned' => $page->scanned,
+                'skipped' => $page->skipped,
+                'truncated' => $page->truncated || str_ends_with($content, "\n[... truncated]"),
             ]);
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
@@ -50,6 +60,9 @@ class VfsRead implements Tool
         return [
             'path' => $schema->string()->required()->description('Virtual file path to read.'),
             'maxBytes' => $schema->integer()->description('Maximum bytes to return. Default: 100000.'),
+            'limit' => $schema->integer()->description('Maximum records returned from a generated collection file. Default: 100.'),
+            'maxFiles' => $schema->integer()->description('Backend scan ceiling for generated collection files. Default: 100.'),
+            'cursor' => $schema->string()->description('Opaque cursor from a previous truncated generated-file response.'),
         ];
     }
 }

@@ -11,18 +11,25 @@ use App\Models\WorkspaceFile;
  */
 trait MutatesVfsFiles
 {
-    private function writeWorkspaceFile(User $agent, array $segments, string $path, string $content, string $mode, ?string $version): array
-    {
-        $filePath = '/'.implode('/', array_slice($segments, (($segments[1] ?? null) === 'by-id') ? 3 : 1));
-        if (($segments[1] ?? null) === 'by-id' && isset($segments[2])) {
-            if (isset($segments[3])) {
-                throw VfsError::notFound($path);
-            }
-            $existing = WorkspaceFile::forWorkspace()->find($segments[2]) ?? throw VfsError::notFound($path);
-            $filePath = $existing->getVirtualPath();
-        } else {
-            $existing = $this->files->resolveVirtualPath($filePath, $agent->workspace_id);
-        }
+    /**
+     * @param  list<string>  $segments
+     * @param  array<string, mixed>|null  $toolParameters
+     * @param  bool  $enforceWritePermission  False only for a caller that already enforced its own composed mutation policy, such as vfs_patch or VfsCommandExecutor.
+     * @return array<string, mixed>
+     */
+    private function writeWorkspaceFile(
+        User $agent,
+        array $segments,
+        string $path,
+        string $content,
+        string $mode,
+        ?string $version,
+        ?array $toolParameters = null,
+        bool $enforceWritePermission = false,
+    ): array {
+        $resolved = $this->resolveWorkspaceFilePath($agent, $path);
+        $filePath = '/'.$resolved['relative_path'];
+        $existing = $resolved['file'];
 
         if ($existing) {
             if ($existing->is_folder || ! $this->permissions->canAccessFilePath($agent, $existing)) {
@@ -38,11 +45,31 @@ trait MutatesVfsFiles
         $trimmed = trim($filePath, '/');
         $parts = explode('/', $trimmed);
         $name = array_pop($parts);
-        if (! is_string($name) || $name === '') {
+        if ($name === '') {
             throw VfsError::invalid('File name is required.', ['path' => $path]);
         }
 
         $this->assertCanCreateFilePath($agent, $filePath, $path);
+
+        if ($enforceWritePermission) {
+            $toolParameters ??= array_filter([
+                'path' => $path,
+                'content' => $content,
+                'mode' => $mode,
+                'version' => $version,
+            ], fn (mixed $value): bool => $value !== null);
+            $this->assertMutationToolsAllowed(
+                $agent,
+                $path,
+                ['vfs_write'],
+                $toolParameters,
+                isset($toolParameters['channelId']) && is_string($toolParameters['channelId']) ? $toolParameters['channelId'] : null,
+                ['kind' => 'workspace_file', 'mode' => $mode, 'name' => $name],
+                'write',
+                'Raw workspace-file writes require vfs_write.',
+            );
+        }
+
         $folder = null;
         if ($parts !== []) {
             $folder = $this->files->ensureFolderPath(implode('/', $parts), $agent->workspace_id, $agent->id);
@@ -61,33 +88,16 @@ trait MutatesVfsFiles
         ];
     }
 
-    private function filesRelativePath(string $path): string
+    private function filesRelativePath(User $agent, string $path): string
     {
-        $segments = $this->segments($path);
-        if (($segments[0] ?? null) !== 'files' || ($segments[1] ?? null) === 'by-id') {
-            throw VfsError::notWritable($path);
-        }
-
-        return implode('/', array_slice($segments, 1));
+        return $this->resolveWorkspaceFilePath($agent, $path)['relative_path'];
     }
 
     private function resolveFileOnlyPath(User $agent, string $path): WorkspaceFile
     {
-        $segments = $this->segments($path);
-        if (($segments[0] ?? null) !== 'files') {
-            throw VfsError::notWritable($path);
-        }
+        $file = $this->resolveWorkspaceFilePath($agent, $path)['file'];
 
-        if (($segments[1] ?? null) === 'by-id' && isset($segments[2])) {
-            if (isset($segments[3])) {
-                throw VfsError::notFound($path);
-            }
-
-            return WorkspaceFile::forWorkspace()->find($segments[2]) ?? throw VfsError::notFound($path);
-        }
-
-        return $this->files->resolveVirtualPath('/'.implode('/', array_slice($segments, 1)), $agent->workspace_id)
-            ?? throw VfsError::notFound($path);
+        return $file ?? throw VfsError::notFound($path);
     }
 
     /**
@@ -98,8 +108,9 @@ trait MutatesVfsFiles
      */
     private function resolveDestinationFolder(User $agent, WorkspaceFile $source, string $destination): array
     {
-        $relative = $this->filesRelativePath($destination);
-        $existing = $this->files->resolveVirtualPath('/'.$relative, $agent->workspace_id);
+        $resolved = $this->resolveWorkspaceFilePath($agent, $destination);
+        $relative = $resolved['relative_path'];
+        $existing = $resolved['file'];
         if ($existing) {
             if (! $this->permissions->canAccessFilePath($agent, $existing)) {
                 throw VfsError::permissionDenied($destination, 'target file folder scope');
@@ -120,7 +131,7 @@ trait MutatesVfsFiles
 
         $parts = explode('/', trim($relative, '/'));
         $name = array_pop($parts);
-        if (! is_string($name) || $name === '') {
+        if ($name === '') {
             throw VfsError::invalid('Destination file name is required.', ['path' => $destination]);
         }
 
@@ -154,5 +165,71 @@ trait MutatesVfsFiles
         }
 
         throw VfsError::permissionDenied($displayPath, 'target file folder scope');
+    }
+
+    /**
+     * Resolve a path under /files into the real workspace-file virtual path.
+     *
+     * Canonical folder paths are treated as stable anchors, so
+     * /files/by-id/{folder}/child resolves to the same backing path as
+     * /files/{folder-display-path}/child. Exact /files/by-id/{file} still
+     * addresses that single file, while children under a non-folder are invalid.
+     *
+     * @return array{relative_path: string, file: WorkspaceFile|null, base_folder: WorkspaceFile|null, from_by_id: bool}
+     */
+    private function resolveWorkspaceFilePath(User $agent, string $path): array
+    {
+        $segments = $this->segments($path);
+        if (($segments[0] ?? null) !== 'files') {
+            throw VfsError::notWritable($path);
+        }
+
+        if (($segments[1] ?? null) !== 'by-id') {
+            $relative = implode('/', array_slice($segments, 1));
+
+            return [
+                'relative_path' => $relative,
+                'file' => $relative === '' ? null : $this->files->resolveVirtualPath('/'.$relative, $agent->workspace_id),
+                'base_folder' => null,
+                'from_by_id' => false,
+            ];
+        }
+
+        if (! isset($segments[2])) {
+            return [
+                'relative_path' => '',
+                'file' => null,
+                'base_folder' => null,
+                'from_by_id' => true,
+            ];
+        }
+
+        $base = WorkspaceFile::forWorkspace()->find($segments[2]) ?? throw VfsError::notFound($path);
+        if (! $this->permissions->canAccessFilePath($agent, $base)) {
+            throw VfsError::permissionDenied($path, 'file folder scope');
+        }
+
+        $tail = array_slice($segments, 3);
+        if ($tail === []) {
+            return [
+                'relative_path' => trim($base->getVirtualPath(), '/'),
+                'file' => $base,
+                'base_folder' => $base->is_folder ? $base : null,
+                'from_by_id' => true,
+            ];
+        }
+
+        if (! $base->is_folder) {
+            throw VfsError::notFound($path);
+        }
+
+        $relative = trim(trim($base->getVirtualPath(), '/').'/'.implode('/', $tail), '/');
+
+        return [
+            'relative_path' => $relative,
+            'file' => $this->files->resolveVirtualPath('/'.$relative, $agent->workspace_id),
+            'base_folder' => $base,
+            'from_by_id' => true,
+        ];
     }
 }

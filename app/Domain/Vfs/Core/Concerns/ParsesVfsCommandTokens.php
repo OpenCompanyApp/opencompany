@@ -3,6 +3,7 @@
 namespace App\Domain\Vfs\Core\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 
 /**
  * argv tokenization and command alias normalization for VFS shell commands.
@@ -11,18 +12,7 @@ trait ParsesVfsCommandTokens
 {
     private function canonicalCommandName(string $name): ?string
     {
-        $aliases = [
-            'dir' => 'ls',
-            'll' => 'ls',
-            'egrep' => 'grep',
-            'fgrep' => 'grep',
-            'more' => 'cat',
-            'less' => 'cat',
-            'rmdir' => 'rm',
-        ];
-        $canonical = $aliases[$name] ?? $name;
-
-        return array_key_exists($canonical, self::commandCatalog()) ? $canonical : null;
+        return VfsCommandSpecRegistry::canonical($name);
     }
 
     private function tokenize(string $input): array

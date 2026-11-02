@@ -42,6 +42,16 @@ local lexical = app.vfs.search("refund policy", { "/docs" }, {
   max_matches = 20,
 })
 local count = app.vfs.count("/tasks/by-status/open", { limit = 100 })
+
+local transcript = app.vfs.read("/channels/by-id/.../messages/2026-08-09.md", {
+  limit = 100,
+})
+while transcript.next_cursor do
+  transcript = app.vfs.read("/channels/by-id/.../messages/2026-08-09.md", {
+    limit = 100,
+    cursor = transcript.next_cursor,
+  })
+end
 ```
 
 All VFS Lua helpers return the same tool envelope:
@@ -61,6 +71,11 @@ also mirror payload fields such as `version`, `content`, `items`, `matches`,
 `count_is_exact`, `sampled_count`, `total_count`, and `next_cursor` onto
 `res.*`. List-like helpers expose numeric entries too, so `#res` works for
 `ls`, `find`, `rg`, and `search`.
+
+`stat(path).metadata.mutation_actions` describes `patch` and `write`
+independently. Each action reports its required tools and whether permission is
+`allowed`, `requires_approval`, or `denied`. The corresponding capability is
+present only when the exact path is eligible to execute or request approval.
 
 Use `patch` for targeted edits:
 
@@ -108,12 +123,23 @@ Important boundaries:
 - All paths are workspace-scoped and permission-checked.
 - `app.vfs.*` helpers use the same primitive VFS permissions as `vfs_exec`,
   `vfs_patch`, and `vfs_write`; they do not bypass capability settings.
+- Domain-backed VFS writes compose primitive permissions with the existing
+  domain tools, such as `vfs_patch + update_table_row` for table rows and
+  `vfs_patch + update_agent_identity_file` for agent identity files.
+- If any composed permission requires approval, the helper returns the same
+  approval-required envelope as the primitive tool and a normal approval request
+  is created for replay after approval.
 - `/docs` entries advertise `patch` only when an explicit document-folder scope
   covers the target document.
 - Directory-style helpers return `returned`, `limit`, `truncated`, and
   `next_cursor` so scripts can page through bounded results or choose a narrower
   path/filter. Pass `cursor = res.next_cursor` to `app.vfs.ls`,
-  `app.vfs.find`, or `app.vfs.count` to continue.
+  `app.vfs.find`, or `app.vfs.count` to continue. `app.vfs.read` uses the same
+  continuation shape for channel transcripts, table-row NDJSON exports, and
+  `/workspace/members.json`; each returned chunk remains syntactically valid
+  and within `max_bytes`. Records are never split, and their cursor keyset is
+  committed only after emission. If one record cannot fit on an empty page,
+  retry with the `error.context.minimum_bytes` reported by `vfs_read`.
 - Directory counts are sampled unless `count_is_exact` says otherwise. Treat
   `count`, `returned`, and `sampled_count` as the page size inspected, not a
   guaranteed total. `total_count` is `null` when the mount cannot prove a true

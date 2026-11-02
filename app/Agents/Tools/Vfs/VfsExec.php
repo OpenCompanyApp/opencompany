@@ -4,6 +4,8 @@ namespace App\Agents\Tools\Vfs;
 
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsCommandExecutor;
+use App\Domain\Vfs\Core\VfsCommandHelp;
+use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsOperationLog;
 use App\Models\User;
@@ -20,7 +22,7 @@ class VfsExec implements Tool
 
     public function description(): string
     {
-        return 'Execute a safe unix-like command inside the OpenCompany virtual filesystem. Supports read/navigation commands such as pwd, cd, ls, tree, find, rg, grep, cat, head, tail, wc, stat, file, du, jq, diff, and checksums. Also supports /files mutations such as mkdir, touch, tee, cp, mv, rm, and truncate when vfs_write permission allows them. This is not host shell access.';
+        return 'Execute a safe unix-like command inside the OpenCompany virtual filesystem. Supports read/navigation commands such as pwd, cd, ls, tree, find, rg, grep, cat, head, tail, wc, stat, file, du, jq, diff, and checksums. /files mutations such as mkdir, touch, tee, cp, mv, rm, and truncate compose vfs_exec with vfs_write and create normal approval requests when either required permission is approval-gated. This is not host shell access.';
     }
 
     public function handle(Request $request): string
@@ -35,6 +37,13 @@ class VfsExec implements Tool
 
                 return $this->encodeError('invalid_request', 'command is required.');
             }
+            $responseFormat = (string) ($request['responseFormat'] ?? 'default');
+            if (! in_array($responseFormat, ['default', 'structured'], true)) {
+                $errorCode = 'invalid_request';
+
+                return $this->encodeError('invalid_request', 'responseFormat must be default or structured.', ['field' => 'responseFormat']);
+            }
+            $includeCommandSpec = $this->truthy($request['includeCommandSpec'] ?? false);
 
             $result = $this->executor->execute(
                 $this->agent,
@@ -47,6 +56,7 @@ class VfsExec implements Tool
                     maxFiles: $this->budgetInteger($request, 'maxFiles', 100, 1),
                     maxMatches: $this->budgetInteger($request, 'maxMatches', 100, 1),
                 ),
+                $request->toArray(),
             );
             $ok = (bool) ($result['ok'] ?? true);
             $result['command'] = $command;
@@ -54,6 +64,13 @@ class VfsExec implements Tool
             $result['stderr'] = (string) ($result['result']['stderr'] ?? '');
             $result['data'] = $result['result'] ?? null;
             $result['diagnostics'] = [];
+            $commandSpec = $this->primaryCommandSpec($command);
+            if ($responseFormat === 'structured') {
+                $result['data'] = $this->structuredData($result, $commandSpec);
+            }
+            if ($includeCommandSpec && $commandSpec !== null) {
+                $result['diagnostics']['command_spec'] = $commandSpec;
+            }
 
             return json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         } catch (VfsError $e) {
@@ -108,9 +125,14 @@ class VfsExec implements Tool
             'maxBytes' => $schema->integer()->description('Maximum bytes read from a single virtual file. Default: 100000.'),
             'maxFiles' => $schema->integer()->description('Maximum files scanned by search commands. Default: 100.'),
             'maxMatches' => $schema->integer()->description('Maximum matches returned by search commands. Default: 100.'),
+            'responseFormat' => $schema->string()->description('default or structured. Structured keeps stdout unchanged and enriches data for metadata-friendly commands.'),
+            'includeCommandSpec' => $schema->boolean()->description('Include the primary command spec in diagnostics.command_spec.'),
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $context
+     */
     private function encodeError(string $code, string $message, array $context = []): string
     {
         $payload = [
@@ -136,5 +158,59 @@ class VfsExec implements Tool
         $redacted = preg_replace('/([?&](?:access_token|client_secret|secret|token|auth|api[_-]?key|authorization|password|credential|bearer|session)=)([^&\s\'"]+)/i', '$1[redacted]', $redacted) ?? $redacted;
 
         return preg_replace('/(sk-[A-Za-z0-9_-]{12,}|[A-Za-z0-9_\/+=-]{32,})/', '[redacted]', $redacted) ?? $redacted;
+    }
+
+    private function truthy(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return in_array($value, [1, '1', 'true', 'yes', 'on'], true);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function primaryCommandSpec(string $command): ?array
+    {
+        if (preg_match('/^\s*([^\s|;&]+)/', $command, $matches) !== 1) {
+            return null;
+        }
+        $canonical = VfsCommandSpecRegistry::canonical($matches[1]);
+        if ($canonical === null) {
+            return null;
+        }
+
+        return VfsCommandHelp::commandEntry($canonical);
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     * @param  array<string, mixed>|null  $commandSpec
+     * @return array<string, mixed>|null
+     */
+    private function structuredData(array $result, ?array $commandSpec): ?array
+    {
+        $data = is_array($result['result'] ?? null) ? $result['result'] : [];
+        $command = (string) ($commandSpec['name'] ?? '');
+        $stdout = (string) ($result['stdout'] ?? '');
+        if (in_array($command, ['stat'], true)) {
+            $decoded = json_decode($stdout, true);
+            if (is_array($decoded)) {
+                $data['stat'] = $decoded;
+            }
+        } elseif (in_array($command, ['ls', 'find'], true)) {
+            $data['paths'] = array_values(array_filter(preg_split('/\r\n|\r|\n/', trim($stdout)) ?: [], fn (string $line): bool => $line !== ''));
+        } elseif (in_array($command, ['grep', 'rg', 'search', 'zgrep'], true)) {
+            $data['matches_text'] = array_values(array_filter(preg_split('/\r\n|\r|\n/', trim($stdout)) ?: [], fn (string $line): bool => $line !== ''));
+        } elseif (in_array($command, ['file', 'du', 'which', 'type', 'help', 'man'], true)) {
+            $data['lines'] = array_values(array_filter(preg_split('/\r\n|\r|\n/', trim($stdout)) ?: [], fn (string $line): bool => $line !== ''));
+        }
+        if ($commandSpec !== null) {
+            $data['command_spec'] = $commandSpec;
+        }
+
+        return $data === [] ? null : $data;
     }
 }

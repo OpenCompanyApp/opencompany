@@ -15,28 +15,45 @@ use Illuminate\Support\Str;
 trait MountsVfsTasks
 {
     /**
+     * @param  list<string>  $segments
      * @return list<VfsEntry>
      */
     private function listTasks(User $agent, array $segments, string $path, VfsBudget $budget): array
     {
+        return $this->pageTasks($agent, $segments, $path, $budget, [])['entries'];
+    }
+
+    /**
+     * Return an adapter-owned task page before cursor encoding.
+     *
+     * @param  list<string>  $segments
+     * @param  array<string, mixed>  $state
+     * @return array{
+     *     entries: list<VfsEntry>,
+     *     has_more: bool,
+     *     next_state: array<string, mixed>,
+     *     scanned: int,
+     *     skipped: int
+     * }
+     */
+    private function pageTasks(User $agent, array $segments, string $path, VfsBudget $budget, array $state): array
+    {
         if (count($segments) === 1) {
-            return [
-                new VfsEntry('open', '/tasks/open', 'directory', capabilities: ['browse', 'read', 'search']),
-                new VfsEntry('completed', '/tasks/completed', 'directory', capabilities: ['browse', 'read', 'search']),
-                new VfsEntry('by-id', '/tasks/by-id', 'directory', capabilities: ['browse', 'read']),
-                new VfsEntry('by-status', '/tasks/by-status', 'directory', capabilities: ['browse']),
-                new VfsEntry('by-agent', '/tasks/by-agent', 'directory', capabilities: ['browse']),
-                new VfsEntry('recent.md', '/tasks/recent.md', 'file', capabilities: ['read']),
-                new VfsEntry('counts.json', '/tasks/counts.json', 'file', capabilities: ['read']),
-            ];
+            return $this->paginateVfsStaticEntries($this->taskRootEntries(), $budget->maxEntries, $state);
         }
 
-        $query = Task::forWorkspace()->with('agent:id,name')->latest('updated_at');
+        $query = Task::forWorkspace()->with('agent:id,name');
         $label = $segments[1] ?? '';
 
         if ($label === 'by-id') {
             if (! isset($segments[2])) {
-                return $query->limit($budget->maxEntries)->get()->map(fn (Task $task): VfsEntry => $this->taskEntry($task))->all();
+                return $this->paginateVfsRecentQuery(
+                    $query,
+                    $budget->maxEntries,
+                    $budget->maxFiles,
+                    $state,
+                    fn (Task $task): VfsEntry => $this->taskEntry($agent, $task),
+                );
             }
             throw VfsError::notReadable($path);
         }
@@ -46,30 +63,39 @@ trait MountsVfsTasks
         } elseif ($label === 'completed') {
             $query->where('status', Task::STATUS_COMPLETED);
         } elseif ($label === 'by-status' && ! isset($segments[2])) {
-            return Task::forWorkspace()
+            $entries = Task::forWorkspace()
                 ->select('status')
                 ->whereNotNull('status')
                 ->distinct()
                 ->orderBy('status')
-                ->limit($budget->maxEntries)
                 ->pluck('status')
                 ->map(fn (string $status): VfsEntry => new VfsEntry($status, "/tasks/by-status/{$status}", 'directory', capabilities: ['browse', 'read', 'search']))
                 ->all();
+
+            return $this->paginateVfsStaticEntries($entries, $budget->maxEntries, $state);
         } elseif ($label === 'by-status' && isset($segments[2])) {
             $query->where('status', $segments[2]);
         } elseif ($label === 'by-agent' && ! isset($segments[2])) {
-            return User::where('workspace_id', $agent->workspace_id)
-                ->where('type', 'agent')
-                ->orderBy('name')
-                ->limit($budget->maxEntries)
-                ->get()
-                ->map(fn (User $target): VfsEntry => new VfsEntry($this->slug($target->name), "/tasks/by-agent/{$this->slug($target->name)}", 'directory', capabilities: ['browse', 'read', 'search'], metadata: ['agent_id' => $target->id, 'name' => $target->name]))
-                ->all();
+            return $this->paginateVfsLabelQuery(
+                User::query()
+                    ->where('workspace_id', $agent->workspace_id)
+                    ->where('type', 'agent'),
+                'name',
+                $budget->maxEntries,
+                $state,
+                fn (User $target): VfsEntry => new VfsEntry(
+                    $this->slug($target->name),
+                    "/tasks/by-agent/{$this->slug($target->name)}",
+                    'directory',
+                    capabilities: ['browse', 'read', 'search'],
+                    metadata: ['agent_id' => $target->id, 'name' => $target->name],
+                ),
+            );
         } elseif ($label === 'by-agent' && isset($segments[2])) {
             $agentSlug = $segments[2];
             $target = User::where('workspace_id', $agent->workspace_id)
                 ->where('type', 'agent')
-                ->get()
+                ->lazy(100)
                 ->first(fn (User $candidate): bool => Str::slug($candidate->name) === $agentSlug);
             $target ? $query->where('agent_id', $target->id) : $query->whereRaw('1 = 0');
             if (isset($segments[3])) {
@@ -81,9 +107,32 @@ trait MountsVfsTasks
             throw VfsError::notFound($path);
         }
 
-        return $query->limit($budget->maxEntries)->get()->map(fn (Task $task): VfsEntry => $this->taskEntry($task))->all();
+        return $this->paginateVfsRecentQuery(
+            $query,
+            $budget->maxEntries,
+            $budget->maxFiles,
+            $state,
+            fn (Task $task): VfsEntry => $this->taskEntry($agent, $task),
+        );
     }
 
+    /** @return list<VfsEntry> */
+    private function taskRootEntries(): array
+    {
+        return [
+            new VfsEntry('open', '/tasks/open', 'directory', capabilities: ['browse', 'read', 'search']),
+            new VfsEntry('completed', '/tasks/completed', 'directory', capabilities: ['browse', 'read', 'search']),
+            new VfsEntry('by-id', '/tasks/by-id', 'directory', capabilities: ['browse', 'read']),
+            new VfsEntry('by-status', '/tasks/by-status', 'directory', capabilities: ['browse']),
+            new VfsEntry('by-agent', '/tasks/by-agent', 'directory', capabilities: ['browse']),
+            new VfsEntry('recent.md', '/tasks/recent.md', 'file', capabilities: ['read']),
+            new VfsEntry('counts.json', '/tasks/counts.json', 'file', capabilities: ['read']),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $segments
+     */
     private function readTasks(User $agent, array $segments, string $path, VfsBudget $budget): string
     {
         if (($segments[1] ?? null) === 'counts.json') {
@@ -110,23 +159,36 @@ trait MountsVfsTasks
         return $this->entriesToText($this->listTasks($agent, $segments, $path, $budget));
     }
 
-    private function taskEntry(Task $task): VfsEntry
+    private function taskEntry(User $agent, Task $task): VfsEntry
     {
+        $path = "/tasks/by-id/{$task->id}";
+        $patchDecision = $this->entryMutationDecision(
+            $agent,
+            $path,
+            'patch',
+            ['vfs_patch'],
+            'Patch this task with vfs_patch; only the supported task fields may be changed.',
+            $task->agent_id === $agent->id,
+            'Only the agent assigned to a task can patch it through VFS.',
+        );
+
         return new VfsEntry(
             name: $this->slug($task->title).'.md',
-            path: "/tasks/by-id/{$task->id}",
+            path: $path,
             type: 'file',
-            canonicalPath: "/tasks/by-id/{$task->id}",
+            canonicalPath: $path,
             backendType: 'task',
             backendId: $task->id,
             version: $this->version($task->updated_at?->toIso8601String(), $task->status),
-            capabilities: ['read', 'search', 'patch'],
+            capabilities: $this->mutationCapabilities(['read', 'search'], ['patch' => $patchDecision]),
             metadata: [
                 'title' => $task->title,
                 'status' => $task->status,
                 'priority' => $task->priority,
-                'agent' => $task->agent?->name,
+                'agent' => $task->agent->name ?? null,
                 'updated_at' => $task->updated_at?->toIso8601String(),
+                ...$patchDecision->metadata(),
+                ...$this->mutationActionsMetadata(['patch' => $patchDecision]),
             ],
         );
     }
@@ -140,7 +202,7 @@ trait MountsVfsTasks
             "- Status: {$task->status}",
             "- Priority: {$task->priority}",
             "- Type: {$task->type}",
-            '- Agent: '.($task->agent?->name ?? 'Unassigned'),
+            '- Agent: '.($task->agent->name ?? 'Unassigned'),
             '',
             '## Description',
             '',
@@ -151,7 +213,7 @@ trait MountsVfsTasks
             $lines[] = '';
             $lines[] = '## Steps';
             foreach ($task->steps as $step) {
-                $lines[] = '- ['.($step->completed_at ? 'x' : ' ')."] {$step->title}";
+                $lines[] = '- ['.($step->completed_at ? 'x' : ' ').'] '.(string) $step->description;
             }
         }
 

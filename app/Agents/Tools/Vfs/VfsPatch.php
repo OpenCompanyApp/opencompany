@@ -19,7 +19,7 @@ class VfsPatch implements Tool
 
     public function description(): string
     {
-        return 'Patch writable virtual content with stale-write protection. /docs patches require explicit document-folder scope; /files patches require file write scope; tasks/lists accept limited structured fields. Supports JSON {"search":"old","replace":"new"} patches or SEARCH/REPLACE blocks.';
+        return 'Patch writable virtual content with stale-write protection. VFS composes this primitive with existing domain permissions: table row patches also require update_table_row, agent identity patches also require update_agent_identity_file, and approval-gated backing tools create normal approval requests. Supports JSON {"search":"old","replace":"new"} patches, table row {"data": {...}} patches, or SEARCH/REPLACE blocks.';
     }
 
     public function handle(Request $request): string
@@ -36,7 +36,7 @@ class VfsPatch implements Tool
                 return $this->encodeError('invalid_request', 'path and patch are required.');
             }
 
-            $result = $this->vfs->patch($this->agent, $path, $patch, $request['version'] ?? null);
+            $result = $this->vfs->patch($this->agent, $path, $patch, $request['version'] ?? null, $request->toArray());
             $ok = true;
 
             return json_encode([
@@ -68,12 +68,15 @@ class VfsPatch implements Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'path' => $schema->string()->required()->description('Virtual path to patch, preferably canonical. /docs/by-id/... requires an explicit allowed document-folder scope; unrestricted document read access is not enough to patch.'),
-            'patch' => $schema->string()->required()->description('Patch content. Use JSON {"search":"old","replace":"new"} or a <<<<<<< SEARCH / ======= / >>>>>>> REPLACE block.'),
+            'path' => $schema->string()->required()->description('Virtual path to patch, preferably canonical. /docs/by-id/... requires an explicit allowed document-folder scope; table rows require update_table_row; agent identity/memory paths enforce relationship-specific write rules.'),
+            'patch' => $schema->string()->required()->description('Patch content. Use JSON {"search":"old","replace":"new"}, table row JSON {"data": {...}}, or a <<<<<<< SEARCH / ======= / >>>>>>> REPLACE block.'),
             'version' => $schema->string()->description('Optional version token from stat. If provided, the patch fails when stale.'),
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $context
+     */
     private function encodeError(string $code, string $message, array $context = []): string
     {
         return json_encode(['ok' => false, 'error' => ['code' => $code, 'message' => $message, 'context' => $context]], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

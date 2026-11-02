@@ -4,6 +4,7 @@ namespace App\Domain\Vfs\Core\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 /**
  * Shell introspection and path helpers (`which`, `type`, `env`, basename, etc.).
@@ -12,8 +13,12 @@ trait ExecutesVfsPathCommands
 {
     private function pathTransform(array $tokens, string $cwd, string $kind): array
     {
-        $this->assertSupportedOptions($tokens, $kind);
-        $path = $this->path($tokens[0] ?? '.', $cwd);
+        $this->assertSupportedOptionsForCommand($tokens, $kind);
+        $paths = $this->pathArgs($tokens, $cwd);
+        $path = $paths[0] ?? $this->path('.', $cwd);
+        if ($kind === 'realpath' && ($this->shortFlags($tokens, ['e', 'm'])['e'] ?? false)) {
+            $this->vfs->stat($this->currentAgent, $path);
+        }
         $stdout = match ($kind) {
             'dirname' => dirname($path) === '\\' ? '/' : dirname($path),
             'basename' => basename($path),
@@ -23,45 +28,17 @@ trait ExecutesVfsPathCommands
         return ['stdout' => $stdout, 'cwd' => $cwd, 'class' => 'browse'];
     }
 
-    private function which(array $tokens, string $cwd): array
+    private function readlink(array $tokens, string $cwd): array
     {
-        $this->assertSupportedOptions($tokens, 'which');
-        if (count($tokens) !== 1) {
-            throw VfsError::invalid('which requires exactly one command name.');
-        }
-        $name = $tokens[0] ?? throw VfsError::invalid('which requires a command name.');
-        $canonical = $this->canonicalCommandName($name);
-        if ($canonical === null) {
-            throw VfsError::notFound($name);
+        $this->assertSupportedOptionsForCommand($tokens, 'readlink');
+        $flags = $this->shortFlags($tokens, ['f', 'e', 'm', 'n']);
+        $args = array_values(array_filter($tokens, fn (string $token): bool => ! in_array($token, ['-f', '-e', '-m', '-n'], true)));
+        $path = isset($args[0]) ? $this->path($args[0], $cwd) : throw VfsError::invalid('readlink requires a path.');
+        if ($flags['e'] ?? false) {
+            $this->vfs->stat($this->currentAgent, $path);
         }
 
-        return ['stdout' => $canonical, 'cwd' => $cwd, 'class' => 'browse'];
-    }
-
-    private function type(array $tokens, string $cwd): array
-    {
-        $this->assertSupportedOptions($tokens, 'type');
-        if (count($tokens) !== 1) {
-            throw VfsError::invalid('type requires exactly one command name.');
-        }
-        $name = $tokens[0] ?? throw VfsError::invalid('type requires a command name.');
-        $canonical = $this->canonicalCommandName($name);
-        if ($canonical === null) {
-            throw VfsError::notFound($name);
-        }
-
-        $description = self::commandCatalog()[$canonical]['description'] ?? 'VFS command.';
-
-        return ['stdout' => "{$name} is a VFS command ({$canonical}): {$description}", 'cwd' => $cwd, 'class' => 'browse'];
-    }
-
-    private function commandBuiltin(array $tokens, string $cwd): array
-    {
-        if (($tokens[0] ?? null) !== '-v') {
-            throw VfsError::unsupported('Only command -v is supported by the VFS command builtin.');
-        }
-
-        return $this->which(array_slice($tokens, 1), $cwd);
+        return ['stdout' => $path.(($flags['n'] ?? false) ? '' : "\n"), 'cwd' => $cwd, 'class' => 'browse'];
     }
 
     private function env(User $agent, array $tokens, string $cwd): array
@@ -92,5 +69,23 @@ trait ExecutesVfsPathCommands
             'cwd' => $cwd,
             'class' => 'browse',
         ];
+    }
+
+    private function dateCommand(array $tokens, string $cwd): array
+    {
+        $this->assertSupportedOptionsForCommand($tokens, 'date');
+        $time = $this->optionValue($tokens, ['-d']);
+        $date = $time === null ? now() : Carbon::parse($time);
+        if ($this->shortFlags($tokens, ['u', 'I', 'R'])['u'] ?? false) {
+            $date = $date->utc();
+        }
+        $flags = $this->shortFlags($tokens, ['u', 'I', 'R']);
+        $stdout = match (true) {
+            $flags['I'] ?? false => $date->toDateString(),
+            $flags['R'] ?? false => $date->toRfc2822String(),
+            default => $date->toIso8601String(),
+        };
+
+        return ['stdout' => $stdout, 'cwd' => $cwd, 'class' => 'browse'];
     }
 }

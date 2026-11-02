@@ -2,7 +2,10 @@
 
 namespace App\Domain\Vfs\Core;
 
+use App\Domain\Vfs\Core\Concerns\ExecutesVfsArchiveCommands;
+use App\Domain\Vfs\Core\Concerns\ExecutesVfsBinaryInspectionCommands;
 use App\Domain\Vfs\Core\Concerns\ExecutesVfsBrowseCommands;
+use App\Domain\Vfs\Core\Concerns\ExecutesVfsDiscoveryCommands;
 use App\Domain\Vfs\Core\Concerns\ExecutesVfsFindCommands;
 use App\Domain\Vfs\Core\Concerns\ExecutesVfsMetadataCommands;
 use App\Domain\Vfs\Core\Concerns\ExecutesVfsMutationCommands;
@@ -15,8 +18,8 @@ use App\Domain\Vfs\Core\Concerns\ResolvesVfsRedirectionEffects;
 use App\Domain\Vfs\Core\Concerns\RoutesVfsCommands;
 use App\Domain\Vfs\Core\Concerns\ValidatesVfsCommandOptions;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
+use App\Domain\Vfs\OpenCompany\Policy\VfsMutationPolicy;
 use App\Models\User;
-use App\Services\AgentPermissionService;
 
 /**
  * Safe unix-like command interpreter for the virtual filesystem.
@@ -27,7 +30,10 @@ use App\Services\AgentPermissionService;
  */
 class VfsCommandExecutor
 {
+    use ExecutesVfsArchiveCommands;
+    use ExecutesVfsBinaryInspectionCommands;
     use ExecutesVfsBrowseCommands;
+    use ExecutesVfsDiscoveryCommands;
     use ExecutesVfsFindCommands;
     use ExecutesVfsMetadataCommands;
     use ExecutesVfsMutationCommands;
@@ -41,7 +47,7 @@ class VfsCommandExecutor
     use ValidatesVfsCommandOptions;
 
     /**
-     * @return array<string, array{class: string, description: string}>
+     * @return array<string, array<string, mixed>>
      */
     public static function commandCatalog(): array
     {
@@ -50,14 +56,31 @@ class VfsCommandExecutor
 
     public function __construct(
         private readonly OpenCompanyVfs $vfs,
-        private readonly AgentPermissionService $permissions,
+        private readonly VfsMutationPolicy $mutationPolicy,
     ) {}
 
     private ?User $currentAgent = null;
 
-    public function execute(User $agent, string $command, string $cwd = '/', ?VfsBudget $budget = null): array
+    /** @var array<string, mixed> */
+    private array $currentToolParameters = [];
+
+    private string $currentCommand = '';
+
+    private function agentForPathExpansion(): User
+    {
+        return $this->currentAgent ?? throw VfsError::invalid('VFS command has no active agent context.');
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $toolParameters
+     * @return array<string, mixed>
+     */
+    public function execute(User $agent, string $command, string $cwd = '/', ?VfsBudget $budget = null, ?array $toolParameters = null): array
     {
         $this->currentAgent = $agent;
+        $this->currentCommand = $command;
+        $this->currentToolParameters = $toolParameters ?? ['command' => $command, 'cwd' => $cwd];
+        $this->agentForPathExpansion();
         $budget ??= new VfsBudget;
         $cwd = $this->vfs->normalizePath($cwd);
         $stdout = '';
@@ -92,8 +115,14 @@ class VfsCommandExecutor
                     }
 
                     [$tokens, $redirections] = $this->extractRedirections($tokens, $cwd);
+                    $commandInput = $input;
+                    if (($stdinPath = $this->stdinRedirectPath($redirections)) !== null) {
+                        $commandInput = $stdinPath === '/dev/null'
+                            ? ''
+                            : $this->vfs->read($agent, $stdinPath, $budget);
+                    }
                     try {
-                        $result = $this->runCommand($agent, $tokens, $cwd, $budget, $input);
+                        $result = $this->runCommand($agent, $tokens, $cwd, $budget, $commandInput);
                         $result = $this->applyRedirections($agent, $result, $redirections);
                     } catch (VfsError $e) {
                         if ($this->hasUnsupportedStderrFileRedirect($redirections)) {
@@ -162,10 +191,6 @@ class VfsCommandExecutor
                     ];
 
                     continue;
-                }
-
-                if ($stderrMergedToStdout) {
-                    throw new VfsError($e->errorCode, $e->getMessage(), $e->context + ['stdout' => $stdout]);
                 }
 
                 throw $e;

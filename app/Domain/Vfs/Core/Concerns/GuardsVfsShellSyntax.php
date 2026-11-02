@@ -55,8 +55,11 @@ trait GuardsVfsShellSyntax
             if ($char === '`') {
                 throw VfsError::unsupported('Backtick command substitution is not supported in VFS commands.');
             }
-            if ($char === '<') {
-                throw VfsError::unsupported('Input and process substitution are not supported in VFS commands.');
+            if ($char === '<' && $next === '(') {
+                throw VfsError::unsupported('Process substitution is not supported in VFS commands.');
+            }
+            if ($char === '<' && $next === '<') {
+                throw VfsError::unsupported('Heredoc and here-string input are not supported in VFS commands.');
             }
             if ($char === '(' || $char === ')') {
                 throw VfsError::unsupported('Subshell syntax is not supported in VFS commands.');
