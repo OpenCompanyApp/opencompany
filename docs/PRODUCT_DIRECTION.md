@@ -279,6 +279,18 @@ tuned afterwards. All presets ship in the AGPL self-hosted product; security is 
 - **Exception scopes:** once, this run, this task, time-limited, or always. Exceptions match exactly
   on later calls.
 
+**Business rules on record fields** (locked 2026-11-02):
+
+- Apps and Tables can declare **field-level approval rules**, for example "discount > 20% needs the
+  sales lead" or "amount > €5,000 needs finance".
+- These are business rules, so they apply to **humans and agents alike**. A matching edit becomes a
+  proposal routed to the named approver role.
+- They run on the same policy engine as everything else: same approval cards, same audit trail, same
+  decision trace. They add to the reversibility gates and can never loosen them or the floor.
+- Example (CRM manifest): `approval_rules: [{ when: "discount > 20", applies_to: [human, agent],
+  approver: role:sales-lead }]`. See story 14 in
+  [example flows](planning/example-flows.md).
+
 **Permissions are simple on purpose (no Notion-style ACL soup):**
 
 - Access is set at Space level. Private Spaces and personal items exist. A single object can be
@@ -369,7 +381,8 @@ OpenCompany avoids Notion's "everything is a page" sprawl by being structured by
     - an agent pack;
     - the connections it requires;
     - roles;
-    - the events it emits.
+    - the events it emits;
+    - field-level approval rules (business rules; see pillar 5).
   - **Uniform behavior.** Agents, search, approvals, change sets, revert and the event log work on app
     data automatically. App data appears in the VFS under `/apps/<app>/…`.
   - **Scope and lifecycle.** Apps live at workspace level and can show scoped views inside Spaces,

@@ -1,0 +1,54 @@
+<!doctype html>
+<!--
+  CRM and Issues example mockup (2026-11-02): deal record with agent-proposed field changes and an approval rule,
+  and a Linear-style Triage view with agent suggestion chips. Illustrative design artifact only.
+  Source of truth: docs/planning/example-flows.md (stories 12–19).
+-->
+<html lang="en"><head><meta charset="utf-8"><title>CRM and Issues flows (2026-11)</title><style>
+:root{--font-sans:Inter,ui-sans-serif,system-ui,sans-serif;--radius:10px;--background:#0b0b0c;--foreground:#ececee;--muted-foreground:#9a9aa3;--card:#141416;--border:#2a2a2e;--primary:#3b82f6;--primary-foreground:#fff;--warning:#f59e0b}
+@media (prefers-color-scheme: light){:root{--background:#fafafa;--foreground:#18181b;--muted-foreground:#6b6b74;--card:#fff;--border:#e4e4e7}}
+body{margin:0;padding:24px;max-width:820px;background:var(--background);font-family:var(--font-sans);color:var(--foreground);font-size:12px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.box{border:1px solid var(--border);border-radius:var(--radius);padding:10px;background:var(--card)}
+.h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.k{color:var(--muted-foreground);font-size:11px}
+.row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)}
+.ch{background:rgba(124,92,255,.22);border-radius:3px;padding:0 4px}
+.old{text-decoration:line-through;color:var(--muted-foreground);font-size:10.5px}
+.pill{font-size:10px;border-radius:99px;padding:1px 6px}.pill.w{background:var(--warning);color:#1b1300}
+.btns{display:flex;gap:6px;align-items:center;margin:8px 0}
+.b{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px}.b.p{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.tl{border-top:1px solid var(--border);padding-top:6px;line-height:1.7;font-size:11.5px}
+.it{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;align-items:flex-start;max-width:55%}
+.chip{font-size:10.5px;border:1px dashed rgba(124,92,255,.7);border-radius:99px;padding:1px 6px}
+.chip.dup{border-color:var(--warning)}.chip.st{border-style:solid}
+</style></head><body>
+<div class="g">
+ <div class="box">
+  <div class="h"><b>◈ Deal · Acme BV renewal</b><span class="k">CRM · owner Sanne</span></div>
+  <div class="row"><span class="k">Stage</span><span><span class="ch">negotiation</span> <span class="old">proposal</span></span></div>
+  <div class="row"><span class="k">Next step</span><span class="ch">Send revised SOW by Thu</span></div>
+  <div class="row"><span class="k">Close date</span><span class="ch">2026-11-28</span></div>
+  <div class="row"><span class="k">Discount</span><span>25% <span class="pill w">needs sales lead</span></span></div>
+  <div class="row"><span class="k">Amount</span><span>€48,000 <span class="k">(edited by Sanne · kept)</span></span></div>
+  <div class="btns"><span class="b p">Apply 3 changes</span><span class="b">Reject</span><span class="k">from call 14:00 · Ada</span></div>
+  <div class="tl"><div class="k" style="margin-bottom:4px">Activity</div>
+   <div>📞 Call with Acme (40 min) · notes → 3 field suggestions</div>
+   <div>✉ Follow-up draft ready · <u>review</u></div>
+   <div>◇ Linked: ISS-311 "SSO for Acme" (feature request)</div></div>
+ </div>
+ <div class="box">
+  <div class="h"><b>◇ Triage · Web</b><span class="k">4 new</span></div>
+  <div class="it"><div><b>Checkout fails on Safari</b><div class="k">from support@ · ticket #882</div></div>
+   <div class="chips"><span class="chip">bug ✓✕</span><span class="chip">high ✓✕</span><span class="chip">team web ✓✕</span></div></div>
+  <div class="it"><div><b>Pay button unresponsive on iPhone</b><div class="k">from form · Contact us</div></div>
+   <div class="chips"><span class="chip dup">duplicate of ISS-402? ✓✕</span></div></div>
+  <div class="it"><div><b>SSO for enterprise customers</b><div class="k">3 customers · €131k pipeline</div></div>
+   <div class="chips"><span class="chip">feature ✓✕</span><span class="chip">medium ✓✕</span></div></div>
+  <div class="it"><div><b>ISS-311 · SSO login</b><div class="k">owner: you · delegate: Ada 🖥</div></div>
+   <div class="chips"><span class="chip st">Ada · working · 3/5 plan</span></div></div>
+  <div class="k" style="margin-top:6px">Nothing leaves Triage without a human (unless Space policy auto-accepts low-risk labels)</div>
+ </div>
+</div>
+</body></html>

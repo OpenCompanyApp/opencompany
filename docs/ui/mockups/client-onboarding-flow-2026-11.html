@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  Example 10 swimlane (2026-11-02): client onboarding when a deal is won. Illustrative design artifact only.
+  Source of truth: docs/planning/example-flows.md (story 10).
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Example flow: client onboarding (2026-11)</title><style>
+:root{--font-sans:Inter,ui-sans-serif,system-ui,sans-serif;--background:#0b0b0c;--foreground:#ececee;--muted-foreground:#9a9aa3;--card:#141416;--border:#2a2a2e;--warning:#f59e0b;--chart-1:#3b82f6;--chart-2:#14b8a6;--chart-3:#f59e0b;--chart-4:#a855f7}
+@media (prefers-color-scheme: light){:root{--background:#fafafa;--foreground:#18181b;--muted-foreground:#6b6b74;--card:#fff;--border:#e4e4e7}}
+body{margin:0;padding:24px;max-width:900px;background:var(--background);font-family:var(--font-sans);color:var(--foreground);font-size:12px}
+.lanes{display:grid;grid-template-columns:96px repeat(7,1fr);gap:4px;align-items:stretch}
+.lh{font-size:11px;color:var(--muted-foreground);display:flex;align-items:center;font-weight:600}
+.c{border:1px solid var(--border);border-radius:8px;padding:6px;background:var(--card);font-size:11px;line-height:1.35}
+.c b{display:block;font-size:11.5px;margin-bottom:2px}
+.e{background:transparent;border:none}
+.ev{border-left:3px solid var(--chart-2)}.rt{border-left:3px solid var(--chart-1)}.ap{border-left:3px solid var(--warning)}.cp{border-left:3px solid var(--chart-4)}.cl{border-left:3px solid var(--chart-3)}
+.hdr{font-size:10.5px;color:var(--muted-foreground);text-align:center}
+.leg{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted-foreground)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+</style></head><body>
+<div class="lanes">
+ <div></div><div class="hdr">1</div><div class="hdr">2</div><div class="hdr">3</div><div class="hdr">4</div><div class="hdr">5</div><div class="hdr">6</div><div class="hdr">7</div>
+ <div class="lh">Account manager</div>
+ <div class="c ev"><b>Deal → Won</b>CRM edit emits <i>crm.deal.updated</i></div>
+ <div class="c ap"><b>Approve Space</b>"Client · Acme" proposal on Home</div>
+ <div class="c e"></div>
+ <div class="c ap"><b>Takeover</b>2FA for Bram, then "I'm done"</div>
+ <div class="c ap"><b>First send</b>Welcome email to acme.com</div>
+ <div class="c e"></div>
+ <div class="c rt"><b>Kickoff</b>Ada sends prep note that morning</div>
+ <div class="lh">Admin</div>
+ <div class="c e"></div><div class="c e"></div>
+ <div class="c ap"><b>Batched card</b>2 signed links: intake form + status page</div>
+ <div class="c e"></div><div class="c e"></div><div class="c e"></div><div class="c e"></div>
+ <div class="lh">Routines / agents</div>
+ <div class="c e"></div>
+ <div class="c rt"><b>onboard-won-deal</b>proposes Space, then ends</div>
+ <div class="c rt"><b>populate-client-space</b>Brief doc (AI) · Issues checklist · Drive folder · links · email draft</div>
+ <div class="c cp"><b>Bram 🖥</b>Sets up the client in the time-tracking tool (no API)</div>
+ <div class="c e"></div>
+ <div class="c rt"><b>intake routine</b>Brief edits as suggestions · Issues for missing assets</div>
+ <div class="c e"></div>
+ <div class="lh">Client (Acme)</div>
+ <div class="c e"></div><div class="c e"></div><div class="c e"></div><div class="c e"></div>
+ <div class="c cl"><b>Gets email</b>Intake form, live status page, booking link</div>
+ <div class="c cl"><b>Submits intake</b>Arrives as untrusted <i>form.submitted</i></div>
+ <div class="c cl"><b>Books kickoff</b>Lands in Calendar</div>
+</div>
+<div class="leg"><span><span class="sw" style="background:var(--chart-2)"></span>event</span><span><span class="sw" style="background:var(--chart-1)"></span>routine / agent run</span><span><span class="sw" style="background:var(--warning)"></span>human decision</span><span><span class="sw" style="background:var(--chart-4)"></span>computer agent</span><span><span class="sw" style="background:var(--chart-3)"></span>client</span><span>Auto-applied (no ask): brief doc, Issues checklist, all reversible, revert per run</span></div>
+</body></html>
