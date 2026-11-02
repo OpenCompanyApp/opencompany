@@ -14,7 +14,7 @@ COPY tmp/astronomy-bundle-php ./tmp/astronomy-bundle-php
 RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
 
 # --- Stage 2: Generate Wayfinder sources with the production PHP runtime ---
-FROM --platform=$RUNTIME_PLATFORM dunglas/frankenphp:1-php8.4 AS wayfinder
+FROM --platform=$RUNTIME_PLATFORM dunglas/frankenphp:1.13.2-php8.4@sha256:0de5a32944f72c13b45d183e8e6c53546b8172cec21cc8599e24b12e0661506d AS wayfinder
 WORKDIR /app
 RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini
 COPY . .
@@ -24,7 +24,7 @@ RUN rm -f bootstrap/cache/*.php \
     && php artisan wayfinder:generate
 
 # --- Stage 3: Node asset build ---
-FROM node:22-alpine AS assets
+FROM node:22.23.4-alpine AS assets
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -36,7 +36,8 @@ COPY --from=wayfinder /app/resources/js/wayfinder ./resources/js/wayfinder
 RUN WAYFINDER_SKIP_GENERATE=true npm run build
 
 # --- Stage 4: Production image ---
-FROM --platform=$RUNTIME_PLATFORM dunglas/frankenphp:1-php8.4
+# PHP 8.4.27 (CVE-2026-109618 / CVE-2026-109619)
+FROM --platform=$RUNTIME_PLATFORM dunglas/frankenphp:1.13.2-php8.4@sha256:0de5a32944f72c13b45d183e8e6c53546b8172cec21cc8599e24b12e0661506d
 
 # System deps + PHP extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -53,6 +54,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-install pdo_pgsql pgsql pcntl \
     && pecl install redis && docker-php-ext-enable redis \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Distrust the compromised eMudhra (emSign) roots for outbound TLS
+RUN sed -i '/emSign/d' /etc/ca-certificates.conf \
+    && rm -f /usr/share/ca-certificates/mozilla/emSign* /etc/ssl/certs/*emSign* \
+    && update-ca-certificates
 
 # Lua Sandbox PHP extension (Luau runtime)
 ARG LUA_SANDBOX_VERSION=v1.0.0
@@ -74,6 +80,7 @@ RUN curl -fsSL https://github.com/1jehuang/mermaid-rs-renderer/releases/latest/d
 
 # PHP config for production
 RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini \
+    && printf 'expose_php=Off\nsession.upload_progress.enabled=0\n' > /usr/local/etc/php/conf.d/security.ini \
     && echo "opcache.enable=1" > /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini \
