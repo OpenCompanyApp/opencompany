@@ -1,5 +1,9 @@
 includes:
     - vendor/larastan/larastan/extension.neon
+    # Checked-in debt inventory (2026-11-02, salvaged from the QuickJS branch
+    # approach): CI fails on NEW errors while existing findings stay explicit
+    # and removable. Shrink it; never regenerate it to hide a regression.
+    - phpstan-baseline.neon
 
 parameters:
     paths:

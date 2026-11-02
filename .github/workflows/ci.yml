@@ -1,35 +1,224 @@
 name: CI
 
+# One workflow for the main line. Every job resolves sibling path
+# repositories at pinned revisions so a run is reproducible; bump the pins
+# deliberately when the coordinated integrations/engine releases move.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # composer.json path repositories point at ../integrations-mruby until the
+  # integrations repository's feat/mruby work is merged to its main branch.
+  INTEGRATIONS_REF: d8666a50966d51d8420d9908c5e7c1beca3dfdfd
+  ASTRONOMY_REF: 7d2f0924657c52d61ca4fa576b71df8c7be72a17
+  CHATOGRATOR_REF: a2fe13415f5d1229a6c06a8ea04ddc3663c58b01
+  RUBY_ENGINE_VERSION: v0.1.0-rc.1
+  RUBY_ENGINE_ARCHIVE_SHA256: 3c4b1d629d4813b5ffa977fc1559844c58ea94ffd391a6ffce9e7ac0b016605c
 
 jobs:
-  phpstan:
-    name: PHPStan
-    runs-on: ubuntu-latest
+  backend-tests:
+    name: Backend tests (SQLite, real mruby engine)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clone local packages
+      - &checkout-path-repos
+        name: Check out pinned path repositories
+        shell: bash
         run: |
-          git clone https://github.com/OpenCompanyApp/integrations.git ../integrations
-          git clone https://github.com/OpenCompanyApp/astronomy-bundle-php.git tmp/astronomy-bundle-php
-          git clone https://github.com/OpenCompanyApp/chatogrator.git tmp/chatogrator
-          git clone https://github.com/OpenCompanyApp/prism-codex.git tmp/prism-codex
+          set -euo pipefail
+          fetch_pinned() {
+            local repository="$1" revision="$2" destination="$3"
+            git init -q "$destination"
+            git -C "$destination" remote add origin "$repository"
+            git -C "$destination" fetch -q --depth 1 origin "$revision"
+            git -C "$destination" checkout -q --detach FETCH_HEAD
+          }
+          fetch_pinned https://github.com/OpenCompanyApp/integrations.git "$INTEGRATIONS_REF" "$GITHUB_WORKSPACE/../integrations-mruby"
+          fetch_pinned https://github.com/OpenCompanyApp/astronomy-bundle-php.git "$ASTRONOMY_REF" tmp/astronomy-bundle-php
+          fetch_pinned https://github.com/OpenCompanyApp/chatogrator.git "$CHATOGRATOR_REF" tmp/chatogrator
 
-      - name: Setup PHP
+      - &setup-php
+        name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, xml, curl, dom
+          extensions: mbstring, xml, curl, dom, sqlite3, pdo_sqlite, pdo_pgsql
+          tools: composer:v2
           coverage: none
 
-      - name: Install Composer dependencies
-        uses: ramsey/composer-install@v3
+      - &composer-install
+        name: Install Composer dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
 
+      - &install-engine
+        name: Install the checksum-pinned mruby engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci/ruby-engine
+          curl --fail --location --retry 3 \
+            "https://github.com/OpenCompanyApp/bowerbird-ruby-engine/releases/download/${RUBY_ENGINE_VERSION}/bowerbird-ruby-engine-${RUBY_ENGINE_VERSION}-linux-amd64.tar.gz" \
+            --output .ci/ruby-engine.tar.gz
+          echo "${RUBY_ENGINE_ARCHIVE_SHA256}  .ci/ruby-engine.tar.gz" | sha256sum --check
+          tar -xzf .ci/ruby-engine.tar.gz --strip-components=1 -C .ci/ruby-engine
+          engine_binary="$GITHUB_WORKSPACE/.ci/ruby-engine/bin/ruby-engine"
+          test -x "$engine_binary"
+          {
+            echo "RUBY_ENGINE_BINARY=$engine_binary"
+            echo "RUBY_ENGINE_SHA256=$(sha256sum "$engine_binary" | awk '{print $1}')"
+          } >> "$GITHUB_ENV"
+
+      - name: Prepare the test environment
+        run: |
+          # No .env in CI: phpunit.xml owns test settings. The empty testing
+          # env file only keeps Dotenv's optional-file probe quiet.
+          cp scripts/testing/mruby.env.testing .env.testing
+          php -r "file_put_contents('.env', 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL);"
+
+      # One process accumulates the ~41k-tool integration catalog across the
+      # suite and exceeds 1 GiB; paratest isolates suites per process.
+      - name: Run the backend suite
+        run: php artisan test --parallel --processes=4
+
+  backend-postgres:
+    name: Memory and search paths (PostgreSQL + pgvector)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    # Not yet verified against a real run (no throwaway Postgres was available
+    # locally). Make this required once it has passed on the main line.
+    continue-on-error: true
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: opencompany
+          POSTGRES_PASSWORD: opencompany
+          POSTGRES_DB: opencompany_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U opencompany"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - *checkout-path-repos
+      - *setup-php
+      - *composer-install
+      - *install-engine
+
+      - name: Prepare the test environment
+        run: |
+          cp scripts/testing/mruby.env.testing .env.testing
+          php -r "file_put_contents('.env', 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL);"
+
+      - name: Run memory, retrieval and document suites on PostgreSQL
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: opencompany_test
+          DB_USERNAME: opencompany
+          DB_PASSWORD: opencompany
+        run: |
+          php artisan test tests/Feature/Services/Memory tests/Feature/Tools/RecallMemoryTest.php tests/Feature/Vfs
+
+  phpstan:
+    name: PHPStan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+      - *checkout-path-repos
+      - *setup-php
+      - *composer-install
+
+      # The app plus several hundred path-based integration packages exceeds
+      # 512 MiB during parallel analysis on hosted runners.
       - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --memory-limit=512M
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
+
+  frontend:
+    name: Frontend typecheck and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Type-check Vue and TypeScript
+        run: npm run typecheck
+
+      # Wayfinder sources are committed; the PHP stage owns regeneration.
+      - name: Build production assets
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: WAYFINDER_SKIP_GENERATE=true npm run build
+
+  production-image:
+    name: Production image (AMD64) and mruby smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs: [backend-tests, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Docker gets clean archives, never a checkout with Git metadata,
+      # credentials or a vendor tree.
+      - name: Create pinned clean build contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive_context() {
+            local repository="$1" revision="$2" destination="$3" source
+            source="$RUNNER_TEMP/source-$(basename "$destination")"
+            git init -q "$source"
+            git -C "$source" remote add origin "$repository"
+            git -C "$source" fetch -q --depth 1 origin "$revision"
+            mkdir -p "$destination"
+            git -C "$source" archive FETCH_HEAD | tar -x -C "$destination"
+            test ! -e "$destination/.git"
+          }
+          archive_context https://github.com/OpenCompanyApp/integrations.git "$INTEGRATIONS_REF" "$RUNNER_TEMP/contexts/integrations"
+          archive_context https://github.com/OpenCompanyApp/astronomy-bundle-php.git "$ASTRONOMY_REF" "$RUNNER_TEMP/contexts/astronomy"
+          archive_context https://github.com/OpenCompanyApp/chatogrator.git "$CHATOGRATOR_REF" "$RUNNER_TEMP/contexts/chatogrator"
+
+      - name: Build the production image
+        run: |
+          docker build --load --platform linux/amd64 \
+            --build-arg RUNTIME_PLATFORM=linux/amd64 \
+            --build-context integrations="$RUNNER_TEMP/contexts/integrations" \
+            --build-context astronomy="$RUNNER_TEMP/contexts/astronomy" \
+            --build-context chatogrator="$RUNNER_TEMP/contexts/chatogrator" \
+            --tag opencompany:ci .
+
+      # Final-image process boundary test of the released engine only: no
+      # network, read-only root, unprivileged runtime user.
+      - name: Smoke-test mruby as the production runtime user
+        run: |
+          docker run --rm --network none --read-only --user www-data \
+            --entrypoint php opencompany:ci /app/scripts/testing/mruby-container-smoke.php
