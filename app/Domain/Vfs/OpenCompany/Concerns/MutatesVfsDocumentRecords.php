@@ -90,7 +90,7 @@ trait MutatesVfsDocumentRecords
             ]);
         }
 
-        $target = $this->locateDocumentWriteTarget($segments, $path);
+        $target = $this->locateDocumentWriteTarget($agent, $segments, $path);
         $doc = $target['doc'];
 
         if ($doc !== null) {
@@ -236,7 +236,7 @@ trait MutatesVfsDocumentRecords
      * @param  list<string>  $segments
      * @return array{doc: Document|null, folder: Document|null, title: string|null}
      */
-    private function locateDocumentWriteTarget(array $segments, string $path): array
+    private function locateDocumentWriteTarget(User $agent, array $segments, string $path): array
     {
         $parts = array_slice($segments, 1);
         if ($parts === [] || ($parts[0] === 'by-id' && ! isset($parts[1]))) {
@@ -245,8 +245,8 @@ trait MutatesVfsDocumentRecords
 
         try {
             $doc = $parts[0] === 'by-id'
-                ? $this->documentFromByIdSegments($segments, $path)
-                : $this->resolveDocumentPath($parts, $path);
+                ? $this->documentFromByIdSegments($agent, $segments, $path)
+                : $this->resolveDocumentPath($agent, $parts, $path);
             if ($doc->is_system) {
                 throw VfsError::permissionDenied($path, 'system documents are edited through /agents or /me, not /docs');
             }
@@ -274,8 +274,8 @@ trait MutatesVfsDocumentRecords
             $folder = $this->findDocument($parts[1], $path);
         } else {
             $folder = $parts[0] === 'by-id'
-                ? $this->documentFromByIdSegments(['docs', ...$parts], $path)
-                : $this->resolveDocumentPath($parts, $path);
+                ? $this->documentFromByIdSegments($agent, ['docs', ...$parts], $path)
+                : $this->resolveDocumentPath($agent, $parts, $path);
         }
         if ($folder !== null && ! $folder->is_folder) {
             throw VfsError::invalid("Parent is a document, not a folder: {$path}", ['path' => $path]);
@@ -314,9 +314,13 @@ trait MutatesVfsDocumentRecords
     private function trashDocumentPath(User $agent, array $segments, string $path, array $toolParameters): array
     {
         $doc = (($segments[1] ?? null) === 'by-id')
-            ? $this->documentFromByIdSegments($segments, $path)
-            : $this->resolveDocumentPath(array_slice($segments, 1), $path);
+            ? $this->documentFromByIdSegments($agent, $segments, $path)
+            : $this->resolveDocumentPath($agent, array_slice($segments, 1), $path);
         $this->assertDocumentWritable($agent, null, $doc, $path);
+        // Invariant: a recursive trash is all-or-nothing. Authorizing only
+        // the selected folder let rm -r trash explicitly denied or
+        // sharing-restricted descendants that a direct rm would refuse.
+        $this->assertDocumentSubtreeWritable($agent, $doc, $this->liveDocumentDescendantIds($doc), $path, 'trash');
 
         $this->mutationPolicy->assertAllowedOrRequestApproval(
             agent: $agent,
@@ -333,7 +337,11 @@ trait MutatesVfsDocumentRecords
 
         $count = DB::transaction(function () use ($agent, $doc, $path): int {
             $locked = Document::forWorkspace()->whereKey($doc->id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
-            $ids = [$locked->id, ...$this->liveDocumentDescendantIds($locked)];
+            $descendants = $this->liveDocumentDescendantIds($locked);
+            // Re-check under the lock: a descendant added or restricted
+            // since the pre-check must still block the whole operation.
+            $this->assertDocumentSubtreeWritable($agent, $locked, $descendants, $path, 'trash');
+            $ids = [$locked->id, ...$descendants];
             $stamp = now();
 
             foreach (Document::forWorkspace()->whereKey($ids)->get() as $member) {
@@ -353,6 +361,40 @@ trait MutatesVfsDocumentRecords
             'trashed' => $count,
             'restore_hint' => "mv /docs/.trash/{$doc->id} <destination folder or path> restores it.",
         ];
+    }
+
+    /**
+     * Refuse a recursive document operation when any descendant would be
+     * denied for it on its own (AuthorizesVfsDocuments::documentSubtreeWriteBlocks).
+     *
+     * The whole operation fails; nothing is partially trashed or moved. The
+     * error names the number of blocking descendants and, only when the
+     * agent can still read one, its canonical path. Hidden descendants are
+     * counted but never named.
+     *
+     * @param  list<string>  $descendantIds  parent-before-child order
+     *
+     * @throws VfsError permission_denied
+     */
+    private function assertDocumentSubtreeWritable(User $agent, Document $doc, array $descendantIds, string $path, string $operation): void
+    {
+        if (! $doc->is_folder || $descendantIds === []) {
+            return;
+        }
+
+        $blocks = $this->documentSubtreeWriteBlocks($agent, $doc, $descendantIds);
+        if ($blocks['count'] === 0) {
+            return;
+        }
+
+        $noun = $blocks['count'] === 1 ? 'item' : 'items';
+        throw new VfsError('permission_denied', "Permission denied for {$path}: {$operation} would affect {$blocks['count']} {$noun} inside this folder that this agent may not change.", array_filter([
+            'path' => $path,
+            'reason' => 'protected descendants',
+            'blocked_descendants' => $blocks['count'],
+            'first_blocked' => $blocks['first_readable'],
+            'hint' => "Nothing was changed. {$operation} the items you may change individually, or ask a workspace admin to {$operation} this folder.",
+        ], fn (mixed $value): bool => $value !== null));
     }
 
     /**
@@ -402,10 +444,10 @@ trait MutatesVfsDocumentRecords
         $doc = $fromTrash
             ? $this->resolveTrashedDocument($agent, $sourceSegments, $source)
             : ((($sourceSegments[1] ?? null) === 'by-id')
-                ? $this->documentFromByIdSegments($sourceSegments, $source)
-                : $this->resolveDocumentPath(array_slice($sourceSegments, 1), $source));
+                ? $this->documentFromByIdSegments($agent, $sourceSegments, $source)
+                : $this->resolveDocumentPath($agent, array_slice($sourceSegments, 1), $source));
 
-        [$folder, $title] = $this->documentMoveDestination($doc, $destinationSegments, $destination);
+        [$folder, $title] = $this->documentMoveDestination($agent, $doc, $destinationSegments, $destination);
         $title = $this->assertValidRecordName($title, $destination);
 
         if (! $fromTrash && $folder?->id === $doc->parent_id && $title === $doc->title) {
@@ -415,6 +457,15 @@ trait MutatesVfsDocumentRecords
         // Both sides are authorized: leaving the source and entering the target.
         $this->assertDocumentWritable($agent, null, $doc, $source);
         $this->assertDocumentWritable($agent, $folder, null, $destination);
+        // Moving (or restoring) a folder changes every descendant's inherited
+        // access, so each descendant must be writable too (all-or-nothing).
+        $this->assertDocumentSubtreeWritable(
+            $agent,
+            $doc,
+            $fromTrash ? $this->trashedBatchDescendantIds($doc) : $this->liveDocumentDescendantIds($doc),
+            $source,
+            $fromTrash ? 'restore' : 'move',
+        );
         if ($doc->is_folder && $folder !== null && $this->documentIsSelfOrAncestorOf($doc, $folder)) {
             throw VfsError::invalid('Cannot move a folder into itself.', ['source' => $source, 'destination' => $destination]);
         }
@@ -468,7 +519,7 @@ trait MutatesVfsDocumentRecords
      * @param  list<string>  $destinationSegments
      * @return array{0: Document|null, 1: string}
      */
-    private function documentMoveDestination(Document $doc, array $destinationSegments, string $destination): array
+    private function documentMoveDestination(User $agent, Document $doc, array $destinationSegments, string $destination): array
     {
         if (count($destinationSegments) === 1) {
             return [null, (string) $doc->title];
@@ -476,8 +527,8 @@ trait MutatesVfsDocumentRecords
 
         try {
             $existing = ($destinationSegments[1] === 'by-id')
-                ? $this->documentFromByIdSegments($destinationSegments, $destination)
-                : $this->resolveDocumentPath(array_slice($destinationSegments, 1), $destination);
+                ? $this->documentFromByIdSegments($agent, $destinationSegments, $destination)
+                : $this->resolveDocumentPath($agent, array_slice($destinationSegments, 1), $destination);
             if ($existing->id === $doc->id) {
                 return [$doc->parent_id ? Document::forWorkspace()->find($doc->parent_id) : null, (string) $doc->title];
             }
@@ -495,7 +546,7 @@ trait MutatesVfsDocumentRecords
             }
         }
 
-        $target = $this->locateDocumentWriteTarget($destinationSegments, $destination);
+        $target = $this->locateDocumentWriteTarget($agent, $destinationSegments, $destination);
 
         return [$target['folder'], (string) $target['title']];
     }
@@ -521,8 +572,8 @@ trait MutatesVfsDocumentRecords
 
         try {
             $existing = $segments[1] === 'by-id'
-                ? $this->documentFromByIdSegments($segments, $path)
-                : $this->resolveDocumentPath(array_slice($segments, 1), $path);
+                ? $this->documentFromByIdSegments($agent, $segments, $path)
+                : $this->resolveDocumentPath($agent, array_slice($segments, 1), $path);
             if (! $existing->is_folder) {
                 throw VfsError::invalid("Path already exists and is not a directory: {$path}", ['path' => $path]);
             }
@@ -541,7 +592,7 @@ trait MutatesVfsDocumentRecords
         foreach ($parts as $part) {
             $basePath = $folder !== null ? "/docs/by-id/{$folder->id}" : '/docs';
             try {
-                $folder = $this->resolveDocumentPathFromParent($folder?->id, [$part], $path, $basePath, true);
+                $folder = $this->resolveDocumentPathFromParent($folder?->id, [$part], $path, $basePath, true, $agent);
                 if (! $folder->is_folder) {
                     throw VfsError::invalid("Path component is a document, not a folder: {$part}", ['path' => $path]);
                 }
@@ -616,12 +667,18 @@ trait MutatesVfsDocumentRecords
                 throw VfsError::notReadable($path);
             }
 
+            // Children of a readable trashed folder are filtered one by one:
+            // a child deny or sharing row hides that child as it would live.
             return Document::onlyTrashed()
                 ->where('workspace_id', $agent->workspace_id)
                 ->where('parent_id', $doc->id)
+                ->where('is_system', false)
                 ->orderBy('title')
-                ->limit($budget->maxEntries)
+                ->limit(max(1, $budget->maxFiles))
                 ->get()
+                ->filter(fn (Document $child): bool => $this->canAccessTrashedDocument($agent, $child))
+                ->take($budget->maxEntries)
+                ->values()
                 ->map(fn (Document $child): VfsEntry => $this->trashedDocumentEntry($child, rtrim($path, '/').'/'.$child->id))
                 ->all();
         }
@@ -724,29 +781,47 @@ trait MutatesVfsDocumentRecords
     }
 
     /**
-     * Read access for a trashed document: the same folder-grant rule as live
-     * documents, walking the parent chain including trashed ancestors.
+     * Read access for a trashed document.
+     *
+     * Invariant: trash never widens access. This is the full live read policy
+     * (AuthorizesVfsDocuments::documentReadDenial: explicit folder denies,
+     * folder allows, DocumentPermission sharing rows) evaluated over the
+     * parent chain including trashed ancestors (documentChain walks
+     * withTrashed). An earlier version checked folder allows only, so a
+     * denied or shared-with-others document became readable once trashed.
+     * System documents never surface in /docs/.trash.
      */
     private function canAccessTrashedDocument(User $agent, Document $doc): bool
     {
-        if ($doc->is_system) {
-            return false;
+        return ! $doc->is_system && $this->documentReadDenial($agent, $doc) === null;
+    }
+
+    /**
+     * Descendants trashed in the same batch as $doc (same deleted_at), in
+     * parent-before-child order. Empty for documents and live rows.
+     *
+     * @return list<string>
+     */
+    private function trashedBatchDescendantIds(Document $doc): array
+    {
+        if (! $doc->is_folder || $doc->deleted_at === null) {
+            return [];
         }
 
-        $allowed = $this->permissions->getAllowedFolderIds($agent);
-        if ($allowed === null) {
-            return true;
+        $ids = [];
+        $frontier = [$doc->id];
+        for ($depth = 0; $frontier !== [] && $depth < 30; $depth++) {
+            $children = Document::onlyTrashed()
+                ->whereIn('parent_id', $frontier)
+                ->where('deleted_at', $doc->deleted_at)
+                ->pluck('id')
+                ->map(fn ($id): string => (string) $id)
+                ->all();
+            array_push($ids, ...$children);
+            $frontier = $children;
         }
 
-        $parentId = $doc->parent_id;
-        for ($depth = 0; $parentId && $depth < 30; $depth++) {
-            if (in_array($parentId, $allowed, true)) {
-                return true;
-            }
-            $parentId = Document::withTrashed()->whereKey($parentId)->value('parent_id');
-        }
-
-        return false;
+        return $ids;
     }
 
     /**
@@ -755,19 +830,7 @@ trait MutatesVfsDocumentRecords
      */
     private function restoreDocumentBatch(Document $doc): void
     {
-        $stamp = $doc->deleted_at;
-        $ids = [$doc->id];
-        $frontier = [$doc->id];
-        for ($depth = 0; $frontier !== [] && $depth < 30; $depth++) {
-            $children = Document::onlyTrashed()
-                ->whereIn('parent_id', $frontier)
-                ->where('deleted_at', $stamp)
-                ->pluck('id')
-                ->map(fn ($id): string => (string) $id)
-                ->all();
-            array_push($ids, ...$children);
-            $frontier = $children;
-        }
+        $ids = [$doc->id, ...$this->trashedBatchDescendantIds($doc)];
 
         foreach (Document::onlyTrashed()->whereKey($ids)->get() as $member) {
             $member->forceFill(['deleted_by' => null]);

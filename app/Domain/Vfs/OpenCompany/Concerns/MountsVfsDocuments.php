@@ -60,8 +60,8 @@ trait MountsVfsDocuments
             $entryPath = fn (Document $doc): string => "/docs/by-id/{$doc->id}";
         } else {
             $folder = ($segments[1] ?? null) === 'by-id'
-                ? $this->documentFromByIdSegments($segments, $path)
-                : $this->resolveDocumentPath(array_slice($segments, 1), $path);
+                ? $this->documentFromByIdSegments($agent, $segments, $path)
+                : $this->resolveDocumentPath($agent, array_slice($segments, 1), $path);
 
             if (! $this->canAccessDocument($agent, $folder)) {
                 throw VfsError::permissionDenied($path, 'document folder scope');
@@ -114,8 +114,8 @@ trait MountsVfsDocuments
         }
 
         $doc = (isset($segments[2]) && $segments[1] === 'by-id')
-            ? $this->documentFromByIdSegments($segments, $path)
-            : $this->resolveDocumentPath(array_slice($segments, 1), $path);
+            ? $this->documentFromByIdSegments($agent, $segments, $path)
+            : $this->resolveDocumentPath($agent, array_slice($segments, 1), $path);
 
         if (! $this->canAccessDocument($agent, $doc)) {
             throw VfsError::permissionDenied($path, 'document folder scope');
