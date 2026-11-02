@@ -220,11 +220,47 @@ Simple on purpose, with no Notion-style ACL soup:
 14. **Preset resolution.** For anything not settled above, the preset supplies the default gate for
     the action's reversibility class: allow, ask, propose (change-set review) or ask two approvers.
     Defaults only; they never override steps 1–13.
-15. **Execution-time recheck.** On approved execution, change-set apply or replay, steps 1–11 run
-    again against current state (today only the tool permission is rechecked).
+14a. **Field-level approval rules** (business rules; locked 2026-11-02). The engine evaluates them
+    together with the approval requirement, after every boundary, floor, access and budget step.
+    Rules come from app manifests (`approval_rules`) and from Table settings, for example
+    "discount > 20% needs the sales lead". The final gate is the **strictest** of the step 14
+    default and every matching rule, so a rule can turn "allow" into "propose to role X" but never
+    the reverse. Rules apply to humans and agents alike. See
+    [Field-level approval rules](#field-level-approval-rules-business-rules).
+15. **Execution-time recheck.** On approved execution, change-set apply or replay, steps 1–11 and
+    14a run again against current state (today only the tool permission is rechecked).
 
 This replaces the order in today's `OpenCompanyPermissionEvaluator` (workspace boundary → integration
 enablement → session grant → tool permission → approval requirement) and its behaviour-mode step.
+
+## Field-level approval rules (business rules)
+
+Locked 2026-11-02 ([Product Direction](../PRODUCT_DIRECTION.md) pillars 5 and 7; story 14 in
+[example flows](../planning/example-flows.md)).
+
+- **What they are.** Declarative rules on record fields that turn a matching edit into a proposal
+  routed to a named approver role. Examples: "discount > 20% needs the sales lead", "amount >
+  €5,000 needs finance". Apps declare them in their manifest's `approval_rules`; Tables declare
+  them in table settings (a `structural` change).
+- **Shape (manifest).** `approval_rules: [{ when: "discount > 20", applies_to: [human, agent],
+  approver: role:sales-lead }]`. `when` is a bounded predicate over the record's fields, comparing
+  old and new values; it is not code. `applies_to` names the principals the rule covers.
+  `approver` names a role or a resolvable person, never an agent.
+- **Humans and agents alike.** A business rule is not an agent restriction. A human edit that
+  matches becomes a proposal exactly like an agent edit, so a rule cannot be bypassed by doing the
+  work by hand or through a form, artifact endpoint, import, API call or `oc`.
+- **Same engine.** Matching edits produce the normal change-set proposal and approval card (what,
+  why, where from, plus the rule that fired), the same audit entries and the same decision trace.
+  "Why does this need approval?" names the rule.
+- **Only adds gates (invariant).** A rule can make a gate stricter. It can never loosen a
+  reversibility gate, the floor, an invariant or a step 1–11 denial. Explicit exceptions, learned
+  exceptions and the autonomy slider (step 13) do not satisfy a field rule. Only the named approver
+  role, under that preset's approver policy, can approve it. An agent never approves.
+- **Self-approval (proposed).** The person who made the edit cannot approve their own rule-gated
+  proposal, except in a Personal workspace, where the owner is the only approver.
+- **Recheck.** Applying a staged change set re-evaluates the rules against current values (step 15).
+- **Lifecycle.** Adding, changing or removing a rule is a `structural` change, and app upgrades that
+  change `approval_rules` are reviewed with the upgrade.
 
 ## Action classes and default gates
 
