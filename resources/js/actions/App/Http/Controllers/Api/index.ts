@@ -24,7 +24,6 @@ import DocumentVersionController from './DocumentVersionController'
 import DocumentAttachmentController from './DocumentAttachmentController'
 import ApprovalController from './ApprovalController'
 import ActivityController from './ActivityController'
-import WorkloadController from './WorkloadController'
 import StatsController from './StatsController'
 import NotificationController from './NotificationController'
 import DirectMessageController from './DirectMessageController'
@@ -42,7 +41,6 @@ import AgentPermissionController from './AgentPermissionController'
 import ToolCatalogController from './ToolCatalogController'
 import CodeConsoleController from './CodeConsoleController'
 import IntegrationController from './IntegrationController'
-import IntegrationCatalogController from './IntegrationCatalogController'
 import CodexAuthController from './CodexAuthController'
 import WorkspaceMemberController from './WorkspaceMemberController'
 import SettingController from './SettingController'
@@ -78,7 +76,6 @@ const Api = {
     DocumentAttachmentController: Object.assign(DocumentAttachmentController, DocumentAttachmentController),
     ApprovalController: Object.assign(ApprovalController, ApprovalController),
     ActivityController: Object.assign(ActivityController, ActivityController),
-    WorkloadController: Object.assign(WorkloadController, WorkloadController),
     StatsController: Object.assign(StatsController, StatsController),
     NotificationController: Object.assign(NotificationController, NotificationController),
     DirectMessageController: Object.assign(DirectMessageController, DirectMessageController),
@@ -96,7 +93,6 @@ const Api = {
     ToolCatalogController: Object.assign(ToolCatalogController, ToolCatalogController),
     CodeConsoleController: Object.assign(CodeConsoleController, CodeConsoleController),
     IntegrationController: Object.assign(IntegrationController, IntegrationController),
-    IntegrationCatalogController: Object.assign(IntegrationCatalogController, IntegrationCatalogController),
     CodexAuthController: Object.assign(CodexAuthController, CodexAuthController),
     WorkspaceMemberController: Object.assign(WorkspaceMemberController, WorkspaceMemberController),
     SettingController: Object.assign(SettingController, SettingController),

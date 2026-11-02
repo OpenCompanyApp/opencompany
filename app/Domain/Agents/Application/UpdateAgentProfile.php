@@ -33,7 +33,6 @@ class UpdateAgentProfile
             'brain' => $validated['brain'] ?? $agent->brain,
             'status' => $validated['status'] ?? $agent->status,
             'current_task' => $validated['currentTask'] ?? $agent->current_task,
-            'behavior_mode' => $validated['behaviorMode'] ?? $agent->behavior_mode,
             'must_wait_for_approval' => $validated['mustWaitForApproval'] ?? $agent->must_wait_for_approval,
             'manager_id' => array_key_exists('managerId', $validated) ? $validated['managerId'] : $agent->manager_id,
             'sleeping_until' => array_key_exists('sleepingUntil', $validated) ? $validated['sleepingUntil'] : $agent->sleeping_until,

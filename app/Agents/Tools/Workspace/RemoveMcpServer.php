@@ -2,7 +2,7 @@
 
 namespace App\Agents\Tools\Workspace;
 
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProviderRegistry;
 use App\Services\Mcp\McpServerRegistrar;
 use App\Models\AgentPermission;
 use App\Models\McpServer;

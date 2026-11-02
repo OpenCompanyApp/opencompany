@@ -41,7 +41,6 @@ class GetAgentPermissions implements Tool
 
             return json_encode([
                 'agentName' => $agent->name,
-                'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
                 'integrations' => $enabledIntegrations ?: null,
                 'channels' => $channelIds->isEmpty() ? null : $channelIds->toArray(),
                 'folders' => $folderIds->isEmpty() ? null : $folderIds->toArray(),

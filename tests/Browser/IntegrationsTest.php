@@ -55,39 +55,20 @@ it('shows installed integrations without duplicate suggested MCP servers', funct
     ]);
 });
 
-it('configures an integration, supports search links, and opens safe setup modals', function () {
+// Regression: the Integrations page lists only app-owned directory entries
+// (AI providers, chat adapters, web providers, MCP servers) after the package
+// catalog removal. A static config_fields entry must still open the generic
+// config modal, save per-account config, and be reachable through search deep
+// links; MCP and AI Gateway setup modals must keep opening.
+it('configures a static integration, supports search links, and opens safe setup modals', function () {
     $user = User::factory()->create();
-    $workspace = app('currentWorkspace');
 
     $this->actingAs($user);
-
-    IntegrationSetting::create([
-        'id' => Str::uuid()->toString(),
-        'workspace_id' => $workspace->id,
-        'integration_id' => 'gmail',
-        'account_alias' => '',
-        'config' => [
-            'client_id' => 'browser-client-id',
-            'client_secret' => 'browser-client-secret',
-            'access_token' => 'browser-access-token',
-        ],
-        'enabled' => true,
-        'is_default' => true,
-    ]);
 
     $page = $this->visit('/w/test/integrations')
         ->wait(0.5)
         ->assertSee('Connected Services')
-        ->assertSee('Gmail');
-
-    $page
-        ->click('[data-test="integration-card"][data-integration-id="gmail"] [data-test="integration-configure"]')
-        ->assertSee('Configure Gmail')
-        ->assertSee('Integration Account')
-        ->assertSee('OAuth app configuration')
-        ->assertSee('Connected')
-        ->assertSee('Disconnect')
-        ->click('Close');
+        ->assertDontSee('Load more catalog integrations');
 
     $page
         ->click('Add MCP Server')
@@ -107,50 +88,45 @@ it('configures an integration, supports search links, and opens safe setup modal
         () => {
             const input = [...document.querySelectorAll('[data-test="integration-search"]')]
                 .find(element => element.offsetParent !== null);
-            input.value = 'aircall';
+            input.value = 'tavily';
             input.dispatchEvent(new Event('input', { bubbles: true }));
         }
     JS);
 
     $page
-        ->wait(0.25)
-        ->assertSee('Search results for "aircall"')
-        ->assertSee('Aircall');
+        ->wait(0.5)
+        ->assertSee('Search results for "tavily"')
+        ->assertSee('Tavily Web');
 
-    expect(str_contains((string) parse_url($page->url(), PHP_URL_QUERY), 'q=aircall'))->toBeTrue();
+    expect(str_contains((string) parse_url($page->url(), PHP_URL_QUERY), 'q=tavily'))->toBeTrue();
 
     $page
-        ->click('[data-test="integration-card"][data-integration-id="aircall"] [data-test="integration-card-action"]')
-        ->assertSee('Configure Aircall')
-        ->assertSee('API ID');
+        ->click('[data-test="integration-card"][data-integration-id="static:web.tavily"] [data-test="integration-card-action"]')
+        ->assertSee('Configure Tavily Web')
+        ->assertSee('Integration Account')
+        ->assertDontSee('OAuth app configuration');
 
     $page->script(<<<'JS'
         () => {
-            for (const [selector, value] of [
-                ['[data-test="integration-field-api_id"]', 'browser-api-id'],
-                ['[data-test="integration-field-api_token"]', 'browser-api-token'],
-            ]) {
-                const input = document.querySelector(selector);
-                input.value = value;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-            }
+            const input = document.querySelector('[data-test="integration-field-api_key"]');
+            input.value = 'browser-tavily-key';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
         }
     JS);
 
     $page
         ->click('[data-test="save-integration-config"]')
         ->wait(0.5)
-        ->assertSee('Search results for "aircall"')
+        ->assertSee('Search results for "tavily"')
         ->assertSee('Installed')
         ->assertNoJavaScriptErrors();
 
     $setting = IntegrationSetting::forWorkspace()
-        ->where('integration_id', 'aircall')
+        ->where('integration_id', 'web.tavily')
         ->where('account_alias', '')
         ->first();
 
     expect($setting)->not->toBeNull()
         ->and($setting->enabled)->toBeTrue()
-        ->and($setting->getConfigValue('api_id'))->toBe('browser-api-id')
-        ->and($setting->getConfigValue('api_token'))->toBe('browser-api-token');
+        ->and($setting->getConfigValue('api_key'))->toBe('browser-tavily-key');
 });

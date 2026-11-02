@@ -706,31 +706,6 @@
               </button>
             </div>
           </template>
-
-          <div
-            v-if="showCatalogControls"
-            class="mt-6 mb-2 flex flex-col items-center gap-2 text-center"
-          >
-            <p v-if="catalogAvailable === false" class="text-xs text-neutral-500 dark:text-neutral-400">
-              Catalog file is not available in this environment.
-            </p>
-            <p v-else-if="catalogError" class="text-xs text-red-600 dark:text-red-400">
-              {{ catalogError }}
-            </p>
-            <button
-              v-if="catalogMeta.hasMore"
-              type="button"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-              :disabled="catalogLoading"
-              @click="loadMoreCatalog"
-            >
-              <Icon :name="catalogLoading ? 'ph:circle-notch' : 'ph:plus'" class="w-3.5 h-3.5" />
-              {{ catalogLoading ? 'Loading catalog' : 'Load more catalog integrations' }}
-            </button>
-            <p v-else-if="catalogLoading" class="text-xs text-neutral-500 dark:text-neutral-400">
-              Loading catalog...
-            </p>
-          </div>
         </main>
       </div>
     </div>
@@ -748,7 +723,7 @@
       @saved="handleCodexSaved"
     />
 
-    <!-- Dynamic Config Modal (for package-provided integrations and chat platforms) -->
+    <!-- Dynamic Config Modal (static config_fields entries: chat platforms, web providers) -->
     <DynamicConfigModal
       v-model:open="showDynamicConfigModal"
       :integration-id="dynamicIntegrationId"
@@ -834,7 +809,6 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { apiKeys as aiGatewayApiKeys, deleteApiKey } from '@/actions/App/Http/Controllers/Api/AiGatewayController'
-import { index as integrationCatalogIndex } from '@/actions/App/Http/Controllers/Api/IntegrationCatalogController'
 import {
   index as integrationsIndex,
   rotateTelegramWebhookSecret,
@@ -874,13 +848,17 @@ const { developerCodeConsoleUrl, developerToolsUrl } = useWorkspace()
 
 const initialQuery = new URLSearchParams(window.location.search)
 
-// Sidebar state. Start on installed services because catalog browsing is huge;
+// Page contract: everything listed here comes from the app-owned
+// /api/integrations directory (AI providers incl. Codex, chat adapters such as
+// Telegram, web providers, enabled MCP servers) plus the suggested MCP servers
+// below. The integration package catalog was deleted (2026-11); external
+// systems return as Connections (docs/planning/connections-events-routines.md).
+// Do not reintroduce catalog browsing/pagination here.
+//
+// Sidebar state. Start on installed services (Telegram ops, webhooks, API keys);
 // direct query params still allow deep links to a search or category.
 const activeCategory = ref<string>(initialQuery.get('category') || (initialQuery.get('q') ? 'all' : 'installed'))
 const searchQuery = ref(initialQuery.get('q') || '')
-const catalogLoading = ref(false)
-const catalogError = ref<string | null>(null)
-const catalogAvailable = ref<boolean | null>(null)
 const integrationStatusError = ref<string | null>(null)
 const apiKeysError = ref<string | null>(null)
 const webhooksError = ref<string | null>(null)
@@ -889,14 +867,6 @@ const telegramNotice = ref<string | null>(null)
 const telegramAction = ref<'health' | 'sync' | 'test' | 'webhook' | 'rotate' | 'repair' | 'retry' | 'replay' | null>(null)
 const telegramOperations = ref<TelegramOperations | null>(null)
 const telegramProfile = ref<Record<string, any> | null>(null)
-const catalogMeta = reactive({
-  page: 0,
-  perPage: 50,
-  total: 0,
-  hasMore: false,
-  search: '',
-  category: '',
-})
 
 // Interfaces
 interface Webhook {
@@ -961,7 +931,7 @@ const activeProviderId = ref('glm-coding')
 // Codex Config modal
 const showCodexConfigModal = ref(false)
 
-// Dynamic Config modal (for package-provided integrations and chat platforms)
+// Dynamic Config modal (static config_fields entries: chat platforms, web providers)
 const showDynamicConfigModal = ref(false)
 const dynamicIntegrationId = ref('')
 const dynamicIntegrationCardId = ref('')
@@ -981,37 +951,25 @@ const configurableIntegrations = ref<Record<string, any>>({})
 
 // Load integration status from backend
 onMounted(async () => {
-  await Promise.all([loadCatalogThenStatus(), loadApiKeys(), loadWebhooks()])
+  await Promise.all([loadStatusThenTelegram(), loadApiKeys(), loadWebhooks()])
 })
 
-const loadCatalogThenStatus = async () => {
+// Telegram operations depend on the directory saying Telegram is installed,
+// so they load strictly after the status call.
+const loadStatusThenTelegram = async () => {
   await loadIntegrationStatus()
   if (telegramIntegrationInstalled.value) {
     await loadTelegramOperations()
   }
-  await loadIntegrationCatalog({
-    reset: true,
-    search: searchQuery.value.trim(),
-    category: catalogCategoryFor(activeCategory.value, searchQuery.value),
-  })
 }
 
-const categoryLabels: Record<string, { name: string; icon: string }> = {
-  analytics: { name: 'Analytics', icon: 'ph:chart-line-up' },
-  data: { name: 'Data & APIs', icon: 'ph:database' },
-  productivity: { name: 'Productivity', icon: 'ph:briefcase' },
-  rendering: { name: 'Rendering', icon: 'ph:paint-brush' },
-  'web-providers': { name: 'Web Providers', icon: 'ph:globe' },
-}
-
+// Known categories are pre-declared in integrationCategories; this fallback
+// only covers a new static category added to config before the UI knows it.
 const categoryFor = (id: string, icon = 'ph:puzzle-piece'): IntegrationCategory => {
   let category = integrationCategories.value.find(c => c.id === id)
   if (!category) {
-    const label = categoryLabels[id] || {
-      name: id.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase()),
-      icon,
-    }
-    category = { id, name: label.name, icon: label.icon, integrations: [] }
+    const name = id.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())
+    category = { id, name, icon, integrations: [] }
     integrationCategories.value.push(category)
   }
   return category
@@ -1050,7 +1008,7 @@ const dedupeIntegrations = <T extends Integration>(integrations: T[]): T[] => {
 }
 
 const mergeIntegrationCard = (incoming: Integration) => {
-  const category = categoryFor(incoming.category || 'data', incoming.icon)
+  const category = categoryFor(incoming.category || 'other', incoming.icon)
   const incomingMcpIdentity = mcpIdentityFor(incoming)
   const incomingKey = integrationCardKey(incoming)
   const existing = integrationCategories.value
@@ -1064,10 +1022,8 @@ const mergeIntegrationCard = (incoming: Integration) => {
       enabled: incoming.enabled ?? existing.enabled,
       configured: incoming.configured ?? existing.configured,
       runnable: incoming.runnable ?? existing.runnable,
-      packageInstalled: incoming.packageInstalled ?? existing.packageInstalled,
       configurable: incoming.configurable ?? existing.configurable,
       badge: incoming.badge || existing.badge,
-      catalog: existing.catalog || incoming.catalog,
       url: incoming.url || existing.url,
       mcpServerId: incoming.mcpServerId || existing.mcpServerId,
       toolCount: incoming.toolCount ?? existing.toolCount,
@@ -1077,72 +1033,6 @@ const mergeIntegrationCard = (incoming: Integration) => {
 
   category.integrations.push(incoming)
   return incoming
-}
-
-const loadIntegrationCatalog = async (options: { reset?: boolean; search?: string; category?: string } = {}) => {
-  if (catalogLoading.value) return
-
-  const search = options.search ?? catalogMeta.search
-  const category = options.category ?? catalogMeta.category
-  const page = options.reset ? 1 : catalogMeta.page + 1
-
-  catalogLoading.value = true
-  catalogError.value = null
-
-  try {
-    const response = await wayfinderRequest<any>(integrationCatalogIndex({
-      query: {
-        page,
-        perPage: catalogMeta.perPage,
-        search: search || undefined,
-        category: category || undefined,
-      },
-    }))
-
-    catalogAvailable.value = response.data.available ?? null
-    catalogMeta.page = response.data.meta?.page || page
-    catalogMeta.perPage = response.data.meta?.perPage || catalogMeta.perPage
-    catalogMeta.total = response.data.meta?.total || 0
-    catalogMeta.hasMore = Boolean(response.data.meta?.hasMore)
-    catalogMeta.search = search
-    catalogMeta.category = category
-
-    for (const item of response.data.data || []) {
-      mergeIntegrationCard({
-        id: `integration:${item.slug || item.id}`,
-        configId: item.slug || item.id,
-        cardKey: `integration:${item.slug || item.id}`,
-        entryType: 'integration',
-        source: 'catalog',
-        name: item.name,
-        icon: item.icon || 'ph:puzzle-piece',
-        description: item.description,
-        category: item.category || 'data',
-        installed: item.enabled || false,
-        enabled: item.enabled || false,
-        configured: item.configured || false,
-        runnable: item.runnable || false,
-        configurable: item.configurable || false,
-        badge: item.badge || undefined,
-        catalog: true,
-        packageInstalled: item.packageInstalled,
-        toolCount: item.toolCount,
-        docsUrl: item.docsUrl || null,
-      })
-    }
-  } catch (error) {
-    console.error('Failed to load integration catalog:', error)
-    catalogError.value = 'Catalog unavailable'
-  } finally {
-    catalogLoading.value = false
-  }
-}
-
-const loadMoreCatalog = () => {
-  loadIntegrationCatalog({
-    search: searchQuery.value.trim(),
-    category: catalogCategoryFor(activeCategory.value, searchQuery.value),
-  })
 }
 
 const loadApiKeys = async () => {
@@ -1210,7 +1100,6 @@ const loadIntegrationStatus = async () => {
               runnable: true,
               badge: suggested.badge || integration.badge || 'mcp',
               configurable: integration.configurable ?? false,
-              packageInstalled: true,
               type: 'mcp' as const,
               url: integration.url,
               mcpServerId: integration.mcpServerId,
@@ -1236,7 +1125,6 @@ const loadIntegrationStatus = async () => {
           runnable: true,
           badge: integration.badge || undefined,
           configurable: integration.configurable ?? false,
-          packageInstalled: true,
           type: integration.type || 'native',
           url: integration.url,
           mcpServerId: integration.mcpServerId,
@@ -1251,13 +1139,6 @@ const loadIntegrationStatus = async () => {
 }
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
-
-const catalogCategoryFor = (category: string, search: string) => {
-  if (search.trim()) return ''
-  return category !== 'all' && category !== 'installed' && category !== 'mcp-servers'
-    ? category
-    : ''
-}
 
 const replaceIntegrationUrl = () => {
   const params = new URLSearchParams()
@@ -1277,33 +1158,25 @@ const setCategory = (category: string) => {
   searchQuery.value = ''
 }
 
-watch(searchQuery, (query) => {
+// Search and category filtering are purely client-side over the directory
+// payload; these watchers only keep the URL deep-linkable.
+watch(searchQuery, () => {
   if (searchTimer) {
     clearTimeout(searchTimer)
   }
 
-  searchTimer = setTimeout(() => {
-    replaceIntegrationUrl()
-    loadIntegrationCatalog({ reset: true, search: query.trim(), category: '' })
-  }, 250)
+  searchTimer = setTimeout(replaceIntegrationUrl, 250)
 })
 
-watch(activeCategory, (category) => {
-  replaceIntegrationUrl()
-
-  if (category === 'all' || category === 'installed' || category === 'mcp-servers') {
-    return
-  }
-
-  loadIntegrationCatalog({ reset: true, search: '', category })
-})
+watch(activeCategory, replaceIntegrationUrl)
 
 const webhooks = ref<Webhook[]>([])
 
 // API Keys (loaded from backend)
 const apiKeys = ref<ApiKey[]>([])
 
-// Integration categories
+// Integration categories. These mirror the static `category` values in
+// config/integrations.php and config/chat_integrations.php, plus MCP servers.
 const integrationCategories = ref<IntegrationCategory[]>([
   {
     id: 'ai-models',
@@ -1312,33 +1185,9 @@ const integrationCategories = ref<IntegrationCategory[]>([
     integrations: [],  // populated from backend
   },
   {
-    id: 'analytics',
-    name: 'Analytics',
-    icon: 'ph:chart-line-up',
-    integrations: [],
-  },
-  {
     id: 'chat-platforms',
     name: 'Chat Platforms',
     icon: 'ph:chat-dots',
-    integrations: [],
-  },
-  {
-    id: 'developer',
-    name: 'Developer Tools',
-    icon: 'ph:code',
-    integrations: [],
-  },
-  {
-    id: 'productivity',
-    name: 'Productivity',
-    icon: 'ph:briefcase',
-    integrations: [],
-  },
-  {
-    id: 'data',
-    name: 'Data & APIs',
-    icon: 'ph:database',
     integrations: [],
   },
   {
@@ -1346,12 +1195,6 @@ const integrationCategories = ref<IntegrationCategory[]>([
     name: 'Web Providers',
     icon: 'ph:globe',
     integrations: [],
-  },
-  {
-    id: 'built-in-tools',
-    name: 'Built-in Tools',
-    icon: 'ph:wrench',
-    integrations: [],  // populated from backend
   },
   {
     id: 'mcp-servers',
@@ -1539,17 +1382,6 @@ const searchResults = computed(() => {
     }
   }
   return dedupeIntegrations(results)
-})
-
-const showCatalogControls = computed(() => {
-  if (activeCategory.value === 'installed' || activeCategory.value === 'mcp-servers') {
-    return false
-  }
-
-  return catalogLoading.value
-    || Boolean(catalogError.value)
-    || catalogAvailable.value === false
-    || catalogMeta.hasMore
 })
 
 // Webhook handlers
@@ -1747,13 +1579,13 @@ const revokeApiKey = async (id: string) => {
   }
 }
 
-// Open the dynamic config modal for a configurable integration.
-// Fetch by id so catalog cards do not depend on the large /api/integrations cache.
+// Open the dynamic config modal for a configurable static integration.
+// Fetch by id so the modal always shows the current per-account config.
 const openDynamicModal = async (integrationOrId: Integration | string) => {
   const integrationId = integrationApiId(integrationOrId)
   const cardId = typeof integrationOrId === 'string' ? integrationOrId : integrationOrId.id
   const fallback = typeof integrationOrId === 'string'
-    ? configurableIntegrations.value[integrationOrId] || configurableIntegrations.value[`integration:${integrationId}`] || configurableIntegrations.value[`chat:${integrationId}`]
+    ? configurableIntegrations.value[integrationOrId] || configurableIntegrations.value[`chat:${integrationId}`] || configurableIntegrations.value[`static:${integrationId}`]
     : integrationOrId
 
   try {
@@ -1765,7 +1597,6 @@ const openDynamicModal = async (integrationOrId: Integration | string) => {
       id: cardId,
       configId: integrationId,
       configSchema: schema,
-      docsUrl: data.docsUrl || fallback?.docsUrl,
       icon: data.icon || fallback?.icon || 'ph:gear',
     }
 
@@ -1777,8 +1608,6 @@ const openDynamicModal = async (integrationOrId: Integration | string) => {
       name: merged.name || fallback?.name || integrationId,
       description: merged.description || fallback?.description || '',
       icon: merged.icon,
-      logo: merged.logo,
-      docs_url: merged.docsUrl,
     }
     showDynamicConfigModal.value = true
   } catch (error) {
@@ -1823,16 +1652,6 @@ const handleQuickInstallMcp = async (integration: Integration) => {
 
 // Integration handlers
 const handleInstall = async (integration: Integration) => {
-  if (integration.catalog && integration.packageInstalled === false) {
-    if (integration.docsUrl) {
-      window.open(integration.docsUrl, '_blank', 'noopener,noreferrer')
-      return
-    }
-
-    alert(`${integration.name} is present in the integrations catalog, but its runtime package is not installed in this OpenCompany app yet.`)
-    return
-  }
-
   // Suggested MCP server — one-click install
   if (integration.suggestedMcpConfig && !integration.mcpServerId) {
     handleQuickInstallMcp(integration)
@@ -1858,7 +1677,7 @@ const handleInstall = async (integration: Integration) => {
     return
   }
 
-  // Check if this is a configurable integration (chat platforms, package-provided, etc.)
+  // Configurable static integrations (chat platforms, web providers)
   if (integration.configurable || configurableIntegrations.value[integration.id]) {
     await openDynamicModal(integration)
     return

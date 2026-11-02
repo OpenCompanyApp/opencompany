@@ -38,7 +38,6 @@ class GetAgentDetails implements Tool
                 'agentType' => $agent->agent_type,
                 'brain' => $agent->brain,
                 'status' => $agent->status,
-                'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
                 'mustWaitForApproval' => $agent->must_wait_for_approval,
                 'currentTask' => $agent->current_task,
                 'tasks' => [

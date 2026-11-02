@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Agents\Tools\Memory\RecallMemory;
 use App\Agents\Tools\Memory\SaveMemory;
 use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Agents\Tools\ToolRegistry;
@@ -44,15 +45,32 @@ class ToolRegistryTest extends TestCase
 
     // ── getToolsForAgent Tests ─────────────────────────────────────────
 
-    public function test_returns_all_tools_with_no_permissions(): void
+    /**
+     * Map inner tool class => whether the registry wrapped it for approval.
+     *
+     * @return array<class-string, bool>
+     */
+    private function wrapState(): array
+    {
+        $state = [];
+        foreach ($this->registry->getToolsForAgent($this->agent) as $tool) {
+            $wrapped = $tool instanceof ApprovalWrappedTool;
+            $state[get_class($wrapped ? $tool->getInnerTool() : $tool)] = $wrapped;
+        }
+
+        return $state;
+    }
+
+    // Policy model default (behaviour modes deleted): with no rules every
+    // tool is exposed, writes are wrapped for approval, reads are not.
+    public function test_default_policy_wraps_write_tools_but_not_read_tools(): void
     {
         $tools = $this->registry->getToolsForAgent($this->agent);
-
         $this->assertCount($this->baseToolCount, $tools);
 
-        foreach ($tools as $tool) {
-            $this->assertNotInstanceOf(ApprovalWrappedTool::class, $tool);
-        }
+        $state = $this->wrapState();
+        $this->assertTrue($state[SaveMemory::class], 'save_memory (write) should be wrapped by default');
+        $this->assertFalse($state[RecallMemory::class], 'recall_memory (read) should run without approval');
     }
 
     public function test_excludes_denied_tools(): void
@@ -69,69 +87,33 @@ class ToolRegistryTest extends TestCase
         $this->assertCount($this->baseToolCount - 1, $tools);
     }
 
+    // An admin rule requiring approval wraps even a read tool.
     public function test_wraps_tools_with_db_approval_required(): void
     {
-        // Use a direct-group write tool that is NOT approval-exempt
         $this->createPermission([
             'scope_type' => 'tool',
-            'scope_key' => 'save_memory',
+            'scope_key' => 'recall_memory',
             'permission' => 'allow',
             'requires_approval' => true,
         ]);
 
-        $tools = $this->registry->getToolsForAgent($this->agent);
-
-        $this->assertCount($this->baseToolCount, $tools);
-
-        $wrappedTools = array_filter($tools, fn ($t) => $t instanceof ApprovalWrappedTool);
-        $this->assertCount(1, $wrappedTools);
+        $this->assertCount($this->baseToolCount, $this->registry->getToolsForAgent($this->agent));
+        $this->assertTrue($this->wrapState()[RecallMemory::class]);
     }
 
-    public function test_wraps_write_tools_in_supervised_mode(): void
+    // An admin allow-without-approval rule unwraps exactly that write tool.
+    public function test_db_allow_rule_unwraps_write_tool(): void
     {
-        $this->agent->update(['behavior_mode' => 'supervised']);
+        $this->createPermission([
+            'scope_type' => 'tool',
+            'scope_key' => 'save_memory',
+            'permission' => 'allow',
+            'requires_approval' => false,
+        ]);
 
-        $tools = $this->registry->getToolsForAgent($this->agent);
-
-        $this->assertCount($this->baseToolCount, $tools);
-
-        $wrappedCount = 0;
-        $unwrappedCount = 0;
-        foreach ($tools as $tool) {
-            if ($tool instanceof ApprovalWrappedTool) {
-                $wrappedCount++;
-            } else {
-                $unwrappedCount++;
-            }
-        }
-
-        // In supervised mode, write tools are wrapped, read tools are not
-        $this->assertGreaterThan(0, $wrappedCount, 'Some write tools should be wrapped');
-        $this->assertGreaterThan(0, $unwrappedCount, 'Read tools should remain unwrapped');
-    }
-
-    public function test_wraps_all_tools_in_strict_mode(): void
-    {
-        $this->agent->update(['behavior_mode' => 'strict']);
-
-        $tools = $this->registry->getToolsForAgent($this->agent);
-
-        $this->assertCount($this->baseToolCount, $tools);
-
-        $wrappedCount = 0;
-        $unwrappedCount = 0;
-        foreach ($tools as $tool) {
-            if ($tool instanceof ApprovalWrappedTool) {
-                $wrappedCount++;
-            } else {
-                $unwrappedCount++;
-            }
-        }
-
-        // The vast majority of tools should be wrapped; only approval-exempt tools remain unwrapped
-        $this->assertGreaterThan(0, $wrappedCount);
-        // Unwrapped tools should only be approval-exempt ones (system tools like contact_agent, wait, etc.)
-        $this->assertLessThanOrEqual(8, $unwrappedCount, 'Too many unwrapped tools in strict mode');
+        $state = $this->wrapState();
+        $this->assertFalse($state[SaveMemory::class]);
+        $this->assertTrue($state[\App\Agents\Tools\Memory\EditMemory::class], 'other writes stay gated');
     }
 
     // ── getAllToolsMeta Tests ───────────────────────────────────────────

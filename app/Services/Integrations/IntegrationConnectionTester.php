@@ -8,11 +8,10 @@ use App\Services\Chat\ChatAdapterFactory;
 use App\Services\Integrations\Data\IntegrationConnectionTestResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use OpenCompany\IntegrationCore\Contracts\ToolProvider;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProvider;
 
 /**
- * Runs connection checks for both legacy app integrations and package providers.
+ * Runs connection checks for the app-owned integrations (Telegram, chat adapters).
  *
  * The controller layer collects request data; this service owns the safety
  * contract for testing it. In particular, masked secrets must be resolved from
@@ -23,7 +22,6 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 class IntegrationConnectionTester
 {
     public function __construct(
-        private IntegrationConfigResolver $configResolver,
         private IntegrationAccountResolver $accounts,
         private ModelConnectionTester $models,
     ) {}
@@ -36,45 +34,6 @@ class IntegrationConnectionTester
             return $this->testAppOwnedTelegramChat($request);
         }
 
-        $provider = $this->configResolver->findConfigurableProvider($id);
-        if ($provider) {
-            $config = $request->all();
-            $setting = $this->accounts->findSetting($id, $this->accounts->accountFromRequest($request));
-
-            // The UI sends masked values for existing secrets. Replace only
-            // masked/blank secret fields from persisted config so connection
-            // tests can run without exposing raw tokens back to the browser.
-            foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
-                if ($field['type'] === 'secret' || $field['type'] === 'oauth_connect') {
-                    $key = $field['key'];
-                    $value = $config[$key] ?? '';
-                    if (! $value || str_contains($value, '*')) {
-                        $config[$key] = $setting?->getConfigValue($key);
-                    }
-                }
-            }
-
-            try {
-                $result = $provider->testConnection($config);
-
-                return new IntegrationConnectionTestResult(
-                    success: $result['success'],
-                    message: $result['message'] ?? null,
-                    error: $result['error'] ?? null,
-                    status: $result['success'] ? 200 : 400,
-                    meta: array_diff_key($result, array_flip(['success', 'message', 'error'])),
-                );
-            } catch (\Throwable $e) {
-                return new IntegrationConnectionTestResult(false, error: $e->getMessage(), status: 500);
-            }
-        }
-
-        // Package integrations are owned by ../integrations. OpenCompany only
-        // decides how to prove they are registered/configured for this runtime.
-        $packageProvider = app(ToolProviderRegistry::class)->get($id);
-        if ($packageProvider?->isIntegration()) {
-            return $this->testPackageIntegration($packageProvider, $id);
-        }
 
         $available = IntegrationSetting::getAvailableIntegrations();
         if (! isset($available[$id])) {
@@ -191,74 +150,6 @@ class IntegrationConnectionTester
         }
 
         return new IntegrationConnectionTestResult(true, 'Web provider configuration is present. Run web_search or web_fetch to perform a live provider call.');
-    }
-
-    private function testPackageIntegration(ToolProvider $provider, string $id): IntegrationConnectionTestResult
-    {
-        try {
-            if ($provider->credentialFields() !== []) {
-                // Without credentials we can only verify package registration.
-                // Returning success keeps setup flows unblocked while the
-                // message stays explicit that no live vendor call happened.
-                return new IntegrationConnectionTestResult(
-                    success: true,
-                    message: "Integration {$id} is registered. Configure its credentials before testing a live connection.",
-                );
-            }
-
-            foreach ($provider->tools() as $slug => $meta) {
-                if ($meta['type'] !== 'read') {
-                    continue;
-                }
-
-                // For no-key packages such as WorldBank, prefer a harmless
-                // read-only tool with no required input. That exercises the real
-                // package code and remote API without needing stored secrets or
-                // inventing synthetic parameters.
-                $tool = $provider->createTool($meta['class'], [
-                    'tool_slug' => (string) $slug,
-                ]);
-
-                if ($this->hasRequiredParameters($tool->parameters())) {
-                    continue;
-                }
-
-                $result = $tool->execute([]);
-                $name = $meta['name'];
-
-                return $result->succeeded()
-                    ? new IntegrationConnectionTestResult(
-                        success: true,
-                        message: "Connection OK. {$id} requires no API key; {$name} responded.",
-                        meta: ['tool' => $slug],
-                    )
-                    : new IntegrationConnectionTestResult(
-                        success: false,
-                        error: $result->error ?? 'unknown error',
-                        status: 400,
-                        meta: ['tool' => $slug],
-                    );
-            }
-
-            return new IntegrationConnectionTestResult(
-                success: true,
-                message: "Connection OK. {$id} is registered and requires no API key.",
-            );
-        } catch (\Throwable $e) {
-            return new IntegrationConnectionTestResult(false, error: $e->getMessage(), status: 500);
-        }
-    }
-
-    /** @param  array<string, mixed>  $parameters */
-    private function hasRequiredParameters(array $parameters): bool
-    {
-        foreach ($parameters as $parameter) {
-            if (is_array($parameter) && ($parameter['required'] ?? false)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private function testAppOwnedTelegramChat(Request $request): IntegrationConnectionTestResult

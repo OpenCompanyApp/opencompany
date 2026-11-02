@@ -1,28 +1,11 @@
 <template>
   <div class="space-y-6">
-    <!-- Behavior Mode -->
+    <!-- Approval policy (behaviour modes were removed; see Product Direction pillar 5) -->
     <section>
-      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">Behavior Mode</h3>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-3">Controls how much supervision this agent requires</p>
+      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">Approval Policy</h3>
       <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
-        <div class="flex gap-2">
-          <button
-            v-for="mode in behaviorModes"
-            :key="mode.value"
-            type="button"
-            :class="[
-              'flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors',
-              localBehaviorMode === mode.value
-                ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
-                : 'bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-600'
-            ]"
-            @click="handleBehaviorModeChange(mode.value)"
-          >
-            {{ mode.label }}
-          </button>
-        </div>
-        <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-3">
-          {{ behaviorModeDescription }}
+        <p class="text-xs text-neutral-500 dark:text-neutral-400">
+          Reads run directly. Writes and external actions need human approval unless an admin grants this agent an exception for that exact tool.
         </p>
       </div>
     </section>
@@ -582,7 +565,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
 import Icon from '@/Components/shared/Icon.vue'
-import type { AgentCapability, AgentBehaviorMode } from '@/types'
+import type { AgentCapability } from '@/types'
 
 interface ChannelInfo {
   id: string
@@ -637,7 +620,6 @@ const props = defineProps<{
   appGroups: AppGroupInfo[]
   vfsPolicy?: VfsPolicy | null
   enabledIntegrations: string[]
-  behaviorMode: AgentBehaviorMode
   mustWaitForApproval: boolean
   channelPermissions: string[]
   folderPermissions: string[]
@@ -648,7 +630,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  updateBehaviorMode: [mode: AgentBehaviorMode]
   updateMustWaitForApproval: [value: boolean]
   updateIntegrations: [integrations: string[]]
   updateToolPermissions: [tools: { scopeKey: string; permission: string; requiresApproval: boolean }[]]
@@ -658,7 +639,6 @@ const emit = defineEmits<{
 }>()
 
 // Local state
-const localBehaviorMode = ref<AgentBehaviorMode>(props.behaviorMode)
 const localMustWait = ref(props.mustWaitForApproval)
 const localTools = ref<AgentCapability[]>(props.capabilities.map(c => ({ ...c })))
 const localChannelIds = ref<string[]>([...props.channelPermissions])
@@ -791,44 +771,11 @@ watch(() => props.fileFolderPermissions, (newIds) => {
   fileFoldersDirty.value = false
 })
 
-watch(() => props.behaviorMode, (newMode) => {
-  localBehaviorMode.value = newMode
-})
-
 watch(() => props.mustWaitForApproval, (newVal) => {
   localMustWait.value = newVal
 })
 
 // Behavior mode
-const behaviorModes: { value: AgentBehaviorMode; label: string }[] = [
-  { value: 'autonomous', label: 'Autonomous' },
-  { value: 'supervised', label: 'Supervised' },
-  { value: 'strict', label: 'Strict' },
-]
-
-const behaviorModeDescription = computed(() => {
-  switch (localBehaviorMode.value) {
-    case 'autonomous':
-      return 'Agent works independently. Only tools explicitly marked "require approval" will need human approval.'
-    case 'supervised':
-      return 'All write tools require approval before execution. Read tools execute freely.'
-    case 'strict':
-      return 'All tools require human approval before execution.'
-    default:
-      return ''
-  }
-})
-
-const handleMustWaitChange = () => {
-  localMustWait.value = !localMustWait.value
-  emit('updateMustWaitForApproval', localMustWait.value)
-}
-
-const handleBehaviorModeChange = (mode: AgentBehaviorMode) => {
-  localBehaviorMode.value = mode
-  emit('updateBehaviorMode', mode)
-}
-
 // Tool toggles
 const toggleTool = (tool: AgentCapability) => {
   tool.enabled = !tool.enabled
@@ -941,4 +888,8 @@ const saveFileFolderPermissions = () => {
   fileFoldersDirty.value = false
 }
 
+const handleMustWaitChange = () => {
+  localMustWait.value = !localMustWait.value
+  emit('updateMustWaitForApproval', localMustWait.value)
+}
 </script>

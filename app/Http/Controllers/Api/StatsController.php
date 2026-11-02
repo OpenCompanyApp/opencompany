@@ -6,23 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Services\WorkspaceStatusService;
 use Illuminate\Http\Request;
 
+/**
+ * Workspace status API.
+ *
+ * Owns only the read-only `/api/stats/status` snapshot built by
+ * WorkspaceStatusService for the current workspace. The former summary
+ * `index` endpoint existed solely for the deleted Dashboard page and was
+ * removed with it; do not re-add page-specific aggregates here.
+ */
 class StatsController extends Controller
 {
-    public function index(WorkspaceStatusService $statusService): \Illuminate\Http\JsonResponse
-    {
-        $status = $statusService->gather(workspace()->id);
-
-        // Return all stats in camelCase format as expected by the frontend
-        return response()->json([
-            'agentsOnline' => $status['agents_online'],
-            'totalAgents' => $status['agents_total'],
-            'tasksCompleted' => $status['tasks_completed'],
-            'tasksToday' => $status['tasks_today'],
-            'messagesTotal' => $status['messages_total'],
-            'messagesToday' => $status['messages_today'],
-        ]);
-    }
-
     /**
      * Detailed workspace status (agents with tasks, full stats).
      */

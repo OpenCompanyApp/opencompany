@@ -9,7 +9,7 @@ use App\Services\Mcp\McpClient;
 use App\Services\Mcp\McpToolProvider;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProviderRegistry;
 
 /**
  * Workspace-facing MCP server management use cases.

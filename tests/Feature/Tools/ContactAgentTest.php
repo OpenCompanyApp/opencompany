@@ -17,10 +17,12 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
+use Tests\Concerns\GrantsAgentPermissions;
 use Tests\TestCase;
 
 class ContactAgentTest extends TestCase
 {
+    use GrantsAgentPermissions;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -30,8 +32,14 @@ class ContactAgentTest extends TestCase
         Event::fake();
     }
 
-private function makeTool(User $agent): ContactAgent
+    private function makeTool(User $agent): ContactAgent
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default (contacting a peer outside the manager chain); grant
+        // explicitly. Per-target rows in the deny/approval tests still win
+        // over this wildcard.
+        $this->allowAgentContact($agent);
+
         return new ContactAgent(
             $agent,
             app(AgentPermissionService::class),

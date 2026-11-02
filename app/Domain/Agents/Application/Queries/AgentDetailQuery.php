@@ -81,7 +81,6 @@ class AgentDetailQuery
             'presence' => $agent->presence,
             'brain' => $agent->brain,
             'currentTask' => $agent->current_task,
-            'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
             'mustWaitForApproval' => $agent->must_wait_for_approval ?? false,
             'awaitingApprovalId' => $agent->awaiting_approval_id,
             'managerId' => $agent->manager_id,

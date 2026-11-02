@@ -13,7 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Mockery;
-use OpenCompany\IntegrationCore\Script\ScriptBridgeException;
+use App\Domain\CodeMode\Script\ScriptBridgeException;
 use Tests\TestCase;
 
 /**

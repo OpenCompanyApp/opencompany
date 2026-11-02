@@ -20,8 +20,6 @@ use App\Models\Workspace;
 use App\Services\Ai\ModelCatalog;
 use App\Services\Ai\ProviderCatalog;
 use App\Services\Integrations\IntegrationAccountResolver;
-use App\Services\Integrations\IntegrationConnectionTester;
-use App\Services\Integrations\IntegrationDirectory;
 use App\Services\Integrations\IntegrationIdentity;
 use App\Services\Mcp\McpRuntime;
 use App\Services\Mcp\McpServerRegistrar;
@@ -29,56 +27,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProviderRegistry;
 use Tests\TestCase;
 
 class RuntimeServiceLayerTest extends TestCase
 {
     use RefreshDatabase;
-
-    public function test_integration_directory_contains_public_worldbank_package(): void
-    {
-        $entries = collect(app(IntegrationDirectory::class)->all());
-        $worldbank = $entries->firstWhere('id', IntegrationIdentity::forPackage('worldbank'));
-
-        $this->assertNotNull($worldbank);
-        $this->assertSame(IntegrationIdentity::forPackage('worldbank'), $worldbank['id']);
-        $this->assertSame('worldbank', $worldbank['configId']);
-        $this->assertTrue($worldbank['configured']);
-    }
-
-    public function test_connection_tester_exercises_public_worldbank_package_without_credentials(): void
-    {
-        Http::fake([
-            'api.worldbank.org/*' => Http::response([
-                ['page' => 1, 'pages' => 1, 'per_page' => '300', 'total' => 1],
-                [[
-                    'id' => 'USA',
-                    'iso2Code' => 'US',
-                    'name' => 'United States',
-                    'region' => ['id' => 'NAC', 'value' => 'North America'],
-                    'incomeLevel' => ['id' => 'HIC', 'value' => 'High income'],
-                    'capitalCity' => 'Washington D.C.',
-                ]],
-            ]),
-        ]);
-
-        $result = app(IntegrationConnectionTester::class)->test(Request::create('/', 'POST'), 'worldbank');
-
-        $this->assertTrue($result->success);
-        $this->assertStringContainsString('requires no API key', (string) $result->message);
-        $this->assertSame(200, $result->status);
-    }
-
-    public function test_shared_integration_credentials_are_resolved_from_package_metadata(): void
-    {
-        $group = app(IntegrationAccountResolver::class)
-            ->sharedCredentialGroup('gmail');
-
-        $this->assertContains('gmail', $group['integration_ids']);
-        $this->assertContains('google-calendar', $group['integration_ids']);
-        $this->assertSame(['client_id', 'client_secret'], $group['keys']);
-    }
 
     public function test_provider_and_model_catalog_use_workspace_overlay(): void
     {

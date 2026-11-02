@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Laravel\Ai\Messages\UserMessage;
 use Laravel\Ai\Tools\Request;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProviderRegistry;
 use Tests\TestCase;
 
 /**
@@ -64,7 +64,7 @@ class UntrustedContentLabellingTest extends TestCase
     public function test_direct_web_tools_are_labelled_only_at_the_model_boundary(): void
     {
         $this->fakeTavily();
-        $agent = User::factory()->agent()->create(['behavior_mode' => 'autonomous', 'brain' => self::BRAIN]);
+        $agent = User::factory()->agent()->create(['brain' => self::BRAIN]);
 
         $tools = iterator_to_array(OpenCompanyAgent::for($agent, 'channel-1')->tools());
         $search = collect($tools)->first(fn ($tool) => $tool instanceof UntrustedOutputTool && $tool->innerTool() instanceof WebSearchTool);
@@ -85,7 +85,7 @@ class UntrustedContentLabellingTest extends TestCase
     public function test_code_exec_labels_output_after_web_callbacks_but_not_for_pure_compute(): void
     {
         $this->fakeTavily();
-        $agent = User::factory()->agent()->create(['behavior_mode' => 'autonomous', 'brain' => self::BRAIN]);
+        $agent = User::factory()->agent()->create(['brain' => self::BRAIN]);
         $tool = $this->codeExec($agent);
         $path = $this->functionPath($agent, 'web_search');
 
@@ -117,7 +117,7 @@ class UntrustedContentLabellingTest extends TestCase
             ]),
         ]);
 
-        $agent = User::factory()->agent()->create(['behavior_mode' => 'autonomous', 'brain' => self::BRAIN]);
+        $agent = User::factory()->agent()->create(['brain' => self::BRAIN]);
         $server = McpServer::create([
             'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,

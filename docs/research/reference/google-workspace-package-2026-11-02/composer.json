@@ -1,0 +1,41 @@
+{
+    "name": "opencompanyapp/integration-google",
+    "description": "Google Workspace integration for the OpenCompany platform — Calendar, Gmail, Drive, Sheets, Docs, Forms, Contacts, Tasks, Analytics, and Search Console.",
+    "replace": {
+        "opencompanyapp/ai-tool-google": "self.version",
+        "opencompanyapp/integration-google-calendar": "self.version",
+        "opencompanyapp/integration-google-contacts": "self.version",
+        "opencompanyapp/integration-google-docs": "self.version",
+        "opencompanyapp/integration-google-drive": "self.version",
+        "opencompanyapp/integration-google-forms": "self.version",
+        "opencompanyapp/integration-google-analytics": "self.version",
+        "opencompanyapp/integration-google-search-console": "self.version",
+        "opencompanyapp/integration-google-tasks": "self.version"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "OpenCompany",
+            "homepage": "https://github.com/OpenCompanyApp"
+        }
+    ],
+    "keywords": ["tools", "google", "calendar", "gmail", "opencompany"],
+    "require": {
+        "php": "^8.2",
+        "opencompanyapp/integration-core": "^2.0 || @dev"
+    },
+    "autoload": {
+        "psr-4": {
+            "OpenCompany\\Integrations\\Google\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "OpenCompany\\Integrations\\Google\\GoogleServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

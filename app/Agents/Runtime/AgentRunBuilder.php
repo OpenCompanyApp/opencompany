@@ -22,16 +22,6 @@ class AgentRunBuilder
         $options ??= new AgentRunOptions;
         $runtimeAgent = clone $agent;
 
-        if ($options->permissionMode !== null) {
-            if (! in_array($options->permissionMode, ['autonomous', 'supervised', 'strict'], true)) {
-                throw new \InvalidArgumentException("Unknown run permission mode [{$options->permissionMode}].");
-            }
-
-            // This attribute changes permission resolution for this in-memory
-            // model only; the persisted agent policy remains untouched.
-            $runtimeAgent->setAttribute('behavior_mode', $options->permissionMode);
-        }
-
         $instance = OpenCompanyAgent::for($runtimeAgent, $channelId, $taskId)
             ->withMaxSteps($options->maxTurns);
 

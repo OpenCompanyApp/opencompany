@@ -47,7 +47,6 @@ class CreateAgent
                 'presence' => 'online',
                 'is_ephemeral' => $input->isEphemeral,
                 'current_task' => $input->task,
-                'behavior_mode' => $input->behavior,
                 'manager_id' => $input->managerId ?? $creator->id,
             ]);
 

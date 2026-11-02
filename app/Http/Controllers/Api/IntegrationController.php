@@ -158,23 +158,6 @@ class IntegrationController extends Controller
     }
 
     /**
-     * Disconnect an OAuth-based integration (clear stored tokens).
-     */
-    public function disconnect(Request $request, string $id): JsonResponse
-    {
-        $disconnected = app(IntegrationConfigResolver::class)->disconnect(
-            $id,
-            app(IntegrationAccountResolver::class)->accountFromRequest($request),
-        );
-
-        if ($disconnected === null) {
-            return response()->json(['error' => 'Integration not found'], 404);
-        }
-
-        return response()->json(['success' => true]);
-    }
-
-    /**
      * Set up webhook for an integration (currently Telegram only)
      */
     public function setupWebhook(Request $request, string $id): JsonResponse

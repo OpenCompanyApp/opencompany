@@ -110,7 +110,7 @@ import { router } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import WorkspaceIcon from '@/Components/shared/WorkspaceIcon.vue'
 import { store as storeWorkspace } from '@/actions/App/Http/Controllers/Api/WorkspaceController'
-import { dashboard } from '@/routes'
+import { chat } from '@/routes'
 import { wayfinderRequest } from '@/utils/wayfinder'
 
 const form = ref({
@@ -182,7 +182,7 @@ const handleSubmit = async () => {
       },
     )
 
-    router.visit(dashboard(response.data.slug))
+    router.visit(chat(response.data.slug))
   } catch (e: any) {
     const data = e?.response?.data
     error.value = data?.message || Object.values(data?.errors || {}).flat().join(', ') || 'Failed to create workspace'

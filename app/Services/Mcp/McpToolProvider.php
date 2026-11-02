@@ -4,8 +4,8 @@ namespace App\Services\Mcp;
 
 use App\Models\McpServer;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Contracts\Tool;
-use OpenCompany\IntegrationCore\Contracts\ToolProvider;
+use App\Agents\Tools\External\Tool;
+use App\Agents\Tools\External\ToolProvider;
 
 /**
  * Presents one configured MCP server as an OpenCompany integration provider.

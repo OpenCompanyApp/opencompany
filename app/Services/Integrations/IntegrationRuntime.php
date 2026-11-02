@@ -2,6 +2,7 @@
 
 namespace App\Services\Integrations;
 
+use App\Domain\Authorization\Application\PolicyGrantService;
 use App\Agents\Tools\ToolRegistry;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
@@ -10,8 +11,8 @@ use App\Services\ScriptCallbackReceiptService;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
-use OpenCompany\IntegrationCore\Contracts\Tool as IntegrationTool;
-use OpenCompany\IntegrationCore\Script\ScriptDispatchException;
+use App\Agents\Tools\External\Tool as IntegrationTool;
+use App\Domain\CodeMode\Script\ScriptDispatchException;
 
 /**
  * App-owned execution boundary for registered integration tools.
@@ -85,6 +86,11 @@ class IntegrationRuntime
                 $account,
             );
         }
+
+        // A single-use policy grant (if that is what allowed this callback) is
+        // consumed by the attempt, before provider dispatch: a failed external
+        // call may still have had effects.
+        app(PolicyGrantService::class)->consumeOnce($agent, $toolSlug);
 
         try {
             if ($tool instanceof IntegrationTool) {

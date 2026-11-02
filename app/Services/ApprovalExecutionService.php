@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request as ToolRequest;
-use OpenCompany\IntegrationCore\Contracts\Tool as IntegrationTool;
+use App\Agents\Tools\External\Tool as IntegrationTool;
 
 /**
  * Applies approval decisions to pending tool/access requests.

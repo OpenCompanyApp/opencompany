@@ -10,7 +10,7 @@ use Laravel\Ai\Contracts\Tool;
  * Interface for built-in tool providers that organize app tools into groups.
  *
  * Built-in tools implement Laravel\Ai\Contracts\Tool (for the agent loop).
- * This is separate from integration-core's ToolProvider which returns
+ * This is separate from the external (MCP) ToolProvider contract which returns
  * framework-agnostic IntegrationCore\Contracts\Tool instances.
  */
 interface BuiltInToolProvider

@@ -26,7 +26,6 @@ class AgentPermissionController extends Controller
             'tools' => $this->toolRegistry->getAllToolsMeta($agent),
             'channelIds' => AgentPermission::forAgent($id)->channels()->allowed()->pluck('scope_key')->values(),
             'folderIds' => AgentPermission::forAgent($id)->folders()->allowed()->pluck('scope_key')->values(),
-            'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
         ]);
     }
 

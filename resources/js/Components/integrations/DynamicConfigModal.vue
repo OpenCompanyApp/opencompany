@@ -70,15 +70,8 @@
         </p>
       </div>
 
-      <!-- Dynamic Fields -->
-      <div v-if="hasOAuthFields" class="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 px-3 py-2">
-        <p class="text-xs font-medium text-neutral-700 dark:text-neutral-300">OAuth app configuration</p>
-        <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-          Client credentials are shared by this integration; connected account tokens stay scoped to the selected account above.
-        </p>
-      </div>
-
-      <div v-for="field in schema" :key="field.key" v-show="isFieldVisible(field)" class="space-y-2">
+      <!-- Static config fields (config/integrations.php, config/chat_integrations.php) -->
+      <div v-for="field in schema" :key="field.key" class="space-y-2">
         <label class="block text-sm font-medium text-neutral-900 dark:text-white">
           {{ field.label }}
         </label>
@@ -124,19 +117,6 @@
           class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
         />
 
-        <!-- Select field -->
-        <select
-          v-else-if="field.type === 'select'"
-          v-model="formValues[field.key]"
-          :data-test="`integration-field-${field.key}`"
-          :name="field.key"
-          class="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm"
-        >
-          <option v-for="(optLabel, optValue) in field.options" :key="optValue" :value="optValue">
-            {{ optLabel }}
-          </option>
-        </select>
-
         <!-- String list field -->
         <div v-else-if="field.type === 'string_list'">
           <div v-if="(formValues[field.key] || []).length" class="space-y-1.5">
@@ -145,7 +125,7 @@
               :key="item"
               class="flex items-center gap-2 px-3 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg"
             >
-              <Icon :name="field.item_icon || 'ph:dot'" class="w-3.5 h-3.5 text-neutral-400" />
+              <Icon name="ph:dot" class="w-3.5 h-3.5 text-neutral-400" />
               <span class="font-mono text-sm text-neutral-900 dark:text-white flex-1">{{ item }}</span>
               <button
                 type="button"
@@ -162,7 +142,7 @@
               :data-test="`integration-field-${field.key}`"
               :name="field.key"
               type="text"
-              :placeholder="field.item_placeholder || 'Add item...'"
+              :placeholder="field.placeholder || 'Add item...'"
               class="flex-1 px-4 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white outline-none transition-colors text-sm font-mono"
               @keydown.enter.prevent="addListItem(field.key)"
             />
@@ -175,69 +155,6 @@
             >
               Add
             </Button>
-          </div>
-        </div>
-
-        <!-- OAuth connect field -->
-        <div v-else-if="field.type === 'oauth_connect'">
-          <!-- Connected state -->
-          <div v-if="formValues[field.key]" class="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <div class="flex items-center gap-2">
-              <Icon name="ph:check-circle-fill" class="w-4 h-4 text-green-500" />
-              <span class="text-sm font-medium text-green-700 dark:text-green-400">Connected</span>
-            </div>
-            <Button type="button" variant="danger" size="sm" @click="disconnectOAuth(field)">
-              Disconnect
-            </Button>
-          </div>
-          <!-- Not connected state -->
-          <div v-else class="space-y-2">
-            <Button
-              type="button"
-              variant="secondary"
-              icon-left="ph:plugs-connected"
-              :disabled="!hasRequiredFields"
-              @click="connectOAuth(field)"
-            >
-              Connect with {{ meta?.name || 'service' }}
-            </Button>
-            <div v-if="field.redirect_uri" class="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg space-y-2.5">
-              <p class="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                In your
-                <a v-if="meta?.docs_url" :href="meta.docs_url" target="_blank" rel="noopener" class="underline">{{ meta?.name }} developer settings</a>
-                <span v-else>{{ meta?.name }} developer settings</span>, set:
-              </p>
-              <div class="space-y-2">
-                <div>
-                  <label class="block text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1">OAuth redirect URL</label>
-                  <div class="flex items-center gap-1.5">
-                    <code class="flex-1 min-w-0 px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-md text-[11px] text-neutral-700 dark:text-neutral-300 truncate select-all">{{ fullRedirectUri(field) }}</code>
-                    <button
-                      type="button"
-                      class="shrink-0 p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-md transition-colors"
-                      :title="copied === 'redirect' ? 'Copied!' : 'Copy to clipboard'"
-                      @click="copyToClipboard(fullRedirectUri(field), 'redirect')"
-                    >
-                      <Icon :name="copied === 'redirect' ? 'ph:check' : 'ph:copy'" class="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label class="block text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1">App Service URL</label>
-                  <div class="flex items-center gap-1.5">
-                    <code class="flex-1 min-w-0 px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-md text-[11px] text-neutral-700 dark:text-neutral-300 truncate select-all">{{ origin }}</code>
-                    <button
-                      type="button"
-                      class="shrink-0 p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-md transition-colors"
-                      :title="copied === 'origin' ? 'Copied!' : 'Copy to clipboard'"
-                      @click="copyToClipboard(origin, 'origin')"
-                    >
-                      <Icon :name="copied === 'origin' ? 'ph:check' : 'ph:copy'" class="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -257,16 +174,6 @@
         >
           Test Connection
         </Button>
-        <a
-          v-if="meta?.docs_url"
-          :href="meta.docs_url"
-          target="_blank"
-          rel="noopener"
-          class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
-        >
-          <Icon name="ph:arrow-square-out" class="w-3.5 h-3.5" />
-          Docs
-        </a>
       </div>
 
       <!-- Result Message -->
@@ -309,10 +216,23 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Generic config form for app-owned static integrations (chat adapters such as
+ * Telegram/Slack/Discord, web providers) whose `config_fields` live in
+ * config/integrations.php and config/chat_integrations.php.
+ *
+ * Owns: per-account config load/save/test through the IntegrationController
+ * config, test and accounts endpoints. Does not own AI providers (ProviderConfigModal),
+ * Codex OAuth (CodexConfigModal) or MCP servers (McpConfigModal).
+ *
+ * Breadcrumb: package-schema features (oauth_connect, select options,
+ * visible_when, docs links) were removed with the integration package system
+ * (2026-11). External OAuth accounts return as Connections
+ * (docs/planning/connections-events-routines.md), not through this modal.
+ */
 import { ref, reactive, watch, computed } from 'vue'
 import {
   createAccount as createIntegrationAccount,
-  disconnect,
   listAccounts,
   setDefaultAccount as setDefaultIntegrationAccount,
   showConfig,
@@ -326,31 +246,17 @@ import { wayfinderFetch } from '@/utils/wayfinder'
 
 interface ConfigField {
   key: string
-  type: 'secret' | 'url' | 'text' | 'select' | 'string_list' | 'oauth_connect'
+  type: 'secret' | 'url' | 'text' | 'string_list'
   label: string
   placeholder?: string
   hint?: string
   required?: boolean
-  default?: any
-  options?: Record<string, string>
-  item_icon?: string
-  item_placeholder?: string
-  authorize_url?: string
-  redirect_uri?: string
-  visible_when?: {
-    field: string
-    value: string | string[]
-  }
 }
 
 interface IntegrationMeta {
   name: string
   description: string
   icon: string
-  logo?: string
-  category?: string
-  badge?: string
-  docs_url?: string
 }
 
 interface Account {
@@ -385,115 +291,21 @@ const isTesting = ref(false)
 const isSaving = ref(false)
 const resultMessage = ref<{ success: boolean; message: string } | null>(null)
 
-// OAuth helpers
-const origin = window.location.origin
-const copied = ref<string | null>(null)
-
 const namedAccounts = computed(() => accounts.value.filter(account => account.alias))
 const selectedAccountInfo = computed(() => {
   return accounts.value.find(account => account.alias === selectedAccount.value)
     || accounts.value.find(account => account.is_default)
     || null
 })
-const hasOAuthFields = computed(() => props.schema.some(field => field.type === 'oauth_connect'))
 
 const accountRouteOptions = () => {
   return selectedAccount.value ? { query: { account: selectedAccount.value } } : undefined
 }
 
-const copyToClipboard = async (text: string, key: string) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    copied.value = key
-    setTimeout(() => {
-      if (copied.value === key) copied.value = null
-    }, 2000)
-  } catch {
-    // Fallback for older browsers
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    copied.value = key
-    setTimeout(() => {
-      if (copied.value === key) copied.value = null
-    }, 2000)
-  }
-}
-
-const fullRedirectUri = (field: ConfigField): string => {
-  return origin + (field.redirect_uri || '')
-}
-
-const oauthAuthorizeUrl = (field: ConfigField): string => {
-  const authorizeUrl = field.authorize_url || ''
-  if (!selectedAccount.value) {
-    return authorizeUrl
-  }
-
-  const separator = authorizeUrl.includes('?') ? '&' : '?'
-  return `${authorizeUrl}${separator}account=${encodeURIComponent(selectedAccount.value)}`
-}
-
-const connectOAuth = async (field: ConfigField) => {
-  isSaving.value = true
-  try {
-    const payload: Record<string, any> = { enabled: true }
-    for (const f of props.schema) {
-      if (f.type === 'oauth_connect') continue
-      payload[f.key] = formValues[f.key]
-    }
-    const response = await wayfinderFetch(updateConfig(props.integrationId), {
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, account: selectedAccount.value || null }),
-    })
-    if (response.ok) {
-      window.location.href = oauthAuthorizeUrl(field)
-    } else {
-      const error = await response.json()
-      resultMessage.value = { success: false, message: error.error || 'Failed to save before connecting' }
-    }
-  } catch (error) {
-    resultMessage.value = { success: false, message: 'Failed to save configuration.' }
-  } finally {
-    isSaving.value = false
-  }
-}
-
-const disconnectOAuth = async (field: ConfigField) => {
-  const accountLabel = selectedAccount.value || 'default account'
-  if (!window.confirm(`Disconnect ${props.meta?.name || props.integrationId} from the ${accountLabel}?`)) {
-    return
-  }
-
-  try {
-    const response = await wayfinderFetch(disconnect(props.integrationId, accountRouteOptions()))
-    if (response.ok) {
-      formValues[field.key] = ''
-    }
-  } catch (error) {
-    console.error('Failed to disconnect:', error)
-  }
-}
-
-// Check if a field should be visible based on its visible_when condition
-const isFieldVisible = (field: ConfigField): boolean => {
-  if (!field.visible_when) return true
-  const depValue = formValues[field.visible_when.field]
-  if (Array.isArray(field.visible_when.value)) {
-    return field.visible_when.value.includes(depValue)
-  }
-  return depValue === field.visible_when.value
-}
-
-// Check if required fields are filled (only visible ones)
+// Check if required fields are filled
 const hasRequiredFields = computed(() => {
   for (const field of props.schema) {
-    if (field.required && isFieldVisible(field) && !formValues[field.key]) {
+    if (field.required && !formValues[field.key]) {
       return false
     }
   }
@@ -513,7 +325,7 @@ const initForm = () => {
   }
 
   for (const field of props.schema) {
-    formValues[field.key] = field.default ?? (field.type === 'string_list' ? [] : '')
+    formValues[field.key] = field.type === 'string_list' ? [] : ''
     if (field.type === 'secret') {
       showSecrets[field.key] = false
     }
@@ -630,7 +442,6 @@ const testConnection = async () => {
   try {
     const payload: Record<string, any> = {}
     for (const field of props.schema) {
-      if (field.type === 'oauth_connect') continue
       payload[field.key] = formValues[field.key]
     }
 
@@ -660,7 +471,6 @@ const handleSave = async () => {
   try {
     const payload: Record<string, any> = { enabled: true }
     for (const field of props.schema) {
-      if (field.type === 'oauth_connect') continue
       payload[field.key] = formValues[field.key]
     }
 

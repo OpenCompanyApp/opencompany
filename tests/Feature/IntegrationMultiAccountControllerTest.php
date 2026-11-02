@@ -19,14 +19,14 @@ class IntegrationMultiAccountControllerTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)->putJson('/api/integrations/slack/config', [
-            'bot_token' => 'xoxb-default',
+            'api_key' => 'xoxb-default',
             'signing_secret' => 'default-secret',
             'enabled' => true,
         ])->assertOk();
 
         $this->actingAs($user)->putJson('/api/integrations/slack/config', [
             'account' => 'ops',
-            'bot_token' => 'xoxb-ops',
+            'api_key' => 'xoxb-ops',
             'signing_secret' => 'ops-secret',
             'enabled' => true,
         ])->assertOk();
@@ -41,8 +41,8 @@ class IntegrationMultiAccountControllerTest extends TestCase
             ->where('account_alias', 'ops')
             ->firstOrFail();
 
-        $this->assertSame('xoxb-default', $default->getConfigValue('bot_token'));
-        $this->assertSame('xoxb-ops', $ops->getConfigValue('bot_token'));
+        $this->assertSame('xoxb-default', $default->getConfigValue('api_key'));
+        $this->assertSame('xoxb-ops', $ops->getConfigValue('api_key'));
         $this->assertTrue($default->is_default);
         $this->assertFalse($ops->is_default);
     }
@@ -90,14 +90,14 @@ class IntegrationMultiAccountControllerTest extends TestCase
 
         $this->actingAs($user)->putJson('/api/integrations/slack/config', [
             'account' => 'Ops-Team',
-            'bot_token' => 'xoxb-ops',
+            'api_key' => 'xoxb-ops',
             'signing_secret' => 'ops-secret',
             'enabled' => true,
         ])->assertUnprocessable();
 
         $this->actingAs($user)->putJson('/api/integrations/slack/config', [
             'account' => str_repeat('a', 33),
-            'bot_token' => 'xoxb-ops',
+            'api_key' => 'xoxb-ops',
             'signing_secret' => 'ops-secret',
             'enabled' => true,
         ])->assertUnprocessable();

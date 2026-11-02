@@ -12,9 +12,9 @@ use App\Services\Integrations\IntegrationRuntime;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Mockery;
-use OpenCompany\IntegrationCore\Contracts\Tool as IntegrationTool;
-use OpenCompany\IntegrationCore\Script\ScriptDispatchException;
-use OpenCompany\IntegrationCore\Support\ToolResult;
+use App\Agents\Tools\External\Tool as IntegrationTool;
+use App\Domain\CodeMode\Script\ScriptDispatchException;
+use App\Agents\Tools\External\ToolResult;
 use Tests\TestCase;
 
 /**
@@ -62,24 +62,6 @@ class ScriptCallbackAuthorizationTest extends TestCase
 
         $this->assertSame('deny', $dispatch['decision']);
         $this->assertArrayNotHasKey('tool', $dispatch);
-    }
-
-    public function test_disabled_integration_is_denied_before_its_tool_is_constructed(): void
-    {
-        AgentPermission::create([
-            'id' => Str::uuid()->toString(),
-            'agent_id' => $this->agent->id,
-            'scope_type' => 'integration',
-            'scope_key' => 'coingecko',
-            'permission' => 'deny',
-            'requires_approval' => false,
-        ]);
-
-        $dispatch = $this->registry->resolveScriptToolForDispatch('coingecko_search_coins', $this->agent);
-
-        $this->assertSame('deny', $dispatch['decision']);
-        $this->assertArrayNotHasKey('tool', $dispatch);
-        $this->assertStringContainsString('not enabled', $dispatch['reason']);
     }
 
     public function test_approval_required_callback_preserves_exact_context_and_stops_before_dispatch(): void

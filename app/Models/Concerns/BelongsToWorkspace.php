@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 trait BelongsToWorkspace
 {
+    /** @return BelongsTo<Workspace, $this> */
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
@@ -21,6 +22,9 @@ trait BelongsToWorkspace
 
     /**
      * Scope query to the given workspace (or the current one).
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeForWorkspace(Builder $query, ?Workspace $workspace = null): Builder
     {

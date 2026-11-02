@@ -10,8 +10,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Contracts\Tool as LaravelTool;
 use Laravel\Ai\Tools\Request;
 use Mockery;
-use OpenCompany\IntegrationCore\Contracts\Tool as IntegrationTool;
-use OpenCompany\IntegrationCore\Support\ToolResult;
+use App\Agents\Tools\External\Tool as IntegrationTool;
+use App\Agents\Tools\External\ToolResult;
 use Tests\TestCase;
 
 /**

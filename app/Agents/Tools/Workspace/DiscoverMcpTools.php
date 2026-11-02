@@ -10,7 +10,7 @@ use App\Services\Mcp\McpToolProvider;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProviderRegistry;
 
 class DiscoverMcpTools implements Tool
 {

@@ -33,7 +33,6 @@ class ListAgents implements Tool
                 'agentType' => $agent->agent_type,
                 'brain' => $agent->brain,
                 'status' => $agent->status ?? 'unknown',
-                'behaviorMode' => $agent->behavior_mode ?? 'autonomous',
             ])->values()->toArray(), JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             return "Error: {$e->getMessage()}";

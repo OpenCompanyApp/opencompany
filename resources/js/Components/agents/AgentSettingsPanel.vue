@@ -83,28 +83,12 @@
       </div>
     </section>
 
-    <!-- Behavior Mode -->
+    <!-- Approval policy (behaviour modes were removed; see Product Direction pillar 5) -->
     <section>
-      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-3">Behavior Mode</h3>
+      <h3 class="text-sm font-medium text-neutral-900 dark:text-white mb-1">Approval Policy</h3>
       <div class="bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
-        <div class="flex gap-2">
-          <button
-            v-for="mode in behaviorModes"
-            :key="mode.value"
-            type="button"
-            :class="[
-              'flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors',
-              localSettings.behaviorMode === mode.value
-                ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900'
-                : 'bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-600'
-            ]"
-            @click="updateBehaviorMode(mode.value)"
-          >
-            {{ mode.label }}
-          </button>
-        </div>
-        <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-3">
-          {{ behaviorModeDescription }}
+        <p class="text-xs text-neutral-500 dark:text-neutral-400">
+          Reads run directly. Writes and external actions need human approval unless an admin grants this agent an exception for that exact tool.
         </p>
       </div>
     </section>
@@ -326,7 +310,7 @@ import { index as usersIndex } from '@/actions/App/Http/Controllers/Api/UserCont
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { wayfinderFetch } from '@/utils/wayfinder'
-import type { AgentSettings, AgentBehaviorMode } from '@/types'
+import type { AgentSettings } from '@/types'
 
 const { integrationsUrl, memberUrl } = useWorkspace()
 
@@ -475,36 +459,6 @@ const changeBrain = async (brainId: string) => {
   }
 }
 
-const behaviorModes: { value: AgentBehaviorMode; label: string }[] = [
-  { value: 'autonomous', label: 'Autonomous' },
-  { value: 'supervised', label: 'Supervised' },
-  { value: 'strict', label: 'Strict' },
-]
-
-const behaviorModeDescription = computed(() => {
-  switch (localSettings.value.behaviorMode) {
-    case 'autonomous':
-      return 'Agent works independently, only requesting approval for high-risk actions.'
-    case 'supervised':
-      return 'Agent requests approval for significant decisions and cost thresholds.'
-    case 'strict':
-      return 'Agent requires approval for all actions beyond basic operations.'
-    default:
-      return ''
-  }
-})
-
-const formatHour = (hour: number): string => {
-  const period = hour >= 12 ? 'PM' : 'AM'
-  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
-  return `${displayHour}:00 ${period}`
-}
-
-const updateBehaviorMode = (mode: AgentBehaviorMode) => {
-  localSettings.value.behaviorMode = mode
-  emitUpdate()
-}
-
 const loadAvailableManagers = async () => {
   try {
     const response = await wayfinderFetch(usersIndex())
@@ -549,5 +503,10 @@ const wakeUp = () => {
 
 const emitUpdate = () => {
   emit('update', { ...localSettings.value })
+}
+const formatHour = (hour: number): string => {
+  const period = hour >= 12 ? 'PM' : 'AM'
+  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+  return `${displayHour}:00 ${period}`
 }
 </script>

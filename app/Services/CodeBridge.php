@@ -6,8 +6,8 @@ use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
 use Bowerbird\RubyEngine\CapabilityFailure;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Script\ScriptBridge;
-use OpenCompany\IntegrationCore\Script\ScriptBridgeException;
+use App\Domain\CodeMode\Script\ScriptBridge;
+use App\Domain\CodeMode\Script\ScriptBridgeException;
 
 /**
  * OpenCompany's budgeted wrapper around the shared app.* script bridge.

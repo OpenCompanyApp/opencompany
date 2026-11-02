@@ -25,16 +25,10 @@ RUN case "$TARGETARCH" in \
 FROM --platform=$RUNTIME_PLATFORM composer:2 AS composer
 WORKDIR /app
 COPY composer.json composer.lock ./
-# Composer resolves OpenCompany integration packages from path repositories.
-# Provide clean repository archives as named contexts, never a sibling checkout
-# with its Git metadata, credentials, dependency cache, or build outputs:
-# docker build \
-#   --build-context integrations=/path/to/integrations-archive \
-#   --build-context astronomy=/path/to/astronomy-archive \
-#   --build-context chatogrator=/path/to/chatogrator-archive \
-#   -t opencompany .
-COPY --from=integrations / /integrations-mruby
-COPY --from=astronomy / ./tmp/astronomy-bundle-php
+# Provide the Chatogrator source as a clean archive context, never a sibling
+# checkout with its Git metadata, credentials, dependency cache, or build output:
+# docker build --build-context chatogrator=/path/to/chatogrator-archive -t opencompany .
+# (The integration package system and its path repositories were deleted.)
 # This path repository is intentionally preferred by Composer when it is
 # present. A named source context keeps its locked install independent of a
 # mutable VCS fallback and keeps local/CI dependency resolution identical.
@@ -83,12 +77,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libstdc++6 \
     supervisor \
     curl \
-    # Rendering tools
-    default-jre-headless \
+    # SVG to PNG rendering for the built-in render_svg tool
     librsvg2-bin \
-    # Node.js for Vega-Lite render script
-    nodejs \
-    npm \
     && docker-php-ext-install pdo_pgsql pgsql pcntl \
     && pecl install redis && docker-php-ext-enable redis \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -103,31 +93,6 @@ COPY --from=ruby_engine /engine/ruby-engine /usr/local/bin/ruby-engine
 ENV RUBY_ENGINE_BINARY=/usr/local/bin/ruby-engine
 RUN chmod 0555 /usr/local/bin/ruby-engine \
     && sha256sum /usr/local/bin/ruby-engine > /usr/local/share/ruby-engine.sha256
-
-# PlantUML JAR
-RUN curl -fsSL https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar \
-    -o /usr/local/share/plantuml.jar
-
-# These release assets are architecture-specific. Keep the final image runnable
-# on the ARM64 qualification context as well as the hosted AMD64 default.
-ARG TARGETARCH
-RUN case "$TARGETARCH" in \
-      amd64) typst_arch=x86_64-unknown-linux-musl ;; \
-      arm64) typst_arch=aarch64-unknown-linux-musl ;; \
-      *) echo "Unsupported Typst architecture: $TARGETARCH" >&2; exit 1 ;; \
-    esac \
-    && curl -fsSL "https://github.com/typst/typst/releases/latest/download/typst-${typst_arch}.tar.xz" \
-      | tar -xJ --strip-components=1 -C /usr/local/bin "typst-${typst_arch}/typst"
-
-# Mermaid renderer is a native Rust binary — no Chromium needed.
-ARG TARGETARCH
-RUN case "$TARGETARCH" in \
-      amd64) mmdr_arch=x86_64-unknown-linux-gnu ;; \
-      arm64) mmdr_arch=aarch64-unknown-linux-gnu ;; \
-      *) echo "Unsupported Mermaid renderer architecture: $TARGETARCH" >&2; exit 1 ;; \
-    esac \
-    && curl -fsSL "https://github.com/1jehuang/mermaid-rs-renderer/releases/latest/download/mmdr-${mmdr_arch}.tar.gz" \
-      | tar -xz -C /usr/local/bin
 
 # PHP config for production
 RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini \

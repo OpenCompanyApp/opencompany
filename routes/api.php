@@ -29,7 +29,6 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\IncomingIntegrationWebhookController;
-use App\Http\Controllers\Api\IntegrationCatalogController;
 use App\Http\Controllers\Api\IntegrationController;
 use App\Http\Controllers\Api\IntegrationWebhookController;
 use App\Http\Controllers\Api\InvitationController;
@@ -39,6 +38,7 @@ use App\Http\Controllers\Api\ListStatusController;
 use App\Http\Controllers\Api\ListTemplateController;
 use App\Http\Controllers\Api\McpServerController;
 use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\PolicyGrantController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
@@ -50,7 +50,6 @@ use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\TokenAnalyticsController;
 use App\Http\Controllers\Api\ToolCatalogController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\WorkloadController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Http\Controllers\Api\WorkspaceDiskController;
 use App\Http\Controllers\Api\WorkspaceMemberController;
@@ -255,13 +254,8 @@ Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
     // Activities
     Route::get('/activities', [ActivityController::class, 'index']);
 
-    // Workload
-    Route::get('/workload', [WorkloadController::class, 'index']);
-
     // Stats
-    Route::get('/stats', [StatsController::class, 'index']);
     Route::get('/stats/status', [StatsController::class, 'status']);
-    Route::patch('/stats', [StatsController::class, 'update']);
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);
@@ -362,8 +356,6 @@ Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
 
     // Integrations (read-only for all members)
     Route::get('/integrations', [IntegrationController::class, 'index']);
-    Route::get('/integrations/catalog', [IntegrationCatalogController::class, 'index']);
-    Route::get('/integrations/catalog/{slug}', [IntegrationCatalogController::class, 'show']);
     Route::get('/integrations/models', [IntegrationController::class, 'enabledModels']);
     Route::get('/integrations/all-providers', [IntegrationController::class, 'allProviders']);
     Route::get('/integrations/embedding-models', [IntegrationController::class, 'embeddingModels']);
@@ -385,6 +377,11 @@ Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
 
     // ─── Admin-only routes ────────────────────────────────────────
     Route::middleware('workspace.admin')->group(function () {
+        // Scoped policy grants (approval exceptions); admin-only.
+        Route::get('/agents/{agentId}/policy-grants', [PolicyGrantController::class, 'index']);
+        Route::post('/agents/{agentId}/policy-grants', [PolicyGrantController::class, 'store']);
+        Route::delete('/agents/{agentId}/policy-grants/{grantId}', [PolicyGrantController::class, 'destroy']);
+
         // Settings
         Route::get('/settings', [SettingController::class, 'index']);
         Route::patch('/settings', [SettingController::class, 'update']);
@@ -407,7 +404,6 @@ Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
         Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
         Route::post('/integrations/{id}/toggle', [IntegrationController::class, 'toggle']);
         Route::post('/integrations/{id}/test', [IntegrationController::class, 'testConnection']);
-        Route::post('/integrations/{id}/disconnect', [IntegrationController::class, 'disconnect']);
         Route::post('/integrations/{id}/fetch-models', [IntegrationController::class, 'fetchModels']);
         Route::post('/integrations/{id}/setup-webhook', [IntegrationController::class, 'setupWebhook']);
         Route::post('/integrations/telegram/health-check', [IntegrationController::class, 'telegramHealthCheck']);

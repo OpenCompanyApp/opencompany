@@ -50,12 +50,14 @@ class AgentPermissionServiceTest extends TestCase
 
     // ── Tool Permission Tests ──────────────────────────────────────────
 
-    public function test_tool_allowed_by_default_when_no_permissions(): void
+    // Policy model default: with no rules, a write is allowed but gated on
+    // approval (the old permissive `autonomous` default is gone).
+    public function test_write_tool_requires_approval_by_default_when_no_permissions(): void
     {
         $result = $this->service->resolveToolPermission($this->agent, 'send_message', 'write');
 
         $this->assertTrue($result['allowed']);
-        $this->assertFalse($result['requires_approval']);
+        $this->assertTrue($result['requires_approval']);
     }
 
     public function test_tool_denied_with_explicit_deny_record(): void
@@ -101,53 +103,31 @@ class AgentPermissionServiceTest extends TestCase
         $this->assertFalse($result['requires_approval']);
     }
 
-    // ── Behavior Mode Tests ────────────────────────────────────────────
+    // ── Policy Model Default Tests ─────────────────────────────────────
 
-    public function test_supervised_mode_requires_approval_for_write_tools(): void
+    // Only declared reads run without approval by default.
+    public function test_default_policy_runs_read_tools_without_approval(): void
     {
-        $this->agent->update(['behavior_mode' => 'supervised']);
-
-        $result = $this->service->resolveToolPermission($this->agent, 'send_message', 'write');
-
-        $this->assertTrue($result['allowed']);
-        $this->assertTrue($result['requires_approval']);
-    }
-
-    public function test_supervised_mode_no_approval_for_read_tools(): void
-    {
-        $this->agent->update(['behavior_mode' => 'supervised']);
-
         $result = $this->service->resolveToolPermission($this->agent, 'list_channels', 'read');
 
         $this->assertTrue($result['allowed']);
         $this->assertFalse($result['requires_approval']);
     }
 
-    public function test_strict_mode_requires_approval_for_all_tools(): void
+    // Writes, actions and untyped tools must not slip past the default gate.
+    public function test_default_policy_requires_approval_for_non_read_types(): void
     {
-        $this->agent->update(['behavior_mode' => 'strict']);
-
-        $readResult = $this->service->resolveToolPermission($this->agent, 'list_channels', 'read');
-        $writeResult = $this->service->resolveToolPermission($this->agent, 'send_message', 'write');
-
-        $this->assertTrue($readResult['requires_approval']);
-        $this->assertTrue($writeResult['requires_approval']);
+        foreach (['write', 'action', 'unknown'] as $type) {
+            $result = $this->service->resolveToolPermission($this->agent, 'send_message', $type);
+            $this->assertTrue($result['allowed'], "Type {$type} should be allowed");
+            $this->assertTrue($result['requires_approval'], "Type {$type} should require approval by default");
+        }
     }
 
-    public function test_autonomous_mode_no_extra_approval(): void
+    // An explicit admin rule wins over the default in both directions.
+    public function test_explicit_db_record_overrides_default_policy(): void
     {
-        $this->agent->update(['behavior_mode' => 'autonomous']);
-
-        $result = $this->service->resolveToolPermission($this->agent, 'send_message', 'write');
-
-        $this->assertTrue($result['allowed']);
-        $this->assertFalse($result['requires_approval']);
-    }
-
-    public function test_explicit_db_record_overrides_behavior_mode(): void
-    {
-        // Case 1: DB says no approval — overrides supervised mode
-        $this->agent->update(['behavior_mode' => 'supervised']);
+        // Case 1: DB says no approval — waives the default write gate.
         $this->createPermission([
             'scope_type' => 'tool',
             'scope_key' => 'send_message',
@@ -158,23 +138,21 @@ class AgentPermissionServiceTest extends TestCase
         $result = $this->service->resolveToolPermission($this->agent, 'send_message', 'write');
         $this->assertFalse($result['requires_approval']);
 
-        // Case 2: DB says approval required — respected even in autonomous mode
-        $this->agent->update(['behavior_mode' => 'autonomous']);
+        // Case 2: DB says approval required — respected even for a read.
         $this->createPermission([
             'scope_type' => 'tool',
-            'scope_key' => 'create_document',
+            'scope_key' => 'list_channels',
             'permission' => 'allow',
             'requires_approval' => true,
         ]);
 
-        $result = $this->service->resolveToolPermission($this->agent, 'create_document', 'write');
+        $result = $this->service->resolveToolPermission($this->agent, 'list_channels', 'read');
         $this->assertTrue($result['requires_approval']);
     }
 
+    // Control-flow tools are exempt so the runtime can always wait/record.
     public function test_system_tools_never_require_approval(): void
     {
-        $this->agent->update(['behavior_mode' => 'strict']);
-
         $exemptTools = [
             'wait_for_approval',
             'wait',
@@ -188,20 +166,20 @@ class AgentPermissionServiceTest extends TestCase
         foreach ($exemptTools as $tool) {
             $result = $this->service->resolveToolPermission($this->agent, $tool, 'write');
             $this->assertTrue($result['allowed'], "Tool {$tool} should be allowed");
-            $this->assertFalse($result['requires_approval'], "Tool {$tool} should never require approval, even in strict mode");
+            $this->assertFalse($result['requires_approval'], "Tool {$tool} should never require approval");
         }
     }
 
-    public function test_deny_overrides_behavior_mode(): void
+    // An explicit deny wins over everything, including reads.
+    public function test_deny_overrides_default_policy(): void
     {
-        $this->agent->update(['behavior_mode' => 'autonomous']);
         $this->createPermission([
             'scope_type' => 'tool',
-            'scope_key' => 'delete_channel',
+            'scope_key' => 'list_channels',
             'permission' => 'deny',
         ]);
 
-        $result = $this->service->resolveToolPermission($this->agent, 'delete_channel', 'write');
+        $result = $this->service->resolveToolPermission($this->agent, 'list_channels', 'read');
 
         $this->assertFalse($result['allowed']);
     }
@@ -254,10 +232,9 @@ class AgentPermissionServiceTest extends TestCase
     {
         // Enable both integrations at workspace level
         $this->enableWorkspaceIntegration('telegram');
-        $this->enableWorkspaceIntegration('plausible');
 
-        // When an agent has integration records for known apps,
-        // new workspace-enabled integrations without records should still be enabled.
+        // When an agent has integration records for known apps, the
+        // workspace-enabled app-owned integrations stay enabled.
         $this->createPermission([
             'scope_type' => 'integration',
             'scope_key' => 'telegram',
@@ -267,8 +244,6 @@ class AgentPermissionServiceTest extends TestCase
         $result = $this->service->getEnabledIntegrations($this->agent);
 
         $this->assertContains('telegram', $result);
-        // plausible has no agent-level record but is workspace-enabled, so it should be included
-        $this->assertContains('plausible', $result);
     }
 
     public function test_explicitly_allowed_integration_enabled(): void
@@ -474,41 +449,14 @@ class AgentPermissionServiceTest extends TestCase
         $this->assertFalse($result['allowed']);
     }
 
-    public function test_can_contact_agent_default_autonomous(): void
+    // Peers outside the manager chain need approval by default: contacting
+    // creates work for another agent.
+    public function test_can_contact_agent_default_requires_approval(): void
     {
         $target = User::factory()->create([
             'type' => 'agent',
             'brain' => 'anthropic:claude-sonnet-4-5-20250929',
         ]);
-        $this->agent->update(['behavior_mode' => 'autonomous']);
-
-        $result = $this->service->canContactAgent($this->agent, $target);
-
-        $this->assertTrue($result['allowed']);
-        $this->assertFalse($result['requires_approval']);
-    }
-
-    public function test_can_contact_agent_default_supervised(): void
-    {
-        $target = User::factory()->create([
-            'type' => 'agent',
-            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
-        ]);
-        $this->agent->update(['behavior_mode' => 'supervised']);
-
-        $result = $this->service->canContactAgent($this->agent, $target);
-
-        $this->assertTrue($result['allowed']);
-        $this->assertTrue($result['requires_approval']);
-    }
-
-    public function test_can_contact_agent_default_strict(): void
-    {
-        $target = User::factory()->create([
-            'type' => 'agent',
-            'brain' => 'anthropic:claude-sonnet-4-5-20250929',
-        ]);
-        $this->agent->update(['behavior_mode' => 'strict']);
 
         $result = $this->service->canContactAgent($this->agent, $target);
 

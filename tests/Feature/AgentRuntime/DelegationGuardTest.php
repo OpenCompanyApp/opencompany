@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
+use Tests\Concerns\GrantsAgentPermissions;
 use Tests\TestCase;
 
 /**
@@ -22,6 +23,7 @@ use Tests\TestCase;
  */
 class DelegationGuardTest extends TestCase
 {
+    use GrantsAgentPermissions;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -34,7 +36,12 @@ class DelegationGuardTest extends TestCase
 
     private function agent(): User
     {
-        return User::factory()->agent()->create(['status' => 'idle']);
+        $agent = User::factory()->agent()->create(['status' => 'idle']);
+        // Mechanics test: the policy model requires approval for writes by
+        // default (peer contact); grant explicitly so the depth guard is hit.
+        $this->allowAgentContact($agent);
+
+        return $agent;
     }
 
     private function contact(User $from, User $to, ?string $currentTaskId, string $action = 'delegate'): string

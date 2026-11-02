@@ -3,7 +3,10 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
     "license": "AGPL-3.0-only",
     "repositories": [
         {
@@ -13,49 +16,20 @@
                 "version": "0.1.0-rc.1",
                 "type": "library",
                 "license": "Apache-2.0",
-                "require": {"php": "^8.4"},
-                "autoload": {"psr-4": {"Bowerbird\\RubyEngine\\": "php/src/"}},
+                "require": {
+                    "php": "^8.4"
+                },
+                "autoload": {
+                    "psr-4": {
+                        "Bowerbird\\RubyEngine\\": "php/src/"
+                    }
+                },
                 "dist": {
                     "type": "tar",
                     "url": "https://github.com/OpenCompanyApp/bowerbird-ruby-engine/releases/download/v0.1.0-rc.1/bowerbird-ruby-engine-v0.1.0-rc.1-php-adapter.tar.gz",
                     "reference": "772e2b46c37a4bcf4cffbc57e6d9214493c11473",
                     "shasum": "8a842df93086c4d7b71d56532ae08daa8cd13422"
                 }
-            }
-        },
-        {
-            "type": "path",
-            "url": "../integrations-mruby/catalog",
-            "options": {
-                "symlink": false
-            }
-        },
-        {
-            "type": "path",
-            "url": "../integrations-mruby/bundle",
-            "options": {
-                "symlink": false
-            }
-        },
-        {
-            "type": "path",
-            "url": "../integrations-mruby/core",
-            "options": {
-                "symlink": false
-            }
-        },
-        {
-            "type": "path",
-            "url": "../integrations-mruby/packages/*",
-            "options": {
-                "symlink": false
-            }
-        },
-        {
-            "type": "path",
-            "url": "tmp/astronomy-bundle-php",
-            "options": {
-                "symlink": false
             }
         },
         {
@@ -69,10 +43,6 @@
         {
             "type": "vcs",
             "url": "https://github.com/OpenCompanyApp/chatogrator.git"
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/OpenCompanyApp/astronomy-bundle-php"
         }
     ],
     "require": {
@@ -88,24 +58,6 @@
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1",
         "opencompany/chatogrator": "^1.1",
-        "opencompanyapp/astronomy-bundle": "@dev",
-        "opencompanyapp/integration-aircall": "dev-main",
-        "opencompanyapp/integration-bundle": "dev-main",
-        "opencompanyapp/integration-catalog": "dev-main",
-        "opencompanyapp/integration-celestial": "@dev",
-        "opencompanyapp/integration-clickup": "@dev",
-        "opencompanyapp/integration-coingecko": "@dev",
-        "opencompanyapp/integration-core": "@dev",
-        "opencompanyapp/integration-exchangerate": "@dev",
-        "opencompanyapp/integration-google": "@dev",
-        "opencompanyapp/integration-mermaid": "@dev",
-        "opencompanyapp/integration-plantuml": "@dev",
-        "opencompanyapp/integration-plausible": "@dev",
-        "opencompanyapp/integration-ticktick": "@dev",
-        "opencompanyapp/integration-trustmrr": "@dev",
-        "opencompanyapp/integration-typst": "@dev",
-        "opencompanyapp/integration-vegalite": "@dev",
-        "opencompanyapp/integration-worldbank": "@dev",
         "pgvector/pgvector": "^0.2.2"
     },
     "require-dev": {

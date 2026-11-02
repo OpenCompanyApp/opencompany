@@ -6,7 +6,6 @@ import {
   automation,
   calendar,
   chat,
-  dashboard,
   docs,
   files,
   integrations,
@@ -98,7 +97,6 @@ export const useWorkspace = () => {
     router.visit(workspaceRoute(route, params, routeOptions).url, visitOptions)
   }
 
-  const dashboardUrl = (options?: RouteQueryOptions) => dashboard.url(workspaceRouteParams(), options)
   const chatUrl = (options?: RouteQueryOptions) => chat.url(workspaceRouteParams(), options)
   const tasksUrl = (options?: RouteQueryOptions) => tasks.url(workspaceRouteParams(), options)
   const listsUrl = (options?: RouteQueryOptions) => lists.url(workspaceRouteParams(), options)
@@ -128,10 +126,11 @@ export const useWorkspace = () => {
   const developerCodeConsoleUrl = (options?: RouteQueryOptions) => developerCodeConsoleRoute.url(workspaceRouteParams(), options)
 
   /**
-   * Switch to a different workspace.
+   * Switch to a different workspace, landing on its chat (the workspace home
+   * since the Dashboard page was removed).
    */
   const switchWorkspace = (slug: string) => {
-    router.visit(dashboard.url(slug))
+    router.visit(chat.url(slug))
   }
 
   return {
@@ -144,7 +143,6 @@ export const useWorkspace = () => {
     workspaceRoute,
     workspaceRouteUrl,
     visitWorkspaceRoute,
-    dashboardUrl,
     chatUrl,
     tasksUrl,
     listsUrl,

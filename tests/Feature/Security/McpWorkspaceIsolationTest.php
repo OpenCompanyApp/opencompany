@@ -8,7 +8,7 @@ use App\Models\Workspace;
 use App\Services\Mcp\McpServerRegistrar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProviderRegistry;
 use Tests\TestCase;
 
 /**

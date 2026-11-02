@@ -511,12 +511,6 @@ parameters:
 			path: app/Agents/Tools/Providers/WorkspaceToolProvider.php
 
 		-
-			message: '#^Class App\\Agents\\Tools\\Workspace\\GetIntegrationConfig does not have a constructor and must be instantiated without any parameters\.$#'
-			identifier: new.noConstructor
-			count: 1
-			path: app/Agents/Tools/Providers/WorkspaceToolProvider.php
-
-		-
 			message: '#^Property App\\Agents\\Tools\\Tables\\AddTableColumn\:\:\$agent is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
@@ -709,12 +703,6 @@ parameters:
 			path: app/Agents/Tools/Workspace/GetAutomation.php
 
 		-
-			message: '#^Property App\\Agents\\Tools\\Workspace\\GetIntegrationSetup\:\:\$agent is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Workspace/GetIntegrationSetup.php
-
-		-
 			message: '#^Property App\\Agents\\Tools\\Workspace\\ListAutomations\:\:\$agent is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
@@ -809,12 +797,6 @@ parameters:
 			identifier: property.onlyWritten
 			count: 1
 			path: app/Agents/Tools/Workspace/UpdateAutomationRule.php
-
-		-
-			message: '#^Property App\\Agents\\Tools\\Workspace\\UpdateIntegrationConfig\:\:\$agent is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Workspace/UpdateIntegrationConfig.php
 
 		-
 			message: '#^Property App\\Agents\\Tools\\Workspace\\UpdateItemTemplate\:\:\$agent is never read, only written\.$#'
@@ -991,34 +973,10 @@ parameters:
 			path: app/Domain/Ai/Runtime/OpenRouterBillingGateway.php
 
 		-
-			message: '#^Method App\\Domain\\Ai\\Usage\\LlmUsageEvent\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Domain/Ai/Usage/LlmUsageEvent.php
-
-		-
-			message: '#^Method App\\Domain\\Ai\\Usage\\LlmUsageEvent\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Domain/Ai/Usage/LlmUsageEvent.php
-
-		-
-			message: '#^Method App\\Domain\\Ai\\Usage\\LlmUsageEvent\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Domain/Ai/Usage/LlmUsageEvent.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Domain/Ai/Usage/UsageRecorder.php
-
-		-
-			message: '#^Method App\\Domain\\Authorization\\Application\\AgentPermissionResolver\:\:integrationProviders\(\) should return array\<int, object\> but returns array\<string, OpenCompany\\IntegrationCore\\Contracts\\ToolProvider\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Domain/Authorization/Application/AgentPermissionResolver.php
 
 		-
 			message: '#^Unable to resolve the template type T in call to function array_values$#'
@@ -1093,12 +1051,6 @@ parameters:
 			path: app/Domain/Calendar/Application/ManageCalendarEvents.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramApprovalRenderer.php
-
-		-
 			message: '#^Cannot call method timezone\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -1109,12 +1061,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 5
 			path: app/Domain/Chat/Telegram/Application/TelegramApprovalRenderer.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
 
 		-
 			message: '#^Call to function is_array\(\) with \*NEVER\* will always evaluate to true\.$#'
@@ -1276,12 +1222,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
 			identifier: property.notFound
 			count: 20
-			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Workspace\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Domain/Chat/Telegram/Application/TelegramNotificationRouter.php
 
 		-
@@ -1516,18 +1456,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
 			identifier: property.notFound
 			count: 6
-			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
 
 		-
@@ -1827,12 +1755,6 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$array \(array\{0\?\: non\-falsy\-string\}\) of array_values is already a list, call has no effect\.$#'
 			identifier: arrayValues.list
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
-
-		-
-			message: '#^Parameter \#3 \$workspace of method App\\Domain\\Chat\\Telegram\\Application\\TelegramWebhookPipeline\:\:processPayload\(\) expects App\\Models\\Workspace, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
 
@@ -3283,12 +3205,6 @@ parameters:
 			path: app/Http/Controllers/Api/CalendarEventController.php
 
 		-
-			message: '#^Parameter \#1 \$workspace of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\CalendarEvent\>\:\:forWorkspace\(\) expects App\\Models\\Workspace\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/Api/CalendarFeedController.php
-
-		-
 			message: '#^Unable to resolve the template type TKey in call to function collect$#'
 			identifier: argument.templateType
 			count: 1
@@ -3311,24 +3227,6 @@ parameters:
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Http/Controllers/Api/IncomingIntegrationWebhookController.php
-
-		-
-			message: '#^Offset ''category'' on non\-empty\-array\<string, mixed\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/Api/IntegrationCatalogController.php
-
-		-
-			message: '#^Offset ''icon'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\}\|array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/Api/IntegrationCatalogController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/Api/IntegrationCatalogController.php
 
 		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
@@ -3751,24 +3649,6 @@ parameters:
 			path: app/Listeners/SyncToChat.php
 
 		-
-			message: '#^Method App\\Models\\Activity\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Activity.php
-
-		-
-			message: '#^Method App\\Models\\Activity\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Activity.php
-
-		-
-			message: '#^Method App\\Models\\Activity\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Activity.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3781,103 +3661,13 @@ parameters:
 			path: app/Models/AgentRunRecord.php
 
 		-
-			message: '#^Method App\\Models\\AgentRunRecord\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AgentRunRecord.php
-
-		-
-			message: '#^Method App\\Models\\AgentRunRecord\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AgentRunRecord.php
-
-		-
 			message: '#^Method App\\Models\\AgentRunRecord\:\:scopeOpen\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/AgentRunRecord.php
 
 		-
-			message: '#^Method App\\Models\\AgentRunRecord\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AgentRunRecord.php
-
-		-
-			message: '#^Method App\\Models\\AgentToolExecution\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AgentToolExecution.php
-
-		-
-			message: '#^Method App\\Models\\AgentToolExecution\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AgentToolExecution.php
-
-		-
-			message: '#^Method App\\Models\\AgentToolExecution\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AgentToolExecution.php
-
-		-
-			message: '#^Method App\\Models\\AiGatewayApiKey\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AiGatewayApiKey.php
-
-		-
-			message: '#^Method App\\Models\\AiGatewayApiKey\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AiGatewayApiKey.php
-
-		-
-			message: '#^Method App\\Models\\AiGatewayApiKey\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AiGatewayApiKey.php
-
-		-
-			message: '#^Method App\\Models\\AppSetting\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AppSetting.php
-
-		-
-			message: '#^Method App\\Models\\AppSetting\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AppSetting.php
-
-		-
-			message: '#^Method App\\Models\\AppSetting\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/AppSetting.php
-
-		-
 			message: '#^Class App\\Models\\ApprovalRequest uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ApprovalRequest.php
-
-		-
-			message: '#^Method App\\Models\\ApprovalRequest\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ApprovalRequest.php
-
-		-
-			message: '#^Method App\\Models\\ApprovalRequest\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ApprovalRequest.php
-
-		-
-			message: '#^Method App\\Models\\ApprovalRequest\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/ApprovalRequest.php
@@ -3895,244 +3685,10 @@ parameters:
 			path: app/Models/ApprovalRequest.php
 
 		-
-			message: '#^Method App\\Models\\Automation\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Automation.php
-
-		-
-			message: '#^Method App\\Models\\Automation\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Automation.php
-
-		-
-			message: '#^Method App\\Models\\Automation\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Automation.php
-
-		-
-			message: '#^Method App\\Models\\CalendarEvent\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/CalendarEvent.php
-
-		-
-			message: '#^Method App\\Models\\CalendarEvent\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/CalendarEvent.php
-
-		-
-			message: '#^Method App\\Models\\CalendarEvent\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/CalendarEvent.php
-
-		-
-			message: '#^Method App\\Models\\CalendarFeed\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/CalendarFeed.php
-
-		-
-			message: '#^Method App\\Models\\CalendarFeed\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/CalendarFeed.php
-
-		-
-			message: '#^Method App\\Models\\CalendarFeed\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/CalendarFeed.php
-
-		-
-			message: '#^Method App\\Models\\Channel\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Channel.php
-
-		-
-			message: '#^Method App\\Models\\Channel\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Channel.php
-
-		-
-			message: '#^Method App\\Models\\Channel\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Channel.php
-
-		-
-			message: '#^Method App\\Models\\ConversationSummary\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ConversationSummary.php
-
-		-
-			message: '#^Method App\\Models\\ConversationSummary\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ConversationSummary.php
-
-		-
-			message: '#^Method App\\Models\\ConversationSummary\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ConversationSummary.php
-
-		-
-			message: '#^Method App\\Models\\DataTable\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/DataTable.php
-
-		-
-			message: '#^Method App\\Models\\DataTable\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/DataTable.php
-
-		-
-			message: '#^Method App\\Models\\DataTable\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/DataTable.php
-
-		-
-			message: '#^Method App\\Models\\DirectMessage\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/DirectMessage.php
-
-		-
-			message: '#^Method App\\Models\\DirectMessage\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/DirectMessage.php
-
-		-
-			message: '#^Method App\\Models\\DirectMessage\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/DirectMessage.php
-
-		-
-			message: '#^Method App\\Models\\Document\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Document.php
-
-		-
-			message: '#^Method App\\Models\\Document\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Document.php
-
-		-
-			message: '#^Method App\\Models\\Document\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Document.php
-
-		-
-			message: '#^Method App\\Models\\DocumentChunk\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/DocumentChunk.php
-
-		-
-			message: '#^Method App\\Models\\DocumentChunk\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/DocumentChunk.php
-
-		-
-			message: '#^Method App\\Models\\DocumentChunk\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/DocumentChunk.php
-
-		-
-			message: '#^Method App\\Models\\EmbeddingCache\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EmbeddingCache.php
-
-		-
-			message: '#^Method App\\Models\\EmbeddingCache\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EmbeddingCache.php
-
-		-
-			message: '#^Method App\\Models\\EmbeddingCache\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EmbeddingCache.php
-
-		-
-			message: '#^Method App\\Models\\IntegrationSetting\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/IntegrationSetting.php
-
-		-
-			message: '#^Method App\\Models\\IntegrationSetting\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/IntegrationSetting.php
-
-		-
-			message: '#^Method App\\Models\\IntegrationSetting\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/IntegrationSetting.php
-
-		-
 			message: '#^Class App\\Models\\IntegrationWebhook uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/IntegrationWebhook.php
-
-		-
-			message: '#^Method App\\Models\\IntegrationWebhook\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/IntegrationWebhook.php
-
-		-
-			message: '#^Method App\\Models\\IntegrationWebhook\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/IntegrationWebhook.php
-
-		-
-			message: '#^Method App\\Models\\IntegrationWebhook\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/IntegrationWebhook.php
-
-		-
-			message: '#^Method App\\Models\\ListAutomationRule\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListAutomationRule.php
-
-		-
-			message: '#^Method App\\Models\\ListAutomationRule\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListAutomationRule.php
-
-		-
-			message: '#^Method App\\Models\\ListAutomationRule\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListAutomationRule.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ListItem\:\:\$workspace_id\.$#'
@@ -4141,194 +3697,14 @@ parameters:
 			path: app/Models/ListItem.php
 
 		-
-			message: '#^Method App\\Models\\ListItem\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListItem.php
-
-		-
-			message: '#^Method App\\Models\\ListItem\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListItem.php
-
-		-
-			message: '#^Method App\\Models\\ListItem\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListItem.php
-
-		-
-			message: '#^Method App\\Models\\ListStatus\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListStatus.php
-
-		-
-			message: '#^Method App\\Models\\ListStatus\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListStatus.php
-
-		-
-			message: '#^Method App\\Models\\ListStatus\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListStatus.php
-
-		-
-			message: '#^Method App\\Models\\ListTemplate\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListTemplate.php
-
-		-
-			message: '#^Method App\\Models\\ListTemplate\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListTemplate.php
-
-		-
-			message: '#^Method App\\Models\\ListTemplate\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ListTemplate.php
-
-		-
-			message: '#^Method App\\Models\\McpServer\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/McpServer.php
-
-		-
-			message: '#^Method App\\Models\\McpServer\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/McpServer.php
-
-		-
-			message: '#^Method App\\Models\\McpServer\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/McpServer.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Notification.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Task\:\:\$workspace_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/Task.php
 
 		-
-			message: '#^Method App\\Models\\Task\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Task.php
-
-		-
-			message: '#^Method App\\Models\\Task\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Task.php
-
-		-
-			message: '#^Method App\\Models\\Task\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Task.php
-
-		-
-			message: '#^Method App\\Models\\TelegramConversation\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramConversation.php
-
-		-
-			message: '#^Method App\\Models\\TelegramConversation\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramConversation.php
-
-		-
-			message: '#^Method App\\Models\\TelegramConversation\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramConversation.php
-
-		-
-			message: '#^Method App\\Models\\TelegramDelivery\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramDelivery.php
-
-		-
-			message: '#^Method App\\Models\\TelegramDelivery\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramDelivery.php
-
-		-
-			message: '#^Method App\\Models\\TelegramDelivery\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramDelivery.php
-
-		-
-			message: '#^Method App\\Models\\TelegramIntegrationProfile\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramIntegrationProfile.php
-
-		-
-			message: '#^Method App\\Models\\TelegramIntegrationProfile\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramIntegrationProfile.php
-
-		-
-			message: '#^Method App\\Models\\TelegramIntegrationProfile\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramIntegrationProfile.php
-
-		-
 			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
 			identifier: function.impossibleType
-			count: 1
-			path: app/Models/TelegramInteraction.php
-
-		-
-			message: '#^Method App\\Models\\TelegramInteraction\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramInteraction.php
-
-		-
-			message: '#^Method App\\Models\\TelegramInteraction\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramInteraction.php
-
-		-
-			message: '#^Method App\\Models\\TelegramInteraction\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
 			count: 1
 			path: app/Models/TelegramInteraction.php
 
@@ -4351,42 +3727,6 @@ parameters:
 			path: app/Models/TelegramInteraction.php
 
 		-
-			message: '#^Method App\\Models\\TelegramSubscription\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramSubscription.php
-
-		-
-			message: '#^Method App\\Models\\TelegramSubscription\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramSubscription.php
-
-		-
-			message: '#^Method App\\Models\\TelegramSubscription\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramSubscription.php
-
-		-
-			message: '#^Method App\\Models\\TelegramUpdateReceipt\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramUpdateReceipt.php
-
-		-
-			message: '#^Method App\\Models\\TelegramUpdateReceipt\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramUpdateReceipt.php
-
-		-
-			message: '#^Method App\\Models\\TelegramUpdateReceipt\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/TelegramUpdateReceipt.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
 			identifier: property.notFound
 			count: 1
@@ -4403,42 +3743,6 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\VfsOperationEvent\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/VfsOperationEvent.php
-
-		-
-			message: '#^Method App\\Models\\VfsOperationEvent\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/VfsOperationEvent.php
-
-		-
-			message: '#^Method App\\Models\\VfsOperationEvent\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/VfsOperationEvent.php
-
-		-
-			message: '#^Method App\\Models\\WebUsageEvent\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/WebUsageEvent.php
-
-		-
-			message: '#^Method App\\Models\\WebUsageEvent\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/WebUsageEvent.php
-
-		-
-			message: '#^Method App\\Models\\WebUsageEvent\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/WebUsageEvent.php
 
 		-
 			message: '#^Method App\\Models\\Workspace\:\:admins\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
@@ -4519,46 +3823,10 @@ parameters:
 			path: app/Models/WorkspaceDisk.php
 
 		-
-			message: '#^Method App\\Models\\WorkspaceDisk\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/WorkspaceDisk.php
-
-		-
-			message: '#^Method App\\Models\\WorkspaceDisk\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/WorkspaceDisk.php
-
-		-
 			message: '#^Method App\\Models\\WorkspaceDisk\:\:toSafeArray\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Models/WorkspaceDisk.php
-
-		-
-			message: '#^Method App\\Models\\WorkspaceDisk\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/WorkspaceDisk.php
-
-		-
-			message: '#^Method App\\Models\\WorkspaceFile\:\:scopeForWorkspace\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/WorkspaceFile.php
-
-		-
-			message: '#^Method App\\Models\\WorkspaceFile\:\:scopeForWorkspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/WorkspaceFile.php
-
-		-
-			message: '#^Method App\\Models\\WorkspaceFile\:\:workspace\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/WorkspaceFile.php
 
 		-
 			message: '#^Property App\\Providers\\AppServiceProvider\:\:\$codeExecutionBudgetFactories with generic class WeakMap does not specify its types\: TKey, TValue$#'
@@ -4687,84 +3955,6 @@ parameters:
 			path: app/Services/Integrations/ConfigSchemaNormalizer.php
 
 		-
-			message: '#^Method App\\Services\\Integrations\\IntegrationCatalog\:\:all\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\<mixed, mixed\>\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Integrations/IntegrationCatalog.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Integrations/IntegrationCatalog.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Integrations/IntegrationCatalog.php
-
-		-
-			message: '#^Call to an undefined method OpenCompany\\IntegrationCore\\Contracts\\ConfigurableIntegration\:\:appName\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Services/Integrations/IntegrationConfigResolver.php
-
-		-
-			message: '#^Offset ''category'' on array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationConfigResolver.php
-
-		-
-			message: '#^Offset ''icon'' on array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationConfigResolver.php
-
-		-
-			message: '#^Call to an undefined method OpenCompany\\IntegrationCore\\Contracts\\ConfigurableIntegration\:\:appName\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Services/Integrations/IntegrationDirectory.php
-
-		-
-			message: '#^Offset ''category'' on array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationDirectory.php
-
-		-
-			message: '#^Offset ''description'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationDirectory.php
-
-		-
-			message: '#^Offset ''icon'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationDirectory.php
-
-		-
-			message: '#^Offset ''icon'' on array\{name\: string, description\: string, icon\: string, logo\?\: string, category\: string, badge\?\: string, docs_url\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationDirectory.php
-
-		-
-			message: '#^Offset ''label'' on array\{label\: string, description\: string, icon\: string, logo\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationDirectory.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Services/Integrations/IntegrationDirectory.php
-
-		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -4799,12 +3989,6 @@ parameters:
 			identifier: argument.templateType
 			count: 1
 			path: app/Services/Mcp/McpConfigImporter.php
-
-		-
-			message: '#^Method App\\Services\\Mcp\\McpProxyTool\:\:parameters\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 3
-			path: app/Services/Mcp/McpProxyTool.php
 
 		-
 			message: '#^Offset 1 on array\{list\<string\>, list\<string\>\} on left side of \?\? always exists and is not nullable\.$#'

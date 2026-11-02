@@ -8,14 +8,14 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool as LaravelAiTool;
 use Laravel\Ai\Tools\Request;
-use OpenCompany\IntegrationCore\Contracts\Tool;
-use OpenCompany\IntegrationCore\Support\ToolResult;
+use App\Agents\Tools\External\Tool;
+use App\Agents\Tools\External\ToolResult;
 
 /**
- * Laravel AI and integration-core adapter around one discovered MCP tool.
+ * Laravel AI and external-tool (App\Agents\Tools\External) adapter around one discovered MCP tool.
  *
  * The proxy can be executed from two paths: Laravel AI tool calls (`handle`) and
- * integration-core connection tests (`execute`). When an agent is present, calls
+ * external-tool connection tests (`execute`). When an agent is present, calls
  * must go through McpRuntime so workspace permission checks are enforced before
  * the remote server is contacted.
  */

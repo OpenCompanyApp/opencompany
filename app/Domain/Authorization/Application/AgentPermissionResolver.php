@@ -10,21 +10,21 @@ use App\Models\IntegrationSetting;
 use App\Models\User;
 use App\Models\WorkspaceFile;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProviderRegistry;
 
 /**
  * Resolves the effective permissions for one agent.
  *
  * This domain service owns OpenCompany's app-local authorization compatibility
  * rules. It combines persisted atomic permission rows, workspace-level
- * integration enablement, behavior-mode defaults, manager hierarchy, file-tree
- * grants, and access-request creation. Package metadata may contribute tool and
- * integration catalogs, but the final OpenCompany policy is evaluated here.
+ * integration enablement, scoped policy grants, the approval-by-default policy,
+ * manager hierarchy, file-tree grants, and access-request creation. The final
+ * OpenCompany policy is evaluated here (agent behaviour modes were deleted).
  */
 class AgentPermissionResolver
 {
     /**
-     * Tools that should never require approval regardless of behavior mode or DB settings.
+     * Tools that should never require approval regardless of policy defaults or DB settings.
      *
      * These are system/control-flow tools where requiring approval would make
      * the runtime unable to wait for or record approval decisions.
@@ -43,7 +43,7 @@ class AgentPermissionResolver
     /**
      * Built-in tools that mutate external systems or widen the workspace's
      * external exposure/trust surface. They require approval by default in
-     * every behavior mode (see resolveToolPermission()).
+     * every agent (see resolveToolPermission()).
      *
      * - MCP server management: adds/changes/removes remote tool providers.
      * - Integration config/webhooks/identity links: change credentials,
@@ -70,17 +70,11 @@ class AgentPermissionResolver
     ];
 
     /**
-     * Process-wide slug index for package integration tools.
-     *
-     * @var array{key: string, tools: array<string, bool>}|null
-     */
-    private static ?array $externalToolIndex = null;
-
-    /**
      * Resolve the final permission for a tool.
      *
-     * Priority: explicit deny, exempt system tools, explicit per-agent row,
-     * external-mutation approval floor, then behavior-mode default.
+     * Priority: explicit deny, exempt system tools, scoped policy grant,
+     * explicit per-agent admin rule, then the default (reads run; everything
+     * else, including every external mutation, needs approval).
      *
      * Every agent-facing path reaches this method: direct Laravel AI tools and
      * Code Mode callbacks (ToolRegistry::evaluateToolPermission ->
@@ -104,27 +98,31 @@ class AgentPermissionResolver
             return PermissionDecision::allow()->toToolArray();
         }
 
-        // Invariant: an explicit per-agent tool row (scope tool, permission
-        // allow) is the ONLY way to opt a tool out of the external approval
-        // floor below. Such rows are written by workspace admins in the
-        // capabilities UI, or by another agent via update_agent_tool_permissions,
-        // which refuses to waive approval the granting agent itself requires.
-        // Keep this check above the floor; keep the floor above behavior mode.
+        // Policy model (Product Direction pillar 5; behaviour modes deleted).
+        // Invariant order — do not reorder: explicit deny (above) > exempt
+        // system tools (above) > scoped admin grant > per-agent admin rule >
+        // default. Only an admin grant or an admin rule can let a write or an
+        // external action run without approval; nothing the agent or a
+        // trigger supplies can.
+        if (app(PolicyGrantService::class)->covers($agent, $toolSlug)) {
+            return PermissionDecision::allow()->toToolArray();
+        }
+
+        // Per-agent admin rule from the capabilities UI (scope tool, allow):
+        // requires_approval=false is an `always` exception for that tool. Also
+        // written by update_agent_tool_permissions, which is itself
+        // approval-gated and refuses to waive approval the grantor needs.
         if ($permission) {
             return PermissionDecision::allow($permission->requires_approval)->toToolArray();
         }
 
-        // Approval floor (product direction: triggers are never consent).
-        // Tools that mutate external systems or widen exposure need approval
-        // even for `autonomous` agents, because a run started by a schedule,
-        // webhook or inbound message may be acting on injected instructions.
-        // Internal workspace writes (tasks, docs, tables, VFS, ...) are not
-        // matched here and keep following the behavior mode.
-        if ($this->isExternalMutation($toolSlug)) {
-            return PermissionDecision::allow(true)->toToolArray();
-        }
+        // Default: only a declared read runs without approval. Writes,
+        // `action`, unknown types and every external mutation (MCP, external
+        // sends, exposure-widening tools) need approval — a trigger is never
+        // consent, and untyped tools must not slip past the policy.
+        $requiresApproval = $toolType !== 'read' || $this->isExternalMutation($toolSlug);
 
-        return PermissionDecision::allow($this->behaviorModeRequiresApproval($agent, $toolType))->toToolArray();
+        return PermissionDecision::allow($requiresApproval)->toToolArray();
     }
 
     /**
@@ -134,13 +132,7 @@ class AgentPermissionResolver
      * 1. MCP tools (`mcp_{server}__{tool}`): always, regardless of declared
      *    type. Remote servers self-describe their tools and OpenCompany has no
      *    trusted read-only marking for them, so unknown is treated as write.
-     * 2. Package integration tools: the slug belongs to a ToolProviderRegistry
-     *    provider with isIntegration() === true AND credentialFields() !== []
-     *    (it acts on a third-party account), and the provider metadata type is
-     *    not exactly `read` (missing/custom types fail closed as writes).
-     *    Credential-less integrations (local renderers such as diagram/PDF
-     *    packages) only write workspace files, so they follow behavior mode.
-     * 3. Built-ins listed in EXTERNAL_EXPOSURE_TOOLS.
+     * 2. Built-ins listed in EXTERNAL_EXPOSURE_TOOLS.
      *
      * Not covered here: send_channel_message, whose externality depends on the
      * destination channel; see requiresExternalChannelSendApproval().
@@ -155,11 +147,9 @@ class AgentPermissionResolver
             return true;
         }
 
-        // The provider's declared type is authoritative for package tools.
-        // The caller-supplied tool type is intentionally not consulted: some
-        // callers pass 'write' as a "strictest" placeholder
-        // (update_agent_tool_permissions), which would gate genuine reads.
-        return $this->externalToolIndex()[$toolSlug] ?? false;
+        // With the integration package system deleted, MCP servers are the
+        // only external tool providers and are matched by slug above.
+        return false;
     }
 
     /**
@@ -179,46 +169,6 @@ class AgentPermissionResolver
             ->first();
 
         return ! ($permission && $permission->permission === 'allow' && ! $permission->requires_approval);
-    }
-
-    /**
-     * Map package integration tool slugs to "is a write" for credentialed
-     * integration providers. Cached per process and rebuilt when the provider
-     * set changes (MCP servers register providers at runtime).
-     *
-     * @return array<string, bool>
-     */
-    private function externalToolIndex(): array
-    {
-        $providers = $this->integrationProviders();
-        $key = md5(implode('|', array_map(
-            fn (object $provider): string => spl_object_id($provider).':'.$provider->appName(),
-            $providers,
-        )));
-
-        if (self::$externalToolIndex !== null && self::$externalToolIndex['key'] === $key) {
-            return self::$externalToolIndex['tools'];
-        }
-
-        $tools = [];
-        foreach ($providers as $provider) {
-            if (! $provider->isIntegration() || str_starts_with($provider->appName(), 'mcp_')) {
-                continue;
-            }
-
-            if (! method_exists($provider, 'credentialFields') || $provider->credentialFields() === []) {
-                continue;
-            }
-
-            foreach ($provider->tools() as $slug => $meta) {
-                $type = is_array($meta) ? ($meta['type'] ?? null) : null;
-                $tools[(string) $slug] = $type !== 'read';
-            }
-        }
-
-        self::$externalToolIndex = ['key' => $key, 'tools' => $tools];
-
-        return $tools;
     }
 
     /**
@@ -347,7 +297,10 @@ class AgentPermissionResolver
             return PermissionDecision::allow($wildcard->requires_approval)->toContactArray();
         }
 
-        return PermissionDecision::allow($this->behaviorModeRequiresApproval($caller, 'write'))->toContactArray();
+        // Default for peers outside the manager chain: contacting creates work
+        // for another agent (a write), so it needs approval unless an admin
+        // rule above says otherwise.
+        return PermissionDecision::allow(true)->toContactArray();
     }
 
     /**
@@ -461,28 +414,11 @@ class AgentPermissionResolver
         return false;
     }
 
-    private function behaviorModeRequiresApproval(User $agent, string $toolType): bool
-    {
-        // Invariant: `supervised` gates everything that is not a declared read.
-        // Tools with a missing or non-standard type (the registry defaults
-        // unknown metadata to 'action') are treated as mutations, never as
-        // reads — an untyped tool must not slip past supervision.
-        return match ($agent->behavior_mode ?? 'autonomous') {
-            'strict' => true,
-            'supervised' => $toolType !== 'read',
-            default => false,
-        };
-    }
-
     /**
      * @return array<int, object>
      */
     private function integrationProviders(): array
     {
-        if (! class_exists(ToolProviderRegistry::class) || ! app()->bound(ToolProviderRegistry::class)) {
-            return [];
-        }
-
-        return app(ToolProviderRegistry::class)->all();
+        return array_values(app(ToolProviderRegistry::class)->all());
     }
 }

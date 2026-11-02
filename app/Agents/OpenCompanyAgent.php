@@ -224,7 +224,7 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
             $header .= "- **Name**: {$this->agent->name}\n";
             $header .= "- **Type**: {$this->agent->agent_type}\n";
             $header .= "- **Brain**: {$this->agent->brain}\n";
-            $header .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
+            $header .= "- **Approvals**: reads run directly; writes and external actions need human approval unless an admin granted an exception\n\n";
             $sections[] = ['label' => 'Header', 'content' => $header];
         } else {
             $header = "# Project Context\n\n";
@@ -234,7 +234,7 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
             $header .= "- **Name**: {$this->agent->name}\n";
             $header .= "- **Type**: {$this->agent->agent_type}\n";
             $header .= "- **Brain**: {$this->agent->brain}\n";
-            $header .= "- **Behavior**: {$this->agent->behavior_mode}\n\n";
+            $header .= "- **Approvals**: reads run directly; writes and external actions need human approval unless an admin granted an exception\n\n";
             $sections[] = ['label' => 'Header', 'content' => $header];
 
             // IDENTITY and INSTRUCTIONS are stable agent-authored documents and
@@ -289,7 +289,7 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
         $sections[] = ['label' => 'Untrusted Content', 'content' => UntrustedContent::systemPromptSection()];
 
         $apps = $this->toolRegistry->getAppCatalog($this->agent)."\n\n";
-        $apps .= "To generate images/PDFs: use code_exec with app.svg, app.integrations.mermaid, app.integrations.plantuml, app.integrations.vegalite, or app.integrations.typst. NEVER fabricate image/document URLs.\n";
+        $apps .= "To generate images/PDFs: use code_exec with app.svg (render an SVG you write to PNG). NEVER fabricate image/document URLs.\n";
         if (! $identityFiles->isEmpty()) {
             $apps .= "Tools marked with * require approval.\n";
         }

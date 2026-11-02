@@ -19,12 +19,10 @@ use App\Models\Document;
 use App\Models\VfsOperationEvent;
 use App\Observers\ApprovalRequestObserver;
 use App\Observers\DocumentObserver;
-use App\Services\AgentFileStorageService;
 use App\Services\AgentPermissionService;
 use App\Services\Chat\ChatBridge;
 use App\Services\Chat\ChatManager;
 use App\Services\CodeExecutionBudget;
-use App\Services\IntegrationSettingCredentialResolver;
 use App\Services\Mcp\McpServerRegistrar;
 use Closure;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -42,11 +40,9 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Ai\AiManager;
-use OpenCompany\IntegrationCore\Contracts\AgentFileStorage;
-use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
-use OpenCompany\IntegrationCore\Script\ScriptCatalogBuilder;
-use OpenCompany\IntegrationCore\Script\ScriptDocRenderer;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Domain\CodeMode\Script\ScriptCatalogBuilder;
+use App\Domain\CodeMode\Script\ScriptDocRenderer;
+use App\Agents\Tools\External\ToolProviderRegistry;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -61,25 +57,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ToolRegistry::class);
         $this->app->scoped(CodeExecutionBudget::class);
 
-        if (class_exists(ScriptCatalogBuilder::class)) {
-            $this->app->singleton(ScriptCatalogBuilder::class);
-        }
-
-        if (class_exists(ScriptDocRenderer::class)) {
-            $this->app->singleton(ScriptDocRenderer::class);
-        }
-
-        // Override the default config-based credential resolver with DB-backed one
-        $this->app->singleton(
-            CredentialResolver::class,
-            IntegrationSettingCredentialResolver::class
-        );
-
-        // Agent file storage — allows vendor tool packages to save files into workspace file system
-        $this->app->singleton(
-            AgentFileStorage::class,
-            AgentFileStorageService::class,
-        );
+        // Code Mode catalog/doc rendering and the external (MCP) tool provider
+        // registry are app-owned since the integration package system was
+        // deleted (Product Direction, nuclear decisions, 2026-11-02).
+        $this->app->singleton(ScriptCatalogBuilder::class);
+        $this->app->singleton(ScriptDocRenderer::class);
+        $this->app->singleton(ToolProviderRegistry::class);
 
         // Chat integration manager (workspace-scoped Chat instances)
         $this->app->singleton(ChatManager::class);
@@ -163,11 +146,7 @@ class AppServiceProvider extends ServiceProvider
         JsonResource::withoutWrapping();
 
         // Register MCP servers as tool providers
-        if ($this->app->bound(ToolProviderRegistry::class)) {
-            McpServerRegistrar::registerAll(
-                $this->app->make(ToolProviderRegistry::class)
-            );
-        }
+        McpServerRegistrar::registerAll($this->app->make(ToolProviderRegistry::class));
 
         // Register built-in tool providers
         $this->registerBuiltInToolProviders();

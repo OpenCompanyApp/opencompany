@@ -25,7 +25,7 @@ puts("Selected", selected.length)
 ## Host capabilities
 
 Discoverable paths start with `app`, for example `app.tables.get_rows` or
-`app.integrations.<provider>.<function>`. Use keyword arguments. Account aliases
+`app.integrations.mcp_<server>.<function>` for tools from the workspace's MCP servers. Use keyword arguments. Account aliases
 are granted by the host; a guessed alias never grants credentials or authority.
 For Ruby-reserved or hyphenated names, use `app.call("exact.catalog.path", key: value)`.
 Omit the leading `app.` inside that string. This uses the same permission path.

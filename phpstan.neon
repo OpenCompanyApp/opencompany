@@ -6,6 +6,8 @@ includes:
     - phpstan-baseline.neon
 
 parameters:
+    # Keep the (large) result cache off the small /tmp tmpfs.
+    tmpDir: storage/framework/cache/phpstan
     paths:
         - app/
     level: 6

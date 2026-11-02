@@ -5,15 +5,14 @@ namespace App\Services;
 use App\Agents\Tools\ToolRegistry;
 use App\Models\McpServer;
 use App\Models\User;
-use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
-use OpenCompany\IntegrationCore\Script\ScriptCatalogBuilder;
-use OpenCompany\IntegrationCore\Script\ScriptDocRenderer;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Domain\CodeMode\Script\ScriptCatalogBuilder;
+use App\Domain\CodeMode\Script\ScriptDocRenderer;
+use App\Agents\Tools\External\ToolProviderRegistry;
 
 /**
  * Builds permission-scoped, searchable app.* documentation for Code Mode.
  *
- * Canonical function/schema mapping lives in integration-core. OpenCompany adds
+ * Function/schema mapping lives in App\Domain\CodeMode\Script. OpenCompany adds
  * active account aliases, static product guides, and workspace-visible tools;
  * it never places credentials or live tool results in documentation caches.
  */
@@ -173,29 +172,20 @@ class CodeApiDocGenerator
      */
     private function withAccountAliases(array $catalog): array
     {
-        if (app()->bound(CredentialResolver::class)) {
-            $credentialResolver = app(CredentialResolver::class);
-
-            // Inject account aliases for multi-account integrations and MCP servers.
-            foreach ($catalog as &$app) {
-                $appName = $app['name'] ?? '';
-                if ($appName === '' || empty($app['isIntegration'])) {
-                    continue;
-                }
-
-                if (str_starts_with($appName, 'mcp_')) {
-                    $mcpSlug = substr($appName, 4);
-                    $accounts = McpServer::getAccountsFor($mcpSlug);
-                } else {
-                    $accounts = $credentialResolver->getAccounts($appName);
-                }
-
-                if ($accounts !== []) {
-                    $app['accounts'] = $accounts;
-                }
+        // Account aliases exist only for multi-account MCP servers now that the
+        // integration package system (and its credential resolver) is gone.
+        foreach ($catalog as &$app) {
+            $appName = (string) ($app['name'] ?? '');
+            if (! str_starts_with($appName, 'mcp_') || empty($app['isIntegration'])) {
+                continue;
             }
-            unset($app);
+
+            $accounts = McpServer::getAccountsFor(substr($appName, 4));
+            if ($accounts !== []) {
+                $app['accounts'] = $accounts;
+            }
         }
+        unset($app);
 
         return $catalog;
     }

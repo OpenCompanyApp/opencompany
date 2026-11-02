@@ -322,20 +322,19 @@ class AgentRunControlPlaneTest extends TestCase
         CarbonImmutable::setTestNow();
     }
 
-    public function test_agent_run_options_apply_max_steps_without_persisting_permission_mode(): void
+    // Run options cap the agent's step budget for this run only.
+    public function test_agent_run_options_apply_max_steps(): void
     {
         $agent = User::factory()->agent()->create([
-            'behavior_mode' => 'autonomous',
             'brain' => 'anthropic:claude-sonnet-4-5-20250929',
         ]);
         $run = app(AgentRunBuilder::class)->build(
             $agent,
             'channel-id',
-            options: new AgentRunOptions(maxTurns: 4, permissionMode: 'strict'),
+            options: new AgentRunOptions(maxTurns: 4),
         );
 
         $this->assertSame(4, $run->agent()->maxSteps());
-        $this->assertSame('autonomous', $agent->fresh()->behavior_mode);
     }
 
     public function test_completed_tool_call_is_replayed_without_executing_side_effect_twice(): void

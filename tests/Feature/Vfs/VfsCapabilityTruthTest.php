@@ -16,6 +16,7 @@ use App\Services\ApprovalExecutionService;
 use App\Services\FileSystemService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Concerns\GrantsAgentPermissions;
 use Tests\TestCase;
 
 /**
@@ -28,6 +29,7 @@ use Tests\TestCase;
  */
 class VfsCapabilityTruthTest extends TestCase
 {
+    use GrantsAgentPermissions;
     use RefreshDatabase;
 
     private User $agent;
@@ -39,7 +41,6 @@ class VfsCapabilityTruthTest extends TestCase
         $this->agent = User::factory()->agent('manager')->create([
             'name' => 'Capability Agent',
             'status' => 'idle',
-            'behavior_mode' => 'autonomous',
         ]);
 
         WorkspaceDisk::create([
@@ -64,6 +65,9 @@ class VfsCapabilityTruthTest extends TestCase
 
     public function test_allowed_entries_advertise_only_executable_mutations_on_display_and_canonical_paths(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant explicitly so "allowed" capabilities can be asserted.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         [$documentFolder, $document] = $this->documentFixture();
         $this->allowDocumentFolder($documentFolder);
         [$fileFolder, $textFile] = $this->fileFixture();

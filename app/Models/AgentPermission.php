@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * scope_type names the resource family (`tool`, `channel`, `folder`,
  * `file_folder`, `integration`, `agent`); scope_key stores the concrete slug or
- * ID. AgentPermissionService combines these rows with behavior_mode defaults.
+ * ID. AgentPermissionService combines these rows with scoped policy grants and the approval-by-default policy.
  */
 class AgentPermission extends Model
 {

@@ -11,12 +11,6 @@
             Tasks
           </Link>
           <Link
-            :href="workload(workspaceRouteParams())"
-            class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
-          >
-            Workload
-          </Link>
-          <Link
             :href="activity(workspaceRouteParams())"
             class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
           >
@@ -319,7 +313,7 @@ import { Link } from '@inertiajs/vue3'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
 import { useApi } from '@/composables/useApi'
-import { activity, tasks, workload } from '@/routes'
+import { activity, tasks } from '@/routes'
 import type { TokenAnalyticsResponse, TokenByAgent, TokenByModel, TokenBySource } from '@/types'
 import { estimateCost, formatCost, formatTokens } from '@/utils/tokenPricing'
 

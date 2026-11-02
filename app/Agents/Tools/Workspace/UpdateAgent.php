@@ -33,14 +33,6 @@ class UpdateAgent implements Tool
 
             // Self-escalation guard
             if ($this->agent->id === $agentId) {
-                if (isset($request['behaviorMode'])) {
-                    $modes = ['strict' => 0, 'supervised' => 1, 'autonomous' => 2];
-                    $currentLevel = $modes[$this->agent->behavior_mode ?? 'autonomous'] ?? 2;
-                    $newLevel = $modes[$request['behaviorMode']] ?? 2;
-                    if ($newLevel > $currentLevel) {
-                        return 'Self-escalation denied: you cannot set your own behavior mode to a less restrictive level.';
-                    }
-                }
                 if (isset($request['mustWaitForApproval']) && $request['mustWaitForApproval'] === 'false') {
                     if ($this->agent->must_wait_for_approval) {
                         return 'Self-escalation denied: you cannot disable your own approval requirement.';
@@ -62,15 +54,12 @@ class UpdateAgent implements Tool
             if (isset($request['status'])) {
                 $updates['status'] = $request['status'];
             }
-            if (isset($request['behaviorMode'])) {
-                $updates['behavior_mode'] = $request['behaviorMode'];
-            }
             if (isset($request['mustWaitForApproval'])) {
                 $updates['must_wait_for_approval'] = filter_var($request['mustWaitForApproval'], FILTER_VALIDATE_BOOLEAN);
             }
 
             if (empty($updates)) {
-                return 'No fields to update. Provide at least one of: name, brain, status, behaviorMode, mustWaitForApproval.';
+                return 'No fields to update. Provide at least one of: name, brain, status, mustWaitForApproval.';
             }
 
             $target->update($updates);
@@ -98,9 +87,6 @@ class UpdateAgent implements Tool
             'status' => $schema
                 ->string()
                 ->description('Agent status: "idle", "working", "offline", "awaiting_approval".'),
-            'behaviorMode' => $schema
-                ->string()
-                ->description('Behavior mode: "autonomous", "supervised", or "strict".'),
             'mustWaitForApproval' => $schema
                 ->string()
                 ->description('Whether agent must wait for approval: "true" or "false".'),

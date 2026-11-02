@@ -301,15 +301,6 @@ export interface Activity {
   details?: string
 }
 
-export interface Stats {
-  agentsOnline: number
-  totalAgents: number
-  tasksCompleted: number
-  tasksToday: number
-  messagesTotal: number
-  messagesToday: number
-}
-
 export interface CommandItem {
   id: string
   label: string
@@ -362,7 +353,6 @@ export interface AgentCapability {
 }
 
 
-export type AgentBehaviorMode = 'autonomous' | 'supervised' | 'strict'
 export type SecurityMode = 'deny' | 'allowlist' | 'full'
 export type AskMode = 'off' | 'on-miss' | 'always'
 export type SessionResetMode = 'daily' | 'idle' | 'manual'
@@ -370,7 +360,6 @@ export type SessionResetMode = 'daily' | 'idle' | 'manual'
 export interface AgentSettings {
   id?: string
   agentConfigId?: string
-  behaviorMode: AgentBehaviorMode
   securityMode?: SecurityMode
   askMode?: AskMode
   costLimitDaily?: number | null

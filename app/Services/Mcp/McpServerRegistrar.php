@@ -3,7 +3,7 @@
 namespace App\Services\Mcp;
 
 use App\Models\McpServer;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProviderRegistry;
 
 class McpServerRegistrar
 {

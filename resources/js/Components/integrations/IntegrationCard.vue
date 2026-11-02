@@ -32,40 +32,16 @@
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-1 flex-wrap">
           <p class="text-sm font-medium text-neutral-900 dark:text-white leading-tight">{{ integration.name }}</p>
-          <Icon
-            v-if="integration.badge === 'built-in'"
-            name="ph:shield-check-fill"
-            class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0"
-            title="Built-in"
-          />
-          <Icon
-            v-else-if="integration.badge === 'verified'"
-            name="ph:seal-check-fill"
-            class="w-3.5 h-3.5 text-green-500 dark:text-green-400 shrink-0"
-            title="Officially supported"
-          />
           <span
-            v-else-if="integration.badge === 'mcp'"
+            v-if="integration.badge === 'mcp'"
             class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
             title="Remote MCP Server"
           >
             <Icon name="ph:plugs-connected" class="w-3 h-3" />
             MCP
           </span>
-          <span
-            v-else-if="integration.catalog"
-            class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"
-            title="Catalog integration"
-          >
-            Catalog
-          </span>
         </div>
         <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">{{ integration.description }}</p>
-        <p v-if="integration.catalog" class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-1">
-          <span v-if="integration.toolCount">{{ integration.toolCount }} tool{{ integration.toolCount === 1 ? '' : 's' }}</span>
-          <span v-if="integration.toolCount && integration.packageInstalled === false"> · </span>
-          <span v-if="integration.packageInstalled === false">package not installed</span>
-        </p>
       </div>
     </div>
 
@@ -125,12 +101,9 @@ export interface Integration {
   source?: string
   installed: boolean
   badge?: string
-  catalog?: boolean
-  packageInstalled?: boolean
   configured?: boolean
   enabled?: boolean
   runnable?: boolean
-  docsUrl?: string | null
   configurable?: boolean
   type?: 'native' | 'mcp'
   url?: string
@@ -144,9 +117,10 @@ export interface Integration {
   }
 }
 
-// IntegrationCard is intentionally action-oriented: installed, configurable,
-// catalog-only, and MCP entries all share the same card shell but emit different
-// page-level actions.
+// IntegrationCard is intentionally action-oriented: AI providers, static
+// config entries (chat adapters, web providers) and MCP servers all share the
+// same card shell but emit different page-level actions. Entries come from the
+// app-owned /api/integrations directory only; the package catalog is gone.
 const props = defineProps<{
   integration: Integration
 }>()
@@ -177,8 +151,8 @@ const handleClick = () => {
 const canConfigure = computed(() => {
   const integration = props.integration
 
-  // AI providers and Codex have dynamic config screens even when the catalog
-  // metadata does not mark them configurable.
+  // AI providers and Codex have dedicated config screens even though the
+  // directory does not mark them configurable.
   return Boolean(
     integration.configurable
       || integration.type === 'mcp'
@@ -189,12 +163,6 @@ const canConfigure = computed(() => {
 
 const actionLabel = computed(() => {
   const integration = props.integration
-
-  // Catalog entries without installed packages cannot be installed from inside
-  // OpenCompany; route users to docs/catalog instead.
-  if (integration.catalog && integration.packageInstalled === false) {
-    return integration.docsUrl ? 'Docs' : 'Catalog'
-  }
 
   if (integration.configurable || integration.category === 'ai-models' || integration.id === 'codex') {
     return 'Configure'

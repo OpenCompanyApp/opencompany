@@ -40,20 +40,6 @@ class AdditionalPagesTest extends DuskTestCase
     }
 
     /**
-     * Test that the workload page displays.
-     */
-    public function test_workload_page_displays(): void
-    {
-        $user = User::factory()->create();
-
-        $this->browse(function (Browser $browser) use ($user) {
-            $browser->loginAs($user)
-                ->visit('/workload')
-                ->assertSee('Workload');
-        });
-    }
-
-    /**
      * Test that the organization page displays.
      */
     public function test_org_page_displays(): void

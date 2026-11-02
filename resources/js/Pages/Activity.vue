@@ -11,12 +11,6 @@
             >
               Tasks
             </Link>
-            <Link
-              :href="workload(workspaceRouteParams())"
-              class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
-            >
-              Workload
-            </Link>
             <span class="text-xl font-bold text-neutral-900 dark:text-white">Activity</span>
             <Link
               :href="taskAnalytics(workspaceRouteParams())"
@@ -200,7 +194,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { useWorkspace } from '@/composables/useWorkspace'
-import { chat, tasks, workload } from '@/routes'
+import { chat, tasks } from '@/routes'
 import { show as showAgentRoute } from '@/routes/agent'
 import { show as showApprovalRoute } from '@/routes/approvals'
 import { analytics as taskAnalytics, show as showTaskRoute } from '@/routes/tasks'

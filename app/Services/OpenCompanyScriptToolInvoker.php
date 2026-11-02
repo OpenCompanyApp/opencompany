@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
 use App\Services\Integrations\IntegrationRuntime;
-use OpenCompany\IntegrationCore\Contracts\ScriptToolInvoker;
+use App\Domain\CodeMode\Contracts\ScriptToolInvoker;
 
 /**
  * Routes Code Mode bridge calls into OpenCompany's integration runtime.

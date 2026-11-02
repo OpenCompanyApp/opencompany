@@ -6,8 +6,6 @@ use App\Models\IntegrationSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use OpenCompany\IntegrationCore\Contracts\HasIntegrationCapabilities;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 /**
  * Resolves integration account aliases and workspace-scoped settings.
@@ -19,7 +17,6 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 class IntegrationAccountResolver
 {
     public function __construct(
-        private ToolProviderRegistry $registry,
     ) {}
 
     public function accountFromRequest(Request $request): ?string
@@ -117,56 +114,11 @@ class IntegrationAccountResolver
      */
     public function sharedCredentialGroup(string $id): array
     {
-        $group = $this->sharedCredentialMetadata($id);
-        if ($group === null) {
-            return ['integration_ids' => [], 'keys' => []];
-        }
+        // Shared credential groups were a package-family feature (e.g. the
+        // Google packages). App-owned settings never share credentials.
+        unset($id);
 
-        $ids = [];
-        foreach ($this->registry->all() as $provider) {
-            if (! $provider instanceof HasIntegrationCapabilities) {
-                continue;
-            }
-
-            $candidateGroup = $this->sharedCredentialMetadata($provider->appName());
-            if (($candidateGroup['group'] ?? null) === $group['group']) {
-                $ids[] = $provider->appName();
-            }
-        }
-
-        return [
-            'integration_ids' => array_values(array_unique($ids)),
-            'keys' => $group['keys'],
-        ];
+        return ['integration_ids' => [], 'keys' => []];
     }
 
-    /**
-     * @return array{group: string, keys: list<string>}|null
-     */
-    private function sharedCredentialMetadata(string $id): ?array
-    {
-        $provider = $this->registry->get($id);
-        if (! $provider instanceof HasIntegrationCapabilities) {
-            return null;
-        }
-
-        $metadata = $provider->integrationCapabilities()['shared_credentials'] ?? null;
-        if (! is_array($metadata) || ! is_string($metadata['group'] ?? null)) {
-            return null;
-        }
-
-        $keys = array_values(array_filter(
-            $metadata['keys'] ?? [],
-            static fn ($key): bool => is_string($key) && $key !== '',
-        ));
-
-        if ($keys === []) {
-            return null;
-        }
-
-        return [
-            'group' => $metadata['group'],
-            'keys' => $keys,
-        ];
-    }
 }

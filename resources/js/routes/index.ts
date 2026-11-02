@@ -120,65 +120,7 @@ home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
 /**
-* @see routes/web.php:93
-* @route '/w/{workspace_slug}'
-*/
-export const dashboard = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: dashboard.url(args, options),
-    method: 'get',
-})
-
-dashboard.definition = {
-    methods: ["get","head"],
-    url: '/w/{workspace_slug}',
-} satisfies RouteDefinition<["get","head"]>
-
-/**
-* @see routes/web.php:93
-* @route '/w/{workspace_slug}'
-*/
-dashboard.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
-    if (typeof args === 'string' || typeof args === 'number') {
-        args = { workspace_slug: args }
-    }
-
-    if (Array.isArray(args)) {
-        args = {
-            workspace_slug: args[0],
-        }
-    }
-
-    args = applyUrlDefaults(args)
-
-    const parsedArgs = {
-        workspace_slug: args.workspace_slug,
-    }
-
-    return dashboard.definition.url
-            .replace('{workspace_slug}', parsedArgs.workspace_slug.toString())
-            .replace(/\/+$/, '') + queryParams(options)
-}
-
-/**
-* @see routes/web.php:93
-* @route '/w/{workspace_slug}'
-*/
-dashboard.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: dashboard.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see routes/web.php:93
-* @route '/w/{workspace_slug}'
-*/
-dashboard.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
-    url: dashboard.url(args, options),
-    method: 'head',
-})
-
-/**
-* @see routes/web.php:103
+* @see routes/web.php:108
 * @route '/w/{workspace_slug}/chat'
 */
 export const chat = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -192,7 +134,7 @@ chat.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:103
+* @see routes/web.php:108
 * @route '/w/{workspace_slug}/chat'
 */
 chat.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -218,7 +160,7 @@ chat.url = (args: { workspace_slug: string | number } | [workspace_slug: string 
 }
 
 /**
-* @see routes/web.php:103
+* @see routes/web.php:108
 * @route '/w/{workspace_slug}/chat'
 */
 chat.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -227,7 +169,7 @@ chat.get = (args: { workspace_slug: string | number } | [workspace_slug: string 
 })
 
 /**
-* @see routes/web.php:103
+* @see routes/web.php:108
 * @route '/w/{workspace_slug}/chat'
 */
 chat.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -236,7 +178,7 @@ chat.head = (args: { workspace_slug: string | number } | [workspace_slug: string
 })
 
 /**
-* @see routes/web.php:108
+* @see routes/web.php:113
 * @route '/w/{workspace_slug}/tasks'
 */
 export const tasks = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -250,7 +192,7 @@ tasks.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:108
+* @see routes/web.php:113
 * @route '/w/{workspace_slug}/tasks'
 */
 tasks.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -276,7 +218,7 @@ tasks.url = (args: { workspace_slug: string | number } | [workspace_slug: string
 }
 
 /**
-* @see routes/web.php:108
+* @see routes/web.php:113
 * @route '/w/{workspace_slug}/tasks'
 */
 tasks.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -285,7 +227,7 @@ tasks.get = (args: { workspace_slug: string | number } | [workspace_slug: string
 })
 
 /**
-* @see routes/web.php:108
+* @see routes/web.php:113
 * @route '/w/{workspace_slug}/tasks'
 */
 tasks.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -294,7 +236,7 @@ tasks.head = (args: { workspace_slug: string | number } | [workspace_slug: strin
 })
 
 /**
-* @see routes/web.php:123
+* @see routes/web.php:128
 * @route '/w/{workspace_slug}/lists'
 */
 export const lists = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -308,7 +250,7 @@ lists.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:123
+* @see routes/web.php:128
 * @route '/w/{workspace_slug}/lists'
 */
 lists.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -334,7 +276,7 @@ lists.url = (args: { workspace_slug: string | number } | [workspace_slug: string
 }
 
 /**
-* @see routes/web.php:123
+* @see routes/web.php:128
 * @route '/w/{workspace_slug}/lists'
 */
 lists.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -343,7 +285,7 @@ lists.get = (args: { workspace_slug: string | number } | [workspace_slug: string
 })
 
 /**
-* @see routes/web.php:123
+* @see routes/web.php:128
 * @route '/w/{workspace_slug}/lists'
 */
 lists.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -352,7 +294,7 @@ lists.head = (args: { workspace_slug: string | number } | [workspace_slug: strin
 })
 
 /**
-* @see routes/web.php:128
+* @see routes/web.php:133
 * @route '/w/{workspace_slug}/docs'
 */
 export const docs = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -366,7 +308,7 @@ docs.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:128
+* @see routes/web.php:133
 * @route '/w/{workspace_slug}/docs'
 */
 docs.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -392,7 +334,7 @@ docs.url = (args: { workspace_slug: string | number } | [workspace_slug: string 
 }
 
 /**
-* @see routes/web.php:128
+* @see routes/web.php:133
 * @route '/w/{workspace_slug}/docs'
 */
 docs.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -401,7 +343,7 @@ docs.get = (args: { workspace_slug: string | number } | [workspace_slug: string 
 })
 
 /**
-* @see routes/web.php:128
+* @see routes/web.php:133
 * @route '/w/{workspace_slug}/docs'
 */
 docs.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -410,7 +352,7 @@ docs.head = (args: { workspace_slug: string | number } | [workspace_slug: string
 })
 
 /**
-* @see routes/web.php:133
+* @see routes/web.php:138
 * @route '/w/{workspace_slug}/files'
 */
 export const files = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -424,7 +366,7 @@ files.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:133
+* @see routes/web.php:138
 * @route '/w/{workspace_slug}/files'
 */
 files.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -450,7 +392,7 @@ files.url = (args: { workspace_slug: string | number } | [workspace_slug: string
 }
 
 /**
-* @see routes/web.php:133
+* @see routes/web.php:138
 * @route '/w/{workspace_slug}/files'
 */
 files.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -459,7 +401,7 @@ files.get = (args: { workspace_slug: string | number } | [workspace_slug: string
 })
 
 /**
-* @see routes/web.php:133
+* @see routes/web.php:138
 * @route '/w/{workspace_slug}/files'
 */
 files.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -468,7 +410,7 @@ files.head = (args: { workspace_slug: string | number } | [workspace_slug: strin
 })
 
 /**
-* @see routes/web.php:138
+* @see routes/web.php:143
 * @route '/w/{workspace_slug}/activity'
 */
 export const activity = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -482,7 +424,7 @@ activity.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:138
+* @see routes/web.php:143
 * @route '/w/{workspace_slug}/activity'
 */
 activity.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -508,7 +450,7 @@ activity.url = (args: { workspace_slug: string | number } | [workspace_slug: str
 }
 
 /**
-* @see routes/web.php:138
+* @see routes/web.php:143
 * @route '/w/{workspace_slug}/activity'
 */
 activity.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -517,7 +459,7 @@ activity.get = (args: { workspace_slug: string | number } | [workspace_slug: str
 })
 
 /**
-* @see routes/web.php:138
+* @see routes/web.php:143
 * @route '/w/{workspace_slug}/activity'
 */
 activity.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -526,7 +468,7 @@ activity.head = (args: { workspace_slug: string | number } | [workspace_slug: st
 })
 
 /**
-* @see routes/web.php:143
+* @see routes/web.php:148
 * @route '/w/{workspace_slug}/approvals'
 */
 export const approvals = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -540,7 +482,7 @@ approvals.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:143
+* @see routes/web.php:148
 * @route '/w/{workspace_slug}/approvals'
 */
 approvals.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -566,7 +508,7 @@ approvals.url = (args: { workspace_slug: string | number } | [workspace_slug: st
 }
 
 /**
-* @see routes/web.php:143
+* @see routes/web.php:148
 * @route '/w/{workspace_slug}/approvals'
 */
 approvals.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -575,7 +517,7 @@ approvals.get = (args: { workspace_slug: string | number } | [workspace_slug: st
 })
 
 /**
-* @see routes/web.php:143
+* @see routes/web.php:148
 * @route '/w/{workspace_slug}/approvals'
 */
 approvals.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -584,7 +526,7 @@ approvals.head = (args: { workspace_slug: string | number } | [workspace_slug: s
 })
 
 /**
-* @see routes/web.php:163
+* @see routes/web.php:168
 * @route '/w/{workspace_slug}/automation'
 */
 export const automation = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -598,7 +540,7 @@ automation.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:163
+* @see routes/web.php:168
 * @route '/w/{workspace_slug}/automation'
 */
 automation.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -624,7 +566,7 @@ automation.url = (args: { workspace_slug: string | number } | [workspace_slug: s
 }
 
 /**
-* @see routes/web.php:163
+* @see routes/web.php:168
 * @route '/w/{workspace_slug}/automation'
 */
 automation.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -633,7 +575,7 @@ automation.get = (args: { workspace_slug: string | number } | [workspace_slug: s
 })
 
 /**
-* @see routes/web.php:163
+* @see routes/web.php:168
 * @route '/w/{workspace_slug}/automation'
 */
 automation.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -642,7 +584,7 @@ automation.head = (args: { workspace_slug: string | number } | [workspace_slug: 
 })
 
 /**
-* @see routes/web.php:168
+* @see routes/web.php:173
 * @route '/w/{workspace_slug}/org'
 */
 export const org = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -656,7 +598,7 @@ org.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:168
+* @see routes/web.php:173
 * @route '/w/{workspace_slug}/org'
 */
 org.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -682,7 +624,7 @@ org.url = (args: { workspace_slug: string | number } | [workspace_slug: string |
 }
 
 /**
-* @see routes/web.php:168
+* @see routes/web.php:173
 * @route '/w/{workspace_slug}/org'
 */
 org.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -691,7 +633,7 @@ org.get = (args: { workspace_slug: string | number } | [workspace_slug: string |
 })
 
 /**
-* @see routes/web.php:168
+* @see routes/web.php:173
 * @route '/w/{workspace_slug}/org'
 */
 org.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -700,7 +642,7 @@ org.head = (args: { workspace_slug: string | number } | [workspace_slug: string 
 })
 
 /**
-* @see routes/web.php:173
+* @see routes/web.php:178
 * @route '/w/{workspace_slug}/settings'
 */
 export const settings = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -714,7 +656,7 @@ settings.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:173
+* @see routes/web.php:178
 * @route '/w/{workspace_slug}/settings'
 */
 settings.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -740,7 +682,7 @@ settings.url = (args: { workspace_slug: string | number } | [workspace_slug: str
 }
 
 /**
-* @see routes/web.php:173
+* @see routes/web.php:178
 * @route '/w/{workspace_slug}/settings'
 */
 settings.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -749,69 +691,11 @@ settings.get = (args: { workspace_slug: string | number } | [workspace_slug: str
 })
 
 /**
-* @see routes/web.php:173
+* @see routes/web.php:178
 * @route '/w/{workspace_slug}/settings'
 */
 settings.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: settings.url(args, options),
-    method: 'head',
-})
-
-/**
-* @see routes/web.php:178
-* @route '/w/{workspace_slug}/workload'
-*/
-export const workload = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: workload.url(args, options),
-    method: 'get',
-})
-
-workload.definition = {
-    methods: ["get","head"],
-    url: '/w/{workspace_slug}/workload',
-} satisfies RouteDefinition<["get","head"]>
-
-/**
-* @see routes/web.php:178
-* @route '/w/{workspace_slug}/workload'
-*/
-workload.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
-    if (typeof args === 'string' || typeof args === 'number') {
-        args = { workspace_slug: args }
-    }
-
-    if (Array.isArray(args)) {
-        args = {
-            workspace_slug: args[0],
-        }
-    }
-
-    args = applyUrlDefaults(args)
-
-    const parsedArgs = {
-        workspace_slug: args.workspace_slug,
-    }
-
-    return workload.definition.url
-            .replace('{workspace_slug}', parsedArgs.workspace_slug.toString())
-            .replace(/\/+$/, '') + queryParams(options)
-}
-
-/**
-* @see routes/web.php:178
-* @route '/w/{workspace_slug}/workload'
-*/
-workload.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: workload.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see routes/web.php:178
-* @route '/w/{workspace_slug}/workload'
-*/
-workload.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
-    url: workload.url(args, options),
     method: 'head',
 })
 

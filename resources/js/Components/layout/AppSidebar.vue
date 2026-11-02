@@ -54,7 +54,7 @@
               <Link
                 v-for="ws in workspaces"
                 :key="ws.id"
-                :href="dashboard.url(ws.slug)"
+                :href="chat.url(ws.slug)"
                 :class="[
                   'flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors',
                   ws.slug === workspace?.slug
@@ -206,7 +206,7 @@ import Icon from '@/Components/shared/Icon.vue'
 import Tooltip from '@/Components/shared/Tooltip.vue'
 import WorkspaceIcon from '@/Components/shared/WorkspaceIcon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
-import { dashboard } from '@/routes'
+import { chat } from '@/routes'
 import { create as createWorkspaceRoute } from '@/routes/workspace'
 
 // Types

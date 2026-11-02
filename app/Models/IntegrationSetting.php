@@ -4,13 +4,10 @@ namespace App\Models;
 
 use App\Domain\Ai\Catalog\AiCatalog;
 use App\Models\Concerns\BelongsToWorkspace;
-use App\Services\Integrations\ConfigSchemaNormalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 /**
  * Workspace integration configuration, including encrypted provider secrets.
@@ -196,47 +193,10 @@ class IntegrationSetting extends Model
      */
     private function requiredCredentialKeys(): array
     {
-        if ($this->integration_id === 'telegram') {
-            return ['api_key'];
-        }
-
-        try {
-            if (! app()->bound(ToolProviderRegistry::class)) {
-                return [];
-            }
-
-            $provider = app(ToolProviderRegistry::class)->get($this->integration_id);
-            if ($provider === null) {
-                return [];
-            }
-
-            $credentialFields = ConfigSchemaNormalizer::normalize($provider->credentialFields());
-            $required = [];
-
-            // Package credential metadata is preferred because it is owned by
-            // the integration package and can differ per provider.
-            foreach ($credentialFields as $field) {
-                if (($field['required'] ?? false) && isset($field['key'])) {
-                    $required[] = (string) $field['key'];
-                }
-            }
-
-            if ($required !== []) {
-                return array_values(array_unique($required));
-            }
-
-            if ($provider instanceof ConfigurableIntegration) {
-                foreach (ConfigSchemaNormalizer::normalize($provider->configSchema()) as $field) {
-                    if (($field['required'] ?? false) && isset($field['key'])) {
-                        $required[] = (string) $field['key'];
-                    }
-                }
-            }
-
-            return array_values(array_unique($required));
-        } catch (\Throwable) {
-            return [];
-        }
+        // App-owned settings only (AI providers, Telegram, chat adapters):
+        // package credential schemas no longer exist. Telegram needs its bot
+        // token; other settings fall back to the common-secret check.
+        return $this->integration_id === 'telegram' ? ['api_key'] : [];
     }
 
     private function filledConfigValue(string $key): bool

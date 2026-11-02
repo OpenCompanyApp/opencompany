@@ -54,7 +54,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'is_ephemeral',
-        'behavior_mode',
         'awaiting_approval_id',
         'awaiting_delegation_ids',
         'must_wait_for_approval',
@@ -106,7 +105,6 @@ class User extends Authenticatable implements MustVerifyEmail
         $array['lastSeenAt'] = $this->last_seen_at;
         $array['currentTask'] = $this->current_task;
         $array['isEphemeral'] = $this->is_ephemeral;
-        $array['behaviorMode'] = $this->behavior_mode;
         $array['awaitingApprovalId'] = $this->awaiting_approval_id;
         $array['awaitingDelegationIds'] = $this->awaiting_delegation_ids;
         $array['mustWaitForApproval'] = $this->must_wait_for_approval;

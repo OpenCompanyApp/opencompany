@@ -2,6 +2,8 @@
 
 namespace App\Agents\Tools;
 
+use App\Domain\Authorization\Application\PolicyGrantService;
+use App\Agents\Tools\System\ConsumesOnceGrantTool;
 use App\Agents\Runtime\Permissions\OpenCompanyPermissionEvaluator;
 use App\Agents\Runtime\Permissions\PermissionDecision;
 use App\Agents\Tools\Providers\BuiltInToolProvider;
@@ -11,12 +13,11 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\AgentPermissionService;
 use App\Services\CodeApiDocGenerator;
-use App\Services\Integrations\IntegrationCatalog;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
-use OpenCompany\IntegrationCore\Contracts\ToolProvider;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolProvider;
+use App\Agents\Tools\External\ToolProviderRegistry;
 
 /**
  * Builds the agent-visible tool catalog from built-ins, packages, and MCP.
@@ -58,12 +59,6 @@ class ToolRegistry
 
     /** @var array<string, string>|null Cached merged integration logos */
     private ?array $effectiveIntegrationLogos = null;
-
-    /** @var array<string, array<string, mixed>>|null Cached package catalog tools */
-    private ?array $catalogTools = null;
-
-    /** @var array<string, array<string, mixed>>|null Shared package catalog tool index */
-    private static ?array $sharedCatalogTools = null;
 
     private ?string $currentChannelId = null;
 
@@ -381,6 +376,10 @@ class ToolRegistry
 
             if ($result->decision === 'approval_required') {
                 $tool = new ApprovalWrappedTool($tool, $agent, $slug, $meta);
+            } elseif (app(PolicyGrantService::class)->coversOnlyOnce($agent, $slug)) {
+                // A single-use grant is what lets this tool run: consume it on
+                // execution, not now (see ConsumesOnceGrantTool).
+                $tool = new ConsumesOnceGrantTool($tool, $agent, $slug);
             }
 
             $tools[] = $tool;
@@ -584,30 +583,12 @@ class ToolRegistry
                     $toolData['requiresApproval'] = $permission->decision === 'approval_required';
                 }
 
-                $catalogTool = $isIntegration ? $this->catalogToolDefinition($slug) : null;
-                // The generated catalog misses constant-defined schemas (about
-                // 24k tools have `parameters: []`). On the agent-discovery path
-                // an empty catalog schema must not hide the live one: ScriptBridge
-                // skips argument validation for an empty parameter list. The
-                // unfiltered developer catalog keeps the cheap catalog data.
-                $catalogParameters = $catalogTool !== null ? $this->normalizeCatalogParameters($catalogTool['parameters'] ?? []) : [];
-                if ($catalogTool !== null && ($catalogParameters !== [] || ! $scriptCapabilitiesOnly)) {
-                    $toolData['fullDescription'] = (string) ($catalogTool['description'] ?? $meta['description']);
-                    $toolData['parameters'] = $catalogParameters;
-                    $toolData['returns'] = is_array($catalogTool['returns'] ?? null)
-                        ? $catalogTool['returns']
-                        : $toolData['returns'];
-                    $tools[] = $toolData;
-
-                    continue;
-                }
-
                 // Extract schema by instantiating the tool
                 try {
                     $tool = $this->instantiateTool($meta['class'], $agent, $slug);
                     $toolData['fullDescription'] = $tool->description();
 
-                    if ($tool instanceof \OpenCompany\IntegrationCore\Contracts\Tool) {
+                    if ($tool instanceof \App\Agents\Tools\External\Tool) {
                         // New-style tool: parameters() returns plain array
                         foreach ($tool->parameters() as $paramName => $paramDef) {
                             $param = [
@@ -695,7 +676,7 @@ class ToolRegistry
     /**
      * Instantiate a specific tool by slug (for post-approval execution).
      */
-    public function instantiateToolBySlug(string $slug, User $agent, ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|Tool|null
+    public function instantiateToolBySlug(string $slug, User $agent, ?string $account = null): \App\Agents\Tools\External\Tool|Tool|null
     {
         if (! isset($this->getEffectiveToolMap()[$slug])) {
             return null;
@@ -712,7 +693,7 @@ class ToolRegistry
      * are different. They can outlive discovery and must re-check workspace,
      * integration enablement, and tool policy before a provider is constructed.
      *
-     * @return array{decision: 'allow'|'deny'|'approval_required', reason: string, tool?: \OpenCompany\IntegrationCore\Contracts\Tool|Tool}
+     * @return array{decision: 'allow'|'deny'|'approval_required', reason: string, tool?: \App\Agents\Tools\External\Tool|Tool}
      */
     public function resolveScriptToolForDispatch(string $slug, User $agent, ?string $account = null): array
     {
@@ -821,7 +802,7 @@ class ToolRegistry
     /**
      * Instantiate a tool class via its provider.
      */
-    private function instantiateTool(string $class, User $agent, string $slug = '', ?string $account = null): \OpenCompany\IntegrationCore\Contracts\Tool|Tool
+    private function instantiateTool(string $class, User $agent, string $slug = '', ?string $account = null): \App\Agents\Tools\External\Tool|Tool
     {
         $context = [
             'channel_id' => $this->currentChannelId,
@@ -903,90 +884,13 @@ class ToolRegistry
             return null;
         }
 
-        $catalogTool = $this->catalogToolDefinition($slug);
-
         return array_merge($meta, [
             'class' => $meta['class'],
-            'name' => (string) ($meta['name'] ?? $catalogTool['name'] ?? Str::headline(str_replace('_', ' ', $slug))),
-            'description' => (string) ($meta['description'] ?? $catalogTool['description'] ?? ''),
-            'type' => (string) ($meta['type'] ?? $catalogTool['type'] ?? 'action'),
-            'icon' => (string) ($meta['icon'] ?? $catalogTool['icon'] ?? 'ph:wrench'),
+            'name' => (string) ($meta['name'] ?? Str::headline(str_replace('_', ' ', $slug))),
+            'description' => (string) ($meta['description'] ?? ''),
+            'type' => (string) ($meta['type'] ?? 'action'),
+            'icon' => (string) ($meta['icon'] ?? 'ph:wrench'),
         ]);
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function catalogToolDefinition(string $slug): ?array
-    {
-        return $this->catalogTools()[$slug] ?? null;
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    private function catalogTools(): array
-    {
-        if ($this->catalogTools !== null) {
-            return $this->catalogTools;
-        }
-
-        if (self::$sharedCatalogTools !== null) {
-            return $this->catalogTools = self::$sharedCatalogTools;
-        }
-
-        self::$sharedCatalogTools = [];
-
-        foreach (app(IntegrationCatalog::class)->all() as $integration) {
-            foreach (($integration['tools'] ?? []) as $tool) {
-                if (! is_array($tool)) {
-                    continue;
-                }
-
-                $toolSlug = $tool['slug'] ?? $tool['function_name'] ?? null;
-
-                if (is_string($toolSlug) && $toolSlug !== '') {
-                    self::$sharedCatalogTools[$toolSlug] = $tool;
-                }
-            }
-        }
-
-        return $this->catalogTools = self::$sharedCatalogTools;
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function normalizeCatalogParameters(mixed $parameters): array
-    {
-        if (! is_array($parameters)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($parameters as $name => $definition) {
-            if (! is_array($definition)) {
-                continue;
-            }
-
-            if (array_is_list($parameters)) {
-                $parameterName = $definition['name'] ?? $definition['key'] ?? null;
-            } else {
-                $parameterName = $definition['name'] ?? $name;
-            }
-
-            if (! is_string($parameterName) || $parameterName === '') {
-                continue;
-            }
-
-            $definition['name'] = $parameterName;
-            $definition['type'] = $definition['type'] ?? 'string';
-            $definition['required'] = (bool) ($definition['required'] ?? false);
-            $normalized[] = $definition;
-        }
-
-        return $normalized;
     }
 
     /**

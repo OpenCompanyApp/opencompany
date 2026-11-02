@@ -29,7 +29,7 @@ class AgentPermissionControllerTest extends TestCase
         ]);
     }
 
-    public function test_index_returns_tools_channels_folders_behavior_mode(): void
+    public function test_index_returns_tools_channels_folders(): void
     {
         $response = $this->actingAs($this->user)->getJson("/api/agents/{$this->agent->id}/permissions");
 
@@ -38,7 +38,6 @@ class AgentPermissionControllerTest extends TestCase
                 'tools',
                 'channelIds',
                 'folderIds',
-                'behaviorMode',
             ]);
 
         $data = $response->json();
@@ -48,7 +47,8 @@ class AgentPermissionControllerTest extends TestCase
         $this->assertCount($expectedToolCount, $data['tools']);
         $this->assertIsArray($data['channelIds']);
         $this->assertIsArray($data['folderIds']);
-        $this->assertIsString($data['behaviorMode']);
+        // Behaviour modes were deleted (policy model); the key must not return.
+        $this->assertArrayNotHasKey('behaviorMode', $data);
     }
 
     public function test_index_reflects_existing_permissions(): void

@@ -2,7 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useMagicKeys, whenever } from '@vueuse/core'
 import { useWorkspace } from '@/composables/useWorkspace'
-import { approvals, chat, dashboard, docs, org, settings, tasks } from '@/routes'
+import { approvals, chat, docs, org, settings, tasks } from '@/routes'
 
 const isInputFocused = () => {
   const activeElement = document.activeElement
@@ -46,11 +46,11 @@ export const useKeyboardShortcuts = () => {
     }, 500)
   })
 
-  // g + h - Go to Dashboard (home)
+  // g + h - Go home (chat is the workspace landing page)
   whenever(keys.h, () => {
     if (isInputFocused()) return
     if (gPressed.value) {
-      router.visit(dashboard(workspaceRouteParams()))
+      router.visit(chat(workspaceRouteParams()))
       gPressed.value = false
     }
   })

@@ -45,7 +45,6 @@ class VfsPaginationTest extends TestCase
         $this->agent = User::factory()->agent('manager')->create([
             'name' => 'Pagination Agent',
             'status' => 'idle',
-            'behavior_mode' => 'autonomous',
         ]);
 
         WorkspaceDisk::create([

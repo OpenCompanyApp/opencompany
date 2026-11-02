@@ -313,7 +313,6 @@
               :app-groups="appGroups"
               :vfs-policy="vfsPolicy"
               :enabled-integrations="enabledIntegrations"
-              :behavior-mode="behaviorMode"
               :must-wait-for-approval="mustWaitForApproval"
               :channel-permissions="channelPermissions"
               :folder-permissions="folderPermissions"
@@ -321,7 +320,6 @@
               :agent-channels="agentChannels"
               :document-folders="documentFolders"
               :file-folders="fileFolders"
-              @update-behavior-mode="handleBehaviorModeChange"
               @update-integrations="handleIntegrations"
               @update-tool-permissions="handleToolPermissions"
               @update-channel-permissions="handleChannelPermissions"
@@ -421,9 +419,9 @@ import AgentCapabilities from '@/Components/agents/AgentCapabilities.vue'
 import AgentSettingsPanel from '@/Components/agents/AgentSettingsPanel.vue'
 import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
-import type { Agent, AgentType, AgentBehaviorMode, AgentSettings, AgentTask } from '@/types'
+import type { Agent, AgentType, AgentSettings, AgentTask } from '@/types'
 
-const { agentUrl, dashboardUrl, memberUrl, messageUrl, taskUrl } = useWorkspace()
+const { agentUrl, chatUrl, memberUrl, messageUrl, taskUrl } = useWorkspace()
 
 const { fetchAgentDetail, fetchAgentIdentityFiles, updateAgentIdentityFile, updateAgent, deleteAgent: deleteAgentApi, updateAgentToolPermissions, updateAgentChannelPermissions, updateAgentFolderPermissions, updateAgentFileFolderPermissions, updateAgentIntegrations } = useApi()
 
@@ -447,7 +445,6 @@ const activityLog = ref<ActivityItem[]>([])
 const identityFiles = ref<{ type: string; title: string; content: string; updatedAt: string }[]>([])
 const identityFileSaving = ref(false)
 const agentTasks = ref<AgentTask[]>([])
-const behaviorMode = ref<AgentBehaviorMode>('autonomous')
 const mustWaitForApproval = ref(false)
 const channelPermissions = ref<string[]>([])
 const folderPermissions = ref<string[]>([])
@@ -564,14 +561,12 @@ const fetchData = async () => {
       identity: raw.identity as Agent['identity'],
       capabilities: (raw.capabilities as Agent['capabilities']) || [],
       settings: {
-        behaviorMode: 'supervised',
         costLimit: 100,
         resetPolicy: { mode: 'daily', dailyHour: 4 },
       },
       stats: raw.stats as Agent['stats'],
     } as Agent
 
-    behaviorMode.value = (raw.behaviorMode as AgentBehaviorMode) || 'autonomous'
     mustWaitForApproval.value = (raw.mustWaitForApproval as boolean) || false
     channelPermissions.value = (raw.channelPermissions as string[]) || []
     folderPermissions.value = (raw.folderPermissions as string[]) || []
@@ -655,15 +650,6 @@ const handleMustWaitChange = async (value: boolean) => {
   }
 }
 
-const handleBehaviorModeChange = async (mode: AgentBehaviorMode) => {
-  try {
-    await updateAgent(props.id, { behaviorMode: mode })
-    behaviorMode.value = mode
-  } catch (e) {
-    console.error('Failed to update behavior mode:', e)
-  }
-}
-
 const handleIntegrations = async (integrations: string[]) => {
   try {
     await updateAgentIntegrations(props.id, integrations)
@@ -738,7 +724,6 @@ const updateSettings = async (settings: AgentSettings) => {
   if (!agent.value) return
   try {
     await updateAgent(props.id, {
-      behaviorMode: settings.behaviorMode,
     })
     agent.value = { ...agent.value, settings } as Agent
   } catch (e) {
@@ -764,7 +749,7 @@ const deleteAgentHandler = async () => {
   if (!confirm('Are you sure you want to delete this agent?')) return
   try {
     await deleteAgentApi(props.id)
-    window.location.href = dashboardUrl()
+    window.location.href = chatUrl()
   } catch (e) {
     console.error('Failed to delete agent:', e)
   }

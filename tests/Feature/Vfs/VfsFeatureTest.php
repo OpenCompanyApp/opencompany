@@ -41,10 +41,12 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
+use Tests\Concerns\GrantsAgentPermissions;
 use Tests\TestCase;
 
 class VfsFeatureTest extends TestCase
 {
+    use GrantsAgentPermissions;
     use RefreshDatabase;
 
     private User $agent;
@@ -142,6 +144,9 @@ class VfsFeatureTest extends TestCase
 
     public function test_vfs_atlas_artisan_helper_smoke_matrix_covers_shell_and_primitives(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         AgentPermission::create([
             'id' => (string) Str::uuid(),
             'agent_id' => $this->agent->id,
@@ -237,6 +242,9 @@ class VfsFeatureTest extends TestCase
 
     public function test_vfs_patch_updates_documents_with_search_replace(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         $folder = Document::factory()->create([
             'title' => 'Patch Allowed',
             'is_folder' => true,
@@ -307,6 +315,9 @@ class VfsFeatureTest extends TestCase
 
     public function test_vfs_patch_respects_document_folder_scope(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         $allowedFolder = Document::factory()->create(['title' => 'Allowed', 'is_folder' => true, 'author_id' => $this->agent->id]);
         $deniedFolder = Document::factory()->create(['title' => 'Denied', 'is_folder' => true, 'author_id' => $this->agent->id]);
         $allowedDoc = Document::factory()->create(['title' => 'Allowed Child', 'parent_id' => $allowedFolder->id, 'content' => 'Old', 'author_id' => $this->agent->id]);
@@ -841,6 +852,9 @@ class VfsFeatureTest extends TestCase
 
     public function test_vfs_exec_supports_globs_jq_file_args_redirection_and_find_budgets(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         AgentPermission::create([
             'id' => (string) Str::uuid(),
             'agent_id' => $this->agent->id,
@@ -1075,6 +1089,9 @@ RUBY, $doc->id, $doc->id, $doc->id, $doc->id, $doc->id));
     // write permission and per-path file checks, inside an active task.
     public function test_vfs_code_mutation_helpers_share_primitive_permissions(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         AgentPermission::create([
             'id' => (string) Str::uuid(),
             'agent_id' => $this->agent->id,
@@ -1167,6 +1184,9 @@ RUBY);
 
     public function test_vfs_write_creates_workspace_files_inside_allowed_folder_scope(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         AgentPermission::create([
             'id' => (string) Str::uuid(),
             'agent_id' => $this->agent->id,
@@ -1190,6 +1210,9 @@ RUBY);
 
     public function test_vfs_file_canonical_folder_children_behave_like_display_paths(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         $allowedFolder = app(FileSystemService::class)->createFolder($this->workspace->id, null, 'allowed', $this->agent->id);
         AgentPermission::create([
             'id' => (string) Str::uuid(),
@@ -1246,6 +1269,9 @@ RUBY);
 
     public function test_vfs_write_rejects_invalid_modes_without_overwriting(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         AgentPermission::create([
             'id' => (string) Str::uuid(),
             'agent_id' => $this->agent->id,
@@ -1275,6 +1301,9 @@ RUBY);
 
     public function test_denied_vfs_file_write_does_not_create_parent_folders(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         $allowedFolder = app(FileSystemService::class)->createFolder($this->workspace->id, null, 'allowed', $this->agent->id);
         AgentPermission::create([
             'id' => (string) Str::uuid(),
@@ -1312,6 +1341,9 @@ RUBY);
 
     public function test_vfs_exec_file_mutation_commands_require_write_permission_and_work_for_allowed_agents(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         AgentPermission::create([
             'id' => (string) Str::uuid(),
             'agent_id' => $this->agent->id,
@@ -1405,7 +1437,6 @@ RUBY);
 
     public function test_vfs_exec_file_mutations_do_not_bypass_approval_required_write_tool(): void
     {
-        $this->agent->update(['behavior_mode' => 'supervised']);
         AgentPermission::create([
             'id' => (string) Str::uuid(),
             'agent_id' => $this->agent->id,
@@ -1473,6 +1504,9 @@ RUBY);
 
     public function test_vfs_patch_updates_limited_task_and_list_fields(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         $task = Task::create([
             'id' => 'task-vfs-patch',
             'workspace_id' => $this->workspace->id,
@@ -1579,6 +1613,10 @@ RUBY);
 
     public function test_vfs_table_rows_are_patchable_records_not_bulk_exports(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives and the
+        // backing domain write explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write', 'update_table_row');
         $table = DataTable::create([
             'workspace_id' => $this->workspace->id,
             'name' => 'Customers',
@@ -1718,6 +1756,11 @@ RUBY);
 
     public function test_vfs_table_row_patch_surfaces_update_table_row_approval(): void
     {
+        // The policy model now gates the vfs_patch primitive by default too,
+        // and VfsMutationPolicy reports the first gated tool in required
+        // order. Grant the primitive so this test still pins the backing
+        // domain permission as the approval tool.
+        $this->allowTools($this->agent, 'vfs_patch');
         $table = DataTable::create([
             'workspace_id' => $this->workspace->id,
             'name' => 'Approval Customers',
@@ -1775,6 +1818,9 @@ RUBY);
 
     public function test_vfs_list_display_paths_patch_same_record_as_canonical_paths(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         $project = ListItem::create([
             'id' => 'display-path-project',
             'workspace_id' => $this->workspace->id,
@@ -1815,6 +1861,9 @@ RUBY);
 
     public function test_vfs_agent_memory_files_are_patchable_but_memory_directories_are_not(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         $agentFolder = app(AgentDocumentService::class)->createAgentDocumentStructure($this->agent, [
             'MEMORY' => 'Old durable memory',
         ]);
@@ -1855,6 +1904,10 @@ RUBY);
 
     public function test_vfs_agent_identity_and_manager_memory_patch_rules_are_enforced(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives and the
+        // backing domain write explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write', 'update_agent_identity_file');
         $directReport = User::factory()->agent()->create([
             'workspace_id' => $this->workspace->id,
             'name' => 'Report Agent',
@@ -1941,6 +1994,11 @@ RUBY);
 
     public function test_vfs_agent_identity_patch_creates_and_replays_backing_approval(): void
     {
+        // The policy model now gates the vfs_patch primitive by default too,
+        // and VfsMutationPolicy reports the first gated tool in required
+        // order. Grant the primitive so this test still pins the backing
+        // domain permission as the approval tool.
+        $this->allowTools($this->agent, 'vfs_patch');
         $directReport = User::factory()->agent()->create([
             'workspace_id' => $this->workspace->id,
             'name' => 'Approval Report',
@@ -2050,6 +2108,10 @@ RUBY);
 
     public function test_vfs_capability_truth_contract_for_representative_mount_entries(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant the VFS primitives and backing domain writes
+        // explicitly.
+        $this->allowTools($this->agent, 'vfs_patch', 'vfs_write', 'update_table_row', 'update_agent_identity_file');
         AgentPermission::create([
             'id' => (string) Str::uuid(),
             'agent_id' => $this->agent->id,

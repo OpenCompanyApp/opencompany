@@ -13,18 +13,19 @@ use App\Services\Mcp\McpPermissionEvaluator;
 use App\Services\Mcp\McpToolProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Contracts\Tool;
-use OpenCompany\IntegrationCore\Contracts\ToolProvider;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
-use OpenCompany\IntegrationCore\Support\ToolResult;
+use App\Agents\Tools\External\Tool;
+use App\Agents\Tools\External\ToolProvider;
+use App\Agents\Tools\External\ToolProviderRegistry;
+use App\Agents\Tools\External\ToolResult;
 use Tests\TestCase;
 
 /**
  * Approval floor for outbound/external mutations ("triggers are never
- * consent"): an `autonomous` agent must still get approval_required for tools
- * that change third-party systems or widen exposure, on both the direct and
- * the Code Mode callback path, while internal workspace writes keep following
- * the behavior mode and an explicit admin allow row can opt a tool out.
+ * consent"): with no admin rule an agent gets approval_required for tools that
+ * change third-party systems or widen exposure, on both the direct and the
+ * Code Mode callback path. Under the policy model (behaviour modes deleted)
+ * internal writes are gated by default too; only declared reads run freely,
+ * and an explicit admin allow row can opt a tool out.
  */
 class ExternalApprovalFloorTest extends TestCase
 {
@@ -36,7 +37,7 @@ class ExternalApprovalFloorTest extends TestCase
     {
         parent::setUp();
 
-        $this->agent = User::factory()->agent()->create(['behavior_mode' => 'autonomous']);
+        $this->agent = User::factory()->agent()->create();
 
         // A credentialed third-party integration (acts on an external account)
         // and a credential-less one (local renderer that only writes files).
@@ -109,14 +110,16 @@ class ExternalApprovalFloorTest extends TestCase
         return app(AgentPermissionService::class)->resolveToolPermission($this->agent, $slug, $type);
     }
 
-    public function test_autonomous_agent_needs_approval_for_external_write_integration_tool(): void
+    public function test_agent_needs_approval_for_external_write_integration_tool(): void
     {
         $this->assertSame(['allowed' => true, 'requires_approval' => true], $this->resolve('acmecrm_update_record'));
         // Unknown/missing type on an external integration fails closed.
         $this->assertTrue($this->resolve('acmecrm_untyped')['requires_approval']);
-        // Reads of the same integration stay autonomous, even when a caller
-        // passes 'write' as a strictest-case placeholder.
-        $this->assertFalse($this->resolve('acmecrm_get_record', 'write')['requires_approval']);
+        // Declared reads of the same integration run without approval. The
+        // resolver now trusts the declared type it is given (the integration
+        // metadata re-lookup went away with the package system); the Code Mode
+        // test below covers the path that resolves the type from metadata.
+        $this->assertFalse($this->resolve('acmecrm_get_record', 'read')['requires_approval']);
     }
 
     public function test_code_mode_callback_gets_the_same_approval_decision(): void
@@ -142,15 +145,24 @@ class ExternalApprovalFloorTest extends TestCase
         $this->assertSame('allow', app(ToolRegistry::class)->resolveScriptToolForDispatch('acmecrm_update_record', $this->agent)['decision']);
     }
 
-    public function test_internal_and_credential_less_writes_follow_behavior_mode(): void
+    // Policy model: internal and credential-less writes are no longer
+    // autonomous by default; an admin allow row waives exactly one tool.
+    public function test_internal_and_credential_less_writes_require_approval_by_default(): void
     {
         foreach (['create_task', 'create_document', 'vfs_write', 'acmerender_update_record'] as $slug) {
-            $this->assertFalse($this->resolve($slug)['requires_approval'], "{$slug} should stay autonomous");
+            $this->assertTrue($this->resolve($slug)['requires_approval'], "{$slug} should require approval by default");
         }
 
-        // Behavior mode still applies on top for supervised agents.
-        $this->agent->update(['behavior_mode' => 'supervised']);
-        $this->assertTrue($this->resolve('create_document')['requires_approval']);
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'tool',
+            'scope_key' => 'create_document',
+            'permission' => 'allow',
+            'requires_approval' => false,
+        ]);
+        $this->assertFalse($this->resolve('create_document')['requires_approval']);
+        $this->assertTrue($this->resolve('create_task')['requires_approval']);
     }
 
     public function test_mcp_tools_require_approval_by_default_on_every_path(): void

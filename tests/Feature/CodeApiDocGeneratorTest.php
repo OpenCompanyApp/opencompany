@@ -75,21 +75,6 @@ class CodeApiDocGeneratorTest extends TestCase
         }
     }
 
-    public function test_agent_discovery_excludes_disabled_integrations_while_developer_catalog_keeps_them(): void
-    {
-        // The developer inventory remains a configuration surface. Agent Code
-        // Mode must instead use only the enabled integration capability set.
-        $scriptNamespaces = $this->generator->buildFunctionMap($this->agent);
-        $developerNamespaces = $this->generator->getNamespacesForCatalog($this->agent);
-
-        $this->assertArrayHasKey('integrations.coingecko', $developerNamespaces);
-        $this->assertSame([], array_filter(
-            array_keys($scriptNamespaces),
-            static fn (string $path): bool => str_starts_with($path, 'integrations.coingecko.'),
-        ));
-        $this->assertLessThan(5_000, count($scriptNamespaces));
-    }
-
     public function test_permission_change_rebuilds_cached_agent_capabilities(): void
     {
         $before = $this->generator->buildFunctionMap($this->agent);

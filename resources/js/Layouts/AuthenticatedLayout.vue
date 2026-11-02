@@ -7,7 +7,7 @@ import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { useWorkspace } from '@/composables/useWorkspace';
-import { dashboard } from '@/routes';
+import { chat } from '@/routes';
 import { edit as editProfile } from '@/routes/profile';
 import { destroy as logout } from '@/actions/App/Http/Controllers/Auth/AuthenticatedSessionController';
 
@@ -15,10 +15,10 @@ const showingNavigationDropdown = ref(false);
 const page = usePage();
 const { workspaceRouteParams } = useWorkspace();
 const authUser = (page.props as unknown as { auth: { user: { name: string; email: string } } }).auth.user;
-const dashboardUrl = () => dashboard.url(workspaceRouteParams());
+const homeUrl = () => chat.url(workspaceRouteParams());
 const profileUrl = () => editProfile.url(workspaceRouteParams());
 const logoutUrl = () => logout.url();
-const isDashboard = () => page.url === dashboard.url(workspaceRouteParams());
+const isHome = () => page.url === chat.url(workspaceRouteParams());
 </script>
 
 <template>
@@ -33,7 +33,7 @@ const isDashboard = () => page.url === dashboard.url(workspaceRouteParams());
                         <div class="flex">
                             <!-- Logo -->
                             <div class="flex shrink-0 items-center">
-                                <Link :href="dashboardUrl()">
+                                <Link :href="homeUrl()">
                                     <ApplicationLogo
                                         class="block h-9 w-auto fill-current text-neutral-800 dark:text-neutral-100"
                                     />
@@ -45,10 +45,10 @@ const isDashboard = () => page.url === dashboard.url(workspaceRouteParams());
                                 class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
                             >
                                 <NavLink
-                                    :href="dashboardUrl()"
-                                    :active="isDashboard()"
+                                    :href="homeUrl()"
+                                    :active="isHome()"
                                 >
-                                    Dashboard
+                                    Chat
                                 </NavLink>
                             </div>
                         </div>
@@ -152,10 +152,10 @@ const isDashboard = () => page.url === dashboard.url(workspaceRouteParams());
                 >
                     <div class="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
-                            :href="dashboardUrl()"
-                            :active="isDashboard()"
+                            :href="homeUrl()"
+                            :active="isHome()"
                         >
-                            Dashboard
+                            Chat
                         </ResponsiveNavLink>
                     </div>
 

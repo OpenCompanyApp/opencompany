@@ -17,10 +17,6 @@ class ScreenshotTest extends DuskTestCase
             $user = User::factory()->create();
 
             $browser->loginAs($user)
-                ->visit('/dashboard')
-                ->pause(1000)
-                ->screenshot('01_dashboard')
-
                 ->visit('/chat')
                 ->pause(1000)
                 ->screenshot('02_chat')
@@ -44,10 +40,6 @@ class ScreenshotTest extends DuskTestCase
                 ->visit('/settings')
                 ->pause(1000)
                 ->screenshot('07_settings')
-
-                ->visit('/workload')
-                ->pause(1000)
-                ->screenshot('08_workload')
 
                 ->visit('/org')
                 ->pause(1000)

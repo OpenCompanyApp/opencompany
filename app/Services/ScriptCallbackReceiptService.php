@@ -6,7 +6,7 @@ use App\Models\Task;
 use App\Models\TaskStep;
 use App\Models\User;
 use Illuminate\Support\Str;
-use OpenCompany\IntegrationCore\Script\ScriptDispatchException;
+use App\Domain\CodeMode\Script\ScriptDispatchException;
 
 /**
  * Persists the minimal intent and outcome evidence for one Code Mode write.

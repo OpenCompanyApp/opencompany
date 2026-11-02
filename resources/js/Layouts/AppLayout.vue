@@ -18,7 +18,7 @@ import { usePresence } from '@/composables/usePresence'
 import { useChannelListener } from '@/composables/useRealtime'
 import { useApi } from '@/composables/useApi'
 import { useWorkspace } from '@/composables/useWorkspace'
-import { chat, dashboard, docs, integrations, settings, tasks } from '@/routes'
+import { chat, docs, integrations, settings, tasks } from '@/routes'
 import { show as showAgentRoute } from '@/routes/agent'
 import type { AgentStatus } from '@/types'
 
@@ -129,7 +129,6 @@ onUnmounted(() => {
 
 // Check if a path is active
 const isActive = (path: string): boolean => {
-  if (path === dashboard.url(workspaceRouteParams())) return page.url === dashboard.url(workspaceRouteParams())
   return page.url.startsWith(path)
 }
 </script>
@@ -147,7 +146,7 @@ const isActive = (path: string): boolean => {
             <Icon name="ph:list" class="w-6 h-6 text-neutral-700 dark:text-neutral-200" />
           </button>
 
-          <Link :href="dashboard(workspaceRouteParams())" class="flex items-center gap-2">
+          <Link :href="chat(workspaceRouteParams())" class="flex items-center gap-2">
             <WorkspaceIcon
               :icon="workspace?.icon"
               :color="workspace?.color"
@@ -173,7 +172,7 @@ const isActive = (path: string): boolean => {
         <Slideover v-model:open="mobileMenuOpen" side="left" size="sm" :show-close="false">
           <template #header>
             <div class="flex items-center justify-between w-full">
-              <Link :href="dashboard(workspaceRouteParams())" class="flex items-center gap-2.5" @click="mobileMenuOpen = false">
+              <Link :href="chat(workspaceRouteParams())" class="flex items-center gap-2.5" @click="mobileMenuOpen = false">
                 <WorkspaceIcon
                   :icon="workspace?.icon"
                   :color="workspace?.color"

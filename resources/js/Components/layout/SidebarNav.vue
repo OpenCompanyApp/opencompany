@@ -5,30 +5,6 @@
       collapsed ? 'px-2 py-2' : 'px-2 py-1'
     ]"
   >
-    <!-- Dashboard (always at top) -->
-    <div class="space-y-0.5">
-      <Link
-        :href="dashboardUrl()"
-        :class="[
-          'group flex items-center rounded-lg transition-colors duration-150 outline-none',
-          collapsed ? 'justify-center p-2' : 'gap-2.5 px-3 py-2',
-          isActive(dashboardUrl())
-            ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-            : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200',
-          'focus-visible:ring-1 focus-visible:ring-neutral-400',
-        ]"
-      >
-        <Icon
-          :name="isActive(dashboardUrl()) ? 'ph:house-fill' : 'ph:house'"
-          class="w-[18px] h-[18px] shrink-0"
-        />
-        <span v-if="!collapsed" class="text-sm truncate flex-1">Dashboard</span>
-      </Link>
-    </div>
-
-    <!-- Separator -->
-    <div class="my-2.5 mx-3 border-t border-neutral-200 dark:border-neutral-800" />
-
     <!-- Agent Work Items -->
     <div class="space-y-0.5">
       <NavItem v-for="item in agentWorkItems" :key="item.to" :item="item" :collapsed="collapsed" />
@@ -151,7 +127,6 @@ const {
   automationUrl,
   calendarUrl,
   chatUrl,
-  dashboardUrl,
   docsUrl,
   filesUrl,
   listsUrl,
@@ -189,9 +164,7 @@ const officeItems = computed<NavItemType[]>(() => [
 
 // Methods
 const isActive = (path: string): boolean => {
-  const currentUrl = page.url
-  if (path === dashboardUrl()) return currentUrl === dashboardUrl()
-  return currentUrl.startsWith(path)
+  return page.url.startsWith(path)
 }
 
 // NavItem subcomponent

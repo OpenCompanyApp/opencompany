@@ -10,8 +10,6 @@ use App\Agents\Tools\Workspace\DeleteAgent;
 use App\Agents\Tools\Workspace\DiscoverMcpTools;
 use App\Agents\Tools\Workspace\GetAgentDetails;
 use App\Agents\Tools\Workspace\GetAgentPermissions;
-use App\Agents\Tools\Workspace\GetIntegrationConfig;
-use App\Agents\Tools\Workspace\GetIntegrationSetup;
 use App\Agents\Tools\Workspace\LinkExternalUser;
 use App\Agents\Tools\Workspace\ListAgents;
 use App\Agents\Tools\Workspace\ListAvailableModels;
@@ -22,7 +20,6 @@ use App\Agents\Tools\Workspace\RemoveChannelMember;
 use App\Agents\Tools\Workspace\RemoveMcpServer;
 use App\Agents\Tools\Workspace\ReadAgentIdentityFile;
 use App\Agents\Tools\Workspace\SetupIntegrationWebhook;
-use App\Agents\Tools\Workspace\TestIntegrationConnection;
 use App\Agents\Tools\Workspace\TestMcpServer;
 use App\Agents\Tools\Workspace\UpdateAgent;
 use App\Agents\Tools\Workspace\UpdateAgentChannelAccess;
@@ -31,7 +28,6 @@ use App\Agents\Tools\Workspace\UpdateAgentFolderAccess;
 use App\Agents\Tools\Workspace\UpdateAgentIdentityFile;
 use App\Agents\Tools\Workspace\UpdateAgentIntegrationAccess;
 use App\Agents\Tools\Workspace\UpdateAgentToolPermissions;
-use App\Agents\Tools\Workspace\UpdateIntegrationConfig;
 use App\Agents\Tools\Workspace\UpdateMcpServer;
 use App\Models\User;
 use App\Services\AgentAvatarService;
@@ -91,13 +87,6 @@ class WorkspaceToolProvider implements BuiltInToolProvider
                 'type' => 'read',
                 'name' => 'List Integrations',
                 'description' => 'List configured integrations and their status.',
-                'icon' => 'ph:plugs-connected',
-            ],
-            'get_integration_config' => [
-                'class' => GetIntegrationConfig::class,
-                'type' => 'read',
-                'name' => 'Get Integration Config',
-                'description' => 'Get configuration details for a specific integration.',
                 'icon' => 'ph:plugs-connected',
             ],
             'list_available_models' => [
@@ -176,27 +165,6 @@ class WorkspaceToolProvider implements BuiltInToolProvider
                 'name' => 'Update Agent Integration Access',
                 'description' => 'Update integration access for an agent.',
                 'icon' => 'ph:shield-check',
-            ],
-            'get_integration_setup' => [
-                'class' => GetIntegrationSetup::class,
-                'type' => 'read',
-                'name' => 'Get Integration Setup',
-                'description' => 'Get setup information and schema for an integration.',
-                'icon' => 'ph:plugs-connected',
-            ],
-            'update_integration_config' => [
-                'class' => UpdateIntegrationConfig::class,
-                'type' => 'write',
-                'name' => 'Update Integration Config',
-                'description' => 'Update configuration settings for an integration.',
-                'icon' => 'ph:plugs-connected',
-            ],
-            'test_integration_connection' => [
-                'class' => TestIntegrationConnection::class,
-                'type' => 'write',
-                'name' => 'Test Integration Connection',
-                'description' => 'Test connectivity to an integration.',
-                'icon' => 'ph:plugs-connected',
             ],
             'setup_integration_webhook' => [
                 'class' => SetupIntegrationWebhook::class,
@@ -307,11 +275,7 @@ class WorkspaceToolProvider implements BuiltInToolProvider
             UpdateAgentIntegrationAccess::class => new $class($agent, $this->permissionService),
 
             // Agent-only tools
-            GetIntegrationConfig::class,
             UpdateAgent::class,
-            GetIntegrationSetup::class,
-            UpdateIntegrationConfig::class,
-            TestIntegrationConnection::class,
             SetupIntegrationWebhook::class,
             LinkExternalUser::class,
             ListMcpServers::class,

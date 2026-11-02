@@ -28,7 +28,6 @@ import * as StatsApi from '@/actions/App/Http/Controllers/Api/StatsController'
 import * as TaskApi from '@/actions/App/Http/Controllers/Api/TaskController'
 import * as TokenAnalyticsApi from '@/actions/App/Http/Controllers/Api/TokenAnalyticsController'
 import * as UserApi from '@/actions/App/Http/Controllers/Api/UserController'
-import * as WorkloadApi from '@/actions/App/Http/Controllers/Api/WorkloadController'
 import * as WorkspaceDiskApi from '@/actions/App/Http/Controllers/Api/WorkspaceDiskController'
 import { wayfinderRequest } from '@/utils/wayfinder'
 import type { QueryParams, RouteDefinition } from '@/wayfinder'
@@ -42,7 +41,6 @@ import type {
   TaskStep,
   Document,
   Activity,
-  Stats,
   ApprovalRequest,
   CalendarEvent,
   CalendarFeed,
@@ -329,26 +327,13 @@ export const useApi = () => {
     })))
   }
 
-  // Workload
-  const fetchWorkload = () => useFetch<{
-    agents: Array<{
-      agent: { id: string; name: string; avatar: string | null; agentType: string | null; status: string }
-      metrics: { currentTasks: number; pendingTasks: number; completedToday: number; completedThisWeek: number; failedThisWeek: number; avgDurationSeconds: number | null }
-      currentTaskTitle: string | null
-    }>
-    summary: { totalAgents: number; activeAgents: number; totalActiveTasks: number; totalPendingTasks: number; completedToday: number; completedThisWeek: number; failedThisWeek: number }
-  }>(WorkloadApi.index())
-
   // Token Analytics
   const fetchTokenAnalytics = (period = '30') =>
     useFetch<TokenAnalyticsResponse>(TokenAnalyticsApi.index(query({ period })))
 
-  // Stats
-  const fetchStats = () => useFetch<Stats>(StatsApi.index())
+  // Workspace status
   const fetchWorkspaceStatus = (params?: { channelId?: string; agentId?: string }) =>
     wayfinderRequest(StatsApi.status(query(params ?? {})))
-  const updateStats = (data: Partial<Stats>) =>
-    wayfinderRequest(StatsApi.update(), { data })
 
   // List Templates (formerly Task Templates)
   const fetchListTemplates = (activeOnly = true) =>
@@ -458,7 +443,7 @@ export const useApi = () => {
 
   // Agent Permissions
   const fetchAgentPermissions = (id: string) =>
-    useFetch<{ tools: unknown[]; channelIds: string[]; folderIds: string[]; behaviorMode: string }>(AgentPermissionApi.index(id))
+    useFetch<{ tools: unknown[]; channelIds: string[]; folderIds: string[] }>(AgentPermissionApi.index(id))
   const updateAgentToolPermissions = (id: string, tools: { scopeKey: string; permission: string; requiresApproval: boolean }[]) =>
     wayfinderRequest(AgentPermissionApi.updateTools(id), { data: { tools } })
   const updateAgentChannelPermissions = (id: string, channels: string[]) =>
@@ -683,14 +668,10 @@ export const useApi = () => {
     respondToApproval,
     // Activities
     fetchActivities,
-    // Workload
-    fetchWorkload,
     // Token Analytics
     fetchTokenAnalytics,
-    // Stats
-    fetchStats,
+    // Workspace status
     fetchWorkspaceStatus,
-    updateStats,
     // List Templates
     fetchListTemplates,
     createListTemplate,

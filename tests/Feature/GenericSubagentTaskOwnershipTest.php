@@ -19,7 +19,7 @@ use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Tools\Request;
 use Mockery;
-use OpenCompany\IntegrationCore\Script\ScriptDispatchException;
+use App\Domain\CodeMode\Script\ScriptDispatchException;
 use Stringable;
 use Tests\TestCase;
 

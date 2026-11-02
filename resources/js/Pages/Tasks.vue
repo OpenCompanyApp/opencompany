@@ -5,12 +5,6 @@
       <div class="flex items-center gap-1">
         <span class="text-lg font-semibold text-neutral-900 dark:text-white">Tasks</span>
         <Link
-          :href="workload(workspaceRouteParams())"
-          class="ml-1 px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
-        >
-          Workload
-        </Link>
-        <Link
           :href="activity(workspaceRouteParams())"
           class="px-2 py-1 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
         >
@@ -286,7 +280,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import { useWorkspace } from '@/composables/useWorkspace'
-import { activity, workload } from '@/routes'
+import { activity } from '@/routes'
 import { analytics as taskAnalytics, show as showTaskRoute } from '@/routes/tasks'
 import type { AgentTask, TaskStatus, User } from '@/types'
 import type { PaginatedResponse } from '@/composables/useApi'

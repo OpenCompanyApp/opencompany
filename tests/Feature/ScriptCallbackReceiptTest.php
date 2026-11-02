@@ -21,9 +21,10 @@ use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Mockery;
-use OpenCompany\IntegrationCore\Script\ScriptBridgeException;
-use OpenCompany\IntegrationCore\Script\ScriptDispatchException;
+use App\Domain\CodeMode\Script\ScriptBridgeException;
+use App\Domain\CodeMode\Script\ScriptDispatchException;
 use Stringable;
+use Tests\Concerns\GrantsAgentPermissions;
 use Tests\TestCase;
 
 /**
@@ -34,6 +35,7 @@ use Tests\TestCase;
  */
 class ScriptCallbackReceiptTest extends TestCase
 {
+    use GrantsAgentPermissions;
     use RefreshDatabase;
 
     private User $agent;
@@ -322,6 +324,9 @@ class ScriptCallbackReceiptTest extends TestCase
 
     public function test_real_registry_default_agent_profile_denies_a_catalog_write_without_task_before_tool_handle(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant explicitly so the task-receipt denial is what fires.
+        $this->allowTools($this->agent, 'send_channel_message');
         $registry = app(ToolRegistry::class);
         $docs = app(CodeApiDocGenerator::class);
         $path = array_search('send_channel_message', $docs->buildFunctionMap($this->agent), true);
@@ -351,6 +356,9 @@ class ScriptCallbackReceiptTest extends TestCase
 
     public function test_real_catalog_document_write_followed_by_ruby_error_is_non_retryable(): void
     {
+        // Mechanics test: the policy model requires approval for writes by
+        // default; grant explicitly so the write lands before the Ruby error.
+        $this->allowTools($this->agent, 'create_document');
         $task = $this->task();
         $registry = app(ToolRegistry::class);
         $registry->setTaskContext($task->id);

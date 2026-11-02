@@ -20,29 +20,11 @@ class NavigationTest extends DuskTestCase
             $browser->loginAs($user)
                 ->visit('/')
                 ->pause(2000)
-                ->assertSee('Dashboard')
                 ->assertSee('Chat')
                 ->assertSee('Tasks')
                 ->assertSee('Activity')
                 ->assertSee('Approvals')
                 ->assertSee('Docs');
-        });
-    }
-
-    /**
-     * Test navigate to dashboard.
-     */
-    public function test_navigate_to_dashboard(): void
-    {
-        $user = User::factory()->create();
-
-        $this->browse(function (Browser $browser) use ($user) {
-            $browser->loginAs($user)
-                ->visit('/chat')
-                ->pause(2000)
-                ->clickLink('Dashboard')
-                ->pause(1000)
-                ->assertPathIs('/');
         });
     }
 

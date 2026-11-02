@@ -399,7 +399,6 @@ const {
   automationUrl,
   calendarUrl,
   chatUrl,
-  dashboardUrl,
   docsUrl,
   integrationsUrl,
   isAdmin,
@@ -452,7 +451,7 @@ const itemRefs = ref<Map<string, ComponentPublicInstance>>(new Map())
 const isSearching = ref(false)
 const currentMode = ref<PaletteMode>('commands')
 const searchScope = ref<SearchScope | null>(null)
-const recentSearches = ref<string[]>(['dashboard', 'settings', '#general'])
+const recentSearches = ref<string[]>(['chat', 'settings', '#general'])
 const collapsedGroups = ref<Set<string>>(new Set())
 const selectedItems = ref<Set<string>>(new Set())
 const showPreview = ref(false)
@@ -467,7 +466,7 @@ const modes: Mode[] = [
 
 // Empty state suggestions
 const emptySuggestions = computed(() => [
-  'Try searching for "dashboard"',
+  'Try searching for "settings"',
   'Search channels with "#"',
   'Search agents with "@"',
 ])
@@ -475,15 +474,6 @@ const emptySuggestions = computed(() => [
 // Command groups
 const commandGroups = computed<CommandGroup[]>(() => {
   const navItems: CommandItem[] = [
-    {
-      id: 'nav-home',
-      label: 'Dashboard',
-      description: 'Go to dashboard overview',
-      icon: 'ph:house-fill',
-      iconColor: 'text-neutral-500 dark:text-neutral-300',
-      shortcut: 'G H',
-      action: () => router.visit(dashboardUrl()),
-    },
     {
       id: 'nav-chat',
       label: 'Chat',

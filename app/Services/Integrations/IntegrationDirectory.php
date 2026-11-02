@@ -6,23 +6,17 @@ use App\Domain\Ai\Codex\CodexTokenStore;
 use App\Models\IntegrationSetting;
 use App\Models\McpServer;
 use App\Services\Integrations\Data\IntegrationDescriptor;
-use OpenCompany\IntegrationCore\Contracts\ConfigurableIntegration;
-use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
 
 /**
  * Produces the workspace integration directory consumed by settings and tools.
  *
- * This class intentionally merges three sources: legacy static app metadata,
- * package-provided configurable integrations, and enabled MCP servers. It should
- * describe OpenCompany availability/configuration state without copying package
- * tool schemas or hardcoding provider behavior that belongs in sibling packages.
+ * Merges the app-owned static entries (AI providers, Telegram, chat adapters)
+ * with enabled workspace MCP servers. The integration package system was
+ * deleted (2026-11-02); external systems become Connections in the new model
+ * (docs/planning/connections-events-routines.md).
  */
 class IntegrationDirectory
 {
-    public function __construct(
-        private ToolProviderRegistry $registry,
-    ) {}
-
     /**
      * @return list<array<string, mixed>>
      */
@@ -33,64 +27,12 @@ class IntegrationDirectory
 
         $integrations = [];
 
-        // Static entries are the legacy OpenCompany catalog. Keep them until
-        // each provider has moved to package metadata, but do not add new
-        // provider-specific behavior here unless it is app-specific.
+        // Static entries are the app-owned AI providers and chat channels.
         foreach ($available as $id => $info) {
             $integrations[] = $this->staticDescriptor($id, $info, $settings->get($id))->toArray();
         }
 
-        // Configurable package integrations expose their own settings schema.
-        // OpenCompany only overlays workspace enablement/configuration state.
-        foreach ($this->registry->all() as $provider) {
-            if (! $provider instanceof ConfigurableIntegration) {
-                continue;
-            }
-
-            if ($provider->appName() === 'telegram') {
-                // Telegram chat setup is app-owned and already represented by
-                // the static chat descriptor. The generic Telegram package can
-                // still provide tools, but it must not create a second settings
-                // card with a different credential schema.
-                continue;
-            }
-
-            $integrations[] = $this->configurableProviderDescriptor(
-                $provider,
-                $settings->get($provider->appName())
-            )->toArray();
-        }
-
-        // Some packages are integration-like tool bundles with no user config
-        // schema. They still need directory entries so agents and settings can
-        // reason about availability.
-        foreach ($this->registry->all() as $provider) {
-            if ($provider instanceof ConfigurableIntegration || ! $provider->isIntegration()) {
-                continue;
-            }
-
-            $meta = $provider->appMeta();
-            /** @var IntegrationSetting|null $setting */
-            $setting = $settings->get($provider->appName());
-            $integrations[] = (new IntegrationDescriptor([
-                'id' => IntegrationIdentity::forPackage($provider->appName()),
-                'configId' => $provider->appName(),
-                'entryType' => IntegrationIdentity::PACKAGE,
-                'source' => 'package',
-                'cardKey' => IntegrationIdentity::forPackage($provider->appName()),
-                'name' => $meta['description'] ?? $provider->appName(),
-                'description' => $meta['label'] ?? '',
-                'icon' => $meta['icon'] ?? 'ph:puzzle-piece',
-                'logo' => $meta['logo'] ?? null,
-                'category' => 'built-in-tools',
-                'badge' => 'built-in',
-                'enabled' => $setting?->enabled ?? false,
-                'configured' => true,
-                'configurable' => false,
-            ]))->toArray();
-        }
-
-        // MCP servers are workspace records, not package providers. Model/tool
+        // MCP servers are workspace records. Model/tool
         // access still flows through the same integration-style catalog because
         // permissions are managed at the app/tool slug layer.
         foreach (McpServer::forWorkspace()->where('enabled', true)->get() as $server) {
@@ -169,31 +111,6 @@ class IntegrationDirectory
             'configured' => $setting ? $setting->hasValidConfig() : false,
             'configurable' => $configFields !== null,
             'configSchema' => $configFields ? IntegrationConfigResolver::buildStaticConfigSchema($configFields) : null,
-        ]);
-    }
-
-    private function configurableProviderDescriptor(ConfigurableIntegration $provider, ?IntegrationSetting $setting): IntegrationDescriptor
-    {
-        $meta = $provider->integrationMeta();
-        $cardId = IntegrationIdentity::forPackage($provider->appName());
-
-        return new IntegrationDescriptor([
-            'id' => $cardId,
-            'configId' => $provider->appName(),
-            'entryType' => IntegrationIdentity::PACKAGE,
-            'source' => 'package',
-            'cardKey' => $cardId,
-            'name' => $meta['name'],
-            'description' => $meta['description'],
-            'icon' => $meta['icon'] ?? 'ph:puzzle-piece',
-            'logo' => $meta['logo'] ?? null,
-            'category' => $meta['category'] ?? 'data',
-            'badge' => $meta['badge'] ?? null,
-            'docsUrl' => $meta['docs_url'] ?? null,
-            'enabled' => $setting ? $setting->enabled : false,
-            'configured' => $setting ? $setting->hasValidConfig() : false,
-            'configurable' => true,
-            'configSchema' => ConfigSchemaNormalizer::normalize($provider->configSchema()),
         ]);
     }
 }

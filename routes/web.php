@@ -82,21 +82,26 @@ Route::middleware(['auth', 'verified'])->get('/', function () {
         return redirect()->route('setup');
     }
 
-    return redirect("/w/{$workspace->slug}");
+    // Chat is the authenticated landing page (the old Dashboard page was removed
+    // per docs/PRODUCT_DIRECTION.md "Nuclear decisions"); go straight there to
+    // avoid an extra redirect hop through the workspace root.
+    return redirect()->route('chat', ['workspace_slug' => $workspace->slug]);
 })->name('home');
 
 // All workspace-scoped routes
 Route::middleware(['auth', 'verified', 'resolve.workspace'])
     ->prefix('w/{workspace_slug}')
     ->group(function () {
-        // Dashboard (home)
+        // Workspace root and the legacy /dashboard URL redirect to chat, which is
+        // the authenticated landing page. The Dashboard Inertia page was deleted
+        // (Inertia is frozen); these redirects only keep old bookmarks/links from
+        // 404ing. Do not reintroduce a page render here.
         Route::get('/', function () {
-            return Inertia::render('Dashboard');
-        })->name('dashboard');
+            return redirect()->route('chat', ['workspace_slug' => request()->route('workspace_slug')]);
+        });
 
-        // Dashboard alias
         Route::get('/dashboard', function () {
-            return Inertia::render('Dashboard');
+            return redirect()->route('chat', ['workspace_slug' => request()->route('workspace_slug')]);
         });
 
         // Chat
@@ -173,11 +178,6 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
         Route::get('/settings', function () {
             return Inertia::render('Settings');
         })->name('settings');
-
-        // Workload
-        Route::get('/workload', function () {
-            return Inertia::render('Workload');
-        })->name('workload');
 
         // Integrations (admin-only enforced in frontend + API)
         Route::get('/integrations', function () {
