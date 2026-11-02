@@ -634,9 +634,65 @@ Phases may overlap. Phase 0 security work always takes priority over new surface
 
 ## Relationship to Bowerbird
 
+Locked 2026-11-02. Full design: [OpenCompany × Bowerbird](planning/bowerbird-synergy.md). The
+portfolio is now two products, **Bowerbird** and **OpenCompany**. Aya is discontinued.
+
 OpenCompany is Bowerbird's flagship customer, not a competing product. The shared contract is the
 Workspace API. OpenCompany never waits on Bowerbird: boat and local providers ship first, and the
 Bowerbird provider follows when its sandboxes are live.
+
+- **Split by workload.**
+  - OpenCompany owns *business* automation: routines, events, approvals, agent work, and the human
+    surface.
+  - Bowerbird owns *software delivery and heavy, durable pipelines*: CI/CD, builds, and
+    reproducible runs with evidence.
+  - Neither depends on the other. This supersedes Bowerbird docs that give Bowerbird ownership of
+    OpenCompany's triggers and workflows.
+- **Computers.**
+  - OpenCompany is the reference consumer and first design partner of Workspace API `v1alpha`.
+    It runs the conformance and agent-experience suites.
+  - OpenCompany proposes `browser`, `screen` and `desktop_stream` as an optional capability.
+  - OpenCompany Cloud defaults to Bowerbird sandboxes once S1 passes its gate, and boat remains a
+    provider.
+  - OpenCompany's own CI moves to Bowerbird Runners when C1 opens.
+- **One mruby engine and dialect.**
+  - Bowerbird owns the mruby guest. OpenCompany owns its host bindings and permissions.
+  - Engine releases must pass OpenCompany's Code Mode evals.
+  - A shared dialect spec lets a heavy script routine **graduate to a Bowerbird pipeline** with the
+    same Ruby. OpenCompany keeps the trigger, approvals and context.
+- **Bowerbird as a deep connection.**
+  - CI, run and review events flow into the OpenCompany event log.
+  - Actions available to agents: re-run, cancel, and approve or reject a deployment.
+  - Bowerbird reviews appear as OpenCompany approval cards on Home, mobile and Telegram.
+  - Usage records and spend-limited agent tokens back OpenCompany's compute budgets.
+- **Shared agent-first CLI crates.** These cover contexts, device login, keychain, structured
+  errors, schema and guide, and the eval harness. They live in Bowerbird's public client track under
+  Apache-2.0, and `oc` consumes them.
+- **Roost** stays neutral. OpenCompany's computer-provider picker may show live Roost prices.
+- **Cross-sell, both ways:**
+  - "Managed computer, powered by Bowerbird" when an agent gets a computer.
+  - Connecting GitHub suggests the Bowerbird connection, which leads to Runners and Cache.
+  - A heavy routine can graduate to a pipeline.
+  - Bowerbird's console offers "Review and supervise in OpenCompany".
+  - Sandbox customers are offered OpenCompany.
+  - Founding Builder Pass and launch channels include an OpenCompany Cloud trial.
+- **Phase 5 (optional): one Bowerbird account and wallet.**
+  - Compute for OpenCompany agents and CI draws from the prepaid wallet.
+  - OpenCompany Cloud bills its own seats and plans. Partner credits can be bundled both ways.
+  - **Self-hosted OpenCompany never requires a Bowerbird account.**
+- **Brand:** "OpenCompany, by Bowerbird" as an endorsement. OpenCompany keeps its own identity and
+  domain.
+- **Dogfooding:**
+  - The Bowerbird team uses OpenCompany, and later moves Bowerbird planning into OpenCompany Issues
+    (Phase 4). Until then Bowerbird keeps Linear.
+  - The shared PHP `integrations` repository plan is obsolete.
+- **Sequencing:**
+  - **Now:** shared CLI crates, one engine, OpenCompany CI on Bowerbird at C1.
+  - **Phase 2 with S1:** the Bowerbird computer driver.
+  - **Phases 3–4:** the Bowerbird connection, pipeline graduation, planning in Issues.
+  - **Phase 5 with C4/C5:** the shared account and wallet, and bundles.
+- **Open:** which GitHub org and legal entity hold OpenCompany (`OpenCompanyApp`,
+  `BowerbirdHQ`/`bowerbird-si`, Ginger Media BV, or another structure), and the wallet currency.
 
 ## Open questions
 
