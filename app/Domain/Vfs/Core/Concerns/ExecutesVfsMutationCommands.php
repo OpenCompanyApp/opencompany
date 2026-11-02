@@ -126,7 +126,10 @@ trait ExecutesVfsMutationCommands
      */
     private function remove(User $agent, array $tokens, string $cwd): array
     {
-        $this->assertWriteCommandAllowed($agent, 'vfs_write');
+        // Governance: workspace files have no trash yet, so removal is a
+        // purge and also needs vfs_rm (ActionClassifier::PURGE), not just the
+        // reversible vfs_write gate.
+        $this->assertWriteCommandAllowed($agent, 'vfs_write', 'vfs_rm');
         $this->assertSupportedOptionsForCommand($tokens, 'rm');
         $flags = $this->shortFlags($tokens, ['r', 'R', 'f', 'v', 'd']);
         $path = $this->firstPathArg($tokens, $cwd) ?? throw VfsError::invalid('rm requires a path.');
@@ -160,6 +163,8 @@ trait ExecutesVfsMutationCommands
             return;
         }
 
+        // Overwriting an existing file hard-deletes it: same purge gate as rm.
+        $this->assertWriteCommandAllowed($agent, 'vfs_write', 'vfs_rm');
         $this->vfs->remove($agent, $path);
     }
 
@@ -270,14 +275,18 @@ trait ExecutesVfsMutationCommands
         return ['stdout' => json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), 'cwd' => $cwd, 'class' => 'write'];
     }
 
-    private function assertWriteCommandAllowed(User $agent, string $toolSlug): void
+    /**
+     * Gate a mutating VFS command on vfs_exec plus the given tool slugs. Each
+     * slug is resolved through the governance gate (action class x preset).
+     */
+    private function assertWriteCommandAllowed(User $agent, string ...$toolSlugs): void
     {
         $this->mutationPolicy->assertAllowedOrRequestApproval(
             agent: $agent,
             directToolSlug: 'vfs_exec',
             operation: 'exec_write',
             subject: $this->currentCommand !== '' ? $this->currentCommand : 'VFS command',
-            requiredTools: ['vfs_exec', $toolSlug],
+            requiredTools: ['vfs_exec', ...$toolSlugs],
             parameters: $this->currentToolParameters,
             channelId: isset($this->currentToolParameters['channelId']) && is_string($this->currentToolParameters['channelId'])
                 ? $this->currentToolParameters['channelId']

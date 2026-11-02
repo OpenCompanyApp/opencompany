@@ -6,8 +6,8 @@ use App\Events\TaskUpdated;
 use App\Jobs\AgentRespondJob;
 use App\Models\AgentRunRecord;
 use App\Models\ApprovalRequest;
-use App\Models\Automation;
 use App\Models\Channel;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\TelegramConversation;
 use App\Models\TelegramDelivery;
@@ -77,8 +77,8 @@ class TelegramNotificationRouter
             ->get()
             ->each(fn (TelegramSubscription $subscription) => $this->notifySubscription($subscription, $task, $eventType, $severity));
 
-        if ($eventType === 'task_failed' && $task->source === Task::SOURCE_AUTOMATION) {
-            $this->handleAutomationFailure($task);
+        if ($eventType === 'task_failed' && $task->source === Task::SOURCE_ROUTINE) {
+            $this->handleRoutineFailure($task);
         }
     }
 
@@ -372,30 +372,30 @@ class TelegramNotificationRouter
         return rtrim((string) config('app.url'), '/')."/w/{$workspace->slug}/tasks/{$task->id}";
     }
 
-    private function handleAutomationFailure(Task $task): void
+    private function handleRoutineFailure(Task $task): void
     {
-        $automationId = is_array($task->context) ? (string) ($task->context['automation_id'] ?? '') : '';
-        if ($automationId === '') {
+        $routineId = is_array($task->context) ? (string) ($task->context['routine_id'] ?? '') : '';
+        if ($routineId === '') {
             return;
         }
 
-        $automation = Automation::where('workspace_id', $task->workspace_id)
-            ->where('id', $automationId)
+        $routine = Routine::where('workspace_id', $task->workspace_id)
+            ->where('id', $routineId)
             ->first();
 
-        if (! $automation) {
+        if (! $routine) {
             return;
         }
 
         TelegramSubscription::where('workspace_id', $task->workspace_id)
-            ->where('event_type', 'automation_failed')
+            ->where('event_type', 'routine_failed')
             ->where('severity', 'high')
             ->where('enabled', true)
             ->get()
-            ->each(fn (TelegramSubscription $subscription) => $this->notifyAutomationFailureSubscription($subscription, $automation, $task));
+            ->each(fn (TelegramSubscription $subscription) => $this->notifyRoutineFailureSubscription($subscription, $routine, $task));
     }
 
-    private function notifyAutomationFailureSubscription(TelegramSubscription $subscription, Automation $automation, Task $task): void
+    private function notifyRoutineFailureSubscription(TelegramSubscription $subscription, Routine $routine, Task $task): void
     {
         if ($subscription->scope_type !== 'telegram_conversation') {
             return;
@@ -417,30 +417,30 @@ class TelegramNotificationRouter
 
         $mode = $this->notificationMode($subscription);
         if (in_array($mode, ['digest', 'digest-only', 'batched'], true)) {
-            $this->recordDeferredAutomationDelivery($subscription, $automation, $task, $conversation, $mode);
+            $this->recordDeferredRoutineDelivery($subscription, $routine, $task, $conversation, $mode);
 
             return;
         }
 
-        $text = $this->automationFailureText($automation, $task);
+        $text = $this->routineFailureText($routine, $task);
         $delivery = TelegramDelivery::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $task->workspace_id,
             'integration_setting_id' => $subscription->integration_setting_id,
-            'source_type' => Automation::class,
-            'source_id' => $automation->id,
+            'source_type' => Routine::class,
+            'source_id' => $routine->id,
             'chat_id' => $conversation->chat_id,
             'topic_id' => $conversation->topic_id,
             'direct_messages_topic_id' => $conversation->direct_messages_topic_id,
             'parse_mode' => 'HTML',
-            'renderer_version' => 'telegram-automation-notification:v1',
+            'renderer_version' => 'telegram-routine-notification:v1',
             'status' => 'pending',
             'request_payload' => [
                 'method' => 'sendMessage',
                 'conversation_id' => $conversation->id,
-                'event_type' => 'automation_failed',
+                'event_type' => 'routine_failed',
                 'severity' => 'high',
-                'automation_id' => $automation->id,
+                'routine_id' => $routine->id,
                 'task_id' => $task->id,
                 'text' => $text,
             ],
@@ -480,9 +480,9 @@ class TelegramNotificationRouter
 
             $delivery->update($updates);
 
-            Log::warning('Telegram automation notification failed', [
+            Log::warning('Telegram routine notification failed', [
                 'workspace_id' => $task->workspace_id,
-                'automation_id' => $automation->id,
+                'routine_id' => $routine->id,
                 'task_id' => $task->id,
                 'subscription_id' => $subscription->id,
                 'retry_after' => $e instanceof TelegramRateLimitException ? $e->retryAfter : null,
@@ -738,9 +738,9 @@ class TelegramNotificationRouter
         ]);
     }
 
-    private function recordDeferredAutomationDelivery(
+    private function recordDeferredRoutineDelivery(
         TelegramSubscription $subscription,
-        Automation $automation,
+        Routine $routine,
         Task $task,
         TelegramConversation $conversation,
         string $mode
@@ -749,20 +749,20 @@ class TelegramNotificationRouter
             'id' => Str::uuid()->toString(),
             'workspace_id' => $task->workspace_id,
             'integration_setting_id' => $subscription->integration_setting_id,
-            'source_type' => Automation::class,
-            'source_id' => $automation->id,
+            'source_type' => Routine::class,
+            'source_id' => $routine->id,
             'chat_id' => $conversation->chat_id,
             'topic_id' => $conversation->topic_id,
             'direct_messages_topic_id' => $conversation->direct_messages_topic_id,
-            'renderer_version' => 'telegram-automation-notification:v1',
+            'renderer_version' => 'telegram-routine-notification:v1',
             'status' => 'deferred',
             'request_payload' => [
                 'method' => 'deferNotification',
                 'subscription_id' => $subscription->id,
-                'event_type' => 'automation_failed',
+                'event_type' => 'routine_failed',
                 'severity' => 'high',
                 'mode' => $mode,
-                'automation_id' => $automation->id,
+                'routine_id' => $routine->id,
                 'task_id' => $task->id,
             ],
         ]);
@@ -844,15 +844,15 @@ class TelegramNotificationRouter
         $delivery->update($updates);
     }
 
-    private function automationFailureText(Automation $automation, Task $task): string
+    private function routineFailureText(Routine $routine, Task $task): string
     {
-        $name = htmlspecialchars($automation->name, ENT_QUOTES, 'UTF-8');
-        $agent = htmlspecialchars($task->agent?->name ?? $automation->agent?->name ?? 'unassigned', ENT_QUOTES, 'UTF-8');
-        $schedule = htmlspecialchars($automation->cron_expression ?: 'manual', ENT_QUOTES, 'UTF-8');
-        $failures = max((int) $automation->consecutive_failures, 1);
+        $name = htmlspecialchars($routine->name, ENT_QUOTES, 'UTF-8');
+        $agent = htmlspecialchars($task->agent?->name ?? $routine->agent?->name ?? 'unassigned', ENT_QUOTES, 'UTF-8');
+        $schedule = htmlspecialchars($routine->cron_expression ?: 'manual', ENT_QUOTES, 'UTF-8');
+        $failures = max((int) $routine->consecutive_failures, 1);
 
         $lines = [
-            '<b>Automation failed</b>',
+            '<b>Routine failed</b>',
             '',
             "<b>{$name}</b>",
             "Agent: {$agent}",
@@ -862,7 +862,7 @@ class TelegramNotificationRouter
 
         $error = is_array($task->result) ? ($task->result['error'] ?? null) : null;
         if (! is_string($error) || $error === '') {
-            $error = is_array($automation->last_result) ? ($automation->last_result['error'] ?? null) : null;
+            $error = is_array($routine->last_result) ? ($routine->last_result['error'] ?? null) : null;
         }
 
         if (is_string($error) && $error !== '') {

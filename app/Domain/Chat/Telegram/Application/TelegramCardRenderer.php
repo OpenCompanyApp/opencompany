@@ -4,13 +4,13 @@ namespace App\Domain\Chat\Telegram\Application;
 
 use App\Domain\Calendar\Application\ManageCalendarEvents;
 use App\Models\ApprovalRequest;
-use App\Models\Automation;
 use App\Models\CalendarEvent;
 use App\Models\DataTable;
 use App\Models\Document;
 use App\Models\IntegrationSetting;
 use App\Models\ListItem;
 use App\Models\Message;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\TaskStep;
 use App\Models\TelegramConversation;
@@ -59,15 +59,15 @@ class TelegramCardRenderer
 
     public const DOCS_VERSION = 'telegram-docs-card:v1';
 
-    public const AUTOMATIONS_VERSION = 'telegram-automations-card:v1';
+    public const ROUTINES_VERSION = 'telegram-routines-card:v1';
 
-    public const AUTOMATION_STATUS_VERSION = 'telegram-automation-status-card:v1';
+    public const ROUTINE_STATUS_VERSION = 'telegram-routine-status-card:v1';
 
-    public const AUTOMATION_HISTORY_VERSION = 'telegram-automation-history-card:v1';
+    public const ROUTINE_HISTORY_VERSION = 'telegram-routine-history-card:v1';
 
-    public const AUTOMATION_FAILURES_VERSION = 'telegram-automation-failures-card:v1';
+    public const ROUTINE_FAILURES_VERSION = 'telegram-routine-failures-card:v1';
 
-    public const AUTOMATION_ACTION_VERSION = 'telegram-automation-action-card:v1';
+    public const ROUTINE_ACTION_VERSION = 'telegram-routine-action-card:v1';
 
     public const CALENDAR_VERSION = 'telegram-calendar-card:v1';
 
@@ -844,7 +844,7 @@ class TelegramCardRenderer
             })
             ->count();
 
-        $automationFailures = Automation::where('workspace_id', $workspace->id)
+        $routineFailures = Routine::where('workspace_id', $workspace->id)
             ->where('consecutive_failures', '>', 0)
             ->count();
 
@@ -856,59 +856,59 @@ class TelegramCardRenderer
             "Completed today: {$status['tasks_today']}",
             "Pending approvals: {$pendingApprovals}",
             "Messages today: {$status['messages_today']}",
-            "Automation failures: {$automationFailures}",
+            "Routine failures: {$routineFailures}",
         ]);
     }
 
-    public function automationsText(Workspace $workspace): string
+    public function routinesText(Workspace $workspace): string
     {
-        $query = Automation::where('workspace_id', $workspace->id)->with(['agent', 'workspace']);
+        $query = Routine::where('workspace_id', $workspace->id)->with(['agent', 'workspace']);
         $active = (clone $query)->where('is_active', true)->count();
         $failing = (clone $query)->where('consecutive_failures', '>', 0)->count();
         $recent = (clone $query)->latest()->limit(5)->get();
 
-        $lines = ['Automations', '', "Active: {$active}", "Failing: {$failing}"];
+        $lines = ['Routines', '', "Active: {$active}", "Failing: {$failing}"];
         if ($recent->isNotEmpty()) {
             $lines[] = '';
-            $lines[] = 'Recent automations';
+            $lines[] = 'Recent routines';
         }
-        foreach ($recent as $automation) {
-            $lines[] = '- '.$this->cardSnippet($automation->name, 58).' | '.($automation->is_active ? 'active' : 'inactive');
+        foreach ($recent as $routine) {
+            $lines[] = '- '.$this->cardSnippet($routine->name, 58).' | '.($routine->is_active ? 'active' : 'inactive');
         }
 
         return implode("\n", $lines);
     }
 
-    public function automationStatusText(Automation $automation): string
+    public function routineStatusText(Routine $routine): string
     {
-        $automation->loadMissing(['agent', 'workspace']);
+        $routine->loadMissing(['agent', 'workspace']);
 
         $lines = [
-            'Automation',
+            'Routine',
             '',
-            "Name: {$automation->name}",
-            'Status: '.($automation->is_active ? 'active' : 'inactive'),
-            'Agent: '.($automation->agent?->name ?? 'unassigned'),
-            "Schedule: {$automation->cron_expression}",
-            "Timezone: {$automation->timezone}",
-            "Runs: {$automation->run_count}",
-            'Last: '.($automation->last_run_at?->diffForHumans() ?? 'never'),
-            'Next: '.($automation->next_run_at?->diffForHumans() ?? 'not scheduled'),
-            "Failures: {$automation->consecutive_failures}",
+            "Name: {$routine->name}",
+            'Status: '.($routine->is_active ? 'active' : 'inactive'),
+            'Agent: '.($routine->agent?->name ?? 'unassigned'),
+            "Schedule: {$routine->cron_expression}",
+            "Timezone: {$routine->timezone}",
+            "Runs: {$routine->run_count}",
+            'Last: '.($routine->last_run_at?->diffForHumans() ?? 'never'),
+            'Next: '.($routine->next_run_at?->diffForHumans() ?? 'not scheduled'),
+            "Failures: {$routine->consecutive_failures}",
         ];
 
-        $lastResult = is_array($automation->last_result) ? $automation->last_result : [];
+        $lastResult = is_array($routine->last_result) ? $routine->last_result : [];
         $lastError = $lastResult['error'] ?? null;
         if (is_scalar($lastError) && trim((string) $lastError) !== '') {
             $lines[] = 'Last error: '.Str::limit((string) $lastError, 160);
         }
 
-        $body = $automation->isScript() ? $automation->script : $automation->prompt;
+        $body = $routine->isScript() ? $routine->script : $routine->instructions;
         if (is_string($body) && trim($body) !== '') {
-            $lines[] = ($automation->isScript() ? 'Script' : 'Prompt').': '.Str::limit(trim($body), 180);
+            $lines[] = ($routine->isScript() ? 'Script' : 'Instructions').': '.Str::limit(trim($body), 180);
         }
 
-        $url = $this->automationWebUrl($automation);
+        $url = $this->routineWebUrl($routine);
         if ($url !== null) {
             $lines[] = '';
             $lines[] = "Open: {$url}";
@@ -917,19 +917,16 @@ class TelegramCardRenderer
         return implode("\n", $lines);
     }
 
-    public function automationHistoryText(Workspace $workspace, Automation $automation): string
+    public function routineHistoryText(Workspace $workspace, Routine $routine): string
     {
         $runs = Task::where('workspace_id', $workspace->id)
-            ->where('source', Task::SOURCE_AUTOMATION)
-            ->where(function ($taskQuery) use ($automation) {
-                $taskQuery->whereJsonContains('context->automation_id', $automation->id)
-                    ->orWhereJsonContains('context->scheduled_automation_id', $automation->id);
-            })
+            ->where('source', Task::SOURCE_ROUTINE)
+            ->whereJsonContains('context->routine_id', $routine->id)
             ->latest()
             ->limit(5)
             ->get();
 
-        $lines = ["Automation history: {$automation->name}", ''];
+        $lines = ["Routine history: {$routine->name}", ''];
         if ($runs->isEmpty()) {
             $lines[] = 'No runs recorded yet.';
         }
@@ -940,34 +937,34 @@ class TelegramCardRenderer
         return implode("\n", $lines);
     }
 
-    public function automationFailuresText(Workspace $workspace): string
+    public function routineFailuresText(Workspace $workspace): string
     {
-        $failingAutomations = Automation::where('workspace_id', $workspace->id)
+        $failingRoutines = Routine::where('workspace_id', $workspace->id)
             ->with(['agent', 'workspace'])
             ->where('consecutive_failures', '>', 0)
             ->latest('updated_at')
             ->limit(5)
             ->get();
 
-        $lines = ['Automation failures', ''];
-        if ($failingAutomations->isEmpty()) {
-            $lines[] = 'No failing automations.';
+        $lines = ['Routine failures', ''];
+        if ($failingRoutines->isEmpty()) {
+            $lines[] = 'No failing routines.';
         }
-        foreach ($failingAutomations as $automation) {
-            $lines[] = '- '.$this->cardSnippet($automation->name, 68).": {$automation->consecutive_failures} failure(s)";
+        foreach ($failingRoutines as $routine) {
+            $lines[] = '- '.$this->cardSnippet($routine->name, 68).": {$routine->consecutive_failures} failure(s)";
         }
 
         return implode("\n", $lines);
     }
 
-    private function automationWebUrl(Automation $automation): ?string
+    private function routineWebUrl(Routine $routine): ?string
     {
-        $workspace = $automation->workspace;
+        $workspace = $routine->workspace;
         if (! $workspace) {
             return null;
         }
 
-        return rtrim((string) config('app.url'), '/')."/w/{$workspace->slug}/automation/{$automation->id}/edit";
+        return rtrim((string) config('app.url'), '/')."/w/{$workspace->slug}/routines/{$routine->id}/edit";
     }
 
     public function calendarText(Workspace $workspace, string $argument): string
@@ -1106,7 +1103,7 @@ class TelegramCardRenderer
 
     private function activityPrefix(string $author, string $channel): string
     {
-        $channel = preg_replace('/\s+Automation(?:\s+Smoke(?:\s+Test)?)?.*$/iu', '', $channel) ?? $channel;
+        $channel = preg_replace('/\s+Routine(?:\s+Smoke(?:\s+Test)?)?.*$/iu', '', $channel) ?? $channel;
         $channel = preg_replace('/\s+Smok(?:e)?$/iu', '', $channel) ?? $channel;
         $channel = str_replace('Mini App Browser', 'Mini App', $channel);
         $channel = trim($channel);

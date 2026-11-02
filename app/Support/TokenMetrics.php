@@ -10,7 +10,7 @@ class TokenMetrics
     /**
      * Build a standard token metrics array from an agent response.
      *
-     * Used by AgentRespondJob, ExecuteAgentTaskJob, and RunAutomationJob
+     * Used by AgentRespondJob, ExecuteAgentTaskJob, and RunRoutineJob
      * to compute consistent usage stats for task results.
      *
      * @return array<string, mixed>

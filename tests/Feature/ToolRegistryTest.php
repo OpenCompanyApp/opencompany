@@ -61,15 +61,17 @@ class ToolRegistryTest extends TestCase
         return $state;
     }
 
-    // Policy model default (behaviour modes deleted): with no rules every
-    // tool is exposed, writes are wrapped for approval, reads are not.
-    public function test_default_policy_wraps_write_tools_but_not_read_tools(): void
+    // Governance default (Team preset): every tool is exposed; reversible
+    // edits and reads run, purges are wrapped for approval.
+    public function test_default_policy_wraps_purges_but_not_reversible_edits(): void
     {
+        $this->workspace->update(['governance_preset' => 'team']);
         $tools = $this->registry->getToolsForAgent($this->agent);
         $this->assertCount($this->baseToolCount, $tools);
 
         $state = $this->wrapState();
-        $this->assertTrue($state[SaveMemory::class], 'save_memory (write) should be wrapped by default');
+        $this->assertFalse($state[SaveMemory::class], 'save_memory is a reversible edit');
+        $this->assertTrue($state[\App\Agents\Tools\Memory\ForgetMemory::class], 'forget_memory is a purge');
         $this->assertFalse($state[RecallMemory::class], 'recall_memory (read) should run without approval');
     }
 
@@ -101,19 +103,19 @@ class ToolRegistryTest extends TestCase
         $this->assertTrue($this->wrapState()[RecallMemory::class]);
     }
 
-    // An admin allow-without-approval rule unwraps exactly that write tool.
-    public function test_db_allow_rule_unwraps_write_tool(): void
+    // A standing admin allow rule is an "always" exception, which purges
+    // never accept: each purge still asks.
+    public function test_db_allow_rule_does_not_waive_a_purge(): void
     {
+        $this->workspace->update(['governance_preset' => 'team']);
         $this->createPermission([
             'scope_type' => 'tool',
-            'scope_key' => 'save_memory',
+            'scope_key' => 'forget_memory',
             'permission' => 'allow',
             'requires_approval' => false,
         ]);
 
-        $state = $this->wrapState();
-        $this->assertFalse($state[SaveMemory::class]);
-        $this->assertTrue($state[\App\Agents\Tools\Memory\EditMemory::class], 'other writes stay gated');
+        $this->assertTrue($this->wrapState()[\App\Agents\Tools\Memory\ForgetMemory::class]);
     }
 
     // ── getAllToolsMeta Tests ───────────────────────────────────────────

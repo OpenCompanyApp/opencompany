@@ -4,10 +4,8 @@ namespace Tests\Feature\Security;
 
 use App\Models\AiGatewayApiKey;
 use App\Models\IntegrationSetting;
-use App\Models\IntegrationWebhook;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -113,26 +111,6 @@ class EdgeRateLimitingTest extends TestCase
         $this->postJson('/api/webhooks/chat/telegram', [])->assertStatus(429);
 
         $this->postJson('/api/webhooks/chat/slack', [])->assertUnauthorized();
-    }
-
-    // Incoming integration webhooks are limited per IP + webhook id.
-    public function test_incoming_integration_webhooks_are_throttled_per_webhook(): void
-    {
-        config(['rate_limits.integration_webhooks.per_minute' => 1]);
-
-        $webhook = IntegrationWebhook::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => $this->workspace->id,
-            'name' => 'Stripe',
-            'target_type' => 'task',
-            'secret' => 'whsec-test',
-            'enabled' => true,
-        ]);
-
-        $this->withHeader('X-Webhook-Secret', 'whsec-test')->postJson("/api/webhooks/{$webhook->id}", ['a' => 1])->assertAccepted();
-        $this->withHeader('X-Webhook-Secret', 'whsec-test')->postJson("/api/webhooks/{$webhook->id}", ['a' => 2])->assertStatus(429);
-
-        $this->assertSame(1, $webhook->fresh()->call_count);
     }
 
     // Mini App endpoints are throttled before init_data verification, so

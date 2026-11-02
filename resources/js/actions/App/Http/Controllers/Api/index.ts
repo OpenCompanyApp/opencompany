@@ -1,6 +1,5 @@
 import ChatWebhookController from './ChatWebhookController'
 import TelegramWebhookController from './TelegramWebhookController'
-import IncomingIntegrationWebhookController from './IncomingIntegrationWebhookController'
 import TelegramMiniAppController from './TelegramMiniAppController'
 import AiGateway from './AiGateway'
 import InvitationController from './InvitationController'
@@ -14,8 +13,7 @@ import ListItemCommentController from './ListItemCommentController'
 import ListTemplateController from './ListTemplateController'
 import TokenAnalyticsController from './TokenAnalyticsController'
 import TaskController from './TaskController'
-import AutomationRuleController from './AutomationRuleController'
-import AutomationController from './AutomationController'
+import RoutineController from './RoutineController'
 import WorkspaceDiskController from './WorkspaceDiskController'
 import FileController from './FileController'
 import DocumentController from './DocumentController'
@@ -43,8 +41,9 @@ import CodeConsoleController from './CodeConsoleController'
 import IntegrationController from './IntegrationController'
 import CodexAuthController from './CodexAuthController'
 import WorkspaceMemberController from './WorkspaceMemberController'
+import AgentRunRevertController from './AgentRunRevertController'
+import PolicyGrantController from './PolicyGrantController'
 import SettingController from './SettingController'
-import IntegrationWebhookController from './IntegrationWebhookController'
 import TelegramOperationsController from './TelegramOperationsController'
 import McpServerController from './McpServerController'
 import AiGatewayController from './AiGatewayController'
@@ -52,7 +51,6 @@ import AiGatewayController from './AiGatewayController'
 const Api = {
     ChatWebhookController: Object.assign(ChatWebhookController, ChatWebhookController),
     TelegramWebhookController: Object.assign(TelegramWebhookController, TelegramWebhookController),
-    IncomingIntegrationWebhookController: Object.assign(IncomingIntegrationWebhookController, IncomingIntegrationWebhookController),
     TelegramMiniAppController: Object.assign(TelegramMiniAppController, TelegramMiniAppController),
     AiGateway: Object.assign(AiGateway, AiGateway),
     InvitationController: Object.assign(InvitationController, InvitationController),
@@ -66,8 +64,7 @@ const Api = {
     ListTemplateController: Object.assign(ListTemplateController, ListTemplateController),
     TokenAnalyticsController: Object.assign(TokenAnalyticsController, TokenAnalyticsController),
     TaskController: Object.assign(TaskController, TaskController),
-    AutomationRuleController: Object.assign(AutomationRuleController, AutomationRuleController),
-    AutomationController: Object.assign(AutomationController, AutomationController),
+    RoutineController: Object.assign(RoutineController, RoutineController),
     WorkspaceDiskController: Object.assign(WorkspaceDiskController, WorkspaceDiskController),
     FileController: Object.assign(FileController, FileController),
     DocumentController: Object.assign(DocumentController, DocumentController),
@@ -95,8 +92,9 @@ const Api = {
     IntegrationController: Object.assign(IntegrationController, IntegrationController),
     CodexAuthController: Object.assign(CodexAuthController, CodexAuthController),
     WorkspaceMemberController: Object.assign(WorkspaceMemberController, WorkspaceMemberController),
+    AgentRunRevertController: Object.assign(AgentRunRevertController, AgentRunRevertController),
+    PolicyGrantController: Object.assign(PolicyGrantController, PolicyGrantController),
     SettingController: Object.assign(SettingController, SettingController),
-    IntegrationWebhookController: Object.assign(IntegrationWebhookController, IntegrationWebhookController),
     TelegramOperationsController: Object.assign(TelegramOperationsController, TelegramOperationsController),
     McpServerController: Object.assign(McpServerController, McpServerController),
     AiGatewayController: Object.assign(AiGatewayController, AiGatewayController),

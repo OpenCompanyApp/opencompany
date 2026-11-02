@@ -141,7 +141,7 @@ class OpenCompanyAgentTest extends TestCase
         ]);
         User::factory()->create([
             'type' => 'agent',
-            'name' => 'Automation',
+            'name' => 'Routine',
             'agent_type' => 'system',
             'brain' => 'codex:gpt-5.3-codex',
             'workspace_id' => $agent->workspace_id,

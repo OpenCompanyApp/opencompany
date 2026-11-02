@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domain\Collaboration\Application\ProvisionWorkspace;
+use App\Domain\Events\EventLog;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -73,9 +75,31 @@ class WorkspaceController extends Controller
             'slug' => 'sometimes|string|max:255|alpha_dash|unique:workspaces,slug,'.$workspace->id,
             'icon' => 'sometimes|string|max:100',
             'color' => 'sometimes|string|max:100',
+            // Governance preset (pillar 5). Null returns to the derived
+            // default (Personal for one member, Team otherwise). A preset
+            // only picks default gates; invariants stay in code.
+            'governancePreset' => ['sometimes', 'nullable', \Illuminate\Validation\Rule::in(Workspace::GOVERNANCE_PRESETS)],
         ]);
 
+        if (array_key_exists('governancePreset', $validated)) {
+            $validated['governance_preset'] = $validated['governancePreset'];
+            unset($validated['governancePreset']);
+        }
+        $previousPreset = $workspace->governance_preset;
+
         $workspace->update($validated);
+
+        // Governance changes are audited in the workspace event log.
+        if (array_key_exists('governance_preset', $validated) && $previousPreset !== $workspace->governance_preset) {
+            app(EventLog::class)->record(
+                (string) $workspace->id,
+                'workspace.governance_preset_changed',
+                'internal',
+                ['type' => 'human', 'id' => (string) $request->user()->id],
+                payload: ['from' => $previousPreset, 'to' => $workspace->governance_preset],
+                subject: 'workspace:'.$workspace->id,
+            );
+        }
 
         return response()->json(['workspace' => $workspace->fresh()]);
     }

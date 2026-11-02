@@ -480,7 +480,7 @@ function modelCost(model: TokenByModel) {
 function sourceIcon(source: string): string {
   const icons: Record<string, string> = {
     chat: 'ph:chat-circle',
-    automation: 'ph:lightning',
+    routine: 'ph:lightning',
     manual: 'ph:hand',
     agent_delegation: 'ph:arrows-split',
     agent_ask: 'ph:question',
@@ -492,7 +492,7 @@ function sourceIcon(source: string): string {
 function sourceLabel(source: string): string {
   const labels: Record<string, string> = {
     chat: 'Chat',
-    automation: 'Automation',
+    routine: 'Routine',
     manual: 'Manual',
     agent_delegation: 'Delegation',
     agent_ask: 'Agent Ask',

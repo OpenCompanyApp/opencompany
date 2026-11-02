@@ -154,20 +154,20 @@ Route::middleware(['auth', 'verified', 'resolve.workspace'])
             ]);
         })->whereUuid('id')->name('approvals.show');
 
-        // Automation
-        Route::get('/automation/create', function () {
-            return Inertia::render('Automation/Create');
-        })->name('automation.create');
+        // Routines (Inertia is frozen: renamed from Automation, no new pages)
+        Route::get('/routines/create', function () {
+            return Inertia::render('Routines/Create');
+        })->name('routines.create');
 
-        Route::get('/automation/{id}/edit', function () {
-            return Inertia::render('Automation/Edit', [
-                'automationId' => request()->route('id'),
+        Route::get('/routines/{id}/edit', function () {
+            return Inertia::render('Routines/Edit', [
+                'routineId' => request()->route('id'),
             ]);
-        })->name('automation.edit');
+        })->name('routines.edit');
 
-        Route::get('/automation', function () {
-            return Inertia::render('Automation');
-        })->name('automation');
+        Route::get('/routines', function () {
+            return Inertia::render('Routines');
+        })->name('routines');
 
         // Organization
         Route::get('/org', function () {

@@ -4,10 +4,10 @@ namespace App\Console\Commands;
 
 use App\Events\TaskUpdated;
 use App\Jobs\AgentRespondJob;
-use App\Jobs\RunAutomationJob;
+use App\Jobs\RunRoutineJob;
 use App\Models\AgentRunRecord;
-use App\Models\Automation;
 use App\Models\Channel;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\Workspace;
 use Carbon\Carbon;
@@ -34,7 +34,7 @@ class ReconcileAgentRuns extends Command
         $terminalTasks = $this->reconcileTasksFromTerminalRuns();
         $runningCutoff = now()->subSeconds((int) config('agent_runtime.stale_running_after_seconds'));
         $queuedCutoff = now()->subSeconds((int) config('agent_runtime.stale_queued_after_seconds'));
-        $recoveredAutomations = $this->recoverAutomationDispatches($queuedCutoff);
+        $recoveredRoutines = $this->recoverRoutineDispatches($queuedCutoff);
 
         AgentRunRecord::query()
             ->with('task')
@@ -94,7 +94,7 @@ class ReconcileAgentRuns extends Command
             });
 
         $recovered = $this->recoverTelegramLaneClaims();
-        $this->info("Reconciled {$reconciled} stale run(s) and {$terminalTasks} terminal task mismatch(es); recovered {$recoveredAutomations} automation dispatch(es) and {$recovered} Telegram lane task(s).");
+        $this->info("Reconciled {$reconciled} stale run(s) and {$terminalTasks} terminal task mismatch(es); recovered {$recoveredRoutines} routine dispatch(es) and {$recovered} Telegram lane task(s).");
 
         return self::SUCCESS;
     }
@@ -141,16 +141,16 @@ class ReconcileAgentRuns extends Command
      * Recover the crash window between a schedule claim and physical dispatch.
      *
      * The due command creates the Task/AgentRunRecord before enqueueing. A
-     * stale queued automation run is therefore a typed outbox entry with a
+     * stale queued routine run is therefore a typed outbox entry with a
      * stable dispatch key, not an opaque failed_jobs payload.
      */
-    private function recoverAutomationDispatches(Carbon $queuedCutoff): int
+    private function recoverRoutineDispatches(Carbon $queuedCutoff): int
     {
         $candidates = AgentRunRecord::query()
             ->where('status', AgentRunRecord::STATUS_QUEUED)
             ->whereIn('kind', [
-                AgentRunRecord::KIND_PROMPT_AUTOMATION,
-                AgentRunRecord::KIND_SCRIPT_AUTOMATION,
+                AgentRunRecord::KIND_ROUTINE_AGENT,
+                AgentRunRecord::KIND_ROUTINE_SCRIPT,
             ])
             ->where('heartbeat_at', '<', $queuedCutoff)
             ->with('task')
@@ -159,11 +159,11 @@ class ReconcileAgentRuns extends Command
 
         $recovered = 0;
         foreach ($candidates as $candidate) {
-            $automationId = $candidate->metadata['automation_id'] ?? $candidate->task?->context['automation_id'] ?? null;
-            $automation = Automation::query()
+            $routineId = $candidate->metadata['routine_id'] ?? $candidate->task?->context['routine_id'] ?? null;
+            $routine = Routine::query()
                 ->where('workspace_id', $candidate->workspace_id)
-                ->find($automationId);
-            if (! $automation || ! $candidate->dispatch_key || $candidate->task?->status !== Task::STATUS_PENDING) {
+                ->find($routineId);
+            if (! $routine || ! $candidate->dispatch_key || $candidate->task?->status !== Task::STATUS_PENDING) {
                 continue;
             }
 
@@ -189,7 +189,7 @@ class ReconcileAgentRuns extends Command
 
             try {
                 app()->instance('currentWorkspace', Workspace::query()->findOrFail($run->workspace_id));
-                RunAutomationJob::dispatch($automation, $run->dispatch_key);
+                RunRoutineJob::dispatch($routine, $run->dispatch_key);
                 $run->update([
                     'metadata' => array_merge($run->metadata ?? [], [
                         'dispatching_at' => null,
@@ -198,9 +198,9 @@ class ReconcileAgentRuns extends Command
                 ]);
                 $recovered++;
             } catch (\Throwable $exception) {
-                Log::warning('Automation dispatch reconciliation failed', [
+                Log::warning('Routine dispatch reconciliation failed', [
                     'agent_run_id' => $run->id,
-                    'automation_id' => $automation->id,
+                    'routine_id' => $routine->id,
                     'error' => $exception->getMessage(),
                 ]);
             } finally {

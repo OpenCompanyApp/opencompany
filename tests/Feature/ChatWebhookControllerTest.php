@@ -4,11 +4,12 @@ namespace Tests\Feature;
 
 use App\Agents\Tools\Chat\ReadRecentMessages;
 use App\Agents\Tools\Files\ListFiles;
+use App\Ai\Agents\OneShotTextAgent;
 use App\Domain\Chat\Telegram\Application\TelegramCardRenderer;
 use App\Domain\Chat\Telegram\Application\TelegramNotificationRouter;
 use App\Domain\Chat\Telegram\Application\TelegramRateLimitException;
 use App\Domain\Chat\Telegram\Application\TelegramSetupService;
-use App\Ai\Agents\OneShotTextAgent;
+use App\Domain\Routines\Builtins\TelegramDigestRoutine;
 use App\Events\MessageDeleted;
 use App\Events\MessageEdited;
 use App\Events\MessagePinned;
@@ -17,12 +18,11 @@ use App\Events\MessageSent;
 use App\Events\TaskUpdated;
 use App\Jobs\AgentRespondJob;
 use App\Jobs\EnrichTelegramMediaJob;
-use App\Jobs\RunAutomationJob;
+use App\Jobs\RunRoutineJob;
 use App\Jobs\SendApprovalToTelegramJob;
 use App\Listeners\SyncToChat;
-use App\Models\ApprovalRequest;
 use App\Models\AgentPermission;
-use App\Models\Automation;
+use App\Models\ApprovalRequest;
 use App\Models\CalendarEvent;
 use App\Models\Channel;
 use App\Models\DataTable;
@@ -33,6 +33,7 @@ use App\Models\IntegrationSetting;
 use App\Models\ListItem;
 use App\Models\Message;
 use App\Models\MessageReaction;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\TaskStep;
 use App\Models\TelegramConversation;
@@ -45,6 +46,7 @@ use App\Models\User;
 use App\Models\UserExternalIdentity;
 use App\Models\Workspace;
 use App\Models\WorkspaceDisk;
+use App\Models\WorkspaceEvent;
 use App\Models\WorkspaceFile;
 use App\Models\WorkspaceMember;
 use App\Services\TelegramService;
@@ -2073,7 +2075,7 @@ class ChatWebhookControllerTest extends TestCase
             ]);
     }
 
-    public function test_telegram_mini_app_serves_identity_file_automation_and_notification_panels(): void
+    public function test_telegram_mini_app_serves_identity_file_routine_and_notification_panels(): void
     {
         $setting = $this->telegramSetting();
         $user = User::factory()->create(['name' => 'Rutger']);
@@ -2133,15 +2135,14 @@ class ChatWebhookControllerTest extends TestCase
             'parent_id' => $docFolder->id,
             'is_folder' => false,
         ]);
-        $automation = Automation::create([
+        $routine = Routine::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $this->workspace->id,
             'name' => 'Morning Digest',
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'description' => 'Summarize workspace state.',
             'agent_id' => $agent->id,
-            'prompt' => 'Summarize workspace state.',
+            'instructions' => 'Summarize workspace state.',
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'is_active' => true,
@@ -2189,11 +2190,11 @@ class ChatWebhookControllerTest extends TestCase
             'target_id' => $document->id,
         ])->assertOk()->json('data');
 
-        $automationDetail = $this->postJson('/api/telegram/mini-app/panel', [
+        $routineDetail = $this->postJson('/api/telegram/mini-app/panel', [
             'workspace_id' => $this->workspace->id,
             'init_data' => $initData,
-            'panel' => 'automation',
-            'target_id' => $automation->id,
+            'panel' => 'routine',
+            'target_id' => $routine->id,
         ])->assertOk()->json('data');
 
         $notifications = $this->postJson('/api/telegram/mini-app/panel', [
@@ -2213,20 +2214,20 @@ class ChatWebhookControllerTest extends TestCase
         $this->assertSame('Telegram Notes', $documentDetail['parent']);
         $this->assertStringContainsString('Captured requirements', $documentDetail['content_excerpt']);
         $this->assertSame("/w/{$this->workspace->slug}/docs?document={$document->id}", $documentDetail['web_url']);
-        $this->assertSame('automation_detail', $automationDetail['type']);
-        $this->assertSame('Morning Digest', $automationDetail['name']);
-        $this->assertSame('Previous run failed', $automationDetail['last_error']);
-        $this->assertContains('run', $automationDetail['actions']);
-        $this->assertContains('pause', $automationDetail['actions']);
-        $this->assertSame("/w/{$this->workspace->slug}/automation/{$automation->id}/edit", $automationDetail['web_url']);
-        $this->assertArrayNotHasKey('prompt', $automationDetail);
-        $this->assertArrayNotHasKey('script', $automationDetail);
+        $this->assertSame('routine_detail', $routineDetail['type']);
+        $this->assertSame('Morning Digest', $routineDetail['name']);
+        $this->assertSame('Previous run failed', $routineDetail['last_error']);
+        $this->assertContains('run', $routineDetail['actions']);
+        $this->assertContains('pause', $routineDetail['actions']);
+        $this->assertSame("/w/{$this->workspace->slug}/routines/{$routine->id}/edit", $routineDetail['web_url']);
+        $this->assertArrayNotHasKey('instructions', $routineDetail);
+        $this->assertArrayNotHasKey('script', $routineDetail);
         $this->assertSame('notifications', $notifications['type']);
         $this->assertSame(1, $notifications['enabled_count']);
         $this->assertSame('task_failed', $notifications['items'][0]['event_type']);
     }
 
-    public function test_telegram_mini_app_automation_actions_run_pause_and_resume_with_workspace_scope(): void
+    public function test_telegram_mini_app_routine_actions_run_pause_and_resume_with_workspace_scope(): void
     {
         Queue::fake();
 
@@ -2246,15 +2247,14 @@ class ChatWebhookControllerTest extends TestCase
         ]);
 
         $agent = User::factory()->agent()->create(['name' => 'Iris']);
-        $automation = Automation::create([
+        $routine = Routine::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $this->workspace->id,
             'name' => 'Morning Digest',
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'description' => 'Summarize workspace state.',
             'agent_id' => $agent->id,
-            'prompt' => 'Summarize workspace state.',
+            'instructions' => 'Summarize workspace state.',
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'is_active' => true,
@@ -2273,14 +2273,13 @@ class ChatWebhookControllerTest extends TestCase
             'name' => 'Other Agent',
             'workspace_id' => $otherWorkspace->id,
         ]);
-        $otherAutomation = Automation::create([
+        $otherRoutine = Routine::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $otherWorkspace->id,
             'name' => 'Other Digest',
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'agent_id' => $otherAgent->id,
-            'prompt' => 'Other workspace state.',
+            'instructions' => 'Other workspace state.',
             'cron_expression' => '0 8 * * *',
             'timezone' => 'UTC',
             'is_active' => true,
@@ -2295,46 +2294,46 @@ class ChatWebhookControllerTest extends TestCase
         $run = $this->postJson('/api/telegram/mini-app/action', [
             'workspace_id' => $this->workspace->id,
             'init_data' => $initData,
-            'action' => 'run_automation',
-            'automation_id' => substr($automation->id, 0, 12),
-        ])->assertOk()->json('data.automation');
+            'action' => 'run_routine',
+            'routine_id' => substr($routine->id, 0, 12),
+        ])->assertOk()->json('data.routine');
 
-        Queue::assertPushed(RunAutomationJob::class);
+        Queue::assertPushed(RunRoutineJob::class);
         $this->assertSame('Morning Digest', $run['name']);
         $this->assertTrue($run['is_active']);
 
         $paused = $this->postJson('/api/telegram/mini-app/action', [
             'workspace_id' => $this->workspace->id,
             'init_data' => $initData,
-            'action' => 'pause_automation',
-            'automation_id' => $automation->id,
-        ])->assertOk()->json('data.automation');
+            'action' => 'pause_routine',
+            'routine_id' => $routine->id,
+        ])->assertOk()->json('data.routine');
 
         $this->assertFalse($paused['is_active']);
         $this->assertContains('resume', $paused['actions']);
-        $this->assertFalse($automation->fresh()->is_active);
+        $this->assertFalse($routine->fresh()->is_active);
 
         $resumed = $this->postJson('/api/telegram/mini-app/action', [
             'workspace_id' => $this->workspace->id,
             'init_data' => $initData,
-            'action' => 'resume_automation',
-            'automation_id' => $automation->id,
-        ])->assertOk()->json('data.automation');
+            'action' => 'resume_routine',
+            'routine_id' => $routine->id,
+        ])->assertOk()->json('data.routine');
 
         $this->assertTrue($resumed['is_active']);
-        $this->assertSame(0, $automation->fresh()->consecutive_failures);
-        $this->assertNotNull($automation->fresh()->next_run_at);
+        $this->assertSame(0, $routine->fresh()->consecutive_failures);
+        $this->assertNotNull($routine->fresh()->next_run_at);
 
         $this->postJson('/api/telegram/mini-app/action', [
             'workspace_id' => $this->workspace->id,
             'init_data' => $initData,
-            'action' => 'pause_automation',
-            'automation_id' => $otherAutomation->id,
+            'action' => 'pause_routine',
+            'routine_id' => $otherRoutine->id,
         ])
             ->assertNotFound()
             ->assertJson([
                 'ok' => false,
-                'error' => 'telegram_automation_not_found',
+                'error' => 'telegram_routine_not_found',
             ]);
     }
 
@@ -5800,7 +5799,7 @@ class ChatWebhookControllerTest extends TestCase
             && str_contains($request['commands'], '"link"')
             && ! str_contains($request['commands'], '"health"')
             && ! str_contains($request['commands'], '"cancel"')
-            && ! str_contains($request['commands'], '"automation"'));
+            && ! str_contains($request['commands'], '"routine"'));
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/setMyCommands')
             && json_decode((string) ($request->data()['scope'] ?? ''), true) === ['type' => 'all_group_chats']
@@ -6593,7 +6592,7 @@ class ChatWebhookControllerTest extends TestCase
                 && ! str_contains((string) $markupJson, '/tasks')
                 && ! str_contains((string) $markupJson, '/files')
                 && ! str_contains((string) $markupJson, '/docs')
-                && ! str_contains((string) $markupJson, '/automation');
+                && ! str_contains((string) $markupJson, '/routine');
         });
 
         $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'telegram-secret')
@@ -6998,7 +6997,7 @@ class ChatWebhookControllerTest extends TestCase
         $channel = Channel::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $this->workspace->id,
-            'name' => 'Mini App Browser Automation Smoke 235325',
+            'name' => 'Mini App Browser Routine Smoke 235325',
             'type' => 'external',
             'external_provider' => 'telegram',
             'external_id' => '12345',
@@ -7006,7 +7005,7 @@ class ChatWebhookControllerTest extends TestCase
 
         Message::create([
             'id' => Str::uuid()->toString(),
-            'content' => "👋 **Hello from the Telegram Mini App Smoke Test!**\n\n✅ **Everything is ready for *Mini App Browser Automation*.**",
+            'content' => "👋 **Hello from the Telegram Mini App Smoke Test!**\n\n✅ **Everything is ready for *Mini App Browser Routine*.**",
             'channel_id' => $channel->id,
             'author_id' => $human->id,
             'timestamp' => now(),
@@ -7034,8 +7033,8 @@ class ChatWebhookControllerTest extends TestCase
             && str_contains($request['text'], 'Hello from the Telegram Mini App')
             && str_contains($request['text'], 'Rutger / Mini App')
             && ! str_contains($request['text'], '**')
-            && ! str_contains($request['text'], '*Mini App Browser Automation*')
-            && ! str_contains($request['text'], 'Automation Smoke 235325')
+            && ! str_contains($request['text'], '*Mini App Browser Routine*')
+            && ! str_contains($request['text'], 'Routine Smoke 235325')
             && ! str_contains($request['text'], "\n\n✅"));
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
@@ -7045,7 +7044,7 @@ class ChatWebhookControllerTest extends TestCase
             && ! str_contains($request['text'], '2f0f3b24-fa37-4eb3-a61c-d12496ab9808.png'));
     }
 
-    public function test_telegram_workload_dashboard_and_automation_controls(): void
+    public function test_telegram_workload_dashboard_and_routine_controls(): void
     {
         Queue::fake();
         Http::fake(['api.telegram.org/*/sendMessage' => Http::response(['ok' => true, 'result' => ['message_id' => 604]])]);
@@ -7078,15 +7077,14 @@ class ChatWebhookControllerTest extends TestCase
             'requester_id' => $human->id,
         ]);
 
-        $automation = Automation::create([
+        $routine = Routine::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $this->workspace->id,
             'name' => 'Morning Digest',
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'description' => 'Summarize workspace state.',
             'agent_id' => $agent->id,
-            'prompt' => 'Summarize workspace state.',
+            'instructions' => 'Summarize workspace state.',
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'is_active' => true,
@@ -7098,18 +7096,18 @@ class ChatWebhookControllerTest extends TestCase
 
         $this->postTelegramCommand('/workload', updateId: 2008, messageId: 108);
         $this->postTelegramCommand('/dashboard', updateId: 2009, messageId: 109);
-        $this->postTelegramCommand('/automation status Morning', updateId: 2010, messageId: 110);
-        $this->postTelegramCommand('/automation status '.Str::limit($automation->id, 8, ''), updateId: 2015, messageId: 115);
-        $this->postTelegramCommand('/automation failures', updateId: 2011, messageId: 111);
-        $this->postTelegramCommand('/automation run Morning', updateId: 2012, messageId: 112);
-        $this->postTelegramCommand('/automation pause Morning', updateId: 2013, messageId: 113);
-        $this->postTelegramCommand('/automation resume Morning', updateId: 2014, messageId: 114);
+        $this->postTelegramCommand('/routine status Morning', updateId: 2010, messageId: 110);
+        $this->postTelegramCommand('/routine status '.Str::limit($routine->id, 8, ''), updateId: 2015, messageId: 115);
+        $this->postTelegramCommand('/routine failures', updateId: 2011, messageId: 111);
+        $this->postTelegramCommand('/routine run Morning', updateId: 2012, messageId: 112);
+        $this->postTelegramCommand('/routine pause Morning', updateId: 2013, messageId: 113);
+        $this->postTelegramCommand('/routine resume Morning', updateId: 2014, messageId: 114);
 
-        Queue::assertPushed(RunAutomationJob::class);
+        Queue::assertPushed(RunRoutineJob::class);
 
-        $automation->refresh();
-        $this->assertTrue($automation->is_active);
-        $this->assertSame(0, $automation->consecutive_failures);
+        $routine->refresh();
+        $this->assertTrue($routine->is_active);
+        $this->assertSame(0, $routine->consecutive_failures);
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
             && str_contains($request['text'], 'Workload')
@@ -7121,31 +7119,31 @@ class ChatWebhookControllerTest extends TestCase
         ]);
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
-            && str_contains($request['text'], 'Automation')
+            && str_contains($request['text'], 'Routine')
             && str_contains($request['text'], 'Morning Digest')
             && str_contains($request['text'], 'Iris')
             && str_contains($request['text'], 'Summarize workspace state.')
-            && str_contains($request['text'], "/w/{$this->workspace->slug}/automation/{$automation->id}/edit"));
+            && str_contains($request['text'], "/w/{$this->workspace->slug}/routines/{$routine->id}/edit"));
 
         $this->assertDatabaseHas('telegram_deliveries', [
-            'renderer_version' => 'telegram-automation-status-card:v1',
+            'renderer_version' => 'telegram-routine-status-card:v1',
             'status' => 'sent',
         ]);
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
-            && str_contains($request['text'], 'Automation run queued: Morning Digest'));
+            && str_contains($request['text'], 'Routine run queued: Morning Digest'));
 
         $this->assertDatabaseHas('telegram_deliveries', [
-            'renderer_version' => 'telegram-automation-action-card:v1',
+            'renderer_version' => 'telegram-routine-action-card:v1',
             'status' => 'sent',
         ]);
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
-            && str_contains($request['text'], 'Automation failures')
+            && str_contains($request['text'], 'Routine failures')
             && str_contains($request['text'], 'Morning Digest'));
 
         $this->assertDatabaseHas('telegram_deliveries', [
-            'renderer_version' => 'telegram-automation-failures-card:v1',
+            'renderer_version' => 'telegram-routine-failures-card:v1',
             'status' => 'sent',
         ]);
     }
@@ -7531,7 +7529,7 @@ class ChatWebhookControllerTest extends TestCase
             && str_contains($request['text'], '/topic change lane behavior')
             && str_contains($request['text'], 'Summarize the files I sent')
             && ! str_contains($request['text'], '/status /dashboard /activity')
-            && ! str_contains($request['text'], '/automation list, status, run, pause, resume, history, failures')
+            && ! str_contains($request['text'], '/routine list, status, run, pause, resume, history, failures')
             && ! str_contains($request['text'], '/files')
             && ! str_contains($request['text'], '/docs'));
         Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
@@ -7709,7 +7707,7 @@ class ChatWebhookControllerTest extends TestCase
         ]);
     }
 
-    public function test_telegram_automation_failure_notifications_route_with_context_and_digest_modes(): void
+    public function test_telegram_routine_failure_notifications_route_with_context_and_digest_modes(): void
     {
         Http::fake(['api.telegram.org/*/sendMessage' => Http::response(['ok' => true, 'result' => ['message_id' => 653]])]);
 
@@ -7730,14 +7728,13 @@ class ChatWebhookControllerTest extends TestCase
             'chat_id' => '67890',
             'chat_type' => 'private',
         ]);
-        $automation = Automation::create([
+        $routine = Routine::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $this->workspace->id,
             'name' => 'Morning Brief',
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'agent_id' => $agent->id,
-            'prompt' => 'Summarize the workspace.',
+            'instructions' => 'Summarize the workspace.',
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'is_active' => true,
@@ -7758,7 +7755,7 @@ class ChatWebhookControllerTest extends TestCase
                 'integration_setting_id' => $setting->id,
                 'scope_type' => 'telegram_conversation',
                 'scope_id' => $conversation->id,
-                'event_type' => 'automation_failed',
+                'event_type' => 'routine_failed',
                 'severity' => 'high',
                 'filters' => ['mode' => $mode],
                 'timezone' => 'UTC',
@@ -7772,35 +7769,35 @@ class ChatWebhookControllerTest extends TestCase
             'title' => 'Scheduled: Morning Brief',
             'description' => 'Summarize the workspace.',
             'status' => Task::STATUS_FAILED,
-            'source' => Task::SOURCE_AUTOMATION,
+            'source' => Task::SOURCE_ROUTINE,
             'agent_id' => $agent->id,
             'requester_id' => $human->id,
             'completed_at' => now(),
-            'context' => ['automation_id' => $automation->id],
+            'context' => ['routine_id' => $routine->id],
             'result' => ['error' => 'CRM API timed out'],
         ]);
 
         event(new TaskUpdated($task, 'failed'));
 
         $this->assertDatabaseHas('telegram_deliveries', [
-            'source_type' => Automation::class,
-            'source_id' => $automation->id,
+            'source_type' => Routine::class,
+            'source_id' => $routine->id,
             'chat_id' => '12345',
-            'renderer_version' => 'telegram-automation-notification:v1',
+            'renderer_version' => 'telegram-routine-notification:v1',
             'status' => 'sent',
         ]);
         $this->assertDatabaseHas('telegram_deliveries', [
-            'source_type' => Automation::class,
-            'source_id' => $automation->id,
+            'source_type' => Routine::class,
+            'source_id' => $routine->id,
             'chat_id' => '67890',
-            'renderer_version' => 'telegram-automation-notification:v1',
+            'renderer_version' => 'telegram-routine-notification:v1',
             'status' => 'deferred',
         ]);
 
         Http::assertSentCount(1);
         Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
             && (string) $request['chat_id'] === '12345'
-            && str_contains($request['text'], 'Automation failed')
+            && str_contains($request['text'], 'Routine failed')
             && str_contains($request['text'], 'Morning Brief')
             && str_contains($request['text'], 'Consecutive failures: 2')
             && ! str_contains($request['text'], 'Task ID:')
@@ -8034,14 +8031,13 @@ class ChatWebhookControllerTest extends TestCase
             'status' => 'pending',
             'channel_id' => $channel->id,
         ]);
-        Automation::create([
+        Routine::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $this->workspace->id,
             'name' => 'Morning Brief',
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'agent_id' => $agent->id,
-            'prompt' => 'Summarize the workspace.',
+            'instructions' => 'Summarize the workspace.',
             'cron_expression' => '0 10 * * *',
             'timezone' => 'UTC',
             'is_active' => true,
@@ -8051,14 +8047,13 @@ class ChatWebhookControllerTest extends TestCase
             'keep_history' => true,
             'created_by_id' => $human->id,
         ]);
-        $failedAutomation = Automation::create([
+        $failedRoutine = Routine::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $this->workspace->id,
             'name' => 'CRM Sync',
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'agent_id' => $agent->id,
-            'prompt' => 'Sync CRM data.',
+            'instructions' => 'Sync CRM data.',
             'cron_expression' => '*/15 * * * *',
             'timezone' => 'UTC',
             'is_active' => true,
@@ -8086,21 +8081,21 @@ class ChatWebhookControllerTest extends TestCase
                 'task_id' => $completedTask->id,
             ],
         ]);
-        $deferredAutomation = TelegramDelivery::create([
+        $deferredRoutine = TelegramDelivery::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $this->workspace->id,
             'integration_setting_id' => $setting->id,
-            'source_type' => Automation::class,
-            'source_id' => $failedAutomation->id,
+            'source_type' => Routine::class,
+            'source_id' => $failedRoutine->id,
             'chat_id' => '12345',
-            'renderer_version' => 'telegram-automation-notification:v1',
+            'renderer_version' => 'telegram-routine-notification:v1',
             'status' => 'deferred',
             'request_payload' => [
                 'method' => 'deferNotification',
-                'event_type' => 'automation_failed',
+                'event_type' => 'routine_failed',
                 'severity' => 'high',
                 'mode' => 'digest',
-                'automation_id' => $failedAutomation->id,
+                'routine_id' => $failedRoutine->id,
             ],
         ]);
         $deferredApproval = TelegramDelivery::create([
@@ -8121,8 +8116,10 @@ class ChatWebhookControllerTest extends TestCase
             ],
         ]);
 
-        $this->artisan('telegram:send-digests')->assertExitCode(0);
-        $this->artisan('telegram:send-digests')->assertExitCode(0);
+        // The digest is a built-in routine run by the scheduler tick; the
+        // second tick in the same minute must not send a second digest.
+        $this->artisan('routines:tick')->assertExitCode(0);
+        $this->artisan('routines:tick')->assertExitCode(0);
 
         Http::assertSentCount(2);
         Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
@@ -8136,9 +8133,9 @@ class ChatWebhookControllerTest extends TestCase
             && str_contains($request['text'], 'Calendar next 24h: 1')
             && str_contains($request['text'], 'Pending approvals: 1')
             && str_contains($request['text'], 'Deferred alerts: 3')
-            && str_contains($request['text'], 'Next automation: CRM Sync')
+            && str_contains($request['text'], 'Next routine: CRM Sync')
             && str_contains($request['text'], 'Completed: Daily report')
-            && str_contains($request['text'], 'Automation failed: CRM Sync')
+            && str_contains($request['text'], 'Routine failed: CRM Sync')
             && str_contains($request['text'], 'Approval needed: Deploy staging')
             && str_contains((string) $request['reply_markup'], 'Open dashboard')
             && str_contains((string) $request['reply_markup'], 'Snooze'));
@@ -8152,10 +8149,21 @@ class ChatWebhookControllerTest extends TestCase
             'parse_mode' => 'plain_text_fallback',
         ]);
 
+        // The digest ran as the code-defined built-in routine: no agent run,
+        // no LLM call, one trigger event for the single scheduled slot.
+        $builtin = Routine::query()->where('built_in_key', TelegramDigestRoutine::KEY)->sole();
+        $this->assertSame(Routine::KIND_BUILTIN, $builtin->kind);
+        $this->assertNull($builtin->agent_id);
+        $this->assertSame(1, $builtin->run_count);
+        $this->assertSame(1, $builtin->last_result['sent'] ?? null);
+        $this->assertDatabaseCount('agent_runs', 0);
+        $this->assertDatabaseCount('llm_usage_events', 0);
+        $this->assertSame(1, WorkspaceEvent::query()->where('type', 'routine.triggered')->where('source_ref', $builtin->id)->count());
+
         $deferred->refresh();
         $this->assertSame('batched', $deferred->status);
         $this->assertNotNull($deferred->response_payload['digest_delivery_id'] ?? null);
-        $this->assertSame('batched', $deferredAutomation->fresh()->status);
+        $this->assertSame('batched', $deferredRoutine->fresh()->status);
         $this->assertSame('batched', $deferredApproval->fresh()->status);
 
         $snooze = TelegramInteraction::where('interaction_type', 'notification_snooze')->firstOrFail();

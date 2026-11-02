@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Chat message stored in an OpenCompany channel.
  *
- * Messages can originate from humans, agents, automations, delegation callbacks,
+ * Messages can originate from humans, agents, routines, delegation callbacks,
  * or external chat adapters. The source and external_message_id fields are used
  * by bridge/listener code to prevent echo loops and to sync edits/deletes.
  */

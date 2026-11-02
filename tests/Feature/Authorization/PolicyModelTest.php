@@ -18,9 +18,10 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Policy model (Product Direction pillar 5): behaviour modes are gone. Only
- * declared reads run without approval; admins grant scoped, exact-match
- * exceptions (once, run, task, until, always). A deny always wins.
+ * Policy model (Product Direction pillar 5): behaviour modes are gone. The
+ * action class decides the default gate; unclassified tools are external and
+ * ask. Admins grant scoped, exact-match exceptions (once, run, task, until,
+ * always). A deny always wins. Class/preset gates: GovernanceGateTest.
  */
 class PolicyModelTest extends TestCase
 {
@@ -33,6 +34,9 @@ class PolicyModelTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Team preset explicitly: the test workspace has one member and would
+        // otherwise derive Personal.
+        $this->workspace->update(['governance_preset' => 'team']);
         $this->agent = User::factory()->agent()->create(['status' => 'idle']);
         $this->permissions = app(AgentPermissionService::class);
     }
@@ -48,7 +52,7 @@ class PolicyModelTest extends TestCase
             'tool_slug' => $slug, 'scope' => $scope, ...$extra]);
     }
 
-    public function test_default_policy_runs_only_declared_reads(): void
+    public function test_unclassified_tools_ask_unless_declared_read(): void
     {
         $this->assertFalse($this->requiresApproval('list_docs', 'read'));
         foreach (['write', 'action', '', 'custom'] as $type) {
@@ -75,12 +79,12 @@ class PolicyModelTest extends TestCase
             'type' => Task::TYPE_CUSTOM, 'status' => Task::STATUS_ACTIVE, 'priority' => Task::PRIORITY_NORMAL,
             'source' => Task::SOURCE_CHAT, 'agent_id' => $this->agent->id, 'requester_id' => $this->agent->id]);
         $run = AgentRunRecord::ensureForTask($task, AgentRunRecord::KIND_CHAT);
-        $this->grant('add_table_row', 'run', ['run_id' => $run->id]);
+        $this->grant('create_table', 'run', ['run_id' => $run->id]);
         $this->grant('update_doc', 'task', ['task_id' => $task->id]);
 
-        $this->assertTrue($this->requiresApproval('add_table_row', 'write'), 'outside the run');
+        $this->assertTrue($this->requiresApproval('create_table', 'write'), 'outside the run');
         app()->instance(ActiveAgentRun::class, new ActiveAgentRun($run->id));
-        $this->assertFalse($this->requiresApproval('add_table_row', 'write'));
+        $this->assertFalse($this->requiresApproval('create_table', 'write'));
         $this->assertFalse($this->requiresApproval('update_doc', 'write'));
         app()->forgetInstance(ActiveAgentRun::class);
     }
@@ -99,7 +103,8 @@ class PolicyModelTest extends TestCase
     // A single-use grant is consumed by execution, never by registration.
     public function test_once_grant_is_consumed_on_execution_only(): void
     {
-        $grant = $this->grant('vfs_write', 'once');
+        // forget_memory is a direct tool and a purge (asks under Team).
+        $grant = $this->grant('forget_memory', 'once');
         $registry = app(ToolRegistry::class);
 
         $tools = $registry->getToolsForAgent($this->agent);
@@ -107,9 +112,9 @@ class PolicyModelTest extends TestCase
         $this->assertNotNull($wrapped, 'covered tool is registered with the consuming decorator');
         $this->assertNull($grant->fresh()->consumed_at, 'registration does not consume');
 
-        app(\App\Domain\Authorization\Application\PolicyGrantService::class)->consumeOnce($this->agent, 'vfs_write');
+        app(\App\Domain\Authorization\Application\PolicyGrantService::class)->consumeOnce($this->agent, 'forget_memory');
         $this->assertNotNull($grant->fresh()->consumed_at);
-        $this->assertTrue($this->requiresApproval('vfs_write', 'write'));
+        $this->assertTrue($this->requiresApproval('forget_memory', 'write'));
     }
 
     public function test_contacting_a_peer_outside_the_manager_chain_needs_approval_by_default(): void

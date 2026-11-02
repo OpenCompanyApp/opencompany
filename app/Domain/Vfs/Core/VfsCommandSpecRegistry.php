@@ -127,7 +127,7 @@ final class VfsCommandSpecRegistry
             'python3' => ['Host Python execution is not supported by VFS.', 'Use Code Mode (code_exec) helpers or direct tools.'],
             'curl' => ['Network commands are outside VFS.', 'Use web_fetch, browser tools, or integration tools.'],
             'wget' => ['Network commands are outside VFS.', 'Use web_fetch, browser tools, or integration tools.'],
-            'sleep' => ['Blocking sleeps are not supported by bounded VFS exec.', 'Use automations or task scheduling outside the VFS shell.'],
+            'sleep' => ['Blocking sleeps are not supported by bounded VFS exec.', 'Use routines or task scheduling outside the VFS shell.'],
             'patch' => ['Patch is intentionally a direct permission-aware tool.', 'Use vfs_patch for targeted docs, files, tasks, lists, table rows, and scoped agent identity/memory edits.'],
             'history' => ['Interactive shell history is not exposed by VFS.', 'Use explicit command transcripts or operation logs outside the VFS shell.'],
         ] as $name => [$reason, $suggestion]) {

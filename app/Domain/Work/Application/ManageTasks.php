@@ -5,11 +5,11 @@ namespace App\Domain\Work\Application;
 use App\Events\TaskUpdated;
 use App\Jobs\AgentRespondJob;
 use App\Jobs\ExecuteAgentTaskJob;
-use App\Jobs\RunAutomationJob;
+use App\Jobs\RunRoutineJob;
 use App\Models\AgentRunRecord;
-use App\Models\Automation;
 use App\Models\Channel;
 use App\Models\ListItem;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\TaskStep;
 use App\Models\User;
@@ -347,14 +347,14 @@ class ManageTasks
     private function ensureRunForTask(Task $task): AgentRunRecord
     {
         $kind = match ($task->source) {
-            Task::SOURCE_AUTOMATION => (($task->context['execution_type'] ?? null) === 'script'
-                ? AgentRunRecord::KIND_SCRIPT_AUTOMATION
-                : AgentRunRecord::KIND_PROMPT_AUTOMATION),
+            Task::SOURCE_ROUTINE => (($task->context['routine_kind'] ?? null) === Routine::KIND_SCRIPT
+                ? AgentRunRecord::KIND_ROUTINE_SCRIPT
+                : AgentRunRecord::KIND_ROUTINE_AGENT),
             Task::SOURCE_CHAT, Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK, Task::SOURCE_AGENT_NOTIFY => AgentRunRecord::KIND_CHAT,
             default => AgentRunRecord::KIND_ASSIGNED_TASK,
         };
 
-        $maxAttempts = in_array($kind, [AgentRunRecord::KIND_PROMPT_AUTOMATION, AgentRunRecord::KIND_SCRIPT_AUTOMATION], true) ? 2 : 3;
+        $maxAttempts = in_array($kind, [AgentRunRecord::KIND_ROUTINE_AGENT, AgentRunRecord::KIND_ROUTINE_SCRIPT], true) ? 2 : 3;
         $run = AgentRunRecord::ensureForTask($task, $kind, $maxAttempts);
         if ($run->status === AgentRunRecord::STATUS_WAITING) {
             $run->markQueued();
@@ -391,14 +391,14 @@ class ManageTasks
             return;
         }
 
-        if ($task->source === Task::SOURCE_AUTOMATION) {
-            $automationId = $task->context['automation_id'] ?? null;
-            $automation = Automation::forWorkspace()->find($automationId);
-            if (! $automation || ! $task->agentRun?->dispatch_key) {
-                throw new \DomainException('Automation task cannot be resumed without its automation and dispatch key.');
+        if ($task->source === Task::SOURCE_ROUTINE) {
+            $routineId = $task->context['routine_id'] ?? null;
+            $routine = Routine::forWorkspace()->find($routineId);
+            if (! $routine || ! $task->agentRun?->dispatch_key) {
+                throw new \DomainException('Routine task cannot be resumed without its routine and dispatch key.');
             }
 
-            RunAutomationJob::dispatch($automation, $task->agentRun->dispatch_key);
+            RunRoutineJob::dispatch($routine, $task->agentRun->dispatch_key);
 
             return;
         }

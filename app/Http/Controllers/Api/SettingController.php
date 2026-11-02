@@ -5,15 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Domain\Work\Application\ManageTasks;
 use App\Http\Controllers\Controller;
 use App\Jobs\IndexDocumentJob;
-use App\Jobs\RunAutomationJob;
+use App\Jobs\RunRoutineJob;
 use App\Models\AgentRunRecord;
 use App\Models\AppSetting;
-use App\Models\Automation;
 use App\Models\ConversationSummary;
 use App\Models\Document;
 use App\Models\DocumentChunk;
 use App\Models\EmbeddingCache;
 use App\Models\McpServer;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Mcp\McpClient;
@@ -205,12 +205,12 @@ class SettingController extends Controller
             }
 
             try {
-                if (in_array($run->kind, [AgentRunRecord::KIND_PROMPT_AUTOMATION, AgentRunRecord::KIND_SCRIPT_AUTOMATION], true)) {
-                    $automation = Automation::forWorkspace()->find($run->metadata['automation_id'] ?? $task->context['automation_id'] ?? null);
-                    if (! $automation) {
+                if (in_array($run->kind, [AgentRunRecord::KIND_ROUTINE_AGENT, AgentRunRecord::KIND_ROUTINE_SCRIPT], true)) {
+                    $routine = Routine::forWorkspace()->find($run->metadata['routine_id'] ?? $task->context['routine_id'] ?? null);
+                    if (! $routine) {
                         continue;
                     }
-                    RunAutomationJob::dispatch($automation);
+                    RunRoutineJob::dispatch($routine);
                     $newTaskId = null;
                 } else {
                     $retryTask = $task->replicate();
@@ -372,7 +372,7 @@ class SettingController extends Controller
             'compaction' => $this->getCompactionHealth(),
             'embedding' => $this->getEmbeddingHealth(),
             'queue' => $this->getQueueHealth(),
-            'automations' => $this->getAutomationHealth(),
+            'routines' => $this->getRoutineHealth(),
             'mcp_servers' => $this->getMcpHealth(),
             'agents' => $this->getAgentHealth(),
             'logs' => $this->getRecentLogs(),
@@ -451,18 +451,18 @@ class SettingController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function getAutomationHealth(): array
+    private function getRoutineHealth(): array
     {
-        $automations = Automation::forWorkspace()->get([
+        $routines = Routine::forWorkspace()->get([
             'id', 'name', 'is_active', 'last_run_at', 'next_run_at',
             'run_count', 'consecutive_failures', 'last_result',
         ]);
 
         return [
-            'total' => $automations->count(),
-            'active' => $automations->where('is_active', true)->count(),
-            'failing' => $automations->where('consecutive_failures', '>', 0)->count(),
-            'items' => $automations->map(fn ($a) => [
+            'total' => $routines->count(),
+            'active' => $routines->where('is_active', true)->count(),
+            'failing' => $routines->where('consecutive_failures', '>', 0)->count(),
+            'items' => $routines->map(fn ($a) => [
                 'name' => $a->name,
                 'is_active' => $a->is_active,
                 'last_run_at' => $a->last_run_at?->toIso8601String(),

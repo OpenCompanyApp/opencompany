@@ -3,6 +3,11 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Models\Concerns\RecordsAgentChanges;
+use App\Models\Contracts\RevertibleContent;
+use App\Models\Concerns\Trashable;
+use App\Observers\DocumentObserver;
+use App\Services\Memory\DocumentIndexingService;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,11 +20,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Documents serve both user-authored knowledge and system-owned agent identity
  * files. System documents are guarded from ordinary deletion because deleting
  * an agent's identity/memory tree can break prompt assembly.
+ *
+ * `delete()` moves a document (and a folder's subtree) to trash; trashed
+ * documents leave queries and their search chunks are dropped, then rebuilt
+ * on restore. `forceDelete()` is the purge (governance-model.md).
  */
-class Document extends Model
+class Document extends Model implements RevertibleContent
 {
     /** @use HasFactory<Factory<static>> */
-    use BelongsToWorkspace, HasFactory;
+    use BelongsToWorkspace, HasFactory, RecordsAgentChanges, Trashable;
 
     protected $keyType = 'string';
 
@@ -56,7 +65,28 @@ class Document extends Model
                 // fail here instead of removing prompt-critical files.
                 throw new \LogicException('System documents cannot be deleted.');
             }
+            // Trashing a folder takes its subtree along; it must not carry
+            // system files with it (checked before anything is trashed).
+            if (! $doc->isForceDeleting()) {
+                foreach ($doc->liveDescendants() as $descendant) {
+                    if ($descendant->is_system) {
+                        throw new \LogicException('System documents cannot be deleted.');
+                    }
+                }
+            }
         });
+    }
+
+    /** A descendant trashed with its folder leaves search (like DocumentObserver::deleted). */
+    protected function onTrashed(): void
+    {
+        app(DocumentIndexingService::class)->deindex($this);
+    }
+
+    /** A descendant restored with its folder is indexed again (like DocumentObserver::saved). */
+    protected function onRestored(): void
+    {
+        app(DocumentObserver::class)->saved($this);
     }
 
     public function toArray()

@@ -167,8 +167,9 @@ class AgentDocumentService
         // guards intentionally protect system files from normal delete paths.
         $this->recursivelyUnsetSystemFlag($agentFolder);
 
-        // Delete — cascade handles children
-        $agentFolder->delete();
+        // Purge, not trash: the agent is gone, so its system files are too.
+        // The FK cascade removes the children.
+        $agentFolder->forceDelete();
     }
 
     /**
@@ -355,7 +356,8 @@ class AgentDocumentService
     {
         $doc = $this->getMemoryTopicFile($agent, $slug);
         if ($doc) {
-            $doc->delete();
+            // forget_memory is classed as a purge (agent memory is not Docs content).
+            $doc->forceDelete();
         }
     }
 
@@ -492,7 +494,8 @@ class AgentDocumentService
     {
         $doc = $this->getPeerMemory($agent, $peerId, $peerType);
         if ($doc) {
-            $doc->delete();
+            // forget_memory is classed as a purge (agent memory is not Docs content).
+            $doc->forceDelete();
         }
     }
 

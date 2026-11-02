@@ -2,7 +2,6 @@
 
 namespace App\Agents\Tools\System;
 
-use App\Models\AppSetting;
 use App\Models\ApprovalRequest;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -10,6 +9,12 @@ use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Decorates a tool whose governance gate requires approval: calling it creates
+ * a pending ApprovalRequest instead of executing. Only a human resolves it
+ * (ApprovalResolutionPolicy); ApprovalExecutionService re-checks permissions
+ * and executes on approval.
+ */
 class ApprovalWrappedTool implements Tool
 {
     private const BUDGET_PARAM_KEYS = [
@@ -43,16 +48,13 @@ class ApprovalWrappedTool implements Tool
     public function handle(Request $request): string
     {
         try {
+            // The amount is display-only. Invariant: agents never approve
+            // anything, and the amount is an agent-supplied argument, so it
+            // can never waive approval (the former below-threshold
+            // auto-approval let an agent pass `price: 0` to skip the human).
+            // Spend caps belong to per-agent budgets (governance-model.md).
             $budgetAmount = $this->extractBudgetAmount($request);
             $isBudget = $budgetAmount !== null;
-
-            // Auto-approve if below threshold
-            if ($isBudget) {
-                $threshold = (float) AppSetting::getValue('budget_approval_threshold', 0);
-                if ($threshold > 0 && $budgetAmount <= $threshold) {
-                    return $this->autoApprove($request, $budgetAmount);
-                }
-            }
 
             $amountLabel = $isBudget ? ' ($' . number_format($budgetAmount, 2) . ')' : '';
 
@@ -124,32 +126,5 @@ class ApprovalWrappedTool implements Tool
         }
 
         return null;
-    }
-
-    /**
-     * Auto-approve a budget action below the threshold and execute immediately.
-     */
-    private function autoApprove(Request $request, float $amount): string
-    {
-        // Create approval record for audit trail
-        ApprovalRequest::create([
-            'id' => Str::uuid()->toString(),
-            'type' => 'budget',
-            'workspace_id' => $this->agent->workspace_id,
-            'title' => "Tool: {$this->toolSlug}",
-            'description' => "Agent {$this->agent->name} executed {$this->toolSlug} (\${$amount}) — auto-approved (below threshold)",
-            'requester_id' => $this->agent->id,
-            'status' => 'approved',
-            'amount' => $amount,
-            'responded_at' => now(),
-            'tool_execution_context' => [
-                'tool_slug' => $this->toolSlug,
-                'parameters' => $request->toArray(),
-            ],
-            'channel_id' => $request['channelId'] ?? null,
-        ]);
-
-        // Execute the inner tool directly
-        return $this->innerTool->handle($request);
     }
 }

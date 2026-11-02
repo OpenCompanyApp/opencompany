@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
  * Telegram callback_data is user-controlled input once it leaves OpenCompany.
  * Store a short opaque token in Telegram and keep the real target/action data
  * here so every button press re-loads workspace, actor, expiry, and policy
- * state before mutating approvals, tasks, files, automations, or resources.
+ * state before mutating approvals, tasks, files, routines, or resources.
  */
 class TelegramInteraction extends Model
 {

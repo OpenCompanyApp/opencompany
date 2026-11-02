@@ -3,7 +3,6 @@ import { usePage, router } from '@inertiajs/vue3'
 import {
   activity,
   approvals,
-  automation,
   calendar,
   chat,
   docs,
@@ -11,13 +10,14 @@ import {
   integrations,
   lists,
   org,
+  routines,
   settings,
   tables,
   tasks,
 } from '@/routes'
 import { show as showAgentRoute } from '@/routes/agent'
 import { show as showApprovalRoute } from '@/routes/approvals'
-import { edit as editAutomationRoute } from '@/routes/automation'
+import { edit as editRoutineRoute } from '@/routes/routines'
 import { codeConsole as developerCodeConsoleRoute, tools as developerToolsRoute } from '@/routes/developer'
 import { index as messagesRoute, show as showMessageRoute } from '@/routes/messages'
 import { edit as editProfileRoute, show as showProfileRoute } from '@/routes/profile'
@@ -105,7 +105,7 @@ export const useWorkspace = () => {
   const activityUrl = (options?: RouteQueryOptions) => activity.url(workspaceRouteParams(), options)
   const approvalsUrl = (options?: RouteQueryOptions) => approvals.url(workspaceRouteParams(), options)
   const approvalUrl = (id: string | number, options?: RouteQueryOptions) => showApprovalRoute.url(workspaceRouteParams({ id }), options)
-  const automationUrl = (options?: RouteQueryOptions) => automation.url(workspaceRouteParams(), options)
+  const routineUrl = (options?: RouteQueryOptions) => routines.url(workspaceRouteParams(), options)
   const orgUrl = (options?: RouteQueryOptions) => org.url(workspaceRouteParams(), options)
   const settingsUrl = (options?: RouteQueryOptions) => settings.url(workspaceRouteParams(), options)
   const integrationsUrl = (options?: RouteQueryOptions) => integrations.url(workspaceRouteParams(), options)
@@ -119,7 +119,7 @@ export const useWorkspace = () => {
   )
   const taskUrl = (id: string | number, options?: RouteQueryOptions) => showTaskRoute.url(workspaceRouteParams({ id }), options)
   const tableUrl = (id: string | number, options?: RouteQueryOptions) => showTableRoute.url(workspaceRouteParams({ id }), options)
-  const automationEditUrl = (id: string | number, options?: RouteQueryOptions) => editAutomationRoute.url(workspaceRouteParams({ id }), options)
+  const routineEditUrl = (id: string | number, options?: RouteQueryOptions) => editRoutineRoute.url(workspaceRouteParams({ id }), options)
   const messagesUrl = (options?: RouteQueryOptions) => messagesRoute.url(workspaceRouteParams(), options)
   const messageUrl = (id: string | number, options?: RouteQueryOptions) => showMessageRoute.url(workspaceRouteParams({ id }), options)
   const developerToolsUrl = (options?: RouteQueryOptions) => developerToolsRoute.url(workspaceRouteParams(), options)
@@ -151,7 +151,7 @@ export const useWorkspace = () => {
     activityUrl,
     approvalsUrl,
     approvalUrl,
-    automationUrl,
+    routineUrl,
     orgUrl,
     settingsUrl,
     integrationsUrl,
@@ -163,7 +163,7 @@ export const useWorkspace = () => {
     memberUrl,
     taskUrl,
     tableUrl,
-    automationEditUrl,
+    routineEditUrl,
     messagesUrl,
     messageUrl,
     developerToolsUrl,

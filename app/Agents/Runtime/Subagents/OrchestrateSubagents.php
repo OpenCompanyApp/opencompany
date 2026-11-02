@@ -60,7 +60,7 @@ class OrchestrateSubagents implements Tool
             }
 
             // Delegation is workspace-local and excludes system agents. System
-            // agents may own automation/runtime responsibilities that should not
+            // agents may own routine/runtime responsibilities that should not
             // be reachable from model-generated delegation plans.
             $target = User::query()
                 ->where('id', $agentId)

@@ -13,9 +13,10 @@ Schedule::command('agent:resume-waiting')->everyMinute();
 
 Schedule::command('agent-runs:reconcile')->everyFiveMinutes()->withoutOverlapping();
 
-Schedule::command('automation:run-due')->everyMinute()->withoutOverlapping();
-
-Schedule::command('telegram:send-digests')->everyMinute();
+// The only routine scheduler: records one time event per due routine slot
+// and dispatches its run. Built-in routines (e.g. the Telegram digest) run
+// through the same tick; do not add hardcoded per-feature crons here.
+Schedule::command('routines:tick')->everyMinute()->withoutOverlapping();
 
 Schedule::job(new RefreshMcpToolsJob)->hourly();
 

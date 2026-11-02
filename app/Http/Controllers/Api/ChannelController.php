@@ -19,10 +19,10 @@ class ChannelController extends Controller
     {
         $query = Channel::forWorkspace()->with(['users', 'creator', 'latestMessage.author']);
 
-        // Exclude automation channels from chat listing
+        // Exclude routine channels from chat listing
         $query->whereNotIn('id', function ($q) {
             $q->select('channel_id')
-              ->from('automations')
+              ->from('routines')
               ->whereNotNull('channel_id');
         });
 

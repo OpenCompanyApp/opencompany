@@ -212,7 +212,7 @@ export interface AgentTaskResult {
   tool_calls_count?: number
   generation_time_ms?: number
   tokens_per_second?: number
-  // Script automation fields
+  // Script routine fields
   output?: string
   return_value?: unknown
   execution_time_ms?: number
@@ -245,7 +245,7 @@ export interface AgentTask {
   listItemId?: string
   parentTask?: AgentTask
   parentTaskId?: string
-  source?: 'manual' | 'chat' | 'automation' | 'agent_delegation' | 'agent_ask' | 'agent_notify'
+  source?: 'manual' | 'chat' | 'routine' | 'agent_delegation' | 'agent_ask' | 'agent_notify'
   subtasks?: AgentTask[]
   steps?: TaskStep[]
   context?: Record<string, unknown>
@@ -468,19 +468,27 @@ export interface FolderTreeNode {
   children: FolderTreeNode[]
 }
 
-// Automations
-export interface Automation {
+// Routines
+export type RoutineKind = 'agent' | 'script' | 'builtin'
+export type RoutineMode = 'read_only' | 'act'
+export type RoutineNotify = 'always' | 'if_new' | 'on_failure'
+
+export interface Routine {
   id: string
   name: string
-  triggerType: string
-  executionType: 'prompt' | 'script'
+  kind: RoutineKind
+  builtInKey: string | null
+  version: number
+  /** Stored now; read-only enforcement arrives in Phase 3. */
+  mode: RoutineMode
+  notify: RoutineNotify
   scriptRuntime: string | null
   scriptDigest: string | null
   scriptEngineDigest: string | null
   scriptValidatedAt: string | null
   description: string | null
-  agentId: string
-  prompt: string
+  agentId: string | null
+  instructions: string | null
   script: string | null
   cronExpression: string
   timezone: string
@@ -491,7 +499,7 @@ export interface Automation {
   consecutiveFailures: number
   channelId: string | null
   keepHistory: boolean
-  createdById: string
+  createdById: string | null
   lastResult: {
     response_preview?: string
     error?: string

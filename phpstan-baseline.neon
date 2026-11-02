@@ -661,24 +661,6 @@ parameters:
 			path: app/Agents/Tools/Workspace/AddChannelMember.php
 
 		-
-			message: '#^Method App\\Agents\\Tools\\Workspace\\CreateAutomation\:\:validateScript\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Agents/Tools/Workspace/CreateAutomation.php
-
-		-
-			message: '#^Property App\\Agents\\Tools\\Workspace\\DeleteAutomation\:\:\$agent is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Workspace/DeleteAutomation.php
-
-		-
-			message: '#^Property App\\Agents\\Tools\\Workspace\\DeleteAutomationRule\:\:\$agent is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Workspace/DeleteAutomationRule.php
-
-		-
 			message: '#^Property App\\Agents\\Tools\\Workspace\\DeleteItemTemplate\:\:\$agent is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
@@ -689,24 +671,6 @@ parameters:
 			identifier: property.onlyWritten
 			count: 1
 			path: app/Agents/Tools/Workspace/DiscoverMcpTools.php
-
-		-
-			message: '#^Property App\\Agents\\Tools\\Workspace\\GetAutomation\:\:\$agent is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Workspace/GetAutomation.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Agents/Tools/Workspace/GetAutomation.php
-
-		-
-			message: '#^Property App\\Agents\\Tools\\Workspace\\ListAutomations\:\:\$agent is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Workspace/ListAutomations.php
 
 		-
 			message: '#^Property App\\Agents\\Tools\\Workspace\\ListMcpServers\:\:\$agent is never read, only written\.$#'
@@ -769,12 +733,6 @@ parameters:
 			path: app/Agents/Tools/Workspace/RemoveMcpServer.php
 
 		-
-			message: '#^Property App\\Agents\\Tools\\Workspace\\RunAutomation\:\:\$agent is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Workspace/RunAutomation.php
-
-		-
 			message: '#^Property App\\Agents\\Tools\\Workspace\\SetupIntegrationWebhook\:\:\$agent is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
@@ -785,18 +743,6 @@ parameters:
 			identifier: property.onlyWritten
 			count: 1
 			path: app/Agents/Tools/Workspace/TestMcpServer.php
-
-		-
-			message: '#^Property App\\Agents\\Tools\\Workspace\\UpdateAutomation\:\:\$sandbox is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Workspace/UpdateAutomation.php
-
-		-
-			message: '#^Property App\\Agents\\Tools\\Workspace\\UpdateAutomationRule\:\:\$agent is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Workspace/UpdateAutomationRule.php
 
 		-
 			message: '#^Property App\\Agents\\Tools\\Workspace\\UpdateItemTemplate\:\:\$agent is never read, only written\.$#'
@@ -819,12 +765,6 @@ parameters:
 		-
 			message: '#^Cannot call method gte\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 1
-			path: app/Console/Commands/ReconcileAgentRuns.php
-
-		-
-			message: '#^Offset ''automation_id'' on string\|null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
 			count: 1
 			path: app/Console/Commands/ReconcileAgentRuns.php
 
@@ -977,36 +917,6 @@ parameters:
 			identifier: notIdentical.alwaysTrue
 			count: 1
 			path: app/Domain/Authorization/Application/ApprovalResolutionPolicy.php
-
-		-
-			message: '#^If condition is always false\.$#'
-			identifier: if.alwaysFalse
-			count: 1
-			path: app/Domain/Automations/Application/ExecutePromptAutomation.php
-
-		-
-			message: '#^Negated boolean expression is always true\.$#'
-			identifier: booleanNot.alwaysTrue
-			count: 1
-			path: app/Domain/Automations/Application/ExecutePromptAutomation.php
-
-		-
-			message: '#^Method App\\Domain\\Automations\\Application\\ManageAutomations\:\:runs\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: string, title\: string, status\: string, runNumber\: mixed, result\: array\<string, mixed\>\|null, agentName\: string\|null, startedAt\: Carbon\\Carbon\|null, completedAt\: Carbon\\Carbon\|null, \.\.\.\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Domain/Automations/Application/ManageAutomations.php
-
-		-
-			message: '#^Method App\\Domain\\Automations\\Application\\ManageAutomations\:\:validateScript\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Domain/Automations/Application/ManageAutomations.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between int\|string and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Domain/Automations/Application/ResolveAutomationRun.php
 
 		-
 			message: '#^Method App\\Domain\\Calendar\\Application\\ManageCalendarEvents\:\:baseQuery\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
@@ -1471,7 +1381,7 @@ parameters:
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
 
 		-
-			message: '#^Match arm comparison between '''' and ''/automation'' is always false\.$#'
+			message: '#^Match arm comparison between '''' and ''/routine'' is always false\.$#'
 			identifier: match.alwaysFalse
 			count: 1
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
@@ -3151,12 +3061,6 @@ parameters:
 			path: app/Http/Controllers/Api/ActivityController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\Api\\AutomationController\:\:scriptRevisions\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Http/Controllers/Api/AutomationController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\Api\\CalendarEventController\:\:index\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -3181,40 +3085,10 @@ parameters:
 			path: app/Http/Controllers/Api/FileController.php
 
 		-
-			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Http/Controllers/Api/IncomingIntegrationWebhookController.php
-
-		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 2
 			path: app/Http/Controllers/Api/IntegrationController.php
-
-		-
-			message: '#^Cannot call method diffForHumans\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/Api/IntegrationWebhookController.php
-
-		-
-			message: '#^Offset ''automation_id'' on string\|null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/Api/SettingController.php
-
-		-
-			message: '#^Offset ''operator_dismissed…'' on string\|null in empty\(\) does not exist\.$#'
-			identifier: empty.offset
-			count: 2
-			path: app/Http/Controllers/Api/SettingController.php
-
-		-
-			message: '#^Offset ''retried_at'' on string\|null in empty\(\) does not exist\.$#'
-			identifier: empty.offset
-			count: 1
-			path: app/Http/Controllers/Api/SettingController.php
 
 		-
 			message: '#^Call to function is_array\(\) with array\{\} will always evaluate to true\.$#'
@@ -3254,12 +3128,6 @@ parameters:
 
 		-
 			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:argumentSummary\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Controllers/Api/TelegramMiniAppController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Api\\TelegramMiniAppController\:\:automationPanel\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Controllers/Api/TelegramMiniAppController.php
@@ -3469,12 +3337,6 @@ parameters:
 			path: app/Http/Middleware/ValidateCsrfToken.php
 
 		-
-			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Resources/AutomationResource.php
-
-		-
 			message: '#^Method App\\Jobs\\AgentRespondJob\:\:middleware\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -3533,24 +3395,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/IndexDocumentJob.php
-
-		-
-			message: '#^Method App\\Jobs\\RunAutomationJob\:\:middleware\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Jobs/RunAutomationJob.php
-
-		-
-			message: '#^Method App\\Jobs\\RunScriptAutomationJob\:\:__construct\(\) has parameter \$sourceReceipt with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Jobs/RunScriptAutomationJob.php
-
-		-
-			message: '#^Method App\\Jobs\\RunScriptAutomationJob\:\:middleware\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Jobs/RunScriptAutomationJob.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Channel\:\:\$workspace_id\.$#'
@@ -3631,12 +3475,6 @@ parameters:
 			path: app/Models/ApprovalRequest.php
 
 		-
-			message: '#^Class App\\Models\\IntegrationWebhook uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/IntegrationWebhook.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ListItem\:\:\$workspace_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3698,12 +3536,6 @@ parameters:
 
 		-
 			message: '#^Method App\\Models\\Workspace\:\:appSettings\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Workspace.php
-
-		-
-			message: '#^Method App\\Models\\Workspace\:\:automations\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/Workspace.php
@@ -3947,9 +3779,3 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/ScriptAdmission.php
-
-		-
-			message: '#^Method App\\Services\\ScriptAutomationInvocation\:\:matches\(\) has parameter \$receipt with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/ScriptAutomationInvocation.php

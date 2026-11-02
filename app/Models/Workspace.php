@@ -19,12 +19,16 @@ class Workspace extends Model
 {
     use HasUuids;
 
+    /** Governance presets (docs/architecture/governance-model.md). */
+    public const GOVERNANCE_PRESETS = ['personal', 'team', 'company'];
+
     protected $fillable = [
         'name',
         'slug',
         'icon',
         'color',
         'owner_id',
+        'governance_preset',
     ];
 
     public function owner(): BelongsTo
@@ -42,6 +46,22 @@ class Workspace extends Model
     public function admins(): BelongsToMany
     {
         return $this->members()->wherePivot('role', 'admin');
+    }
+
+    /**
+     * Effective governance preset (pillar 5): the explicit `governance_preset`
+     * when set, else `personal` for a single-member workspace and `team`
+     * otherwise. Presets only choose default gates per action class; they
+     * never relax the invariants enforced in AgentPermissionResolver.
+     */
+    public function effectiveGovernancePreset(): string
+    {
+        $preset = $this->governance_preset;
+        if (is_string($preset) && in_array($preset, self::GOVERNANCE_PRESETS, true)) {
+            return $preset;
+        }
+
+        return $this->members()->count() <= 1 ? 'personal' : 'team';
     }
 
     public function agents(): HasMany
@@ -82,9 +102,10 @@ class Workspace extends Model
         return $this->hasMany(AppSetting::class);
     }
 
-    public function automations(): HasMany
+    /** @return HasMany<Routine, $this> */
+    public function routines(): HasMany
     {
-        return $this->hasMany(Automation::class);
+        return $this->hasMany(Routine::class);
     }
 
     public function mcpServers(): HasMany

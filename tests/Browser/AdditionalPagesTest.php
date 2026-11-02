@@ -68,16 +68,16 @@ class AdditionalPagesTest extends DuskTestCase
     }
 
     /**
-     * Test that the automation page displays.
+     * Test that the routine page displays.
      */
-    public function test_automation_page_displays(): void
+    public function test_routine_page_displays(): void
     {
         $user = User::factory()->create();
 
         $this->browse(function (Browser $browser) use ($user) {
             $browser->loginAs($user)
-                ->visit('/automation')
-                ->assertSee('Automation');
+                ->visit('/routines')
+                ->assertSee('Routine');
         });
     }
 

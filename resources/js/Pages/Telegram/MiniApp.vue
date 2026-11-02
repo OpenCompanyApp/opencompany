@@ -425,14 +425,14 @@
             </section>
           </div>
 
-          <div v-else-if="activePanel === 'automation' && panelData?.type === 'automation_detail'" class="space-y-4">
+          <div v-else-if="activePanel === 'routine' && panelData?.type === 'routine_detail'" class="space-y-4">
             <section class="space-y-2">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <h2 class="break-words text-sm font-semibold">{{ panelData.name }}</h2>
                   <p class="mt-1 text-xs text-[var(--tg-muted)]">{{ panelData.agent || 'Unassigned' }} · {{ panelData.is_active ? 'active' : 'paused' }}</p>
                 </div>
-                <span class="shrink-0 rounded-md border border-[var(--tg-border)] px-2 py-1 text-[11px]">{{ panelData.execution_type }}</span>
+                <span class="shrink-0 rounded-md border border-[var(--tg-border)] px-2 py-1 text-[11px]">{{ panelData.kind }}</span>
               </div>
               <p v-if="panelData.description" class="text-sm text-[var(--tg-muted)]">{{ panelData.description }}</p>
             </section>
@@ -440,7 +440,7 @@
             <section class="grid grid-cols-2 gap-2 text-xs">
               <Metric label="Runs" :value="panelData.run_count ?? 0" />
               <Metric label="Failures" :value="panelData.consecutive_failures ?? 0" />
-              <Metric label="Trigger" :value="panelData.trigger_type || 'schedule'" />
+              <Metric label="Notify" :value="panelData.notify || 'always'" />
               <Metric label="Timezone" :value="panelData.timezone || 'UTC'" />
             </section>
 
@@ -474,9 +474,9 @@
                 class="h-9 rounded-md text-xs font-medium"
                 :class="action === 'pause' ? 'border border-red-300 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300' : 'bg-[var(--tg-accent)] text-white'"
                 :disabled="actionLoading"
-                @click="runAutomationAction(action)"
+                @click="runRoutineAction(action)"
               >
-                {{ automationActionLabel(action) }}
+                {{ routineActionLabel(action) }}
               </button>
             </section>
 
@@ -814,15 +814,15 @@ async function runApprovalAction(action: string) {
   })
 }
 
-async function runAutomationAction(action: string) {
+async function runRoutineAction(action: string) {
   if (action === 'open' && panelData.value?.web_url) {
     window.location.href = panelData.value.web_url
     return
   }
 
   await runAction({
-    action: `${action}_automation`,
-    automation_id: panelData.value?.id,
+    action: `${action}_routine`,
+    routine_id: panelData.value?.id,
   })
 }
 
@@ -870,7 +870,7 @@ function approvalActionLabel(action: string) {
   return action === 'open' ? 'Open in web' : action.charAt(0).toUpperCase() + action.slice(1)
 }
 
-function automationActionLabel(action: string) {
+function routineActionLabel(action: string) {
   return action === 'open' ? 'Open in web' : action.charAt(0).toUpperCase() + action.slice(1)
 }
 

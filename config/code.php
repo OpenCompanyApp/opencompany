@@ -14,11 +14,11 @@ return [
             : null
     ),
 
-    // Queue timeout (seconds) for one script automation job. It must stay above
-    // the automation profile's wall limit plus startup/persistence overhead.
-    'automation_job_timeout' => 60,
+    // Queue timeout (seconds) for one script routine job. It must stay above
+    // the routine profile's wall limit plus startup/persistence overhead.
+    'routine_job_timeout' => 60,
 
-    // Server-owned budgets. Automation wall time must remain below the current
+    // Server-owned budgets. Routine wall time must remain below the current
     // 60-second worker timeout, leaving room for startup, persistence and cleanup.
     'profiles' => [
         'agent' => [
@@ -34,7 +34,7 @@ return [
             'callback_total_wall_limit' => 35.0,
             'require_task_receipt_for_writes' => true,
         ],
-        'automation' => [
+        'routine' => [
             'memory_limit' => 32 * 1024 * 1024,
             'instruction_limit' => 20_000_000,
             'wall_limit_ms' => 45_000,

@@ -12,7 +12,6 @@ use App\Domain\Vfs\Core\VfsOperationLog;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\AgentPermission;
 use App\Models\ApprovalRequest;
-use App\Models\Automation;
 use App\Models\Channel;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
@@ -23,6 +22,7 @@ use App\Models\DocumentChunk;
 use App\Models\DocumentVersion;
 use App\Models\ListItem;
 use App\Models\Message;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\VfsOperationEvent;
@@ -31,10 +31,10 @@ use App\Models\WorkspaceDisk;
 use App\Models\WorkspaceFile;
 use App\Services\AgentDocumentService;
 use App\Services\ApprovalExecutionService;
-use App\Services\FileSystemService;
 use App\Services\CodeApiDocGenerator;
 use App\Services\CodeBridge;
 use App\Services\CodeExecutionResult;
+use App\Services\FileSystemService;
 use App\Services\MrubySandboxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -1445,6 +1445,16 @@ RUBY);
             'permission' => 'allow',
             'requires_approval' => false,
         ]);
+        // vfs_write is a reversible edit (auto-applies by default); an admin
+        // rule makes it approval-required, and vfs_exec must honour that.
+        AgentPermission::create([
+            'id' => (string) Str::uuid(),
+            'agent_id' => $this->agent->id,
+            'scope_type' => 'tool',
+            'scope_key' => 'vfs_write',
+            'permission' => 'allow',
+            'requires_approval' => true,
+        ]);
 
         $raw = app(VfsExec::class, [
             'agent' => $this->agent,
@@ -2058,13 +2068,13 @@ RUBY);
             'requester_id' => $this->agent->id,
             'title' => 'Approve metadata test',
         ]);
-        $automation = Automation::create([
+        $routine = Routine::create([
             'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
-            'name' => 'Metadata Automation',
-            'execution_type' => 'prompt',
+            'name' => 'Metadata Routine',
+            'kind' => 'agent',
             'agent_id' => $this->agent->id,
-            'prompt' => 'Run metadata',
+            'instructions' => 'Run metadata',
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'created_by_id' => $this->agent->id,
@@ -2080,23 +2090,23 @@ RUBY);
         $vfs = app(OpenCompanyVfs::class);
         $channelStat = $vfs->stat($this->agent, '/channels/metadata-general/messages/'.now()->toDateString().'.md');
         $approvalStat = $vfs->stat($this->agent, "/approvals/{$approval->id}.json");
-        $automationStat = $vfs->stat($this->agent, "/automations/{$automation->id}.json");
+        $routineStat = $vfs->stat($this->agent, "/routines/{$routine->id}.json");
         $workspaceStat = $vfs->stat($this->agent, '/workspace/settings.json');
         $tableStat = $vfs->stat($this->agent, '/tables/metadata-table/schema.json');
         $toolsStat = $vfs->stat($this->agent, '/tools/vfs/commands.json');
 
-        foreach ([$channelStat, $approvalStat, $automationStat, $workspaceStat, $tableStat, $toolsStat] as $stat) {
+        foreach ([$channelStat, $approvalStat, $routineStat, $workspaceStat, $tableStat, $toolsStat] as $stat) {
             $this->assertArrayHasKey('read_only_reason', $stat['metadata']);
             $this->assertNotContains('patch', $stat['capabilities']);
             $this->assertNotContains('write', $stat['capabilities']);
         }
 
         $read = json_decode(app(ToolRegistry::class)->instantiateToolBySlug('vfs_read', $this->agent)->handle(new Request([
-            'path' => "/automations/{$automation->id}.json",
+            'path' => "/routines/{$routine->id}.json",
         ])), true);
         $this->assertTrue($read['ok']);
         $this->assertSame(['read'], $read['result']['capabilities']);
-        $this->assertSame('Automation JSON is a generated automation record.', $read['result']['metadata']['read_only_reason']);
+        $this->assertSame('Routine JSON is a generated routine record.', $read['result']['metadata']['read_only_reason']);
 
         try {
             $vfs->patch($this->agent, '/tables/metadata-table/schema.json', json_encode(['search' => 'Metadata', 'replace' => 'Changed'], JSON_THROW_ON_ERROR));
@@ -2234,7 +2244,7 @@ RUBY);
         }
     }
 
-    public function test_vfs_reads_tasks_lists_channels_tables_approvals_automations_and_workspace(): void
+    public function test_vfs_reads_tasks_lists_channels_tables_approvals_routines_and_workspace(): void
     {
         $task = Task::create([
             'id' => 'task-vfs',
@@ -2302,26 +2312,26 @@ RUBY);
             'id' => (string) Str::uuid(),
             'role' => 'admin',
         ]);
-        $automationA = Automation::create([
+        $routineA = Routine::create([
             'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
             'name' => 'Daily Sync',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'agent_id' => $this->agent->id,
-            'prompt' => 'Run sync',
+            'instructions' => 'Run sync',
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'created_by_id' => $this->agent->id,
             'is_active' => true,
             'keep_history' => true,
         ]);
-        Automation::create([
+        Routine::create([
             'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
             'name' => 'Daily Sync',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'agent_id' => $this->agent->id,
-            'prompt' => 'Run other sync',
+            'instructions' => 'Run other sync',
             'cron_expression' => '0 10 * * *',
             'timezone' => 'UTC',
             'created_by_id' => $this->agent->id,
@@ -2332,16 +2342,16 @@ RUBY);
         $executor = app(VfsCommandExecutor::class);
 
         $root = $executor->execute($this->agent, 'ls /')['stdout'];
-        foreach (['agents/', 'docs/', 'files/', 'tasks/', 'lists/', 'channels/', 'tables/', 'tools/', 'automations/', 'approvals/', 'workspace/'] as $mount) {
+        foreach (['agents/', 'docs/', 'files/', 'tasks/', 'lists/', 'channels/', 'tables/', 'tools/', 'routines/', 'approvals/', 'workspace/'] as $mount) {
             $this->assertStringContainsString($mount, $root);
         }
         $this->assertStringContainsString(
-            '/automations',
-            $executor->execute($this->agent, 'find / -maxdepth 1 -name "*automation*" -type d')['stdout'],
+            '/routines',
+            $executor->execute($this->agent, 'find / -maxdepth 1 -name "*routine*" -type d')['stdout'],
         );
         $this->assertStringContainsString(
             '"type": "directory"',
-            $executor->execute($this->agent, 'stat /automations')['stdout'],
+            $executor->execute($this->agent, 'stat /routines')['stdout'],
         );
         $this->assertStringContainsString('Ship VFS', $executor->execute($this->agent, "cat /tasks/by-id/{$task->id}")['stdout']);
         $this->assertStringContainsString('Ship VFS', $executor->execute($this->agent, 'rg "Ship VFS" /tasks/recent.md')['stdout']);
@@ -2386,8 +2396,8 @@ RUBY);
         $this->assertTrue($executor->execute($this->agent, 'ls /tools/apps', '/', new VfsBudget(maxEntries: 1))['result']['truncated']);
         $this->assertFalse($executor->execute($this->agent, 'tree /tools/apps', '/', new VfsBudget(maxEntries: 2, maxDepth: 1))['result']['truncated']);
         $this->assertTrue($executor->execute($this->agent, 'tree /tools/apps', '/', new VfsBudget(maxEntries: 1, maxDepth: 1))['result']['truncated']);
-        $this->assertStringContainsString($automationA->id, $executor->execute($this->agent, 'cat /automations/'.$automationA->id.'.json')['stdout']);
-        $this->assertStringContainsString('daily-sync--', $executor->execute($this->agent, 'ls /automations')['stdout']);
+        $this->assertStringContainsString($routineA->id, $executor->execute($this->agent, 'cat /routines/'.$routineA->id.'.json')['stdout']);
+        $this->assertStringContainsString('daily-sync--', $executor->execute($this->agent, 'ls /routines')['stdout']);
         $this->assertStringContainsString('"truncated"', $executor->execute($this->agent, 'stat /docs')['stdout']);
         $this->assertStringContainsString('"count_is_exact": true', $executor->execute($this->agent, 'stat /tools/apps')['stdout']);
         $this->assertStringNotContainsString('count_sample', $executor->execute($this->agent, 'stat /docs')['stdout']);
@@ -2407,7 +2417,7 @@ RUBY);
             'cat /tables/customers/schema.json/junk',
             'cat /tables/customers/rows.ndjson/junk',
             'cat /workspace/members.json/junk',
-            'cat /automations/'.$automationA->id.'.json/junk',
+            'cat /routines/'.$routineA->id.'.json/junk',
         ] as $command) {
             $decoded = json_decode(app(ToolRegistry::class)->instantiateToolBySlug('vfs_exec', $this->agent)->handle(new Request(['command' => $command])), true);
             $this->assertFalse($decoded['ok'], $command);

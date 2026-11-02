@@ -152,17 +152,17 @@
         </div>
       </details>
 
-      <!-- Automations -->
+      <!-- Routines -->
       <details class="group mb-3">
         <summary class="flex items-center gap-2 cursor-pointer text-sm font-medium text-neutral-900 dark:text-white py-2 select-none">
           <Icon name="ph:caret-right" class="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
-          Automations
-          <span class="text-[11px] text-neutral-400 dark:text-neutral-500 font-normal">{{ debugData.automations.active }}/{{ debugData.automations.total }} active</span>
+          Routines
+          <span class="text-[11px] text-neutral-400 dark:text-neutral-500 font-normal">{{ debugData.routines.active }}/{{ debugData.routines.total }} active</span>
         </summary>
         <div class="pl-5.5 pb-3">
-          <div v-if="debugData.automations.items?.length" class="space-y-1.5">
+          <div v-if="debugData.routines.items?.length" class="space-y-1.5">
             <div
-              v-for="auto in debugData.automations.items"
+              v-for="auto in debugData.routines.items"
               :key="auto.name"
               class="flex items-center gap-2 p-2 rounded-md text-xs"
               :class="auto.consecutive_failures > 0
@@ -175,7 +175,7 @@
               <span class="text-neutral-400 dark:text-neutral-500 text-[11px] shrink-0">{{ formatRelative(auto.last_run_at) }}</span>
             </div>
           </div>
-          <p v-else class="text-xs text-neutral-400 dark:text-neutral-500">No automations configured</p>
+          <p v-else class="text-xs text-neutral-400 dark:text-neutral-500">No routines configured</p>
         </div>
       </details>
 
@@ -437,11 +437,11 @@ const healthCards = computed(() => {
     status: d.queue.failed_jobs >= 5 ? 'error' : d.queue.failed_jobs > 0 ? 'warning' : 'healthy',
   })
 
-  // Automations
+  // Routines
   cards.push({
-    label: 'Automations',
-    detail: `${d.automations.active}/${d.automations.total} active`,
-    status: d.automations.failing >= 3 ? 'error' : d.automations.failing > 0 ? 'warning' : 'healthy',
+    label: 'Routines',
+    detail: `${d.routines.active}/${d.routines.total} active`,
+    status: d.routines.failing >= 3 ? 'error' : d.routines.failing > 0 ? 'warning' : 'healthy',
   })
 
   // MCP Servers
@@ -497,11 +497,11 @@ function copyDebugMarkdown() {
   }
   md += '\n'
 
-  md += `## Automations\n`
-  md += `- Total: ${d.automations.total}, Active: ${d.automations.active}, Failing: ${d.automations.failing}\n`
-  if (d.automations.items?.length) {
+  md += `## Routines\n`
+  md += `- Total: ${d.routines.total}, Active: ${d.routines.active}, Failing: ${d.routines.failing}\n`
+  if (d.routines.items?.length) {
     md += `\n| Name | Active | Failures | Last Run |\n|------|--------|----------|----------|\n`
-    for (const a of d.automations.items) {
+    for (const a of d.routines.items) {
       md += `| ${a.name} | ${a.is_active ? 'Yes' : 'No'} | ${a.consecutive_failures} | ${formatRelative(a.last_run_at)} |\n`
     }
   }

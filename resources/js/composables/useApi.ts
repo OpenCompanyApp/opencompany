@@ -3,8 +3,7 @@ import * as ActivityApi from '@/actions/App/Http/Controllers/Api/ActivityControl
 import * as AgentApi from '@/actions/App/Http/Controllers/Api/AgentController'
 import * as AgentPermissionApi from '@/actions/App/Http/Controllers/Api/AgentPermissionController'
 import * as ApprovalApi from '@/actions/App/Http/Controllers/Api/ApprovalController'
-import * as AutomationApi from '@/actions/App/Http/Controllers/Api/AutomationController'
-import * as AutomationRuleApi from '@/actions/App/Http/Controllers/Api/AutomationRuleController'
+import * as RoutineApi from '@/actions/App/Http/Controllers/Api/RoutineController'
 import * as CalendarEventApi from '@/actions/App/Http/Controllers/Api/CalendarEventController'
 import * as CalendarFeedApi from '@/actions/App/Http/Controllers/Api/CalendarFeedController'
 import * as ChannelApi from '@/actions/App/Http/Controllers/Api/ChannelController'
@@ -370,66 +369,53 @@ export const useApi = () => {
   const deleteTaskTemplate = deleteListTemplate
   const createTaskFromTemplate = createListItemFromTemplate
 
-  // Automation Rules
-  const fetchAutomationRules = (activeOnly = true) =>
-    useFetch(AutomationRuleApi.index(query({ activeOnly })))
-  const createAutomationRule = (data: {
-    name: string
-    triggerType: string
-    actionType: string
-    description?: string
-    triggerConditions?: Record<string, unknown>
-    actionConfig?: Record<string, unknown>
-    templateId?: string
-    createdById?: string
-  }) => wayfinderRequest(AutomationRuleApi.store(), { data })
-  const updateAutomationRule = (id: string, data: Record<string, unknown>) =>
-    wayfinderRequest(AutomationRuleApi.update(id), { data })
-  const deleteAutomationRule = (id: string) =>
-    wayfinderRequest(AutomationRuleApi.destroy(id))
-
-  // Automations
-  const fetchAutomations = () =>
-    useFetch<import('@/types').Automation[]>(AutomationApi.index())
-  const fetchAutomation = (id: string) =>
-    useFetch<import('@/types').Automation>(AutomationApi.show(id))
-  const createAutomation = (data: {
+  // Routines
+  const fetchRoutines = () =>
+    useFetch<import('@/types').Routine[]>(RoutineApi.index())
+  const fetchRoutine = (id: string) =>
+    useFetch<import('@/types').Routine>(RoutineApi.show(id))
+  const createRoutine = (data: {
     name: string
     agentId: string
-    executionType?: 'prompt' | 'script'
-    prompt?: string
+    kind?: 'agent' | 'script'
+    instructions?: string
     script?: string
+    mode?: import('@/types').RoutineMode
+    notify?: import('@/types').RoutineNotify
     cronExpression: string
     timezone?: string
     description?: string
     channelId?: string
     keepHistory?: boolean
     createdById?: string
-  }) => wayfinderRequest(AutomationApi.store(), { data })
-  const updateAutomation = (id: string, data: Record<string, unknown>) =>
-    wayfinderRequest(AutomationApi.update(id), { data })
-  const deleteAutomation = (id: string) =>
-    wayfinderRequest(AutomationApi.destroy(id))
-  const triggerAutomation = (id: string) =>
-    wayfinderRequest(AutomationApi.triggerRun(id))
-  const bulkDeleteAutomations = (ids: string[]) =>
-    wayfinderRequest(AutomationApi.bulkDestroy(), { data: { ids } })
-  const bulkTriggerAutomations = (ids: string[]) =>
-    wayfinderRequest(AutomationApi.bulkTriggerRun(), { data: { ids } })
-  const fetchAutomationRuns = (id: string) =>
+  }) => wayfinderRequest(RoutineApi.store(), { data })
+  const updateRoutine = (id: string, data: Record<string, unknown>) =>
+    wayfinderRequest(RoutineApi.update(id), { data })
+  const deleteRoutine = (id: string) =>
+    wayfinderRequest(RoutineApi.destroy(id))
+  const triggerRoutine = (id: string) =>
+    wayfinderRequest(RoutineApi.triggerRun(id))
+  const bulkDeleteRoutines = (ids: string[]) =>
+    wayfinderRequest(RoutineApi.bulkDestroy(), { data: { ids } })
+  const bulkTriggerRoutines = (ids: string[]) =>
+    wayfinderRequest(RoutineApi.bulkTriggerRun(), { data: { ids } })
+  const fetchRoutineRuns = (id: string) =>
     useFetch<Array<{
       id: string
       title: string
       status: string
       runNumber: number | null
+      version: number | null
+      causalityId: string | null
+      causalityDepth: number
       result: Record<string, unknown> | null
       agentName: string | null
       startedAt: string | null
       completedAt: string | null
       createdAt: string
-    }>>(AutomationApi.runs(id))
+    }>>(RoutineApi.runs(id))
   const previewSchedule = (cronExpression: string, timezone = 'UTC') =>
-    wayfinderRequest(AutomationApi.previewSchedule(query({ cronExpression, timezone })))
+    wayfinderRequest(RoutineApi.previewSchedule(query({ cronExpression, timezone })))
 
   // Agents
   const fetchAgentDetail = (id: string) => useFetch<Record<string, unknown>>(AgentApi.show(id))
@@ -684,21 +670,16 @@ export const useApi = () => {
     updateTaskTemplate,
     deleteTaskTemplate,
     createTaskFromTemplate,
-    // Automation Rules
-    fetchAutomationRules,
-    createAutomationRule,
-    updateAutomationRule,
-    deleteAutomationRule,
-    // Automations
-    fetchAutomations,
-    fetchAutomation,
-    createAutomation,
-    updateAutomation,
-    deleteAutomation,
-    triggerAutomation,
-    bulkDeleteAutomations,
-    bulkTriggerAutomations,
-    fetchAutomationRuns,
+    // Routines
+    fetchRoutines,
+    fetchRoutine,
+    createRoutine,
+    updateRoutine,
+    deleteRoutine,
+    triggerRoutine,
+    bulkDeleteRoutines,
+    bulkTriggerRoutines,
+    fetchRoutineRuns,
     previewSchedule,
     // Agents
     fetchAgentDetail,

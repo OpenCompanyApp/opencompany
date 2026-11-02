@@ -8,7 +8,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 /**
  * Serializes all logical run types for one agent on the shared physical queue.
  *
- * The lock key is shared across chat, assigned-task, and automation job classes.
+ * The lock key is shared across chat, assigned-task, and routine job classes.
  * Lock-contention releases may increase Laravel's physical attempt counter, so
  * logical provider attempts are tracked separately on AgentRunRecord.
  */

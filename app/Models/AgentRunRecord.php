@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Authorization\Application\OnBehalfOf;
 use App\Models\Concerns\BelongsToWorkspace;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,11 @@ use Illuminate\Support\Str;
  * the application-level identity that survives retries: workspace boundaries,
  * semantic attempts, cooperative cancellation, heartbeat, and exactly-once
  * visible-message correlation. One Task has at most one logical run.
+ *
+ * @property array<string, mixed>|null $metadata Kind-specific correlation, e.g. `routine_id`
+ * @property string|null $causality_id Workspace causality chain (Domain\Events\Causality)
+ * @property int $causality_depth
+ * @property string|null $on_behalf_of_user_id Human principal (Domain\Authorization\Application\OnBehalfOf)
  */
 class AgentRunRecord extends Model
 {
@@ -24,9 +30,9 @@ class AgentRunRecord extends Model
 
     public const KIND_ASSIGNED_TASK = 'assigned_task';
 
-    public const KIND_PROMPT_AUTOMATION = 'prompt_automation';
+    public const KIND_ROUTINE_AGENT = 'routine_agent';
 
-    public const KIND_SCRIPT_AUTOMATION = 'script_automation';
+    public const KIND_ROUTINE_SCRIPT = 'routine_script';
 
     public const KIND_SUBAGENT = 'subagent';
 
@@ -71,6 +77,7 @@ class AgentRunRecord extends Model
         'metadata',
         'causality_id',
         'causality_depth',
+        'on_behalf_of_user_id',
     ];
 
     protected function casts(): array
@@ -131,6 +138,9 @@ class AgentRunRecord extends Model
                 // Every run carries the causality chain of the work it executes.
                 'causality_id' => $task->causality_id,
                 'causality_depth' => (int) ($task->causality_depth ?? 0),
+                // The human this run acts for (requester, routine owner, or
+                // inherited through delegation); see OnBehalfOf.
+                'on_behalf_of_user_id' => app(OnBehalfOf::class)->principalForTask($task),
             ],
         );
 

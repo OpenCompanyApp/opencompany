@@ -42,7 +42,7 @@ onMounted(() => {
     theme: getTheme(),
     readOnly: props.readonly,
     // Monaco's EditContext path is still Chromium-specific and gives browser
-    // automation and some assistive-input tools no writable text surface. The
+    // routine and some assistive-input tools no writable text surface. The
     // mature textarea input path preserves IME, accessibility, and testability
     // consistently across every browser OpenCompany supports.
     editContext: false,

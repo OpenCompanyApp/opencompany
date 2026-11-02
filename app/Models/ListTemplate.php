@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Concerns\BelongsToWorkspace;
 
 class ListTemplate extends Model
@@ -49,11 +48,5 @@ class ListTemplate extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
-    }
-
-    /** @return HasMany<ListAutomationRule, $this> */
-    public function automationRules(): HasMany
-    {
-        return $this->hasMany(ListAutomationRule::class, 'list_template_id');
     }
 }

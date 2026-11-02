@@ -124,7 +124,7 @@ const page = usePage()
 const {
   agentUrl,
   approvalsUrl,
-  automationUrl,
+  routineUrl,
   calendarUrl,
   chatUrl,
   docsUrl,
@@ -149,7 +149,7 @@ const agentWorkItems = computed<NavItemType[]>(() => [
   { to: tasksUrl(), icon: 'ph:check-square', iconActive: 'ph:check-square-fill', label: 'Tasks' },
   { to: approvalsUrl(), icon: 'ph:seal-check', iconActive: 'ph:seal-check-fill', label: 'Approvals', badge: 3 },
   { to: orgUrl(), icon: 'ph:tree-structure', iconActive: 'ph:tree-structure-fill', label: 'Organization' },
-  { to: automationUrl(), icon: 'ph:lightning', iconActive: 'ph:lightning-fill', label: 'Automation' },
+  { to: routineUrl(), icon: 'ph:lightning', iconActive: 'ph:lightning-fill', label: 'Routines' },
 ])
 
 // Office - Daily productivity tools

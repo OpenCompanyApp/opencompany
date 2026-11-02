@@ -11,17 +11,17 @@ use App\Agents\Runtime\AmbiguousAgentToolExecution;
 use App\Agents\Runtime\Subagents\GenericSubagent;
 use App\Agents\Tools\System\RunGuardedTool;
 use App\Domain\AgentRuntime\Application\DetectDeliveredChatResponse;
-use App\Domain\Automations\Application\ResolveAutomationRun;
+use App\Domain\Routines\Application\ResolveRoutineRun;
 use App\Domain\Work\Application\ManageTasks;
 use App\Http\Controllers\Api\SettingController;
 use App\Jobs\AgentRespondJob;
 use App\Jobs\ExecuteAgentTaskJob;
-use App\Jobs\RunAutomationJob;
+use App\Jobs\RunRoutineJob;
 use App\Models\AgentRunRecord;
 use App\Models\AgentToolExecution;
-use App\Models\Automation;
 use App\Models\Channel;
 use App\Models\Message;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\Workspace;
@@ -50,13 +50,13 @@ class AgentRunControlPlaneTest extends TestCase
             'channel_id' => $channel->id,
         ]);
         $task = Task::createPending($message, $agent, $channel->id);
-        $automation = new Automation(['agent_id' => $agent->id]);
+        $routine = new Routine(['agent_id' => $agent->id]);
 
         $chatJob = new AgentRespondJob($message, $agent, $channel->id, $task->id);
         $taskJob = new ExecuteAgentTaskJob($task);
-        $automationJob = new RunAutomationJob($automation);
+        $routineJob = new RunRoutineJob($routine);
 
-        $keys = collect([$chatJob, $taskJob, $automationJob])
+        $keys = collect([$chatJob, $taskJob, $routineJob])
             ->map(fn ($job) => $job->middleware()[0]->getLockKey($job));
 
         $this->assertCount(1, $keys->unique());
@@ -182,19 +182,18 @@ class AgentRunControlPlaneTest extends TestCase
         $this->assertDatabaseCount('direct_messages', 2);
     }
 
-    public function test_automation_dispatch_key_reuses_one_task_and_run(): void
+    public function test_routine_dispatch_key_reuses_one_task_and_run(): void
     {
         $creator = User::factory()->create();
         $agent = User::factory()->agent()->create();
         $channel = Channel::factory()->dm()->create(['workspace_id' => $this->workspace->id]);
-        $automation = Automation::create([
+        $routine = Routine::create([
             'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
             'name' => 'Daily report',
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'agent_id' => $agent->id,
-            'prompt' => 'Summarize today.',
+            'instructions' => 'Summarize today.',
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'is_active' => true,
@@ -204,9 +203,9 @@ class AgentRunControlPlaneTest extends TestCase
         ]);
 
         $dispatchKey = (string) Str::uuid();
-        $resolver = app(ResolveAutomationRun::class);
-        $first = $resolver->handle($automation, $dispatchKey, AgentRunRecord::KIND_PROMPT_AUTOMATION, 2);
-        $second = $resolver->handle($automation, $dispatchKey, AgentRunRecord::KIND_PROMPT_AUTOMATION, 2);
+        $resolver = app(ResolveRoutineRun::class);
+        $first = $resolver->handle($routine, $dispatchKey, AgentRunRecord::KIND_ROUTINE_AGENT, 2);
+        $second = $resolver->handle($routine, $dispatchKey, AgentRunRecord::KIND_ROUTINE_AGENT, 2);
 
         $this->assertSame($first->task->id, $second->task->id);
         $this->assertSame($first->run->id, $second->run->id);
@@ -214,32 +213,32 @@ class AgentRunControlPlaneTest extends TestCase
         $this->assertDatabaseCount('tasks', 1);
     }
 
-    public function test_due_automation_creates_durable_run_before_physical_dispatch(): void
+    public function test_due_routine_creates_durable_run_before_physical_dispatch(): void
     {
-        Bus::fake([RunAutomationJob::class]);
-        $automation = $this->automationForControlPlane();
-        $automation->update(['next_run_at' => now()->subMinute()]);
+        Bus::fake([RunRoutineJob::class]);
+        $routine = $this->routineForControlPlane();
+        $routine->update(['next_run_at' => now()->subMinute()]);
 
-        $this->artisan('automation:run-due')->assertSuccessful();
+        $this->artisan('routines:tick')->assertSuccessful();
 
         $run = AgentRunRecord::query()->where('workspace_id', $this->workspace->id)->firstOrFail();
         $this->assertSame(AgentRunRecord::STATUS_QUEUED, $run->status);
-        $this->assertSame($automation->id, $run->metadata['automation_id']);
+        $this->assertSame($routine->id, $run->metadata['routine_id']);
         $this->assertSame(Task::STATUS_PENDING, $run->task->status);
-        $this->assertTrue($automation->fresh()->next_run_at->isFuture());
-        Bus::assertDispatched(RunAutomationJob::class);
+        $this->assertTrue($routine->fresh()->next_run_at->isFuture());
+        Bus::assertDispatched(RunRoutineJob::class);
     }
 
-    public function test_stale_queued_automation_dispatch_is_recovered_not_failed(): void
+    public function test_stale_queued_routine_dispatch_is_recovered_not_failed(): void
     {
-        Bus::fake([RunAutomationJob::class]);
+        Bus::fake([RunRoutineJob::class]);
         config()->set('agent_runtime.stale_queued_after_seconds', 60);
-        $automation = $this->automationForControlPlane();
+        $routine = $this->routineForControlPlane();
         $dispatchKey = (string) Str::uuid();
-        $context = app(ResolveAutomationRun::class)->handle(
-            $automation,
+        $context = app(ResolveRoutineRun::class)->handle(
+            $routine,
             $dispatchKey,
-            AgentRunRecord::KIND_PROMPT_AUTOMATION,
+            AgentRunRecord::KIND_ROUTINE_AGENT,
             2,
         );
         $context->run->update(['heartbeat_at' => now()->subMinutes(5)]);
@@ -250,7 +249,7 @@ class AgentRunControlPlaneTest extends TestCase
         $this->assertSame(AgentRunRecord::STATUS_QUEUED, $run->status);
         $this->assertSame(Task::STATUS_PENDING, $run->task->status);
         $this->assertNotNull($run->metadata['recovered_dispatch_at'] ?? null);
-        Bus::assertDispatched(RunAutomationJob::class, function (RunAutomationJob $job) use ($dispatchKey): bool {
+        Bus::assertDispatched(RunRoutineJob::class, function (RunRoutineJob $job) use ($dispatchKey): bool {
             $property = new \ReflectionProperty($job, 'dispatchKey');
 
             return $property->getValue($job) === $dispatchKey;
@@ -478,20 +477,19 @@ class AgentRunControlPlaneTest extends TestCase
         return Task::createPending($message, $agent, $channel->id)->agentRun;
     }
 
-    private function automationForControlPlane(): Automation
+    private function routineForControlPlane(): Routine
     {
         $creator = User::factory()->create();
         $agent = User::factory()->agent()->create();
         $channel = Channel::factory()->dm()->create(['workspace_id' => $this->workspace->id]);
 
-        return Automation::create([
+        return Routine::create([
             'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
             'name' => 'Recoverable schedule',
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'kind' => 'agent',
             'agent_id' => $agent->id,
-            'prompt' => 'Produce the scheduled report.',
+            'instructions' => 'Produce the scheduled report.',
             'cron_expression' => '0 9 * * *',
             'timezone' => 'UTC',
             'is_active' => true,

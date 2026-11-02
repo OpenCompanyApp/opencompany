@@ -396,7 +396,7 @@ const { toggleDark, isDark } = useColorMode()
 const {
   activityUrl,
   approvalsUrl,
-  automationUrl,
+  routineUrl,
   calendarUrl,
   chatUrl,
   docsUrl,
@@ -544,12 +544,12 @@ const commandGroups = computed<CommandGroup[]>(() => {
       action: () => router.visit(listsUrl()),
     },
     {
-      id: 'nav-automation',
-      label: 'Automation',
-      description: 'Manage automations',
+      id: 'nav-routine',
+      label: 'Routines',
+      description: 'Manage routines',
       icon: 'ph:lightning-fill',
       iconColor: 'text-neutral-500 dark:text-neutral-300',
-      action: () => router.visit(automationUrl()),
+      action: () => router.visit(routineUrl()),
     },
     {
       id: 'nav-activity',

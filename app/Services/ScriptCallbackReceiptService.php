@@ -17,7 +17,7 @@ use App\Domain\CodeMode\Script\ScriptDispatchException;
  * needed to correlate a callback with a task and determine that an ambiguous
  * provider failure must not be replayed automatically.
  *
- * CodeExec and ExecuteScriptAutomation invoke the bridge after their task
+ * CodeExec and ExecuteScriptRoutine invoke the bridge after their task
  * creation transactions have committed. This service cannot make an external
  * provider call atomic with the application database; future callers must not
  * wrap callback dispatch in a transaction that can roll this intent back.

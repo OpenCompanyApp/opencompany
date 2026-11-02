@@ -72,7 +72,7 @@
           <option value="">All sources</option>
           <option value="chat">Chat</option>
           <option value="manual">Manual</option>
-          <option value="automation">Automation</option>
+          <option value="routine">Routine</option>
           <option value="agent_delegation">Delegation</option>
           <option value="agent_ask">Agent Ask</option>
           <option value="agent_notify">Notification</option>
@@ -161,10 +161,10 @@
               title="Chat"
             />
             <Icon
-              v-else-if="task.source === 'automation'"
+              v-else-if="task.source === 'routine'"
               name="ph:lightning"
               class="w-4 h-4 text-neutral-400"
-              title="Automation"
+              title="Routine"
             />
             <Icon
               v-else-if="task.source === 'agent_delegation'"
@@ -214,7 +214,7 @@
           {{ currentFilter === 'all' && !agentFilter && !sourceFilter && !searchQuery ? 'No tasks yet' : 'No tasks match the current filters' }}
         </h3>
         <p class="text-sm text-neutral-500 dark:text-neutral-400">
-          {{ currentFilter === 'all' && !agentFilter && !sourceFilter && !searchQuery ? 'Tasks will appear here when created via chat or automation.' : 'Try adjusting your filters.' }}
+          {{ currentFilter === 'all' && !agentFilter && !sourceFilter && !searchQuery ? 'Tasks will appear here when created via chat or routine.' : 'Try adjusting your filters.' }}
         </p>
       </div>
     </div>

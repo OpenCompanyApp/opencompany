@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Automation;
+use App\Models\Routine;
 use App\Services\ScriptAdmission;
 use Illuminate\Validation\ValidationException;
 
@@ -15,18 +15,18 @@ beforeEach(function () {
 it('binds admission to exact source profile and engine bytes', function () {
     $admission = app(ScriptAdmission::class);
     $metadata = $admission->admit('42');
-    $automation = new Automation(['execution_type' => 'script', 'script' => '42', ...$metadata]);
-    expect($admission->matches($automation))->toBeTrue();
-    $automation->script = '43';
-    expect($admission->matches($automation))->toBeFalse();
-    $automation->script = '42';
-    $automation->script_engine_digest = str_repeat('0', 64);
-    expect($admission->matches($automation))->toBeFalse();
+    $routine = new Routine(['kind' => 'script', 'script' => '42', ...$metadata]);
+    expect($admission->matches($routine))->toBeTrue();
+    $routine->script = '43';
+    expect($admission->matches($routine))->toBeFalse();
+    $routine->script = '42';
+    $routine->script_engine_digest = str_repeat('0', 64);
+    expect($admission->matches($routine))->toBeFalse();
 });
 
 it('does not infer a language from a legacy body that also parses as Ruby', function () {
-    $automation = new Automation(['execution_type' => 'script', 'script' => '42', 'script_runtime' => null]);
-    expect(app(ScriptAdmission::class)->matches($automation))->toBeFalse();
+    $routine = new Routine(['kind' => 'script', 'script' => '42', 'script_runtime' => null]);
+    expect(app(ScriptAdmission::class)->matches($routine))->toBeFalse();
 });
 
 it('never admits invalid Ruby or evaluates source during admission', function () {

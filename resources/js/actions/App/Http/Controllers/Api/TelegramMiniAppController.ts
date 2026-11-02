@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::workspaces
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:41
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:42
 * @route '/api/telegram/mini-app/workspaces'
 */
 export const workspaces = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ workspaces.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::workspaces
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:41
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:42
 * @route '/api/telegram/mini-app/workspaces'
 */
 workspaces.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ workspaces.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::workspaces
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:41
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:42
 * @route '/api/telegram/mini-app/workspaces'
 */
 workspaces.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ workspaces.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::session
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:124
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:125
 * @route '/api/telegram/mini-app/session'
 */
 export const session = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -50,7 +50,7 @@ session.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::session
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:124
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:125
 * @route '/api/telegram/mini-app/session'
 */
 session.url = (options?: RouteQueryOptions) => {
@@ -59,7 +59,7 @@ session.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::session
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:124
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:125
 * @route '/api/telegram/mini-app/session'
 */
 session.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -69,7 +69,7 @@ session.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::panel
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:180
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:181
 * @route '/api/telegram/mini-app/panel'
 */
 export const panel = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -84,7 +84,7 @@ panel.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::panel
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:180
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:181
 * @route '/api/telegram/mini-app/panel'
 */
 panel.url = (options?: RouteQueryOptions) => {
@@ -93,7 +93,7 @@ panel.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::panel
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:180
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:181
 * @route '/api/telegram/mini-app/panel'
 */
 panel.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -103,7 +103,7 @@ panel.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::action
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:230
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:231
 * @route '/api/telegram/mini-app/action'
 */
 export const action = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -118,7 +118,7 @@ action.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::action
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:230
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:231
 * @route '/api/telegram/mini-app/action'
 */
 action.url = (options?: RouteQueryOptions) => {
@@ -127,7 +127,7 @@ action.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\TelegramMiniAppController::action
-* @see app/Http/Controllers/Api/TelegramMiniAppController.php:230
+* @see app/Http/Controllers/Api/TelegramMiniAppController.php:231
 * @route '/api/telegram/mini-app/action'
 */
 action.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({

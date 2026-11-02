@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Authorization\Application\OnBehalfOf;
 use App\Agents\Runtime\ApprovedToolReplay;
 use App\Agents\Support\UntrustedContent;
 use App\Agents\Tools\ToolRegistry;
@@ -116,8 +117,20 @@ class ApprovalExecutionService
      * contains only the single approved slug, account, and parameters; a row
      * lock claims that callback before provider construction so duplicate UI or
      * webhook deliveries cannot execute it twice.
+     *
+     * On-behalf-of: the re-evaluation and the execution run under the
+     * principal stamped on the approval (OnBehalfOf), so a requester who lost
+     * access between request and approval blocks the replay.
      */
     public function executeApprovedTool(ApprovalRequest $approval, bool $agentIsWaiting): void
+    {
+        $context = $approval->tool_execution_context ?? [];
+        $principal = is_string($context['on_behalf_of_user_id'] ?? null) ? $context['on_behalf_of_user_id'] : null;
+
+        app(OnBehalfOf::class)->runAs($principal, fn () => $this->executeApprovedToolAsPrincipal($approval, $agentIsWaiting));
+    }
+
+    private function executeApprovedToolAsPrincipal(ApprovalRequest $approval, bool $agentIsWaiting): void
     {
         /** @var User|null $agent */
         $agent = $approval->requester;

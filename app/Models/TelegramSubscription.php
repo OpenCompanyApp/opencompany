@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Notification or digest subscription for a Telegram user, chat, or topic.
  *
  * Subscriptions keep alert routing outside hardcoded command logic. Later
- * phases can add task, approval, automation, digest, and workload routing while
+ * phases can add task, approval, routine, digest, and workload routing while
  * reusing this per-scope policy record.
  */
 class TelegramSubscription extends Model

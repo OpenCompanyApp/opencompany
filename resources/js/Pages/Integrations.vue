@@ -471,92 +471,6 @@
               </div>
             </section>
 
-            <!-- Webhooks Section -->
-            <section class="mb-8">
-              <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-medium text-neutral-900 dark:text-white">Webhooks</h2>
-                <button
-                  type="button"
-                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors duration-150"
-                  @click="openNewWebhook"
-                >
-                  <Icon name="ph:plus" class="w-3.5 h-3.5" />
-                  Add webhook
-                </button>
-              </div>
-
-              <div
-                v-if="webhooksError"
-                class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/70 dark:bg-red-950/30 dark:text-red-300"
-              >
-                {{ webhooksError }}
-              </div>
-
-              <div v-else-if="webhooks.length > 0" class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
-                <div
-                  v-for="webhook in webhooks"
-                  :key="webhook.id"
-                  class="px-4 py-3"
-                >
-                  <div class="flex items-start gap-3">
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2">
-                        <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ webhook.name }}</p>
-                        <span
-                          :class="[
-                            'px-1.5 py-0.5 text-xs rounded',
-                            webhook.enabled
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                              : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
-                          ]"
-                        >
-                          {{ webhook.enabled ? 'Active' : 'Disabled' }}
-                        </span>
-                      </div>
-                      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-mono">
-                        POST {{ webhook.endpoint || `/api/webhooks/${webhook.id}` }}
-                      </p>
-                      <!-- The secret is returned only once, on creation. It must be
-                           sent as a header; query-string secrets are rejected. -->
-                      <p
-                        v-if="webhook.secret"
-                        class="text-xs text-amber-700 dark:text-amber-400 mt-1 break-all"
-                      >
-                        Send header <span class="font-mono">{{ webhook.secretHeader || 'X-Webhook-Secret' }}: {{ webhook.secret }}</span>
-                        — copy it now, it is not shown again.
-                      </p>
-                      <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                        Last triggered: {{ webhook.lastTriggered || 'Never' }}
-                        <span v-if="webhook.callCount"> · {{ webhook.callCount }} calls this week</span>
-                      </p>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        class="p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-                        @click="editWebhook(webhook)"
-                      >
-                        <Icon name="ph:pencil-simple" class="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        class="p-1.5 text-neutral-400 hover:text-red-500 transition-colors"
-                        @click="deleteWebhook(webhook.id)"
-                      >
-                        <Icon name="ph:trash" class="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-else class="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-8 text-center">
-                <Icon name="ph:webhooks-logo" class="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
-                <p class="text-sm text-neutral-500 dark:text-neutral-400">No webhooks configured</p>
-                <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Add a webhook to receive events from external services</p>
-              </div>
-            </section>
-
             <!-- API Keys Section -->
             <section>
               <div class="flex items-center justify-between mb-3">
@@ -746,67 +660,11 @@
       @deleted="handleMcpDeleted"
     />
 
-    <!-- Webhook Modal -->
-    <Modal v-model:open="showWebhookModal" :title="webhookEditingId ? 'Edit Webhook' : 'Add Webhook'">
-      <template #body>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Name</label>
-            <input
-              v-model="webhookForm.name"
-              type="text"
-              class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
-              placeholder="e.g., GitHub PR Notifications"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Target</label>
-            <select
-              v-model="webhookForm.targetType"
-              class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
-            >
-              <option value="agent">Send to Agent</option>
-              <option value="channel">Send to Channel</option>
-              <option value="task">Create Task</option>
-            </select>
-          </div>
-          <div v-if="webhookForm.targetType === 'agent'">
-            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Agent</label>
-            <select
-              v-model="webhookForm.targetId"
-              class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:border-neutral-400"
-            >
-              <option value="">Select an agent...</option>
-              <option value="agent-1">Logic (Coder)</option>
-              <option value="agent-2">Scout (Researcher)</option>
-            </select>
-          </div>
-        </div>
-      </template>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <button
-            type="button"
-            class="px-3 py-1.5 text-sm rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-            @click="closeWebhookModal"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="px-3 py-1.5 text-sm font-medium rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100"
-            @click="saveWebhook"
-          >
-            {{ webhookEditingId ? 'Save Webhook' : 'Create Webhook' }}
-          </button>
-        </div>
-      </template>
-    </Modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { apiKeys as aiGatewayApiKeys, deleteApiKey } from '@/actions/App/Http/Controllers/Api/AiGatewayController'
 import {
@@ -825,12 +683,6 @@ import {
   replayReceipt as replayTelegramReceiptAction,
   retryDelivery as retryTelegramDeliveryAction,
 } from '@/actions/App/Http/Controllers/Api/TelegramOperationsController'
-import {
-  destroy as destroyIntegrationWebhook,
-  index as integrationWebhooksIndex,
-  store as storeIntegrationWebhook,
-  update as updateIntegrationWebhook,
-} from '@/actions/App/Http/Controllers/Api/IntegrationWebhookController'
 import { destroy as destroyMcpServer, store as storeMcpServer } from '@/actions/App/Http/Controllers/Api/McpServerController'
 import Icon from '@/Components/shared/Icon.vue'
 import { useWorkspace } from '@/composables/useWorkspace'
@@ -855,13 +707,12 @@ const initialQuery = new URLSearchParams(window.location.search)
 // systems return as Connections (docs/planning/connections-events-routines.md).
 // Do not reintroduce catalog browsing/pagination here.
 //
-// Sidebar state. Start on installed services (Telegram ops, webhooks, API keys);
+// Sidebar state. Start on installed services (Telegram ops, API keys);
 // direct query params still allow deep links to a search or category.
 const activeCategory = ref<string>(initialQuery.get('category') || (initialQuery.get('q') ? 'all' : 'installed'))
 const searchQuery = ref(initialQuery.get('q') || '')
 const integrationStatusError = ref<string | null>(null)
 const apiKeysError = ref<string | null>(null)
-const webhooksError = ref<string | null>(null)
 const telegramError = ref<string | null>(null)
 const telegramNotice = ref<string | null>(null)
 const telegramAction = ref<'health' | 'sync' | 'test' | 'webhook' | 'rotate' | 'repair' | 'retry' | 'replay' | null>(null)
@@ -869,20 +720,6 @@ const telegramOperations = ref<TelegramOperations | null>(null)
 const telegramProfile = ref<Record<string, any> | null>(null)
 
 // Interfaces
-interface Webhook {
-  id: string
-  name: string
-  enabled: boolean
-  targetType: 'agent' | 'channel' | 'task'
-  targetId: string | null
-  endpoint?: string
-  url?: string
-  secret?: string | null
-  secretHeader?: string
-  lastTriggered?: string
-  callCount?: number
-}
-
 interface ApiKey {
   id: string
   name: string
@@ -915,15 +752,6 @@ interface TelegramOperations {
   repairCandidates?: Record<string, any>
 }
 
-// Webhook state
-const showWebhookModal = ref(false)
-const webhookEditingId = ref<string | null>(null)
-const webhookForm = reactive({
-  name: '',
-  targetType: 'agent' as 'agent' | 'channel' | 'task',
-  targetId: '',
-})
-
 // AI Provider Config modal
 const showProviderConfigModal = ref(false)
 const activeProviderId = ref('glm-coding')
@@ -951,7 +779,7 @@ const configurableIntegrations = ref<Record<string, any>>({})
 
 // Load integration status from backend
 onMounted(async () => {
-  await Promise.all([loadStatusThenTelegram(), loadApiKeys(), loadWebhooks()])
+  await Promise.all([loadStatusThenTelegram(), loadApiKeys()])
 })
 
 // Telegram operations depend on the directory saying Telegram is installed,
@@ -1170,8 +998,6 @@ watch(searchQuery, () => {
 
 watch(activeCategory, replaceIntegrationUrl)
 
-const webhooks = ref<Webhook[]>([])
-
 // API Keys (loaded from backend)
 const apiKeys = ref<ApiKey[]>([])
 
@@ -1383,77 +1209,6 @@ const searchResults = computed(() => {
   }
   return dedupeIntegrations(results)
 })
-
-// Webhook handlers
-const resetWebhookForm = () => {
-  webhookEditingId.value = null
-  webhookForm.name = ''
-  webhookForm.targetType = 'agent'
-  webhookForm.targetId = ''
-}
-
-const openNewWebhook = () => {
-  resetWebhookForm()
-  showWebhookModal.value = true
-}
-
-const closeWebhookModal = () => {
-  showWebhookModal.value = false
-  resetWebhookForm()
-}
-
-const loadWebhooks = async () => {
-  webhooksError.value = null
-
-  try {
-    const { data } = await wayfinderRequest<{ data?: Webhook[] }>(integrationWebhooksIndex())
-    webhooks.value = data.data || []
-  } catch (error) {
-    console.error('Failed to load webhooks:', error)
-    webhooks.value = []
-    webhooksError.value = 'Could not load webhooks. Refresh the page or try again later.'
-  }
-}
-
-const editWebhook = (webhook: Webhook) => {
-  webhookEditingId.value = webhook.id
-  webhookForm.name = webhook.name
-  webhookForm.targetType = webhook.targetType
-  webhookForm.targetId = webhook.targetId || ''
-  showWebhookModal.value = true
-}
-
-const deleteWebhook = async (id: string) => {
-  try {
-    await wayfinderRequest(destroyIntegrationWebhook(id))
-    webhooks.value = webhooks.value.filter(w => w.id !== id)
-  } catch (error) {
-    console.error('Failed to delete webhook:', error)
-  }
-}
-
-const saveWebhook = async () => {
-  try {
-    const payload = {
-      name: webhookForm.name,
-      enabled: true,
-      targetType: webhookForm.targetType,
-      targetId: webhookForm.targetId || null,
-    }
-    if (webhookEditingId.value) {
-      const { data } = await wayfinderRequest<{ webhook: Webhook }>(updateIntegrationWebhook(webhookEditingId.value), { data: payload })
-      const index = webhooks.value.findIndex(w => w.id === webhookEditingId.value)
-      if (index >= 0) webhooks.value[index] = data.webhook
-    } else {
-      const { data } = await wayfinderRequest<{ webhook: Webhook }>(storeIntegrationWebhook(), { data: payload })
-      webhooks.value.push(data.webhook)
-    }
-
-    closeWebhookModal()
-  } catch (error) {
-    console.error('Failed to save webhook:', error)
-  }
-}
 
 const resetTelegramMessages = () => {
   telegramError.value = null

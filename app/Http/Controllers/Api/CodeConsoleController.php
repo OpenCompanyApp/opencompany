@@ -27,7 +27,7 @@ final class CodeConsoleController extends Controller
         ]);
 
         // No CodeBridge is passed here by design. Tool-capable execution only
-        // happens on agent/automation paths with an explicit permission owner.
+        // happens on agent/routine paths with an explicit permission owner.
         $result = $this->sandbox->execute(
             code: $request->string('code')->toString(),
             profile: 'console',

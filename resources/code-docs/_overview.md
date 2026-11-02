@@ -88,8 +88,8 @@ after your reply.
 
 All profiles have a 32 MiB VM allocation budget and a separate 256 MiB process
 ceiling. CPU time is independently limited to 1 second, including compiler and
-native work. Wall limits are 45 seconds for agents/automations and 5 seconds for
-the no-capability developer console. Agents get 50 calls; automations get 100.
+native work. Wall limits are 45 seconds for agents/routines and 5 seconds for
+the no-capability developer console. Agents get 50 calls; routines get 100.
 Instruction, source, output, result and protocol byte limits apply as well.
 Budget exhaustion cannot be rescued to extend execution. Split large work into
 bounded pages, preserve cursors explicitly, and return summaries rather than raw

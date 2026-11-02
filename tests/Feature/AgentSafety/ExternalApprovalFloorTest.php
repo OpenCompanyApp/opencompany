@@ -145,23 +145,26 @@ class ExternalApprovalFloorTest extends TestCase
         $this->assertSame('allow', app(ToolRegistry::class)->resolveScriptToolForDispatch('acmecrm_update_record', $this->agent)['decision']);
     }
 
-    // Policy model: internal and credential-less writes are no longer
-    // autonomous by default; an admin allow row waives exactly one tool.
-    public function test_internal_and_credential_less_writes_require_approval_by_default(): void
+    // Governance revision: reversible internal edits auto-apply; unclassified
+    // tools are external and ask; an admin allow row waives exactly one tool.
+    public function test_reversible_edits_auto_apply_and_unclassified_tools_ask(): void
     {
-        foreach (['create_task', 'create_document', 'vfs_write', 'acmerender_update_record'] as $slug) {
-            $this->assertTrue($this->resolve($slug)['requires_approval'], "{$slug} should require approval by default");
+        foreach (['create_document', 'vfs_write'] as $slug) {
+            $this->assertFalse($this->resolve($slug)['requires_approval'], "{$slug} is a reversible edit");
+        }
+        foreach (['create_task', 'acmerender_update_record'] as $slug) {
+            $this->assertTrue($this->resolve($slug)['requires_approval'], "{$slug} is unclassified, so external");
         }
 
         AgentPermission::create([
             'id' => (string) Str::uuid(),
             'agent_id' => $this->agent->id,
             'scope_type' => 'tool',
-            'scope_key' => 'create_document',
+            'scope_key' => 'acmerender_update_record',
             'permission' => 'allow',
             'requires_approval' => false,
         ]);
-        $this->assertFalse($this->resolve('create_document')['requires_approval']);
+        $this->assertFalse($this->resolve('acmerender_update_record')['requires_approval']);
         $this->assertTrue($this->resolve('create_task')['requires_approval']);
     }
 

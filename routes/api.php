@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AgentRunRevertController;
 use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\AgentPermissionController;
@@ -8,8 +9,7 @@ use App\Http\Controllers\Api\AiGateway\EmbeddingsController;
 use App\Http\Controllers\Api\AiGateway\ModelsController;
 use App\Http\Controllers\Api\AiGatewayController;
 use App\Http\Controllers\Api\ApprovalController;
-use App\Http\Controllers\Api\AutomationController;
-use App\Http\Controllers\Api\AutomationRuleController;
+use App\Http\Controllers\Api\RoutineController;
 use App\Http\Controllers\Api\CalendarEventAttendeeController;
 use App\Http\Controllers\Api\CalendarEventController;
 use App\Http\Controllers\Api\CalendarFeedController;
@@ -28,9 +28,7 @@ use App\Http\Controllers\Api\DocumentCommentController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\FileController;
-use App\Http\Controllers\Api\IncomingIntegrationWebhookController;
 use App\Http\Controllers\Api\IntegrationController;
-use App\Http\Controllers\Api\IntegrationWebhookController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\ListItemCommentController;
 use App\Http\Controllers\Api\ListItemController;
@@ -67,8 +65,6 @@ Route::middleware('throttle:chat-webhooks')->group(function () {
     Route::post('/webhooks/chat/{adapter}', ChatWebhookController::class);
     Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle']); // Retired legacy endpoint; use /webhooks/chat/telegram
 });
-Route::post('/webhooks/{webhook}', IncomingIntegrationWebhookController::class)
-    ->middleware('throttle:integration-webhooks');
 
 // Telegram Mini App data endpoints (init_data verified in the controller).
 Route::middleware('throttle:telegram-mini-app')->group(function () {
@@ -180,25 +176,19 @@ Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
     Route::patch('/tasks/{taskId}/steps/{stepId}', [TaskController::class, 'updateStep'])->whereUuid('taskId')->whereUuid('stepId');
     Route::post('/tasks/{taskId}/steps/{stepId}/complete', [TaskController::class, 'completeStep'])->whereUuid('taskId')->whereUuid('stepId');
 
-    // Automation Rules (for list items)
-    Route::get('/automation-rules', [AutomationRuleController::class, 'index']);
-    Route::post('/automation-rules', [AutomationRuleController::class, 'store']);
-    Route::patch('/automation-rules/{id}', [AutomationRuleController::class, 'update']);
-    Route::delete('/automation-rules/{id}', [AutomationRuleController::class, 'destroy']);
-
-    // Automations
-    Route::get('/automations', [AutomationController::class, 'index']);
-    Route::get('/automations/preview-schedule', [AutomationController::class, 'previewSchedule']);
-    Route::post('/automations/bulk-delete', [AutomationController::class, 'bulkDestroy']);
-    Route::post('/automations/bulk-run', [AutomationController::class, 'bulkTriggerRun']);
-    Route::post('/automations', [AutomationController::class, 'store']);
-    Route::get('/automations/{id}', [AutomationController::class, 'show']);
-    Route::patch('/automations/{id}', [AutomationController::class, 'update']);
-    Route::delete('/automations/{id}', [AutomationController::class, 'destroy']);
-    Route::get('/automations/{id}/runs', [AutomationController::class, 'runs']);
-    Route::get('/automations/{id}/script-revisions', [AutomationController::class, 'scriptRevisions']);
-    Route::get('/automations/{id}/script-revisions/{revision}', [AutomationController::class, 'scriptRevision']);
-    Route::post('/automations/{id}/run', [AutomationController::class, 'triggerRun']);
+    // Routines
+    Route::get('/routines', [RoutineController::class, 'index']);
+    Route::get('/routines/preview-schedule', [RoutineController::class, 'previewSchedule']);
+    Route::post('/routines/bulk-delete', [RoutineController::class, 'bulkDestroy']);
+    Route::post('/routines/bulk-run', [RoutineController::class, 'bulkTriggerRun']);
+    Route::post('/routines', [RoutineController::class, 'store']);
+    Route::get('/routines/{id}', [RoutineController::class, 'show']);
+    Route::patch('/routines/{id}', [RoutineController::class, 'update']);
+    Route::delete('/routines/{id}', [RoutineController::class, 'destroy']);
+    Route::get('/routines/{id}/runs', [RoutineController::class, 'runs']);
+    Route::get('/routines/{id}/script-revisions', [RoutineController::class, 'scriptRevisions']);
+    Route::get('/routines/{id}/script-revisions/{revision}', [RoutineController::class, 'scriptRevision']);
+    Route::post('/routines/{id}/run', [RoutineController::class, 'triggerRun']);
 
     // Storage Disks
     Route::get('/disks', [WorkspaceDiskController::class, 'index']);
@@ -375,6 +365,9 @@ Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
     // Workspace members
     Route::get('/workspace/members', [WorkspaceMemberController::class, 'index']);
 
+    // Governance: undo an agent run's recorded changes (human edits win).
+    Route::post('/agent-runs/{runId}/revert', AgentRunRevertController::class);
+
     // ─── Admin-only routes ────────────────────────────────────────
     Route::middleware('workspace.admin')->group(function () {
         // Scoped policy grants (approval exceptions); admin-only.
@@ -396,10 +389,6 @@ Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
         Route::get('/integrations/external-identities', [IntegrationController::class, 'externalIdentities']);
         Route::post('/integrations/link-user', [IntegrationController::class, 'linkExternalUser']);
         Route::delete('/integrations/link-user/{identityId}', [IntegrationController::class, 'unlinkExternalUser']);
-        Route::get('/integration-webhooks', [IntegrationWebhookController::class, 'index']);
-        Route::post('/integration-webhooks', [IntegrationWebhookController::class, 'store']);
-        Route::patch('/integration-webhooks/{id}', [IntegrationWebhookController::class, 'update']);
-        Route::delete('/integration-webhooks/{id}', [IntegrationWebhookController::class, 'destroy']);
         Route::get('/integrations/{id}/config', [IntegrationController::class, 'showConfig']);
         Route::put('/integrations/{id}/config', [IntegrationController::class, 'updateConfig']);
         Route::post('/integrations/{id}/toggle', [IntegrationController::class, 'toggle']);

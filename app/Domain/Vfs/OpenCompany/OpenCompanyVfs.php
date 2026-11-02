@@ -15,11 +15,11 @@ use App\Domain\Vfs\OpenCompany\Concerns\BuildsVfsToolCatalogIndex;
 use App\Domain\Vfs\OpenCompany\Concerns\EvaluatesVfsMutationPolicy;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsAgents;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsApprovals;
-use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsAutomations;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsCollaboration;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsDocuments;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsFiles;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsLists;
+use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsRoutines;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsTasks;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsTools;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsWorkspace;
@@ -55,7 +55,7 @@ class OpenCompanyVfs
     use EvaluatesVfsMutationPolicy;
     use MountsVfsAgents;
     use MountsVfsApprovals;
-    use MountsVfsAutomations;
+    use MountsVfsRoutines;
     use MountsVfsCollaboration;
     use MountsVfsDocuments;
     use MountsVfsFiles;
@@ -107,7 +107,7 @@ class OpenCompanyVfs
             'tables' => $this->listTables($agent, $segments, $path, $budget),
             'tools' => $this->listTools($path),
             'approvals' => $this->listApprovals($agent, $segments, $path, $budget),
-            'automations' => $this->listAutomations($agent, $segments, $path, $budget),
+            'routines' => $this->listRoutines($agent, $segments, $path, $budget),
             'workspace' => $this->listWorkspace($path),
             default => throw VfsError::notFound($path),
         };
@@ -139,7 +139,7 @@ class OpenCompanyVfs
             'channels' => 'channels-paged-v1',
             'tables' => 'tables-paged-v1',
             'approvals' => 'approvals-paged-v1',
-            'automations' => 'automations-paged-v1',
+            'routines' => 'routines-paged-v1',
             default => 'compatibility-offset-v1',
         };
         $scope = $this->paginationScope($agent);
@@ -154,7 +154,7 @@ class OpenCompanyVfs
             'channels-paged-v1' => $this->pageChannels($agent, $segments, $path, $budget, $cursorPayload['state']),
             'tables-paged-v1' => $this->pageTables($agent, $segments, $path, $budget, $cursorPayload['state']),
             'approvals-paged-v1' => $this->pageApprovals($agent, $segments, $path, $budget, $cursorPayload['state']),
-            'automations-paged-v1' => $this->pageAutomations($agent, $segments, $path, $budget, $cursorPayload['state']),
+            'routines-paged-v1' => $this->pageRoutines($agent, $segments, $path, $budget, $cursorPayload['state']),
             default => $this->compatibilityPage($agent, $path, $budget, $cursorPayload['state']),
         };
 
@@ -347,7 +347,7 @@ class OpenCompanyVfs
             'tables' => $this->readTables($agent, $segments, $path, $budget),
             'tools' => $this->readTools($agent, $path, $budget),
             'approvals' => $this->readApprovals($agent, $segments, $path, $budget),
-            'automations' => $this->readAutomations($agent, $segments, $path, $budget),
+            'routines' => $this->readRoutines($agent, $segments, $path, $budget),
             'workspace' => $this->readWorkspace($agent, $segments, $path, $budget),
             default => throw VfsError::notFound($path),
         };

@@ -55,6 +55,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(ToolRegistry::class);
+        // Holds the approval-replay principal override for the request/job.
+        $this->app->scoped(\App\Domain\Authorization\Application\OnBehalfOf::class);
         $this->app->scoped(CodeExecutionBudget::class);
 
         // Code Mode catalog/doc rendering and the external (MCP) tool provider
@@ -198,12 +200,6 @@ class AppServiceProvider extends ServiceProvider
                 ->by('chat-webhook:'.$adapter.'|'.$request->ip());
         });
 
-        // Incoming integration webhooks: IP + webhook id.
-        RateLimiter::for('integration-webhooks', function (Request $request): Limit {
-            return Limit::perMinute(max(1, (int) config('rate_limits.integration_webhooks.per_minute')))
-                ->by('integration-webhook:'.(string) $request->route('webhook').'|'.$request->ip());
-        });
-
         // Telegram Mini App: the Telegram user id here is parsed from
         // *unverified* init_data (signature checks happen in the controller).
         // It is therefore always combined with the IP, so forging another
@@ -281,7 +277,7 @@ class AppServiceProvider extends ServiceProvider
         $registry->registerBuiltIn(new ToolProviders\CalendarToolProvider);
         $registry->registerBuiltIn(new ToolProviders\ListsToolProvider);
         $registry->registerBuiltIn(new ToolProviders\WorkspaceToolProvider($permissions));
-        $registry->registerBuiltIn(new ToolProviders\AutomationsToolProvider);
+        $registry->registerBuiltIn(new ToolProviders\RoutinesToolProvider);
         $registry->registerBuiltIn(new ToolProviders\SvgToolProvider);
         $registry->registerBuiltIn(new ToolProviders\CodeToolProvider);
         $registry->registerBuiltIn(new ToolProviders\WebToolProvider);

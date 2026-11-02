@@ -2,32 +2,39 @@
 
 namespace App\Domain\Authorization\Application;
 
+use App\Agents\Runtime\ActiveAgentRun;
+use App\Agents\Tools\External\ToolProviderRegistry;
 use App\Agents\Tools\ToolRegistry;
 use App\Domain\Authorization\Domain\PermissionDecision;
+use App\Domain\Authorization\Policy\ActionClassifier;
+use App\Domain\Authorization\Policy\PresetGates;
 use App\Models\AgentPermission;
+use App\Models\AgentRunRecord;
 use App\Models\ApprovalRequest;
 use App\Models\IntegrationSetting;
+use App\Models\Task;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Models\WorkspaceFile;
 use Illuminate\Support\Str;
-use App\Agents\Tools\External\ToolProviderRegistry;
 
 /**
  * Resolves the effective permissions for one agent.
  *
  * This domain service owns OpenCompany's app-local authorization compatibility
  * rules. It combines persisted atomic permission rows, workspace-level
- * integration enablement, scoped policy grants, the approval-by-default policy,
- * manager hierarchy, file-tree grants, and access-request creation. The final
- * OpenCompany policy is evaluated here (agent behaviour modes were deleted).
+ * integration enablement, scoped policy grants, the reversibility-based
+ * governance gate (action class x workspace preset), manager hierarchy,
+ * file-tree grants, and access-request creation. Agent behaviour modes were
+ * deleted; presets set defaults only and never relax the invariants here.
  */
 class AgentPermissionResolver
 {
     /**
-     * Tools that should never require approval regardless of policy defaults or DB settings.
-     *
-     * These are system/control-flow tools where requiring approval would make
-     * the runtime unable to wait for or record approval decisions.
+     * Control-flow tools that never require approval: requiring approval would
+     * leave the runtime unable to wait for or record approval decisions. Task
+     * bookkeeping is a reversible edit and is allowed by every preset anyway;
+     * contact_agent has its own relationship gate (canContactAgent()).
      */
     private const APPROVAL_EXEMPT_TOOLS = [
         'wait_for_approval',
@@ -40,51 +47,49 @@ class AgentPermissionResolver
         'contact_agent',
     ];
 
-    /**
-     * Built-in tools that mutate external systems or widen the workspace's
-     * external exposure/trust surface. They require approval by default in
-     * every agent (see resolveToolPermission()).
-     *
-     * - MCP server management: adds/changes/removes remote tool providers.
-     * - Integration config/webhooks/identity links: change credentials,
-     *   register callbacks at third parties, or make an external identity a
-     *   trusted workspace member (which also removes untrusted-content labels).
-     * - External channel join/leave: act on a third-party chat platform.
-     *
-     * Keep this list to built-ins only; package and MCP tools are classified
-     * from provider metadata in isExternalMutation().
-     */
-    private const EXTERNAL_EXPOSURE_TOOLS = [
-        'add_mcp_server',
-        'update_mcp_server',
-        'remove_mcp_server',
-        'update_integration_config',
-        'setup_integration_webhook',
-        'link_external_user',
-        'update_agent_integration_access',
-        'join_external_channel',
-        'leave_external_channel',
-        // Widening another agent's grants could launder an admin opt-out
-        // from the floor; it needs a human decision every time.
-        'update_agent_tool_permissions',
-    ];
+    public function __construct(
+        private ?ActionClassifier $classifier = null,
+        private ?PresetGates $gates = null,
+    ) {
+        $this->classifier ??= new ActionClassifier;
+        $this->gates ??= new PresetGates;
+    }
 
     /**
      * Resolve the final permission for a tool.
      *
-     * Priority: explicit deny, exempt system tools, scoped policy grant,
-     * explicit per-agent admin rule, then the default (reads run; everything
-     * else, including every external mutation, needs approval).
+     * Reversibility, not "write", decides the gate (Product Direction pillar
+     * 5; docs/architecture/governance-model.md "Decision order"). Invariant
+     * order — do not reorder, and never let a preset or exception run before
+     * an invariant:
+     *
+     * 1. explicit per-agent deny;
+     * 2. hard-deny floor (never relaxed by anything);
+     * 3. control-flow exempt tools;
+ * 3b. on-behalf-of intersection (OnBehalfOf): the run's human principal must
+ *    still have access, and governance/exposure actions need an admin one;
+     * 4. trigger-started runs: external classes always ask, even with an
+     *    exception (a trigger is never consent);
+     * 5. exact-match exceptions: scoped policy grants, then the per-agent admin
+     *    rule. `always` is never honoured for purge/exposure/structural;
+     * 6. preset default gate for the action class.
+     *
+     * On-behalf-of intersection runs separately (OnBehalfOfCheck) because it
+     * needs the call's target, not just the tool.
      *
      * Every agent-facing path reaches this method: direct Laravel AI tools and
      * Code Mode callbacks (ToolRegistry::evaluateToolPermission ->
-     * OpenCompanyPermissionEvaluator -> ToolPermissionCheck) and MCP calls
-     * (McpPermissionEvaluator), so the floor applies identically everywhere.
+     * OpenCompanyPermissionEvaluator -> ToolPermissionCheck), VFS mutations
+     * (VfsMutationPolicy) and MCP calls (McpPermissionEvaluator).
      *
+     * @param  string  $toolType  declared tool type (`read`, `write`, ...); only a
+     *                            built-in `read` can classify as read
      * @return array{allowed: bool, requires_approval: bool}
      */
     public function resolveToolPermission(User $agent, string $toolSlug, string $toolType): array
     {
+        $class = $this->actionClass($toolSlug, $toolType);
+
         $permission = AgentPermission::forAgent($agent->id)
             ->tools()
             ->where('scope_key', $toolSlug)
@@ -94,62 +99,109 @@ class AgentPermissionResolver
             return PermissionDecision::deny()->toToolArray();
         }
 
+        // Invariant: the floor is denied before any exemption, exception,
+        // admin rule or preset is consulted.
+        if ($class === ActionClassifier::FLOOR) {
+            return PermissionDecision::deny()->toToolArray();
+        }
+
         if (in_array($toolSlug, self::APPROVAL_EXEMPT_TOOLS, true)) {
             return PermissionDecision::allow()->toToolArray();
         }
 
-        // Policy model (Product Direction pillar 5; behaviour modes deleted).
-        // Invariant order — do not reorder: explicit deny (above) > exempt
-        // system tools (above) > scoped admin grant > per-agent admin rule >
-        // default. Only an admin grant or an admin rule can let a write or an
-        // external action run without approval; nothing the agent or a
-        // trigger supplies can.
-        if (app(PolicyGrantService::class)->covers($agent, $toolSlug)) {
+        // Invariant: on-behalf-of intersection before any exception or
+        // preset can allow — an agent never exceeds the human it acts for.
+        if (app(OnBehalfOf::class)->denialFor($agent, $class) !== null) {
+            return PermissionDecision::deny()->toToolArray();
+        }
+
+        $external = in_array($class, ActionClassifier::EXTERNAL_CLASSES, true);
+        if ($external && $this->currentRunIsTriggerStarted()) {
+            return PermissionDecision::allow(true)->toToolArray();
+        }
+
+        $alwaysAllowed = ! in_array($class, PresetGates::NO_ALWAYS_EXCEPTION, true);
+        if (app(PolicyGrantService::class)->covers($agent, $toolSlug, includeAlways: $alwaysAllowed)) {
             return PermissionDecision::allow()->toToolArray();
         }
 
-        // Per-agent admin rule from the capabilities UI (scope tool, allow):
-        // requires_approval=false is an `always` exception for that tool. Also
-        // written by update_agent_tool_permissions, which is itself
-        // approval-gated and refuses to waive approval the grantor needs.
+        $gate = $this->gates->gate($class, $this->presetFor($agent));
+
+        // Per-agent admin rule from the capabilities UI (scope tool, allow).
+        // requires_approval=true makes a tool stricter than the preset;
+        // requires_approval=false is a standing ("always") exception, which
+        // the classes in NO_ALWAYS_EXCEPTION never accept.
         if ($permission) {
-            return PermissionDecision::allow($permission->requires_approval)->toToolArray();
+            if ($permission->requires_approval) {
+                return PermissionDecision::allow(true)->toToolArray();
+            }
+            if ($alwaysAllowed) {
+                return PermissionDecision::allow()->toToolArray();
+            }
         }
 
-        // Default: only a declared read runs without approval. Writes,
-        // `action`, unknown types and every external mutation (MCP, external
-        // sends, exposure-widening tools) need approval — a trigger is never
-        // consent, and untyped tools must not slip past the policy.
-        $requiresApproval = $toolType !== 'read' || $this->isExternalMutation($toolSlug);
+        if ($gate === PresetGates::DENY) {
+            return PermissionDecision::deny()->toToolArray();
+        }
 
-        return PermissionDecision::allow($requiresApproval)->toToolArray();
+        return PermissionDecision::allow($gate === PresetGates::APPROVAL)->toToolArray();
     }
 
     /**
-     * Whether a tool mutates an external system or widens external exposure.
-     *
-     * Classification rule (metadata-driven, no provider IDs hardcoded):
-     * 1. MCP tools (`mcp_{server}__{tool}`): always, regardless of declared
-     *    type. Remote servers self-describe their tools and OpenCompany has no
-     *    trusted read-only marking for them, so unknown is treated as write.
-     * 2. Built-ins listed in EXTERNAL_EXPOSURE_TOOLS.
-     *
-     * Not covered here: send_channel_message, whose externality depends on the
-     * destination channel; see requiresExternalChannelSendApproval().
+     * Governance action class of a tool (see ActionClassifier). Callers that
+     * know richer metadata may classify directly; this keeps the declared
+     * tool type as the only read signal.
+     */
+    public function actionClass(string $toolSlug, string $toolType = 'write'): string
+    {
+        return $this->classifier->classify($toolSlug, ['type' => $toolType]);
+    }
+
+    /**
+     * Whether a tool leaves the workspace or widens its exposure
+     * (external_send, spend, exposure_widening). MCP tools and unclassified
+     * tools always are. send_channel_message is classified internal; its
+     * external destinations are gated per call by
+     * requiresExternalChannelSendApproval().
      */
     public function isExternalMutation(string $toolSlug): bool
     {
-        if (preg_match('/^mcp_[a-z0-9_]+__.+$/', $toolSlug) === 1) {
+        return in_array($this->actionClass($toolSlug), ActionClassifier::EXTERNAL_CLASSES, true);
+    }
+
+    /**
+     * Effective preset for the agent's workspace; `team` when the workspace
+     * cannot be loaded (the stricter multi-member default).
+     */
+    private function presetFor(User $agent): string
+    {
+        $workspace = $agent->workspace_id !== null ? Workspace::query()->find($agent->workspace_id) : null;
+
+        return $workspace?->effectiveGovernancePreset() ?? 'team';
+    }
+
+    /**
+     * Whether the ambient run was started by a trigger (a routine schedule or
+     * event) rather than a human. Routine runs and tasks sourced from a
+     * routine count; delegations inherit through their task source.
+     */
+    private function currentRunIsTriggerStarted(): bool
+    {
+        if (! app()->bound(ActiveAgentRun::class)) {
+            return false;
+        }
+
+        try {
+            $record = app(ActiveAgentRun::class)->record();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if (in_array($record->kind, [AgentRunRecord::KIND_ROUTINE_AGENT, AgentRunRecord::KIND_ROUTINE_SCRIPT], true)) {
             return true;
         }
 
-        if (in_array($toolSlug, self::EXTERNAL_EXPOSURE_TOOLS, true)) {
-            return true;
-        }
-
-        // With the integration package system deleted, MCP servers are the
-        // only external tool providers and are matched by slug above.
-        return false;
+        return $record->task?->source === Task::SOURCE_ROUTINE;
     }
 
     /**

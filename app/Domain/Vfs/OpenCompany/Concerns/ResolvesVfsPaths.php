@@ -49,7 +49,7 @@ trait ResolvesVfsPaths
      */
     private function rootEntries(): array
     {
-        return collect(['agents', 'docs', 'files', 'tasks', 'lists', 'channels', 'tables', 'tools', 'automations', 'approvals', 'workspace'])
+        return collect(['agents', 'docs', 'files', 'tasks', 'lists', 'channels', 'tables', 'tools', 'routines', 'approvals', 'workspace'])
             ->map(fn (string $name): VfsEntry => new VfsEntry($name, "/{$name}", 'directory', capabilities: ['browse', 'read', 'search']))
             ->values()
             ->all();

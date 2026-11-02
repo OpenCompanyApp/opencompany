@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Automation;
+use App\Models\Routine;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -18,10 +18,10 @@ final class ScriptAdmission
     public function admit(string $source): array
     {
         if (trim($source) === '') {
-            throw ValidationException::withMessages(['script' => 'Submit a Ruby body before enabling this automation.']);
+            throw ValidationException::withMessages(['script' => 'Submit a Ruby body before enabling this routine.']);
         }
         $engine = $this->sandbox->engineDigest();
-        $result = $this->sandbox->execute($source, profile: 'automation', validateOnly: true, sourceName: 'automation-code.rb');
+        $result = $this->sandbox->execute($source, profile: 'routine', validateOnly: true, sourceName: 'routine-code.rb');
         if (! $result->succeeded()) {
             $error = $result->error;
             throw ValidationException::withMessages(['script' => '['.$error['type'].']'
@@ -36,15 +36,15 @@ final class ScriptAdmission
     }
 
     /** Fail closed on changed source, build, runtime or missing admission metadata. */
-    public function matches(Automation $automation): bool
+    public function matches(Routine $routine): bool
     {
         try {
-            return $automation->script_runtime === config('code.runtime')
-                && $automation->script_validated_at !== null
-                && is_string($automation->script_digest)
-                && hash_equals($automation->script_digest, hash('sha256', (string) $automation->script))
-                && is_string($automation->script_engine_digest)
-                && hash_equals($automation->script_engine_digest, $this->sandbox->engineDigest());
+            return $routine->script_runtime === config('code.runtime')
+                && $routine->script_validated_at !== null
+                && is_string($routine->script_digest)
+                && hash_equals($routine->script_digest, hash('sha256', (string) $routine->script))
+                && is_string($routine->script_engine_digest)
+                && hash_equals($routine->script_engine_digest, $this->sandbox->engineDigest());
         } catch (\Throwable) {
             return false;
         }

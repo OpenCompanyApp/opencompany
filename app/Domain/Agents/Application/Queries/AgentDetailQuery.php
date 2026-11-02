@@ -234,13 +234,13 @@ class AgentDetailQuery
                 'reason' => $execEnabled ? 'Decisions stay in approval tools' : 'vfs_exec is disabled',
             ],
             [
-                'mount' => 'Automations',
-                'path' => '/automations',
-                'scope' => 'Workspace automation records',
+                'mount' => 'Routines',
+                'path' => '/routines',
+                'scope' => 'Workspace routine records',
                 'actions' => ['browse', 'read'],
                 'approval' => 'Inherit',
                 'status' => $execEnabled ? 'limited' : 'blocked',
-                'reason' => $execEnabled ? 'Runs and edits stay in automation tools' : 'vfs_exec is disabled',
+                'reason' => $execEnabled ? 'Runs and edits stay in routine tools' : 'vfs_exec is disabled',
             ],
         ];
 

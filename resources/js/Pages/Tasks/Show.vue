@@ -73,7 +73,7 @@
           </div>
         </div>
 
-        <!-- Summary Stats Bar: Script automation -->
+        <!-- Summary Stats Bar: Script routine -->
         <div v-if="isScriptRun" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
             <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Duration</div>
@@ -163,16 +163,16 @@
           <p class="text-sm text-red-700 dark:text-red-400">{{ task.result.error }}</p>
         </div>
 
-        <!-- Automation Banner -->
+        <!-- Routine Banner -->
         <div
-          v-if="task.source === 'automation'"
+          v-if="task.source === 'routine'"
           class="mb-6 p-4 rounded-lg border bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800"
         >
           <div class="flex items-center gap-3">
             <Icon name="ph:lightning" class="w-5 h-5 shrink-0 text-violet-600 dark:text-violet-400" />
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-sm font-medium text-violet-800 dark:text-violet-300">Triggered by automation</span>
+                <span class="text-sm font-medium text-violet-800 dark:text-violet-300">Triggered by routine</span>
                 <template v-if="task.requester">
                   <span class="text-sm text-violet-600 dark:text-violet-400">·</span>
                   <span class="text-sm text-violet-600 dark:text-violet-400">created by</span>
@@ -181,12 +181,12 @@
                 </template>
               </div>
               <button
-                v-if="ctx.automation_id"
+                v-if="ctx.routine_id"
                 class="mt-1 text-xs text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
-                @click="router.visit(automationEditUrl(ctx.automation_id))"
+                @click="router.visit(routineEditUrl(ctx.routine_id))"
               >
                 <Icon name="ph:pencil-simple" class="w-3 h-3" />
-                Edit automation
+                Edit routine
               </button>
             </div>
           </div>
@@ -256,14 +256,14 @@
               {{ task.priority }}
             </span>
           </div>
-          <div v-if="ctx.automation_id">
-            <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Automation</label>
+          <div v-if="ctx.routine_id">
+            <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Routine</label>
             <button
               class="text-sm text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
-              @click="router.visit(automationEditUrl(ctx.automation_id))"
+              @click="router.visit(routineEditUrl(ctx.routine_id))"
             >
               <Icon name="ph:lightning" class="w-3.5 h-3.5" />
-              View automation
+              View routine
             </button>
           </div>
           <div v-if="ctx.model">
@@ -302,9 +302,9 @@
           </h3>
           <pre class="text-xs rounded-lg p-4 overflow-x-auto border max-h-64 overflow-y-auto bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"><code class="hljs oc-syntax whitespace-pre-wrap break-words" v-html="highlight(task.description, 'ruby')" /></pre>
           <button
-            v-if="ctx.automation_id"
+            v-if="ctx.routine_id"
             class="mt-2 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
-            @click="router.visit(automationEditUrl(ctx.automation_id))"
+            @click="router.visit(routineEditUrl(ctx.routine_id))"
           >
             <Icon name="ph:pencil-simple" class="w-3 h-3" />
             Edit full script
@@ -679,8 +679,8 @@ interface TaskContext {
   model?: string
   provider?: string
   token_breakdown?: TokenBreakdown
-  automation_id?: string
-  execution_type?: string
+  routine_id?: string
+  routine_kind?: 'agent' | 'script'
 }
 
 const props = defineProps<{
@@ -696,7 +696,7 @@ const {
   cancelAgentTask,
 } = useApi()
 
-const { agentUrl, automationEditUrl, chatUrl, taskUrl } = useWorkspace()
+const { agentUrl, routineEditUrl, chatUrl, taskUrl } = useWorkspace()
 const { renderMarkdown } = useMarkdown()
 const { highlight } = useHighlight()
 
@@ -795,7 +795,7 @@ const priorityIcons: Record<Priority, string> = {
 const sourceIcons: Record<string, string> = {
   chat: 'ph:chat-circle',
   manual: 'ph:hand',
-  automation: 'ph:lightning',
+  routine: 'ph:lightning',
   agent_delegation: 'ph:users-three',
   agent_ask: 'ph:question',
   agent_notify: 'ph:megaphone',
@@ -804,7 +804,7 @@ const sourceIcons: Record<string, string> = {
 const sourceLabels: Record<string, string> = {
   chat: 'Chat',
   manual: 'Manual',
-  automation: 'Automation',
+  routine: 'Routine',
   agent_delegation: 'Delegated',
   agent_ask: 'Agent Ask',
   agent_notify: 'Notification',
@@ -812,7 +812,7 @@ const sourceLabels: Record<string, string> = {
 
 // Computed
 const ctx = computed<TaskContext>(() => (task.value?.context as TaskContext) ?? {})
-const isScriptRun = computed(() => (task.value?.context as any)?.execution_type === 'script')
+const isScriptRun = computed(() => (task.value?.context as any)?.routine_kind === 'script')
 
 const tb = computed(() => ctx.value.token_breakdown)
 
@@ -891,7 +891,7 @@ const GROUP_ICONS: Record<string, { icon: string; label: string }> = {
   calendar: { icon: 'ph:calendar', label: 'Calendar' },
   memory: { icon: 'ph:brain', label: 'Memory' },
   tasks: { icon: 'ph:list-checks', label: 'Tasks' },
-  automations: { icon: 'ph:lightning', label: 'Automations' },
+  routines: { icon: 'ph:lightning', label: 'Routines' },
   svg: { icon: 'ph:file-svg', label: 'SVG' },
   system: { icon: 'ph:gear', label: 'System' },
   workspace: { icon: 'ph:gear-six', label: 'Workspace' },

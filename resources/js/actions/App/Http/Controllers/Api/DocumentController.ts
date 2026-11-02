@@ -237,7 +237,7 @@ update.patch = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\DocumentController::destroy
-* @see app/Http/Controllers/Api/DocumentController.php:195
+* @see app/Http/Controllers/Api/DocumentController.php:219
 * @route '/api/documents/{id}'
 */
 export const destroy = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -252,7 +252,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentController::destroy
-* @see app/Http/Controllers/Api/DocumentController.php:195
+* @see app/Http/Controllers/Api/DocumentController.php:219
 * @route '/api/documents/{id}'
 */
 destroy.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -279,7 +279,7 @@ destroy.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\DocumentController::destroy
-* @see app/Http/Controllers/Api/DocumentController.php:195
+* @see app/Http/Controllers/Api/DocumentController.php:219
 * @route '/api/documents/{id}'
 */
 destroy.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({

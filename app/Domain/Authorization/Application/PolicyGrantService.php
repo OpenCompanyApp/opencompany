@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
  * grants when the call actually executes.
  *
  * Context: `run` and `task` grants match the ambient ActiveAgentRun (bound by
- * the run control plane for chat, tasks, automations/routines, subagents and
+ * the run control plane for chat, tasks, routines, subagents and
  * Code Mode callbacks inside a run). Outside a run they never match.
  *
  * Workspace boundary: a grant matches only the agent's own workspace.
@@ -25,10 +25,20 @@ class PolicyGrantService
     /**
      * Whether a live grant covers this exact tool for the agent right now.
      * Evaluation never consumes a grant (tools are evaluated at registration).
+     *
+     * $includeAlways=false ignores `always` grants: purge, exposure_widening
+     * and structural actions never accept an "always" exception
+     * (docs/architecture/governance-model.md), so each instance asks unless a
+     * narrower grant (once/run/task/until) covers it.
      */
-    public function covers(User $agent, string $toolSlug): bool
+    public function covers(User $agent, string $toolSlug, bool $includeAlways = true): bool
     {
-        return $this->liveQuery($agent, $toolSlug)->exists();
+        $query = $this->liveQuery($agent, $toolSlug);
+        if (! $includeAlways) {
+            $query->where('scope', '!=', 'always');
+        }
+
+        return $query->exists();
     }
 
     /**

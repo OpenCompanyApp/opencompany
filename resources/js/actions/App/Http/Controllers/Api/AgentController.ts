@@ -79,7 +79,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::show
-* @see app/Http/Controllers/Api/AgentController.php:82
+* @see app/Http/Controllers/Api/AgentController.php:81
 * @route '/api/agents/{id}'
 */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::show
-* @see app/Http/Controllers/Api/AgentController.php:82
+* @see app/Http/Controllers/Api/AgentController.php:81
 * @route '/api/agents/{id}'
 */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -121,7 +121,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::show
-* @see app/Http/Controllers/Api/AgentController.php:82
+* @see app/Http/Controllers/Api/AgentController.php:81
 * @route '/api/agents/{id}'
 */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -131,7 +131,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::show
-* @see app/Http/Controllers/Api/AgentController.php:82
+* @see app/Http/Controllers/Api/AgentController.php:81
 * @route '/api/agents/{id}'
 */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -141,7 +141,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::update
-* @see app/Http/Controllers/Api/AgentController.php:90
+* @see app/Http/Controllers/Api/AgentController.php:89
 * @route '/api/agents/{id}'
 */
 export const update = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -156,7 +156,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::update
-* @see app/Http/Controllers/Api/AgentController.php:90
+* @see app/Http/Controllers/Api/AgentController.php:89
 * @route '/api/agents/{id}'
 */
 update.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -183,7 +183,7 @@ update.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::update
-* @see app/Http/Controllers/Api/AgentController.php:90
+* @see app/Http/Controllers/Api/AgentController.php:89
 * @route '/api/agents/{id}'
 */
 update.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -193,7 +193,7 @@ update.patch = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::destroy
-* @see app/Http/Controllers/Api/AgentController.php:121
+* @see app/Http/Controllers/Api/AgentController.php:119
 * @route '/api/agents/{id}'
 */
 export const destroy = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -208,7 +208,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::destroy
-* @see app/Http/Controllers/Api/AgentController.php:121
+* @see app/Http/Controllers/Api/AgentController.php:119
 * @route '/api/agents/{id}'
 */
 destroy.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -235,7 +235,7 @@ destroy.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::destroy
-* @see app/Http/Controllers/Api/AgentController.php:121
+* @see app/Http/Controllers/Api/AgentController.php:119
 * @route '/api/agents/{id}'
 */
 destroy.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -245,7 +245,7 @@ destroy.delete = (args: { id: string | number } | [id: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::identityFiles
-* @see app/Http/Controllers/Api/AgentController.php:132
+* @see app/Http/Controllers/Api/AgentController.php:130
 * @route '/api/agents/{id}/identity'
 */
 export const identityFiles = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -260,7 +260,7 @@ identityFiles.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::identityFiles
-* @see app/Http/Controllers/Api/AgentController.php:132
+* @see app/Http/Controllers/Api/AgentController.php:130
 * @route '/api/agents/{id}/identity'
 */
 identityFiles.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -287,7 +287,7 @@ identityFiles.url = (args: { id: string | number } | [id: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::identityFiles
-* @see app/Http/Controllers/Api/AgentController.php:132
+* @see app/Http/Controllers/Api/AgentController.php:130
 * @route '/api/agents/{id}/identity'
 */
 identityFiles.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -297,7 +297,7 @@ identityFiles.get = (args: { id: string | number } | [id: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::identityFiles
-* @see app/Http/Controllers/Api/AgentController.php:132
+* @see app/Http/Controllers/Api/AgentController.php:130
 * @route '/api/agents/{id}/identity'
 */
 identityFiles.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -307,7 +307,7 @@ identityFiles.head = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::updateIdentityFile
-* @see app/Http/Controllers/Api/AgentController.php:151
+* @see app/Http/Controllers/Api/AgentController.php:149
 * @route '/api/agents/{id}/identity/{fileType}'
 */
 export const updateIdentityFile = (args: { id: string | number, fileType: string | number } | [id: string | number, fileType: string | number ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -322,7 +322,7 @@ updateIdentityFile.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::updateIdentityFile
-* @see app/Http/Controllers/Api/AgentController.php:151
+* @see app/Http/Controllers/Api/AgentController.php:149
 * @route '/api/agents/{id}/identity/{fileType}'
 */
 updateIdentityFile.url = (args: { id: string | number, fileType: string | number } | [id: string | number, fileType: string | number ], options?: RouteQueryOptions) => {
@@ -348,7 +348,7 @@ updateIdentityFile.url = (args: { id: string | number, fileType: string | number
 
 /**
 * @see \App\Http\Controllers\Api\AgentController::updateIdentityFile
-* @see app/Http/Controllers/Api/AgentController.php:151
+* @see app/Http/Controllers/Api/AgentController.php:149
 * @route '/api/agents/{id}/identity/{fileType}'
 */
 updateIdentityFile.put = (args: { id: string | number, fileType: string | number } | [id: string | number, fileType: string | number ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({

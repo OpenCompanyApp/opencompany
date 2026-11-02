@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * Durable unit of work for agent execution and human-visible task history.
  *
  * Tasks are not kanban list cards; ListItem owns that product surface. Runtime
- * jobs use Task to track chat requests, automation runs, delegation subtasks,
+ * jobs use Task to track chat requests, routine runs, delegation subtasks,
  * status transitions, runtime context snapshots, and token/accounting metadata.
  *
  * @property array<string, mixed>|null $result
@@ -82,7 +82,7 @@ class Task extends Model
 
     public const SOURCE_CHAT = 'chat';
 
-    public const SOURCE_AUTOMATION = 'automation';
+    public const SOURCE_ROUTINE = 'routine';
 
     public const SOURCE_AGENT_DELEGATION = 'agent_delegation';
 

@@ -49,9 +49,9 @@ class ScreenshotTest extends DuskTestCase
                 ->pause(1000)
                 ->screenshot('10_credits')
 
-                ->visit('/automation')
+                ->visit('/routines')
                 ->pause(1000)
-                ->screenshot('11_automation')
+                ->screenshot('11_routine')
 
                 ->visit('/profile')
                 ->pause(1000)

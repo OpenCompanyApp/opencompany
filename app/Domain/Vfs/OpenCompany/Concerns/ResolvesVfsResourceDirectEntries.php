@@ -206,7 +206,7 @@ trait ResolvesVfsResourceDirectEntries
     /**
      * @param  list<string>  $segments
      */
-    private function directAutomationEntry(array $segments, string $path): ?VfsEntry
+    private function directRoutineEntry(array $segments, string $path): ?VfsEntry
     {
         if (! isset($segments[1]) || isset($segments[2])) {
             return null;
@@ -214,7 +214,7 @@ trait ResolvesVfsResourceDirectEntries
 
         $token = Str::before($segments[1], '.json');
         try {
-            $automation = $this->resolveAutomationToken($token, $path);
+            $routine = $this->resolveRoutineToken($token, $path);
         } catch (VfsError $e) {
             if ($e->errorCode === 'not_found') {
                 return null;
@@ -223,7 +223,7 @@ trait ResolvesVfsResourceDirectEntries
             throw $e;
         }
 
-        return $this->automationEntry($automation, $path);
+        return $this->routineEntry($routine, $path);
     }
 
     /**

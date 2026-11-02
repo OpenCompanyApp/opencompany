@@ -1,0 +1,515 @@
+<template>
+  <div class="h-full flex flex-col bg-white dark:bg-neutral-900">
+    <!-- Header -->
+    <header class="h-14 px-4 md:px-6 border-b border-neutral-200 dark:border-neutral-700 flex items-center gap-4 bg-white dark:bg-neutral-900 shrink-0">
+      <span class="text-lg font-semibold text-neutral-900 dark:text-white">Routines</span>
+
+      <!-- Bulk actions toolbar -->
+      <div v-if="selectedIds.size > 0" class="flex items-center gap-3">
+        <span class="text-sm font-medium text-neutral-600 dark:text-neutral-300">
+          {{ selectedIds.size }} selected
+        </span>
+        <Button variant="ghost" size="sm" icon-left="ph:play" @click="showBulkRunConfirm = true">
+          Run
+        </Button>
+        <Button variant="ghost" size="sm" icon-left="ph:trash" class="!text-red-600 dark:!text-red-400" @click="showBulkDeleteConfirm = true">
+          Delete
+        </Button>
+        <button class="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" @click="selectedIds.clear()">
+          Clear
+        </button>
+      </div>
+
+      <!-- Status tabs -->
+      <div v-else-if="!loading" class="hidden md:flex items-center gap-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5">
+        <button
+          v-for="s in statusTabs"
+          :key="s.value"
+          :class="[
+            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
+            statusFilter === s.value
+              ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+              : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300',
+          ]"
+          @click="statusFilter = s.value"
+        >
+          <span v-if="s.dot" :class="['w-1.5 h-1.5 rounded-full', s.dot]" />
+          {{ s.label }}
+          <span v-if="s.count > 0" class="text-[10px] opacity-60">{{ s.count }}</span>
+        </button>
+      </div>
+
+      <div class="ml-auto flex items-center gap-2">
+        <SearchInput
+          v-model="searchQuery"
+          placeholder="Search..."
+          variant="ghost"
+          size="sm"
+          :clearable="true"
+          :debounce="300"
+          class="w-36 lg:w-48 shrink-0"
+        />
+        <Button variant="primary" size="sm" icon-left="ph:plus" @click="router.visit(createRoutineRoute(workspaceRouteParams()))">
+          New
+        </Button>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto">
+      <div class="max-w-4xl mx-auto p-4 md:p-6">
+        <!-- Loading -->
+        <div v-if="loading" class="space-y-3">
+          <div v-for="i in 4" :key="i" class="h-20 rounded-lg bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
+        </div>
+
+        <!-- Empty -->
+        <div v-else-if="routines.length === 0" class="py-16 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mx-auto mb-5">
+            <Icon name="ph:lightning" class="w-8 h-8 text-neutral-400 dark:text-neutral-500" />
+          </div>
+          <p class="text-sm font-medium text-neutral-900 dark:text-white mb-1">No routines yet</p>
+          <p class="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto mb-6">
+            Schedule agents to run automatically — daily standups, weekly reports,
+            hourly monitoring, or anything you can imagine.
+          </p>
+          <Button variant="primary" icon-left="ph:plus" @click="router.visit(createRoutineRoute(workspaceRouteParams()))">
+            Create your first routine
+          </Button>
+        </div>
+
+        <!-- No results for filter -->
+        <div v-else-if="filteredRoutines.length === 0" class="py-16 text-center">
+          <Icon name="ph:magnifying-glass" class="w-10 h-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+          <p class="text-sm font-medium text-neutral-900 dark:text-white mb-1">No matches</p>
+          <p class="text-xs text-neutral-500 dark:text-neutral-400">Try adjusting your search or filters.</p>
+        </div>
+
+        <!-- Routines list -->
+        <div v-else class="rounded-lg border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
+          <!-- Select all row -->
+          <div class="px-4 py-2 flex items-center gap-3">
+            <Checkbox :checked="allSelected" @update:checked="toggleSelectAll()" />
+            <span class="text-xs text-neutral-400 dark:text-neutral-500">
+              {{ filteredRoutines.length }} routine{{ filteredRoutines.length !== 1 ? 's' : '' }}
+            </span>
+          </div>
+
+          <div
+            v-for="routine in filteredRoutines"
+            :key="routine.id"
+            :class="[
+              'px-4 py-3.5 transition-colors',
+              routine.isActive
+                ? 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
+                : 'opacity-60 hover:opacity-80',
+              selectedIds.has(routine.id) && 'bg-neutral-50 dark:bg-neutral-800/50',
+            ]"
+          >
+            <div class="flex items-start gap-3">
+              <!-- Selection checkbox -->
+              <div class="shrink-0 mt-1.5">
+                <Checkbox :checked="selectedIds.has(routine.id)" @update:checked="toggleSelection(routine.id)" />
+              </div>
+
+              <!-- Status icon badge -->
+              <div :class="['w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5', statusBg(routine)]">
+                <Icon name="ph:lightning" :class="['w-4 h-4', statusIconColor(routine)]" />
+              </div>
+
+              <!-- Content -->
+              <div class="flex-1 min-w-0">
+                <!-- Title + schedule -->
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-medium text-neutral-900 dark:text-white truncate">{{ routine.name }}</p>
+                  <span
+                    :class="[
+                      'px-1.5 py-0.5 text-[10px] font-medium rounded shrink-0',
+                      routine.kind === 'script'
+                        ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400'
+                        : routine.kind === 'builtin'
+                          ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
+                          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400',
+                    ]"
+                  >
+                    {{ kindLabel(routine) }}
+                  </span>
+                  <span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 shrink-0">
+                    {{ humanSchedule(routine) }}
+                  </span>
+                </div>
+
+                <!-- Agent + instructions -->
+                <div class="flex items-center gap-2 mt-1 text-xs">
+                  <span
+                    v-if="routine.agent"
+                    class="inline-flex items-center gap-1 text-neutral-600 dark:text-neutral-300"
+                  >
+                    <Icon name="ph:robot" class="w-3 h-3" />
+                    {{ routine.agent.name }}
+                  </span>
+                  <span class="text-neutral-400 dark:text-neutral-500 truncate">
+                    {{ contentPreview(routine) }}
+                  </span>
+                </div>
+
+                <!-- Stats row -->
+                <div class="flex items-center gap-3 mt-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+                  <span v-if="routine.nextRunAt" class="flex items-center gap-1">
+                    <Icon name="ph:clock" class="w-3 h-3" />
+                    {{ formatRelativeDate(routine.nextRunAt) }}
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <Icon name="ph:arrow-clockwise" class="w-3 h-3" />
+                    {{ routine.runCount }} runs
+                  </span>
+                  <span v-if="routine.lastRunAt" class="flex items-center gap-1">
+                    <Icon name="ph:check-circle" class="w-3 h-3" />
+                    {{ formatRelativeDate(routine.lastRunAt) }}
+                  </span>
+                </div>
+
+                <!-- Error state -->
+                <div
+                  v-if="routine.consecutiveFailures > 0 && routine.lastResult?.error"
+                  class="flex items-center gap-1.5 mt-2 text-[11px] text-red-500 dark:text-red-400"
+                >
+                  <Icon name="ph:warning" class="w-3 h-3 shrink-0" />
+                  <span class="font-medium">{{ routine.consecutiveFailures }} failure{{ routine.consecutiveFailures > 1 ? 's' : '' }}</span>
+                  <span class="text-red-400/70 dark:text-red-400/50 truncate">{{ routine.lastResult.error }}</span>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex items-center gap-2 shrink-0">
+                <!-- Toggle (built-ins are system-managed) -->
+                <button
+                  v-if="routine.kind !== 'builtin'"
+                  type="button"
+                  :class="[
+                    'relative w-9 h-5 rounded-full transition-colors',
+                    routine.isActive ? 'bg-green-500' : 'bg-neutral-200 dark:bg-neutral-600',
+                  ]"
+                  :title="routine.isActive ? 'Disable' : 'Enable'"
+                  @click="handleToggle(routine)"
+                >
+                  <span
+                    :class="[
+                      'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm',
+                      routine.isActive && 'translate-x-4',
+                    ]"
+                  />
+                </button>
+
+                <!-- Actions menu -->
+                <div class="relative">
+                  <button
+                    type="button"
+                    class="p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                    @click="toggleActions(routine.id)"
+                  >
+                    <Icon name="ph:dots-three-vertical" class="w-4 h-4" />
+                  </button>
+                  <div
+                    v-if="openMenuId === routine.id"
+                    class="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-neutral-800 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-700 py-1 z-10"
+                    @mouseleave="openMenuId = null"
+                  >
+                    <button
+                      v-if="routine.kind !== 'builtin'"
+                      class="w-full px-3 py-1.5 text-left text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-2"
+                      @click="openMenuId = null; handleEdit(routine)"
+                    >
+                      <Icon name="ph:pencil" class="w-3.5 h-3.5" />
+                      Edit
+                    </button>
+                    <button
+                      class="w-full px-3 py-1.5 text-left text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-2"
+                      @click="openMenuId = null; handleTrigger(routine)"
+                    >
+                      <Icon name="ph:play" class="w-3.5 h-3.5" />
+                      Run now
+                    </button>
+                    <hr v-if="routine.kind !== 'builtin'" class="my-1 border-neutral-200 dark:border-neutral-700" />
+                    <button
+                      v-if="routine.kind !== 'builtin'"
+                      class="w-full px-3 py-1.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                      @click="openMenuId = null; handleDelete(routine)"
+                    >
+                      <Icon name="ph:trash" class="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk delete confirm -->
+    <ConfirmDialog
+      :open="showBulkDeleteConfirm"
+      variant="danger"
+      title="Delete Routines"
+      :description="`Delete ${selectedIds.size} routine${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`"
+      confirm-label="Delete"
+      @confirm="handleBulkDelete"
+      @cancel="showBulkDeleteConfirm = false"
+      @update:open="showBulkDeleteConfirm = $event"
+    />
+
+    <!-- Bulk run confirm -->
+    <ConfirmDialog
+      :open="showBulkRunConfirm"
+      title="Run Routines"
+      :description="`Trigger ${selectedIds.size} routine${selectedIds.size !== 1 ? 's' : ''} to run now?`"
+      confirm-label="Run"
+      @confirm="handleBulkRun"
+      @cancel="showBulkRunConfirm = false"
+      @update:open="showBulkRunConfirm = $event"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { router } from '@inertiajs/vue3'
+import type { Routine } from '@/types'
+import Icon from '@/Components/shared/Icon.vue'
+import Button from '@/Components/shared/Button.vue'
+import SearchInput from '@/Components/shared/SearchInput.vue'
+import Checkbox from '@/Components/shared/Checkbox.vue'
+import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue'
+import { useApi } from '@/composables/useApi'
+import { useWorkspace } from '@/composables/useWorkspace'
+import { useToast } from '@/composables/useToast'
+import { create as createRoutineRoute, edit as editRoutineRoute } from '@/routes/routines'
+
+const { workspaceRouteParams } = useWorkspace()
+const { success, error: showError } = useToast()
+const {
+  fetchRoutines,
+  updateRoutine,
+  deleteRoutine,
+  triggerRoutine,
+  bulkDeleteRoutines,
+  bulkTriggerRoutines,
+} = useApi()
+
+// Data
+const { data: routinesData, loading, refresh: refreshRoutines } = fetchRoutines()
+const routines = computed<Routine[]>(() => routinesData.value ?? [])
+
+// Filters
+const statusFilter = ref<'all' | 'active' | 'inactive' | 'failed'>('all')
+const searchQuery = ref('')
+const openMenuId = ref<string | null>(null)
+
+// Bulk selection
+const selectedIds = ref(new Set<string>())
+const showBulkDeleteConfirm = ref(false)
+const showBulkRunConfirm = ref(false)
+const allSelected = computed(() =>
+  filteredRoutines.value.length > 0 &&
+  filteredRoutines.value.every(a => selectedIds.value.has(a.id))
+)
+
+// Status tabs
+const statusTabs = computed(() => {
+  const all = routines.value
+  return [
+    { label: 'All', value: 'all' as const, count: all.length, dot: undefined },
+    { label: 'Active', value: 'active' as const, dot: 'bg-green-500', count: all.filter(a => a.isActive && a.consecutiveFailures === 0).length },
+    { label: 'Inactive', value: 'inactive' as const, dot: 'bg-neutral-400', count: all.filter(a => !a.isActive).length },
+    { label: 'Failing', value: 'failed' as const, dot: 'bg-red-500', count: all.filter(a => a.consecutiveFailures > 0).length },
+  ]
+})
+
+// Filtered routines
+const filteredRoutines = computed(() => {
+  let result = routines.value
+  if (statusFilter.value === 'active') result = result.filter(a => a.isActive && a.consecutiveFailures === 0)
+  if (statusFilter.value === 'inactive') result = result.filter(a => !a.isActive)
+  if (statusFilter.value === 'failed') result = result.filter(a => a.consecutiveFailures > 0)
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter(a =>
+      a.name.toLowerCase().includes(q) ||
+      a.agent?.name?.toLowerCase().includes(q) ||
+      (a.instructions || '').toLowerCase().includes(q) ||
+      (a.script || '').toLowerCase().includes(q)
+    )
+  }
+  return result
+})
+
+// Clear selection when filters change
+watch([statusFilter, searchQuery], () => selectedIds.value.clear())
+
+function toggleSelection(id: string) {
+  if (selectedIds.value.has(id)) {
+    selectedIds.value.delete(id)
+  } else {
+    selectedIds.value.add(id)
+  }
+}
+
+function toggleSelectAll() {
+  if (allSelected.value) {
+    selectedIds.value.clear()
+  } else {
+    filteredRoutines.value.forEach(a => selectedIds.value.add(a.id))
+  }
+}
+
+// Status helpers
+const statusBg = (a: Routine): string => {
+  if (a.consecutiveFailures > 0) return 'bg-red-100 dark:bg-red-900/30'
+  if (!a.isActive) return 'bg-neutral-100 dark:bg-neutral-700'
+  return 'bg-emerald-100 dark:bg-emerald-900/30'
+}
+
+const statusIconColor = (a: Routine): string => {
+  if (a.consecutiveFailures > 0) return 'text-red-600 dark:text-red-400'
+  if (!a.isActive) return 'text-neutral-400 dark:text-neutral-500'
+  return 'text-emerald-600 dark:text-emerald-400'
+}
+
+// Schedule helpers
+function humanSchedule(routine: Routine): string {
+  const expr = routine.cronExpression
+  if (!expr) return ''
+  const [m, h, dom, , dow] = expr.split(' ')
+
+  const timeStr = h === '*' ? `:${m.padStart(2, '0')}` : formatTime(parseInt(h), parseInt(m))
+
+  if (h === '*') return `Every hour at :${m.padStart(2, '0')}`
+  if (dow !== '*' && dom === '*') {
+    const dayNames: Record<string, string> = { '0': 'Sun', '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri', '6': 'Sat' }
+    const days = dow.split(',')
+    if (days.length === 5 && ['1', '2', '3', '4', '5'].every(d => days.includes(d))) {
+      return `Weekdays ${timeStr}`
+    }
+    return `${days.map(d => dayNames[d] ?? d).join(', ')} ${timeStr}`
+  }
+  if (dom !== '*') return `Monthly ${dom}${ordinal(dom)} ${timeStr}`
+  return `Daily ${timeStr}`
+}
+
+function formatTime(h: number, m: number): string {
+  const period = h >= 12 ? 'PM' : 'AM'
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`
+}
+
+function ordinal(n: string): string {
+  const num = parseInt(n)
+  if (num >= 11 && num <= 13) return 'th'
+  switch (num % 10) {
+    case 1: return 'st'
+    case 2: return 'nd'
+    case 3: return 'rd'
+    default: return 'th'
+  }
+}
+
+function formatRelativeDate(date: string): string {
+  const d = new Date(date)
+  const now = new Date()
+  const diff = d.getTime() - now.getTime()
+  const absDiff = Math.abs(diff)
+  const minutes = Math.floor(absDiff / 60000)
+  const hours = Math.floor(absDiff / 3600000)
+  const days = Math.floor(absDiff / 86400000)
+
+  if (diff > 0) {
+    if (minutes < 60) return `in ${minutes}m`
+    if (hours < 24) return `in ${hours}h`
+    if (days === 1) return 'tomorrow'
+    return `in ${days}d`
+  } else {
+    if (minutes < 60) return `${minutes}m ago`
+    if (hours < 24) return `${hours}h ago`
+    if (days === 1) return 'yesterday'
+    return `${days}d ago`
+  }
+}
+
+function kindLabel(routine: Routine): string {
+  if (routine.kind === 'script') return 'Script'
+  if (routine.kind === 'builtin') return 'Built-in'
+  return 'Agent'
+}
+
+function contentPreview(routine: Routine): string {
+  if (routine.kind === 'script') return (routine.script || '').slice(0, 80)
+  if (routine.kind === 'builtin') return routine.description || ''
+  return routine.instructions || ''
+}
+
+// Actions
+function toggleActions(id: string) {
+  openMenuId.value = openMenuId.value === id ? null : id
+}
+
+function handleEdit(routine: Routine) {
+  router.visit(editRoutineRoute(workspaceRouteParams({ id: routine.id })))
+}
+
+async function handleToggle(routine: Routine) {
+  try {
+    await updateRoutine(routine.id, { isActive: !routine.isActive })
+    success(routine.isActive ? 'Routine paused' : 'Routine enabled')
+    await refreshRoutines()
+  } catch {
+    showError('Failed to update routine')
+  }
+}
+
+async function handleTrigger(routine: Routine) {
+  try {
+    await triggerRoutine(routine.id)
+    success('Routine triggered', `"${routine.name}" is running.`)
+    await refreshRoutines()
+  } catch {
+    showError('Failed to trigger routine')
+  }
+}
+
+async function handleDelete(routine: Routine) {
+  if (!confirm(`Delete "${routine.name}"? This cannot be undone.`)) return
+  try {
+    await deleteRoutine(routine.id)
+    success('Routine deleted')
+    await refreshRoutines()
+  } catch {
+    showError('Failed to delete routine')
+  }
+}
+
+async function handleBulkDelete() {
+  try {
+    await bulkDeleteRoutines(Array.from(selectedIds.value))
+    success(`${selectedIds.value.size} routine(s) deleted`)
+    selectedIds.value.clear()
+    showBulkDeleteConfirm.value = false
+    await refreshRoutines()
+  } catch {
+    showError('Failed to delete routines')
+  }
+}
+
+async function handleBulkRun() {
+  try {
+    await bulkTriggerRoutines(Array.from(selectedIds.value))
+    success(`${selectedIds.value.size} routine(s) triggered`)
+    selectedIds.value.clear()
+    showBulkRunConfirm.value = false
+    await refreshRoutines()
+  } catch {
+    showError('Failed to trigger routines')
+  }
+}
+</script>

@@ -7,14 +7,14 @@ async page => {
   const entry = manifest['resources/js/app.ts'];
   const workspace = { id: 'fixture-workspace', slug: 'fixture', name: 'UI fixture', owner_id: 'fixture-user' };
   const agent = { id: 'fixture-agent', name: 'Fixture agent', type: 'agent', status: 'idle' };
-  const automation = {
-    id: 'fixture-automation', name: 'Ruby history fixture', executionType: 'script',
+  const routine = {
+    id: 'fixture-routine', name: 'Ruby history fixture', kind: 'script', version: 1, mode: 'act', notify: 'always',
     agentId: agent.id, script: 'puts "current source"', scriptRuntime: 'opencompany-code-v1',
     cronExpression: '0 9 * * 1-5', timezone: 'UTC', keepHistory: true, isActive: false,
   };
   const revision = { id: 'fixture-revision', source_digest: 'a'.repeat(64), runtime: 'lua', status: 'archived', created_at: '2026-09-08T10:00:00Z' };
   const source = '  -- exact legacy source\nprint("<script>window.fixtureInjected=true</script>")\n\n';
-  const state = { component: 'Automation/Edit', props: { automationId: automation.id, auth: { user: { id: 'fixture-user', name: 'Fixture human', email: 'fixture@example.invalid' } }, workspace, workspaces: [workspace], workspaceRole: 'owner', errors: {} }, url: '/fixture/automation/fixture-automation/edit', version: 'ui-fixture', clearHistory: false, encryptHistory: false };
+  const state = { component: 'Routines/Edit', props: { routineId: routine.id, auth: { user: { id: 'fixture-user', name: 'Fixture human', email: 'fixture@example.invalid' } }, workspace, workspaces: [workspace], workspaceRole: 'owner', errors: {} }, url: '/fixture/routines/fixture-routine/edit', version: 'ui-fixture', clearHistory: false, encryptHistory: false };
   const html = `<!doctype html><html><head><meta name="csrf-token" content="fixture-only">${(entry.css || []).map(path => `<link rel="stylesheet" href="/build/${path}">`).join('')}</head><body><div id="app" data-page="${JSON.stringify(state).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')}"></div><script type="module" src="/build/${entry.file}"></script></body></html>`;
   const requests = [];
   await page.route('**/*', async route => {
@@ -30,7 +30,7 @@ async page => {
     if (request.method() !== 'GET') return route.fulfill({ status: 409, json: { message: 'UI fixture forbids mutations' } });
     if (url.pathname.endsWith('/script-revisions/fixture-revision')) return route.fulfill({ json: { ...revision, source } });
     if (url.pathname.endsWith('/script-revisions')) return route.fulfill({ json: { data: [revision], last_page: 2 } });
-    if (url.pathname === '/api/automations/fixture-automation') return route.fulfill({ json: automation });
+    if (url.pathname === '/api/routines/fixture-routine') return route.fulfill({ json: routine });
     if (url.pathname.endsWith('/agents')) return route.fulfill({ json: [agent] });
     if (url.pathname.startsWith('/api/')) return route.fulfill({ json: [] });
     return route.fulfill({ status: 404, body: 'UI fixture: no passthrough' });
@@ -50,6 +50,6 @@ async page => {
   await page.getByRole('button', { name: 'aaaaaaaa · lua · archived' }).click();
   await page.getByRole('dialog').waitFor();
   if (!await page.evaluate(() => document.documentElement.classList.contains('dark'))) throw new Error('Dark theme did not apply');
-  if (requests.some(request => request.method !== 'GET' && request.path.startsWith('/api/automations/'))) throw new Error('Inspect/load triggered an automation mutation');
-  return { mode: 'mocked APIs; real built Vue assets', assertions: ['metadata-only initial history', 'exact escaped source', 'no HTML execution', 'explicit editor replacement closes dialog', 'pagination', 'dark mode', 'no automation mutation'], requests };
+  if (requests.some(request => request.method !== 'GET' && request.path.startsWith('/api/routines/'))) throw new Error('Inspect/load triggered a routine mutation');
+  return { mode: 'mocked APIs; real built Vue assets', assertions: ['metadata-only initial history', 'exact escaped source', 'no HTML execution', 'explicit editor replacement closes dialog', 'pagination', 'dark mode', 'no routine mutation'], requests };
 }

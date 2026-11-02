@@ -9,10 +9,9 @@ use App\Events\TaskUpdated;
 use App\Jobs\AgentRespondJob;
 use App\Jobs\CompactConversationJob;
 use App\Jobs\EnrichTelegramMediaJob;
-use App\Jobs\RunAutomationJob;
+use App\Jobs\RunRoutineJob;
 use App\Models\AgentRunRecord;
 use App\Models\ApprovalRequest;
-use App\Models\Automation;
 use App\Models\CalendarEvent;
 use App\Models\Channel;
 use App\Models\ChannelMember;
@@ -25,6 +24,7 @@ use App\Models\ListItem;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageReaction;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\TelegramConversation;
 use App\Models\TelegramDelivery;
@@ -1038,7 +1038,7 @@ class TelegramWebhookPipeline
             '/docs' => $this->sendText($setting, $conversation, $this->docsText($workspace), rendererVersion: TelegramCardRenderer::DOCS_VERSION),
             '/lists' => $this->sendText($setting, $conversation, $this->listsText($workspace), rendererVersion: TelegramCardRenderer::LISTS_VERSION),
             '/tables' => $this->sendText($setting, $conversation, $this->tablesText($workspace), rendererVersion: TelegramCardRenderer::TABLES_VERSION),
-            '/automation' => $this->sendAutomationCommand($setting, $workspace, $conversation, $messageWithActor, 'list'),
+            '/routine' => $this->sendRoutineCommand($setting, $workspace, $conversation, $messageWithActor, 'list'),
             '/settings' => $this->sendSettingsCommand($setting, $workspace, $conversation, $messageWithActor),
             default => $this->sendText($setting, $conversation, $this->helpText(), rendererVersion: TelegramCardRenderer::HELP_VERSION),
         };
@@ -2986,7 +2986,7 @@ class TelegramWebhookPipeline
             '/docs' => $this->sendText($setting, $conversation, $this->docsText($workspace), rendererVersion: TelegramCardRenderer::DOCS_VERSION),
             '/lists' => $this->handleListsCommand($setting, $workspace, $conversation, $message, $argument),
             '/tables' => $this->handleTablesCommand($setting, $workspace, $conversation, $message, $argument),
-            '/automation' => $this->sendAutomationCommand($setting, $workspace, $conversation, $message, $argument),
+            '/routine' => $this->sendRoutineCommand($setting, $workspace, $conversation, $message, $argument),
             '/calendar' => $this->handleCalendarCommand($setting, $workspace, $conversation, $message, $argument),
             '/digest' => $this->sendText($setting, $conversation, $this->digestText($workspace, $setting, $conversation, $argument), rendererVersion: TelegramCardRenderer::DIGEST_COMMAND_VERSION),
             '/notify' => $this->sendText($setting, $conversation, $this->notifyText($workspace, $setting, $conversation, $argument), rendererVersion: TelegramCardRenderer::NOTIFY_COMMAND_VERSION),
@@ -3130,7 +3130,7 @@ class TelegramWebhookPipeline
             '/approvals' => 'approvals',
             '/dashboard' => 'dashboard',
             '/files' => 'files',
-            '/automation' => 'automations',
+            '/routine' => 'routines',
             '/settings' => 'settings',
             default => 'command',
         };
@@ -3140,7 +3140,7 @@ class TelegramWebhookPipeline
      * The reset keeps Telegram as an agent shell by default. The old direct
      * module commands are still implemented for operators who explicitly opt
      * into them, but normal users should ask the current agent to work with
-     * files, docs, tables, calendars, automations, and historical workload.
+     * files, docs, tables, calendars, routines, and historical workload.
      */
     private function directResourceCommandsEnabled(): bool
     {
@@ -3159,7 +3159,7 @@ class TelegramWebhookPipeline
             '/docs',
             '/lists',
             '/tables',
-            '/automation',
+            '/routine',
             '/calendar',
             '/digest',
             '/notify',
@@ -4153,14 +4153,14 @@ class TelegramWebhookPipeline
     /**
      * @param  array<string, mixed>  $message
      */
-    private function sendAutomationCommand(
+    private function sendRoutineCommand(
         IntegrationSetting $setting,
         Workspace $workspace,
         TelegramConversation $conversation,
         array $message,
         string $argument
     ): void {
-        $card = $this->automationCard($workspace, $message, $argument);
+        $card = $this->routineCard($workspace, $message, $argument);
 
         $this->sendText(
             $setting,
@@ -4174,7 +4174,7 @@ class TelegramWebhookPipeline
      * @param  array<string, mixed>  $message
      * @return array{text: string, renderer_version: string}
      */
-    private function automationCard(Workspace $workspace, array $message, string $argument): array
+    private function routineCard(Workspace $workspace, array $message, string $argument): array
     {
         $argument = trim($argument);
         [$action, $target] = array_pad(preg_split('/\s+/', $argument, 2) ?: [], 2, '');
@@ -4183,79 +4183,79 @@ class TelegramWebhookPipeline
             $action = 'status';
             $target = $argument;
         }
-        $query = Automation::where('workspace_id', $workspace->id)->with(['agent', 'workspace']);
+        $query = Routine::where('workspace_id', $workspace->id)->with(['agent', 'workspace']);
 
         if (in_array($action, ['status', 'run', 'pause', 'resume', 'history'], true)) {
-            $automation = $this->whereTelegramTarget(clone $query, $target)->first();
+            $routine = $this->whereTelegramTarget(clone $query, $target)->first();
 
-            if (! $automation) {
+            if (! $routine) {
                 return [
-                    'text' => "Automation not found: {$target}",
-                    'renderer_version' => TelegramCardRenderer::AUTOMATIONS_VERSION,
+                    'text' => "Routine not found: {$target}",
+                    'renderer_version' => TelegramCardRenderer::ROUTINES_VERSION,
                 ];
             }
 
             if (in_array($action, ['run', 'pause', 'resume'], true) && ! $this->linkedTelegramMessageActor($workspace, $message)) {
                 return [
-                    'text' => 'Link your Telegram account before changing automations.',
-                    'renderer_version' => TelegramCardRenderer::AUTOMATION_ACTION_VERSION,
+                    'text' => 'Link your Telegram account before changing routines.',
+                    'renderer_version' => TelegramCardRenderer::ROUTINE_ACTION_VERSION,
                 ];
             }
 
             if ($action === 'run') {
-                RunAutomationJob::dispatch($automation);
+                RunRoutineJob::dispatch($routine);
 
                 return [
-                    'text' => "Automation run queued: {$automation->name}",
-                    'renderer_version' => TelegramCardRenderer::AUTOMATION_ACTION_VERSION,
+                    'text' => "Routine run queued: {$routine->name}",
+                    'renderer_version' => TelegramCardRenderer::ROUTINE_ACTION_VERSION,
                 ];
             }
 
             if ($action === 'pause') {
-                $automation->update(['is_active' => false]);
+                $routine->update(['is_active' => false]);
 
                 return [
-                    'text' => "Automation paused: {$automation->name}",
-                    'renderer_version' => TelegramCardRenderer::AUTOMATION_ACTION_VERSION,
+                    'text' => "Routine paused: {$routine->name}",
+                    'renderer_version' => TelegramCardRenderer::ROUTINE_ACTION_VERSION,
                 ];
             }
 
             if ($action === 'resume') {
-                $automation->update([
+                $routine->update([
                     'is_active' => true,
                     'consecutive_failures' => 0,
-                    'next_run_at' => $automation->computeNextRunAt(),
+                    'next_run_at' => $routine->computeNextRunAt(),
                 ]);
 
                 return [
-                    'text' => "Automation resumed: {$automation->name}",
-                    'renderer_version' => TelegramCardRenderer::AUTOMATION_ACTION_VERSION,
+                    'text' => "Routine resumed: {$routine->name}",
+                    'renderer_version' => TelegramCardRenderer::ROUTINE_ACTION_VERSION,
                 ];
             }
 
             if ($action === 'history') {
                 return [
-                    'text' => app(TelegramCardRenderer::class)->automationHistoryText($workspace, $automation),
-                    'renderer_version' => TelegramCardRenderer::AUTOMATION_HISTORY_VERSION,
+                    'text' => app(TelegramCardRenderer::class)->routineHistoryText($workspace, $routine),
+                    'renderer_version' => TelegramCardRenderer::ROUTINE_HISTORY_VERSION,
                 ];
             }
 
             return [
-                'text' => app(TelegramCardRenderer::class)->automationStatusText($automation),
-                'renderer_version' => TelegramCardRenderer::AUTOMATION_STATUS_VERSION,
+                'text' => app(TelegramCardRenderer::class)->routineStatusText($routine),
+                'renderer_version' => TelegramCardRenderer::ROUTINE_STATUS_VERSION,
             ];
         }
 
         if ($action === 'failures') {
             return [
-                'text' => app(TelegramCardRenderer::class)->automationFailuresText($workspace),
-                'renderer_version' => TelegramCardRenderer::AUTOMATION_FAILURES_VERSION,
+                'text' => app(TelegramCardRenderer::class)->routineFailuresText($workspace),
+                'renderer_version' => TelegramCardRenderer::ROUTINE_FAILURES_VERSION,
             ];
         }
 
         return [
-            'text' => app(TelegramCardRenderer::class)->automationsText($workspace),
-            'renderer_version' => TelegramCardRenderer::AUTOMATIONS_VERSION,
+            'text' => app(TelegramCardRenderer::class)->routinesText($workspace),
+            'renderer_version' => TelegramCardRenderer::ROUTINES_VERSION,
         ];
     }
 

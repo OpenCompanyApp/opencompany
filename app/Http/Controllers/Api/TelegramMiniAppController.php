@@ -6,11 +6,12 @@ use App\Domain\Chat\Telegram\Application\TelegramMiniAppVerifier;
 use App\Domain\Chat\Telegram\Application\TelegramOperationsService;
 use App\Domain\Work\Application\ManageTasks;
 use App\Http\Controllers\Controller;
-use App\Jobs\RunAutomationJob;
+use App\Jobs\RunBuiltinRoutineJob;
+use App\Jobs\RunRoutineJob;
 use App\Models\ApprovalRequest;
-use App\Models\Automation;
 use App\Models\Document;
 use App\Models\IntegrationSetting;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\TaskStep;
 use App\Models\TelegramConversation;
@@ -171,7 +172,7 @@ class TelegramMiniAppController extends Controller
                 'tasks',
                 'files',
                 'docs',
-                'automation',
+                'routine',
                 'notifications',
             ],
         ]);
@@ -189,7 +190,7 @@ class TelegramMiniAppController extends Controller
         $data = $request->validate([
             'workspace_id' => ['required', 'string', 'exists:workspaces,id'],
             'init_data' => ['required', 'string'],
-            'panel' => ['required', 'string', 'in:identity,settings,approvals,tasks,files,docs,automation,notifications'],
+            'panel' => ['required', 'string', 'in:identity,settings,approvals,tasks,files,docs,routine,notifications'],
             'target_id' => ['nullable', 'string'],
         ]);
 
@@ -209,7 +210,7 @@ class TelegramMiniAppController extends Controller
             'tasks' => $this->tasksPanel($workspace, $targetId),
             'files' => $this->filesPanel($workspace, $targetId),
             'docs' => $this->docsPanel($workspace, $targetId),
-            'automation' => $this->automationPanel($workspace, $targetId),
+            'routine' => $this->routinePanel($workspace, $targetId),
             'notifications' => $this->notificationsPanel($workspace, $setting),
         };
 
@@ -239,11 +240,11 @@ class TelegramMiniAppController extends Controller
         $data = $request->validate([
             'workspace_id' => ['required', 'string', 'exists:workspaces,id'],
             'init_data' => ['required', 'string'],
-            'action' => ['required', 'string', 'in:set_default_agent,set_conversation_mode,set_notification,set_digest,revoke_telegram_identity,repair_telegram_state,retry_telegram_delivery,replay_telegram_receipt,pause_task,resume_task,cancel_task,approve_approval,reject_approval,run_automation,pause_automation,resume_automation'],
+            'action' => ['required', 'string', 'in:set_default_agent,set_conversation_mode,set_notification,set_digest,revoke_telegram_identity,repair_telegram_state,retry_telegram_delivery,replay_telegram_receipt,pause_task,resume_task,cancel_task,approve_approval,reject_approval,run_routine,pause_routine,resume_routine'],
             'conversation_id' => ['nullable', 'string'],
             'task_id' => ['nullable', 'string'],
             'approval_id' => ['nullable', 'string'],
-            'automation_id' => ['nullable', 'string'],
+            'routine_id' => ['nullable', 'string'],
             'delivery_id' => ['nullable', 'string'],
             'receipt_id' => ['nullable', 'string'],
             'identity_id' => ['nullable', 'string'],
@@ -267,7 +268,7 @@ class TelegramMiniAppController extends Controller
 
         if (! str_ends_with($data['action'], '_task')
             && ! str_ends_with($data['action'], '_approval')
-            && ! str_ends_with($data['action'], '_automation')
+            && ! str_ends_with($data['action'], '_routine')
             && ! $this->canManageTelegramSettings($context)) {
             return response()->json([
                 'ok' => false,
@@ -289,7 +290,7 @@ class TelegramMiniAppController extends Controller
             'replay_telegram_receipt' => $this->replayMiniAppTelegramReceipt($setting, $data),
             'pause_task', 'resume_task', 'cancel_task' => $this->setMiniAppTaskLifecycle($workspace, $data),
             'approve_approval', 'reject_approval' => $this->setMiniAppApprovalDecision($workspace, $context, $data),
-            'run_automation', 'pause_automation', 'resume_automation' => $this->setMiniAppAutomationState($workspace, $data),
+            'run_routine', 'pause_routine', 'resume_routine' => $this->setMiniAppRoutineState($workspace, $data),
         };
 
         if ($payload instanceof JsonResponse) {
@@ -1003,42 +1004,43 @@ class TelegramMiniAppController extends Controller
         ];
     }
 
-    private function automationPanel(Workspace $workspace, ?string $targetId): ?array
+    /** @return array<string, mixed>|null */
+    private function routinePanel(Workspace $workspace, ?string $targetId): ?array
     {
-        $query = Automation::with('agent')
+        $query = Routine::with('agent')
             ->where('workspace_id', $workspace->id);
 
         if ($targetId) {
-            $automation = (clone $query)
+            $routine = (clone $query)
                 ->where(fn ($query) => $query
                     ->where('id', $targetId)
                     ->orWhere('id', 'like', $targetId.'%')
                     ->orWhere('name', 'like', $targetId.'%'))
                 ->first();
 
-            if (! $automation) {
+            if (! $routine) {
                 return null;
             }
 
-            return $this->automationDetail($workspace, $automation);
+            return $this->routineDetail($workspace, $routine);
         }
 
-        $automations = $query
+        $routines = $query
             ->latest()
             ->limit(20)
             ->get();
 
         return [
-            'type' => 'automation_list',
-            'active_count' => Automation::where('workspace_id', $workspace->id)->where('is_active', true)->count(),
-            'failed_count' => Automation::where('workspace_id', $workspace->id)->where('consecutive_failures', '>', 0)->count(),
-            'items' => $automations->map(fn (Automation $automation) => [
-                'id' => $automation->id,
-                'name' => $automation->name,
-                'agent' => $automation->agent?->name,
-                'is_active' => $automation->is_active,
-                'next_run_at' => $automation->next_run_at,
-                'consecutive_failures' => $automation->consecutive_failures,
+            'type' => 'routine_list',
+            'active_count' => Routine::where('workspace_id', $workspace->id)->where('is_active', true)->count(),
+            'failed_count' => Routine::where('workspace_id', $workspace->id)->where('consecutive_failures', '>', 0)->count(),
+            'items' => $routines->map(fn (Routine $routine) => [
+                'id' => $routine->id,
+                'name' => $routine->name,
+                'agent' => $routine->agent?->name,
+                'is_active' => $routine->is_active,
+                'next_run_at' => $routine->next_run_at,
+                'consecutive_failures' => $routine->consecutive_failures,
             ])->values(),
         ];
     }
@@ -1046,45 +1048,44 @@ class TelegramMiniAppController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function automationDetail(Workspace $workspace, Automation $automation): array
+    private function routineDetail(Workspace $workspace, Routine $routine): array
     {
         return [
-            'type' => 'automation_detail',
-            'id' => $automation->id,
-            'name' => $automation->name,
-            'description' => $automation->description,
-            'agent' => $automation->agent?->name,
-            'trigger_type' => $automation->trigger_type,
-            'execution_type' => $automation->execution_type,
-            'is_active' => $automation->is_active,
-            'cron_expression' => $automation->cron_expression,
-            'timezone' => $automation->timezone,
-            'last_run_at' => $automation->last_run_at,
-            'next_run_at' => $automation->next_run_at,
-            'run_count' => $automation->run_count,
-            'consecutive_failures' => $automation->consecutive_failures,
-            'last_error' => is_array($automation->last_result) ? Str::limit((string) ($automation->last_result['error'] ?? ''), 300) : null,
-            'web_url' => "/w/{$workspace->slug}/automation/{$automation->id}/edit",
+            'type' => 'routine_detail',
+            'id' => $routine->id,
+            'name' => $routine->name,
+            'description' => $routine->description,
+            'agent' => $routine->agent?->name,
+            'kind' => $routine->kind,
+            'version' => $routine->version,
+            'notify' => $routine->notify,
+            'is_active' => $routine->is_active,
+            'cron_expression' => $routine->cron_expression,
+            'timezone' => $routine->timezone,
+            'last_run_at' => $routine->last_run_at,
+            'next_run_at' => $routine->next_run_at,
+            'run_count' => $routine->run_count,
+            'consecutive_failures' => $routine->consecutive_failures,
+            'last_error' => is_array($routine->last_result) ? Str::limit((string) ($routine->last_result['error'] ?? ''), 300) : null,
+            'web_url' => "/w/{$workspace->slug}/routines/{$routine->id}/edit",
             'actions' => [
                 'run',
-                $automation->is_active ? 'pause' : 'resume',
+                $routine->is_active ? 'pause' : 'resume',
                 'open',
             ],
-            'recent_runs' => $this->automationRuns($workspace, $automation),
+            'recent_runs' => $this->routineRuns($workspace, $routine),
         ];
     }
 
     /**
      * @return list<array<string, mixed>>
      */
-    private function automationRuns(Workspace $workspace, Automation $automation): array
+    private function routineRuns(Workspace $workspace, Routine $routine): array
     {
         return Task::with('agent')
             ->where('workspace_id', $workspace->id)
-            ->where('source', Task::SOURCE_AUTOMATION)
-            ->where(fn ($query) => $query
-                ->whereJsonContains('context->automation_id', $automation->id)
-                ->orWhereJsonContains('context->scheduled_automation_id', $automation->id))
+            ->where('source', Task::SOURCE_ROUTINE)
+            ->whereJsonContains('context->routine_id', $routine->id)
             ->latest()
             ->limit(5)
             ->get()
@@ -1101,7 +1102,7 @@ class TelegramMiniAppController extends Controller
     }
 
     /**
-     * Mini App automation controls intentionally expose only coarse lifecycle
+     * Mini App routine controls intentionally expose only coarse lifecycle
      * actions. Raw scripts, prompts, and broad edits stay in the web app; the
      * Telegram surface can dispatch a run or toggle the schedule after the
      * signed Telegram user has been bound to the workspace.
@@ -1109,43 +1110,43 @@ class TelegramMiniAppController extends Controller
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>|JsonResponse
      */
-    private function setMiniAppAutomationState(Workspace $workspace, array $data): array|JsonResponse
+    private function setMiniAppRoutineState(Workspace $workspace, array $data): array|JsonResponse
     {
-        $automationId = (string) ($data['automation_id'] ?? '');
-        if ($automationId === '') {
+        $routineId = (string) ($data['routine_id'] ?? '');
+        if ($routineId === '') {
             return response()->json([
                 'ok' => false,
-                'error' => 'telegram_automation_not_found',
+                'error' => 'telegram_routine_not_found',
             ], 404);
         }
 
-        $automation = Automation::with('agent')
+        $routine = Routine::with('agent')
             ->where('workspace_id', $workspace->id)
             ->where(fn ($query) => $query
-                ->where('id', $automationId)
-                ->orWhere('id', 'like', $automationId.'%')
-                ->orWhere('name', 'like', $automationId.'%'))
+                ->where('id', $routineId)
+                ->orWhere('id', 'like', $routineId.'%')
+                ->orWhere('name', 'like', $routineId.'%'))
             ->first();
 
-        if (! $automation) {
+        if (! $routine) {
             return response()->json([
                 'ok' => false,
-                'error' => 'telegram_automation_not_found',
+                'error' => 'telegram_routine_not_found',
             ], 404);
         }
 
         match ($data['action']) {
-            'run_automation' => RunAutomationJob::dispatch($automation),
-            'pause_automation' => $automation->update(['is_active' => false]),
-            'resume_automation' => $automation->update([
+            'run_routine' => $routine->isBuiltin() ? RunBuiltinRoutineJob::dispatch($routine) : RunRoutineJob::dispatch($routine),
+            'pause_routine' => $routine->update(['is_active' => false]),
+            'resume_routine' => $routine->update([
                 'is_active' => true,
                 'consecutive_failures' => 0,
-                'next_run_at' => $automation->computeNextRunAt(),
+                'next_run_at' => $routine->computeNextRunAt(),
             ]),
         };
 
         return [
-            'automation' => $this->automationDetail($workspace, $automation->fresh('agent')),
+            'routine' => $this->routineDetail($workspace, $routine->fresh('agent')),
         ];
     }
 

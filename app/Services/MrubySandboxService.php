@@ -18,7 +18,7 @@ final class MrubySandboxService
     /**
      * Compile without executing, or run one Ruby source with scoped capabilities.
      *
-     * @param  array<string,mixed>  $globals  Data-only automation ctx
+     * @param  array<string,mixed>  $globals  Data-only routine ctx
      */
     public function execute(
         string $code,
@@ -151,7 +151,7 @@ final class MrubySandboxService
     /** @return array<string,int|float|bool> Host-owned budget; agents cannot override limits. */
     public function profile(string $profile): array
     {
-        if (! in_array($profile, ['agent', 'automation', 'console'], true)) {
+        if (! in_array($profile, ['agent', 'routine', 'console'], true)) {
             throw new \InvalidArgumentException('Unknown Code Mode resource profile.');
         }
 

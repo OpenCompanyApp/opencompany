@@ -527,23 +527,23 @@ approvals.head = (args: { workspace_slug: string | number } | [workspace_slug: s
 
 /**
 * @see routes/web.php:168
-* @route '/w/{workspace_slug}/automation'
+* @route '/w/{workspace_slug}/routines'
 */
-export const automation = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: automation.url(args, options),
+export const routines = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: routines.url(args, options),
     method: 'get',
 })
 
-automation.definition = {
+routines.definition = {
     methods: ["get","head"],
-    url: '/w/{workspace_slug}/automation',
+    url: '/w/{workspace_slug}/routines',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see routes/web.php:168
-* @route '/w/{workspace_slug}/automation'
+* @route '/w/{workspace_slug}/routines'
 */
-automation.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
+routines.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { workspace_slug: args }
     }
@@ -560,26 +560,26 @@ automation.url = (args: { workspace_slug: string | number } | [workspace_slug: s
         workspace_slug: args.workspace_slug,
     }
 
-    return automation.definition.url
+    return routines.definition.url
             .replace('{workspace_slug}', parsedArgs.workspace_slug.toString())
             .replace(/\/+$/, '') + queryParams(options)
 }
 
 /**
 * @see routes/web.php:168
-* @route '/w/{workspace_slug}/automation'
+* @route '/w/{workspace_slug}/routines'
 */
-automation.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: automation.url(args, options),
+routines.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: routines.url(args, options),
     method: 'get',
 })
 
 /**
 * @see routes/web.php:168
-* @route '/w/{workspace_slug}/automation'
+* @route '/w/{workspace_slug}/routines'
 */
-automation.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
-    url: automation.url(args, options),
+routines.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: routines.url(args, options),
     method: 'head',
 })
 

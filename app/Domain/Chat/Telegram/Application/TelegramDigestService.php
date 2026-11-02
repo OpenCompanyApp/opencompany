@@ -3,10 +3,10 @@
 namespace App\Domain\Chat\Telegram\Application;
 
 use App\Models\ApprovalRequest;
-use App\Models\Automation;
 use App\Models\CalendarEvent;
 use App\Models\Document;
 use App\Models\Message;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\TelegramConversation;
 use App\Models\TelegramDelivery;
@@ -23,6 +23,9 @@ use Illuminate\Support\Str;
 /**
  * Sends scheduled Telegram workspace digests for conversation-scoped subscriptions.
  *
+ * Scheduling is owned by the `telegram.digest` built-in routine, run by
+ * `routines:tick`; there is no dedicated cron for digests any more.
+ *
  * The digest service owns only the outbound digest card and the reconciliation
  * bookkeeping around deferred Telegram notifications. It does not decide which
  * chats should subscribe; webhook commands and Mini App settings persist that
@@ -35,15 +38,21 @@ class TelegramDigestService
     public function __construct(private readonly TelegramService $telegram) {}
 
     /**
-     * Send all currently due digest subscriptions.
+     * Send all currently due digest subscriptions of one workspace.
+     *
+     * Called by the `telegram.digest` built-in routine (TelegramDigestRoutine)
+     * with the workspace bound, so TelegramService resolves that workspace's
+     * bot. Eligibility, idempotency (one delivery per digest window) and
+     * deferred-notification batching stay here.
      *
      * @return array{sent:int, skipped:int, failed:int}
      */
-    public function sendDueDigests(bool $force = false): array
+    public function sendDueDigests(string $workspaceId, bool $force = false): array
     {
         $summary = ['sent' => 0, 'skipped' => 0, 'failed' => 0];
 
         TelegramSubscription::query()
+            ->where('workspace_id', $workspaceId)
             ->where('event_type', 'workspace_digest')
             ->where('enabled', true)
             ->orderBy('id')
@@ -206,8 +215,8 @@ class TelegramDigestService
     {
         $counts = $this->workspaceCounts($workspace, $window['start'], $window['end']);
         $deferredDeliveries = $this->deferredDeliveriesForDigest($conversation, $window['start'], $window['end']);
-        $nextAutomation = $this->nextAutomation($workspace);
-        $text = $this->renderDigestText($workspace, $window, $counts, $deferredDeliveries, $nextAutomation);
+        $nextRoutine = $this->nextRoutine($workspace);
+        $text = $this->renderDigestText($workspace, $window, $counts, $deferredDeliveries, $nextRoutine);
 
         return [
             'method' => 'sendMessage',
@@ -221,7 +230,7 @@ class TelegramDigestService
             'text' => $text,
             'reply_markup' => $this->digestButtons($workspace, $conversation, $subscription),
             'counts' => $counts,
-            'next_automation_id' => $nextAutomation?->id,
+            'next_routine_id' => $nextRoutine?->id,
             'deferred_delivery_ids' => $deferredDeliveries->pluck('id')->values()->all(),
         ];
     }
@@ -285,10 +294,12 @@ class TelegramDigestService
             ->get();
     }
 
-    private function nextAutomation(Workspace $workspace): ?Automation
+    private function nextRoutine(Workspace $workspace): ?Routine
     {
-        return Automation::query()
+        // Built-in routines (including this digest) are plumbing, not news.
+        return Routine::query()
             ->where('workspace_id', $workspace->id)
+            ->where('kind', '!=', Routine::KIND_BUILTIN)
             ->where('is_active', true)
             ->whereNotNull('next_run_at')
             ->orderBy('next_run_at')
@@ -300,7 +311,7 @@ class TelegramDigestService
      * @param  Collection<int, TelegramDelivery>  $deferredDeliveries
      * @param  array{key:string, schedule:string, due:bool, start:CarbonInterface, end:CarbonInterface}  $window
      */
-    private function renderDigestText(Workspace $workspace, array $window, array $counts, Collection $deferredDeliveries, ?Automation $nextAutomation): string
+    private function renderDigestText(Workspace $workspace, array $window, array $counts, Collection $deferredDeliveries, ?Routine $nextRoutine): string
     {
         $title = ucfirst($window['schedule']).' Digest - '.htmlspecialchars($workspace->name, ENT_QUOTES, 'UTF-8');
         $lines = [
@@ -316,10 +327,10 @@ class TelegramDigestService
             'Deferred alerts: '.$deferredDeliveries->count(),
         ];
 
-        if ($nextAutomation) {
-            $lines[] = 'Next automation: '.htmlspecialchars($nextAutomation->name, ENT_QUOTES, 'UTF-8').' at '.$nextAutomation->next_run_at?->timezone($nextAutomation->timezone)->format('M j H:i');
+        if ($nextRoutine) {
+            $lines[] = 'Next routine: '.htmlspecialchars($nextRoutine->name, ENT_QUOTES, 'UTF-8').' at '.$nextRoutine->next_run_at?->timezone($nextRoutine->timezone)->format('M j H:i');
         } else {
-            $lines[] = 'Next automation: none scheduled';
+            $lines[] = 'Next routine: none scheduled';
         }
 
         $alertLines = $this->deferredAlertLines($deferredDeliveries);
@@ -343,7 +354,7 @@ class TelegramDigestService
             ->map(function (TelegramDelivery $delivery): ?string {
                 return match ($delivery->source_type) {
                     Task::class => $this->deferredTaskLine($delivery),
-                    Automation::class => $this->deferredAutomationLine($delivery),
+                    Routine::class => $this->deferredRoutineLine($delivery),
                     ApprovalRequest::class => $this->deferredApprovalLine($delivery),
                     default => null,
                 };
@@ -370,18 +381,18 @@ class TelegramDigestService
         return '- '.$label.': '.htmlspecialchars(Str::limit($task->title, 80), ENT_QUOTES, 'UTF-8');
     }
 
-    private function deferredAutomationLine(TelegramDelivery $delivery): ?string
+    private function deferredRoutineLine(TelegramDelivery $delivery): ?string
     {
         if (! $delivery->source_id) {
             return null;
         }
 
-        $automation = Automation::find($delivery->source_id);
-        if (! $automation) {
+        $routine = Routine::find($delivery->source_id);
+        if (! $routine) {
             return null;
         }
 
-        return '- Automation failed: '.htmlspecialchars(Str::limit($automation->name, 80), ENT_QUOTES, 'UTF-8');
+        return '- Routine failed: '.htmlspecialchars(Str::limit($routine->name, 80), ENT_QUOTES, 'UTF-8');
     }
 
     private function deferredApprovalLine(TelegramDelivery $delivery): ?string

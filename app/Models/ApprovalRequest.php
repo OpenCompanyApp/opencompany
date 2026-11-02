@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Authorization\Application\OnBehalfOf;
 use App\Models\Concerns\BelongsToWorkspace;
 use Database\Factories\ApprovalRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -61,6 +62,19 @@ class ApprovalRequest extends Model
      */
     protected static function booted(): void
     {
+        // On-behalf-of principal (pillar 5): stamp the ambient run's human
+        // principal on every tool approval so ApprovalExecutionService can
+        // re-check the access intersection when the approved call replays
+        // outside its run. Creators may set it explicitly.
+        static::creating(function (self $approval): void {
+            $context = $approval->tool_execution_context;
+            $principal = app(OnBehalfOf::class)->currentPrincipalId();
+            if (is_array($context) && $principal !== null && ! array_key_exists('on_behalf_of_user_id', $context)) {
+                $context['on_behalf_of_user_id'] = $principal;
+                $approval->tool_execution_context = $context;
+            }
+        });
+
         static::creating(function (self $approval): void {
             if ($approval->workspace_id) {
                 return;

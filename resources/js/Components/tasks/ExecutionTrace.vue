@@ -237,7 +237,7 @@ const friendlyFields = (args: Record<string, unknown>, keys: string[]): Friendly
 const GROUP_ICONS: Record<string, string> = {
   docs: 'ph:file-text', tables: 'ph:table', chat: 'ph:chat-circle',
   agents: 'ph:users-three', lists: 'ph:kanban', calendar: 'ph:calendar',
-  memory: 'ph:brain', tasks: 'ph:list-checks', automations: 'ph:lightning',
+  memory: 'ph:brain', tasks: 'ph:list-checks', routines: 'ph:lightning',
   svg: 'ph:file-svg', system: 'ph:gear', workspace: 'ph:gear-six',
 }
 

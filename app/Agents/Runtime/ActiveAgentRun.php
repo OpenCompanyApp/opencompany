@@ -75,7 +75,7 @@ class ActiveAgentRun
     }
 
     /**
-     * Code Mode script automations do not pass through Laravel AI tool events. Their
+     * Code Mode script routines do not pass through Laravel AI tool events. Their
      * bridge calls therefore use an independent ordered replay surface.
      */
     public function nextInternalToolSequence(): int

@@ -46,7 +46,7 @@ trait ResolvesVfsDirectEntries
             'channels' => $this->directChannelEntry($agent, $segments, $path),
             'tables' => $this->directTableEntry($agent, $segments, $path),
             'approvals' => $this->directApprovalEntry($agent, $segments, $path),
-            'automations' => $this->directAutomationEntry($segments, $path),
+            'routines' => $this->directRoutineEntry($segments, $path),
             'workspace' => $this->directWorkspaceEntry($segments, $path),
             default => null,
         };

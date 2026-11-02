@@ -63,7 +63,7 @@ index.head = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateTools
-* @see app/Http/Controllers/Api/AgentPermissionController.php:36
+* @see app/Http/Controllers/Api/AgentPermissionController.php:35
 * @route '/api/agents/{id}/permissions/tools'
 */
 export const updateTools = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -78,7 +78,7 @@ updateTools.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateTools
-* @see app/Http/Controllers/Api/AgentPermissionController.php:36
+* @see app/Http/Controllers/Api/AgentPermissionController.php:35
 * @route '/api/agents/{id}/permissions/tools'
 */
 updateTools.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -105,7 +105,7 @@ updateTools.url = (args: { id: string | number } | [id: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateTools
-* @see app/Http/Controllers/Api/AgentPermissionController.php:36
+* @see app/Http/Controllers/Api/AgentPermissionController.php:35
 * @route '/api/agents/{id}/permissions/tools'
 */
 updateTools.put = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -115,7 +115,7 @@ updateTools.put = (args: { id: string | number } | [id: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateChannels
-* @see app/Http/Controllers/Api/AgentPermissionController.php:71
+* @see app/Http/Controllers/Api/AgentPermissionController.php:70
 * @route '/api/agents/{id}/permissions/channels'
 */
 export const updateChannels = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -130,7 +130,7 @@ updateChannels.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateChannels
-* @see app/Http/Controllers/Api/AgentPermissionController.php:71
+* @see app/Http/Controllers/Api/AgentPermissionController.php:70
 * @route '/api/agents/{id}/permissions/channels'
 */
 updateChannels.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -157,7 +157,7 @@ updateChannels.url = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateChannels
-* @see app/Http/Controllers/Api/AgentPermissionController.php:71
+* @see app/Http/Controllers/Api/AgentPermissionController.php:70
 * @route '/api/agents/{id}/permissions/channels'
 */
 updateChannels.put = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -167,7 +167,7 @@ updateChannels.put = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateFolders
-* @see app/Http/Controllers/Api/AgentPermissionController.php:174
+* @see app/Http/Controllers/Api/AgentPermissionController.php:173
 * @route '/api/agents/{id}/permissions/folders'
 */
 export const updateFolders = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -182,7 +182,7 @@ updateFolders.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateFolders
-* @see app/Http/Controllers/Api/AgentPermissionController.php:174
+* @see app/Http/Controllers/Api/AgentPermissionController.php:173
 * @route '/api/agents/{id}/permissions/folders'
 */
 updateFolders.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -209,7 +209,7 @@ updateFolders.url = (args: { id: string | number } | [id: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateFolders
-* @see app/Http/Controllers/Api/AgentPermissionController.php:174
+* @see app/Http/Controllers/Api/AgentPermissionController.php:173
 * @route '/api/agents/{id}/permissions/folders'
 */
 updateFolders.put = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -219,7 +219,7 @@ updateFolders.put = (args: { id: string | number } | [id: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateIntegrations
-* @see app/Http/Controllers/Api/AgentPermissionController.php:104
+* @see app/Http/Controllers/Api/AgentPermissionController.php:103
 * @route '/api/agents/{id}/permissions/integrations'
 */
 export const updateIntegrations = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -234,7 +234,7 @@ updateIntegrations.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateIntegrations
-* @see app/Http/Controllers/Api/AgentPermissionController.php:104
+* @see app/Http/Controllers/Api/AgentPermissionController.php:103
 * @route '/api/agents/{id}/permissions/integrations'
 */
 updateIntegrations.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -261,7 +261,7 @@ updateIntegrations.url = (args: { id: string | number } | [id: string | number ]
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateIntegrations
-* @see app/Http/Controllers/Api/AgentPermissionController.php:104
+* @see app/Http/Controllers/Api/AgentPermissionController.php:103
 * @route '/api/agents/{id}/permissions/integrations'
 */
 updateIntegrations.put = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -271,7 +271,7 @@ updateIntegrations.put = (args: { id: string | number } | [id: string | number ]
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateFileFolders
-* @see app/Http/Controllers/Api/AgentPermissionController.php:139
+* @see app/Http/Controllers/Api/AgentPermissionController.php:138
 * @route '/api/agents/{id}/permissions/file-folders'
 */
 export const updateFileFolders = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -286,7 +286,7 @@ updateFileFolders.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateFileFolders
-* @see app/Http/Controllers/Api/AgentPermissionController.php:139
+* @see app/Http/Controllers/Api/AgentPermissionController.php:138
 * @route '/api/agents/{id}/permissions/file-folders'
 */
 updateFileFolders.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -313,7 +313,7 @@ updateFileFolders.url = (args: { id: string | number } | [id: string | number ] 
 
 /**
 * @see \App\Http\Controllers\Api\AgentPermissionController::updateFileFolders
-* @see app/Http/Controllers/Api/AgentPermissionController.php:139
+* @see app/Http/Controllers/Api/AgentPermissionController.php:138
 * @route '/api/agents/{id}/permissions/file-folders'
 */
 updateFileFolders.put = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({

@@ -5,7 +5,6 @@ namespace Tests\Feature\Vfs;
 use App\Agents\Tools\ToolRegistry;
 use App\Models\AgentPermission;
 use App\Models\ApprovalRequest;
-use App\Models\Automation;
 use App\Models\Channel;
 use App\Models\DataTable;
 use App\Models\DataTableRow;
@@ -13,6 +12,7 @@ use App\Models\DataTableView;
 use App\Models\Document;
 use App\Models\ListItem;
 use App\Models\Message;
+use App\Models\Routine;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkspaceDisk;
@@ -502,7 +502,7 @@ class VfsPaginationTest extends TestCase
         $this->assertSame(1_005, $this->countAll('/channels/by-id', 137, 300));
     }
 
-    public function test_agents_tables_approvals_and_automations_use_mount_owned_keysets(): void
+    public function test_agents_tables_approvals_and_routines_use_mount_owned_keysets(): void
     {
         $otherAgents = collect(range(1, 4))->map(fn (int $index): User => User::factory()->agent()->create([
             'name' => "Paged Agent {$index}",
@@ -528,14 +528,13 @@ class VfsPaginationTest extends TestCase
             'requester_id' => $this->agent->id,
             'title' => "Pagination approval {$index}",
         ]));
-        $automations = collect(range(1, 4))->map(fn (int $index): Automation => Automation::create([
+        $routines = collect(range(1, 4))->map(fn (int $index): Routine => Routine::create([
             'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
-            'name' => "Pagination Automation {$index}",
-            'trigger_type' => 'schedule',
-            'execution_type' => 'prompt',
+            'name' => "Pagination Routine {$index}",
+            'kind' => 'agent',
             'agent_id' => $this->agent->id,
-            'prompt' => 'pagination fixture',
+            'instructions' => 'pagination fixture',
             'cron_expression' => '0 * * * *',
             'timezone' => 'UTC',
             'created_by_id' => $this->agent->id,
@@ -549,7 +548,7 @@ class VfsPaginationTest extends TestCase
         $this->assertEqualsCanonicalizing($rows->pluck('id')->all(), $this->collectBackendIds('/tables/pagination-table/rows/by-id', 2, 10));
         $this->assertEqualsCanonicalizing($views->pluck('id')->all(), $this->collectBackendIds('/tables/pagination-table/views', 2, 10));
         $this->assertEqualsCanonicalizing($approvals->pluck('id')->all(), $this->collectBackendIds('/approvals', 2, 10));
-        $this->assertEqualsCanonicalizing($automations->pluck('id')->all(), $this->collectBackendIds('/automations', 2, 10));
+        $this->assertEqualsCanonicalizing($routines->pluck('id')->all(), $this->collectBackendIds('/routines', 2, 10));
     }
 
     public function test_generated_transcript_table_and_workspace_reads_continue_with_valid_chunks(): void

@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsAgentChanges;
+use App\Models\Contracts\RevertibleContent;
+use App\Models\Concerns\Trashable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,10 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property array<string, mixed>|null $data
  */
-class DataTableRow extends Model
+class DataTableRow extends Model implements RevertibleContent
 {
     /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
-    use HasFactory, HasUuids;
+    // Trashable: delete moves a row to trash; forceDelete is the purge.
+    use HasFactory, HasUuids, RecordsAgentChanges, Trashable;
 
     protected $fillable = [
         'table_id',

@@ -26,6 +26,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Data-only migration using the current Document model. A fresh
+        // database has nothing to refactor, and the model now carries columns
+        // (deleted_at) that later migrations add, so skip early.
+        if (\Illuminate\Support\Facades\DB::table('documents')->doesntExist()) {
+            return;
+        }
+
         $agentsFolder = Document::where('title', 'agents')
             ->whereNull('parent_id')
             ->where('is_folder', true)

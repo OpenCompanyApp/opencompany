@@ -15,7 +15,6 @@
 |
 | - api                   authenticated user id, falling back to client IP
 | - chat_webhooks         client IP + adapter (telegram, slack, ...)
-| - integration_webhooks  client IP + webhook id
 | - telegram_mini_app     client IP + claimed Telegram user, plus an IP ceiling
 | - ai_gateway            gateway API key id, falling back to client IP
 |
@@ -42,11 +41,6 @@ return [
     // rather than drop the update, but sustained throttling still delays chat.
     'chat_webhooks' => [
         'per_minute' => (int) env('RATE_LIMIT_CHAT_WEBHOOKS_PER_MINUTE', 2400),
-    ],
-
-    // Workspace-created incoming integration webhooks (POST /api/webhooks/{id}).
-    'integration_webhooks' => [
-        'per_minute' => (int) env('RATE_LIMIT_INTEGRATION_WEBHOOKS_PER_MINUTE', 300),
     ],
 
     // Telegram Mini App data endpoints. The Telegram user id is read from

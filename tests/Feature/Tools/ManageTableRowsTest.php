@@ -108,7 +108,8 @@ class ManageTableRowsTest extends TestCase
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('Row deleted', $result);
-        $this->assertDatabaseMissing('data_table_rows', [
+        // Delete moves the row to trash (restorable); purge is separate.
+        $this->assertSoftDeleted('data_table_rows', [
             'id' => $row->id,
         ]);
     }

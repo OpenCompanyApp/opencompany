@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::store
-* @see app/Http/Controllers/Api/WorkspaceController.php:23
+* @see app/Http/Controllers/Api/WorkspaceController.php:25
 * @route '/api/workspaces'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::store
-* @see app/Http/Controllers/Api/WorkspaceController.php:23
+* @see app/Http/Controllers/Api/WorkspaceController.php:25
 * @route '/api/workspaces'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::store
-* @see app/Http/Controllers/Api/WorkspaceController.php:23
+* @see app/Http/Controllers/Api/WorkspaceController.php:25
 * @route '/api/workspaces'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::show
-* @see app/Http/Controllers/Api/WorkspaceController.php:52
+* @see app/Http/Controllers/Api/WorkspaceController.php:54
 * @route '/api/workspace'
 */
 export const show = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -50,7 +50,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::show
-* @see app/Http/Controllers/Api/WorkspaceController.php:52
+* @see app/Http/Controllers/Api/WorkspaceController.php:54
 * @route '/api/workspace'
 */
 show.url = (options?: RouteQueryOptions) => {
@@ -59,7 +59,7 @@ show.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::show
-* @see app/Http/Controllers/Api/WorkspaceController.php:52
+* @see app/Http/Controllers/Api/WorkspaceController.php:54
 * @route '/api/workspace'
 */
 show.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -69,7 +69,7 @@ show.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::show
-* @see app/Http/Controllers/Api/WorkspaceController.php:52
+* @see app/Http/Controllers/Api/WorkspaceController.php:54
 * @route '/api/workspace'
 */
 show.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -79,7 +79,7 @@ show.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::update
-* @see app/Http/Controllers/Api/WorkspaceController.php:61
+* @see app/Http/Controllers/Api/WorkspaceController.php:63
 * @route '/api/workspace'
 */
 export const update = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -94,7 +94,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::update
-* @see app/Http/Controllers/Api/WorkspaceController.php:61
+* @see app/Http/Controllers/Api/WorkspaceController.php:63
 * @route '/api/workspace'
 */
 update.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ update.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceController::update
-* @see app/Http/Controllers/Api/WorkspaceController.php:61
+* @see app/Http/Controllers/Api/WorkspaceController.php:63
 * @route '/api/workspace'
 */
 update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({

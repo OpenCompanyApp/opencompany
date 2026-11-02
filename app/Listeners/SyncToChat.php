@@ -324,7 +324,7 @@ class SyncToChat implements ShouldQueue
         // as user-visible chat replies.
         return $message->source === $channel?->external_provider
             || $message->source === 'delegation_result'
-            || $message->source === 'automation_prompt';
+            || $message->source === 'routine_prompt';
     }
 
     private function canSync(Message $message): bool

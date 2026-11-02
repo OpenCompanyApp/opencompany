@@ -17,12 +17,8 @@ use App\Agents\Tools\Lists\ListItemStatuses;
 use App\Agents\Tools\Lists\ListProjects;
 use App\Agents\Tools\Lists\UpdateListItem;
 use App\Agents\Tools\Lists\UpdateListStatus;
-use App\Agents\Tools\Workspace\CreateAutomationRule;
 use App\Agents\Tools\Workspace\CreateItemTemplate;
-use App\Agents\Tools\Workspace\DeleteAutomationRule;
 use App\Agents\Tools\Workspace\DeleteItemTemplate;
-use App\Agents\Tools\Workspace\ListAutomationRules;
-use App\Agents\Tools\Workspace\UpdateAutomationRule;
 use App\Agents\Tools\Workspace\UpdateItemTemplate;
 use App\Models\User;
 use Laravel\Ai\Contracts\Tool;
@@ -30,7 +26,7 @@ use Laravel\Ai\Contracts\Tool;
 /**
  * Registers kanban/list workflow tools.
  *
- * This group spans list items, workflow statuses, rule automation, and item
+ * This group spans list items, workflow statuses, and item
  * templates because agents experience those as one operational board surface.
  */
 class ListsToolProvider implements BuiltInToolProvider
@@ -43,8 +39,8 @@ class ListsToolProvider implements BuiltInToolProvider
     public function groupMeta(): array
     {
         return [
-            'label' => 'list, get, filter, projects, statuses, create, update, delete, comments, convert, rules, templates',
-            'description' => 'Kanban board items, workflow statuses, event rules, and item templates',
+            'label' => 'list, get, filter, projects, statuses, create, update, delete, comments, convert, templates',
+            'description' => 'Kanban board items, workflow statuses, and item templates',
         ];
     }
 
@@ -161,39 +157,11 @@ class ListsToolProvider implements BuiltInToolProvider
                 'description' => 'Convert a list item into an agent task.',
                 'icon' => 'ph:arrow-right',
             ],
-            'list_automation_rules' => [
-                'class' => ListAutomationRules::class,
-                'type' => 'read',
-                'name' => 'List Automation Rules',
-                'description' => 'List all automation rules in the workspace.',
-                'icon' => 'ph:lightning',
-            ],
-            'create_automation_rule' => [
-                'class' => CreateAutomationRule::class,
-                'type' => 'write',
-                'name' => 'Create Automation Rule',
-                'description' => 'Create a new automation rule.',
-                'icon' => 'ph:lightning',
-            ],
-            'update_automation_rule' => [
-                'class' => UpdateAutomationRule::class,
-                'type' => 'write',
-                'name' => 'Update Automation Rule',
-                'description' => 'Update an automation rule.',
-                'icon' => 'ph:lightning',
-            ],
-            'delete_automation_rule' => [
-                'class' => DeleteAutomationRule::class,
-                'type' => 'write',
-                'name' => 'Delete Automation Rule',
-                'description' => 'Delete an automation rule.',
-                'icon' => 'ph:lightning',
-            ],
             'create_item_template' => [
                 'class' => CreateItemTemplate::class,
                 'type' => 'write',
                 'name' => 'Create Item Template',
-                'description' => 'Create a list item template for automation.',
+                'description' => 'Create a reusable list item template.',
                 'icon' => 'ph:copy',
             ],
             'update_item_template' => [
@@ -215,11 +183,8 @@ class ListsToolProvider implements BuiltInToolProvider
 
     public function createTool(string $class, User $agent, array $context = []): Tool
     {
-        // Most list tools need the acting agent for workspace scoping and audit.
-        // Listing automation rules is currently stateless and resolves scope in
-        // the tool itself.
+        // List tools need the acting agent for workspace scoping and audit.
         return match ($class) {
-            ListAutomationRules::class => new ListAutomationRules,
             ListAllItems::class,
             GetListItem::class,
             ListItemsByStatus::class,
@@ -235,9 +200,6 @@ class ListsToolProvider implements BuiltInToolProvider
             UpdateListStatus::class,
             DeleteListStatus::class,
             ConvertListItemToTask::class,
-            CreateAutomationRule::class,
-            UpdateAutomationRule::class,
-            DeleteAutomationRule::class,
             CreateItemTemplate::class,
             UpdateItemTemplate::class,
             DeleteItemTemplate::class => new $class($agent),

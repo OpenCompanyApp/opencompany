@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Models\Concerns\RecordsAgentChanges;
+use App\Models\Contracts\RevertibleContent;
+use App\Models\Concerns\Trashable;
 
 /**
  * ListItem - Items in a kanban board/list (renamed from Task)
@@ -29,10 +32,11 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property \Carbon\Carbon|null $completed_at
  * @property \Carbon\Carbon|null $due_date
  */
-class ListItem extends Model
+class ListItem extends Model implements RevertibleContent
 {
     /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
-    use HasFactory, BelongsToWorkspace;
+    // Trashable: delete moves an item (and a project's items) to trash.
+    use HasFactory, BelongsToWorkspace, RecordsAgentChanges, Trashable;
 
     protected $table = 'list_items';
     protected $keyType = 'string';

@@ -20,7 +20,7 @@ return [
     /*
     | Legacy product-module commands are intentionally opt-in. Telegram's
     | default UX is an agent shell; files, docs, lists, tables, calendar, and
-    | automation work should normally be requested from the current agent.
+    | routine work should normally be requested from the current agent.
     */
     'direct_resource_commands_enabled' => env('TELEGRAM_DIRECT_RESOURCE_COMMANDS_ENABLED', false),
 

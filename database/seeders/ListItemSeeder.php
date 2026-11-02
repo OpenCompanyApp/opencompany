@@ -6,7 +6,6 @@ use App\Models\ListItem;
 use App\Models\ListItemCollaborator;
 use App\Models\ListItemComment;
 use App\Models\ListTemplate;
-use App\Models\ListAutomationRule;
 use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -25,7 +24,6 @@ class ListItemSeeder extends Seeder
 
         $this->createListItems();
         $this->createListTemplates();
-        $this->createAutomationRules();
     }
 
     private function createListItems(): void
@@ -284,53 +282,6 @@ class ListItemSeeder extends Seeder
                 'created_by_id' => 'h1',
                 'is_active' => true,
                 'workspace_id' => $this->workspaceId,
-            ]);
-        }
-    }
-
-    private function createAutomationRules(): void
-    {
-        $bugTemplate = ListTemplate::where('name', 'Bug Fix')->first();
-
-        $rules = [
-            [
-                'name' => 'Auto-assign bugs to Logic',
-                'description' => 'Automatically assign bug items to the coder agent',
-                'trigger_type' => 'task_created',
-                'trigger_conditions' => ['tags_contain' => 'bug'],
-                'action_type' => 'assign_task',
-                'action_config' => ['user_id' => 'a5'],
-                'list_template_id' => $bugTemplate?->id,
-                'trigger_count' => 12,
-                'last_triggered_at' => now()->subDays(2),
-            ],
-            [
-                'name' => 'High priority notification',
-                'description' => 'Notify manager when high priority items are created',
-                'trigger_type' => 'task_created',
-                'trigger_conditions' => ['priority' => 'high'],
-                'action_type' => 'send_notification',
-                'action_config' => ['user_id' => 'a1', 'message' => 'New high priority item created'],
-                'list_template_id' => null,
-                'trigger_count' => 8,
-                'last_triggered_at' => now()->subDays(1),
-            ],
-        ];
-
-        foreach ($rules as $ruleData) {
-            ListAutomationRule::create([
-                'id' => Str::uuid()->toString(),
-                'name' => $ruleData['name'],
-                'description' => $ruleData['description'],
-                'trigger_type' => $ruleData['trigger_type'],
-                'trigger_conditions' => $ruleData['trigger_conditions'],
-                'action_type' => $ruleData['action_type'],
-                'action_config' => $ruleData['action_config'],
-                'list_template_id' => $ruleData['list_template_id'],
-                'is_active' => true,
-                'trigger_count' => $ruleData['trigger_count'],
-                'last_triggered_at' => $ruleData['last_triggered_at'],
-                'created_by_id' => 'h1',
             ]);
         }
     }
