@@ -83,7 +83,7 @@ final class VfsCommandSpecRegistry
             new VfsCommandSpec('cd', 'browse', 'Change the command-local virtual working directory.', usage: 'cd [path]', notes: ['The new cwd lasts for the rest of this command line and is returned as `cwd`; pass it back as the cwd parameter to keep it.', '`cd` with no argument goes to /.']),
             new VfsCommandSpec('ls', 'browse', 'List virtual directory entries.', aliases: ['dir', 'll'], shortFlags: ['1', 'a', 'A', 'l', 'R', 'F', 'd', 'h', 't', 'S', 'r'], notes: [
                 'Directories always end with / (so -F changes nothing) and output is always one entry per line (-1).',
-                '-l prints type, size, modification time and name; size is "-" when the mount does not know it without reading content.',
+                '-l prints mode, size, modification time and name. The mode is a 10-character unix string for you (e.g. dr-x------, -rw-------): r/w from your VFS capabilities, x on readable directories; the VFS has no group/other permissions. Size is "-" when the mount does not know it without reading content.',
                 'Entries whose name starts with . are hidden unless -a or -A; -a also prints ./ and ../.',
                 'When a single directory listing is cut at maxEntries, the last line names the cursor to pass back (vfs_exec cursor parameter).',
             ]),
@@ -132,6 +132,7 @@ final class VfsCommandSpecRegistry
             new VfsCommandSpec('rg', 'read', 'Search VFS text using regex-style matching.', shortFlags: ['i', 'v', 'n', 'c', 'l', 'w', 'x', 'F', 'o', 'q', 's', 'H', 'h'], valueOptions: ['-m', '-A', '-B', '-C', '-e', '--max-depth', '-g', '--glob', '-t', '--type'], longFlags: ['--hidden', '--files'], longAliases: array_diff_key($grepAliases, array_flip(['--files-without-match', '--extended-regexp', '--recursive'])), notes: [
                 ...$grepNotes,
                 'rg always recurses (default path: cwd) and skips names starting with . unless --hidden.',
+                '-r/-R never mean --replace (not supported; use sed): rg -r, -R, -rn, -ril and rg -r PATTERN are read as "recursive", dropped, and noted on stderr. A standalone -r (or a cluster ending in r, like -nr) followed by two or more operands is ambiguous with ripgrep\'s -r REPLACEMENT and fails with invalid_request: drop the -r.',
                 '-g/--glob filters file names (prefix with ! to exclude); -t/--type accepts md, txt, json, csv, yaml, html, xml, ndjson.',
                 '--files lists the files that would be searched.',
             ]),
@@ -140,7 +141,7 @@ final class VfsCommandSpecRegistry
             new VfsCommandSpec('echo', 'read-transform', 'Print arguments to stdout.', shortFlags: ['n', 'e', 'E']),
             new VfsCommandSpec('true', 'read-transform', 'Return exit status 0 with no output.'),
             new VfsCommandSpec('false', 'read-transform', 'Return exit status 1 with no output.'),
-            new VfsCommandSpec('printf', 'read-transform', 'Format arguments with a printf-style format string.', usage: 'printf FORMAT [args ...]', notes: ['Extra arguments re-use the format (bash semantics); %b interprets escapes; missing arguments print as empty/0.']),
+            new VfsCommandSpec('printf', 'read-transform', 'Format arguments with a printf-style format string.', usage: 'printf FORMAT [args ...]', notes: ['Extra arguments re-use the format (bash semantics); %b interprets escapes, and a \\c in a %b argument ends the whole printf output; missing arguments print as empty/0.', '%q quotes an argument so the VFS shell reads it back as one word (a\\ b; single quotes when it has control characters).', 'Widths and precisions are capped at 1048576 and one printf at 4 MiB of output; larger requests fail with invalid_request.']),
             new VfsCommandSpec('sort', 'read-transform', 'Sort lines of stdin or files.', shortFlags: ['r', 'n', 'u', 'f', 'h', 'V', 's', 'M', 'b'], valueOptions: ['-k', '-t'], longAliases: ['--reverse' => '-r', '--numeric-sort' => '-n', '--unique' => '-u', '--ignore-case' => '-f', '--key' => '-k', '--field-separator' => '-t'], notes: ['-k POS1[,POS2][bfnr] selects fields; -u keeps the first line of each run of equal keys.']),
             new VfsCommandSpec('uniq', 'read-transform', 'Filter adjacent duplicate lines of stdin or a file.', shortFlags: ['c', 'd', 'u', 'i'], valueOptions: ['-f', '-s', '-w']),
             new VfsCommandSpec('cut', 'read-transform', 'Select delimited fields or characters from lines.', shortFlags: ['s'], valueOptions: ['-d', '-f', '-c', '-b', '--output-delimiter'], longFlags: ['--complement'], notes: ['-c and -b both count bytes.']),

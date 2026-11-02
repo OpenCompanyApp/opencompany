@@ -24,7 +24,7 @@ use Laravel\Ai\Tools\ToolNameResolver;
  *
  * Schemas: mapped by the same `MapsTools` trait the app's `openai_compat`
  * gateway (DeepSeek driver, OpenCompanyAiProviderFactory) uses, so the model
- * sees the same names (ToolNameResolver: class basenames such as `VfsExec`),
+ * sees the same names (ToolNameResolver: the tools' name(), the slugs such as `vfs_exec`),
  * descriptions and JSON schemas as in production.
  *
  * Execution of unknown tool names: production's gateway silently skips them

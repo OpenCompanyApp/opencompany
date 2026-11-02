@@ -4,8 +4,8 @@
 #
 # What changed against the simulator spec (real contracts, docs/tools/vfs.md):
 # - Five model-visible tools: vfs_exec, vfs_read, vfs_edit, vfs_write,
-#   vfs_patch. Model-facing names are the class basenames the app's gateway
-#   sends (VfsExec, VfsRead, VfsEdit, VfsWrite, VfsPatch).
+#   vfs_patch. Model-facing names are these slugs (the tools' name(); the
+#   2026-11-02 pilot ran before that and saw class basenames such as VfsExec).
 # - Approvals return the non-error `pending_approval` shape (ok: true).
 # - Stale writes fail with `conflict`; vfs_edit with a stale version still
 #   applies when every old_text still matches once (`stale_base: true`).

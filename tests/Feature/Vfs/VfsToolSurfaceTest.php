@@ -335,7 +335,7 @@ class VfsToolSurfaceTest extends TestCase
         $this->permission('tool', 'vfs_patch', 'allow', true);
 
         $edit = collect(app(ToolRegistry::class)->getToolsForAgent($this->agent))
-            ->first(fn (Tool $tool): bool => ToolNameResolver::resolve($tool) === 'VfsEdit');
+            ->first(fn (Tool $tool): bool => ToolNameResolver::resolve($tool) === 'vfs_edit');
         $this->assertNotInstanceOf(ApprovalWrappedTool::class, $edit);
 
         $response = json_decode($edit->handle(new Request([

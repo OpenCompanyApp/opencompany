@@ -270,16 +270,26 @@ trait ExecutesVfsListCommands
     }
 
     /**
-     * Compact mode string from VFS capabilities: type, r (readable), w
-     * (writable/patchable/deletable through some VFS tool).
+     * Ten-character unix mode string built from VFS capabilities, so `ls -l`
+     * output is well-formed for anything that parses it: the type (`d` or
+     * `-`), then the calling agent's own r (readable), w (writable,
+     * patchable or deletable through some VFS tool) and x (a readable
+     * directory can be entered), then `------`: the VFS has no unix
+     * group/other permissions, so those triplets are always empty.
+     * Examples: `dr-x------`, `drwx------`, `-r--------`, `-rw-------`.
      */
     private function lsMode(VfsEntry $entry): string
     {
         $caps = $entry->capabilities;
         $read = $caps === [] || array_intersect($caps, ['read', 'browse', 'search']) !== [];
         $write = array_intersect($caps, ['write', 'patch', 'delete', 'create', 'append']) !== [];
+        $directory = $entry->type === 'directory';
 
-        return ($entry->type === 'directory' ? 'd' : '-').($read ? 'r' : '-').($write ? 'w' : '-');
+        return ($directory ? 'd' : '-')
+            .($read ? 'r' : '-')
+            .($write ? 'w' : '-')
+            .($directory && $read ? 'x' : '-')
+            .'------';
     }
 
     private function humanSize(int $bytes): string
