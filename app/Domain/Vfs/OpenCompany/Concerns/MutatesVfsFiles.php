@@ -5,14 +5,38 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 use App\Domain\Vfs\Core\VfsError;
 use App\Models\User;
 use App\Models\WorkspaceFile;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Workspace file write, move/copy destination, and folder-scope helpers for VFS mutations.
+ *
+ * Owns the locked compare-and-write for WorkspaceFile rows. Folder scope uses
+ * AgentPermissionService; workspace scope comes from forWorkspace() plus the
+ * facade's assertBoundWorkspace() (which makes $agent->workspace_id and the
+ * bound workspace interchangeable here).
  */
 trait MutatesVfsFiles
 {
     /**
+     * Create or overwrite one workspace file as a locked compare-and-write.
+     *
+     * $content is either the bytes to write, or (for text patches) a transform
+     * `fn(string $lockedContent, ?string $lockedVersion): array{content, replacements, stale_base}`
+     * that is evaluated against the file as it is under the row lock. The
+     * transform owns its own staleness rule (content-anchored); a raw string
+     * write is strict: a supplied $version that differs from the locked
+     * version fails with `conflict`, including when the file no longer exists.
+     *
+     * Ordering: folder-scope checks, then the (optional) vfs_write policy, then
+     * the transaction. The policy may create an approval, so it must not run
+     * inside the transaction.
+     *
+     * Disk bytes are written inside the DB transaction. A later rollback can't
+     * un-write them, but the row lock still serializes VFS writers on the same
+     * file, which is the guarantee this method makes.
+     *
      * @param  list<string>  $segments
+     * @param  string|\Closure(string, ?string): array{content: string, replacements: int, stale_base: bool}  $content
      * @param  array<string, mixed>|null  $toolParameters
      * @param  bool  $enforceWritePermission  False only for a caller that already enforced its own composed mutation policy, such as vfs_patch or VfsCommandExecutor.
      * @return array<string, mixed>
@@ -21,7 +45,7 @@ trait MutatesVfsFiles
         User $agent,
         array $segments,
         string $path,
-        string $content,
+        string|\Closure $content,
         string $mode,
         ?string $version,
         ?array $toolParameters = null,
@@ -35,7 +59,11 @@ trait MutatesVfsFiles
             if ($existing->is_folder || ! $this->permissions->canAccessFilePath($agent, $existing)) {
                 throw VfsError::permissionDenied($path, 'file folder scope');
             }
-            $this->assertVersion($version, $this->fileVersion($existing), $path);
+            // Cheap unlocked precheck so a stale raw write fails before it can
+            // create an approval. The authoritative check is under the lock.
+            if (is_string($content)) {
+                $this->assertVersion($version, $this->fileVersion($existing), $path);
+            }
         }
 
         if ($mode === 'create' && $existing) {
@@ -54,7 +82,7 @@ trait MutatesVfsFiles
         if ($enforceWritePermission) {
             $toolParameters ??= array_filter([
                 'path' => $path,
-                'content' => $content,
+                'content' => is_string($content) ? $content : null,
                 'mode' => $mode,
                 'version' => $version,
             ], fn (mixed $value): bool => $value !== null);
@@ -63,7 +91,7 @@ trait MutatesVfsFiles
                 $path,
                 ['vfs_write'],
                 $toolParameters,
-                isset($toolParameters['channelId']) && is_string($toolParameters['channelId']) ? $toolParameters['channelId'] : null,
+                $this->channelIdFrom($toolParameters),
                 ['kind' => 'workspace_file', 'mode' => $mode, 'name' => $name],
                 'write',
                 'Raw workspace-file writes require vfs_write.',
@@ -78,13 +106,55 @@ trait MutatesVfsFiles
             }
         }
 
-        $file = $this->files->writeFile($agent->workspace_id, $folder?->id, $name, $content, $agent->id);
+        [$file, $applied] = DB::transaction(function () use ($agent, $path, $content, $mode, $version, $existing, $folder, $name): array {
+            // Invariant: lock, then read, then compare, then write.
+            $locked = WorkspaceFile::forWorkspace()
+                ->where('parent_id', $folder?->id)
+                ->where('name', $name)
+                ->where('is_folder', false)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing !== null && ($locked === null || $locked->id !== $existing->id)) {
+                // The file this write was planned against was deleted or
+                // replaced concurrently.
+                throw VfsError::conflict($path, null, $version, 'The file was removed or replaced since your read. Read it again before writing.');
+            }
+            if ($existing === null && $locked !== null && $mode === 'create') {
+                throw VfsError::invalid("Path already exists: {$path}", ['path' => $path]);
+            }
+
+            $lockedContent = '';
+            $lockedVersion = null;
+            if ($locked !== null) {
+                if ($content instanceof \Closure && $this->isTextFile($locked)) {
+                    $lockedContent = (string) $this->files->readFileContents($locked);
+                    $lockedVersion = $this->version($locked->updated_at?->toIso8601String(), $lockedContent);
+                } else {
+                    $lockedVersion = $this->fileVersion($locked);
+                }
+            }
+
+            $applied = null;
+            if ($content instanceof \Closure) {
+                $applied = $content($lockedContent, $lockedVersion);
+                $bytes = $applied['content'];
+            } else {
+                if ($version !== null && ($lockedVersion === null || ! hash_equals($lockedVersion, $version))) {
+                    throw VfsError::conflict($path, $lockedVersion, $version, 'Read the file again and retry with its current version.');
+                }
+                $bytes = $content;
+            }
+
+            return [$this->files->writeFile($agent->workspace_id, $folder?->id, $name, $bytes, $agent->id), $applied];
+        });
 
         return [
             'status' => $existing ? 'updated' : 'created',
             'path' => '/files'.$file->getVirtualPath(),
             'canonical_path' => "/files/by-id/{$file->id}",
             'version' => $this->fileVersion($file),
+            ...($applied !== null ? $this->textPatchResultFields($applied) : []),
         ];
     }
 

@@ -2,23 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Agents\Tools\Vfs\VfsCount;
-use App\Agents\Tools\Vfs\VfsCp;
-use App\Agents\Tools\Vfs\VfsExec;
-use App\Agents\Tools\Vfs\VfsExists;
-use App\Agents\Tools\Vfs\VfsFind;
-use App\Agents\Tools\Vfs\VfsLs;
-use App\Agents\Tools\Vfs\VfsMkdir;
-use App\Agents\Tools\Vfs\VfsMv;
-use App\Agents\Tools\Vfs\VfsPatch;
-use App\Agents\Tools\Vfs\VfsRead;
-use App\Agents\Tools\Vfs\VfsRg;
-use App\Agents\Tools\Vfs\VfsRm;
-use App\Agents\Tools\Vfs\VfsSearch;
-use App\Agents\Tools\Vfs\VfsStat;
-use App\Agents\Tools\Vfs\VfsWrite;
-use App\Domain\Vfs\Core\VfsBudget;
-use App\Domain\Vfs\Core\VfsCommandExecutor;
+use App\Agents\Tools\System\ApprovalWrappedTool;
+use App\Agents\Tools\ToolRegistry;
 use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Models\User;
@@ -31,9 +16,18 @@ use Laravel\Ai\Tools\Request as ToolRequest;
  * Local VFS smoke-test helper for running VFS shell commands as Atlas.
  *
  * This command is intentionally app-local test ergonomics, not an agent-facing
- * tool. It binds the selected agent's workspace and then executes a VFS shell
- * command through the real VFS command executor so developers can inspect
- * permissions, paths, command coverage, and structured output quickly.
+ * tool. It runs a VFS shell command (through the vfs_exec tool) or a direct VFS
+ * primitive as one agent so developers can inspect permissions, paths, command
+ * coverage, and structured output quickly.
+ *
+ * Boundaries (do not relax):
+ * - Only runs in the local and testing environments.
+ * - The agent is resolved only inside one workspace: --workspace (id or
+ *   slug), or the already-bound currentWorkspace. It never guesses
+ *   Workspace::first() and never rewrites the agent's workspace_id.
+ * - Tools are dispatched with the same permission decision and
+ *   ApprovalWrappedTool wrapping the agent runtime applies, so an
+ *   approval-gated primitive creates a normal approval instead of running.
  *
  * Use --primitive when the smoke test needs to hit the same direct VFS tool
  * primitive an agent or Code Mode helper would use, such as vfs_patch or vfs_read.
@@ -43,6 +37,7 @@ class VfsAtlasCommand extends Command
     protected $signature = 'vfs:atlas
         {vfsCommand?* : VFS command tokens, or one quoted VFS command string}
         {--agent=Atlas : Agent name, email, or ID to execute as}
+        {--workspace= : Workspace ID or slug to resolve the agent in (defaults to the bound workspace)}
         {--primitive= : Direct VFS primitive to run instead of shell command: exec, ls, stat, read, write, patch, find, rg, search, count, exists, mkdir, cp, mv, rm}
         {--input= : JSON object payload for --primitive}
         {--arg=* : Primitive payload key=value pair; repeat as needed}
@@ -58,8 +53,14 @@ class VfsAtlasCommand extends Command
 
     protected $description = 'Execute a VFS shell command as the Atlas agent for local testing';
 
-    public function handle(VfsCommandExecutor $executor): int
+    public function handle(ToolRegistry $registry): int
     {
+        if (! app()->environment(['local', 'testing'])) {
+            $this->error('vfs:atlas is a local smoke-test helper and only runs in the local or testing environment.');
+
+            return self::FAILURE;
+        }
+
         $command = $this->commandString();
         $primitive = trim((string) $this->option('primitive'));
         if ($command === '' && $primitive === '') {
@@ -68,52 +69,71 @@ class VfsAtlasCommand extends Command
             return self::FAILURE;
         }
 
-        $agent = $this->resolveAgent((string) $this->option('agent'));
-        if (! $agent) {
-            $this->error("Agent not found: {$this->option('agent')}");
+        $workspace = $this->resolveWorkspace();
+        if (! $workspace) {
+            $this->error('No workspace selected. Pass --workspace=<id or slug>.');
 
             return self::FAILURE;
         }
 
-        $this->bindWorkspace($agent);
+        $agent = $this->resolveAgent((string) $this->option('agent'), $workspace);
+        if (! $agent) {
+            $this->error("Agent not found in workspace {$workspace->slug}: {$this->option('agent')}");
+
+            return self::FAILURE;
+        }
+
+        app()->instance('currentWorkspace', $workspace);
 
         if ($primitive !== '') {
-            return $this->runPrimitive($primitive, $command, $agent);
+            return $this->runPrimitive($primitive, $command, $agent, $registry);
         }
 
         try {
-            $result = $executor->execute(
-                $agent,
-                $command,
-                (string) $this->option('cwd'),
-                new VfsBudget(
-                    maxEntries: $this->integerOption('max-entries', 100, 1),
-                    maxDepth: $this->integerOption('max-depth', 3, 0),
-                    maxBytes: $this->integerOption('max-bytes', 100000, 1),
-                    maxFiles: $this->integerOption('max-files', 100, 1),
-                    maxMatches: $this->integerOption('max-matches', 100, 1),
-                ),
-                [
-                    'command' => $command,
-                    'cwd' => (string) $this->option('cwd'),
-                    'source' => 'artisan:vfs:atlas',
-                ],
-            );
-
-            $this->renderResult($command, $agent, $result);
-
-            return ($result['ok'] ?? true) === true ? self::SUCCESS : self::FAILURE;
+            $tool = $this->dispatchableTool('vfs_exec', $agent, $registry);
+            $response = $tool->handle(new ToolRequest([
+                'command' => $command,
+                'cwd' => (string) $this->option('cwd'),
+                'maxEntries' => $this->integerOption('max-entries', 100, 1),
+                'maxDepth' => $this->integerOption('max-depth', 3, 0),
+                'maxBytes' => $this->integerOption('max-bytes', 100000, 1),
+                'maxFiles' => $this->integerOption('max-files', 100, 1),
+                'maxMatches' => $this->integerOption('max-matches', 100, 1),
+                'source' => 'artisan:vfs:atlas',
+            ]));
         } catch (VfsError $e) {
             $this->renderError($e);
 
             return self::FAILURE;
         }
+
+        $result = json_decode($response, true);
+        if (! is_array($result)) {
+            // ApprovalWrappedTool answers in prose when the primitive itself
+            // is approval-gated; nothing ran.
+            $this->line($response);
+
+            return self::FAILURE;
+        }
+        if (($result['ok'] ?? true) === false && is_array($result['error'] ?? null)) {
+            $this->renderError(new VfsError(
+                (string) ($result['error']['code'] ?? 'internal_error'),
+                (string) ($result['error']['message'] ?? 'VFS command failed.'),
+                is_array($result['error']['context'] ?? null) ? $result['error']['context'] : [],
+            ));
+
+            return self::FAILURE;
+        }
+
+        $this->renderResult($command, $agent, $result);
+
+        return ($result['ok'] ?? true) === true ? self::SUCCESS : self::FAILURE;
     }
 
-    private function runPrimitive(string $primitive, string $command, User $agent): int
+    private function runPrimitive(string $primitive, string $command, User $agent, ToolRegistry $registry): int
     {
         try {
-            $tool = $this->makePrimitiveTool($primitive, $agent);
+            $tool = $this->makePrimitiveTool($primitive, $agent, $registry);
             $payload = $this->primitivePayload();
             if ($this->canonicalPrimitiveName($primitive) === 'exec' && ! isset($payload['command']) && $command !== '') {
                 $payload['command'] = $command;
@@ -123,7 +143,7 @@ class VfsAtlasCommand extends Command
             $this->renderPrimitiveResult($this->canonicalPrimitiveName($primitive), $agent, $payload, $response);
             $decoded = json_decode($response, true);
 
-            return is_array($decoded) && ($decoded['ok'] ?? true) === false
+            return ! is_array($decoded) || ($decoded['ok'] ?? true) === false
                 ? self::FAILURE
                 : self::SUCCESS;
         } catch (VfsError $e) {
@@ -133,6 +153,30 @@ class VfsAtlasCommand extends Command
         }
     }
 
+    /**
+     * Resolve the tool exactly as the runtime would hand it to this agent:
+     * re-evaluate permission now, refuse denied tools, and wrap
+     * approval-gated ones in ApprovalWrappedTool.
+     */
+    private function dispatchableTool(string $slug, User $agent, ToolRegistry $registry): Tool
+    {
+        $dispatch = $registry->resolveScriptToolForDispatch($slug, $agent);
+        if ($dispatch['decision'] === 'deny') {
+            throw VfsError::permissionDenied($slug, $dispatch['reason']);
+        }
+
+        $tool = $dispatch['decision'] === 'allow'
+            ? ($dispatch['tool'] ?? null)
+            : $registry->instantiateToolBySlug($slug, $agent);
+        if (! $tool instanceof Tool) {
+            throw VfsError::invalid("Tool not available: {$slug}", ['tool' => $slug]);
+        }
+
+        return $dispatch['decision'] === 'approval_required'
+            ? new ApprovalWrappedTool($tool, $agent, $slug, $registry->getToolDefinitionBySlug($slug) ?? [])
+            : $tool;
+    }
+
     private function commandString(): string
     {
         $parts = $this->argument('vfsCommand');
@@ -140,35 +184,37 @@ class VfsAtlasCommand extends Command
         return trim(implode(' ', array_map('strval', $parts)));
     }
 
-    private function resolveAgent(string $identifier): ?User
+    /**
+     * The explicit --workspace (id or slug), else the bound workspace. Never
+     * falls back to an arbitrary workspace.
+     */
+    private function resolveWorkspace(): ?Workspace
     {
-        $currentWorkspace = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
-        $currentWorkspaceId = $currentWorkspace instanceof Workspace ? $currentWorkspace->id : null;
+        $identifier = trim((string) $this->option('workspace'));
+        if ($identifier !== '') {
+            return Workspace::query()
+                ->whereKey($identifier)
+                ->orWhere('slug', $identifier)
+                ->first();
+        }
 
+        $bound = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
+
+        return $bound instanceof Workspace ? $bound : null;
+    }
+
+    /** Resolve an agent by id, name, or email strictly inside $workspace. */
+    private function resolveAgent(string $identifier, Workspace $workspace): ?User
+    {
         return User::query()
             ->where('type', 'agent')
+            ->where('workspace_id', $workspace->id)
             ->where(function ($query) use ($identifier): void {
                 $query->whereKey($identifier)
                     ->orWhere('name', $identifier)
                     ->orWhere('email', $identifier);
             })
-            ->when(
-                $currentWorkspaceId !== null,
-                fn ($query) => $query->orderByRaw('CASE WHEN workspace_id = ? THEN 0 WHEN workspace_id IS NULL THEN 2 ELSE 1 END', [$currentWorkspaceId]),
-                fn ($query) => $query->orderByRaw('CASE WHEN workspace_id IS NULL THEN 1 ELSE 0 END'),
-            )
             ->first();
-    }
-
-    private function bindWorkspace(User $agent): void
-    {
-        $workspace = $agent->workspace_id
-            ? Workspace::find($agent->workspace_id)
-            : Workspace::first();
-        if ($workspace) {
-            $agent->workspace_id ??= $workspace->id;
-            app()->instance('currentWorkspace', $workspace);
-        }
     }
 
     /**
@@ -206,31 +252,18 @@ class VfsAtlasCommand extends Command
         return json_last_error() === JSON_ERROR_NONE ? $decoded : $value;
     }
 
-    private function makePrimitiveTool(string $primitive, User $agent): Tool
+    private function makePrimitiveTool(string $primitive, User $agent, ToolRegistry $registry): Tool
     {
-        $class = match ($this->canonicalPrimitiveName($primitive)) {
-            'count' => VfsCount::class,
-            'cp' => VfsCp::class,
-            'exec' => VfsExec::class,
-            'exists' => VfsExists::class,
-            'find' => VfsFind::class,
-            'ls' => VfsLs::class,
-            'mkdir' => VfsMkdir::class,
-            'mv' => VfsMv::class,
-            'patch' => VfsPatch::class,
-            'read' => VfsRead::class,
-            'rg' => VfsRg::class,
-            'rm' => VfsRm::class,
-            'search' => VfsSearch::class,
-            'stat' => VfsStat::class,
-            'write' => VfsWrite::class,
-            default => throw VfsError::invalid('Unknown VFS primitive.', [
+        $supported = ['exec', 'ls', 'stat', 'read', 'write', 'patch', 'find', 'rg', 'search', 'count', 'exists', 'mkdir', 'cp', 'mv', 'rm'];
+        $name = $this->canonicalPrimitiveName($primitive);
+        if (! in_array($name, $supported, true)) {
+            throw VfsError::invalid('Unknown VFS primitive.', [
                 'primitive' => $primitive,
-                'supported' => ['exec', 'ls', 'stat', 'read', 'write', 'patch', 'find', 'rg', 'search', 'count', 'exists', 'mkdir', 'cp', 'mv', 'rm'],
-            ]),
-        };
+                'supported' => $supported,
+            ]);
+        }
 
-        return app()->makeWith($class, ['agent' => $agent]);
+        return $this->dispatchableTool('vfs_'.$name, $agent, $registry);
     }
 
     private function canonicalPrimitiveName(string $primitive): string

@@ -3,6 +3,8 @@
 namespace App\Domain\Vfs\Core\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\Core\VfsPath;
+use App\Domain\Vfs\Core\VfsText;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -255,14 +257,9 @@ trait ExecutesVfsMutationCommands
         $paths = $this->pathArgsWithValueOptions($tokens, $cwd, []);
         $path = $paths[0] ?? throw VfsError::invalid('tee requires a destination path.');
         $content = $stdin ?? '';
+        $this->assertNotPersistingTruncatedOutput($content, $path);
         if ($append) {
-            try {
-                $content = $this->vfs->read($agent, $path).$content;
-            } catch (VfsError $e) {
-                if ($e->errorCode !== 'not_found') {
-                    throw $e;
-                }
-            }
+            $content = $this->existingContentForAppend($agent, $path).$content;
         }
 
         $result = $this->vfs->write($agent, $path, $content, 'overwrite', permissionAlreadyChecked: true);
@@ -276,7 +273,8 @@ trait ExecutesVfsMutationCommands
             agent: $agent,
             directToolSlug: 'vfs_exec',
             operation: 'exec_write',
-            subject: $this->currentCommand !== '' ? $this->currentCommand : 'VFS command',
+            // Must match ApprovalExecutionService's replay subject exactly.
+            subject: VfsPath::commandSubject($this->currentCommand),
             requiredTools: ['vfs_exec', $toolSlug],
             parameters: $this->currentToolParameters,
             channelId: isset($this->currentToolParameters['channelId']) && is_string($this->currentToolParameters['channelId'])
@@ -288,6 +286,45 @@ trait ExecutesVfsMutationCommands
                 'command' => $this->currentCommand,
             ],
         );
+    }
+
+    /**
+     * Full current content of an append target, or '' when it does not exist.
+     *
+     * Invariant: append is read-modify-write, so this must be a content read.
+     * A display read would persist the "[... truncated]" line and drop every
+     * byte past maxBytes.
+     */
+    private function existingContentForAppend(User $agent, string $path): string
+    {
+        try {
+            return $this->vfs->readContent($agent, $path);
+        } catch (VfsError $e) {
+            if ($e->errorCode !== 'not_found') {
+                throw $e;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Refuse to persist command output that carries the display truncation
+     * line produced by a budget-truncated read in this execution (e.g.
+     * `cat big.md > /files/copy.md` with the default maxBytes). The visible
+     * line stays in stdout for agents; it must never become file content.
+     *
+     * Both conditions are required so a file that merely documents the marker
+     * text can still be copied when nothing was truncated.
+     */
+    private function assertNotPersistingTruncatedOutput(string $content, string $path): void
+    {
+        if (($this->currentBudget?->truncations() ?? 0) > 0 && VfsText::hasTruncationMarker($content)) {
+            throw VfsError::invalid("Refusing to write truncated output to {$path}: an input read in this command was cut at maxBytes.", [
+                'path' => $path,
+                'hint' => 'Raise maxBytes so the read is complete, or use cp to copy whole files.',
+            ]);
+        }
     }
 
     /**
@@ -324,14 +361,9 @@ trait ExecutesVfsMutationCommands
 
             $this->assertWriteCommandAllowed($agent, 'vfs_write');
             $content = (string) ($result['stdout'] ?? '');
+            $this->assertNotPersistingTruncatedOutput($content, $redirect['path']);
             if ($redirect['mode'] === 'append') {
-                try {
-                    $content = $this->vfs->read($agent, $redirect['path']).$content;
-                } catch (VfsError $e) {
-                    if ($e->errorCode !== 'not_found') {
-                        throw $e;
-                    }
-                }
+                $content = $this->existingContentForAppend($agent, $redirect['path']).$content;
             }
 
             $this->vfs->write($agent, $redirect['path'], $content, 'overwrite', permissionAlreadyChecked: true);

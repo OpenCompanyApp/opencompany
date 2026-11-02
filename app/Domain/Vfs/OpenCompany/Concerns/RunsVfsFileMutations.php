@@ -19,6 +19,7 @@ trait RunsVfsFileMutations
      */
     public function makeDirectory(User $agent, string $path): array
     {
+        $this->assertBoundWorkspace($agent);
         $path = $this->normalizePath($path);
         $relative = $this->filesRelativePath($agent, $path);
         if ($relative === '') {
@@ -56,6 +57,7 @@ trait RunsVfsFileMutations
      */
     public function touch(User $agent, string $path): array
     {
+        $this->assertBoundWorkspace($agent);
         $path = $this->normalizePath($path);
         $relative = $this->filesRelativePath($agent, $path);
         $file = $this->files->resolveVirtualPath('/'.$relative, $agent->workspace_id);
@@ -81,6 +83,7 @@ trait RunsVfsFileMutations
      */
     public function remove(User $agent, string $path): array
     {
+        $this->assertBoundWorkspace($agent);
         $path = $this->normalizePath($path);
         $file = $this->resolveFileOnlyPath($agent, $path);
         if (! $this->permissions->canAccessFilePath($agent, $file)) {
@@ -97,6 +100,7 @@ trait RunsVfsFileMutations
      */
     public function copy(User $agent, string $source, string $destination): array
     {
+        $this->assertBoundWorkspace($agent);
         $source = $this->normalizePath($source);
         $destination = $this->normalizePath($destination);
         $file = $this->resolveFileOnlyPath($agent, $source);
@@ -126,6 +130,7 @@ trait RunsVfsFileMutations
      */
     public function move(User $agent, string $source, string $destination): array
     {
+        $this->assertBoundWorkspace($agent);
         $source = $this->normalizePath($source);
         $destination = $this->normalizePath($destination);
         $file = $this->resolveFileOnlyPath($agent, $source);
@@ -159,6 +164,8 @@ trait RunsVfsFileMutations
      */
     public function truncate(User $agent, string $path): array
     {
+        $this->assertBoundWorkspace($agent);
+
         return $this->write($agent, $path, '', 'overwrite', permissionAlreadyChecked: true);
     }
 }

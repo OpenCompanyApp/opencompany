@@ -15,6 +15,7 @@ final class VfsMutationDecision
 {
     /**
      * @param  list<string>  $requiredTools
+     * @param  list<string>  $approvalTools  Every required tool that is approval-gated and not yet approved, in requiredTools order. approvalTool is its first element (kept for metadata compatibility).
      */
     public function __construct(
         public readonly string $status,
@@ -25,6 +26,7 @@ final class VfsMutationDecision
         public readonly ?string $approvalTool = null,
         public readonly string $hint = '',
         public readonly ?string $deniedReason = null,
+        public readonly array $approvalTools = [],
     ) {}
 
     public function allowedForCapability(): bool
@@ -45,6 +47,7 @@ final class VfsMutationDecision
             'mutation_requires_approval' => $this->status === 'requires_approval',
             ...($this->deniedTool ? ['mutation_denied_tool' => $this->deniedTool] : []),
             ...($this->approvalTool ? ['mutation_approval_tool' => $this->approvalTool] : []),
+            ...($this->approvalTools !== [] ? ['mutation_approval_tools' => $this->approvalTools] : []),
             ...($this->deniedReason ? ['mutation_denied_reason' => $this->deniedReason] : []),
         ];
     }
@@ -67,6 +70,7 @@ final class VfsMutationDecision
             'requires_approval' => $this->status === 'requires_approval',
             ...($this->deniedTool ? ['denied_tool' => $this->deniedTool] : []),
             ...($this->approvalTool ? ['approval_tool' => $this->approvalTool] : []),
+            ...($this->approvalTools !== [] ? ['approval_tools' => $this->approvalTools] : []),
             ...($this->deniedReason ? ['denied_reason' => $this->deniedReason] : []),
         ];
     }

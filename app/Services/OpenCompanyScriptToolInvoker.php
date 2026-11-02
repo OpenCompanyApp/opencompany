@@ -37,9 +37,36 @@ class OpenCompanyScriptToolInvoker implements ScriptToolInvoker
 
     private int $sequence = 0;
 
+    /**
+     * Host-classified effect for the next dispatch of one tool slug.
+     *
+     * ScriptBridge asks getToolMeta() for the effect before it normalizes
+     * arguments, so it cannot see that `app.vfs.shell("rm ...")` writes while
+     * `app.vfs.shell("ls")` reads. CodeBridge classifies the call from its raw
+     * arguments and records the result here immediately before dispatching;
+     * the hint is consumed by the next invoke() (or cleared by the next
+     * CodeBridge call), so it never leaks to a different callback.
+     *
+     * @var array{slug: string, effect: 'read'|'write'}|null
+     */
+    private ?array $nextCallEffect = null;
+
+    /**
+     * Classify the immediately following dispatch of $toolSlug. Only CodeBridge
+     * calls this, with an effect it derived itself; null clears the hint.
+     *
+     * @param  'read'|'write'|null  $effect
+     */
+    public function classifyNextCall(string $toolSlug, ?string $effect): void
+    {
+        $this->nextCallEffect = $effect === null ? null : ['slug' => $toolSlug, 'effect' => $effect];
+    }
+
     public function invoke(string $toolSlug, array $args, ?string $account = null): mixed
     {
         $runtime = $this->runtime ?? new IntegrationRuntime($this->registry);
+        $effect = $this->classifiedEffect($toolSlug);
+        $this->nextCallEffect = null;
 
         // IntegrationRuntime handles permission evaluation and package/MCP
         // dispatch. Do not bypass it here just because Code Mode resolved a
@@ -49,7 +76,16 @@ class OpenCompanyScriptToolInvoker implements ScriptToolInvoker
             'source_digest' => $this->sourceDigest,
             'code_invocation_id' => $this->codeInvocationId,
             'sequence' => ++$this->sequence,
+            // Upgrade-only: IntegrationRuntime treats 'write' as "receipt
+            // required" and ignores anything else in favor of the registry.
+            'effect' => $effect,
         ]);
+    }
+
+    /** @return 'read'|'write'|null */
+    private function classifiedEffect(string $toolSlug): ?string
+    {
+        return ($this->nextCallEffect['slug'] ?? null) === $toolSlug ? $this->nextCallEffect['effect'] : null;
     }
 
     public function getToolMeta(string $toolSlug): array
@@ -61,6 +97,10 @@ class OpenCompanyScriptToolInvoker implements ScriptToolInvoker
         // Unknown/custom providers are treated as writes: optimistic reads can
         // cause an ambiguous external effect to become retryable.
         $meta['type'] = $this->registry->getToolTypeBySlug($toolSlug) === 'read' ? 'read' : 'write';
+        // A host classification may only make a registered read stricter.
+        if ($this->classifiedEffect($toolSlug) === 'write') {
+            $meta['type'] = 'write';
+        }
 
         return $meta;
     }

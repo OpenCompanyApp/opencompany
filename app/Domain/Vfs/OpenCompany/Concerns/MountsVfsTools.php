@@ -215,7 +215,7 @@ trait MountsVfsTools
                 'Budgets are hard limits for returned/scanned work. `vfs_exec` accepts `maxEntries`, `maxDepth`, `maxBytes`, `maxFiles`, and `maxMatches`; structured helpers accept camelCase or snake_case aliases. Directory counts are sampled unless `count_is_exact` is true; inspect `returned`, `limit`, `truncated`, `next_cursor`, `skipped`, `count_mode`, `sampled_count`, and `total_count`. Pass `next_cursor` back as `cursor` to continue `vfs_ls`, `vfs_find`, and `vfs_count`; `vfs_read` also pages channel transcripts, table-row NDJSON, and the workspace roster. Those generated reads emit only complete records within `maxBytes`; an oversized leading record reports `context.minimum_bytes` for a safe retry.',
                 '`jq` is a safe subset for JSON projections: `.`, `.field`, `.[0]`, `.items[]`, `.items[].name`, `.["key"]`, `length`, sorted `keys`, `has("key")`, `map(.field)`, `select(.field == "value")`, simple numeric arithmetic, stdin, NDJSON, and one or more file arguments. `-r` is accepted; scalar output is raw by default. `-c` emits compact JSON.',
                 'Safe binary-adjacent inspection is available through bounded text APIs: `xxd`, `strings`, `iconv`, and gzip text pipelines through `gzip`, `gunzip`, `zcat`, and `zgrep`. `tar`, `zip`, and `unzip` support bounded archive create/list/print/extract flows; extraction writes only under `/files` and requires `vfs_write`. Mutating shell commands through `vfs_exec` compose `vfs_exec` plus `vfs_write`, so approval on either permission is respected. `split`, `csplit`, `mktemp`, and non-symlink `ln` use the same write permission model. `ln -s` is recognized but rejected until VFS has first-class symlink entries.',
-                'Code Mode helpers return the same `{ok, result, error}` hash as the direct tools; list-like results live under `result[:items]` or `result[:matches]`. `app.vfs.shell(command: "...", response_format: "structured", include_command_spec: true)` keeps stdout text but enriches `data` and diagnostics for programmatic workflows.',
+                'Code Mode helpers return the same `{ok, result}` hash as the direct tools; list-like results live under `result[:items]` or `result[:matches]`. A result with `ok: false` raises instead, with the VFS error code as the failure type; an approval created by VFS policy stops the execution as approval-pending. `app.vfs.grep` is literal unless `regex: true` is passed. `app.vfs.shell(command: "...", response_format: "structured", include_command_spec: true)` keeps stdout text but enriches `data` and diagnostics for programmatic workflows.',
                 '`vfs_write` defaults to create. Scripts should pass `mode: "create"` or `mode: "overwrite"` explicitly.',
             ]);
         }
@@ -226,6 +226,6 @@ trait MountsVfsTools
 
         $content ??= "Tool catalog is exposed in the agent system prompt and Code Mode docs.\n\nUse code_read_doc(\"overview\") and code_read_doc(\"vfs\") for programmable tool access.";
 
-        return VfsText::truncate($content, $budget->maxBytes);
+        return VfsText::fit($content, $budget, $path);
     }
 }

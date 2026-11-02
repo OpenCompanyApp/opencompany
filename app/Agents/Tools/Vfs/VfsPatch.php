@@ -2,6 +2,7 @@
 
 namespace App\Agents\Tools\Vfs;
 
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsOperationLog;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
@@ -10,7 +11,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class VfsPatch implements Tool
+class VfsPatch implements ReturnsVfsEnvelope, Tool
 {
     public function __construct(
         private readonly User $agent,
@@ -69,8 +70,8 @@ class VfsPatch implements Tool
     {
         return [
             'path' => $schema->string()->required()->description('Virtual path to patch, preferably canonical. /docs/by-id/... requires an explicit allowed document-folder scope; table rows require update_table_row; agent identity/memory paths enforce relationship-specific write rules.'),
-            'patch' => $schema->string()->required()->description('Patch content. Use JSON {"search":"old","replace":"new"}, table row JSON {"data": {...}}, or a <<<<<<< SEARCH / ======= / >>>>>>> REPLACE block.'),
-            'version' => $schema->string()->description('Optional version token from stat. If provided, the patch fails when stale.'),
+            'patch' => $schema->string()->required()->description('Patch content. Use JSON {"search":"old","replace":"new"} (search must match exactly once unless "replace_all": true), table row JSON {"data": {...}} with optional "base": {...} of values you read, or a <<<<<<< SEARCH / ======= / >>>>>>> REPLACE block.'),
+            'version' => $schema->string()->description('Optional version token from stat/read. If stale, record patches fail with conflict; text patches still apply when the search text matches exactly once in the current content (result.stale_base: true).'),
         ];
     }
 

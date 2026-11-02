@@ -2,6 +2,7 @@
 
 namespace App\Agents\Tools\Vfs;
 
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsOperationLog;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
@@ -10,7 +11,7 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class VfsWrite implements Tool
+class VfsWrite implements ReturnsVfsEnvelope, Tool
 {
     public function __construct(
         private readonly User $agent,

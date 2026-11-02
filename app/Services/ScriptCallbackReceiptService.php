@@ -122,6 +122,17 @@ final class ScriptCallbackReceiptService
         $this->finish($step, 'unknown', null, false);
     }
 
+    /**
+     * Record that the host's own policy stopped this callback for approval
+     * before any mutation (e.g. a VFS write whose backing permission is
+     * approval-gated). Not a write and not ambiguous; the approval replays
+     * the exact call later, so this receipt never authorizes a replay itself.
+     */
+    public function approvalPending(TaskStep $step): void
+    {
+        $this->finish($step, 'approval_pending', null, false);
+    }
+
     private function finish(TaskStep $step, string $disposition, ?string $receiptDigest, bool $receiptDigestUnavailable): void
     {
         $metadata = $step->getAttribute('metadata');

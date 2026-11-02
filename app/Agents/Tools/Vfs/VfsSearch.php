@@ -3,13 +3,14 @@
 namespace App\Agents\Tools\Vfs;
 
 use App\Agents\Tools\Vfs\Concerns\HandlesVfsJson;
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class VfsSearch implements Tool
+class VfsSearch implements ReturnsVfsEnvelope, Tool
 {
     use HandlesVfsJson;
 

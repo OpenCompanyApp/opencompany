@@ -2,7 +2,6 @@
 
 namespace App\Domain\Vfs\Core\Concerns;
 
-use App\Domain\Vfs\Core\VfsError;
 use App\Models\User;
 
 /**
@@ -109,13 +108,8 @@ trait ResolvesVfsRedirectionEffects
         $this->assertWriteCommandAllowed($agent, 'vfs_write');
         $content = $message;
         if ($target['mode'] === 'append') {
-            try {
-                $content = $this->vfs->read($agent, $target['path']).$message;
-            } catch (VfsError $e) {
-                if ($e->errorCode !== 'not_found') {
-                    throw $e;
-                }
-            }
+            // Content read: appending to a display read would truncate the file.
+            $content = $this->existingContentForAppend($agent, $target['path']).$message;
         }
 
         $this->vfs->write($agent, $target['path'], $content, 'overwrite', permissionAlreadyChecked: true);

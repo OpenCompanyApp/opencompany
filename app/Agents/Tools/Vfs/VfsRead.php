@@ -3,13 +3,15 @@
 namespace App\Agents\Tools\Vfs;
 
 use App\Agents\Tools\Vfs\Concerns\HandlesVfsJson;
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
+use App\Domain\Vfs\Core\VfsText;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class VfsRead implements Tool
+class VfsRead implements ReturnsVfsEnvelope, Tool
 {
     use HandlesVfsJson;
 
@@ -31,13 +33,18 @@ class VfsRead implements Tool
             $cursor = $this->pageCursor($request);
             $page = $this->vfs->readPage($this->agent, $path, $budget, $cursor);
             $content = $page->content;
+            // Capabilities/metadata come from stat, but the version must
+            // describe the bytes returned above: mounts record it on the
+            // budget during the same read. Stat's version is only a fallback
+            // for generated paths whose mount does not record one.
+            $readVersion = $budget->lastReadVersion();
             $stat = $this->vfs->stat($this->agent, $path);
 
             return $this->encodeResult([
                 'path' => $this->vfs->normalizePath($path),
                 'content' => $content,
                 'bytes' => strlen($content),
-                'version' => $stat['version'] ?? null,
+                'version' => $readVersion ?? ($stat['version'] ?? null),
                 'capabilities' => $stat['capabilities'] ?? [],
                 'metadata' => $stat['metadata'] ?? [],
                 'mime' => $stat['metadata']['mime_type'] ?? 'text/plain',
@@ -48,7 +55,7 @@ class VfsRead implements Tool
                 'returned' => $page->returned,
                 'scanned' => $page->scanned,
                 'skipped' => $page->skipped,
-                'truncated' => $page->truncated || str_ends_with($content, "\n[... truncated]"),
+                'truncated' => $page->truncated || $budget->truncations() > 0 || str_ends_with($content, VfsText::TRUNCATION_SUFFIX),
             ]);
         } catch (\Throwable $e) {
             return $this->errorResponse($e);

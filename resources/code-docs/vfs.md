@@ -41,9 +41,11 @@ count = app.vfs.count(path: "/tasks/by-status/open", limit: 100)
 }
 ```
 
-Every helper returns the same envelope as the direct tool: a hash with `ok`,
-`result`, and on failure `error`. Read the canonical payload from
-`res[:result]`. List-like results are `res[:result][:items]` (ls, find) or
+Every helper returns the same success envelope as the direct tool: a hash with
+`ok` and `result`. Read the canonical payload from `res[:result]`. A failure
+(`ok: false`) raises instead: rescue it, and branch on the VFS error code at
+the start of the message (`not_found`, `conflict`, `ambiguous_match`, ...),
+which is followed by the error context as JSON. List-like results are `res[:result][:items]` (ls, find) or
 `res[:result][:matches]` (rg, grep, search).
 
 `cat` is an alias for `read`, and `grep` is an alias for `rg` with literal
@@ -70,7 +72,7 @@ end
 ```
 
 Records are never split across pages. If one record cannot fit an empty page,
-retry with the `error[:context][:minimum_bytes]` reported by `read`.
+`read` raises `invalid_request`; retry with the `minimum_bytes` in its message.
 
 Directory counts are sampled unless `count_is_exact` is true. Treat `count`,
 `returned`, and `sampled_count` as the page inspected, not a guaranteed total.
@@ -105,7 +107,8 @@ app.vfs.rm(path: "/files/generated/archive/report.md")
 explicitly. `mkdir` is idempotent for existing directories.
 
 Writes are external effects. Inside a run, Code Mode records a receipt for each
-write; if a script fails after a write, do not re-run it blindly. Read state
+write, including `shell` commands whose pipeline mutates (`rm`, `mv`, `tee`,
+`>` ...); if a script fails after a write, do not re-run it blindly. Read state
 first, then write only what is missing.
 
 ## Boundaries
@@ -118,9 +121,10 @@ first, then write only what is missing.
 - Domain-backed writes compose permissions: table rows need
   `vfs_patch + update_table_row`; agent identity files need
   `vfs_patch + update_agent_identity_file`.
-- If a composed permission requires approval, the helper returns the same
-  approval-required envelope as the direct tool, a normal approval request is
-  created, and Code Mode stops further callbacks in that execution.
+- If a composed permission requires approval, a normal approval request is
+  created (one approval covers every gated permission of the call), the
+  execution stops as approval-pending, and no further callbacks run in it,
+  even if the script rescues the failure.
 - Broad folders (tasks, channels, tables, files) are budgeted. Prefer narrower
   mounts such as `/tasks/by-agent`, `/tasks/by-status`, and date-bucketed
   channel paths.

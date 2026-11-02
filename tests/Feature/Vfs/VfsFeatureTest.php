@@ -1642,7 +1642,11 @@ RUBY);
             $vfs->patch($this->agent, $rowPath, json_encode(['data' => ['Email' => 'stale@example.com']], JSON_THROW_ON_ERROR), $payload['version']);
             $this->fail('Stale row versions should fail.');
         } catch (VfsError $e) {
-            $this->assertSame('invalid_request', $e->errorCode);
+            // Stale versions moved from the overloaded invalid_request to the
+            // dedicated `conflict` code, which carries the current version.
+            $this->assertSame('conflict', $e->errorCode);
+            $this->assertSame($payload['version'], $e->context['given_version']);
+            $this->assertNotSame($payload['version'], $e->context['current_version']);
         }
 
         try {

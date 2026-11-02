@@ -48,7 +48,7 @@ trait MountsVfsWorkspace
     private function readWorkspace(User $agent, array $segments, string $path, VfsBudget $budget): string
     {
         if (count($segments) === 1) {
-            return VfsText::truncate($this->entriesToText($this->listWorkspace($path)), $budget->maxBytes);
+            return VfsText::fit($this->entriesToText($this->listWorkspace($path)), $budget, $path);
         }
         if (count($segments) !== 2) {
             throw VfsError::notFound($path);
@@ -60,7 +60,7 @@ trait MountsVfsWorkspace
             default => throw VfsError::notFound($path),
         };
 
-        return VfsText::truncate($content ?: '', $budget->maxBytes);
+        return VfsText::fit($content ?: '', $budget, $path);
     }
 
     /**

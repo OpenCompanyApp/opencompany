@@ -27,6 +27,15 @@ class VfsMutationPolicy
     ) {}
 
     /**
+     * Compose every required tool's permission into one decision.
+     *
+     * Invariant (evaluation order): any denied tool denies the whole
+     * operation; otherwise every approval-gated tool that the current
+     * approved replay context does not cover is collected into approvalTools.
+     * Collecting all of them (not just the first) is what lets one human
+     * approval cover the whole operation instead of ping-ponging one approval
+     * per gated permission.
+     *
      * @param  list<string>  $requiredTools
      * @param  array<string, mixed>  $parameters
      */
@@ -39,7 +48,7 @@ class VfsMutationPolicy
         array $parameters = [],
         string $hint = '',
     ): VfsMutationDecision {
-        $approvalTool = null;
+        $approvalTools = [];
         $parametersHash = $this->approvals->hashParameters($parameters);
 
         foreach ($requiredTools as $toolSlug) {
@@ -58,23 +67,31 @@ class VfsMutationPolicy
             if (
                 $state['requires_approval']
                 && ! $this->approvedContext->approves($agent, $directToolSlug, $operation, $subject, $toolSlug, $requiredTools, $parametersHash)
-                && $approvalTool === null
             ) {
-                $approvalTool = $toolSlug;
+                $approvalTools[] = $toolSlug;
             }
         }
 
         return new VfsMutationDecision(
-            status: $approvalTool ? 'requires_approval' : 'allowed',
+            status: $approvalTools !== [] ? 'requires_approval' : 'allowed',
             operation: $operation,
             subject: $subject,
             requiredTools: $requiredTools,
-            approvalTool: $approvalTool,
+            approvalTool: $approvalTools[0] ?? null,
             hint: $hint,
+            approvalTools: $approvalTools,
         );
     }
 
     /**
+     * Enforce a decision: return when allowed, throw permission_denied when
+     * denied, or create (or reuse) ONE approval covering every gated tool and
+     * throw approval_required.
+     *
+     * approval_required context: {approval_id, path, tool (first gated tool),
+     * tools (every gated tool the approval covers), required_tools,
+     * wait_for_approval}.
+     *
      * @param  list<string>  $requiredTools
      * @param  array<string, mixed>  $parameters
      * @param  array<string, mixed>|null  $preview
@@ -110,12 +127,14 @@ class VfsMutationPolicy
             parameters: $parameters,
             channelId: $channelId,
             preview: $preview,
+            approvalTools: $decision->approvalTools,
         );
 
         throw VfsError::approvalRequired("Approval required to {$operation} {$subject}", [
             'approval_id' => $approval->id,
             'path' => str_starts_with($subject, '/') ? $subject : null,
             'tool' => $decision->approvalTool,
+            'tools' => $decision->approvalTools,
             'required_tools' => $requiredTools,
             'wait_for_approval' => $agent->must_wait_for_approval,
         ]);

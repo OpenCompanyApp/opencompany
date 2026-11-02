@@ -94,6 +94,10 @@ trait MountsVfsFiles
             throw VfsError::permissionDenied($path, 'file folder scope');
         }
         if ($file->is_folder) {
+            if ($budget->isContentRead()) {
+                throw VfsError::notReadable($path);
+            }
+
             return $this->entriesToText($this->listFiles($agent, $segments, $path, $budget));
         }
 
@@ -101,7 +105,12 @@ trait MountsVfsFiles
             throw VfsError::notReadable($path);
         }
 
-        return VfsText::truncate((string) $this->files->readFileContents($file), $budget->maxBytes);
+        // Read the bytes once and derive the version from that same read, so
+        // vfs_read can report a version that matches the returned content.
+        $content = (string) $this->files->readFileContents($file);
+        $budget->recordReadVersion($this->version($file->updated_at?->toIso8601String(), $content));
+
+        return VfsText::fit($content, $budget, $path);
     }
 
     private function fileEntry(User $agent, WorkspaceFile $file, string $path): VfsEntry

@@ -106,10 +106,19 @@ trait MountsVfsDocuments
         }
 
         if ($doc->is_folder) {
+            // A content read is for bytes that may be written back; a folder
+            // listing must never become file content.
+            if ($budget->isContentRead()) {
+                throw VfsError::notReadable($path);
+            }
+
             return $this->entriesToText($this->documentChildren($agent, $doc, $path, $budget));
         }
 
-        return VfsText::truncate((string) $doc->content, $budget->maxBytes);
+        $content = (string) $doc->content;
+        $budget->recordReadVersion($this->version($doc->updated_at?->toIso8601String(), $content));
+
+        return VfsText::fit($content, $budget, $path);
     }
 
     /**

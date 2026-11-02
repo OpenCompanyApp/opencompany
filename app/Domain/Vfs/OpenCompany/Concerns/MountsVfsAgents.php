@@ -149,10 +149,17 @@ trait MountsVfsAgents
 
         $doc = $this->agentDocumentFor($target, $remaining, $path);
         if ($doc->is_folder) {
+            if ($budget->isContentRead()) {
+                throw VfsError::notReadable($path);
+            }
+
             return $this->entriesToText($this->agentDocumentChildren($agent, $target, $doc, $path, $budget));
         }
 
-        return VfsText::truncate((string) $doc->content, $budget->maxBytes);
+        $content = (string) $doc->content;
+        $budget->recordReadVersion($this->version($doc->updated_at?->toIso8601String(), $content));
+
+        return VfsText::fit($content, $budget, $path);
     }
 
     /**
