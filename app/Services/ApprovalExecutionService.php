@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Agents\Tools\ToolRegistry;
+use App\Domain\Vfs\Core\VfsPath;
 use App\Domain\Vfs\OpenCompany\Approvals\VfsApprovalRequestFactory;
 use App\Domain\Vfs\OpenCompany\Approvals\VfsApprovedExecutionContext;
 use App\Jobs\AgentRespondJob;
@@ -194,8 +195,12 @@ class ApprovalExecutionService
 
                 $result = json_encode($execution->data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: 'Approved integration callback completed.';
             } else {
-                $toolRequest = new ToolRequest($isScriptCallback ? $this->snakeToCamel($parameters) : $parameters);
-                $vfsContext = $this->vfsReplayContext($agent, $toolSlug, $parameters, $context);
+                $toolParameters = $isScriptCallback ? $this->snakeToCamel($parameters) : $parameters;
+                $toolRequest = new ToolRequest($toolParameters);
+                // Hash exactly what the tool will see: VFS policy hashes
+                // $request->toArray(), so a snake_case script payload must be
+                // hashed after the same camelCase conversion.
+                $vfsContext = $this->vfsReplayContext($agent, $toolSlug, $toolParameters, $context);
                 $result = $vfsContext === null
                     ? $tool->handle($toolRequest)
                     : ($this->vfsApprovedContext ?? app(VfsApprovedExecutionContext::class))->runWith(
@@ -481,10 +486,25 @@ class ApprovalExecutionService
 
     /**
      * Build the internal-only approval context used by VFS policy during
-     * approved replay. Direct VFS approvals approve only the visible primitive;
-     * dynamic VFS approvals approve the backing tool captured by VFS policy.
+     * approved replay.
      *
-     * @param  array<string, mixed>  $parameters
+     * Two origins:
+     * - VFS-composed approvals (created by VfsApprovalRequestFactory) carry
+     *   their own `vfs_approval` block whose approved_tools already list every
+     *   gated tool of the operation.
+     * - Wrapper/script approvals of a VFS primitive (ApprovalWrappedTool,
+     *   IntegrationRuntime) approve the primitive call as a whole. The human
+     *   approved "run this vfs_patch/vfs_exec/vfs_write call", and the call
+     *   intrinsically needs its composed backing permissions, so approved_tools
+     *   is the full required set. Without that, a second gated permission
+     *   (vfs_write behind vfs_exec, update_table_row behind vfs_patch) would
+     *   create a new approval on every replay. A current deny still blocks:
+     *   policy re-evaluates denial before consulting approvals.
+     *
+     * Invariant: subject normalization must match the policy exactly
+     * (VfsPath::normalize for paths, VfsPath::commandSubject for commands).
+     *
+     * @param  array<string, mixed>  $parameters  The parameters exactly as passed to the tool request
      * @param  array<string, mixed>  $context
      * @return array<string, mixed>|null
      */
@@ -504,31 +524,31 @@ class ApprovalExecutionService
             'vfs_write' => 'write',
             default => 'patch',
         };
-        $subject = match ($toolSlug) {
-            'vfs_exec' => trim((string) ($parameters['command'] ?? 'VFS command')),
-            default => (string) ($parameters['path'] ?? 'VFS path'),
-        };
-        if ($toolSlug !== 'vfs_exec' && $subject !== 'VFS path' && ! str_starts_with($subject, '/')) {
-            $subject = '/'.$subject;
-        }
+        $subject = $toolSlug === 'vfs_exec'
+            ? VfsPath::commandSubject((string) ($parameters['command'] ?? ''))
+            : VfsPath::normalize((string) ($parameters['path'] ?? ''));
+        $requiredTools = $this->vfsReplayRequiredTools($toolSlug, $subject);
 
         return [
             'requester_id' => $agent->id,
             'direct_tool_slug' => $toolSlug,
             'operation' => $operation,
             'subject' => $subject,
-            'required_tools' => $this->vfsReplayRequiredTools($toolSlug, $parameters),
+            'required_tools' => $requiredTools,
             'approval_tool' => $toolSlug,
-            'approved_tools' => [$toolSlug],
+            'approved_tools' => $requiredTools,
             'parameters_hash' => $approvals->hashParameters($parameters),
         ];
     }
 
     /**
-     * @param  array<string, mixed>  $parameters
+     * Mirror of the required tool sets the VFS mutation paths pass to policy
+     * (ExecutesVfsMutationCommands, MutatesVfsFiles, PatchesVfsRecords,
+     * EvaluatesVfsMutationPolicy). $path is already normalized.
+     *
      * @return list<string>
      */
-    private function vfsReplayRequiredTools(string $toolSlug, array $parameters): array
+    private function vfsReplayRequiredTools(string $toolSlug, string $path): array
     {
         if ($toolSlug === 'vfs_exec') {
             return ['vfs_exec', 'vfs_write'];
@@ -538,7 +558,6 @@ class ApprovalExecutionService
             return [$toolSlug];
         }
 
-        $path = (string) ($parameters['path'] ?? '');
         if (str_starts_with($path, '/tables/') && str_contains($path, '/rows/by-id/')) {
             return ['vfs_patch', 'update_table_row'];
         }
