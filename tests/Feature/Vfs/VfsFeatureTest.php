@@ -599,7 +599,8 @@ class VfsFeatureTest extends TestCase
         $this->assertStringContainsString('3 ', $executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | wc')['stdout']);
         $this->assertStringContainsString('alpha', $executor->execute($this->agent, 'head -n 2 /docs/by-id/'.$first->id)['stdout']);
         $this->assertStringContainsString('beta', $executor->execute($this->agent, 'tail -n 1 /docs/by-id/'.$first->id)['stdout']);
-        $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'find /docs/by-id -name "Alpha*"')['stdout']);
+        // /docs/by-id lists ids (titles match under /docs).
+        $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'find /docs/by-id -name "'.$first->id.'"')['stdout']);
         $this->assertStringContainsString('sha256', 'sha256 '.$executor->execute($this->agent, 'sha256sum /docs/by-id/'.$first->id)['stdout']);
         $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'sha1sum /docs/by-id/'.$first->id)['stdout']);
         $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'md5sum /docs/by-id/'.$first->id)['stdout']);
@@ -720,7 +721,9 @@ class VfsFeatureTest extends TestCase
         $executor = app(VfsCommandExecutor::class);
 
         $this->assertStringContainsString('by-id/', $executor->execute($this->agent, 'ls -la /docs')['stdout']);
-        $this->assertStringContainsString('/docs/by-id', $executor->execute($this->agent, 'ls -R /docs')['stdout']);
+        // ls -R lists the by-id alias but never descends into it.
+        $this->assertStringContainsString('by-id/', $executor->execute($this->agent, 'ls -R /docs')['stdout']);
+        $this->assertStringNotContainsString('/docs/by-id', $executor->execute($this->agent, 'ls -R /docs')['stdout']);
         $this->assertSame('/docs', trim($executor->execute($this->agent, 'cd /docs && pwd')['stdout']));
         $this->assertSame("first\nsecond\nthird", trim($executor->execute($this->agent, 'echo first; echo second; echo third')['stdout']));
         $this->assertArrayNotHasKey('stdout', $executor->execute($this->agent, 'echo first; echo second; echo third')['result']);
@@ -751,13 +754,16 @@ class VfsFeatureTest extends TestCase
         $this->assertSame('quoted "value"', trim($executor->execute($this->agent, 'echo "quoted \\"value\\""')['stdout']));
         $this->assertSame("hello\nworld", trim($executor->execute($this->agent, 'echo -e "hello\nworld"')['stdout']));
 
-        $found = preg_split('/\r\n|\r|\n/', trim($executor->execute($this->agent, 'find /docs/by-id -name "Alpha AX*"')['stdout'])) ?: [];
+        $found = preg_split('/\r\n|\r|\n/', trim($executor->execute($this->agent, 'find /docs -name "Alpha AX*"')['stdout'])) ?: [];
         $this->assertSame(array_values(array_unique($found)), $found);
         $this->assertSame('/tasks', trim($executor->execute($this->agent, 'find /tasks -maxdepth 0')['stdout']));
         $this->assertSame('/tasks', trim($executor->execute($this->agent, 'find /tasks -maxDepth 0')['stdout']));
-        $this->assertStringContainsString('Alpha AX Notes', $executor->execute($this->agent, 'find /docs/by-id -name "Alpha AX*" | xargs stat')['stdout']);
-        $this->assertStringContainsString('item: /docs/by-id/', $executor->execute($this->agent, 'find /docs/by-id -name "Alpha AX*" | xargs -I{} echo "item: {}"')['stdout']);
-        $this->assertStringContainsString('/docs/by-id/', $executor->execute($this->agent, 'find /docs -name "*.md" -type f 2>/dev/null | head -n 1')['stdout']);
+        // Titles are names under /docs; find prints friendly paths there
+        // (the by-id alias lists ids and is not walked).
+        $this->assertStringContainsString('Alpha AX Notes', $executor->execute($this->agent, 'find /docs -name "Alpha AX*" | xargs stat')['stdout']);
+        $this->assertStringContainsString('item: /docs/alpha-ax-notes', $executor->execute($this->agent, 'find /docs -name "Alpha AX*" | xargs -I{} echo "item: {}"')['stdout']);
+        $this->assertStringStartsWith('/docs/', $executor->execute($this->agent, 'find /docs -name "*.md" -type f 2>/dev/null | head -n 1')['stdout']);
+        $this->assertStringNotContainsString('/docs/by-id/', $executor->execute($this->agent, 'find /docs -name "*.md" -type f 2>/dev/null')['stdout']);
 
         $this->assertSame('2', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | grep -c alpha')['stdout']));
         $this->assertSame('2', trim($executor->execute($this->agent, 'grep -c alpha < /docs/by-id/'.$first->id)['stdout']));
@@ -807,10 +813,11 @@ class VfsFeatureTest extends TestCase
         $this->assertSame('hello', trim($executor->execute($this->agent, 'echo heeello | tr -s e')['stdout']));
         $this->assertStringContainsString('alpha 1', $executor->execute($this->agent, 'sort /docs/by-id/'.$first->id.' | head -n 1')['stdout']);
         $this->assertStringContainsString('alice,10', $executor->execute($this->agent, 'sort /docs/by-id/'.$first->id.' /docs/by-id/'.$csv->id)['stdout']);
-        $this->assertStringContainsString('Alpha AX Notes', $executor->execute($this->agent, 'find /docs/by-id -name "Alpha AX*" | xargs -n 1 stat')['stdout']);
-        $this->assertStringContainsString($first->id, $executor->execute($this->agent, 'find /docs/by-id -name "Alpha AX*" -print0 | xargs -0 -n 1 basename')['stdout']);
-        $this->assertStringContainsString($csv->id, $executor->execute($this->agent, 'find /docs/by-id -name "Missing*" -o -name "CSV AX*"')['stdout']);
-        $this->assertStringNotContainsString($first->id, $executor->execute($this->agent, 'find /docs/by-id -not -name "Alpha AX*"')['stdout']);
+        // Title-based find expressions run under /docs (by-id lists ids).
+        $this->assertStringContainsString('Alpha AX Notes', $executor->execute($this->agent, 'find /docs -name "Alpha AX*" | xargs -n 1 stat')['stdout']);
+        $this->assertStringContainsString('alpha-ax-notes', $executor->execute($this->agent, 'find /docs -name "Alpha AX*" -print0 | xargs -0 -n 1 basename')['stdout']);
+        $this->assertStringContainsString('/docs/'.Str::slug($csv->title), $executor->execute($this->agent, 'find /docs -name "Missing*" -o -name "CSV AX*"')['stdout']);
+        $this->assertStringNotContainsString('alpha-ax-notes', $executor->execute($this->agent, 'find /docs -not -name "Alpha AX*"')['stdout']);
         $this->assertStringContainsString($first->id, $executor->execute($this->agent, 'find /docs/by-id -type f -size +1c -mtime -1')['stdout']);
         $this->assertSame('a\\b', $executor->execute($this->agent, 'printf "%s" "a\\\\b"')['stdout']);
         $this->assertStringContainsString("\t", $executor->execute($this->agent, 'paste /docs/by-id/'.$first->id.' /docs/by-id/'.$csv->id)['stdout']);
@@ -1013,8 +1020,9 @@ class VfsFeatureTest extends TestCase
         $this->assertNotSame($first['result']['items'][0]['backend_id'], $second['result']['items'][0]['backend_id']);
 
         $findTool = app(ToolRegistry::class)->instantiateToolBySlug('vfs_find', $this->agent);
-        $findFirst = json_decode($findTool->handle(new Request(['paths' => ['/docs/by-id'], 'name' => 'Cursor*', 'limit' => 2, 'maxDepth' => 1, 'maxFiles' => 20])), true);
-        $findSecond = json_decode($findTool->handle(new Request(['paths' => ['/docs/by-id'], 'name' => 'Cursor*', 'limit' => 2, 'maxDepth' => 1, 'maxFiles' => 20, 'cursor' => $findFirst['result']['next_cursor']])), true);
+        // Titles are names under /docs (/docs/by-id lists ids).
+        $findFirst = json_decode($findTool->handle(new Request(['paths' => ['/docs'], 'name' => 'Cursor*', 'limit' => 2, 'maxDepth' => 1, 'maxFiles' => 20])), true);
+        $findSecond = json_decode($findTool->handle(new Request(['paths' => ['/docs'], 'name' => 'Cursor*', 'limit' => 2, 'maxDepth' => 1, 'maxFiles' => 20, 'cursor' => $findFirst['result']['next_cursor']])), true);
 
         $this->assertTrue($findFirst['result']['truncated']);
         $this->assertNotNull($findFirst['result']['next_cursor']);
@@ -2359,7 +2367,8 @@ RUBY);
         $this->assertStringContainsString('Ship VFS', $executor->execute($this->agent, 'rg "Ship VFS" /tasks/recent.md')['stdout']);
         $this->assertStringContainsString('active', $executor->execute($this->agent, 'ls /tasks/by-status')['stdout']);
         $this->assertStringContainsString('atlas', $executor->execute($this->agent, 'ls /tasks/by-agent')['stdout']);
-        $this->assertStringContainsString('ship-vfs.md', $executor->execute($this->agent, 'ls /agents/by-id/'.$this->agent->id.'/tasks')['stdout']);
+        // Task names carry their id suffix so every listed name opens.
+        $this->assertStringContainsString('ship-vfs--'.substr($task->id, -8).'.md', $executor->execute($this->agent, 'ls /agents/by-id/'.$this->agent->id.'/tasks')['stdout']);
         $this->assertStringContainsString('Add VFS', $executor->execute($this->agent, "cat /lists/by-id/{$item->id}")['stdout']);
         $this->assertStringContainsString('add-vfs.md', $executor->execute($this->agent, "ls /lists/by-id/{$project->id}")['stdout']);
         $this->assertStringContainsString('add-vfs.md', $executor->execute($this->agent, "cat /lists/by-id/{$project->id}")['stdout']);
