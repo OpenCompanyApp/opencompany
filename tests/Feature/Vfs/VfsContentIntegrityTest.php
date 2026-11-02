@@ -101,27 +101,24 @@ class VfsContentIntegrityTest extends TestCase
         }
     }
 
-    // Display reads keep the visible truncation line, but shell redirection
-    // must refuse to persist it instead of silently writing a prefix.
+    // Display reads keep the visible truncation line, but it can never be
+    // persisted: since Phase 2 the read mode follows the destination, so
+    // `cat big > copy` reads full content and writes an exact copy instead
+    // of refusing (or, before Phase 1, writing a prefix).
     public function test_display_reads_stay_truncated_but_cannot_be_written_back(): void
     {
         $body = $this->largeText('display');
         $this->vfs->write($this->agent, '/files/display/big.txt', $body, 'create');
 
         $this->assertStringEndsWith(VfsText::TRUNCATION_SUFFIX, $this->vfs->read($this->agent, '/files/display/big.txt'));
-        $this->assertStringEndsWith(VfsText::TRUNCATION_SUFFIX, $this->executor->execute($this->agent, 'cat /files/display/big.txt')['stdout']);
+        // Phase 2 (Stream A): displayed cat ends with the stable, sized
+        // truncation line instead of the bare display suffix.
+        $this->assertMatchesRegularExpression('/\n\[truncated at \d+ bytes of \d+ — use vfs_read with offset or head\/tail\/sed -n\]\n$/', $this->executor->execute($this->agent, 'cat /files/display/big.txt')['stdout']);
 
-        try {
-            $this->executor->execute($this->agent, 'cat /files/display/big.txt > /files/display/copy.txt');
-            $this->fail('A truncated display read must not be written back.');
-        } catch (VfsError $e) {
-            $this->assertSame('invalid_request', $e->errorCode);
-            $this->assertSame('/files/display/copy.txt', $e->context['path']);
-        }
-
-        // Raising the read budget makes the same pipeline exact.
-        $this->executor->execute($this->agent, 'cat /files/display/big.txt > /files/display/copy.txt', '/', new VfsBudget(maxBytes: 1_000_000));
+        $this->executor->execute($this->agent, 'cat /files/display/big.txt > /files/display/copy.txt');
         $this->assertSame($body, $this->vfs->readContent($this->agent, '/files/display/copy.txt'));
+        $this->executor->execute($this->agent, 'cat /files/display/big.txt | tee /files/display/tee.txt > /dev/null');
+        $this->assertSame($body, $this->vfs->readContent($this->agent, '/files/display/tee.txt'));
     }
 
     // readContent never truncates: above the ceiling it fails loudly, and a

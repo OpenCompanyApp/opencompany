@@ -4,34 +4,51 @@ namespace App\Domain\Vfs\Core\Concerns;
 
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\Core\VfsText;
 use App\Models\User;
 
 /**
- * Tree rendering commands for the VFS shell executor.
+ * Bounded `tree` rendering.
+ *
+ * Bounds: maxEntries rendered entries, maxDepth (or -L) levels, and at most
+ * MAX_DEPTH_PROBES one-entry probes of directories at the depth limit (to
+ * tell "cut by depth" from "empty"); beyond that budget, unprobed
+ * directories count as truncated, conservatively.
  */
 trait ExecutesVfsTreeCommands
 {
-    private function tree(User $agent, array $tokens, string $cwd, VfsBudget $budget): array
+    private int $treeDepthProbes = 0;
+
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function tree(User $agent, array $words, string $cwd, VfsBudget $budget): array
     {
-        $this->assertSupportedOptionsForCommand($tokens, 'tree');
-        $paths = $this->pathArgsWithValueOptions($tokens, $cwd, ['-L', '--level', '-I', '-P']);
-        $path = $paths[0] ?? $cwd;
-        $maxDepth = $this->integerOptionValue($tokens, ['-L', '--level'], 'tree', 'level');
-        if ($maxDepth !== null) {
-            $budget = new VfsBudget($budget->maxEntries, max(0, $maxDepth), $budget->maxBytes, $budget->maxFiles, $budget->maxMatches, $budget->maxLineLength);
+        $args = $this->args('tree', $words);
+        $path = $this->operandPaths($args, $cwd)[0] ?? $cwd;
+        $level = $args->int(['-L', '--level']);
+        if ($level !== null) {
+            $budget = $budget->with(['maxDepth' => max(0, $level)]);
         }
 
         $lines = [$path];
         $returned = 0;
         $truncated = false;
         $skipped = 0;
-        $flags = $this->shortFlags($tokens, ['a', 'd']);
-        $ignore = $this->optionValue($tokens, ['-I']);
-        $pattern = $this->optionValue($tokens, ['-P']);
-        $this->appendTree($agent, $path, $budget, $lines, 0, '', $returned, $truncated, $skipped, $flags, $ignore, $pattern);
+        $this->treeDepthProbes = 0;
+        $this->appendTree($agent, $path, $budget, $lines, 0, '', $returned, $truncated, $skipped, $args->has('d'), $args->has('a'), $args->value('-I'), $args->value('-P'));
+        if ($truncated) {
+            $line = VfsText::listingTruncationLine($returned, 'entries', null, 'maxEntries/maxDepth');
+            if ($this->displayingStdout) {
+                $lines[] = $line;
+            } else {
+                $this->noteTruncation("tree {$line}");
+            }
+        }
 
         return [
-            'stdout' => implode("\n", $lines),
+            'stdout' => $this->linesOut($lines),
             'cwd' => $cwd,
             'class' => 'browse',
             'returned' => $returned,
@@ -42,7 +59,10 @@ trait ExecutesVfsTreeCommands
         ];
     }
 
-    private function appendTree(User $agent, string $path, VfsBudget $budget, array &$lines, int $depth, string $prefix, int &$returned, bool &$truncated, int &$skipped, array $flags, ?string $ignore, ?string $pattern): void
+    /**
+     * @param  list<string>  $lines
+     */
+    private function appendTree(User $agent, string $path, VfsBudget $budget, array &$lines, int $depth, string $prefix, int &$returned, bool &$truncated, int &$skipped, bool $directoriesOnly, bool $showHidden, ?string $ignore, ?string $pattern): void
     {
         if ($returned >= $budget->maxEntries) {
             $truncated = true;
@@ -50,6 +70,11 @@ trait ExecutesVfsTreeCommands
             return;
         }
         if ($depth >= $budget->maxDepth) {
+            if (++$this->treeDepthProbes > 25) {
+                $truncated = true;
+
+                return;
+            }
             try {
                 $truncated = $truncated || $this->vfs->listBounded($agent, $path, new VfsBudget(maxEntries: 1)) !== [];
             } catch (VfsError) {
@@ -61,14 +86,7 @@ trait ExecutesVfsTreeCommands
 
         try {
             $remaining = max(0, $budget->maxEntries - $returned);
-            $entries = $this->vfs->listBounded($agent, $path, new VfsBudget(
-                maxEntries: min(max(1, $remaining + 1), 1_000),
-                maxDepth: $budget->maxDepth,
-                maxBytes: $budget->maxBytes,
-                maxFiles: $budget->maxFiles,
-                maxMatches: $budget->maxMatches,
-                maxLineLength: $budget->maxLineLength,
-            ));
+            $entries = $this->vfs->listBounded($agent, $path, $budget->with(['maxEntries' => min(max(1, $remaining + 1), 1_000)]));
         } catch (VfsError) {
             $skipped++;
 
@@ -79,18 +97,18 @@ trait ExecutesVfsTreeCommands
             $entries = array_slice($entries, 0, $remaining);
         }
 
-        $entries = array_values(array_filter($entries, function ($entry) use ($flags, $ignore, $pattern): bool {
-            if (($flags['d'] ?? false) && $entry->type !== 'directory') {
+        $entries = array_values(array_filter($entries, function ($entry) use ($directoriesOnly, $showHidden, $ignore, $pattern): bool {
+            if (! $showHidden && str_starts_with($entry->name, '.')) {
+                return false;
+            }
+            if ($directoriesOnly && $entry->type !== 'directory') {
                 return false;
             }
             if ($ignore !== null && fnmatch($ignore, $entry->name)) {
                 return false;
             }
-            if ($pattern !== null && $entry->type !== 'directory' && ! fnmatch($pattern, $entry->name)) {
-                return false;
-            }
 
-            return true;
+            return $pattern === null || $entry->type === 'directory' || fnmatch($pattern, $entry->name);
         }));
 
         foreach ($entries as $index => $entry) {
@@ -103,7 +121,7 @@ trait ExecutesVfsTreeCommands
             $lines[] = $prefix.($last ? '`-- ' : '|-- ').$entry->name.($entry->type === 'directory' ? '/' : '');
             $returned++;
             if ($entry->type === 'directory') {
-                $this->appendTree($agent, $entry->canonicalPath ?? $entry->path, $budget, $lines, $depth + 1, $prefix.($last ? '    ' : '|   '), $returned, $truncated, $skipped, $flags, $ignore, $pattern);
+                $this->appendTree($agent, $entry->canonicalPath ?? $entry->path, $budget, $lines, $depth + 1, $prefix.($last ? '    ' : '|   '), $returned, $truncated, $skipped, $directoriesOnly, $showHidden, $ignore, $pattern);
             }
         }
     }

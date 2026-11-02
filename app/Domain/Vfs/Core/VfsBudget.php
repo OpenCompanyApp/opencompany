@@ -40,6 +40,15 @@ class VfsBudget
     public int $maxLineLength;
 
     /**
+     * Aggregate stdout cap for one shell command line (VfsCommandExecutor).
+     * Defaults to config('vfs.max_exec_output_bytes').
+     */
+    public int $maxOutputBytes;
+
+    /** Whether the caller set maxOutputBytes (then it wins over maxBytes). */
+    public bool $outputCapExplicit;
+
+    /**
      * Hard byte ceiling for content reads; null for display reads.
      */
     public ?int $contentCeiling = null;
@@ -57,6 +66,7 @@ class VfsBudget
         int $maxFiles = 100,
         int $maxMatches = 100,
         int $maxLineLength = 2_000,
+        ?int $maxOutputBytes = null,
     ) {
         $this->maxEntries = $this->positive($maxEntries, 100, 1, 1_000);
         $this->maxDepth = $this->positive($maxDepth, 3, 0, 25);
@@ -64,6 +74,28 @@ class VfsBudget
         $this->maxFiles = $this->positive($maxFiles, 100, 1, 2_000);
         $this->maxMatches = $this->positive($maxMatches, 100, 1, 2_000);
         $this->maxLineLength = $this->positive($maxLineLength, 2_000, 80, 20_000);
+        $this->maxOutputBytes = $this->positive($maxOutputBytes ?? (int) config('vfs.max_exec_output_bytes', 100_000), 100_000, 100, 2_000_000);
+        $this->outputCapExplicit = $maxOutputBytes !== null;
+    }
+
+    /**
+     * Copy of this budget with some limits replaced (other limits and the
+     * output cap preserved). Observations (truncations, versions) are not
+     * copied: they belong to the budget that made the read.
+     *
+     * @param  array{maxEntries?: int, maxDepth?: int, maxBytes?: int, maxFiles?: int, maxMatches?: int}  $overrides
+     */
+    public function with(array $overrides): self
+    {
+        return new self(
+            maxEntries: $overrides['maxEntries'] ?? $this->maxEntries,
+            maxDepth: $overrides['maxDepth'] ?? $this->maxDepth,
+            maxBytes: $overrides['maxBytes'] ?? $this->maxBytes,
+            maxFiles: $overrides['maxFiles'] ?? $this->maxFiles,
+            maxMatches: $overrides['maxMatches'] ?? $this->maxMatches,
+            maxLineLength: $this->maxLineLength,
+            maxOutputBytes: $this->outputCapExplicit ? $this->maxOutputBytes : null,
+        );
     }
 
     /**

@@ -2,23 +2,40 @@
 
 namespace App\Domain\Vfs\Core\Concerns;
 
+use App\Domain\Vfs\Core\VfsError;
 use App\Models\User;
 
 /**
- * Resolves stderr/stdout redirection effects after token-level parsing.
+ * Applies one command's redirections with bash's left-to-right fd rules.
  *
- * Redirection parsing identifies operators; this concern applies the shell-like
- * left-to-right stream rules that matter for error propagation and write
- * targets without mixing that policy into the command executor loop.
+ * Owns: resolving where stdout and stderr go (`> f`, `>> f`, `2> f`, `&> f`,
+ * `2>&1`, `>&2`, `/dev/null`), delivering the command's stdout and its error
+ * message / warnings to those destinations, and writing redirect targets
+ * through the governed write path (vfs_exec + vfs_write).
+ *
+ * Invariants:
+ * - Every file target is written via assertWriteCommandAllowed before
+ *   OpenCompanyVfs::write; there is no other write path here.
+ * - Appends are version-checked read-modify-writes on a full content read,
+ *   so a concurrent change fails with `conflict` instead of being lost.
+ * - A command that failed never truncates its `>` target: the file is only
+ *   written when there is something to write or the command succeeded.
  */
 trait ResolvesVfsRedirectionEffects
 {
     /**
      * @param  list<array{stream: string, mode: string, path: string}>  $redirections
+     * @return list<array{stream: string, mode: string, path: string}>
      */
-    private function hasUnsupportedStderrFileRedirect(array $redirections): bool
+    private function normalizedRedirections(array $redirections, string $cwd): array
     {
-        return collect($redirections)->contains(fn (array $redirect): bool => $redirect['stream'] === 'stderr' && $redirect['mode'] !== 'merge' && $redirect['path'] !== '/dev/null');
+        return array_map(function (array $redirect) use ($cwd): array {
+            if ($redirect['mode'] !== 'merge' && $redirect['path'] !== '/dev/null') {
+                $redirect['path'] = $this->path($redirect['path'], $cwd);
+            }
+
+            return $redirect;
+        }, $redirections);
     }
 
     /**
@@ -37,81 +54,98 @@ trait ResolvesVfsRedirectionEffects
     }
 
     /**
-     * @param  list<array{stream: string, mode: string, path: string}>  $redirections
-     */
-    private function stderrSuppressed(array $redirections): bool
-    {
-        return collect($redirections)->contains(fn (array $redirect): bool => $redirect['stream'] === 'stderr' && $redirect['path'] === '/dev/null');
-    }
-
-    /**
-     * @param  list<array{stream: string, mode: string, path: string}>  $redirections
-     */
-    private function stderrMergedToStdout(array $redirections): bool
-    {
-        return $this->stderrDestination($redirections)['kind'] === 'stdout';
-    }
-
-    /**
-     * @param  list<array{stream: string, mode: string, path: string}>  $redirections
-     * @return array{path: string, mode: string}|null
-     */
-    private function stderrMergeFile(array $redirections): ?array
-    {
-        $destination = $this->stderrDestination($redirections);
-
-        return $destination['kind'] === 'file' ? ['path' => $destination['path'], 'mode' => $destination['mode']] : null;
-    }
-
-    /**
-     * Resolve stderr's effective destination after applying redirections from
-     * left to right, matching the shell rule agents expect for `> file 2>&1`.
+     * Resolve fd 1 and fd 2 after applying redirections left to right.
+     * Destinations: 'out' (pipe or display), 'err' (the line's stderr),
+     * 'null', or ['file', path, mode].
      *
      * @param  list<array{stream: string, mode: string, path: string}>  $redirections
-     * @return array{kind: 'stderr'|'stdout'|'null'|'file', path?: string, mode?: string}
+     * @return array{stdout: string|array{0: string, 1: string, 2: string}, stderr: string|array{0: string, 1: string, 2: string}}
      */
-    private function stderrDestination(array $redirections): array
+    private function resolveDescriptors(array $redirections): array
     {
-        $stdout = ['kind' => 'stdout'];
-        $stderr = ['kind' => 'stderr'];
-
+        $fd = ['stdout' => 'out', 'stderr' => 'err'];
         foreach ($redirections as $redirect) {
+            if ($redirect['stream'] === 'stdin') {
+                continue;
+            }
             if ($redirect['mode'] === 'merge') {
-                if ($redirect['stream'] === 'stderr' && $redirect['path'] === '&1') {
-                    $stderr = $stdout;
-                } elseif ($redirect['stream'] === 'stdout' && $redirect['path'] === '&2') {
-                    $stdout = $stderr;
-                }
+                $fd[$redirect['stream']] = $redirect['path'] === '&1' ? $fd['stdout'] : $fd['stderr'];
 
                 continue;
             }
-
-            $destination = $redirect['path'] === '/dev/null'
-                ? ['kind' => 'null']
-                : ['kind' => 'file', 'path' => $redirect['path'], 'mode' => $redirect['mode']];
-
-            if ($redirect['stream'] === 'stdout') {
-                $stdout = $destination;
-            } else {
-                $stderr = $destination;
-            }
+            $fd[$redirect['stream']] = $redirect['path'] === '/dev/null' ? 'null' : ['file', $redirect['path'], $redirect['mode']];
         }
 
-        return $stderr;
+        return $fd;
     }
 
     /**
-     * @param  array{path: string, mode: string}  $target
+     * @param  list<array{stream: string, mode: string, path: string}>  $redirections
      */
-    private function writeRedirectedError(User $agent, array $target, string $message): void
+    private function stdoutReachesDisplay(array $redirections): bool
     {
-        $this->assertWriteCommandAllowed($agent, 'vfs_write');
-        $content = $message;
-        if ($target['mode'] === 'append') {
-            // Content read: appending to a display read would truncate the file.
-            $content = $this->existingContentForAppend($agent, $target['path']).$message;
+        return $this->resolveDescriptors($redirections)['stdout'] === 'out';
+    }
+
+    /**
+     * Deliver a finished command's streams.
+     *
+     * @param  array<string, mixed>|null  $result
+     * @param  list<array{stream: string, mode: string, path: string}>  $redirections
+     * @return array{stdout: string, stderr: string, error_handled: bool}
+     */
+    private function applyRedirections(User $agent, ?array $result, array $redirections, ?VfsError $error): array
+    {
+        $fd = $this->resolveDescriptors($redirections);
+        $stdoutText = (string) ($result['stdout'] ?? '');
+        $stderrText = trim(($error !== null ? $error->getMessage()."\n" : '').(string) ($result['stderr'] ?? ''), "\n");
+        if ($stderrText !== '') {
+            $stderrText .= "\n";
+        }
+        // The error itself is reported by the executor (as stderr or as the
+        // envelope) unless stderr is redirected away from the line's stderr.
+        $errorHandled = $error !== null && $fd['stderr'] !== 'err';
+
+        $out = '';
+        $err = '';
+        $files = [];
+        foreach ([[$stdoutText, $fd['stdout'], 'stdout'], [$stderrText, $fd['stderr'], 'stderr']] as [$text, $destination, $stream]) {
+            if ($destination === 'out') {
+                $out .= $text;
+            } elseif ($destination === 'err') {
+                // The error message itself is reported by the executor (as
+                // stderr or as the envelope); only warnings are added here.
+                $err .= $stream === 'stderr' ? (string) ($result['stderr'] ?? '') : $text;
+            } elseif (is_array($destination)) {
+                $key = $destination[1];
+                $files[$key] ??= ['mode' => $destination[2], 'content' => ''];
+                $files[$key]['content'] .= $text;
+            }
         }
 
-        $this->vfs->write($agent, $target['path'], $content, 'overwrite', permissionAlreadyChecked: true);
+        foreach ($files as $path => $file) {
+            if ($error !== null && $file['content'] === '') {
+                continue;
+            }
+            $this->writeRedirectTarget($agent, $path, $file['content'], $file['mode']);
+        }
+
+        return ['stdout' => $out, 'stderr' => $err, 'error_handled' => $errorHandled];
+    }
+
+    /**
+     * Write redirected output to a VFS path through the governed write path.
+     */
+    private function writeRedirectTarget(User $agent, string $path, string $content, string $mode): void
+    {
+        $this->assertWriteCommandAllowed($agent, 'vfs_write');
+        $this->assertNotPersistingTruncatedOutput($content, $path);
+        $version = null;
+        if ($mode === 'append') {
+            [$existing, $version] = $this->existingContentForAppend($agent, $path);
+            $content = $existing.$content;
+        }
+
+        $this->vfs->write($agent, $path, $content, 'overwrite', $version, permissionAlreadyChecked: true);
     }
 }

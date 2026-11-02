@@ -61,8 +61,9 @@ class VfsExec implements ReturnsVfsEnvelope, Tool
             );
             $ok = (bool) ($result['ok'] ?? true);
             $result['command'] = $command;
-            $result['exit_code'] = $ok ? 0 : 1;
-            $result['stderr'] = (string) ($result['result']['stderr'] ?? '');
+            // The executor owns POSIX exit statuses and the line's stderr.
+            $result['exit_code'] = (int) ($result['exit_code'] ?? ($ok ? 0 : 1));
+            $result['stderr'] = (string) ($result['stderr'] ?? '');
             $result['data'] = $result['result'] ?? null;
             $result['diagnostics'] = [];
             $commandSpec = $this->primaryCommandSpec($command);
