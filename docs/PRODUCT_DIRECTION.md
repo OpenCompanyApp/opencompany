@@ -5,7 +5,8 @@ recommendation (connections, events and routines; integration tiers; nuclear cle
 same day. The UI structure, sidebar, anti-mess rules, the core-primitives-plus-apps model, and the
 governance presets with gating by reversibility were accepted the same day as well, and so were
 Artifacts as a core primitive and Forms as a Table view type, connected hosts (bring your own machine,
-including over Tailscale) and the Rust `oc` CLI.
+including over Tailscale), the Rust `oc` CLI, and full data sovereignty (export, backup and portability,
+hosted included).
 Supersedes: earlier positioning ("A Company in a Box", "Slack/Discord where half the team is AI",
 the Reader-first modular company OS, the AI app builder framing) and the earlier integration and
 automation plans, wherever they conflict with this document.
@@ -514,6 +515,57 @@ Locked 2026-11-02. Full design: [`oc` CLI and hosts](planning/oc-cli-and-hosts.m
 - **Shared with Bowerbird:** the auth, contexts, output, schema and eval-harness crates are shared
   with Bowerbird's `bwb` client track.
 
+### 11. Full data sovereignty, hosted included
+
+Locked 2026-11-02. Full design: [Data sovereignty](planning/data-sovereignty.md).
+
+> **Your workspace is yours.** Download any object, export the whole workspace, back it up to
+> storage you own, and move between OpenCompany Cloud and self-hosting in either direction. Any time,
+> any plan, no extra cost, documented open formats.
+
+- **Object downloads** are available everywhere: in the UI, through `oc export` and through the API.
+  - Docs: Markdown, PDF or DOCX.
+  - Tables: CSV, XLSX or JSON.
+  - Issues and threads: Markdown or JSON.
+  - Files: the originals.
+  - Artifact bundles and form submissions.
+  - Agent packs: identity, memory with sources, skills, routines and grants.
+- **Workspace archive (`.ocarchive`).**
+  - Contains every primitive and all app data, with schemas, history, change sets, the event log and
+    audit trail, files, agents, Spaces, roles and policies.
+  - Round-trips into self-hosted or Cloud as a restore, a clone or a migration, and CI tests that it
+    round-trips.
+  - Secrets are excluded by default. An owner may include them, encrypted with a passphrase; agents
+    never can.
+  - The format spec is published under Apache-2.0.
+- **Backups to customer-owned storage:** S3, R2, B2 or MinIO, WebDAV, SFTP, a Drive mount, or a
+  connected host.
+  - They run on a schedule, are incremental, and are **encrypted with a key the customer holds**, so
+    even Cloud cannot read them.
+  - Verification runs test-restore them.
+  - Self-hosters get `oc admin backup/restore`, with `oc admin doctor` warnings.
+- **Live access and mirrors:** the API, `oc`, `oc mount` and `oc mcp serve`, plus an optional
+  one-way continuous **Git mirror** (Docs as Markdown, Tables as CSV, Issues, artifact source) to
+  the customer's Git host.
+- **Cloud guarantees:**
+  - Cloud runs the same AGPL code, so it has no proprietary data formats.
+  - Export and backups are free and unlimited on every plan.
+  - After a subscription lapses, the workspace stays read-only and exportable for at least 90 days.
+  - `oc admin import --from cloud` migrates to self-hosting.
+  - Customers choose the region (EU first) and get verified deletion with a receipt.
+  - Customer-managed keys come later.
+- **Beyond data:**
+  - Bring your own model keys or local models. A workspace can be set to send nothing to third-party
+    models, and the run log shows which provider handled each run.
+  - **No phone-home.** Self-hosted installs send no telemetry by default, and there are no remotely
+    flippable flags or egress switches. CI enforces this.
+- **Governance:**
+  - Downloading objects you can see is a read; bulk downloads are audited.
+  - A full workspace export is limited to owners and admins: automatic in Personal, an admin in
+    Team, an admin plus a second approver in Company. It is always audited, and links expire.
+  - Changing backup or mirror destinations is in the `governance` class, so agents cannot do it.
+  - Any member can export their own personal data (GDPR).
+
 ## Nuclear decisions (accepted 2026-11-02)
 
 OpenCompany has no users yet, so it breaks compatibility freely:
@@ -545,12 +597,12 @@ OpenCompany has no users yet, so it breaks compatibility freely:
 
 | Phase | Scope | Exit criteria |
 |---|---|---|
-| 0 · Foundation (in progress) | Part 1 audit fixes: P0 authorization and security, including the cross-workspace credential singleton bug and MCP isolation and SSRF. Land the run control plane and VFS. mruby-only Code Mode. AGPL licensing. Honest website. Tests in CI. Nuclear cleanup: migration squash, package-system deletion, Connections model with vault and credential broker, event log with causality chain, policy model replacing behaviour modes. Artifacts groundwork: user-content origin and sandbox proxy design, Code Mode bridge re-homed into the app, renderer outputs moved into Files with permissions. `oc` groundwork: device-flow OAuth, personal and host token types, OpenAPI generation | No known cross-workspace flaws; CI runs tests; one application license; website claims match `CURRENT_STATE.md`; package system gone; event log and Connections model in the baseline schema |
-| 1 · Messenger | API-first messenger client and realtime stream; activity feed from the event log; routines created from chat (Automations migrated to Routines); rebuilt MCP client; Google Drive storage mount as the flagship deep connector. Artifacts v1: Pages (blocks, live views, charts, diagrams, snapshots) and interactive artifacts at private, Space and workspace level with read bindings; artifact cards and live preview in the context pane; versions and stable URLs; `/artifacts` mount in the VFS. **`oc` v0**: login and contexts, Home, approvals, ask and chat TUI, work objects, `oc fs`, runs, `--json` and schema, `oc mcp serve`, Homebrew and install script | A team can do a full day's work with agents from chat alone, including Drive files |
-| 2 · Computer v1 | `ComputerProvider` with local Docker and boat; shell, files, browser, takeover viewer; secure forms; egress allowlist; VFS projection; idle stop and snapshots; Gmail and agent inbox; inbound webhooks; script and hybrid routines; API manifests; skills and plugin import. Ships with the money-movement and password-change hard-deny entries and a basic compute cap. Artifact mruby `endpoint` profile, write bindings through change sets, AI bridge with quotas, static bundles from computers. **Forms v1**: form view, page mode, internal and public submission, captcha, uploads, `form.submitted` events. **Connected hosts v1**: outbound `oc host` daemon with container sandbox, systemd service, Admin → Hosts, Raspberry Pi (aarch64) builds, SSH hosts over Tailscale or direct addresses; `oc artifact dev`, `oc code run` | An agent completes a browser-and-shell task on its own computer with takeover and approvals; VFS-only agents unaffected |
-| 3 · Governance | Human roles and approver policies; full hard-deny floor; budgets that pause work; run replay and audit; 1Password, then Bitwarden/Vaultwarden; scoped and non-blocking approvals; heartbeats, monitors and daily briefs; save a task as a routine; OneDrive/SharePoint and calendars. Signed and public artifact publishing with published queries; published-surfaces registry, abuse controls and kill switch; artifact lifecycle sweeps. **Forms v2**: logic, partial saves, one-question mode, conversational intake, embeds, consent and retention. Host local MCP bridge and event source, `oc mount` (FUSE), bwrap sandbox, the `oc` agent-experience eval gate, `oc admin` for self-hosters | An admin can answer "who allowed what, at what cost" for any agent action |
+| 0 · Foundation (in progress) | Part 1 audit fixes: P0 authorization and security, including the cross-workspace credential singleton bug and MCP isolation and SSRF. Land the run control plane and VFS. mruby-only Code Mode. AGPL licensing. Honest website. Tests in CI. Nuclear cleanup: migration squash, package-system deletion, Connections model with vault and credential broker, event log with causality chain, policy model replacing behaviour modes. Artifacts groundwork: user-content origin and sandbox proxy design, Code Mode bridge re-homed into the app, renderer outputs moved into Files with permissions. `oc` groundwork: device-flow OAuth, personal and host token types, OpenAPI generation. Data sovereignty groundwork: `.ocarchive` format designed with the squashed baseline schema; a no-telemetry and no-remote-flags check in CI | No known cross-workspace flaws; CI runs tests; one application license; website claims match `CURRENT_STATE.md`; package system gone; event log and Connections model in the baseline schema |
+| 1 · Messenger | API-first messenger client and realtime stream; activity feed from the event log; routines created from chat (Automations migrated to Routines); rebuilt MCP client; Google Drive storage mount as the flagship deep connector. Artifacts v1: Pages (blocks, live views, charts, diagrams, snapshots) and interactive artifacts at private, Space and workspace level with read bindings; artifact cards and live preview in the context pane; versions and stable URLs; `/artifacts` mount in the VFS. **`oc` v0**: login and contexts, Home, approvals, ask and chat TUI, work objects, `oc fs`, runs, `--json` and schema, `oc mcp serve`, Homebrew and install script. Object downloads in the new client and `oc export` | A team can do a full day's work with agents from chat alone, including Drive files |
+| 2 · Computer v1 | `ComputerProvider` with local Docker and boat; shell, files, browser, takeover viewer; secure forms; egress allowlist; VFS projection; idle stop and snapshots; Gmail and agent inbox; inbound webhooks; script and hybrid routines; API manifests; skills and plugin import. Ships with the money-movement and password-change hard-deny entries and a basic compute cap. Artifact mruby `endpoint` profile, write bindings through change sets, AI bridge with quotas, static bundles from computers. **Forms v1**: form view, page mode, internal and public submission, captcha, uploads, `form.submitted` events. **Connected hosts v1**: outbound `oc host` daemon with container sandbox, systemd service, Admin → Hosts, Raspberry Pi (aarch64) builds, SSH hosts over Tailscale or direct addresses; `oc artifact dev`, `oc code run`. Workspace archive export and import (`oc admin export/import`), artifact and form exports, `oc admin backup/restore` | An agent completes a browser-and-shell task on its own computer with takeover and approvals; VFS-only agents unaffected |
+| 3 · Governance | Human roles and approver policies; full hard-deny floor; budgets that pause work; run replay and audit; 1Password, then Bitwarden/Vaultwarden; scoped and non-blocking approvals; heartbeats, monitors and daily briefs; save a task as a routine; OneDrive/SharePoint and calendars. Signed and public artifact publishing with published queries; published-surfaces registry, abuse controls and kill switch; artifact lifecycle sweeps. **Forms v2**: logic, partial saves, one-question mode, conversational intake, embeds, consent and retention. Host local MCP bridge and event source, `oc mount` (FUSE), bwrap sandbox, the `oc` agent-experience eval gate, `oc admin` for self-hosters. Scheduled encrypted backups to customer-owned storage, Git mirror, export governance gates, GDPR member export, backup verification | An admin can answer "who allowed what, at what cost" for any agent action |
 | 4 · Work apps and apps platform | Agent-native Tables, Issues and Docs: mentions, assignment, record-change events and triggers, change sets for every object. Spaces and the anti-mess rules. App manifest runtime with CRM as the first schema-only app; Mail (Phase 2) and Calendar (Phase 3) are delivered on the same manifest model. Artifacts as custom views in app manifests; artifact-to-app packaging; artifact templates. `oc app`, plugin tooling and `oc forms` | Agents run real workflows in Tables and Issues without connections; CRM installs from a manifest with no app-specific storage |
-| 5 · Cloud | Hosted OpenCompany Cloud with managed computers on boat (needs a partner agreement), moving to Bowerbird sandboxes; OpenCompany as an MCP server; MCP Apps cards; A2A. Custom domains, MCP Apps export of artifacts to Claude and ChatGPT, Git export, payments in forms and artifacts. Cloud contexts in `oc`; Windows host support | Paying pilot workspaces on hosted Cloud; self-host parity maintained |
+| 5 · Cloud | Hosted OpenCompany Cloud with managed computers on boat (needs a partner agreement), moving to Bowerbird sandboxes; OpenCompany as an MCP server; MCP Apps cards; A2A. Custom domains, MCP Apps export of artifacts to Claude and ChatGPT, Git export, payments in forms and artifacts. Cloud contexts in `oc`; Windows host support. Cloud exit guarantees (free export, 90-day read-only window, Cloud-to-self-host migration), region choice, verified deletion; customer-managed keys later | Paying pilot workspaces on hosted Cloud; self-host parity maintained |
 
 Phases may overlap. Phase 0 security work always takes priority over new surfaces.
 
