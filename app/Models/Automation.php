@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use Carbon\Carbon;
 use Cron\CronExpression;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Concerns\BelongsToWorkspace;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * @property string $id
@@ -18,6 +20,7 @@ use App\Models\Concerns\BelongsToWorkspace;
  * @property string $execution_type
  * @property string $prompt
  * @property string|null $script
+ * @property string|null $script_runtime
  * @property string $cron_expression
  * @property string $timezone
  * @property bool $is_active
@@ -48,6 +51,10 @@ class Automation extends Model
         'agent_id',
         'prompt',
         'script',
+        'script_runtime',
+        'script_digest',
+        'script_engine_digest',
+        'script_validated_at',
         'cron_expression',
         'timezone',
         'is_active',
@@ -70,6 +77,7 @@ class Automation extends Model
             'last_run_at' => 'datetime',
             'next_run_at' => 'datetime',
             'last_result' => 'array',
+            'script_validated_at' => 'datetime',
         ];
     }
 
@@ -80,6 +88,28 @@ class Automation extends Model
                 $automation->next_run_at = $automation->computeNextRunAt();
             }
         });
+        static::saved(function (Automation $automation): void {
+            if ($automation->script === null || (! $automation->wasRecentlyCreated
+                && ! $automation->wasChanged(['script', 'script_runtime', 'script_engine_digest']))) {
+                return;
+            }
+            // Revisions are append-only and survive automation deletion. They
+            // remain workspace-owned; public resources never fetch them globally.
+            DB::table('automation_script_revisions')->insertOrIgnore([
+                'id' => (string) Str::uuid(), 'workspace_id' => $automation->workspace_id,
+                'automation_id' => $automation->id, 'runtime' => $automation->script_runtime,
+                'source' => $automation->script, 'source_digest' => hash('sha256', $automation->script),
+                'engine_digest' => $automation->script_engine_digest,
+                'status' => $automation->script_runtime === config('code.runtime') ? 'validated' : 'unadmitted',
+                'created_at' => now(),
+            ]);
+        });
+    }
+
+    /** Keep source replacement and its immutable revision in one transaction. */
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(fn (): bool => parent::save($options));
     }
 
     // --- Type Helpers ---
@@ -160,7 +190,7 @@ class Automation extends Model
     {
         if (! $this->channel_id) {
             $channel = Channel::create([
-                'id' => \Illuminate\Support\Str::uuid()->toString(),
+                'id' => Str::uuid()->toString(),
                 'workspace_id' => $this->workspace_id,
                 'name' => $this->name,
                 'type' => 'dm',
@@ -197,7 +227,12 @@ class Automation extends Model
         ]);
     }
 
-    public function recordFailure(string $error): void
+    /**
+     * Record a failed run with optional structured runtime/effect diagnostics.
+     *
+     * @param  array<string, mixed>  $details
+     */
+    public function recordFailure(string $error, array $details = []): void
     {
         $failures = $this->consecutive_failures + 1;
 
@@ -207,7 +242,7 @@ class Automation extends Model
             'run_count' => $this->run_count + 1,
             'consecutive_failures' => $failures,
             'is_active' => $failures < 5,
-            'last_result' => ['error' => $error],
+            'last_result' => array_merge(['error' => $error], $details),
         ]);
     }
 }

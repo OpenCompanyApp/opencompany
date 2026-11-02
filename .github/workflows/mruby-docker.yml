@@ -1,0 +1,90 @@
+name: mruby Docker qualification
+
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - '.github/workflows/mruby-docker.yml'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker/**'
+      - 'config/code.php'
+      - 'app/Services/MrubySandboxService.php'
+      - 'app/Services/CodeExecution*.php'
+      - 'scripts/testing/mruby-container-smoke.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'resources/**'
+      - 'routes/**'
+      - 'bootstrap/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mruby-docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-amd64:
+    name: Linux AMD64 release-artifact image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Composer path repositories must arrive as clean archives. Do not give
+      # Docker a sibling checkout, credentials, vendor tree, or Git metadata.
+      - name: Create pinned clean dependency contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/mruby-docker-contexts"
+
+          archive_context() {
+            local repository="$1"
+            local revision="$2"
+            local destination="$3"
+            local source
+            source="$RUNNER_TEMP/source-$(basename "$destination")"
+            git init -q "$source"
+            git -C "$source" remote add origin "$repository"
+            git -C "$source" fetch -q --depth 1 origin "$revision"
+            mkdir -p "$destination"
+            git -C "$source" archive FETCH_HEAD | tar -x -C "$destination"
+            test ! -e "$destination/.git"
+            test ! -e "$destination/vendor"
+          }
+
+          archive_context https://github.com/OpenCompanyApp/integrations.git \
+            d8666a50966d51d8420d9908c5e7c1beca3dfdfd \
+            "$RUNNER_TEMP/mruby-docker-contexts/integrations"
+          archive_context https://github.com/OpenCompanyApp/astronomy-bundle-php.git \
+            7d2f0924657c52d61ca4fa576b71df8c7be72a17 \
+            "$RUNNER_TEMP/mruby-docker-contexts/astronomy"
+          archive_context https://github.com/OpenCompanyApp/chatogrator.git \
+            a2fe13415f5d1229a6c06a8ea04ddc3663c58b01 \
+            "$RUNNER_TEMP/mruby-docker-contexts/chatogrator"
+
+      - name: Build production image with pinned mruby artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --load --platform linux/amd64 \
+            --build-arg RUNTIME_PLATFORM=linux/amd64 \
+            --build-context integrations="$RUNNER_TEMP/mruby-docker-contexts/integrations" \
+            --build-context astronomy="$RUNNER_TEMP/mruby-docker-contexts/astronomy" \
+            --build-context chatogrator="$RUNNER_TEMP/mruby-docker-contexts/chatogrator" \
+            --tag opencompany-mruby:qualification .
+
+      # No database, app daemon, or provider access: this is a final-image
+      # process boundary test of the released adapter and sandbox only.
+      - name: Execute mruby smoke as the production runtime user
+        run: |
+          docker run --rm --network none --read-only --user www-data \
+            --entrypoint php opencompany-mruby:qualification \
+            /app/scripts/testing/mruby-container-smoke.php

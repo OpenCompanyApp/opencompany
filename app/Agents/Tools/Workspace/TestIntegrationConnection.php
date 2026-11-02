@@ -97,7 +97,7 @@ class TestIntegrationConnection implements AiTool
         }
 
         foreach ($provider->tools() as $slug => $meta) {
-            if (($meta['type'] ?? 'read') !== 'read') {
+            if ($meta['type'] !== 'read') {
                 continue;
             }
 
@@ -107,7 +107,7 @@ class TestIntegrationConnection implements AiTool
             }
 
             $result = $tool->execute([]);
-            $name = (string) ($meta['name'] ?? $slug);
+            $name = $meta['name'];
 
             return $result->succeeded()
                 ? "Connection OK. {$integrationId} requires no API key; {$name} responded."

@@ -9,7 +9,6 @@ use App\Events\TaskUpdated;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Memory\OutputTruncator;
-use App\Support\LuaMetaParser;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Events\ToolInvoked;
@@ -52,10 +51,13 @@ class CheckpointToolCall
                 : class_basename($event->tool);
             $result = $event->result;
 
-            // Extract LuaExec structured metadata before truncation
-            $extracted = LuaMetaParser::extract($result);
-            $luaMeta = $extracted['meta'];
-            $result = $extracted['result'];
+            // CodeExec exposes telemetry through the invoked tool instance. Do
+            // not embed hidden markers in model-visible tool output merely to
+            // transport UI metadata to this synchronous listener.
+            $rawCodeMeta = method_exists($event->tool, 'lastExecutionMetadata')
+                ? $event->tool->lastExecutionMetadata()
+                : null;
+            $codeMeta = is_array($rawCodeMeta) ? $rawCodeMeta : null;
 
             // Truncate large results before checkpoint persistence to keep
             // retry context lean while preserving the full payload durably.
@@ -94,26 +96,34 @@ class CheckpointToolCall
                 }
             }
 
-            // For LuaExec, derive description and icon from bridge calls
-            if ($toolName === 'LuaExec' && $luaMeta && ! empty($luaMeta['bridgeCalls'])) {
-                $names = collect($luaMeta['bridgeCalls'])
-                    ->pluck('name')
-                    ->filter()
-                    ->unique()
-                    ->values();
+            // For CodeExec, derive description and icon from capability calls.
+            $bridgeCalls = is_array($codeMeta['bridgeCalls'] ?? null) ? $codeMeta['bridgeCalls'] : [];
+            if ($toolName === 'CodeExec' && $bridgeCalls !== []) {
+                $names = [];
+                $firstIcon = null;
+                foreach ($bridgeCalls as $call) {
+                    if (! is_array($call)) {
+                        continue;
+                    }
 
-                if ($names->isNotEmpty()) {
-                    $description = $names->take(3)->join(', ');
-                    if ($names->count() > 3) {
-                        $description .= ' +'.($names->count() - 3).' more';
+                    if (is_string($call['name'] ?? null) && $call['name'] !== '') {
+                        $names[] = $call['name'];
                     }
-                    // Use first bridge call's icon as the step icon
-                    $firstIcon = collect($luaMeta['bridgeCalls'])->firstWhere('icon');
-                    if ($firstIcon) {
-                        $stepIcon = $firstIcon['icon'];
+                    if ($firstIcon === null && is_string($call['icon'] ?? null) && $call['icon'] !== '') {
+                        $firstIcon = $call['icon'];
                     }
+                }
+                $names = array_values(array_unique($names));
+
+                if ($names !== []) {
+                    $description = implode(', ', array_slice($names, 0, 3));
+                    if (count($names) > 3) {
+                        $description .= ' +'.(count($names) - 3).' more';
+                    }
+                    // Use the first bridge call's icon as the step icon.
+                    $stepIcon = $firstIcon ?? $stepIcon;
                 } else {
-                    $description = 'Executed Lua script';
+                    $description = 'Executed Ruby';
                 }
             }
 
@@ -134,7 +144,7 @@ class CheckpointToolCall
                         'icon' => $stepIcon,
                         'arguments' => $event->arguments,
                         'result' => $result,
-                        'lua_meta' => $luaMeta,
+                        'code_meta' => $codeMeta,
                         'checkpointed' => true,
                     ]),
                 ],

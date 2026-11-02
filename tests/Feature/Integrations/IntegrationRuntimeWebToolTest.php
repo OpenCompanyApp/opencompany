@@ -16,7 +16,7 @@ class IntegrationRuntimeWebToolTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_lua_runtime_returns_structured_data_block_from_web_tools(): void
+    public function test_script_runtime_returns_structured_data_block_from_web_tools(): void
     {
         $agent = User::factory()->create(['type' => 'agent']);
         $tool = new class implements Tool
@@ -45,9 +45,9 @@ class IntegrationRuntimeWebToolTest extends TestCase
         };
 
         $registry = Mockery::mock(ToolRegistry::class);
-        $registry->shouldReceive('instantiateToolBySlug')
+        $registry->shouldReceive('resolveScriptToolForDispatch')
             ->with('web_search', Mockery::type(User::class), null)
-            ->andReturn($tool);
+            ->andReturn(['decision' => 'allow', 'reason' => 'Allowed', 'tool' => $tool]);
 
         $result = (new IntegrationRuntime($registry))->call($agent, 'web_search', [
             'max_results' => 3,

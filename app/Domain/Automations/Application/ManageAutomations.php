@@ -6,8 +6,11 @@ use App\Domain\Automations\Domain\AutomationSchedule;
 use App\Jobs\RunAutomationJob;
 use App\Models\Automation;
 use App\Models\Task;
+use App\Services\MrubySandboxService;
+use App\Services\ScriptAdmission;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Workspace automation management use cases.
@@ -18,6 +21,10 @@ use Illuminate\Support\Str;
  */
 class ManageAutomations
 {
+    public function __construct(
+        private MrubySandboxService $sandbox,
+    ) {}
+
     /** @return Collection<int, Automation> */
     public function list(): Collection
     {
@@ -32,15 +39,20 @@ class ManageAutomations
      */
     public function create(array $data): Automation
     {
+        $executionType = $data['executionType'] ?? 'prompt';
+        $admission = $executionType === 'script'
+            ? app(ScriptAdmission::class)->admit((string) ($data['script'] ?? '')) : [];
+
         return Automation::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => workspace()->id,
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
-            'execution_type' => $data['executionType'] ?? 'prompt',
+            'execution_type' => $executionType,
             'agent_id' => $data['agentId'],
             'prompt' => $data['prompt'] ?? null,
             'script' => $data['script'] ?? null,
+            ...$admission,
             'cron_expression' => $data['cronExpression'],
             'timezone' => $data['timezone'] ?? 'UTC',
             'channel_id' => $data['channelId'] ?? null,
@@ -79,6 +91,17 @@ class ManageAutomations
 
         if (array_key_exists('executionType', $input)) {
             $data['execution_type'] = $input['executionType'];
+        }
+
+        $targetType = $data['execution_type'] ?? $automation->execution_type;
+        if ($targetType === 'script' && array_key_exists('script', $input)) {
+            $data = [...$data, ...app(ScriptAdmission::class)->admit((string) $data['script'])];
+        } elseif ($targetType === 'script'
+            && $this->booleanValue($input['isActive'] ?? $automation->is_active)
+            && ! app(ScriptAdmission::class)->matches($automation)) {
+            throw ValidationException::withMessages(['script' => 'Submit and validate a Ruby body before enabling this legacy or stale automation.']);
+        } elseif ($targetType === 'prompt') {
+            $data['script_runtime'] = null;
         }
         if (array_key_exists('isActive', $input)) {
             $data['is_active'] = $this->booleanValue($input['isActive']);
@@ -183,5 +206,38 @@ class ManageAutomations
     private function booleanValue(mixed $value): bool
     {
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Compile before persistence so syntax failures cannot become scheduled
+     * incidents. Validation is capability-empty and therefore side-effect free.
+     *
+     * @throws ValidationException
+     */
+    private function validateScript(string $script): void
+    {
+        if (trim($script) === '') {
+            throw ValidationException::withMessages([
+                'script' => 'Ruby is required for a script automation.',
+            ]);
+        }
+
+        $result = $this->sandbox->execute(
+            code: $script,
+            profile: 'automation',
+            validateOnly: true,
+            sourceName: 'automation-code.rb',
+        );
+
+        if ($result->succeeded()) {
+            return;
+        }
+
+        $error = $result->error ?? [];
+        $location = isset($error['line']) ? ' at line '.$error['line'] : '';
+
+        throw ValidationException::withMessages([
+            'script' => '['.($error['type'] ?? 'syntax_error').']'.$location.': '.($error['message'] ?? 'Ruby validation failed.'),
+        ]);
     }
 }

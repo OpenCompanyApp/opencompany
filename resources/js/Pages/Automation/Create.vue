@@ -50,7 +50,7 @@
 
         <template v-if="form.executionType === 'script'">
           <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 leading-none shrink-0">
-            Luau
+            mruby
           </span>
           <span class="w-px h-4 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
           <a
@@ -77,7 +77,7 @@
       <div class="flex-1 min-w-0">
         <MonacoEditor
           v-model="content"
-          :language="form.executionType === 'script' ? 'lua' : 'markdown'"
+          :language="form.executionType === 'script' ? 'ruby' : 'markdown'"
           @cursor-change="(line: number, col: number) => { cursorLine = line; cursorColumn = col }"
         />
       </div>
@@ -146,7 +146,7 @@
 
     <!-- Status bar -->
     <div class="flex items-center h-6 px-3 shrink-0 border-t border-neutral-200 dark:border-neutral-700/60 bg-white dark:bg-[#1f1f1f] text-[11px] text-neutral-400 dark:text-neutral-500 gap-3 select-none">
-      <span class="font-medium">{{ form.executionType === 'script' ? 'Luau' : 'Markdown' }}</span>
+      <span class="font-medium">{{ form.executionType === 'script' ? 'Ruby / mruby' : 'Markdown' }}</span>
       <span class="w-px h-3 bg-neutral-200 dark:bg-neutral-700" />
       <span>Ln {{ cursorLine }}, Col {{ cursorColumn }}</span>
     </div>

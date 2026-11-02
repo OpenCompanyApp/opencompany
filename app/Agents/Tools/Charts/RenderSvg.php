@@ -2,6 +2,9 @@
 
 namespace App\Agents\Tools\Charts;
 
+use App\Services\CodeExecutionBudget;
+use App\Services\CodeExecutionCancelled;
+use App\Services\CodeExecutionDeadlineExceeded;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -9,9 +12,15 @@ use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Symfony\Component\Process\Process;
 
+/**
+ * Renders caller-supplied SVG through the host's bounded rsvg subprocess.
+ *
+ * The tool owns its temporary input and public image output, not authorization
+ * or workspace policy. Code Mode dispatch supplies those boundaries and its
+ * active execution budget; direct tool calls retain the normal renderer limit.
+ */
 class RenderSvg implements Tool
 {
-
     public function description(): string
     {
         return <<<'DESC'
@@ -47,14 +56,20 @@ DESC;
             Storage::disk('public')->makeDirectory('svg');
 
             $uuid = Str::uuid()->toString();
-            $outputRelative = 'svg/' . $uuid . '.png';
+            $outputRelative = 'svg/'.$uuid.'.png';
             $outputPath = Storage::disk('public')->path($outputRelative);
 
-            // Write SVG to temp file
-            $tmpSvg = tempnam(sys_get_temp_dir(), 'svg_') . '.svg';
-            file_put_contents($tmpSvg, $svg);
+            // Use the file tempnam actually reserved. Appending an extension
+            // would leak the original file and lose its atomic ownership.
+            $tmpSvg = tempnam(sys_get_temp_dir(), 'svg_');
+            if ($tmpSvg === false) {
+                throw new \RuntimeException('Could not reserve renderer input.');
+            }
 
             try {
+                if (file_put_contents($tmpSvg, $svg) !== strlen($svg)) {
+                    throw new \RuntimeException('Could not write renderer input.');
+                }
                 // Build rsvg-convert command
                 $rsvg = collect(['/opt/homebrew/bin/rsvg-convert', '/usr/local/bin/rsvg-convert', '/usr/bin/rsvg-convert'])
                     ->first(fn ($p) => file_exists($p), 'rsvg-convert');
@@ -68,26 +83,30 @@ DESC;
                 $command[] = $tmpSvg;
 
                 $process = new Process($command);
-                $process->setTimeout(30);
-                $process->run();
+                app(CodeExecutionBudget::class)->runProcess($process, 30.0);
 
-                if (!$process->isSuccessful()) {
+                if (! $process->isSuccessful()) {
                     $error = $process->getErrorOutput() ?: $process->getOutput();
-                    return 'SVG rendering error: ' . trim($error);
+
+                    return 'SVG rendering error: '.trim($error);
                 }
 
-                if (!file_exists($outputPath) || filesize($outputPath) === 0) {
+                if (! file_exists($outputPath) || filesize($outputPath) === 0) {
                     return 'Error: rsvg-convert produced no output.';
                 }
             } finally {
                 @unlink($tmpSvg);
             }
 
-            $url = '/storage/' . $outputRelative;
+            $url = '/storage/'.$outputRelative;
 
             return "![{$title}]({$url})";
+        } catch (CodeExecutionCancelled|CodeExecutionDeadlineExceeded $e) {
+            // Returning an ordinary string would let Ruby treat an expired
+            // renderer as a successful callback. Preserve the typed boundary.
+            throw $e;
         } catch (\Throwable $e) {
-            return 'Error rendering SVG: ' . $e->getMessage();
+            return 'Error rendering SVG: '.$e->getMessage();
         }
     }
 

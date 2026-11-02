@@ -9,6 +9,7 @@ use App\Agents\Tools\Workspace\ListAutomations;
 use App\Agents\Tools\Workspace\RunAutomation;
 use App\Agents\Tools\Workspace\UpdateAutomation;
 use App\Models\User;
+use App\Services\MrubySandboxService;
 use Laravel\Ai\Contracts\Tool;
 
 /**
@@ -16,7 +17,7 @@ use Laravel\Ai\Contracts\Tool;
  *
  * Automations are grouped separately from general workspace management because
  * they are executable runtime assets: an agent can create, edit, and trigger
- * scheduled prompt or Lua-script workflows.
+ * scheduled prompt or runtime-pinned Ruby workflows.
  */
 class AutomationsToolProvider implements BuiltInToolProvider
 {
@@ -29,7 +30,7 @@ class AutomationsToolProvider implements BuiltInToolProvider
     {
         return [
             'label' => 'list, get, create, update, delete, run',
-            'description' => 'Scheduled automations. "prompt" (agent, costs tokens) or "script" (--!strict Luau, zero cost). Use lua_read_doc() for script APIs.',
+            'description' => 'Scheduled automations. "prompt" uses an agent; "script" runs validated synchronous Ruby on opencompany-code-v1. Use code_read_doc for APIs.',
         ];
     }
 
@@ -59,7 +60,7 @@ class AutomationsToolProvider implements BuiltInToolProvider
                 'class' => CreateAutomation::class,
                 'type' => 'write',
                 'name' => 'Create Automation',
-                'description' => 'Create an automation. Types: "prompt" (agent, costs tokens) or "script" (--!strict Luau, zero cost).',
+                'description' => 'Create a prompt automation or a validated opencompany-code-v1 Ruby automation.',
                 'icon' => 'ph:lightning',
             ],
             'update_automation' => [
@@ -88,8 +89,10 @@ class AutomationsToolProvider implements BuiltInToolProvider
 
     public function createTool(string $class, User $agent, array $context = []): Tool
     {
-        // Automation tools share the same constructor shape: current agent is
-        // the actor and the tool class owns the specific query/update behavior.
-        return new $class($agent);
+        return match ($class) {
+            CreateAutomation::class,
+            UpdateAutomation::class => new $class($agent, app(MrubySandboxService::class)),
+            default => new $class($agent),
+        };
     }
 }

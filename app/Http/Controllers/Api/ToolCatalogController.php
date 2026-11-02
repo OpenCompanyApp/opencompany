@@ -6,19 +6,19 @@ use App\Agents\Tools\ToolRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\IntegrationSetting;
 use App\Models\User;
-use App\Services\LuaApiDocGenerator;
+use App\Services\CodeApiDocGenerator;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Read-only catalog endpoint for agent tools and Lua documentation.
+ * Read-only catalog endpoint for agent tools and Code Mode documentation.
  *
  * This endpoint is for developer UI/documentation. Tool execution still flows
  * through ToolRegistry/IntegrationRuntime so displaying a tool here does not
  * grant permission to call it.
  */
-class ToolCatalogController extends Controller
+final class ToolCatalogController extends Controller
 {
-    public function index(ToolRegistry $toolRegistry, LuaApiDocGenerator $docGenerator): JsonResponse
+    public function index(ToolRegistry $toolRegistry, CodeApiDocGenerator $docGenerator): JsonResponse
     {
         // Use any workspace agent for schema extraction. Tool schemas are static
         // enough for docs, while permission-aware execution remains per-agent.
@@ -37,8 +37,8 @@ class ToolCatalogController extends Controller
 
         $catalog = $toolRegistry->getToolCatalog($agent);
 
-        // Lua docs use snake_case names even when PHP/Laravel AI schemas use
-        // camelCase. This is display-only; runtime mapping stays in LuaBridge.
+        // Code Mode uses snake_case names even when PHP/Laravel AI schemas use
+        // camelCase. This is display-only; runtime mapping stays in CodeBridge.
         foreach ($catalog as &$group) {
             foreach ($group['tools'] as &$tool) {
                 foreach ($tool['parameters'] as &$param) {
@@ -48,10 +48,9 @@ class ToolCatalogController extends Controller
         }
         unset($group, $tool, $param);
 
-        // Build slug -> lua function path map from the doc generator so the UI
-        // can show the exact Lua call name next to each tool.
+        // Build slug -> function path map so the UI shows the exact callable.
         $fnMap = $docGenerator->buildFunctionMap($agent);
-        $slugToLua = array_flip($fnMap);
+        $slugToCode = array_flip($fnMap);
 
         // Workspace-level enabled flag is informational for integration groups.
         $enabledIntegrationIds = IntegrationSetting::forWorkspace()
@@ -59,21 +58,21 @@ class ToolCatalogController extends Controller
             ->pluck('integration_id')
             ->toArray();
 
-        // Enrich each group with Lua metadata
+        // Enrich each group with Code Mode metadata.
         foreach ($catalog as &$group) {
             $appName = $group['name'];
             // MCP tools use app.mcp.{server} to avoid colliding with package
             // integration namespaces.
             if (str_starts_with($appName, 'mcp_')) {
                 $serverName = substr($appName, strlen('mcp_'));
-                $group['luaNamespace'] = 'app.mcp.'.$serverName;
+                $nsKey = 'mcp.'.$serverName;
             } else {
                 $nsKey = ($group['isIntegration'] ? 'integrations.' : '').$appName;
-                $group['luaNamespace'] = 'app.'.$nsKey;
             }
+            $group['codeNamespace'] = 'app.'.$nsKey;
 
-            // Supplementary Lua docs are package-owned and optional.
-            $group['luaDocs'] = $docGenerator->getSupplementaryDocs($nsKey);
+            // Supplementary script docs are package-owned and optional.
+            $group['scriptDocs'] = $docGenerator->getSupplementaryDocs($nsKey);
 
             // Built-in groups are always enabled. MCP servers self-register only
             // while enabled, so their catalog presence is already sufficient.
@@ -82,12 +81,12 @@ class ToolCatalogController extends Controller
                     || in_array($appName, $enabledIntegrationIds);
             }
 
-            // Enrich each tool with its Lua function name
+            // Enrich each tool with its Code Mode function name.
             foreach ($group['tools'] as &$tool) {
-                $luaPath = $slugToLua[$tool['slug']] ?? null;
-                if ($luaPath) {
-                    $parts = explode('.', $luaPath);
-                    $tool['luaFunction'] = end($parts);
+                $codePath = $slugToCode[$tool['slug']] ?? null;
+                if ($codePath) {
+                    $parts = explode('.', $codePath);
+                    $tool['codeFunction'] = end($parts);
                 }
             }
         }

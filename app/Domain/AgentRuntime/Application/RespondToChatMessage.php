@@ -44,7 +44,7 @@ class RespondToChatMessage
      * Stream event types consumed by the chat UI.
      *
      * Tool calls/results are persisted as task steps instead of being pushed
-     * through the realtime message stream. Large tool results, especially Lua
+     * through the realtime message stream. Large tool results, especially Code Mode
      * documentation and integration payloads, can exceed the Pusher/Reverb
      * frame limit and must never be allowed to fail the durable agent run.
      */

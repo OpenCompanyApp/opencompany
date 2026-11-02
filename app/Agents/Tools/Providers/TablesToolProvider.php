@@ -29,7 +29,7 @@ use Laravel\Ai\Contracts\Tool;
  * Registers structured-table tools.
  *
  * Tables expose schema, row, and saved-view operations from one provider so
- * permissions and Lua docs present table work as a single capability group.
+ * permissions and Code Mode docs present table work as a single capability group.
  */
 class TablesToolProvider implements BuiltInToolProvider
 {

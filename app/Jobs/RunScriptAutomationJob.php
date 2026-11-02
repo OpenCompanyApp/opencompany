@@ -8,6 +8,7 @@ use App\Jobs\Concerns\SerializesAgentExecution;
 use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Models\AgentRunRecord;
 use App\Models\Automation;
+use App\Services\ScriptAutomationInvocation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,6 +23,11 @@ use Illuminate\Support\Str;
  * Script execution lives in the Automations domain context. This adapter owns
  * queue uniqueness, timeout/retry metadata, serialization, and workspace
  * binding for the sandbox execution path.
+ *
+ * The source receipt is captured when the job is constructed (dispatch time).
+ * A payload without a receipt, or whose receipt no longer matches the stored
+ * automation, never reaches the executor: queued work only runs the exact
+ * Ruby source that was admitted when it was scheduled.
  */
 class RunScriptAutomationJob implements ShouldBeUnique, ShouldQueue
 {
@@ -30,8 +36,6 @@ class RunScriptAutomationJob implements ShouldBeUnique, ShouldQueue
 
     /** Overlap releases are bounded by retryUntil(), not an attempt count. */
     public int $tries = 0;
-
-    public int $maxRunAttempts = 2;
 
     public int $timeout = 60;
 
@@ -44,11 +48,16 @@ class RunScriptAutomationJob implements ShouldBeUnique, ShouldQueue
 
     private string $dispatchKey;
 
+    /** @var array<string, mixed>|null */
+    private ?array $sourceReceipt = null;
+
     public function __construct(
         private Automation $automation,
         ?string $dispatchKey = null,
+        ?array $sourceReceipt = null,
     ) {
         $this->dispatchKey = $dispatchKey ?? (string) Str::uuid();
+        $this->sourceReceipt = $sourceReceipt ?? ScriptAutomationInvocation::capture($automation);
     }
 
     public function uniqueId(): string
@@ -63,6 +72,12 @@ class RunScriptAutomationJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(?ExecuteScriptAutomation $executeScriptAutomation = null): void
     {
+        $current = Automation::query()->whereKey($this->automation->id)->first();
+        if ($this->sourceReceipt === null || $current === null
+            || ! ScriptAutomationInvocation::matches($current, $this->sourceReceipt)) {
+            return;
+        }
+
         $this->setWorkspaceContext($this->automation->workspace_id);
 
         try {
@@ -70,7 +85,7 @@ class RunScriptAutomationJob implements ShouldBeUnique, ShouldQueue
                 $this->automation,
                 $this->dispatchKey,
                 $this->job?->uuid(),
-                $this->maxRunAttempts,
+                $this->sourceReceipt,
             );
         } finally {
             $this->clearWorkspaceContext();

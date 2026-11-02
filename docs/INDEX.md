@@ -89,6 +89,11 @@ Verified: 2026-08-31.
 
 ## Planning & Implementation
 
+The [mruby-only implementation plan](planning/mruby-only-code-mode-implementation.md)
+and [implementation evidence / remaining gates](planning/mruby-implementation-progress.md)
+describe the in-progress runtime replacement. Coordinated draft PRs and an engine
+release candidate are published; full qualification and local cutover are not complete.
+
 | Document | What it covers | Read when... |
 |----------|---------------|--------------|
 | [mruby-only-code-mode-implementation.md](planning/mruby-only-code-mode-implementation.md) | Planned sole-language mruby migration: shared isolated engine, PHP host, agent experience, automations, legacy-source handling, ecosystem, qualification and release | Implementing the Ruby hard cut that supersedes Lua/Luau and the proposed QuickJS runtime |
@@ -122,6 +127,11 @@ Verified: 2026-08-31.
 | [qa-strategy.md](testing/qa-strategy.md) | Testing pyramid, CI/CD pipeline, coverage targets, test data management | Setting up automated test infrastructure |
 | [browser-full-qa-2026-05-24.md](qa/browser-full-qa-2026-05-24.md) | Historical deep browser checkup with 2026-08-09 reconciliation notes | Reviewing the original findings and evidence before fresh browser QA |
 | [browser-qa-2026-05-24.md](qa/browser-qa-2026-05-24.md) | Historical browser route/UI report with resolved migration note and remaining revalidation boundary | Tracing a browser regression back to the May 24 evidence set |
+| [mruby-docker.md](testing/mruby-docker.md) | Clean-context ARM64 Docker qualification, immutable Ruby engine artifact verification, and remaining packaging gates | Building or reviewing the mruby production image |
+| [mruby-history-browser.md](testing/mruby-history-browser.md) | Mocked-API browser checks of real built source-history UI | Verifying history display, deliberate loading and dark mode without live data |
+| [mruby-console-browser.md](testing/mruby-console-browser.md) | Mocked-API regression of successful console responses and source-bound diagnostics | Checking console rendering without a provider or database |
+| [mruby-local-site.md](testing/mruby-local-site.md) | Real isolated macOS PHP-FPM/browser and database-worker qualification | Operating the separate mruby test site without touching VFS/run-control |
+| [mruby-dependency-audit.md](testing/mruby-dependency-audit.md) | Dated dependency advisories and comparison with the dev lockfile | Reviewing inherited dependency release risks |
 
 ## Audits
 

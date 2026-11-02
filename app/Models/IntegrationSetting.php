@@ -17,7 +17,7 @@ use OpenCompany\IntegrationCore\Support\ToolProviderRegistry;
  *
  * One integration can have multiple account aliases. The default/unaliased row
  * is used by ordinary runtime calls, while named accounts can be selected by
- * Lua/package tools. Never expose raw config values from this model to clients.
+ * Code Mode/package tools. Never expose raw config values from this model to clients.
  *
  * @property array<string, mixed> $config
  * @property string $workspace_id

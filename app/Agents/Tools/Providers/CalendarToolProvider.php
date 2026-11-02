@@ -16,7 +16,7 @@ use Laravel\Ai\Contracts\Tool;
  * Registers calendar and attendee management tools.
  *
  * The provider keeps event CRUD and RSVP updates in one group so tool catalogs,
- * Lua docs, and permission surfaces describe calendar work consistently.
+ * Code Mode docs, and permission surfaces describe calendar work consistently.
  */
 class CalendarToolProvider implements BuiltInToolProvider
 {

@@ -42,7 +42,7 @@
             {{ stepDescription(step) }}
           </span>
 
-          <!-- Bridge call tool group icons (LuaExec only) -->
+          <!-- Bridge call tool group icons (CodeExec only) -->
           <div v-if="stepToolGroups(step).length" class="flex items-center gap-1 shrink-0">
             <Icon
               v-for="group in stepToolGroups(step)" :key="group.name"
@@ -70,12 +70,12 @@
           v-if="expandedSteps.has(step.id) && hasExpandableContent(step)"
           class="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-700/50 space-y-3"
         >
-          <!-- Lua Execute: dedicated rendering with Monaco + output + bridge calls -->
-          <LuaExecutionDetail
-            v-if="step.metadata?.tool === 'LuaExec'"
+          <!-- Code Mode: dedicated rendering with source, output, and effect ledger -->
+          <CodeExecutionDetail
+            v-if="step.metadata?.tool === 'CodeExec'"
             :code="String(stepArguments(step).code ?? '')"
             :result="String(step.metadata.result ?? '')"
-            :lua-meta="stepLuaMeta(step)"
+            :code-meta="stepCodeMeta(step)"
           />
 
           <!-- Generic tool rendering -->
@@ -138,7 +138,7 @@
 import { ref, reactive } from 'vue'
 import type { TaskStep } from '@/types'
 import Icon from '@/Components/shared/Icon.vue'
-import LuaExecutionDetail from '@/Components/tasks/LuaExecutionDetail.vue'
+import CodeExecutionDetail from '@/Components/tasks/CodeExecutionDetail.vue'
 import { useHighlight } from '@/composables/useHighlight'
 import { useMarkdown } from '@/composables/useMarkdown'
 import { displayToolName } from '@/utils/toolDisplay'
@@ -167,8 +167,8 @@ const stepDescription = (step: TaskStep) => {
   )
 }
 
-const stepLuaMeta = (step: TaskStep): any => {
-  return step.metadata?.lua_meta ?? null
+const stepCodeMeta = (step: TaskStep): any => {
+  return step.metadata?.code_meta ?? null
 }
 
 const toggleStep = (id: string) => {
@@ -249,7 +249,7 @@ const extractGroup = (call: { group?: string; path?: string }): string => {
 }
 
 const stepToolGroups = (step: TaskStep): Array<{ name: string; icon: string }> => {
-  const calls = (step.metadata?.lua_meta as { bridgeCalls?: Array<{ group?: string; path?: string; icon?: string }> })?.bridgeCalls
+  const calls = (step.metadata?.code_meta as { bridgeCalls?: Array<{ group?: string; path?: string; icon?: string }> })?.bridgeCalls
   if (!calls?.length) return []
   const groups: Record<string, string> = {}
   for (const call of calls) {

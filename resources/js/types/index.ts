@@ -477,6 +477,10 @@ export interface Automation {
   name: string
   triggerType: string
   executionType: 'prompt' | 'script'
+  scriptRuntime: string | null
+  scriptDigest: string | null
+  scriptEngineDigest: string | null
+  scriptValidatedAt: string | null
   description: string | null
   agentId: string
   prompt: string
@@ -497,6 +501,10 @@ export interface Automation {
     tokens?: number
     completed_at?: string
     task_id?: string
+    execution_id?: string
+    script_runtime?: string
+    runtime_error?: Record<string, unknown>
+    effects?: Record<string, unknown>
   } | null
   agent?: User
   channel?: Channel

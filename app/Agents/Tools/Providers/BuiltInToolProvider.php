@@ -2,7 +2,9 @@
 
 namespace App\Agents\Tools\Providers;
 
+use App\Agents\Tools\ToolRegistry;
 use App\Models\User;
+use Laravel\Ai\Contracts\Tool;
 
 /**
  * Interface for built-in tool providers that organize app tools into groups.
@@ -40,7 +42,7 @@ interface BuiltInToolProvider
     /**
      * Create a tool instance for the given class.
      *
-     * @param  array{channel_id?: string|null, task_id?: string|null}  $context
+     * @param  array{channel_id?: string|null, task_id?: string|null, tool_registry?: ToolRegistry}  $context
      */
-    public function createTool(string $class, User $agent, array $context = []): \Laravel\Ai\Contracts\Tool;
+    public function createTool(string $class, User $agent, array $context = []): Tool;
 }
