@@ -58,26 +58,18 @@ trait MutatesVfsDocumentRecords
      */
     private function assertDocumentWritable(User $agent, ?Document $folder, ?Document $doc, string $path): void
     {
-        if ($doc !== null) {
-            if ($doc->is_system) {
-                throw VfsError::permissionDenied($path, 'system documents are edited through /agents or /me, not /docs');
-            }
-
-            $allowed = $this->permissions->getAllowedFolderIds($agent);
-            if ($allowed === null || ! $this->documentIsDescendantOf($doc, $allowed)) {
-                throw VfsError::permissionDenied($path, 'document writes require an explicit document folder grant that contains this document');
-            }
-
-            return;
-        }
-
-        if ($folder !== null && ($folder->is_system || ! $folder->is_folder)) {
+        // Single write gate for every document create/overwrite/patch/move/
+        // trash. The decision itself is owned by AuthorizesVfsDocuments
+        // (folder grants, deny rows, stored DocumentPermission rows) so the
+        // VFS has exactly one document write policy; do not re-implement
+        // grant checks here.
+        if ($doc === null && $folder !== null && ($folder->is_system || ! $folder->is_folder)) {
             throw VfsError::permissionDenied($path, 'documents can only be created inside non-system document folders');
         }
 
-        $allowed = $this->permissions->getAllowedFolderIds($agent);
-        if ($allowed === null || $folder === null || ! $this->canAccessDocument($agent, $folder)) {
-            throw VfsError::permissionDenied($path, 'creating documents requires an explicit document folder grant for the target folder');
+        $denial = $this->documentWriteDenial($agent, $doc, $doc === null ? $folder?->id : null);
+        if ($denial !== null) {
+            throw VfsError::permissionDenied($path, $denial);
         }
     }
 
@@ -506,7 +498,8 @@ trait MutatesVfsDocumentRecords
 
     private function documentIsSelfOrAncestorOf(Document $candidateAncestor, Document $folder): bool
     {
-        return $candidateAncestor->id === $folder->id || $this->documentIsDescendantOf($folder, [$candidateAncestor->id]);
+        // documentChain() is the folder id followed by its ancestors.
+        return in_array((string) $candidateAncestor->id, $this->documentChain($folder), true);
     }
 
     /**

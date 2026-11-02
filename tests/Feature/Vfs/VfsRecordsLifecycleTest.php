@@ -163,8 +163,9 @@ class VfsRecordsLifecycleTest extends TestCase
             'content' => 'approved body',
             'mode' => 'create',
         ])), true);
-        $this->assertSame('approval_required', $response['error']['code']);
-        $this->assertSame(['create_document'], $response['error']['context']['tools']);
+        // Approval-pending is the shared non-error shape (Stream C2).
+        $this->assertSame('pending_approval', $response['status']);
+        $this->assertContains('create_document', $response['required_tools']);
         $this->assertFalse(Document::forWorkspace()->where('title', 'Approved Doc')->exists());
 
         app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->approver());
@@ -227,8 +228,8 @@ class VfsRecordsLifecycleTest extends TestCase
         $this->gate('delete_table_row');
 
         $response = json_decode($this->rmTool()->handle(new Request(['path' => "/tables/customers/rows/{$row->id}.json"])), true);
-        $this->assertFalse($response['ok']);
-        $this->assertSame('approval_required', $response['error']['code']);
+        // Approval-pending is the shared non-error shape (Stream C2).
+        $this->assertSame('pending_approval', $response['status']);
         $this->assertNotNull(DataTableRow::find($row->id));
 
         app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->approver());
