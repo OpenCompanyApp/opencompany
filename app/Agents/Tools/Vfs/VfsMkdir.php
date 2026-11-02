@@ -31,7 +31,9 @@ class VfsMkdir implements ReturnsVfsEnvelope, Tool
     public function handle(Request $request): string
     {
         try {
-            return $this->encodeResult($this->vfs->makeDirectory($this->agent, (string) ($request['path'] ?? '')));
+            // Full call as toolParameters: idempotency_key reaches the
+            // facade and approval replay hashes the same parameters.
+            return $this->encodeResult($this->vfs->makeDirectory($this->agent, (string) ($request['path'] ?? ''), $request->toArray()));
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
         }

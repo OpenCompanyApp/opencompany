@@ -3,6 +3,7 @@
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
@@ -101,7 +102,7 @@ trait MutatesVfsTableRows
             'mode' => 'create',
             'table' => $table->name,
             'fields' => $this->tableColumnNames($table, array_keys($data)),
-        ], 'write', 'Creating table rows requires vfs_write and add_table_row.');
+        ], 'write', 'Creating table rows requires vfs_write and add_table_row.', actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         $row = DB::transaction(function () use ($agent, $table, $data): DataTableRow {
             $row = DataTableRow::create(['table_id' => $table->id, 'data' => $data, 'created_by' => $agent->id]);
@@ -144,7 +145,7 @@ trait MutatesVfsTableRows
             'table' => $table->name,
             'row_id' => $row->id,
             'fields' => $this->tableColumnNames($table, array_keys($data)),
-        ], 'write', 'Overwriting table rows requires vfs_write and update_table_row.');
+        ], 'write', 'Overwriting table rows requires vfs_write and update_table_row.', actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         $fresh = DB::transaction(function () use ($agent, $table, $row, $data, $version, $path): DataTableRow {
             $locked = DataTableRow::where('table_id', $table->id)->whereKey($row->id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
@@ -191,6 +192,7 @@ trait MutatesVfsTableRows
             channelId: $this->channelIdFrom($toolParameters),
             hint: 'Moving a row to the trash requires delete_table_row.',
             preview: ['kind' => 'table_row', 'action_class' => 'delete', 'table' => $table->name, 'row_id' => $row->id],
+            actionClass: VfsActionClass::DELETE,
         );
 
         DB::transaction(function () use ($agent, $table, $row, $path): void {
@@ -242,6 +244,7 @@ trait MutatesVfsTableRows
             channelId: $this->channelIdFrom($toolParameters),
             hint: 'Restoring a trashed row requires delete_table_row.',
             preview: ['kind' => 'table_row', 'action_class' => 'reversible_edit', 'table' => $table->name, 'row_id' => $row->id],
+            actionClass: VfsActionClass::REVERSIBLE_EDIT,
         );
 
         $fresh = DB::transaction(function () use ($table, $row, $source): DataTableRow {

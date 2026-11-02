@@ -5,9 +5,11 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\ListItem;
 use App\Models\ListStatus;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -93,7 +95,7 @@ trait MutatesVfsListItems
             $token,
             '/lists/projects',
             $path,
-            fn (\Illuminate\Database\Eloquent\Model $candidate): string => "/lists/by-id/{$candidate->getKey()}",
+            fn (Model $candidate): string => "/lists/by-id/{$candidate->getKey()}",
         );
 
         return $project instanceof ListItem ? $project : throw VfsError::notFound($path);
@@ -309,7 +311,7 @@ trait MutatesVfsListItems
             'mode' => 'create',
             'project' => $project->title,
             'title' => $fields['title'],
-        ], 'write', 'Creating list items requires vfs_write and create_list_item.');
+        ], 'write', 'Creating list items requires vfs_write and create_list_item.', actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         $item = DB::transaction(function () use ($agent, $project, $fields, $body): ListItem {
             $position = (int) (ListItem::forWorkspace()->where('parent_id', $project->id)->where('is_folder', false)->where('status', $fields['status'])->max('position') ?? 0);
@@ -377,7 +379,7 @@ trait MutatesVfsListItems
             'mode' => 'overwrite',
             'list_item_id' => $item->id,
             'fields' => array_keys($fields),
-        ], 'write', 'Overwriting list items requires vfs_write and update_list_item.');
+        ], 'write', 'Overwriting list items requires vfs_write and update_list_item.', actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         $fresh = DB::transaction(function () use ($item, $fields, $version, $path): ListItem {
             $locked = ListItem::forWorkspace()->whereKey($item->id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
@@ -410,6 +412,7 @@ trait MutatesVfsListItems
             channelId: $this->channelIdFrom($toolParameters),
             hint: 'Moving a list item to the trash requires delete_list_item.',
             preview: ['kind' => 'list_item', 'action_class' => 'delete', 'title' => $item->title, 'id' => $item->id],
+            actionClass: VfsActionClass::DELETE,
         );
 
         DB::transaction(function () use ($agent, $item, $path): void {
@@ -455,6 +458,7 @@ trait MutatesVfsListItems
             channelId: $this->channelIdFrom($toolParameters),
             hint: 'Restoring a trashed list item requires delete_list_item.',
             preview: ['kind' => 'list_item', 'action_class' => 'reversible_edit', 'title' => $item->title, 'id' => $item->id],
+            actionClass: VfsActionClass::REVERSIBLE_EDIT,
         );
 
         $fresh = DB::transaction(function () use ($item, $source): ListItem {

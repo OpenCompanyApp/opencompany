@@ -31,7 +31,10 @@ class VfsRm implements ReturnsVfsEnvelope, Tool
     public function handle(Request $request): string
     {
         try {
-            return $this->encodeResult($this->vfs->remove($this->agent, (string) ($request['path'] ?? '')));
+            // The full call (including idempotency_key) is the policy's
+            // parameter set: approval replay re-sends the same call, so the
+            // approved-context hash matches, and retries dedupe.
+            return $this->encodeResult($this->vfs->remove($this->agent, (string) ($request['path'] ?? ''), $request->toArray()));
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
         }

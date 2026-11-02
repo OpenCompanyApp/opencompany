@@ -4,6 +4,7 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsTextPatch;
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
@@ -66,7 +67,7 @@ trait PatchesVfsRecords
             'kind' => 'task',
             'task_id' => $task->id,
             'fields' => array_keys($fields),
-        ]);
+        ], actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         $fresh = DB::transaction(function () use ($task, $fields, $version, $path): Task {
             $locked = Task::forWorkspace()->whereKey($task->id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
@@ -107,7 +108,7 @@ trait PatchesVfsRecords
             'action_class' => 'reversible_edit',
             'list_item_id' => $item->id,
             'fields' => array_keys($fields),
-        ]);
+        ], actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         $fresh = DB::transaction(function () use ($item, $fields, $version, $path): ListItem {
             $locked = ListItem::forWorkspace()->whereKey($item->id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
@@ -161,7 +162,7 @@ trait PatchesVfsRecords
             'table' => $table->name,
             'row_id' => $row->id,
             'fields' => array_keys($resolved),
-        ]);
+        ], actionClass: VfsActionClass::REVERSIBLE_EDIT);
 
         $fresh = DB::transaction(function () use ($agent, $table, $row, $resolved, $resolvedBase, $version, $path): DataTableRow {
             // Invariant: merge the supplied columns into the row as it is

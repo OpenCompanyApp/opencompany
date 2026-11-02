@@ -35,6 +35,9 @@ class VfsMv implements ReturnsVfsEnvelope, Tool
                 $this->agent,
                 $this->input($request)->string('source'),
                 $this->input($request)->string('destination'),
+                // Full call as toolParameters: idempotency_key reaches the
+                // facade and approval replay hashes the same parameters.
+                $request->toArray(),
             ));
         } catch (\Throwable $e) {
             return $this->errorResponse($e);

@@ -155,18 +155,18 @@ Generated from `app/Domain/Vfs/Spec/VfsOperationSpecRegistry.php`; edit the spec
 |---|---|---|---|
 | `app.vfs.shell(command:, cwd:, cursor:, response_format:, max_entries:, max_depth:, max_bytes:, max_files:, max_matches:, max_line_length:, include_command_spec:)` | `vfs_exec` | per_command | Run unix-like commands over the virtual filesystem (ls, find, rg, cat, jq, ...). |
 | `app.vfs.read(path:, offset:, limit:, cursor:, max_bytes:, raw:)` | `vfs_read` | read | Read a text file with line numbers, paging and its version. |
-| `app.vfs.edit(path:, edits:, version:, dry_run:)` | `vfs_edit` | write | Edit text files by exact replacement: several edits, all or nothing, with dry-run diff. |
-| `app.vfs.write(path:, content:, mode:, version:)` | `vfs_write` | write | Create, overwrite or append whole text content where a path allows writes. |
-| `app.vfs.patch(path:, patch:, version:)` | `vfs_patch` | write | Patch structured records: task/list fields and table rows, version-checked. |
+| `app.vfs.edit(path:, edits:, version:, dry_run:, idempotency_key:)` | `vfs_edit` | write | Edit text files by exact replacement: several edits, all or nothing, with dry-run diff. |
+| `app.vfs.write(path:, content:, mode:, version:, idempotency_key:)` | `vfs_write` | write | Create, overwrite or append whole content: files, documents, table rows, list items, your notes. |
+| `app.vfs.patch(path:, patch:, version:, idempotency_key:)` | `vfs_patch` | write | Patch structured records: task/list fields and table rows, version-checked. |
 | `app.vfs.stat(path:)` | `vfs_stat` | read | Stat a path: type, version, capabilities, canonical path and metadata. |
 | `app.vfs.ls(path:, limit:, cursor:, max_files:)` | `vfs_ls` | read | List a directory as structured entries with cursor paging. |
 | `app.vfs.find(paths:, name:, type:, limit:, cursor:, max_depth:, max_files:)` | `vfs_find` | read | Find entries by name and type across bounded directory trees (resumable). |
 | `app.vfs.rg(pattern:, paths:, regex:, ignore_case:, max_matches:, max_files:, max_depth:)` | `vfs_rg` | read | Search text across VFS paths (regex by default; app.vfs.grep is literal). Deterministic and permission-filtered, not semantic. |
 | `app.vfs.exists(path:)` | `vfs_exists` | read | Check whether a path exists without raising not_found. |
-| `app.vfs.mkdir(path:)` | `vfs_mkdir` | write | Create a writable directory (idempotent). |
+| `app.vfs.mkdir(path:, idempotency_key:)` | `vfs_mkdir` | write | Create a folder under /files or /docs, with missing parents (idempotent). |
 | `app.vfs.cp(source:, destination:)` | `vfs_cp` | write | Copy a writable file. |
-| `app.vfs.mv(source:, destination:)` | `vfs_mv` | write | Move or rename a writable file. |
-| `app.vfs.rm(path:)` | `vfs_rm` | write | Delete a writable file. |
+| `app.vfs.mv(source:, destination:, idempotency_key:)` | `vfs_mv` | write | Move or rename a file or document within its mount; restore a trashed object from <mount>/.trash/. |
+| `app.vfs.rm(path:, idempotency_key:)` | `vfs_rm` | write | Move a file, document, table row, list item or your note to the trash (never a hard delete; restore with mv). |
 
 Aliases:
 

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Vfs\Core\Concerns;
 
+use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsPath;
 use App\Domain\Vfs\Core\VfsText;
@@ -166,7 +167,7 @@ trait ExecutesVfsMutationCommands
         if (str_starts_with(VfsPath::normalize($target).'/', VfsPath::normalize($source).'/')) {
             throw VfsError::invalid("cp: cannot copy a directory, '{$source}', into itself, '{$target}'", ['path' => $source]);
         }
-        $walk = $this->walkFiles($agent, [$source], $this->currentBudget ?? new \App\Domain\Vfs\Core\VfsBudget);
+        $walk = $this->walkFiles($agent, [$source], $this->currentBudget ?? new VfsBudget);
         if ($walk['truncated']) {
             throw VfsError::invalid("cp -r: {$source} has more files or levels than the VFS budget allows (maxFiles/maxDepth); nothing was copied.", [
                 'path' => $source,
@@ -261,7 +262,7 @@ trait ExecutesVfsMutationCommands
                 if (! $args->has('d')) {
                     throw VfsError::invalid("rm: cannot remove '{$path}': Is a directory", ['path' => $path, 'hint' => 'Use rm -r for folders (rmdir / rm -d for empty folders).']);
                 }
-                if ($this->vfs->listBounded($agent, $path, new \App\Domain\Vfs\Core\VfsBudget(maxEntries: 1)) !== []) {
+                if ($this->vfs->listBounded($agent, $path, new VfsBudget(maxEntries: 1)) !== []) {
                     throw VfsError::invalid("rm: cannot remove '{$path}': Directory not empty", ['path' => $path, 'hint' => 'Use rm -r to remove a folder and its contents.']);
                 }
             }
@@ -421,6 +422,14 @@ trait ExecutesVfsMutationCommands
         }
     }
 
+    /**
+     * Compose vfs_exec + $toolSlug for the whole command line (one approval
+     * covers the line; replay matches on the same subject).
+     *
+     * The declared action class is the line's strictest command spec class
+     * (VfsCommandSpec::actionClass(), computed once per execute()); the
+     * policy raises it further when the line names a governance path.
+     */
     private function assertWriteCommandAllowed(User $agent, string $toolSlug): void
     {
         $this->mutationPolicy->assertAllowedOrRequestApproval(
@@ -439,6 +448,7 @@ trait ExecutesVfsMutationCommands
                 'kind' => 'vfs_command',
                 'command' => $this->currentCommand,
             ],
+            actionClass: $this->currentActionClass,
         );
     }
 
