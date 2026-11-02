@@ -19,7 +19,8 @@ trait ResolvesVfsResourceDirectEntries
      */
     private function directAgentEntry(User $agent, array $segments, string $path): ?VfsEntry
     {
-        if (isset($segments[3]) || ! isset($segments[1])) {
+        // `/agents/by-id` itself is a listing, not an agent.
+        if (isset($segments[3]) || ! isset($segments[1]) || ($segments[1] === 'by-id' && ! isset($segments[2]))) {
             return null;
         }
 
@@ -40,15 +41,22 @@ trait ResolvesVfsResourceDirectEntries
     /**
      * @param  list<string>  $segments
      */
-    private function directTaskEntry(User $agent, array $segments): ?VfsEntry
+    private function directTaskEntry(User $agent, array $segments, string $path): ?VfsEntry
     {
-        if (($segments[1] ?? null) !== 'by-id' || ! isset($segments[2]) || isset($segments[3])) {
+        // Any listed task name, under any task listing (MountsVfsTasks naming contract).
+        $file = $this->taskFileSegments($segments, $path);
+        if ($file === null) {
             return null;
         }
 
-        $task = Task::forWorkspace()->with('agent:id,name')->find($segments[2]);
+        $task = Task::forWorkspace()->with('agent:id,name')->find($file[2]);
+        if ($task === null) {
+            return null;
+        }
+        $entry = $this->taskEntry($agent, $task, dirname($path));
 
-        return $task ? $this->taskEntry($agent, $task) : null;
+        // Report the path exactly as asked (the canonical uuid form included).
+        return new VfsEntry(basename($path), $path, $entry->type, $entry->canonicalPath, $entry->backendType, $entry->backendId, $entry->version, $entry->capabilities, $entry->metadata);
     }
 
     /**

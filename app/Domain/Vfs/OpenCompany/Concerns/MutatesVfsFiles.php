@@ -34,9 +34,16 @@ trait MutatesVfsFiles
      * the transaction. The policy may create an approval, so it must not run
      * inside the transaction.
      *
-     * Disk bytes are written inside the DB transaction. A later rollback can't
-     * un-write them, but the row lock still serializes VFS writers on the same
-     * file, which is the guarantee this method makes.
+     * Atomicity: FileSystemService::writeFile puts the new bytes in a NEW
+     * storage object and swaps the row's pointer inside this transaction, so
+     * a failure anywhere in it (content hash, history snapshot) leaves the
+     * old bytes, version and history exactly as they were. The row lock
+     * serializes VFS writers on the same file.
+     *
+     * History: an overwrite must be able to snapshot the bytes it replaces.
+     * Files above the history ceiling (config vfs.max_content_bytes) are
+     * therefore not overwritable here; the error says to trash the file
+     * (which keeps it restorable) and create a new one instead.
      *
      * @param  list<string>  $segments
      * @param  string|\Closure(string, ?string): array{content: string, replacements: int, stale_base: bool}  $content
@@ -67,6 +74,9 @@ trait MutatesVfsFiles
             if (is_string($content)) {
                 $this->assertVersion($version, $this->fileVersion($existing), $path);
             }
+            // Also before the policy: an impossible overwrite must not create
+            // an approval. Re-checked against the real bytes under the lock.
+            $this->assertFileHistoryFits($existing, (int) $existing->size, $path);
         }
 
         if ($mode === 'create' && $existing) {
@@ -153,8 +163,14 @@ trait MutatesVfsFiles
             }
 
             if ($locked !== null && $previousBytes === null) {
-                // History needs the bytes this write replaces.
+                // History needs the bytes this write replaces; refuse before
+                // reading them when they are too large to keep.
+                $this->assertFileHistoryFits($locked, (int) $locked->size, $path);
                 $previousBytes = (string) $this->files->readFileContents($locked);
+            }
+            if ($locked !== null) {
+                // The size column can be stale; the bytes are authoritative.
+                $this->assertFileHistoryFits($locked, strlen((string) $previousBytes), $path);
             }
 
             $file = $this->files->writeFile($agent->workspace_id, $folder?->id, $name, $bytes, $agent->id);
@@ -177,6 +193,28 @@ trait MutatesVfsFiles
             'version' => $this->fileVersion($file),
             ...($applied !== null ? $this->textPatchResultFields($applied) : []),
         ];
+    }
+
+    /**
+     * Refuse an overwrite whose previous bytes could not be kept as a history
+     * snapshot: silently losing the only copy would make an irreversible
+     * change look like a reversible edit.
+     *
+     * @throws VfsError not_writable
+     */
+    private function assertFileHistoryFits(WorkspaceFile $file, int $bytes, string $path): void
+    {
+        $ceiling = (int) config('vfs.max_content_bytes', 20 * 1024 * 1024);
+        if ($bytes <= $ceiling) {
+            return;
+        }
+
+        throw new VfsError('not_writable', "{$path} is too large to overwrite through the VFS: its current content ({$bytes} bytes) cannot be kept in history.", [
+            'path' => $path,
+            'size' => $bytes,
+            'history_limit_bytes' => $ceiling,
+            'hint' => "rm it (the trash keeps the original and restores it with mv), then create the new content. Trash id: {$file->id}.",
+        ]);
     }
 
     /**

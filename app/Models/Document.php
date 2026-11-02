@@ -6,13 +6,13 @@ use App\Models\Concerns\BelongsToWorkspace;
 use App\Models\Concerns\RecordsAgentChanges;
 use App\Models\Contracts\RevertibleContent;
 use App\Models\Concerns\Trashable;
-use App\Observers\DocumentObserver;
-use App\Services\Memory\DocumentIndexingService;
+use App\Models\Concerns\TrashesInBatches;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * Workspace document or folder.
@@ -24,13 +24,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `delete()` moves a document (and a folder's subtree) to trash; trashed
  * documents leave queries and their search chunks are dropped, then rebuilt
  * on restore. `forceDelete()` is the purge (governance-model.md).
+ * Folder subtrees trash and restore as one batch (TrashesInBatches), so
+ * plain `$folder->delete()` callers stay correct.
  *
- * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property Carbon|null $deleted_at
  */
 class Document extends Model implements RevertibleContent
 {
     /** @use HasFactory<Factory<static>> */
-    use BelongsToWorkspace, HasFactory, RecordsAgentChanges, Trashable;
+    use BelongsToWorkspace, HasFactory, RecordsAgentChanges, Trashable, TrashesInBatches;
 
     protected $keyType = 'string';
 
@@ -79,17 +81,6 @@ class Document extends Model implements RevertibleContent
         });
     }
 
-    /** A descendant trashed with its folder leaves search (like DocumentObserver::deleted). */
-    protected function onTrashed(): void
-    {
-        app(DocumentIndexingService::class)->deindex($this);
-    }
-
-    /** A descendant restored with its folder is indexed again (like DocumentObserver::saved). */
-    protected function onRestored(): void
-    {
-        app(DocumentObserver::class)->saved($this);
-    }
 
     public function toArray()
     {

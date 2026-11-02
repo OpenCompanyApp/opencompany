@@ -74,7 +74,7 @@ class VfsIntegrationFollowupsTest extends TestCase
         $this->assertSame(1, substr_count($find, 'plan'));
 
         $grep = $executor->execute($this->agent, 'grep -rl kestrel /', '/', $budget)['stdout'];
-        $this->assertSame("/agents/atlas/notes/planmd\n", $grep);
+        $this->assertSame("/agents/atlas/notes/plan.md\n", $grep);
 
         $search = $this->vfs->searchWithMetadata($this->agent, 'kestrel', ['/'], $budget);
         $this->assertSame(1, $search['count']);

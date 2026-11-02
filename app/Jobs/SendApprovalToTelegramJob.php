@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Domain\Chat\Telegram\Application\TelegramApprovalRenderer;
+use App\Jobs\Concerns\SetsWorkspaceContext;
 use App\Models\ApprovalRequest;
 use App\Models\IntegrationSetting;
 use App\Models\TelegramDelivery;
@@ -22,10 +23,11 @@ use Illuminate\Support\Str;
  *
  * Callback handling lives in the webhook controller; this job only formats the
  * pending approval safely and delivers it through the workspace Telegram config.
+ * The workspace is bound only for the delivery (withWorkspaceBinding()).
  */
 class SendApprovalToTelegramJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, SetsWorkspaceContext;
 
     public int $tries = 2;
 
@@ -50,11 +52,15 @@ class SendApprovalToTelegramJob implements ShouldQueue
             return;
         }
 
+        // Bound for the delivery only; the caller's binding is restored after
+        // (this job may run synchronously inside the approval request).
         $workspace = Workspace::find($setting->workspace_id);
-        if ($workspace) {
-            app()->instance('currentWorkspace', $workspace);
-        }
 
+        $this->withWorkspaceBinding($workspace, fn () => $this->deliver($setting, $workspace));
+    }
+
+    private function deliver(IntegrationSetting $setting, ?Workspace $workspace): void
+    {
         $text = app(TelegramApprovalRenderer::class)->pendingHtml($this->approval, $workspace);
 
         $inspect = $this->interaction($setting, 'inspect');

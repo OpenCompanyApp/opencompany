@@ -2,22 +2,28 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
+use App\Models\Concerns\TrashesInBatches;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Models\Concerns\BelongsToWorkspace;
 use App\Models\Concerns\RecordsAgentChanges;
 use App\Models\Contracts\RevertibleContent;
 use App\Models\Concerns\Trashable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * ListItem - Items in a kanban board/list (renamed from Task)
  * For discrete work tracking, see the Task model instead.
  *
  * Deletes are soft (governance model: delete means trash); the VFS
- * `/lists/.trash/` view restores them.
+ * `/lists/.trash/` view restores them. Trashing a project trashes its live
+ * items as one batch and restoring it brings back exactly that batch
+ * (TrashesInBatches).
  *
  * @property string $title
  * @property string|null $description
@@ -30,21 +36,23 @@ use App\Models\Concerns\Trashable;
  * @property string|null $channel_id
  * @property int $position
  * @property int $item_count
- * @property \Carbon\Carbon|null $created_at
- * @property \Carbon\Carbon|null $updated_at
- * @property \Carbon\Carbon|null $completed_at
- * @property \Carbon\Carbon|null $due_date
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $completed_at
+ * @property Carbon|null $due_date
  * @property string $workspace_id
  * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class ListItem extends Model implements RevertibleContent
 {
     /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
-    // Trashable: delete moves an item (and a project's items) to trash.
-    use HasFactory, BelongsToWorkspace, RecordsAgentChanges, Trashable;
+    // Trashable + TrashesInBatches: delete moves an item (and a project's items) to trash as one batch.
+    use BelongsToWorkspace, HasFactory, RecordsAgentChanges, Trashable, TrashesInBatches;
 
     protected $table = 'list_items';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -67,7 +75,7 @@ class ListItem extends Model implements RevertibleContent
     protected static function booted(): void
     {
         static::creating(function (ListItem $item) {
-            if (!$item->is_folder && !$item->parent_id) {
+            if (! $item->is_folder && ! $item->parent_id) {
                 throw new \InvalidArgumentException('List items must belong to a project (parent_id is required).');
             }
         });
@@ -158,7 +166,7 @@ class ListItem extends Model implements RevertibleContent
     public function convertToTask(User $requester, ?User $agent = null): Task
     {
         return Task::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'title' => $this->title,
             'description' => $this->description,
             'type' => 'custom',

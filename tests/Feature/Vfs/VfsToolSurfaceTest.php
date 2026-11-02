@@ -355,10 +355,14 @@ class VfsToolSurfaceTest extends TestCase
 
     // Not being wrapped must never mean ungated: a strict-mode agent's edit
     // still stops at the composed approval.
-    public function test_unwrapped_edit_still_needs_approval_in_strict_mode(): void
+    // vfs_edit is never wrapped in ApprovalWrappedTool (self-governed); an
+    // approval-gated vfs_patch grant (the permission vfs_edit borrows) must
+    // still stop the edit at one pending approval. Behaviour modes were
+    // replaced by the policy model, so the gate is a scoped grant.
+    public function test_unwrapped_edit_still_needs_approval_when_patch_is_gated(): void
     {
         $doc = $this->patchableDocument('Strict', "mode: loose\n");
-        $this->agent->update(['behavior_mode' => 'strict']);
+        $this->permission('tool', 'vfs_patch', 'allow', requiresApproval: true);
 
         $response = $this->envelope('vfs_edit', [
             'path' => "/docs/by-id/{$doc->id}",

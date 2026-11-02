@@ -7,6 +7,7 @@ use App\Domain\Vfs\Core\VfsOperationLog;
 use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Events\VfsObjectChanged;
 use App\Models\User;
+use App\Models\VfsIdempotencyKey;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
@@ -441,7 +442,16 @@ class VfsAuditor
     }
 
     /**
-     * Scoped per actor so two agents reusing a key never collide.
+     * Audit dedupe key for a write that carried an idempotency_key.
+     *
+     * Scoped per actor so two agents reusing a key never collide, and per
+     * CLAIM GENERATION: the mutation claim (RemembersVfsIdempotency) expires
+     * after 24 hours, after which the same key performs a NEW mutation. The
+     * event key therefore includes the id of the claim row that recorded this
+     * result; a replay inside the window sees the same claim (one event), a
+     * reuse after expiry sees a fresh claim (a new event). Without it, the
+     * unique index would silently drop the audit and change-feed event of a
+     * real, committed write.
      *
      * @param  array<string, mixed>|null  $toolParameters
      */
@@ -452,6 +462,11 @@ class VfsAuditor
             return null;
         }
 
-        return 'write:'.hash('sha256', implode('|', [$agent->workspace_id, $agent->id, $operationName, $path, $key]));
+        $generation = (string) VfsIdempotencyKey::query()
+            ->where('agent_id', $agent->id)
+            ->where('idempotency_key', $key)
+            ->value('id');
+
+        return 'write:'.hash('sha256', implode('|', [$agent->workspace_id, $agent->id, $operationName, $path, $key, $generation]));
     }
 }

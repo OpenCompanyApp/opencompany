@@ -24,15 +24,17 @@ class VfsEntry implements \JsonSerializable
     ) {}
 
     /**
-     * True for an alias mount entry (`/me`, metadata `alias: true`), whose
-     * contents are also reachable under their canonical mount.
+     * True for an alias entry (metadata `alias: true`) whose contents are
+     * also reachable under their friendly paths: the `/me` mount in `/`, and
+     * the flat `by-id` directories of `/docs`, `/files` and `/agents`.
      *
      * Contract for every recursive walker (find, grep -r / rg, du, diff -r,
      * vfs_rg/search, Code Mode find): never descend into an alias entry met
-     * while walking, so walks from `/` do not visit objects twice. Walks that
-     * START at an alias path (`find /me`) are unaffected: only the root `/`
-     * listing marks aliases. Display walkers (tree, ls -R) still print the
-     * alias name but do not descend into it.
+     * while walking, so walks do not visit objects twice (or print by-id
+     * forms first). Walks that START at an alias path (`find /me`,
+     * `ls -R /docs/by-id`) are unaffected: only the parent listing marks the
+     * alias. Display walkers (tree, ls -R) still print the alias name but do
+     * not descend into it.
      */
     public function isAlias(): bool
     {
