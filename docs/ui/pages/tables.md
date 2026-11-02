@@ -2,6 +2,14 @@
 
 > Index page displaying all data tables as a card grid, with options to create and delete tables.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+Tables is a core primitive and one of the six tools in every Space (pillar 7; [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md)). Agent edits arrive as **change sets** (plan, dry-run preview, live staged edits in the agent's color, review per cell, row or all, apply, "Revert this run"; human edits win). New column types: Person/Agent, Relation, Attachment and Long-text. Creating tables, fields or relations and changing a schema are human-approved proposals. Every table has a human owner and a status. Under the governance presets, small reversible edits auto-apply as a revertible change set; in Team, bulk edits (default over ~50 rows) and schema changes are proposals; deleted rows and tables go to trash (pillar 5; [Governance Model](../../architecture/governance-model.md)). Tables gain a **form view**: a form over the table's fields with one governed submission pipeline (validation, captcha and rate limits for public forms, upload quarantine, a change set, and an untrusted `form.submitted` event); render modes are page, one question at a time, conversational intake, embed and internal (Forms v1 in Phase 2; [Artifacts and Forms](../../planning/artifacts-and-forms.md)).
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

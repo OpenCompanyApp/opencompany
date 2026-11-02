@@ -161,7 +161,7 @@ Opinionated tools avoid this with fixed objects and workflows
 |---|---|
 | **Home** | Needs you (approvals, questions, takeovers), then results, then FYI. The daily brief lands here. Not called Inbox, to avoid confusion with Mail and agent inboxes |
 | **Chats** | DMs with agents and people, group chats, channels. Sections, unread counts, mentions, threads |
-| **Spaces** | Each Space holds Issues, Tables, Docs, Files and Routines |
+| **Spaces** | Each Space holds Issues, Tables, Docs, Files, Artifacts and Routines |
 | **Team** | People and agents; agent profiles (identity, memory, grants, computer, routines, budget, runs) |
 | **Admin** | Connections, policies, members, billing |
 
@@ -220,6 +220,9 @@ through the VFS, the API and mruby alike.
 6. **Policy thresholds.**
    - Small edits within the agent's grants can auto-apply, but they still form one revertible batch.
    - Large changes, structural changes and deletes always require review.
+     *(Reconciled 2026-11-02 with pillar 5, which was locked later: deletes go to a 30-day trash,
+     which auto-applies in Personal and Team and is a proposal in Company. Purge needs approval. Bulk
+     edits over about 50 rows and schema changes are proposals in Team and Company.)*
    - Thresholds are set per Space and per agent.
 7. **Human edits win.**
    - An agent never overwrites a cell a human changed after the agent read it
@@ -311,8 +314,9 @@ bottom:
 5. **People:** presence and unread counts, about 5 recent.
 6. **Groups and channels:** group chats can mix agents and people.
 7. **Apps:** installed add-ons such as Mail, CRM, Calendar and Helpdesk, with counts.
-8. **Spaces:** flat. Each expands to Issues, Tables, Docs, Files and Routines, plus scoped app views
-   such as Deals.
+8. **Spaces:** flat. Each expands to Issues, Tables, Docs, Files, Artifacts and Routines, plus scoped
+   app views such as Deals. Artifacts were added as a core primitive on 2026-11-02; see
+   [Artifacts and Forms](artifacts-and-forms.md).
 9. **Footer:** Team, Admin, and the user menu.
 
 Every section can be collapsed and reordered per user. Spaces the user isn't a member of are hidden.
@@ -320,14 +324,16 @@ On mobile, a bottom bar holds Home, Chats, Spaces and Team.
 
 ## Appendix B: core primitives and add-on apps (accepted)
 
-- **Core primitives, always on:** Threads, Issues, Tables and Records, Docs, Files, Routines, Agents
-  and People.
+- **Core primitives, always on:** Threads, Issues, Tables and Records, Docs, Files, Artifacts,
+  Routines, Agents and People. Artifacts are the only code-bearing primitive
+  ([Artifacts and Forms](artifacts-and-forms.md)).
 - **Apps, optional and per workspace:** Mail, CRM, Calendar, Helpdesk, Recruiting, Invoices, and
   third-party apps later.
 - **An app manifest declares:**
   - record types (schema-locked tables with relations);
   - views from a fixed catalog: list, board/pipeline, table, calendar, mail thread, record detail,
-    timeline;
+    timeline, form;
+  - artifacts, which act as the app's custom views and endpoints;
   - routine templates;
   - an agent pack;
   - required connections;
@@ -339,5 +345,5 @@ On mobile, a bottom bar holds Home, Chats, Spaces and Team.
 - **Lifecycle:** uninstalling archives the data, and upgrades migrate the schema.
 - **First-party order:** Mail (Phase 2, doubles as the agent inbox), Calendar (Phase 3), CRM
   (Phase 4), then Helpdesk, Recruiting and Invoices.
-- **Third-party apps** come only as signed, declarative manifests reviewed before install. Custom
-  views come later, as sandboxed MCP Apps-style UI.
+- **Third-party apps** come only as signed, declarative manifests reviewed before install. Their
+  custom views are interactive artifacts on the MCP Apps bridge.

@@ -2,6 +2,24 @@
 
 > A focused review queue for managing pending approval requests with status filtering and inline approve/reject actions.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+Approvals follow pillar 5 of the [Product Direction](../../PRODUCT_DIRECTION.md): one policy engine with three presets (Personal, Team, Company), **gated by reversibility, not by "write"** ([Governance Model](../../architecture/governance-model.md)). Reversible internal edits (change sets with "Revert this run"), trash and external drafts mostly auto-apply; approvals are kept for external sends, spend, exposure, purges and, depending on the preset, bulk or schema changes. The hard-deny floor is never approvable, and an agent never approves anything.
+
+- **Where cards appear:** inline at the point in the run where they were raised, and in the needs-you group on [Home](../layouts.md#home); Personal also on Telegram. They go only to the responsible human's DM or Home, never to group chats. Each card states what will happen (rendered from the arguments), why, the source, an untrusted-content flag and a run link.
+- **Who approves (per preset):** Personal: the owner is the only approver. Team: the agent's manager is the default approver; members may grant "always" for their own personal connections, while shared connections need an admin. Company: approver policies, two approvers on high-risk classes (for example purge, spend above a threshold, exposure).
+- **First external send:** the first send, post or submit to a new target asks once, then offers one-tap **"always for this recipient / domain"**. In Company, routine-started runs may only reach admin-allowlisted targets.
+- **Learned exceptions:** after repeated approvals of the same pattern (default 3), the card offers a scoped, exact-match "always allow" (for example "Ada may email @acme.com"). Admins can restrict who may accept.
+- **Batched cards:** "Ada wants to send 12 follow-ups" is one card with a toggle per item.
+- **Non-blocking:** a pending approval parks only its step; the agent continues other work.
+- **Exception scopes:** once, this run, this task, time-limited, always; matched exactly on later calls. Runs that read untrusted content lose automatic approval for external actions, and a trigger is never consent.
+
+This page stays as the full review queue and history. Approver policies and two-approver rules are Phase 3.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

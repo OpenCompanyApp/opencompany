@@ -1,5 +1,7 @@
 # OpenCompany and Bowerbird Durable Automation Integration
 
+> **Direction status (2026-11-02):** Superseded by the workload split: OpenCompany owns business automation; Bowerbird owns software delivery and heavy durable pipelines; heavy script routines can graduate to a Bowerbird pipeline with the same Ruby ([OpenCompany × Bowerbird](../planning/bowerbird-synergy.md)).
+
 Status: Accepted cross-product direction with proposed contracts; no Bowerbird connector or Ruby
 Code Mode described here is implemented in this checkout.
 Verified: 2026-08-31 against the active OpenCompany checkout and the sibling Bowerbird docs-first

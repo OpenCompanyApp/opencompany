@@ -1,5 +1,7 @@
 # ClickUp Integration
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 ClickUp project management integration for OpenCompany. Supports task workflows,
 workspace hierarchy, members, comments, tags, attachments, time tracking, lists,
 folders, chat, docs, and webhook triggers.

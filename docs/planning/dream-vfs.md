@@ -1,5 +1,7 @@
 # Dream (Memory Consolidation) + VFS (Virtual Filesystem) for Agent Retrieval
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — memory is a kept asset and memory controls are a pillar 6 primitive; the VFS is the governed path to company data (pillar 3), projected into the agent computer from Phase 2; consolidation is ongoing work with no dedicated phase.
+
 Date: 2026-04-07
 Status: Partial foundation plus planning, reconciled 2026-08-09. The
 identity/memory baseline and a broad Unix-like VFS now exist. Dream

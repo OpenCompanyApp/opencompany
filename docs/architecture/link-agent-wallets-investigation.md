@@ -1,5 +1,7 @@
 # Stripe Link Agents Investigation
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — payment credentials stay a high-risk, approval-gated capability (single-use cards and spend caps are pillar 6 primitives); moving money between accounts is on the hard-deny floor (entry ships in Phase 2) that no approval can unlock; behaviour modes are replaced by the policy model.
+
 Date: 2026-04-30
 
 ## Scope

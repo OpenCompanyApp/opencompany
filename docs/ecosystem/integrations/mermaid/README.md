@@ -1,5 +1,7 @@
 # Integration: Mermaid
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 > Mermaid diagram rendering integration tools. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
 
 Generates PNG images from Mermaid diagram syntax. Supports flowcharts, sequence diagrams, class diagrams, state diagrams, ER diagrams, Gantt charts, pie charts, git graphs, and more.

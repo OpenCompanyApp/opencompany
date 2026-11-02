@@ -2,6 +2,17 @@
 
 This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep them identical.
 
+## Product Direction
+
+- `docs/PRODUCT_DIRECTION.md` is the locked product direction (final, accepted 2026-11-02) and the top documentation authority for what OpenCompany is becoming: "Grok Bot for companies", a messenger-first app with named AI teammates, optional per-agent computers via a `ComputerProvider` contract, the VFS as the governed path to company data, governance as the moat, built-in Tables/Issues/Docs, connections/events/routines (pillar 9, see `docs/planning/connections-events-routines.md`), AGPL self-host plus hosted Cloud, and mruby as the only Code Mode runtime. `docs/ROADMAP.md` must follow it; `docs/CURRENT_STATE.md` still owns implementation truth.
+- The product must work fully without an agent computer; never make a computer a hard requirement. A computer never bypasses the VFS for company data.
+- API-first now: Inertia is frozen. Do not add new Inertia pages or page props; new UI, starting with the messenger, reads and writes through the versioned API plus the realtime stream.
+- UI structure is locked (`docs/planning/ui-structure-and-agent-editing.md`, accepted): the new client is a Vue 3 + Reka UI single-page app with a token design system, one left rail, Home as the attention page (not "Inbox"), three panes, and flat Spaces. Old Inertia pages are deleted as the new client reaches parity. Core primitives are fixed (Threads, Issues, Tables/Records, Docs, Files, Artifacts, Routines, Agents, People); every Space has six tools. Artifacts (Pages and interactive HTML on the MCP Apps bridge, served from a separate cookie-less user-content origin, with mruby `endpoint` logic) are the only code-bearing primitive and never own storage (`docs/planning/artifacts-and-forms.md`). Forms are a view on any Table and submit only through the one governed pipeline. Add-on apps are manifests built only from the primitives and never own storage. Agents edit structured data through change sets (review, apply, revert this run; human edits win).
+- Governance is one policy engine with Personal, Team and Company presets (pillar 5). Presets set defaults only and are never paywalled. Gate actions by reversibility, not by "write": reversible change sets auto-apply, delete goes to a 30-day trash, and purge, external sends, spend and exposure follow the preset table. Always-on invariants (hard-deny floor, on-behalf-of access intersection, an agent never approves, triggers are never consent, audit log) are never relaxed by a preset. Access is Space-level only (no per-doc ACLs); agents join Spaces like teammates. The autonomy slider only writes scoped grants; behaviour modes (autonomous/supervised/strict) are deleted, so do not build on them.
+- The Rust `oc` CLI (client and connected-host daemon) lives in the separate Apache-2.0 `opencompany-cli` repository (`docs/planning/oc-cli-and-hosts.md`). It uses only the public versioned API and the realtime stream, so never add CLI-only or private endpoints; every capability it needs must be in the OpenAPI spec. Connected hosts connect outbound only and are governed like any other computer: host approval is `exposure_widening`, capabilities are granted per agent, and host tokens are scoped and rotated.
+- Data sovereignty (pillar 11, `docs/planning/data-sovereignty.md`) is a product invariant. Every new primitive or app record must be exportable through object downloads and the round-trippable `.ocarchive`, which has a CI round-trip test. Self-hosted installs send no telemetry and have no remotely flippable flags or egress switches. Never add phone-home code. Agents can never change backup or mirror destinations or export credentials.
+- Do not add per-app integration packages, a visual flow builder, or new Automations; use connections, routines, triggers and the workspace event log.
+
 ## Local
 
 - Local URL: `http://opencompany.test`
@@ -41,6 +52,7 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 ## Routing
 
 - Frontend route generation is owned by Laravel Wayfinder, not Ziggy.
+- Inertia pages are frozen (API-first). Wayfinder remains the routing stack for the existing pages; whether the API clients use Wayfinder or a generated OpenAPI client is still open in `docs/PRODUCT_DIRECTION.md`.
 - Generated frontend route/action sources live in `resources/js/routes`, `resources/js/actions`, and `resources/js/wayfinder`.
 - Run `npm run wayfinder:generate` after changing Laravel routes or controller actions that are called from Vue.
 - Prefer generated route/action imports and helpers from `resources/js/composables/useWorkspace.ts` over string-built URLs.
@@ -50,11 +62,10 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 
 - OpenCompany owns its AI runtime in `app/Domain/Ai`, `app/Ai`, `config/ai.php`, and the provider/model catalogs.
 - Do not reintroduce Prism, Prism Relay, Prism Server, or Prism Codex as runtime dependencies.
-- Provider transport behavior, model metadata, prompt caching, cost accounting, Codex OAuth, embeddings, and the OpenAI-compatible gateway are app-owned unless they clearly belong in `../integrations`.
-- Inspect sibling package source before patching integration-runtime behavior. In this workspace, integration package code may be path-based or symlinked into `vendor/`.
-- Common package sources:
-  - `../integrations/core`
-  - `../integrations/packages/*`
+- Provider transport behavior, model metadata, prompt caching, cost accounting, Codex OAuth, embeddings, and the OpenAI-compatible gateway are app-owned.
+- The integration package system is being deleted and the `../integrations` repository is archived read-only (Phase 0 nuclear cleanup). Do not add code to it, depend on new packages from it, or patch it. Old package source may be read only to mine code for native connectors.
+- Deep connectors (storage mounts such as Google Drive and OneDrive, mailboxes, calendars) are app-owned under `app/Domain/Connections/`. Generic reach goes through the rebuilt MCP client on `laravel/mcp`, API manifests, SKILL.md skills and inbound webhooks. Leave a breadcrumb comment in connector code stating that it is intentionally app-owned and not a package, so future agents do not "extract" it back into a package.
+- Bowerbird boundary (`docs/planning/bowerbird-synergy.md`): OpenCompany owns business automation (routines, events, approvals, agent work); Bowerbird owns software delivery and heavy durable pipelines. Bowerbird is reached only through the `ComputerProvider` driver, the Bowerbird deep connection, the shared mruby engine (Bowerbird owns the guest, OpenCompany owns host bindings and permissions) and shared CLI crates. Self-hosted OpenCompany must never require a Bowerbird account. Aya is discontinued.
 - Do not patch `vendor/` for durable fixes.
 - Avoid hardcoding provider IDs, model IDs, API formats, URLs, capabilities, auth modes, or runtime support lists outside the app-owned provider/model catalogs or config.
 

@@ -2,6 +2,14 @@
 
 > The public landing page showing Laravel branding, documentation links, and login/register navigation for unauthenticated visitors.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+The public landing page should follow the locked [Product Direction](../../PRODUCT_DIRECTION.md) and make no claims beyond [Current State](../../CURRENT_STATE.md).
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

@@ -1,5 +1,7 @@
 # AI Economics & Proactive Teammates
 
+> **Direction status (2026-11-02):** Partially superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](connections-events-routines.md) — budgets map to Phase 3 budgets that pause work; channel wake rules, heartbeats and proactive summaries are now routines and triggers (heartbeats, monitors, daily briefs in Phase 3); behaviour modes are replaced by the policy model and Lua by mruby.
+
 Status: Planning, code-audited 2026-05-26. This document captures a product direction, not a shipped feature set. It combines two related bets: OpenCompany should win when AI usage becomes economically rational, and external-chat agents should feel like accountable teammates instead of bots that only wake up when tagged.
 
 Related docs:

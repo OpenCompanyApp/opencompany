@@ -1,5 +1,7 @@
 # Integrations Catalog Branch Audit - 2026-05-10
 
+> **Historical (2026-11-02):** dated record; not updated for the [Product Direction](../PRODUCT_DIRECTION.md). Current truth: [Current State](../CURRENT_STATE.md), priorities: [Roadmap](../ROADMAP.md).
+
 > Status: Historical branch audit. This file preserves the May 10 findings that
 > shaped the integration-catalog work, but the "current tree" and findings below
 > are not the live repository state. A May 24 code check found the local `dev`

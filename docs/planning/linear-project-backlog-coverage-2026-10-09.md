@@ -1,5 +1,7 @@
 # OpenCompany Linear roadmap and source coverage — 2026-10-09
 
+> **Historical (2026-11-02):** milestone structure and epics superseded by the [2026-11-02 coverage](linear-project-backlog-coverage-2026-11-02.md) after the [Product Direction](../PRODUCT_DIRECTION.md) pivot. The "01–15" milestones below were renamed to Phase 0–5 milestones; the source inventory and TODO reconciliation remain valid history.
+
 Status: operational backlog import, verified by live Linear CLI read-back. This does not implement, commit, deploy or qualify the application.
 
 Project: [OpenCompany](https://linear.app/ginger-media/project/opencompany-2d9752cd90e0). 179 new issues, 134 existing issues reconciled, 313 total project issues and 15 workstream milestones at verification. No due dates or estimates were invented.

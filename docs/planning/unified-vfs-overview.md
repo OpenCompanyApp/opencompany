@@ -1,5 +1,7 @@
 # Unified Virtual Filesystem Overview
 
+> **Direction status (2026-11-02):** Partially superseded by [Product Direction](../PRODUCT_DIRECTION.md) — the VFS is the governed path to company data (pillar 3), projected into the agent computer from Phase 2 and carrying deep-connector mounts; behaviour-mode approval rules are replaced by the policy model, `/automations` and `/lists` follow Automations→Routines and Lists→Issues, and Lua sections are superseded by mruby. Current gaps: [VFS agent-friendliness audit](../architecture/vfs-agent-friendliness-audit-2026-11.md).
+
 Date: 2026-05-25
 Status: Implemented baseline plus target architecture.
 Verified: 2026-08-09. The domain-owned VFS, command-spec registry, workspace
@@ -288,6 +290,8 @@ This error shape matters as much as successful output. It lets an agent recover 
 
 ## Primitive Tools And Lua Library
 
+> **Direction note (2026-11-02):** Lua is superseded by mruby Code Mode; read Lua references in this section as historical.
+
 The VFS should have one implementation and two agent-facing access styles:
 
 | Surface | Shape | Best for |
@@ -324,6 +328,8 @@ The Lua API can expose ergonomic helpers such as `app.vfs.ls`, `app.vfs.cat`, `a
 The Lua docs should include a dedicated `vfs` namespace page so agents can discover the unix command grammar, output shapes, version tokens, permission behavior, and safe scripting patterns through `lua_read_doc("vfs")`.
 
 ### Programmatic Lua AX Audit
+
+> **Direction note (2026-11-02):** Lua is superseded by mruby Code Mode; read Lua references in this section as historical.
 
 The current plan is strong for interactive agent AX, but it needs a more explicit contract for programmatic Lua use. Lua scripts should not have to parse unix-like text output. They should get stable Lua tables, typed helper arguments, cursors, limits, and version tokens.
 
@@ -987,6 +993,8 @@ These tools express intent better than editing a virtual file. For example, sett
 ---
 
 ## Permission UX
+
+> **Direction note (2026-11-02):** agent behaviour modes (autonomous/supervised/strict) are deleted and replaced by the policy model: writes and external actions need approval by default, and admins grant scoped exceptions. Read behaviour-mode rules in this section as historical.
 
 VFS permissions should be visible as a first-class section on the agent capabilities page, separate from the low-level tool list. The existing page already has the right ingredients: behavior mode, approval behavior, tool toggles, channel access, document folder access, and file access. VFS should make those resource permissions easier to understand rather than adding hundreds of command toggles.
 

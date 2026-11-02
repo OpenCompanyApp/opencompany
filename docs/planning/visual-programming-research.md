@@ -2,6 +2,8 @@
 
 Research into visual programming options that could complement the existing Lua scripting system. The goal is to offer an alternative way to build automations and workflows — especially for users who aren't comfortable writing code.
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](connections-events-routines.md) — automations and visual programming are replaced by Routines authored in chat; there is no visual flow builder, and Lua is retired in favour of mruby.
+
 Status: Research / planning. This is a product-direction survey, not current implementation documentation.
 
 ## Requirements

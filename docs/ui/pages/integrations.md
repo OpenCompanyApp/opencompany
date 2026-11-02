@@ -2,6 +2,14 @@
 
 > Connect AI providers, package integrations, chat platforms, remote MCP servers, and the OpenCompany AI Gateway from a searchable integration catalog.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+**Superseded: becomes Connections plus Apps** (pillars 7 and 9; [Connections, Events and Routines](../../planning/connections-events-routines.md), [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md)). Connections live under Admin: Tier 1 deep connectors (storage mounts, mailboxes, calendars) and Tier 2 generic connections (MCP rebuilt on `laravel/mcp`, API manifests, skills, signed webhooks, optional managed connectors). **Apps** are optional add-ons in the rail (Mail in Phase 2, Calendar in Phase 3, CRM in Phase 4, then Helpdesk, Recruiting, Invoices), each a manifest built only from core primitives. The package catalog is deleted. The content below documents today's page only.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

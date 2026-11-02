@@ -2,6 +2,12 @@
 
 > API reference for all 28 shared components in `resources/js/Components/shared/`.
 
+Status: Reference for the current shared components of the Vue 3 + Inertia app, which is frozen
+(no new Inertia pages or page props). The [Planned Components (New Client)](#planned-components-new-client)
+section at the end is the accepted design for the new Vue 3 + Reka UI client, not implemented;
+aligned to the [Product Direction](../PRODUCT_DIRECTION.md) and
+[UI Structure and Agent Editing](../planning/ui-structure-and-agent-editing.md) on 2026-11-02.
+
 ---
 
 ## Actions
@@ -1479,3 +1485,150 @@ Mount once near the app shell so all calls to `useToast()` share one viewport.
   :action="{ icon: 'ph:plus', label: 'Add', onClick: addChannel }"
 />
 ```
+
+---
+
+## Planned Components (New Client)
+
+> **Accepted design, not implemented.** These components belong to the new Vue 3 + Reka UI
+> single-page app on the versioned public API and realtime stream (pillar 4), not to the Inertia app
+> documented above. Names are provisional. Source:
+> [UI Structure and Agent Editing](../planning/ui-structure-and-agent-editing.md); layout in
+> [layouts.md](layouts.md#target-one-rail-main-and-context-pane-accepted-not-implemented); tokens in
+> [design-system.md](design-system.md#target-token-design-system-new-client); mockups:
+> [sidebar](mockups/sidebar-2026-11.html), [primitives plus apps](mockups/apps-and-primitives-2026-11.html).
+> Today, chat uses `resources/js/Components/chat/assistant/*` and the inline
+> `resources/js/Components/chat/ApprovalCard.vue`; see [pages/chat.md](pages/chat.md).
+> Reusable from today: the TipTap editor setup, table view logic, the approval and diff viewers,
+> and the Telegram Mini App.
+
+All planned components use semantic tokens and wrapper components (dark mode through tokens), and
+get data only from the public API and the realtime stream.
+
+### Rail sections
+
+| Component | Contents |
+|-----------|----------|
+| Rail shell | 260px; collapsible, per-user reorderable sections; replaces the app sidebar and the chat conversation list |
+| Workspace header | Workspace switcher, new-chat button, search / ⌘K |
+| Home row | "N need you" badge (live count) |
+| Pinned section | Per-person pins of any thread, table, issue or doc |
+| Agents section | Row opens a DM; status dot (working, needs you, idle, paused), current task, unread count, 🖥 when the agent has a computer; about 5 recent or unread |
+| People section | Presence and unread, about 5 recent |
+| Groups and channels section | Group chats mixing agents and people; channels |
+| Apps section | Installed add-on apps (Mail, CRM, Calendar, Helpdesk) with counts; "+ add" |
+| Spaces section | Flat list; each expands to Issues, Tables, Docs, Files, Artifacts, Routines plus scoped app views (e.g. Deals) |
+| Rail footer | Team, Admin, user menu |
+| Mobile bottom bar | Home, Chats, Spaces, Team |
+
+### Home feed groups
+
+| Group | Items |
+|-------|-------|
+| Needs you | Approvals, questions, takeovers, sign-in requests (approvals and secret requests go only to the responsible human's DM or Home) |
+| Results | Finished runs, applied change sets, routine outputs |
+| FYI | Everything else worth knowing; the daily brief lands on Home |
+
+Home is the attention page. It is not called "Inbox"; that word stays with the Mail app and agent
+inboxes.
+
+### Conversation
+
+| Component | Purpose |
+|-----------|---------|
+| Message list with threads | Team messenger: sections, unread, mentions, reply threads; agents carry an "Agent" label (no "Assistant") |
+| Typed run activity | Thought (collapsed), action, needs input, result, error; live plan checklist; states working, needs you, done, stale; stop and redirect |
+| Inline approval card | At the point in the run where it was raised: what will happen (rendered from arguments), why, source, untrusted-content flag, run link; allow once / this run / always within scope / deny; first-send, batched and learned-exception variants under Governance; non-blocking; evolves today's `ApprovalCard` |
+| Task / record / issue card | Inline object card; opens the object in the context pane |
+
+### Context pane
+
+| View | Shown when |
+|------|-----------|
+| Object view | Chat-first: the table, issue, doc or file being discussed |
+| Artifact live preview | Chat-first: the artifact draft in a split-screen preview that refreshes as the agent edits it; interactive artifacts render in the sandboxed iframe on the user-content origin |
+| Computer view | Chat-first, **only for agents with a computer**: live terminal, browser or screen; watch, take over, hand back. VFS-only agents have no computer view |
+| Run view | Plan checklist, activity and change set of the current run |
+| Thread details | Members, routines, files |
+| Agent panel | Object-first: chat with an agent scoped to the object and the current selection |
+
+The pane is resizable and collapsible; the same components serve both modes with the panes swapped.
+
+### Change-set review
+
+| Component | Purpose |
+|-----------|---------|
+| Plan card | Scope ("update 214 rows in Leads"), dry-run preview of about 10 sample rows old → new, cost estimate; approve, edit or cancel |
+| Presence chip | "Ada · editing row 12 of 214"; same presence system as humans; times out to stale |
+| Review grid | Virtualized grid with a "changed only" filter; accept or reject per cell, per row or all |
+| Review cell | States: staged (agent color), accepted, rejected, applied, conflict (human edit wins), stale, reverted; hover shows old → new (see [design-system.md](design-system.md#target-token-design-system-new-client)) |
+| Revert this run | Undoes the whole run in one action while the affected cells are unchanged |
+| Record history | Person-or-agent attribution and run link per change |
+
+### Docs suggestion mode
+
+| Component | Purpose |
+|-----------|---------|
+| Collaborative editor | Agent as a collaborator (for example Yjs); version check on every save |
+| Suggestion marks | Tracked insertions and deletions in the agent's color; accept or reject individually or all |
+| Doc header | Template type and properties, human owner, status (draft / current / archived), review date |
+
+### App views catalog
+
+The fixed view catalog serves add-on apps, Tables and artifacts. Add-on apps (Mail, Calendar, CRM, then Helpdesk, Recruiting, Invoices) are built only from core
+primitives and render only views from a fixed catalog. Third-party custom views come later as
+sandboxed MCP Apps-style UI.
+
+| View | Typical use |
+|------|-------------|
+| List | Generic record lists |
+| Board / pipeline | CRM deals, Helpdesk tickets |
+| Table | Schema-locked record types |
+| Calendar | Calendar app; table calendar view |
+| Mail thread | Mail app; agent inbox |
+| Record detail | Any record, with relations and history |
+| Timeline | Activity and history of a record |
+| Form | Form view on any table (added to the catalog by [Artifacts and Forms](../planning/artifacts-and-forms.md)) |
+
+### Artifacts and Forms
+
+Artifacts are the ninth core primitive and the Space's sixth tool; Forms are a view on any Table.
+Source: [Artifacts and Forms](../planning/artifacts-and-forms.md). Phasing follows that doc (Artifacts v1 in Phase 1, Forms v1 in Phase 2, signed and
+public publishing in Phase 3).
+
+| Component | Purpose |
+|-----------|---------|
+| Artifact card | Inline in chat when an agent builds an artifact: title, kind (Page or Interactive), version, publish level; opens the live preview; "Publish" is a governed action on the card |
+| Make list | Per person: finished outputs from their agents, separate from chat scrollback |
+| Artifacts tool | In each Space: pages, interactive artifacts and the Space's forms |
+| Page blocks | Text/markdown, live views (table, board, chart, KPI, timeline), query results, diagrams, images, files; live or scheduled snapshot. Chart (Vega-Lite) and diagram (Mermaid) blocks render client-side and replace the renderer packages |
+| Interactive frame | Sandboxed iframe on a separate user-content origin, no cookies, default-deny CSP, MCP Apps-style bridge |
+| Publishing-ladder control | Draft → Space → workspace → signed link → public; widening to a signed link or public is a governed `exposure_widening` action, and public needs workspace-level public publishing (off by default) |
+| Published surfaces registry | Admin list of everything reachable from outside, with owner, level, last change, traffic and kill switch |
+| Version history | Immutable versions at stable URLs |
+| Form builder | Agent- or human-authored form definition over a Table's fields, previewed in each render mode |
+| Form renderer | Modes: page, one question at a time, conversational intake, embed, internal (app or Telegram Mini App); every mode submits through the one governed submission pipeline |
+
+### Governance
+
+Governance follows pillar 5 of the [Product Direction](../PRODUCT_DIRECTION.md): one policy engine,
+three presets, gated by reversibility ([Governance Model](../architecture/governance-model.md)).
+What is shown depends on the preset: Personal gets approval cards, the per-agent "always allow" list
+and the slider; Team and Company add the Admin Governance area.
+
+| Component | Purpose |
+|-----------|---------|
+| Preset switcher | Personal / Team / Company in Admin; sets defaults only, and the confirmation states that every explicit grant is kept |
+| Autonomy slider | Per agent: Ask first · Balanced (default) · Autopilot; each stop is a named bundle of scoped exceptions, capped by preset and hard-deny floor; writes grants only |
+| "Always allow" list | Per-agent exceptions with scope (once, this run, this task, time-limited, always), target, granter and expiry; revoke per item; promotion suggestions from approval history |
+| Batched approval card | One card for many similar actions ("send 12 follow-ups") with a toggle per item and approve-selected; non-blocking (only the step is parked) |
+| First-send card | First external send to a new target, with one-tap "always for this recipient / domain" |
+| Learned-exception prompt | After repeated same-pattern approvals (default 3), offers a scoped exact-match "always allow"; hidden for users who may not accept it |
+| Trash view | Deleted items for 30 days with restore; purge follows the preset (approval in Team, two approvers in Company) |
+| Decision-trace explainer | "Why can't Ada see this?": shows Space membership, agent grants, on-behalf-of human and external ACL, and which one denied access |
+| Governance area (Team/Company) | Admin screens for policies, exceptions, approvers, budgets and audit |
+
+### Table cells for new column types
+
+Person/Agent, Relation (to records, issues and docs), Attachment and Long-text cells, plus a row
+detail pane. Formula comes later.

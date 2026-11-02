@@ -1,5 +1,7 @@
 # Bidirectional External Channel Sync
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](PRODUCT_DIRECTION.md) — channels stay server-side adapters: Telegram is the first external surface and is refactored onto the messenger conversation model later; other channels are later entry points into the same conversations.
+
 Making agents full community participants — not just chatbots.
 
 ## Implementation Status

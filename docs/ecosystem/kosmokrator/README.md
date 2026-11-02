@@ -1,5 +1,7 @@
 # KosmoKrator Documentation
 
+> **Scope note (2026-11-02):** imported reference docs for the sibling KosmoKrator product, outside OpenCompany's scope; they are not updated for the OpenCompany [Product Direction](../../PRODUCT_DIRECTION.md). "Current-Truth" below refers to KosmoKrator, not OpenCompany.
+
 ## Architecture (Current-Truth)
 
 These docs describe shipped behavior. They must be updated when the codebase changes.

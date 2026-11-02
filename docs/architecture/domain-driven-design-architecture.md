@@ -1,5 +1,7 @@
 # Domain-Driven Design Architecture for OpenCompany
 
+> **Direction status (2026-11-02):** Partially superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [API-first client split](api-first-client-split.md) — bounded-context guidance still applies, but "keep Inertia" is superseded (API-first now, Inertia frozen, pillar 4), and the Automations/integration contexts become Connections, Events and Routines (pillar 9).
+
 Date: 2026-05-19
 Status: Proposed target architecture
 

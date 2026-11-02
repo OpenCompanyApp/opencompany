@@ -1,5 +1,7 @@
 # Modular OpenCompany and the Allbase Lab
 
+> **Direction status (2026-11-02):** Superseded — replaced by add-on apps ([Product Direction](../PRODUCT_DIRECTION.md) pillar 7; [UI structure and agent editing](ui-structure-and-agent-editing.md), Appendix B). Apps are manifests built only from the core primitives and never own storage. Reader is not the first product; Mail, Calendar and CRM are the first apps.
+
 Status: Planning decision informed by a read-only local source investigation.
 Verified: 2026-08-25 against the active OpenCompany and Allbase checkouts.
 
@@ -803,7 +805,7 @@ reports through stable resource references and authorized actions.
 Git remains authoritative for source history, connected CI remains authoritative for exact-commit
 verification, Aya owns source review and operator context, and OpenFactory owns generic durable
 execution. OpenCompany owns organizational planning, business authorization, communication, and
-outcomes around that engineering work.
+outcomes around that engineering work. *(Aya is discontinued (2026-11-02); the portfolio is Bowerbird plus OpenCompany.)*
 
 ### Operations and governance modules
 
@@ -1133,7 +1135,7 @@ role now.
 Reader ownership has one product-boundary nuance: private feeds and personal attention management may
 fit Aya, while shared monitored company sources, research routines, and operational signals fit
 OpenCompany. The same source adapter may eventually serve both through a stable contract, but the
-canonical business records and permissions must remain with the product that owns the workflow.
+canonical business records and permissions must remain with the product that owns the workflow. *(Aya is discontinued (2026-11-02); the portfolio is Bowerbird plus OpenCompany.)*
 
 ## Recommended first module: Reader
 

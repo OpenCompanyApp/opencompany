@@ -1,5 +1,7 @@
 # OpenCode: Codex Subscription Authentication Research
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — app-owned provider runtime research; not tied to a specific phase.
+
 > How OpenCode (github.com/anomalyco/opencode) allows users to authenticate with their ChatGPT Pro/Plus subscription to use Codex models at zero marginal cost, instead of paying for OpenAI API tokens directly.
 
 **Source**: `inspiration/opencode/packages/opencode/src/plugin/codex.ts` (625 lines — the entire implementation)

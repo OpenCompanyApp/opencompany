@@ -1,5 +1,7 @@
 # World Bank Integration
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 World Bank Indicators API v2 integration for the OpenCompany integration ecosystem. It exposes public country, aggregate, source, topic, indicator, language, and data endpoints. No API key is required.
 
 ## Tools

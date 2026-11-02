@@ -1,5 +1,7 @@
 # AI Provider Runtime Architecture
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — the app-owned provider runtime and cost ledger feed Phase 3 budgets; not otherwise phase-specific.
+
 OpenCompany no longer depends on relay or provider-server packages for provider/model metadata, runtime registration, prompt-cache options, model context windows, embeddings, or OpenAI-compatible gateway access. The app owns those boundaries directly so product behavior can evolve without waiting on a shared AI package.
 
 ## Runtime Shape

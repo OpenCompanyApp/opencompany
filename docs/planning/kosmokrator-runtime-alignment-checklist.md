@@ -1,5 +1,7 @@
 # KosmoKrator Runtime Alignment Checklist
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — runtime context/compaction hygiene supporting Phase 0 and ongoing runtime work.
+
 > Historical implementation checklist, reconciled 2026-08-09, for aligning
 > OpenCompany's context, compaction, pruning, and prompt-caching runtime with
 > reusable KosmoKrator ideas. Current priorities live in `docs/ROADMAP.md`.

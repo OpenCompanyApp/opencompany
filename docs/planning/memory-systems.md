@@ -2,6 +2,8 @@
 
 Goal: agents that learn from experience, get better at their work over time, and function like a human organization — developing expertise, sharing knowledge, and improving collectively.
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — memory and learning are pillar 1 teammate capabilities and memory controls a pillar 6 primitive; the roadmap here is ongoing work with no dedicated phase.
+
 Status: Research / roadmap. The "Current System" section is code-aligned with the current memory services; "What's missing" and the implementation roadmap are proposed improvements.
 
 ---

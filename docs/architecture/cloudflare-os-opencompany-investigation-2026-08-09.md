@@ -1,5 +1,7 @@
 # Cloudflare OS Investigation for OpenCompany
 
+> **Direction status (2026-11-02):** Partially superseded by [Product Direction](../PRODUCT_DIRECTION.md) — the "do not adopt as runtime" conclusion stands; the Artifact follow-up is a later feature behind messenger, computer and governance work.
+
 - Date: 2026-08-09
 - Status: Read-only architecture investigation with accepted Artifact design follow-up
 - Cloudflare OS revision reviewed: `1cb5e3d9096589e38f3fcfaf3f2191aa95a4c592`

@@ -2,6 +2,8 @@
 
 > Comprehensive strategy for integrating the official Laravel AI SDK into OpenCompany's agent system.
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — runtime strategy reference with no dedicated phase; references to agent behaviour modes are superseded by the policy model (pillar 5).
+
 Status: Historical strategy with many implemented sections. For current provider/model catalog, Codex auth, AI Gateway, prompt-cache, and cost-ledger architecture, use `ai-provider-runtime-architecture.md`.
 
 ---

@@ -2,6 +2,8 @@
 
 > Framework-agnostic core for building integration packages. Part of the [OpenCompany](https://github.com/OpenCompanyApp) ecosystem.
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 Status: Current package reference copy. `ConfigCredentialResolver` uses `config/ai-tools.php` for standalone consumers; OpenCompany overrides credential lookup with workspace-scoped integration settings.
 
 Provides the contracts, credential abstraction, and auto-discovery registry that all OpenCompany integration packages build on. Packages built on integration-core work in any PHP application — OpenCompany (web), KosmoKrator (CLI), or custom consumers.

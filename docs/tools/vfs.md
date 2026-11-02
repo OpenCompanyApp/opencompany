@@ -2,7 +2,27 @@
 
 The runtime also exposes this reference at `/tools/vfs.md` and `/tools/vfs/README.md` inside the virtual filesystem.
 
-The VFS is a permission-aware unix-like filesystem over OpenCompany workspace data. Use `vfs_exec` for command-shaped inspection, `vfs_patch` for targeted edits, `vfs_write` for raw `/files` writes, and `app.vfs.*` Lua helpers for structured workflows.
+> **Direction (2026-11-02, locked; not part of the runtime contract below).** Pillar 3 of the
+> [Product Direction](../PRODUCT_DIRECTION.md): the VFS is the governed path to company data
+> (tables, issues, docs, files).
+>
+> - **VFS-only agents** (a first-class, per-agent mode) use it as their complete workspace.
+> - **Agents with a computer** (Phase 2, [Computer Provider Contract](../architecture/computer-provider-contract.md))
+>   get the VFS projected into the computer (mount, sync or CLI bridge). Every read and write still
+>   goes through VFS scoping, resource permissions, write policy, approvals and audit; the computer
+>   is never a bypass.
+> - **Deep-connector mounts** (pillar 9; Google Drive in Phase 1, then OneDrive/SharePoint, Dropbox,
+>   Box, S3/R2, WebDAV, SFTP) appear in Files and the VFS, for example under `/files/drive/...`.
+>   Writes go through the VFS write path with revision checks, and effective access is the external
+>   ACL intersected with OpenCompany grants. SKILL.md skills are planned under a `/skills` mount.
+>   See [Connections, Events and Routines](../planning/connections-events-routines.md).
+> - The `app.vfs.*` helpers below are described for mruby Code Mode (`code_exec`), the only Code
+>   Mode runtime; the agent-facing guide is `resources/code-docs/vfs.md`.
+>
+> None of these direction items is implemented. Agent-ergonomics findings are in the
+> [VFS agent-friendliness audit](../architecture/vfs-agent-friendliness-audit-2026-11.md).
+
+The VFS is a permission-aware unix-like filesystem over OpenCompany workspace data. Use `vfs_exec` for command-shaped inspection, `vfs_patch` for targeted edits, `vfs_write` for raw `/files` writes, and `app.vfs.*` helpers inside mruby Code Mode (`code_exec`) for structured multi-step workflows.
 
 VFS is an interface over existing OpenCompany permissions, not a second permission system. `/docs` patching requires an explicit allowed document-folder scope. Table row patching requires both `vfs_patch` and the normal `update_table_row` tool permission. Agent identity patching requires `vfs_patch` plus the normal `update_agent_identity_file` permission. Agent memory files under `/agents` use relationship-aware rules: agents can patch their own identity and memory files, managers can patch direct report identity files and direct report `memory/MEMORY.md`, and broader memory folders stay self-owned. Read visibility alone does not imply patch capability.
 
@@ -49,6 +69,6 @@ The three generated collection files above return independently valid transcript
 - Atlas smoke gate: `php artisan vfs:atlas` covers root browse, command help/specs, primitive stat/read, generated read truncation, display and canonical `/files` writes, read-only write rejection, unsupported-command help, and `&&`/redirection behavior.
 - Intentional limits: generated snapshots are not patchable, stderr redirection to files is rejected, symbolic links are recognized but not created, and extraction/OCR/semantic embeddings remain outside VFS.
 
-## Lua
+## Code Mode (mruby)
 
-Lua helpers return `{ ok, result = ... }`, mirror result fields at the top level, and expose list-like results as numeric entries so `#res` works. `app.vfs.exec(command, { response_format = "structured", include_command_spec = true })` keeps stdout text but enriches `data` and diagnostics for programmatic workflows. `app.vfs.write(path, content)` defaults to overwrite for script ergonomics; direct `vfs_write` defaults to create. Generated code should pass `mode = "create"` or `mode = "overwrite"` explicitly.
+In Ruby, the helpers take keyword arguments (snake_case keys map to the tool schema, for example `max_matches:`), and return the same `{ok, result, error}` hash as the direct tools; list-like results are under `result[:items]` or `result[:matches]`. `exec` is reserved in the restricted Ruby profile, so `vfs_exec` is called as `app.vfs.shell(command: ...)` (or `app.call("vfs.exec", ...)`); `cat` and `grep` alias `read` and `rg`. Script-only helpers (`stat`, `ls`, `read`, `rg`, `find`, `search`, `exists`, `mkdir`, `cp`, `mv`, `rm`, `count`) are never model tools; their permission is evaluated against `vfs_exec` (reads) or `vfs_write` (writes). `vfs_write` defaults to create; pass `mode: "create"` or `mode: "overwrite"` explicitly. The agent-facing guide is `resources/code-docs/vfs.md`; discovery data is at `/tools/vfs/code.json`.

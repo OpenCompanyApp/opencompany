@@ -2,6 +2,8 @@
 
 Design document for adding embedded Lua scripting as a lightweight automation runtime, complementing the existing AI agent execution model.
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](connections-events-routines.md) — Lua is retired; mruby is the only Code Mode runtime, and script automations become script routines (pillar 9). Kept as a historical design record only.
+
 Status: Planning with partial implementation. The current codebase has Lua
 tool/runtime surfaces such as `app/Agents/Tools/Lua`,
 `app/Services/LuaBridge.php`, `app/Services/LuaSandboxService.php`,

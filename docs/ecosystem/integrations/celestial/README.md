@@ -1,5 +1,7 @@
 # Integration: Celestial
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 > Astronomy integration tools — moon phases, sunrise/sunset, planet positions, eclipses, night sky reports. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
 
 Give your AI agents the ability to perform real-time astronomical calculations. Built on [astronomy-bundle-php](https://github.com/OpenCompanyApp/astronomy-bundle-php) (Jean Meeus' *Astronomical Algorithms*) and the [Integration Core](https://github.com/OpenCompanyApp/integration-core) framework.

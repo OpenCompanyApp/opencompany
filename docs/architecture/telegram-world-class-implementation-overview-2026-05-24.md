@@ -1,5 +1,7 @@
 # Agent-First Telegram Implementation Overview
 
+> **Historical (2026-11-02):** dated record; not updated for the [Product Direction](../PRODUCT_DIRECTION.md). Current truth: [Current State](../CURRENT_STATE.md), priorities: [Roadmap](../ROADMAP.md).
+
 Investigation and product-architecture overview for OpenCompany Telegram.
 
 This document was reset on 2026-05-25 after live Telegram testing showed that

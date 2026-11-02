@@ -2,6 +2,8 @@
 
 Chatogrator — Laravel Chat Aggregator. Port of the [Vercel Chat SDK](https://github.com/vercel/chat/) to PHP/Laravel.
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — channels stay server-side adapters: Telegram is the first external surface and is refactored onto the messenger conversation model later; Slack and other Chatogrator channels are later entry points into the same conversations.
+
 Status: Package strategy / planning with partial app adoption. OpenCompany
 currently installs `opencompany/chatogrator` v1.2.0 and uses app-owned
 workspace routing at `POST /api/webhooks/chat/{adapter}`. The package's own

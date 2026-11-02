@@ -2,6 +2,8 @@
 
 > How OpenCompany's AI tools are built as standalone Composer packages that any Laravel AI SDK app can install.
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 Status: Historical architecture reference. The package family has since moved from `ai-tool-*` naming and Laravel-AI-specific tool contracts to framework-agnostic `opencompanyapp/integration-*` packages built on `opencompanyapp/integration-core`; use `docs/ecosystem/integrations/README.md` for the current package authoring guide and `config/integration_catalog.php` / `composer.json` for this app's installed package set.
 
 ## Overview

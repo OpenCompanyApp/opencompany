@@ -2,6 +2,8 @@
 
 Reference of major AI providers, their compatibility with OpenCompany, and implementation priority.
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](PRODUCT_DIRECTION.md) — provider catalog reference; unaffected by the pivot and not tied to a specific phase.
+
 Status: Current provider ownership lives in the app-owned AI catalog under
 `app/Domain/Ai/Catalog`, runtime registration under `app/Domain/Ai/Runtime`, and
 workspace configuration under `config/ai.php` plus integration settings. The

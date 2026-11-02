@@ -1,5 +1,7 @@
 # Integration: TrustMRR
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 Verified startup revenue data for the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem. Browse startups, filter by revenue, MRR, asking price, growth, and more - all backed by real payment provider data.
 
 The current TrustMRR API documents two endpoints, and this package covers both:

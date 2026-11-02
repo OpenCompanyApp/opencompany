@@ -2,6 +2,14 @@
 
 > A filterable, real-time timeline of all organization activities with type, user, and date range filters.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+**Superseded: replaced by [Home](../layouts.md#home)** and the activity feed, read from the workspace event log (pillars 4 and 9; [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Connections, Events and Routines](../../planning/connections-events-routines.md)). The same event log powers audit and run replay (pillar 5). Live run progress appears as typed run activity in threads and the context pane. The content below documents today's page only.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

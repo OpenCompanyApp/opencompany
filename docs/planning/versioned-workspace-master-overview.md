@@ -1,5 +1,7 @@
 # Versioned Workspace: Master Overview
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — document/file versioning maps to the Phase 4 Docs work app and Files/VFS; `automations/` resources become routines. **Git (pillar 11, locked 2026-11-02):** the accepted Git feature is an optional, one-way, continuous **Git mirror** (Docs as Markdown, Tables as CSV, Issues, artifact source) to the customer's Git host, planned for Phase 3 ([Data sovereignty](data-sovereignty.md)). OpenCompany stays the source of truth. Anything below that describes Git imports, pull requests into the workspace, two-way sync, or Git as the system of record is superseded for now and at most a later idea; portability and recovery are owned by the `.ocarchive` archive and customer-owned backups.
+
 Status: Planning. Consolidates the user's accepted direction for a shared, versioned workspace and optional workspace-wide Git history. Architecture details and rollout phases below are proposals, not implementation claims.
 Verified: 2026-09-12 against relevant local document, file, and VFS source and existing planning documents. No production, migration, provider, or end-to-end runtime verification was performed.
 
@@ -18,7 +20,7 @@ Reading guide:
 
 OpenCompany becomes a workspace where humans and agents maintain company knowledge, work, operating instructions, and software together. Resources have stable identities, inspectable histories, reviewable proposed changes, and explicit relationships to their sources.
 
-People continue using documents, chat, tables, boards, files, and agent conversations. Agents use domain tools and a permission-aware virtual filesystem over those same resources. A connected Git repository preserves portable workspace history. File contents live in S3-compatible storage, with their metadata and exact object references preserved in Git.
+People continue using documents, chat, tables, boards, files, and agent conversations. Agents use domain tools and a permission-aware virtual filesystem over those same resources. A connected Git repository preserves portable workspace history (now scoped to the one-way Git mirror in pillar 11; see the direction status above). File contents live in S3-compatible storage, with their metadata and exact object references preserved in Git.
 
 The resulting experience is concrete:
 
@@ -50,7 +52,7 @@ These are product inspirations, not a claim of protocol compatibility or an atte
 | Git connection | A workspace can connect to a repository containing its durable content, metadata, and history. |
 | File contents | Workspace file bytes remain in object storage; metadata and exact blob references go into Git. |
 | Live authority | Proposed: existing application domain services and database transactions own accepted application state. |
-| Git synchronization | Proposed: a durable revision journal feeds an ordered Git exporter; imports enter validated proposal workflows. |
+| Git synchronization | Proposed: a durable revision journal feeds an ordered Git exporter; imports enter validated proposal workflows. *Pillar 11: only the one-way mirror is accepted; imports are superseded for now.* |
 | Initial delivery | Proposed: consistent document revisions and review first, followed by progressively complete Git coverage and additional collaboration features. |
 
 The workspace remains usable without a Git connection. An optional repository should enrich portability and collaboration without becoming an availability dependency for ordinary editing.
@@ -210,6 +212,10 @@ Git attribution records authorship, not proof of authorization. OpenCompany's re
 
 ## 7. Git history for the whole workspace
 
+> **Superseded in scope (2026-11-02).** Pillar 11 accepts a one-way continuous Git mirror of Docs,
+> Tables, Issues and artifact source, not full-workspace Git history as described here. See
+> [Data sovereignty](data-sovereignty.md).
+
 The connection belongs at workspace level. The target coverage includes all durable workspace content and domain history: documents, agent configuration and memory, tasks, lists, tables and rows, calendar records, conversations, approvals, proposals, run records, automation definitions, future Artifacts, relationships, and file metadata.
 
 This is broader than the existing plan for an individual Artifact's Git link.
@@ -270,7 +276,7 @@ Connecting a repository starts with a consistent baseline and a journal cutoff s
 
 ### External editing
 
-Outbound history is the first useful delivery. Later, compatible repository edits can become proposals in OpenCompany.
+Outbound history is the first useful delivery. Later, compatible repository edits can become proposals in OpenCompany. *(Superseded for now: pillar 11 accepts only the one-way mirror; inbound Git edits are not planned.)*
 
 The importer checks the exact source commit, mapped base revisions, resource schema, references, and permissions. It presents domain-aware changes and routes acceptance through the owning services. Git merge success does not prove that a task transition, permission change, table migration, or publication is valid.
 
@@ -511,7 +517,7 @@ The version helper and snapshot calls alone do not establish an immutable, atomi
 | 3. Workspace Git coverage | Domain serializers and journal coverage for all durable resource families | An explicit coverage manifest and change/restore checks for each family; partial scope remains labeled partial |
 | 4. Connected knowledge | Pinned citations, backlinks, reusable sections, and dependency review | References survive renames; source drift and revoked access are handled correctly |
 | 5. Historical collections | Consistent snapshots and run input manifests | Captured rows remain stable under concurrent edits; missing historical bytes are reported truthfully |
-| 6. External contribution | Git imports and pull requests for supported editable resources | Schema and domain validation, conflict handling, exact commit review, and no import-triggered replay of past effects |
+| 6. External contribution | Git imports and pull requests for supported editable resources | Schema and domain validation, conflict handling, exact commit review, and no import-triggered replay of past effects *Superseded for now by the one-way Git mirror (pillar 11).* |
 | 7. Broader interoperability | Restore/migration tools, optional WebDAV, and additional repository workflows | Representative recovery exercises, client compatibility checks, and measured scale limits |
 
 Git integration should be designed with the revision foundation, so it does not depend on an after-the-fact database scraper. Early delivery can cover documents first, but that is an explicit vertical slice of the user's workspace-wide requirement.

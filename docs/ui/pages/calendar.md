@@ -2,6 +2,14 @@
 
 > Full-featured calendar view for scheduling and managing events across month, week, and day views, with a mini calendar sidebar and event creation/editing modal.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+Calendar becomes the **Calendar add-on app (Phase 3)**, built only from core primitives over Google, Microsoft and CalDAV calendar connections, plus an agenda on Home (pillars 7 and 9; [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Connections, Events and Routines](../../planning/connections-events-routines.md)). It uses the fixed calendar view and brings no storage of its own. Avoid new work on this page.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

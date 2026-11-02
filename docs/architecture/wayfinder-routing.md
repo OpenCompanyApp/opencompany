@@ -1,7 +1,29 @@
 # Wayfinder Routing
 
+Status: Current routing stack for existing pages. Direction note updated 2026-11-02 (API-first now, Inertia frozen).
+
 OpenCompany uses Laravel Wayfinder for frontend route and action generation.
 Ziggy is not part of the current routing stack.
+
+## Direction: API-First Now, Inertia Frozen
+
+Pillar 4 of the [Product Direction](../PRODUCT_DIRECTION.md) made OpenCompany API-first on
+2026-11-02 (previously "planned, likely soon"). The messenger and every new client are built on a
+versioned, documented public API (OpenAPI), token/OAuth authentication for native apps, a realtime
+event stream (WebSocket/SSE) and push notifications. Web, mobile and desktop clients share one
+backend. See [API-First Client Split](api-first-client-split.md).
+
+- **The rule: Inertia is frozen.** No new Inertia pages or page props. New UI work, starting with
+  the Phase 1 messenger ([Messenger UI](../planning/messenger-ui.md)), is a client of the public API
+  plus the realtime stream.
+- **Wayfinder stays the current routing stack** for the existing Inertia pages and their API calls.
+  The conventions below remain accurate and binding for current code, and calling API endpoints
+  through generated Wayfinder actions (`@/actions/...`, `wayfinderRequest()`, `wayfinderFetch()`)
+  is still the current convention.
+- **Open:** whether Wayfinder stays for the web client or is replaced by a client generated from
+  the OpenAPI contract, whether the web client leaves this repository, and the mobile and desktop
+  stack. Native clients cannot use Wayfinder's generated TypeScript, so the OpenAPI contract is the
+  cross-client source of truth.
 
 ## Source of Truth
 

@@ -45,3 +45,45 @@ document does not claim that automation exists today.
 
 See [Licensing FAQ](LICENSING.md), [Commercial Use](COMMERCIAL_USE.md), and [Trademark and
 Compatibility Policy](TRADEMARKS.md). This policy is not legal advice.
+
+## Product direction and where to start
+
+Read [docs/PRODUCT_DIRECTION.md](docs/PRODUCT_DIRECTION.md) before proposing features. It is the
+locked direction ("Grok Bot for companies") and sets the phase order. Check
+[docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) for what exists today and
+[docs/ROADMAP.md](docs/ROADMAP.md) for priority. Phase 0 security and authorization fixes always
+take priority over new surfaces. Proposals that revive superseded directions (Lua scripting,
+per-app integration packages, Automations as they were, agent behaviour modes, a visual flow
+builder, the embedded in-app browser, Reader-first modules, AI-app-builder positioning) should start
+as an issue, not a pull request.
+
+Contribution rules that follow from the direction:
+
+- **API-first UI; Inertia is frozen.** Do not add Inertia pages or page props. New UI, starting with
+  the Phase 1 messenger, is a client of the versioned public API and the realtime event stream, so
+  web, mobile and desktop clients share one backend. The new client is a Vue 3 + Reka UI SPA with a
+  token design system. See
+  [docs/architecture/api-first-client-split.md](docs/architecture/api-first-client-split.md) and
+  [docs/planning/ui-structure-and-agent-editing.md](docs/planning/ui-structure-and-agent-editing.md).
+- **Core primitives only.** Do not add new object kinds, generic pages or nested containers. New
+  product areas are add-on apps declared as manifests over the core primitives, with no storage of
+  their own.
+- **No new per-app integration packages.** The integration package system is being deleted. Deep
+  connectors are few, native and app-owned under `app/Domain/Connections/`; everything else goes
+  through the generic tier (MCP servers, API manifests, skills, signed webhooks). See
+  [docs/planning/connections-events-routines.md](docs/planning/connections-events-routines.md).
+- **Routines, not flows.** Automation is Connections → Events → Triggers → Routines → Runs, with
+  routines authored in chat. Do not build a visual flow builder. A trigger is never consent.
+- **Policy, not modes.** One policy engine with Personal, Team and Company presets, gated by
+  reversibility: make actions undoable (change sets, trash, drafts) so they need no approval, and
+  gate external sends, spend and exposure. An agent never exceeds the human it acts for. Do not
+  reintroduce behaviour modes, and keep secrets behind the credential broker.
+- **Computers are optional.** Features must work for agents without a computer. Computer-specific
+  behavior goes through the `ComputerProvider` contract, and company data reaches a computer only
+  through the VFS.
+- **One scripting runtime.** Code Mode work targets mruby only.
+- **Honest docs.** Public copy and docs claim only what [CURRENT_STATE.md](docs/CURRENT_STATE.md)
+  supports. Add new documents to [docs/INDEX.md](docs/INDEX.md) with a class.
+
+Repository conventions for code, comments, workspace scoping, and routing live in
+[AGENTS.md](AGENTS.md).

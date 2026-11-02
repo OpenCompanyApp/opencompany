@@ -2,6 +2,14 @@
 
 > Finder-style workspace file manager for browsing disks, folders, uploads, previews, rename/delete actions, and disk-aware file search.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+**One Files store.** Today's three stores (`WorkspaceFile`, `DocumentAttachment`, `MessageAttachment`) merge into one Files store; attachments are Files (pillar 7; [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md)). Files is one of the six tools in every Space and the only tool that keeps folders. Storage mounts (Google Drive in Phase 1, then OneDrive/SharePoint and others) appear in Files and the VFS, with writes through the VFS write path and access as the external ACL intersected with OpenCompany grants (pillar 9; [Connections, Events and Routines](../../planning/connections-events-routines.md)). Deletes move files to trash (30 days) rather than hard-deleting them; purge needs approval in Team and two approvers in Company (pillar 5; [Governance Model](../../architecture/governance-model.md)). **Typst PDF exports** and other renderer outputs land in Files with normal permissions instead of public-disk images ([Artifacts and Forms](../../planning/artifacts-and-forms.md)).
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

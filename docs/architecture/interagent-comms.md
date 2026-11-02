@@ -1,5 +1,7 @@
 # Inter-Agent Communication Protocol
 
+> **Direction status (2026-11-02):** Partially superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Governance model](governance-model.md) — durable, depth-limited delegation and group chats remain pillar 1, with depth carried by the event/run causality chain (pillar 9); the behaviour-mode approval layering below is replaced by the policy model (pillar 5).
+
 Status: Partly implemented. Current code supports `ask`, `delegate`, and `notify` through `ContactAgent`, but `ask` no longer matches the original synchronous design: it creates an `agent_ask` task, records it in `awaiting_delegation_ids`, dispatches `AgentRespondJob`, and returns immediately. Older timeout/depth examples below are historical design notes unless code is added for synchronous inline asks.
 
 ## Overview
@@ -394,6 +396,8 @@ requires_approval: boolean
    - supervised → write tools require approval (contact_agent is write)
    - strict → all tools require approval
 ```
+
+> **Direction note (2026-11-02):** agent behaviour modes (autonomous/supervised/strict) are deleted and replaced by the policy model: writes and external actions need approval by default, and admins grant scoped exceptions. Read behaviour-mode rules in this section as historical.
 
 ### Manager hierarchy bypass
 

@@ -1,10 +1,14 @@
 # Automation Endpoints & Agent-Built Artifacts
 
+> **Direction status (2026-11-02):** Partially superseded. Its artifact runtime (Liquid templates, Lua endpoints, the Lab UI) is superseded by [Artifacts and Forms](artifacts-and-forms.md): Pages and interactive artifacts on the MCP Apps bridge, mruby `endpoint` profile, platform change sets, runs and events. Its automation parts are superseded by Routines, Triggers and Events ([Connections, Events and Routines](connections-events-routines.md)). Still valid: its bindings, templates, endpoint catalog and gates. QuickJS is retired. See [Product Direction](../PRODUCT_DIRECTION.md) pillar 7.
+
 Status: Planning, reconciled with the current checkout on 2026-08-09. This
 document describes a future endpoint/artifact surface. It supersedes the older
 "dashboards" framing: dashboards are one artifact type, not the whole product
 surface. The VFS foundation now exists; endpoint automations and the Artifact
 domain do not.
+
+> **Direction note (2026-11-02):** wherever this document says Lua (backend scripts, `LuaSandboxService`, `LuaBridge`), read it as historical: Lua is superseded by mruby Code Mode. Endpoint and script automations are superseded by Routines, Triggers and Events (see [Connections, Events and Routines](connections-events-routines.md)); Artifacts remain a later feature behind the messenger, computer and governance work.
 
 Related: `docs/planning/lua-scripting.md`, `docs/planning/unified-vfs-overview.md`, `docs/architecture/cloudflare-os-opencompany-investigation-2026-08-09.md`, `docs/ui/pages/automation.md`, `docs/ui/pages/files.md`, `docs/ui/pages/tables.md`
 
@@ -1852,4 +1856,4 @@ The agent should:
 - Stripe Checkout/Billing and agentic-commerce artifacts.
 - Artifact version history and rollback.
 - Cross-workspace Artifact marketplace with provenance, security review, publisher trust, licensing, and update policy. Built-in and workspace-private templates come first.
-- QuickJS only if Luau plus Liquid/HTML artifacts are insufficient; do not add a second script runtime casually.
+- QuickJS only if Luau plus Liquid/HTML artifacts are insufficient; do not add a second script runtime casually. (Direction note 2026-11-02: QuickJS and Lua/Luau are retired; mruby is the only Code Mode runtime.)

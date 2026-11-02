@@ -2,6 +2,8 @@
 
 A comprehensive technical breakdown of how OpenClaw handles agents, subagents, memory systems (short-term and long-term), and skills.
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — external reference only; its skills material informs Phase 2 SKILL.md skills and plugin import, and its heartbeat/cron material informs routines.
+
 Status: External reference/research. Describes OpenClaw, not the current OpenCompany implementation.
 
 ---

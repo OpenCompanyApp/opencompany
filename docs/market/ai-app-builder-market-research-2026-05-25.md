@@ -1,5 +1,7 @@
 # AI App Builder Market Research
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../PRODUCT_DIRECTION.md) — AI app builder positioning is not the product; Artifacts remain a later feature.
+
 Date: 2026-05-25
 
 Scope: prompt-to-app products around Base44, Lovable, Bolt, v0, Replit Agent, Firebase Studio, and adjacent AI-native no-code, design-to-code, mobile, internal-tool, and coding-agent platforms.

@@ -1,5 +1,7 @@
 # Integration Package Refactor Plan
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](connections-events-routines.md) — the integration package system (packages, `integration-core`, catalog, `LuaBridge` docs) is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 Status: Historical / mostly implemented. The current app consumes framework-agnostic `opencompanyapp/integration-*` packages through `opencompanyapp/integration-core`, `ToolProviderRegistry`, `LuaBridge`, `config/integration_catalog.php`, and `app/Agents/Tools/ToolRegistry.php`. Remaining phase notes are useful as refactor rationale, not a literal current file inventory.
 
 Current code check, 2026-05-24:

@@ -98,6 +98,17 @@ The Bowerbird docs predate OpenCompany's 2026-11-02 locked direction.
   `bwb` gives execution (sandboxes, CI). Each tool's agent guide (`guide agents`) cross-references the
   other.
 
+### 3.4a Bowerbird Agents (future Bowerbird product idea; direction locked 2026-11-02)
+
+- **What it is:** managed coding agents. Any ACP-compatible coding CLI runs in Bowerbird S1
+  sandboxes, connected to Bowerbird CI, Runners and evidence. Results come back as PRs with proof
+  that checks passed, billed per second from the wallet.
+- **Workload split:** coding is software delivery, so Bowerbird Agents sit on Bowerbird's side.
+- **How OpenCompany reaches it:** through the same provider-neutral `ExternalAgentProvider`
+  contract as Cursor Cloud Agents or the Copilot coding agent (agent connections, pillar 9 of the
+  [Product Direction](../PRODUCT_DIRECTION.md) and
+  [Connections, Events and Routines](connections-events-routines.md)). It is never exclusive.
+
 ### 3.5 Roost inside OpenCompany
 
 - Admin → Computers can show live, dated provider prices from Roost's public JSON (boat, E2B,
@@ -169,7 +180,9 @@ Order work so that each product's next milestone strengthens the other's, and no
 3. **OpenCompany Phase 3–4:** the Bowerbird deep connection (events, reviews, usage); pipeline
    routine graduation once the bwb automation plane (v0.8) exists; Bowerbird planning moves into
    OpenCompany Issues.
-4. **OpenCompany Phase 5 alongside Bowerbird C4/C5:** the optional Bowerbird account and shared
+4. **After Bowerbird S1:** Bowerbird Agents as an agent-connection provider in OpenCompany, through
+   the `ExternalAgentProvider` contract and the Bowerbird connection.
+5. **OpenCompany Phase 5 alongside Bowerbird C4/C5:** the optional Bowerbird account and shared
    wallet, bundles, and Cloud computers defaulting to Bowerbird.
 
 ## Follow-up outside this repository (not done; needs owner go-ahead)

@@ -2,12 +2,26 @@
 
 > Reference for the visualization renderers available through OpenCompany's
 > built-in SVG tool provider and installed integration packages. Agents normally
-> reach these through `lua_exec` after reading the relevant Lua docs.
+> reach these through `code_exec` (mruby Code Mode) after reading the namespace with `code_read_doc`.
 
 Status: Current runtime split. `render_svg` is app-built-in under
 `App\Agents\Tools\Providers\SvgToolProvider`; Mermaid, PlantUML, Typst, and
 Vega-Lite are `opencompanyapp/integration-*` packages registered through
 `OpenCompany\IntegrationCore\Support\ToolProviderRegistry`.
+
+> **Direction (2026-11-02).** Lua is retired; mruby is the only Code Mode runtime in the locked
+> [Product Direction](../PRODUCT_DIRECTION.md). The current working tree replaces the Lua tools
+> with `code_exec`, `code_list_docs`, `code_search_docs` and `code_read_doc` (Ruby); the references
+> below use the Code Mode form. The mruby planning docs own Code Mode details.
+>
+> The integration package system is deleted in the Phase 0 nuclear cleanup (pillar 9), so the
+> package-provided renderers below (Mermaid, PlantUML, Typst, Vega-Lite) are superseded with it.
+> They return as first-class, workspace-scoped features (accepted in
+> [Artifacts and Forms](../planning/artifacts-and-forms.md)): **chart blocks** (Vega-Lite) and
+> **diagram blocks** (Mermaid) rendered client-side in artifact pages, and **Typst PDF export**
+> rendered on the server and stored in Files with permissions. Public-disk PNG output and the
+> `charts/`/`svg/` cleanup jobs are deleted; outputs become Files. `render_svg` is app-owned. None
+> of this is implemented yet.
 
 ---
 
@@ -27,7 +41,7 @@ All image tools return a markdown image embed (`![title](/storage/...png)`). The
 
 **Rule:** Never fabricate image or document URLs. Always use these tools and embed the returned path.
 
-Current agent guidance points agents to the Lua API:
+Current agent guidance points agents to the Code Mode API (Ruby, keyword arguments):
 
 - SVG: `app.svg.render_svg(...)`
 - Mermaid: `app.integrations.mermaid.render_mermaid(...)`
@@ -36,7 +50,7 @@ Current agent guidance points agents to the Lua API:
 - Vega-Lite: `app.integrations.vegalite.render_vegalite(...)`
 
 The exact function signatures are generated from the active tool providers, so
-agents should call `lua_read_doc()` for the namespace before writing code.
+agents should call `code_read_doc` for the namespace before writing code.
 
 ---
 

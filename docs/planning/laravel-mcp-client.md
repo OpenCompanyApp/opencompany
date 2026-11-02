@@ -1,5 +1,7 @@
 # Extract `laravel-mcp-client` Package
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](connections-events-routines.md) — extracting the current `app/Services/Mcp` client is dropped; the MCP client is rebuilt on `laravel/mcp` in Phase 1 (pinned tool definitions re-approved on change, hints treated as hints), with MCP isolation/SSRF fixed in Phase 0.
+
 Status: Planning. Current app code has evolved to include `McpRuntime`, `McpToolCatalog`, and domain service `App\Domain\Integrations\Application\ManageMcpServers`; file move tables below are extraction guidance, not a current code inventory.
 
 ## Context

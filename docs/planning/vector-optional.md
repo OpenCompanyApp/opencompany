@@ -1,5 +1,7 @@
 # Making Embeddings Optional — Implementation Plan
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — embedding-free operation supports the complete computerless, self-hosted product (pillars 2 and 8); not tied to a specific phase.
+
 Date: 2026-04-07
 Status: Planning. Current code still requires embeddings on the write path: `DocumentIndexingService::index()` calls `EmbeddingService::embedBatch()`, `document_chunks.embedding` is non-null in the base migration, and `pgvector` remains a composer dependency.
 Related: Identity + Memory Refactor, Dream/VFS doc

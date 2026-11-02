@@ -19,7 +19,7 @@ machine into a **connected host**.
 
 A host is any machine the workspace connects: a Raspberry Pi, a home server, a laptop, a VPS or an
 office NUC. It is the **bring-your-own-host `ComputerProvider`** from pillar 2, made concrete. Once
-connected, a host offers up to four capabilities. Each capability is granted separately:
+connected, a host offers up to five capabilities. Each capability is granted separately:
 
 | Capability | What agents get |
 |---|---|
@@ -27,6 +27,7 @@ connected, a host offers up to four capabilities. Each capability is granted sep
 | **Local MCP bridge** | stdio MCP servers running on the host (Home Assistant, a local database, filesystem, GPIO tools), exposed to granted agents as an MCP connection. This is how stdio MCP servers are supported without ever running in the web process |
 | **VFS projection** | `oc mount` or sync of the agent's governed VFS view onto the host, with writes going back through VFS policy |
 | **Event source** | Host events (file watcher, sensor or webhook relay, cron on the device) emitted into the workspace event log as untrusted events that can trigger routines |
+| **ACP runner** | Coding-agent CLIs (Claude Code, Codex CLI, Gemini/Antigravity CLI, Grok Build, OpenCode, Goose) driven over ACP on the host with the user's own subscriptions, as an outside-agent delegate ([pillar 9, agent connections](../PRODUCT_DIRECTION.md#9-connections-events-and-routines)). Granted per agent; Phase 2 |
 
 ### How it connects
 
@@ -140,7 +141,8 @@ openfactory `cli-and-mcp.md` design), and share the same reasoning.
 | Connections | `oc connections list/add/test`, `oc mcp add <url>` |
 | MCP server | `oc mcp serve`: exposes the user's OpenCompany workspace as a local MCP server, so Claude Code, Codex, Cursor and others can use Issues, Tables, Docs and approvals with the user's own access |
 | Hosts | `oc host up/down/status/install-service`, `oc host logs`, `oc host mcp add <stdio command>` |
-| Self-hosting admin | `oc admin doctor`, `oc admin upgrade`, `oc admin backup/restore`, `oc admin users` |
+| Export and portability | `oc export <object> [--format md\|pdf\|docx\|csv\|xlsx\|json]` for docs, tables, issues, threads, files, artifact bundles, form submissions and agent packs ([Data sovereignty](data-sovereignty.md)) |
+| Self-hosting admin | `oc admin doctor` (including warnings when backups are missing, failing or unverified), `oc admin upgrade`, `oc admin backup/restore`, `oc admin export/import` (`.ocarchive`), `oc admin import --from cloud` (Cloud → self-host migration), `oc admin users` |
 | Raw | `oc api <method> <path>` |
 
 ### Distribution and engineering
@@ -160,7 +162,9 @@ openfactory `cli-and-mcp.md` design), and share the same reasoning.
   can be embedded by third parties.
 - **Shared with Bowerbird:** put contexts, device-flow login, keychain storage, output and error
   formatting, the schema and guide generator, and the agent-experience eval harness into shared crates
-  usable by both `oc` and `bwb`. Grok-build-enhanced's `ratatui` experience is reusable for the TUI.
+  usable by both `oc` and `bwb`. These crates live in Bowerbird's public client track under
+  Apache-2.0, and `oc` consumes them as dependencies
+  ([OpenCompany × Bowerbird, shared tooling](bowerbird-synergy.md#34-shared-agent-first-tooling)). Grok-build-enhanced's `ratatui` experience is reusable for the TUI.
 - **Server work needed:**
   - device-flow OAuth;
   - personal access tokens and host tokens;
@@ -173,10 +177,10 @@ openfactory `cli-and-mcp.md` design), and share the same reasoning.
 | Phase | Work |
 |---|---|
 | 0 | Reserve the API surface: device-flow auth, token types, OpenAPI generation |
-| 1 | `oc` v0: login and contexts, home, approvals, ask/chat (TUI), issues, tables, docs, files, fs, runs, `--json` and schema, `oc mcp serve`, Homebrew and install script |
-| 2 | `oc host` v1: outbound daemon, computer capability (container sandbox), systemd service, Admin → Hosts, Raspberry Pi builds; SSH hosts over Tailscale or a direct address; `oc artifact dev`; `oc code run` |
-| 3 | Host local MCP bridge and event source; `oc mount` (FUSE); bwrap sandbox; agent-experience eval suite gating releases; `oc admin` for self-hosters |
-| 4–5 | `oc app` and plugin tooling, `oc forms`; Cloud contexts; Windows host support |
+| 1 | `oc` v0: login and contexts, home, approvals, ask/chat (TUI), issues, tables, docs, files, fs, runs, `--json` and schema, `oc mcp serve`, Homebrew and install script; `oc export` for objects ([Data sovereignty](data-sovereignty.md#phasing)) |
+| 2 | `oc host` v1: outbound daemon, computer capability (container sandbox), systemd service, Admin → Hosts, Raspberry Pi builds; SSH hosts over Tailscale or a direct address; `oc artifact dev`; `oc code run`; `oc admin export/import` and `oc admin backup/restore`; the ACP runner capability on hosts (granted per agent) |
+| 3 | Host local MCP bridge and event source; `oc mount` (FUSE); bwrap sandbox; agent-experience eval suite gating releases; `oc admin` for self-hosters, with `oc admin doctor` backup warnings |
+| 4–5 | `oc app` and plugin tooling, `oc forms`; Cloud contexts; Windows host support; `oc admin import --from cloud` (Phase 5) |
 
 ## Open questions
 

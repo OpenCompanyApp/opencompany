@@ -2,6 +2,21 @@
 
 > Manage organization configuration, agent behavior defaults, action policies, notifications, and destructive operations.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+Settings becomes **Admin** in the rail footer: Connections, members and billing, plus governance that **follows the workspace preset** (pillar 5; [Governance Model](../../architecture/governance-model.md), [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md)).
+
+- **Personal** hides policy and role screens: governance is the approval cards, each agent's "always allow" list and its autonomy slider.
+- **Team and Company** add a **Governance** area: policies, exceptions, approvers, budgets and audit. Company adds approver policies with two approvers on high-risk classes, admin-approved allowlists for connections and MCP servers, skill approval, a policy on who may attach computers, and audit export and retention (SSO/SCIM later, not claimed).
+- **Preset switcher:** Personal / Team / Company set defaults only. Switching keeps every explicit grant, and everything stays tunable. All presets ship in the AGPL self-hosted product.
+- The always-on invariants (workspace isolation, vault and credential broker, hard-deny floor, event and audit log, "an agent never approves anything") have no switch.
+
+**Behaviour modes are deleted.** The "Default Agent Behavior" setting documented below is removed in Phase 0 in favour of the policy model.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access
@@ -103,7 +118,7 @@
 ### 2. Agent Defaults
 - **Icon**: `ph:robot`
 - **Fields**:
-  - Default Agent Behavior: select with options "Autonomous (minimal supervision)", "Supervised (ask before actions)", "Strict (require approval for everything)"
+  - Default Agent Behavior: select with options "Autonomous (minimal supervision)", "Supervised (ask before actions)", "Strict (require approval for everything)" — *superseded: deleted in Phase 0 in favour of the policy model; see Direction above*
   - Auto-spawn Agents: custom toggle switch (not native checkbox); allows manager agents to spawn temporary agents
 
 ### 3. Action Policies

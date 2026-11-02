@@ -2,8 +2,10 @@
 
 > Architecture overview for agent memory, document embeddings, conversation compaction, and hybrid search.
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — memory is a kept asset (pillar 1) and memory controls are a pillar 6 primitive; improvements are ongoing with no dedicated phase.
+
 **Status**: Complete (all 6 phases implemented). Current runtime note: the permanent `MEMORY.md` prompt section and memory tools are injected only in private agent/user contexts (`dm`, `agent`, or `external` channels), while public channels intentionally omit private memory context.
-**Config**: `config/memory.php` (comprehensive: embedding, chunking, search, reranking, compaction, memory_flush, context_windows, scope)
+**Config**: `config/memory.php` (embedding, chunking, search, reranking, compaction, memory_flush, context-window defaults, scope). Per-model context windows come from the app-owned AI catalog (`app/Domain/Ai/Catalog`), not from `config/memory.php`.
 
 ### Implementation Summary
 
@@ -15,7 +17,7 @@ All phases are built and operational. Key files:
 | 2 | Document indexing + observer | `app/Services/Memory/DocumentIndexingService.php`, `app/Observers/DocumentObserver.php`, `app/Jobs/IndexDocumentJob.php` |
 | 3 | SaveMemory + RecallMemory tools | `app/Agents/Tools/Memory/SaveMemory.php`, `RecallMemory.php` |
 | 4 | Conversation compaction | `app/Services/Memory/ConversationCompactionService.php`, `app/Jobs/CompactConversationJob.php`, `app/Models/ConversationSummary.php` |
-| 5 | Pre-compaction memory flush | `app/Services/Memory/MemoryFlushService.php` (hooked into `AgentRespondJob`) |
+| 5 | Pre-compaction memory flush | `app/Services/Memory/MemoryFlushService.php` (hooked into `RespondToChatMessage::handle`, which `AgentRespondJob` delegates to) |
 | 6 | Hybrid search (full-text + vector) | `app/Services/Memory/DocumentIndexingService.php`, tsvector column on `document_chunks` |
 
 Bonus services (not in original plan): `TokenEstimator`, `ModelContextRegistry`, `MemoryScopeGuard`, `RerankingService` (native Cohere/Jina reranking, Ollama Qwen3-style reranking, or LLM-based pointwise reranking through the configured AI provider).

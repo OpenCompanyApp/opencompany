@@ -1,5 +1,7 @@
 # Agent Run Queue Control Plane
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../planning/connections-events-routines.md) — the run control plane is a kept asset landed in Phase 0; every routine execution becomes a run on it (pillar 9), and automation dispatch here migrates to Routines/Triggers.
+
 Status: Implemented in the current working tree.
 Verified: 2026-08-09 against local code and applied local migrations. This is
 not a claim that the work is committed, deployed, or fully production-rehearsed.

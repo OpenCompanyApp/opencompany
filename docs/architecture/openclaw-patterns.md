@@ -1,5 +1,7 @@
 # Strategic Analysis: OpenClaw Patterns for OpenCompany
 
+> **Direction status (2026-11-02):** Partially superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../planning/connections-events-routines.md) — OpenClaw is a pattern reference, not positioning (competing on channel count is a non-goal); its heartbeat and cron patterns are now routines and triggers (pillar 9).
+
 Status: Research/reference. This document compares OpenClaw patterns with OpenCompany and should not be read as a current OpenCompany implementation inventory. Current OpenCompany runtime evidence lives in `app/Agents`, `app/Domain`, `app/Services`, and the focused runtime architecture docs.
 
 ## Executive Summary

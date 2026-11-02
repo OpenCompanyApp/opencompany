@@ -2,6 +2,12 @@
 
 > Common layout patterns used across OpenCompany pages, with ASCII diagrams, responsive behavior, and component references. Use this when designing a new page or understanding how existing pages are structured.
 
+Status: "Today" sections describe the current Inertia pages. The [Target: One Rail, Main and Context Pane](#target-one-rail-main-and-context-pane-accepted-not-implemented) section is the accepted design (2026-11-02), not implemented. Navigation verified against `SidebarNav.vue` and `routes/web.php` on 2026-11-02.
+
+> **Direction (2026-11-02, accepted).** The locked [Product Direction](../PRODUCT_DIRECTION.md) (pillars 4 and 7) and [UI Structure and Agent Editing](../planning/ui-structure-and-agent-editing.md) define the target shell: one 260px rail, a main pane and a resizable context pane, with **Home** as the attention page. Mockups: [sidebar mockup](mockups/sidebar-2026-11.html) and [primitives plus apps mockup](mockups/apps-and-primitives-2026-11.html). The shell below, with Dashboard as home and Chat as one of 13 equal destinations, is what exists **today**.
+>
+> - **API-first now, Inertia frozen:** no new Inertia pages or page props. The target shell is a new Vue 3 + Reka UI single-page app on the versioned public API (OpenAPI) and the realtime stream ([API-First Client Split](../architecture/api-first-client-split.md)). Old Inertia pages are deleted as the new client reaches parity. The layouts below stay accurate for today's pages until then.
+> - **One concept per job:** Dashboard, Activity and Workload become Home; Lists folds into Issues; Tasks (agent runs) become runs inside threads and the agent profile; Automation becomes Routines; Org becomes Team; three file stores become one Files store; Integrations becomes Connections (Admin) plus Apps. Agent behaviour modes are deleted in favour of the policy model (pillar 5).
 ---
 
 ## App Shell
@@ -50,25 +56,25 @@ The sidebar navigation is defined in `resources/js/Components/layout/SidebarNav.
 |  [O] OpenCompany          [collapse icon]  |  <- Header (AppSidebar)
 +--------------------------------------------+
 |                                            |
-|  * Dashboard                               |  <- Always at top
+|  * Dashboard                               |  <- Always at top (today's home)
 |                                            |
 |  ----------------------------------------  |  <- border-t divider
 |                                            |
 |  * Tasks             (Agent Work)          |
 |  * Approvals  [3]                          |
 |  * Organization                            |
+|  * Automation                              |
 |                                            |
 |  ----------------------------------------  |  <- border-t divider
 |                                            |
 |  * Chat       [15]  (Office)               |
 |  * Docs                                    |
+|  * Files                                   |
 |  * Tables                                  |
 |  * Calendar                                |
 |  * Lists                                   |
 |                                            |
 |  ----------------------------------------  |  <- border-t divider
-|                                            |
-|  * Activity          (Monitoring)          |
 |                                            |
 |  v Agents            (Collapsible)         |
 |    * Logic       [busy indicator]          |
@@ -77,8 +83,7 @@ The sidebar navigation is defined in `resources/js/Components/layout/SidebarNav.
 |    * ...                                   |
 |                                            |
 +--------------------------------------------+
-|  * Automation        (Bottom section)      |  <- AppSidebar bottom
-|  * Integrations                            |
+|  * Integrations      (Bottom section)      |  <- AppSidebar bottom
 |  * Settings                                |
 +--------------------------------------------+
 |  [avatar] User Name                        |  <- UserMenu
@@ -91,11 +96,12 @@ The sidebar navigation is defined in `resources/js/Components/layout/SidebarNav.
 | Group | Items | Icons (ph: prefix) |
 |-------|-------|---------------------|
 | Top | Dashboard | `house` / `house-fill` |
-| Agent Work | Tasks, Approvals, Organization | `check-square`, `seal-check`, `tree-structure` |
-| Office | Chat, Docs, Tables, Calendar, Lists | `chat-circle`, `file-text`, `table`, `calendar`, `kanban` |
-| Monitoring | Activity | `activity` |
+| Agent Work | Tasks, Approvals, Organization, Automation | `check-square`, `seal-check`, `tree-structure`, `lightning` |
+| Office | Chat, Docs, Files, Tables, Calendar, Lists | `chat-circle`, `file-text`, `folder`, `table`, `calendar`, `kanban` |
 | Agents | Dynamic list from API | `AgentAvatar` component with status dot |
-| Bottom | Automation, Integrations, Settings | `lightning`, `plugs-connected`, `gear` |
+| Bottom | Integrations, Settings | `plugs-connected`, `gear` |
+
+Activity has a page (`/w/{workspace}/activity`) but no sidebar entry today. The badge counts on Approvals and Chat are hardcoded in `SidebarNav.vue`, not live counts.
 
 ### Active State
 
@@ -103,13 +109,17 @@ Active nav items use `bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:t
 
 ### Agents Section
 
-The Agents section uses Reka UI `CollapsibleRoot` and defaults to collapsed (`agentsSectionOpen = ref(false)`). It shows an online agent count indicator with a green dot. Each agent entry shows an `AgentAvatar` with status and navigates to `/agent/{id}` on click. A maximum of 4 agents are displayed by default (`maxVisibleAgents: 4`).
+The Agents section uses Reka UI `CollapsibleRoot`. It defaults to expanded and persists its open state in `localStorage` (`sidebar-agents-open`). It shows an online agent count indicator with a green dot. Each agent entry shows an `AgentAvatar` with status and its agent type, and navigates to the agent detail page on click. All loaded agents are listed.
+
+**Target:** this sidebar and Chat's 320px conversation list are replaced by one 260px rail (see [Target: One Rail, Main and Context Pane](#target-one-rail-main-and-context-pane-accepted-not-implemented)).
 
 ---
 
 ## Three-Column Layout
 
-Used by the **Chat** page to display a channel list, the active conversation, and an optional info panel.
+> **Legacy pattern.** `Chat.vue` now renders `AssistantChatShell` (a two-column `ConversationSidebar` + `AssistantConversation` layout with inline approval cards). The three-column `ChannelList` / `Area` / `ChannelInfo` components below still exist in the tree but are not the active Chat shell. See [pages/chat.md](pages/chat.md) for the current layout.
+
+Historically used by the **Chat** page to display a channel list, the active conversation, and an optional info panel.
 
 **Page:** `resources/js/Pages/Chat.vue`
 
@@ -377,12 +387,14 @@ Used by the **Agent Detail** page. A header area with tab navigation is followed
 | | |  Identity: Identity file editor                          || |
 | | |  Capabilities: Toggle list with approval flags           || |
 | | |  Activity: Timestamped log with type badges              || |
-| | |  Settings: Behavior mode, cost limit, danger zone        || |
+| | |  Settings: Behavior mode*, cost limit, danger zone       || |
 | | |                                                          || |
 | | +----------------------------------------------------------+| |
 | +--------------------------------------------------------------+ |
 +------------------------------------------------------------------+
 ```
+
+\* Behaviour modes are deleted in Phase 0 in favour of the policy model (pillar 5).
 
 | Property | Value |
 |----------|-------|
@@ -410,7 +422,7 @@ The Settings page uses sidebar section navigation with `SettingsSection` compone
 | | +----------------------------------------------------------+ | |
 | |                                                              | |
 | | +-- Agent Defaults ----------------------------------------+ | |
-| | | Behavior mode, Auto-spawn toggle                         | | |
+| | | Behavior mode*, Auto-spawn toggle                        | | |
 | | +----------------------------------------------------------+ | |
 | |                                                              | |
 | | +-- Action Policies ---------------------------------------+ | |
@@ -433,6 +445,8 @@ The Settings page uses sidebar section navigation with `SettingsSection` compone
 | +--------------------------------------------------------------+ |
 +------------------------------------------------------------------+
 ```
+
+\* Behaviour modes are deleted in Phase 0 in favour of the policy model (pillar 5).
 
 ---
 
@@ -632,9 +646,110 @@ Some pages use custom `Transition` wrappers instead of the Slideover component f
 
 ---
 
+## Target: One Rail, Main and Context Pane (accepted, not implemented)
+
+> **Accepted design, not implemented.** Source: [UI Structure and Agent Editing](../planning/ui-structure-and-agent-editing.md) (section 3 and Appendix A) and [Product Direction](../PRODUCT_DIRECTION.md) pillar 4. Mockups: [sidebar mockup](mockups/sidebar-2026-11.html) and [primitives plus apps mockup](mockups/apps-and-primitives-2026-11.html). Built in the new Vue 3 + Reka UI client on the public API and realtime stream, never as Inertia pages. Component names are provisional; see [components.md](components.md#planned-components-new-client).
+
+### The rail (260px)
+
+One left rail replaces today's 240px app sidebar plus Chat's 320px conversation list. Sections, top to bottom:
+
+```
++--------------------------------+
+| [O] Acme v          [+ chat]   |  1. Workspace switcher, new chat
+| [ Search            Cmd K ]    |     and search / command palette
+|                                |
+| (o) Home          [3 need you] |  2. Home (attention page)
+|                                |
+| PINNED                         |  3. Per-person pins: any thread,
+|   # launch-plan                |     table, issue or doc
+|   Leads (table)                |
+|                                |
+| AGENTS                         |  4. Opening an agent starts a DM.
+|   [A] Ada  * working  🖥  [2]  |     Status dot (working, needs
+|       "Updating Leads..."      |     you, idle, paused), current
+|   [B] Bram * needs you         |     task, unread, 🖥 = has a
+|   [C] Cleo * idle              |     computer. ~5 recent/unread;
+|                                |     the rest via Team and Cmd K
+| PEOPLE                         |  5. Presence + unread, ~5 recent
+|   (R) Rutger  online      [1]  |
+|                                |
+| GROUPS & CHANNELS              |  6. Group chats can mix agents
+|   Launch team (3 agents, 2 ppl)|     and people
+|   # general                    |
+|                                |
+| APPS                    [+ add]|  7. Installed add-on apps with
+|   Mail                    [12] |     counts (Mail, CRM, Calendar,
+|   CRM            8 deals due   |     Helpdesk)
+|                                |
+| SPACES                         |  8. Flat, never nested. Each has
+|   v Sales                      |     the same six tools plus
+|       Issues                   |     scoped app views
+|       Tables                   |
+|       Docs                     |
+|       Files            Drive   |
+|       Artifacts            3   |     Artifacts: pages, interactive
+|       Routines             5   |     artifacts and the Space's forms
+|       Deals (CRM view)         |
+|   > Engineering                |
+|--------------------------------|
+| Team   Admin   [avatar]        |  9. Footer: Team, Admin, user menu
++--------------------------------+
+```
+
+- Every section can be collapsed and reordered per user. Spaces the user is not a member of are hidden.
+- Each Space has six tools: Issues, Tables, Docs, Files, Artifacts and Routines ([Artifacts and Forms](../planning/artifacts-and-forms.md)). The Artifacts tool lists pages, interactive artifacts and the Space's forms.
+- Pins are the only way an individual object appears at the top level of the rail.
+- Badges are live counts from the realtime stream (today's hardcoded badges are deleted).
+- Admin content follows the governance preset: Personal shows no policy or role screens; Team and Company add a Governance area (policies, exceptions, approvers, budgets, audit). See [Governance Model](../architecture/governance-model.md).
+
+### Three panes
+
+```
++-----------+--------------------------------------+------------------------------+
+| Rail      | Main                                 | Context pane                 |
+| (260px)   |                                      | (resizable, collapsible)     |
+|           | CHAT-FIRST: a conversation           | - the object being discussed |
+|           |  messages, threads, typed run        |   (table, issue, doc, file)  |
+|           |  activity, inline task / record /    | - the agent's computer:      |
+|           |  approval cards                      |   watch, take over, hand     |
+|           |                                      |   back (computer agents only)|
+|           |                                      | - the run: plan, activity,   |
+|           |                                      |   change set                 |
+|           |                                      | - thread details             |
+|           +--------------------------------------+------------------------------+
+|           | OBJECT-FIRST: the object (e.g. a     | Agent panel: chat with an    |
+|           |  full table, with live staged edits  | agent scoped to the object   |
+|           |  in the agent's color)               | and the current selection    |
++-----------+--------------------------------------+------------------------------+
+```
+
+| Mode | Main pane | Context pane |
+|------|-----------|--------------|
+| **Chat-first** | A conversation (DM, group chat or channel) | The object being discussed, including an **artifact with a live preview** that refreshes as the agent edits the draft; the agent's **computer** (watch, take over, hand back — only for agents that have one; VFS-only agents simply have no computer view); the **run** (plan checklist, activity, change set); or thread **details** (members, routines, files) |
+| **Object-first** | The object: a table, issue, doc, file or app view | The **agent panel**: a chat with an agent scoped to that object and the current selection (rows, columns, filter, text range) |
+
+Opening an object from a chat card, or opening chat from an object, gives the same layout with the panes swapped. Approval cards appear inline at the point in the run where they were raised, and go only to the responsible human's DM or Home, never to group chats.
+
+### Home
+
+Home is the attention page and the default screen. It is **not** called "Inbox" (Mail and agent inboxes keep that word). It ranks **needs you** (approvals, questions, takeovers, sign-in requests), then **results**, then **FYI**; the daily brief lands here. It replaces Dashboard, Activity and Workload.
+
+### Mobile
+
+- A bottom bar holds **Home, Chats, Spaces, Team**.
+- Cards open as full-screen sheets; the computer view opens full screen.
+- Home is the home screen.
+
+### Theming
+
+Dark and light themes come from semantic tokens, not hand-paired `dark:` classes (see [design-system.md](design-system.md#target-token-design-system-new-client)).
+
+---
+
 ## Layout Selection Guide
 
-Use this table when deciding which layout pattern to use for a new page.
+Use this table when deciding which layout pattern to use for a new page. These patterns apply to today's Inertia pages only, which are frozen. New UI is built in the new client from the [Target: One Rail, Main and Context Pane](#target-one-rail-main-and-context-pane-accepted-not-implemented).
 
 | If your page needs... | Use this pattern | Example pages |
 |-----------------------|------------------|---------------|

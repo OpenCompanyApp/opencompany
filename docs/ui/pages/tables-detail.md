@@ -2,6 +2,14 @@
 
 > Full data table editor with spreadsheet-style grid, multi-view support (grid, kanban, gallery, calendar), and inline cell editing.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+The grid becomes a **virtualized grid with server-side paging**, a row detail pane, working filter and sort, record history with actor and run, and realtime updates (today agent edits through the VFS appear only after a reload). Agent edits arrive as **change sets** with live staged cells in the agent's color, a "changed only" filter and accept or reject per cell, row or all, plus "Revert this run". New column types: Person/Agent, Relation, Attachment, Long-text (pillar 7; [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md)). In object-first mode the context pane is an agent panel scoped to the selection. A **form view** joins the grid, kanban, gallery and calendar views; submissions arrive as change sets through the one governed submission pipeline ([Artifacts and Forms](../../planning/artifacts-and-forms.md)).
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

@@ -1,5 +1,7 @@
 # Integration: TickTick
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 > Task management integration tools — manage projects, create tasks, set priorities, track completion. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
 
 Give your AI agents the ability to manage TickTick tasks and projects. Supports both direct access token and OAuth authentication, plus the Dida365 variant.

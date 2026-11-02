@@ -4,6 +4,75 @@
 > pattern, and convention used across the application. A new developer should be able to
 > read this guide end-to-end and fully understand the visual language of the product.
 
+Status: Sections 1–12 describe the current Vue 3 + Inertia app (frozen). The
+[Target: Token Design System](#target-token-design-system-new-client) section is the accepted
+direction for the new client (2026-11-02), not implemented.
+
+## Target: Token Design System (New Client)
+
+> **Accepted direction, not implemented.** Source: [Product Direction](../PRODUCT_DIRECTION.md)
+> pillar 4 and [UI Structure and Agent Editing](../planning/ui-structure-and-agent-editing.md)
+> (sections 1, 4 and 6). Mockups: [sidebar](mockups/sidebar-2026-11.html) and
+> [primitives plus apps](mockups/apps-and-primitives-2026-11.html).
+
+**Why.** Today the tokens are applied twice: about 9.4k raw `neutral-*` classes and 5.8k
+hand-paired `dark:` classes, a documented palette that does not match `app.css`, and native
+elements outnumbering the shared wrappers about 10 to 1. Sections 1–12 below document that
+current state; they are not the target.
+
+**What the new client does.**
+
+- The new Vue 3 + Reka UI single-page app (Inertia is frozen; old pages are deleted as the new
+  client reaches parity) uses a **semantic token design system from day one**.
+- Components use semantic tokens through wrapper components, never raw palette classes.
+- **Dark mode comes from tokens**, not hand-paired `dark:` classes. Both themes are first-class.
+- The visual principles in section 1 (borders over shadows, one accent, no gradients or springs)
+  carry over.
+
+**Semantic tokens** (names as used by the mockups; the agent-color use of `--chart-*` is a proposal; final values are set in the new client):
+
+| Token | Role |
+|-------|------|
+| `--background`, `--foreground` | App surface and primary text |
+| `--card`, `--border` | Panels, rail, cards, dividers |
+| `--secondary`, `--secondary-foreground` | Active rail row, subtle fills |
+| `--muted-foreground` | Section labels, metadata, timestamps |
+| `--primary`, `--primary-foreground` | Single interactive accent; unread badges |
+| `--warning` | "Needs you" badges and states |
+| `--success`, `--info` | Presence/online and working status |
+| `--chart-1` … `--chart-n` | Categorical data and agent colors (validated for both themes) |
+| `--radius`, `--font-sans`, `--font-mono` | Shape and type |
+
+**Agent color.** Each agent has a stable color (proposed: drawn from the categorical set) used for its
+avatar, presence chip and **staged edits**. Live staged edits in a table, issue or doc are
+highlighted in the editing agent's color, so humans can see who is changing what while a run is in
+progress. Color is never the only signal: staged cells also carry an attribution marker and the
+presence chip text ("Ada · editing row 12 of 214").
+
+**Change-set review states.** Every agent edit to structured data is a change set (plan, dry-run
+preview, live staging, review, apply). Cells, rows, fields and text ranges need distinct,
+token-based states in both themes. The state list follows the accepted flow; the visual
+treatments are proposals for the new client:
+
+| State | Meaning | Treatment |
+|-------|---------|-----------|
+| Staged | Agent wrote it; not yet reviewed | Agent-color tint plus marker; hover shows old → new |
+| Accepted | Reviewer accepted; pending apply | Success-tinted marker |
+| Rejected | Reviewer rejected; old value stays | Muted, struck-through new value |
+| Applied | Committed with person-or-agent attribution and run link | Normal cell; history shows attribution |
+| Conflict | A human changed the cell after the agent read it; human edit wins | Warning treatment; resolved in review, never last-write-wins |
+| Stale | The run crashed or timed out | Muted presence chip, "stale" label |
+| Reverted | Undone by "Revert this run" | History entry only |
+
+Docs use collaborative **suggestion mode** (tracked insertions and deletions in the agent's color,
+accept or reject).
+
+**Status colors.** Agent status dots: working (`--info`), needs you (`--warning`), idle
+(`--success`), paused (`--muted-foreground`). The 🖥 marker on agent rows
+means the agent has its own computer.
+
+**Data source.** The new client reads and writes only through the versioned public API and the
+realtime stream (pillar 4; [API-First Client Split](../architecture/api-first-client-split.md)).
 ---
 
 ## 1. Design Philosophy

@@ -1,5 +1,7 @@
 # Observability System
 
+> **Direction status (2026-11-02):** Partially superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../planning/connections-events-routines.md) — audit, run replay, the activity feed and budget accounting now come from the one durable workspace event log (Phase 0 schema, Phase 1 activity feed, Phase 3 replay/audit); the separate admin dashboard design here is not on the phase plan.
+
 > **Admin-Only** - All observability features require administrator authentication.
 >
 > This document defines the observability strategy for monitoring, debugging, and improving the OpenCompany application.

@@ -1,5 +1,7 @@
 # Exchange Rate Integration
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 Currency exchange rate integration for the OpenCompany integration ecosystem. Provides access to 340 fiat currencies, cryptocurrencies, and precious metals via the fawazahmed0/exchange-api.
 
 No API key required.

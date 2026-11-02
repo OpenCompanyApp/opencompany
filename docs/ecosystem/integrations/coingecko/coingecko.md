@@ -1,5 +1,7 @@
 # CoinGecko — Lua API Reference
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 ## Important: Coin IDs vs Ticker Symbols
 
 CoinGecko tools use CoinGecko IDs (e.g. `"bitcoin"`, `"ethereum"`, `"solana"`), **not** ticker symbols (`"BTC"`, `"ETH"`). If you only know the ticker, use `coingecko_search_coins` first to find the correct ID.

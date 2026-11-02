@@ -2,6 +2,14 @@
 
 > Kanban-style project board for managing user-created list items across Backlog, In Progress, and Done columns, with project hierarchy, multiple view modes, and rich filtering.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+**Superseded: Lists folds into Issues** (pillar 7, one concept per job; [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md)). Which of today's `Task` and list models becomes Issues is decided in [Agent-Native Work Apps](../../planning/agent-native-work-apps.md). `ListAutomationRule` is replaced by Routines (pillar 9). Do not extend this page.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

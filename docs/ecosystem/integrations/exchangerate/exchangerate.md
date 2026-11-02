@@ -1,5 +1,7 @@
 # Exchange Rate — Lua API Reference
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 No API key needed. Supports 340+ currencies: fiat, crypto, and precious metals.
 
 ## exchangerate_convert_currency

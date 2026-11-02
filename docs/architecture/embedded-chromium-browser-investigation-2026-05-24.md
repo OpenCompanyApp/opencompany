@@ -1,5 +1,7 @@
 # Embedded Chromium Browser Investigation
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Computer provider contract](computer-provider-contract.md) — an embedded Chromium browser in the app is replaced by the browser on the agent's computer.
+
 Date: 2026-05-24
 
 Status: Investigation / implementation proposal. The external browser-provider

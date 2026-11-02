@@ -1,5 +1,7 @@
 # Integration: CoinGecko
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 Cryptocurrency market data for AI agents: coin IDs, prices, token-address prices, market rankings, categories, asset platforms, exchanges, exchange rates, trending data, historical charts, and public treasury data.
 
 > Part of the **OpenCompany** integration ecosystem. These packages extend AI agents with real-world capabilities through integration tools.

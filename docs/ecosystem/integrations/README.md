@@ -2,6 +2,8 @@
 
 Monorepo for all [OpenCompany](https://github.com/OpenCompanyApp) integration packages. Each package exposes tools that AI agents can call — from rendering diagrams to querying APIs to managing tasks.
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 Status: Current package authoring/reference copy. In standalone Laravel consumers the default credential resolver reads `config/ai-tools.php`; in OpenCompany itself credentials and enablement are workspace-scoped through `IntegrationSetting`, `config/integrations.php`, `config/chat_integrations.php`, and dynamic integration catalog metadata.
 
 Integrations are independent Composer packages built on a shared core. They work in any PHP 8.2+ application: [OpenCompany](https://github.com/OpenCompanyApp) (web), [KosmoKrator](https://github.com/OpenCompanyApp) (CLI), or your own consumer.
@@ -680,6 +682,8 @@ class WeatherToolProvider implements ToolProvider, ConfigurableIntegration
 ---
 
 ## Lua Documentation
+
+> **Direction note (2026-11-02):** Lua is superseded by mruby Code Mode; read Lua references in this section and the Lua routing/invoker sections below as historical.
 
 Agents discover tools through auto-generated Lua API docs. The `LuaDocRenderer` and `LuaCatalogBuilder` in core handle this automatically based on your `parameters()` and `description()` definitions.
 

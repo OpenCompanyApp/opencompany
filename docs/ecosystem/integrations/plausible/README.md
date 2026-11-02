@@ -1,5 +1,7 @@
 # Integration: Plausible
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9).
+
 > Plausible Analytics integration tools — query stats, realtime visitors, manage sites and goals. Part of the [OpenCompany](https://github.com/OpenCompanyApp) integration ecosystem.
 
 Give your AI agents access to privacy-friendly web analytics. Query traffic data, track realtime visitors, and manage sites and conversion goals — all through the [Plausible Analytics](https://plausible.io) API.

@@ -44,7 +44,8 @@ adapted to a multi-user, workspace-governed product.
 |---|---|---|---|
 | **Takeover and hand back** | A human takes control for SSO, passkeys, CAPTCHAs, cross-device approvals, QR codes or bank verification, presses "I'm done", and the agent resumes. The signed-in session persists. | Grok Bot "Take over / I'm done" ([xAI](https://docs.x.ai/grok-bot/vault)); Gemini/Chrome work log with takeover | Computer panel with a remote screen (noVNC or similar) available on web and mobile. The agent raises a takeover request card stating the reason. The session persists in the agent's browser profile. |
 | **Live view and work log** | Watch what the agent is doing in real time; watching does not grant control. | dots, Chrome, Grok Bot (landscape report) | Live run stream in chat plus the computer panel. Separate view and control permissions. |
-| **Approval cards** | Explain what, why and the source; one-tap answers. | Duet, dots, Muse, Perplexity (landscape report) | Scoped grants: once, this run, this task, time-limited, always. Exact-match on later calls (Muse Sentinel pattern). |
+| **Approval cards** | Explain what, why and the source; one-tap answers. | Duet, dots, Muse, Perplexity (landscape report) | Scoped grants: once, this run, this task, time-limited, always. Exact-match on later calls (Muse Sentinel pattern). Learned exceptions: after repeated approvals of the same pattern (default 3) the card offers a scoped, exact-match "always allow"; admins can restrict who may accept. Batched review: many similar actions are one card with a toggle per item. Which actions need a card at all is set by reversibility and the workspace preset (Personal, Team, Company). |
+| **Autonomy slider** | Per-agent *Ask first · Balanced · Autopilot*. | Pillar 5 of the product direction | Each position is a named bundle of scoped exceptions, capped by the preset and the hard-deny floor; it only writes grants into the policy engine and is not the deleted behaviour modes. New agents start at Balanced. |
 | **Non-blocking approvals** | The agent keeps doing other work while an approval is pending, then resumes that step. | Claude Duet (landscape report) | Runs park the blocked step and continue independent steps. |
 | **Mandatory handoffs and a hard-deny floor** | Some actions always go back to a human; some are never allowed. | dots: password changes and money transfers handed back; Duet hard-deny list (landscape report) | Platform floor that workspace policy can tighten but never loosen. |
 | **Ask versus notify** | Blocking question versus non-blocking progress update. | Manus message tools (landscape report) | Two distinct agent tools and two card types. |
@@ -55,7 +56,7 @@ adapted to a multi-user, workspace-governed product.
 | Primitive | What it does | Seen in | OpenCompany requirement |
 |---|---|---|---|
 | **Single-use virtual cards** | The agent requests a one-time card showing merchant, items and total; the human pays, pays another way, or denies. | Grok Bot with Link ([xAI](https://docs.x.ai/grok-bot/vault)); Meta Muse (landscape report) | Card-issuer connector later; approval card with merchant, items and total. |
-| **Saved cards** | Grok Bot fills a saved card "without asking you each time" ([xAI](https://docs.x.ai/grok-bot/vault)). | Grok Bot | **Not copied.** In OpenCompany every card use needs approval unless an admin sets an explicit per-agent spend policy. |
+| **Saved cards** | Grok Bot fills a saved card "without asking you each time" ([xAI](https://docs.x.ai/grok-bot/vault)). | Grok Bot | **Not copied.** Spend follows the preset: Personal asks or uses a per-agent spend cap; Team uses a budget per agent; Company uses a budget plus two approvers above a threshold. |
 | **Spend caps** | Per agent, per workspace, per merchant. | Gemini agent for work, Paperclip, Notion (landscape report) | Shared with token/compute budgets; pause at the limit. |
 
 ## 4. Control
@@ -64,6 +65,7 @@ adapted to a multi-user, workspace-governed product.
 |---|---|---|---|
 | **Distinct pause, stop, cancel-schedule and delete** | "Stopping work does not undo completed actions." | dots controls (landscape report) | Separate controls in UI and API. `ActiveAgentRun` already separates pause and cancel. |
 | **Kill switch** | Stop one agent or all agents in a workspace immediately. | Common pattern | Admin-only, audited, also reachable from Telegram. |
+| **Trash and purge** | Deletes are reversible so they need no approval. | Pillar 5 of the product direction | Delete moves to trash. Personal: trash (30 days) auto-applies. Team: trash auto-applies, purge needs approval. Company: trash is a proposal, purge needs two approvers. |
 | **Budgets that pause** | Token, compute and spend limits pause work and ask for approval. | Paperclip, Notion (landscape report) | Phase 3 governance. |
 
 ## 5. Work, routines and memory
@@ -88,12 +90,14 @@ adapted to a multi-user, workspace-governed product.
 ## Phasing
 
 - **Phase 2 (Computer v1):** vault, secure form, credential broker, takeover and hand back,
-  persistent browser profile, live view, ports with approval.
+  persistent browser profile, live view, ports with approval; the money-movement and
+  password-change hard-deny entries; agent inbox and OTPs via the Mail app (per the direction's
+  phase table).
 - **Phase 3 (Governance):**
-  - password manager connectors (1Password first), scoped approval grants, hard-deny floor,
+  - password manager connectors (1Password first), scoped approval grants, the full hard-deny floor,
     non-blocking approvals;
   - pause/stop/cancel-schedule/delete, kill switch, spend caps;
-  - agent inbox and OTPs, routines, daily brief and monitors, memory controls.
+  - routines, daily brief and monitors, memory controls.
 - **Later:** single-use virtual cards, phone numbers, teach by demonstration, connected local
   computers, CSV vault import.
 

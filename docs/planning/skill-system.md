@@ -1,5 +1,7 @@
 # Skill System
 
+> **Direction status (2026-11-02):** Partially superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](connections-events-routines.md) — skills become SKILL.md skills plus plugin import with digest-bound approval and no auto-install (Phase 2, pillar 9); automation hooks become routines, behaviour modes are replaced by the policy model, Lua flows by mruby, and the `/lists`/`/automations` mounts follow Lists→Issues and Automations→Routines.
+
 Status: Planning. Last code audit: 2026-05-25. The files listed in this document describe a proposed skill system and are not current tracked implementation unless they exist in the worktree.
 
 Current code baseline:
@@ -294,7 +296,7 @@ Current authorization shape:
 - `App\Models\AgentPermission` docblocks/scopes currently list `tool`, `channel`, `folder`, `file_folder`, `integration`, and `agent`; update the model documentation and add a `scopeSkills()` helper if skill permissions are queried often.
 - New resolver logic should live in `App\Domain\Authorization\Application\AgentPermissionResolver`, then be exposed through `App\Services\AgentPermissionService` for compatibility with existing runtime/tool code.
 - Keep the resolver return shape extensible. It should be able to explain whether access was blocked by organization policy, workspace policy, role, agent permission, integration state, surface policy, referenced-skill expansion, automation safety, Lua capability, or an underlying tool.
-- If skills can trigger external mutations through their expected tools, approval should respect the agent's behavior mode and the underlying tool permissions. A skill permission should never bypass tool permissions.
+- If skills can trigger external mutations through their expected tools, approval should respect the agent's behavior mode and the underlying tool permissions. (Direction note 2026-11-02: behaviour modes are replaced by the policy model.) A skill permission should never bypass tool permissions.
 - Surface policy is evaluated in addition to agent permission. A skill can be available in chat but denied for unattended automation, or available internally but hidden from Telegram.
 - Lua skill execution must require the normal `lua_exec`/Lua namespace permissions plus every underlying app tool permission reached through `LuaBridge`.
 - Referenced skills do not inherit permission from the parent skill. Each referenced skill must independently pass active, integration, agent permission, surface policy, automation, and Lua/tool checks.
@@ -641,6 +643,8 @@ Prompt automation alignment: either route `ExecutePromptAutomation` through `Age
 Script automation alignment: execute Lua skills through the existing `LuaSandboxService`/`LuaBridge` path so `ctx`, call logs, CPU limits, and app tool permissions behave the same as normal script automations.
 
 ### Flow 5: Lua and VFS call skills
+
+> **Direction note (2026-11-02):** Lua is superseded by mruby Code Mode; read Lua references in this section as historical.
 
 Lua should expose a small `app.skills` namespace:
 
@@ -1115,6 +1119,8 @@ public function renderSkillContent(Skill $skill, array $arguments = []): string
 ```
 
 ### Lua snippets
+
+> **Direction note (2026-11-02):** Lua is superseded by mruby Code Mode; read Lua references in this section as historical.
 
 Lua snippets are stored as structured JSON so they can be rendered into VFS files and catalog rows:
 

@@ -1,5 +1,7 @@
 # Grok Bot Investigation for OpenCompany
 
+> **Direction status (2026-11-02):** Aligned with [Product Direction](../PRODUCT_DIRECTION.md) — evidence for the "Grok Bot for companies" decision; its "Automations → Routines" recommendation is adopted as pillar 9.
+
 Status: Research and checkout-grounded product/architecture comparison.
 Verified: 2026-08-17 against the public Grok Bot launch material, the signed macOS 0.18.0 distribution, and the active OpenCompany working tree.
 

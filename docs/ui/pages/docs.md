@@ -2,6 +2,14 @@
 
 > Collaborative document management with a sidebar tree, rich viewer, version history, comments, and file attachments.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+Docs become **typed and governed** (pillar 7; [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md)): flat within a Space (no page tree; Docs are not containers), a template type (Spec, Policy, Meeting notes, Wiki and others) with properties, a human owner, a status (draft / current / archived) and a review date with a stale sweep. Archived docs leave search and agent context and redirect. Agents edit in collaborative **suggestion mode** (tracked changes, accept or reject), with one canonical stored format, a markdown projection for the VFS, and a version check on every save (fixing today's silent-overwrite bug). **Agent system files (identity, memory) move out of Docs** to the agent profile and the VFS `/agents` mount. **Deletes are reversible:** deleted docs move to trash for 30 days, then purge. Depending on the preset, the trash move auto-applies (Personal, Team) or is a proposal (Company), and purge needs approval (Team) or two approvers (Company) (pillar 5; [Governance Model](../../architecture/governance-model.md)). Access is set by Space membership; there are no per-document ACLs, and a single doc can be shared with a guest only as an explicit exception.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

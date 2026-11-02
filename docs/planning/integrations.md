@@ -2,6 +2,8 @@
 
 > The complete integration roadmap for making AI agents genuinely useful for real business operations.
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](connections-events-routines.md) — per-package PHP integrations are deleted; integrations are now Tier 1 deep connectors (storage, mailboxes, calendars) plus Tier 2 generic MCP, API manifests, skills and inbound webhooks (pillar 9). Zapier/n8n/Activepieces are at most optional connectors.
+
 Status: Roadmap / planning. The current-state table is code-checked against `config/ai.php`, `config/integrations.php`, `config/chat_integrations.php`, the installed `opencompanyapp/integration-*` packages in `composer.json`/`composer.lock`, the generated integration catalog exposed through `IntegrationCatalog`, and the MCP runtime in `app/Services/Mcp`. Items in the roadmap sections are proposed until there is corresponding app or package code.
 
 ---
@@ -567,6 +569,9 @@ explicit processor per workflow.
 **Best for:** Stripe webhooks, GitHub webhooks, Shopify webhooks.
 
 ### Pattern 5: Lua Scripting Bridge (Partial / Current)
+
+> **Direction note (2026-11-02):** Lua is superseded by mruby Code Mode; read Lua references in this section as historical.
+
 Lightweight deterministic automations that call integration APIs through the
 current `app.*` Lua bridge and script-automation runtime at zero token cost.
 The older `oc.integrations.query()` / `oc.http.post()` examples are roadmap

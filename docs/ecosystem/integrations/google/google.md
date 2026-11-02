@@ -1,5 +1,7 @@
 # Google Integration — Lua API Supplement
 
+> **Direction status (2026-11-02):** Superseded by [Product Direction](../../../PRODUCT_DIRECTION.md), and by [Connections, Events and Routines](../../../planning/connections-events-routines.md) — the integration package system is deleted and the integrations repository archived; replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9). Its OAuth and client code is mined for the native Drive, Gmail and Calendar connectors.
+
 ## Gmail
 
 Send email with CC/BCC:

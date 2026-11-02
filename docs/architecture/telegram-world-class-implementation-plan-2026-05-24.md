@@ -1,5 +1,7 @@
 # Agent-First Telegram Reset Implementation Plan
 
+> **Historical (2026-11-02):** dated record; not updated for the [Product Direction](../PRODUCT_DIRECTION.md). Current truth: [Current State](../CURRENT_STATE.md), priorities: [Roadmap](../ROADMAP.md).
+
 Phased implementation plan for the reset target described in
 [telegram-world-class-implementation-overview-2026-05-24.md](telegram-world-class-implementation-overview-2026-05-24.md).
 

@@ -1,5 +1,7 @@
 # Web Search And Fetch Adapter Investigation
 
+> **Historical (2026-11-02):** dated record; not updated for the [Product Direction](../PRODUCT_DIRECTION.md). Current truth: [Current State](../CURRENT_STATE.md), priorities: [Roadmap](../ROADMAP.md).
+
 Date: 2026-05-24
 
 Status: Investigation / implementation proposal with active app-owned

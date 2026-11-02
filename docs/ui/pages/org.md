@@ -2,6 +2,20 @@
 
 > Visualize the organizational hierarchy of humans and agents in tree or chart view, with summary statistics.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+**Superseded: becomes Team** (pillar 7; [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md)). Team is the people and agents directory with manager relations, reached from the rail footer and the mobile bottom bar; agent profiles live there.
+
+- In the Team preset, Owner, Admin and Member roles apply, and each agent's **manager is its default approver**. Company adds approver policies and, later, custom roles (pillar 5; [Governance Model](../../architecture/governance-model.md)).
+- Team shows **Space memberships** for people and agents. Agents join Spaces like teammates; private Spaces and guest access to single objects are explicit.
+- **"Why can't Ada see this?"** answers in one click from the policy engine's decision trace (Space membership ∩ agent grants ∩ the human it acts for ∩ external ACL).
+
+The content below documents today's page only.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

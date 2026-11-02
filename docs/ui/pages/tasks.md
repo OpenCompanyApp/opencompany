@@ -2,6 +2,14 @@
 
 > Displays agent-managed work items in a paginated, filterable tree list, full-page task detail view, and token analytics dashboard.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+**Superseded as a top-level area.** Tasks (agent runs) become **runs shown inside threads, the activity feed and the agent profile** (pillar 7, one concept per job; [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md)). Human work items move to **Issues** (with Lists folded in); which of today's `Task` and list models becomes Issues is decided in [Agent-Native Work Apps](../../planning/agent-native-work-apps.md). Runs show typed activity (thought, action, needs input, result, error), a live plan checklist and change sets in the context pane.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access

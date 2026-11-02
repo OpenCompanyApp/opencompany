@@ -2,6 +2,14 @@
 
 > Manage scheduled prompt and Luau script automations, including run history, bulk actions, and editor-based create/edit flows.
 
+Status: "Direction" below follows the locked direction (aligned 2026-11-02); everything after it describes the page as it exists today.
+
+## Direction (accepted, not implemented)
+
+**Superseded: becomes Routines** (pillars 7 and 9; [Connections, Events and Routines](../../planning/connections-events-routines.md)). Routines live on the agent profile and in each Space as one of its six tools. They are agent, script (mruby, no LLM) or hybrid, authored in chat or by "save this task as a routine", and run on the existing control plane. Triggers (schedule, event filter, heartbeat, inbound message, manual) are never consent. There is no visual flow builder. The content below documents today's page only.
+
+See [UI Structure and Agent Editing](../../planning/ui-structure-and-agent-editing.md), [Messenger UI](../../planning/messenger-ui.md) and the [sidebar mockup](../mockups/sidebar-2026-11.html). API-first (pillar 4): Inertia is frozen (no new Inertia pages or page props); new UI is built in the new Vue 3 + Reka UI client on the versioned public API and realtime stream, and old pages are deleted as it reaches parity ([API-First Client Split](../../architecture/api-first-client-split.md)).
+
 ---
 
 ## Route & Access
