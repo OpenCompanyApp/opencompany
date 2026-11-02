@@ -1,9 +1,34 @@
 # mruby migration implementation progress
 
-Status: in progress. This is an evidence log, not a release certificate. The
-accepted scope remains [the implementation plan](mruby-only-code-mode-implementation.md).
-Verified: 2026-09-08 against the isolated working trees and focused evidence
-listed below.
+Status: merged into the primary line; release qualification still open. This is an
+evidence log, not a release certificate. The accepted scope remains
+[the implementation plan](mruby-only-code-mode-implementation.md).
+Verified: 2026-11-02 (cutover section below); earlier sections 2026-09-08 against the
+isolated working trees.
+
+## 2026-11-02 cutover into `feat/vfs`
+
+- `feat/mruby` is merged into `feat/vfs` (merge `bf2826c`) together with the durable run
+  control plane. Script automations run on `AgentRunRecord` with exactly one semantic
+  attempt; a redelivered dispatch that already started fails as ambiguous instead of
+  re-running. Direct subagent calls keep mruby's locked parent/child task ownership plus
+  the per-agent execution lock, a child run record and run-guarded tools.
+- Lua is removed from the application (`LuaSandboxService`, `LuaBridge`,
+  `OpenCompanyLuaToolInvoker`, `resources/lua-docs`). The VFS Lua bridge is ported:
+  `app.vfs.*` in Ruby, `vfs.shell` for `vfs_exec` (`exec` is reserved by the profile),
+  script-only helpers permissioned against the VFS primitives. The QuickJS branch is
+  retired; its CI shape, `withoutVite()` test hardening and a docs-compilation guard
+  (ported to Ruby) were salvaged.
+- The Linux AMD64 RC engine runs locally via `scripts/install-ruby-engine.sh` (a
+  `pipefail`/SIGPIPE false failure on Linux was fixed). One CI workflow runs the backend
+  suite against the pinned engine and builds/smokes the production image.
+- Live agent evals on GLM 5.1 pass 6/6 after doc and repair-hint fixes:
+  [mruby-glm-evals-2026-11-02](../testing/mruby-glm-evals-2026-11-02.md).
+- Composer path repositories point at `../integrations-mruby` (the integrations
+  `feat/mruby` branch, pinned in CI at `d8666a50`) until that work is merged in the
+  integrations repository — which the Phase 0 nuclear cleanup may instead delete.
+- Still open: a stable (non-RC) engine release, independent ABI/GC security review,
+  sustained native fuzzing, and ARM64 image qualification on the main line.
 
 ## Ownership, publication, and boundaries
 
