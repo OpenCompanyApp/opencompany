@@ -2,6 +2,7 @@
 
 namespace App\Domain\Chat\Telegram\Application;
 
+use App\Domain\Authorization\Application\ApprovalResolutionDenied;
 use App\Domain\Work\Application\ManageTasks;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
@@ -65,6 +66,16 @@ use Illuminate\Support\Str;
  */
 class TelegramWebhookPipeline
 {
+    /**
+     * Pure collaborators extracted from this pipeline. They hold no state and
+     * perform no I/O, so the container can autowire them; the pipeline still
+     * owns every side effect (persistence, media download, dispatch).
+     */
+    public function __construct(
+        private readonly TelegramMessageTextRenderer $messageTextRenderer,
+        private readonly TelegramMediaItemExtractor $mediaItemExtractor,
+    ) {}
+
     public function handle(Request $request, Workspace $workspace): Response
     {
         $setting = $this->resolveSetting($request, $workspace);
@@ -2025,7 +2036,7 @@ class TelegramWebhookPipeline
         $approvalService = app(ApprovalExecutionService::class);
         try {
             $resolved = $approvalService->resolve($approval, $status, $responder);
-        } catch (\App\Domain\Authorization\Application\ApprovalResolutionDenied $denied) {
+        } catch (ApprovalResolutionDenied $denied) {
             // ApprovalResolutionPolicy refused (role, self-approval, agent):
             // the approval stays pending and nothing executed. Tell the user why.
             $this->answerCallback($callbackQuery, $denied->getMessage());
@@ -2831,18 +2842,13 @@ class TelegramWebhookPipeline
     }
 
     /**
+     * Thin delegator to the shared chat display-title rule.
+     *
      * @param  array<string, mixed>  $chat
      */
     private function chatTitle(array $chat): ?string
     {
-        $title = $chat['title'] ?? null;
-        if (is_string($title) && $title !== '') {
-            return $title;
-        }
-
-        $name = trim(((string) ($chat['first_name'] ?? '')).' '.((string) ($chat['last_name'] ?? '')));
-
-        return $name !== '' ? $name : null;
+        return $this->messageTextRenderer->chatTitle($chat);
     }
 
     /**
@@ -4885,383 +4891,16 @@ class TelegramWebhookPipeline
     }
 
     /**
+     * Render inbound Telegram message prompt text.
+     *
+     * Thin delegator kept so existing call sites stay unchanged; the pure
+     * normalization rules live in TelegramMessageTextRenderer.
+     *
      * @param  array<string, mixed>  $message
      */
     private function messageText(array $message): string
     {
-        $text = (string) ($message['text'] ?? $message['caption'] ?? '');
-        $context = $this->telegramMessageContextLines($message);
-        if ($text !== '') {
-            return trim($text.($context === [] ? '' : "\n\n".implode("\n", $context)));
-        }
-
-        $base = match (true) {
-            isset($message['checklist']) && is_array($message['checklist']) => $this->checklistText($message['checklist']),
-            isset($message['paid_media']) && is_array($message['paid_media']) => $this->paidMediaText($message['paid_media']),
-            isset($message['live_photo']) && is_array($message['live_photo']) => $this->livePhotoText($message['live_photo']),
-            isset($message['managed_bot_created']) && is_array($message['managed_bot_created']) => $this->managedBotCreatedText($message['managed_bot_created']),
-            isset($message['poll_option_added']) && is_array($message['poll_option_added']) => $this->pollOptionAddedText($message['poll_option_added']),
-            isset($message['poll_option_deleted']) && is_array($message['poll_option_deleted']) => $this->pollOptionDeletedText($message['poll_option_deleted']),
-            isset($message['chat_owner_left']) && is_array($message['chat_owner_left']) => $this->chatOwnerLeftText($message['chat_owner_left']),
-            isset($message['chat_owner_changed']) && is_array($message['chat_owner_changed']) => $this->chatOwnerChangedText($message['chat_owner_changed']),
-            isset($message['photo']) => '[Telegram photo]',
-            isset($message['document']) => '[Telegram document]',
-            isset($message['voice']) => '[Telegram voice message]',
-            isset($message['audio']) => '[Telegram audio]',
-            isset($message['video']) => '[Telegram video]',
-            isset($message['video_note']) => '[Telegram video note]',
-            isset($message['animation']) => '[Telegram animation]',
-            isset($message['sticker']) => '[Telegram sticker]',
-            isset($message['story']) && is_array($message['story']) => $this->storyText($message['story']),
-            isset($message['location']) && is_array($message['location']) => $this->locationText($message['location']),
-            isset($message['venue']) && is_array($message['venue']) => $this->venueText($message['venue']),
-            isset($message['contact']) && is_array($message['contact']) => $this->contactText($message['contact']),
-            isset($message['poll']) && is_array($message['poll']) => $this->pollText($message['poll']),
-            default => '[Telegram message]',
-        };
-
-        return trim($base.($context === [] ? '' : "\n".implode("\n", $context)));
-    }
-
-    /**
-     * Preserve modern Telegram message metadata in the OpenCompany prompt text.
-     *
-     * Telegram continues to add message-level affordances such as effects,
-     * Stars-backed paid posts, suggested posts, and checklist reply context. The
-     * raw update remains in telegram_update_receipts, but the normalized message
-     * should still carry enough human-readable context for agents and operators.
-     *
-     * @param  array<string, mixed>  $message
-     * @return list<string>
-     */
-    private function telegramMessageContextLines(array $message): array
-    {
-        $lines = [];
-
-        if (isset($message['effect_id']) && is_scalar($message['effect_id'])) {
-            $lines[] = 'Telegram effect: '.(string) $message['effect_id'];
-        }
-
-        if (($message['is_paid_post'] ?? false) === true) {
-            $lines[] = 'Telegram paid post';
-        }
-
-        if (isset($message['paid_star_count']) && is_numeric($message['paid_star_count'])) {
-            $lines[] = 'Telegram paid stars: '.(string) $message['paid_star_count'];
-        }
-
-        if (isset($message['suggested_post_info']) && is_array($message['suggested_post_info'])) {
-            $lines[] = $this->suggestedPostText($message['suggested_post_info']);
-        }
-
-        if (isset($message['reply_to_checklist_task_id']) && is_scalar($message['reply_to_checklist_task_id'])) {
-            $lines[] = 'Reply to checklist task: '.(string) $message['reply_to_checklist_task_id'];
-        }
-
-        if (isset($message['reply_to_story']) && is_array($message['reply_to_story'])) {
-            $lines[] = 'Reply to '.$this->storyText($message['reply_to_story']);
-        }
-
-        return $lines;
-    }
-
-    /**
-     * @param  array<string, mixed>  $checklist
-     */
-    private function checklistText(array $checklist): string
-    {
-        $lines = ['Telegram checklist'];
-        if (isset($checklist['title']) && is_string($checklist['title'])) {
-            $lines[] = 'Title: '.$checklist['title'];
-        }
-
-        $tasks = is_array($checklist['tasks'] ?? null) ? $checklist['tasks'] : [];
-        foreach (array_slice($tasks, 0, 20) as $task) {
-            if (! is_array($task)) {
-                continue;
-            }
-
-            $text = trim((string) ($task['text'] ?? 'Task'));
-            $state = ($task['is_checked'] ?? false) === true ? '[x]' : '[ ]';
-            $lines[] = "{$state} {$text}";
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $paidMedia
-     */
-    private function paidMediaText(array $paidMedia): string
-    {
-        $lines = ['Telegram paid media'];
-        if (isset($paidMedia['star_count']) && is_numeric($paidMedia['star_count'])) {
-            $lines[] = 'Stars: '.(string) $paidMedia['star_count'];
-        }
-
-        $items = is_array($paidMedia['paid_media'] ?? null) ? $paidMedia['paid_media'] : [];
-        if ($items !== []) {
-            $types = collect($items)
-                ->filter(fn ($item) => is_array($item) && isset($item['type']))
-                ->map(fn (array $item): string => (string) $item['type'])
-                ->values()
-                ->all();
-
-            $lines[] = 'Items: '.count($items).($types === [] ? '' : ' ('.implode(', ', $types).')');
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $livePhoto
-     */
-    private function livePhotoText(array $livePhoto): string
-    {
-        $lines = ['Telegram live photo'];
-        foreach (['width' => 'Width', 'height' => 'Height', 'duration' => 'Duration'] as $key => $label) {
-            if (isset($livePhoto[$key]) && is_scalar($livePhoto[$key])) {
-                $lines[] = "{$label}: ".(string) $livePhoto[$key];
-            }
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $managedBotCreated
-     */
-    private function managedBotCreatedText(array $managedBotCreated): string
-    {
-        $lines = ['Telegram managed bot created'];
-        $bot = is_array($managedBotCreated['bot'] ?? null) ? $managedBotCreated['bot'] : [];
-        $botLabel = $this->telegramUserLabel($bot);
-        if ($botLabel !== null) {
-            $lines[] = 'Bot: '.$botLabel;
-        }
-
-        if (isset($managedBotCreated['manage_url']) && is_string($managedBotCreated['manage_url'])) {
-            $lines[] = 'Manage URL: '.$managedBotCreated['manage_url'];
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $pollOptionAdded
-     */
-    private function pollOptionAddedText(array $pollOptionAdded): string
-    {
-        $lines = ['Telegram poll option added'];
-        if (isset($pollOptionAdded['poll_id']) && is_scalar($pollOptionAdded['poll_id'])) {
-            $lines[] = 'Poll ID: '.(string) $pollOptionAdded['poll_id'];
-        }
-
-        $option = is_array($pollOptionAdded['option'] ?? null) ? $pollOptionAdded['option'] : [];
-        if (isset($option['text']) && is_string($option['text'])) {
-            $lines[] = 'Option: '.$option['text'];
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $pollOptionDeleted
-     */
-    private function pollOptionDeletedText(array $pollOptionDeleted): string
-    {
-        $lines = ['Telegram poll option deleted'];
-        if (isset($pollOptionDeleted['poll_id']) && is_scalar($pollOptionDeleted['poll_id'])) {
-            $lines[] = 'Poll ID: '.(string) $pollOptionDeleted['poll_id'];
-        }
-        if (isset($pollOptionDeleted['option_id']) && is_scalar($pollOptionDeleted['option_id'])) {
-            $lines[] = 'Option ID: '.(string) $pollOptionDeleted['option_id'];
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $chatOwnerLeft
-     */
-    private function chatOwnerLeftText(array $chatOwnerLeft): string
-    {
-        $lines = ['Telegram chat owner left'];
-        $user = is_array($chatOwnerLeft['old_owner'] ?? null) ? $chatOwnerLeft['old_owner'] : [];
-        $label = $this->telegramUserLabel($user);
-        if ($label !== null) {
-            $lines[] = 'Previous owner: '.$label;
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $chatOwnerChanged
-     */
-    private function chatOwnerChangedText(array $chatOwnerChanged): string
-    {
-        $lines = ['Telegram chat owner changed'];
-        $oldOwner = is_array($chatOwnerChanged['old_owner'] ?? null) ? $chatOwnerChanged['old_owner'] : [];
-        $newOwner = is_array($chatOwnerChanged['new_owner'] ?? null) ? $chatOwnerChanged['new_owner'] : [];
-
-        $oldLabel = $this->telegramUserLabel($oldOwner);
-        if ($oldLabel !== null) {
-            $lines[] = 'Previous owner: '.$oldLabel;
-        }
-
-        $newLabel = $this->telegramUserLabel($newOwner);
-        if ($newLabel !== null) {
-            $lines[] = 'New owner: '.$newLabel;
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $user
-     */
-    private function telegramUserLabel(array $user): ?string
-    {
-        $name = trim(((string) ($user['first_name'] ?? '')).' '.((string) ($user['last_name'] ?? '')));
-        $username = isset($user['username']) && is_string($user['username']) ? '@'.$user['username'] : null;
-        $id = isset($user['id']) && is_scalar($user['id']) ? (string) $user['id'] : null;
-
-        $label = collect([$name !== '' ? $name : null, $username, $id ? "({$id})" : null])
-            ->filter()
-            ->implode(' ');
-
-        return $label !== '' ? $label : null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $story
-     */
-    private function storyText(array $story): string
-    {
-        $chat = is_array($story['chat'] ?? null) ? $story['chat'] : [];
-        $chatLabel = $this->chatTitle($chat) ?: (isset($chat['id']) ? (string) $chat['id'] : 'unknown chat');
-        $storyId = isset($story['id']) ? (string) $story['id'] : 'unknown';
-
-        return "Telegram story {$storyId} from {$chatLabel}";
-    }
-
-    /**
-     * @param  array<string, mixed>  $suggestedPost
-     */
-    private function suggestedPostText(array $suggestedPost): string
-    {
-        $lines = ['Telegram suggested post'];
-
-        if (isset($suggestedPost['state']) && is_scalar($suggestedPost['state'])) {
-            $lines[] = 'State: '.(string) $suggestedPost['state'];
-        }
-
-        if (isset($suggestedPost['price']) && is_array($suggestedPost['price'])) {
-            $currency = (string) ($suggestedPost['price']['currency'] ?? 'XTR');
-            $amount = isset($suggestedPost['price']['amount']) ? (string) $suggestedPost['price']['amount'] : null;
-            if ($amount !== null) {
-                $lines[] = "Price: {$amount} {$currency}";
-            }
-        }
-
-        if (isset($suggestedPost['send_date']) && is_numeric($suggestedPost['send_date'])) {
-            $lines[] = 'Send date: '.Carbon::createFromTimestamp((int) $suggestedPost['send_date'])->toIso8601String();
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $location
-     */
-    private function locationText(array $location): string
-    {
-        $latitude = $location['latitude'] ?? null;
-        $longitude = $location['longitude'] ?? null;
-        if (! is_numeric($latitude) || ! is_numeric($longitude)) {
-            return '[Telegram location]';
-        }
-
-        $lat = (string) $latitude;
-        $lon = (string) $longitude;
-
-        return implode("\n", [
-            'Telegram location',
-            "Latitude: {$lat}",
-            "Longitude: {$lon}",
-            "Map: https://maps.google.com/?q={$lat},{$lon}",
-        ]);
-    }
-
-    /**
-     * @param  array<string, mixed>  $venue
-     */
-    private function venueText(array $venue): string
-    {
-        $lines = ['Telegram venue'];
-        if (isset($venue['title']) && is_string($venue['title'])) {
-            $lines[] = 'Title: '.$venue['title'];
-        }
-        if (isset($venue['address']) && is_string($venue['address'])) {
-            $lines[] = 'Address: '.$venue['address'];
-        }
-
-        $location = is_array($venue['location'] ?? null) ? $venue['location'] : [];
-        $locationText = $this->locationText($location);
-        if ($locationText !== '[Telegram location]') {
-            $lines[] = '';
-            $lines[] = $locationText;
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $contact
-     */
-    private function contactText(array $contact): string
-    {
-        $firstName = trim((string) ($contact['first_name'] ?? ''));
-        $lastName = trim((string) ($contact['last_name'] ?? ''));
-        $name = trim($firstName.' '.$lastName);
-
-        $lines = ['Telegram contact'];
-        if ($name !== '') {
-            $lines[] = "Name: {$name}";
-        }
-        if (isset($contact['phone_number']) && is_string($contact['phone_number'])) {
-            $lines[] = 'Phone: '.$contact['phone_number'];
-        }
-        if (isset($contact['user_id'])) {
-            $lines[] = 'Telegram user ID: '.(string) $contact['user_id'];
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array<string, mixed>  $poll
-     */
-    private function pollText(array $poll): string
-    {
-        $lines = ['Telegram poll'];
-        if (isset($poll['question']) && is_string($poll['question'])) {
-            $lines[] = 'Question: '.$poll['question'];
-        }
-
-        $options = is_array($poll['options'] ?? null) ? $poll['options'] : [];
-        foreach (array_slice($options, 0, 10) as $option) {
-            if (! is_array($option)) {
-                continue;
-            }
-
-            $label = (string) ($option['text'] ?? 'Option');
-            $votes = isset($option['voter_count']) ? ' ('.((int) $option['voter_count']).' votes)' : '';
-            $lines[] = '- '.$label.$votes;
-        }
-
-        return implode("\n", $lines);
+        return $this->messageTextRenderer->messageText($message);
     }
 
     /**
@@ -5284,7 +4923,7 @@ class TelegramWebhookPipeline
         TelegramConversation $conversation,
         TelegramUpdateReceipt $receipt
     ): void {
-        $items = $this->telegramMediaItems($message);
+        $items = $this->mediaItemExtractor->telegramMediaItems($message);
         if ($items === []) {
             return;
         }
@@ -5320,7 +4959,7 @@ class TelegramWebhookPipeline
                 $workspaceFile = app(FileSystemService::class)->writeBinaryFile(
                     $workspace->id,
                     $folder->id,
-                    $this->telegramMediaFilename($message, $item),
+                    $this->mediaItemExtractor->telegramMediaFilename($message, $item),
                     $bytes,
                     $user->id,
                     $item['mime_type'],
@@ -5332,7 +4971,7 @@ class TelegramWebhookPipeline
                         'telegram_kind' => $item['kind'],
                         'telegram_message_id' => $message['message_id'] ?? null,
                         'telegram_media_group_id' => $message['media_group_id'] ?? null,
-                        'telegram_enrichment' => $this->telegramMediaEnrichmentMetadata($item),
+                        'telegram_enrichment' => $this->mediaItemExtractor->telegramMediaEnrichmentMetadata($item),
                     ],
                 );
 
@@ -5423,53 +5062,6 @@ class TelegramWebhookPipeline
     }
 
     /**
-     * Describe optional AI enrichment work for captured Telegram media.
-     *
-     * The capture path is deliberately synchronous and bounded to file download
-     * plus durable metadata. Transcription and visual description can be picked
-     * up by a later worker from this metadata without re-reading Telegram update
-     * payloads, and `file_unique_id` gives image/sticker descriptions a stable
-     * cache key across chats and repeated sends.
-     *
-     * @param  array{kind: string, file_id: string, file_unique_id: ?string, file_name: ?string, mime_type: ?string}  $item
-     * @return array{status: string, type: string|null, cache_key: string|null, reason?: string}
-     */
-    private function telegramMediaEnrichmentMetadata(array $item): array
-    {
-        if (! (bool) config('telegram.media_enrichment_enabled', true)) {
-            return [
-                'status' => 'disabled',
-                'type' => null,
-                'cache_key' => null,
-                'reason' => 'telegram_media_enrichment_disabled',
-            ];
-        }
-
-        $kind = $item['kind'];
-        $type = match (true) {
-            in_array($kind, ['voice', 'audio'], true) => 'transcription',
-            in_array($kind, ['photo', 'sticker', 'live_photo', 'paid_media_photo', 'paid_media_live_photo'], true) => 'description',
-            default => null,
-        };
-
-        if ($type === null) {
-            return [
-                'status' => 'not_applicable',
-                'type' => null,
-                'cache_key' => null,
-            ];
-        }
-
-        $uniqueId = $item['file_unique_id'] ?: $item['file_id'];
-
-        return [
-            'status' => 'queued',
-            'type' => $type,
-            'cache_key' => "telegram_media_{$type}:{$uniqueId}",
-        ];
-    }
-
-    /**
      * Send a compact Telegram-native receipt after files have been captured.
      *
      * The card keeps post-capture actions behind opaque callback tokens. Asking
@@ -5550,177 +5142,5 @@ class TelegramWebhookPipeline
             ],
             'expires_at' => now()->addHours(6),
         ]));
-    }
-
-    /**
-     * @param  array<string, mixed>  $message
-     * @return list<array{kind: string, file_id: string, file_unique_id: ?string, file_name: ?string, mime_type: ?string}>
-     */
-    private function telegramMediaItems(array $message): array
-    {
-        $items = [];
-
-        if (isset($message['photo']) && is_array($message['photo']) && $message['photo'] !== []) {
-            $photo = collect($message['photo'])->sortBy('file_size')->last();
-            if (is_array($photo) && isset($photo['file_id'])) {
-                $items[] = [
-                    'kind' => 'photo',
-                    'file_id' => (string) $photo['file_id'],
-                    'file_unique_id' => isset($photo['file_unique_id']) ? (string) $photo['file_unique_id'] : null,
-                    'file_name' => null,
-                    'mime_type' => 'image/jpeg',
-                ];
-            }
-        }
-
-        foreach ([
-            'document' => 'application/octet-stream',
-            'voice' => 'audio/ogg',
-            'audio' => 'audio/mpeg',
-            'video' => 'video/mp4',
-            'video_note' => 'video/mp4',
-            'animation' => 'video/mp4',
-            'sticker' => 'image/webp',
-        ] as $key => $fallbackMimeType) {
-            $media = is_array($message[$key] ?? null) ? $message[$key] : null;
-            if (! $media || ! isset($media['file_id'])) {
-                continue;
-            }
-
-            $items[] = [
-                'kind' => $key,
-                'file_id' => (string) $media['file_id'],
-                'file_unique_id' => isset($media['file_unique_id']) ? (string) $media['file_unique_id'] : null,
-                'file_name' => isset($media['file_name']) ? (string) $media['file_name'] : null,
-                'mime_type' => isset($media['mime_type']) ? (string) $media['mime_type'] : $fallbackMimeType,
-            ];
-        }
-
-        if (isset($message['live_photo']) && is_array($message['live_photo'])) {
-            foreach ($this->livePhotoMediaItems($message['live_photo']) as $item) {
-                $items[] = $item;
-            }
-        }
-
-        if (isset($message['paid_media']) && is_array($message['paid_media'])) {
-            foreach ($this->paidMediaItems($message['paid_media']) as $item) {
-                $items[] = $item;
-            }
-        }
-
-        return $items;
-    }
-
-    /**
-     * @param  array<string, mixed>  $livePhoto
-     * @return list<array{kind: string, file_id: string, file_unique_id: ?string, file_name: ?string, mime_type: ?string}>
-     */
-    private function livePhotoMediaItems(array $livePhoto): array
-    {
-        $items = [];
-
-        $photo = is_array($livePhoto['photo'] ?? null) ? collect($livePhoto['photo'])->sortBy('file_size')->last() : null;
-        if (is_array($photo) && isset($photo['file_id'])) {
-            $items[] = [
-                'kind' => 'live_photo',
-                'file_id' => (string) $photo['file_id'],
-                'file_unique_id' => isset($photo['file_unique_id']) ? (string) $photo['file_unique_id'] : null,
-                'file_name' => null,
-                'mime_type' => 'image/jpeg',
-            ];
-        }
-
-        $video = is_array($livePhoto['video'] ?? null) ? $livePhoto['video'] : null;
-        if ($video && isset($video['file_id'])) {
-            $items[] = [
-                'kind' => 'live_photo_video',
-                'file_id' => (string) $video['file_id'],
-                'file_unique_id' => isset($video['file_unique_id']) ? (string) $video['file_unique_id'] : null,
-                'file_name' => isset($video['file_name']) ? (string) $video['file_name'] : null,
-                'mime_type' => isset($video['mime_type']) ? (string) $video['mime_type'] : 'video/mp4',
-            ];
-        }
-
-        return $items;
-    }
-
-    /**
-     * @param  array<string, mixed>  $paidMedia
-     * @return list<array{kind: string, file_id: string, file_unique_id: ?string, file_name: ?string, mime_type: ?string}>
-     */
-    private function paidMediaItems(array $paidMedia): array
-    {
-        $items = [];
-        $mediaItems = is_array($paidMedia['paid_media'] ?? null) ? $paidMedia['paid_media'] : [];
-
-        foreach ($mediaItems as $index => $media) {
-            if (! is_array($media)) {
-                continue;
-            }
-
-            if (($media['type'] ?? null) === 'photo' && isset($media['photo']) && is_array($media['photo'])) {
-                $photo = collect($media['photo'])->sortBy('file_size')->last();
-                if (is_array($photo) && isset($photo['file_id'])) {
-                    $items[] = [
-                        'kind' => 'paid_media_photo',
-                        'file_id' => (string) $photo['file_id'],
-                        'file_unique_id' => isset($photo['file_unique_id']) ? (string) $photo['file_unique_id'] : null,
-                        'file_name' => 'paid-media-'.$index.'.jpg',
-                        'mime_type' => 'image/jpeg',
-                    ];
-                }
-            }
-
-            if (($media['type'] ?? null) === 'video' && isset($media['video']) && is_array($media['video']) && isset($media['video']['file_id'])) {
-                $video = $media['video'];
-                $items[] = [
-                    'kind' => 'paid_media_video',
-                    'file_id' => (string) $video['file_id'],
-                    'file_unique_id' => isset($video['file_unique_id']) ? (string) $video['file_unique_id'] : null,
-                    'file_name' => isset($video['file_name']) ? (string) $video['file_name'] : 'paid-media-'.$index.'.mp4',
-                    'mime_type' => isset($video['mime_type']) ? (string) $video['mime_type'] : 'video/mp4',
-                ];
-            }
-
-            if (($media['type'] ?? null) === 'live_photo' && isset($media['live_photo']) && is_array($media['live_photo'])) {
-                foreach ($this->livePhotoMediaItems($media['live_photo']) as $item) {
-                    $items[] = [
-                        ...$item,
-                        'kind' => 'paid_media_'.$item['kind'],
-                    ];
-                }
-            }
-        }
-
-        return $items;
-    }
-
-    /**
-     * @param  array<string, mixed>  $message
-     * @param  array{kind: string, file_id: string, file_unique_id: ?string, file_name: ?string, mime_type: ?string}  $item
-     */
-    private function telegramMediaFilename(array $message, array $item): string
-    {
-        $messageId = (string) ($message['message_id'] ?? Str::random(8));
-        $name = $item['file_name'] ?: match ($item['kind']) {
-            'photo' => 'photo.jpg',
-            'voice' => 'voice.ogg',
-            'audio' => 'audio.mp3',
-            'video' => 'video.mp4',
-            'video_note' => 'video-note.mp4',
-            'animation' => 'animation.mp4',
-            'sticker' => 'sticker.webp',
-            'live_photo' => 'live-photo.jpg',
-            'live_photo_video' => 'live-photo-video.mp4',
-            'paid_media_photo' => 'paid-media.jpg',
-            'paid_media_video' => 'paid-media.mp4',
-            'paid_media_live_photo' => 'paid-media-live-photo.jpg',
-            'paid_media_live_photo_video' => 'paid-media-live-photo-video.mp4',
-            default => 'file.bin',
-        };
-
-        $name = trim((string) preg_replace('/[^\w.\- ]+/', '_', basename($name)));
-
-        return "telegram-{$messageId}-".($name !== '' ? $name : 'file.bin');
     }
 }
