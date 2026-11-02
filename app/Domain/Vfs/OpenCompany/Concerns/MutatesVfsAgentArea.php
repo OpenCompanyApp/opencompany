@@ -213,7 +213,7 @@ trait MutatesVfsAgentArea
     {
         $query = $this->agentAreaTrashQuery($target);
         $doc = preg_match(self::ID_SUFFIX_PATTERN, $token, $m) === 1
-            ? $query->where('id', 'like', '%'.$m[2])->first()
+            ? $this->whereIdLike($query, 'id', '%'.$m[2])->first()
             : $query->whereKey($token)->first();
 
         return $doc ?? throw new VfsError('not_found', "Path not found: {$path}", [

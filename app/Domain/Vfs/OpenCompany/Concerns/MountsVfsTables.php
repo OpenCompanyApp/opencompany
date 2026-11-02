@@ -294,7 +294,7 @@ trait MountsVfsTables
     {
         if (($segments[1] ?? null) === 'by-id') {
             $id = $segments[2] ?? throw VfsError::notFound($path);
-            $table = DataTable::forWorkspace()->find($id) ?? throw VfsError::notFound($path);
+            $table = ($this->vfsUuidOrNull($id) !== null ? DataTable::forWorkspace()->find($id) : null) ?? throw VfsError::notFound($path);
 
             return ['table' => $table, 'rest' => array_slice($segments, 3), 'base' => "/tables/by-id/{$table->id}"];
         }
@@ -339,7 +339,7 @@ trait MountsVfsTables
         };
         $rowId = preg_replace('/\.json$/', '', $token) ?? $token;
 
-        return DataTableRow::where('table_id', $table->id)->find($rowId) ?? throw new VfsError('not_found', "Path not found: {$path}", [
+        return ($this->vfsUuidOrNull($rowId) !== null ? DataTableRow::where('table_id', $table->id)->find($rowId) : null) ?? throw new VfsError('not_found', "Path not found: {$path}", [
             'path' => $path,
             'hint' => "List {$base}/rows/by-id to see row ids, or create one with vfs_write {$base}/rows/new.json.",
         ]);
@@ -705,6 +705,6 @@ trait MountsVfsTables
     {
         $rowId = preg_replace('/\.json$/', '', $token) ?? $token;
 
-        return DataTableRow::onlyTrashed()->where('table_id', $table->id)->find($rowId) ?? throw VfsError::notFound($path);
+        return ($this->vfsUuidOrNull($rowId) !== null ? DataTableRow::onlyTrashed()->where('table_id', $table->id)->find($rowId) : null) ?? throw VfsError::notFound($path);
     }
 }

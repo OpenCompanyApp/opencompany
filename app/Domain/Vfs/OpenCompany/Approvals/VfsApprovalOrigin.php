@@ -7,6 +7,7 @@ use App\Agents\Tools\ToolRegistry;
 use App\Models\AgentRunRecord;
 use App\Models\Channel;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 /**
  * Captures where an approval request came from, so its outcome can be posted
@@ -40,7 +41,9 @@ class VfsApprovalOrigin
             : $this->tools->getChannelContext();
         $taskId = $this->tools->getTaskContext();
 
-        if ($channelId === null && $runId !== null) {
+        // Malformed run ids have no row; never query with them (a failed uuid
+        // cast aborts an enclosing PostgreSQL transaction).
+        if ($channelId === null && $runId !== null && Str::isUuid($runId)) {
             $run = AgentRunRecord::query()
                 ->whereKey($runId)
                 ->where('workspace_id', $agent->workspace_id)

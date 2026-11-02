@@ -1594,7 +1594,7 @@ RUBY);
         // default; grant the VFS primitives explicitly.
         $this->allowTools($this->agent, 'vfs_patch', 'vfs_write');
         $task = Task::create([
-            'id' => 'task-vfs-patch',
+            'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
             'title' => 'Patch me',
             'description' => 'Original task description',
@@ -1630,7 +1630,7 @@ RUBY);
         $vfs = app(OpenCompanyVfs::class);
         $otherAgent = User::factory()->agent()->create(['workspace_id' => $this->workspace->id]);
         $otherTask = Task::create([
-            'id' => 'task-vfs-other-agent',
+            'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
             'title' => 'Other task',
             'description' => 'Should not mutate',
@@ -2233,7 +2233,7 @@ RUBY);
         app(FileSystemService::class)->writeFile($this->workspace->id, $fileFolder->id, 'note.md', 'contract file old', $this->agent->id);
 
         $task = Task::create([
-            'id' => 'contract-task',
+            'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
             'title' => 'Contract Task',
             'description' => 'contract task old',
@@ -2329,7 +2329,7 @@ RUBY);
     public function test_vfs_reads_tasks_lists_channels_tables_approvals_routines_and_workspace(): void
     {
         $task = Task::create([
-            'id' => 'task-vfs',
+            'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
             'title' => 'Ship VFS',
             'description' => 'Implement deterministic virtual filesystem.',

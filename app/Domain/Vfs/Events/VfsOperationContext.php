@@ -4,6 +4,7 @@ namespace App\Domain\Vfs\Events;
 
 use App\Agents\Runtime\ActiveAgentRun;
 use App\Models\AgentRunRecord;
+use Illuminate\Support\Str;
 
 /**
  * Ambient context of the VFS operation currently executing in this process.
@@ -132,7 +133,9 @@ class VfsOperationContext
 
         $runId = app(ActiveAgentRun::class)->runId;
         if (! isset(self::$runCache[$runId])) {
-            $run = AgentRunRecord::query()->with('task:id,context')->find($runId);
+            // Malformed ids have no row; never query with them (a failed
+            // uuid cast aborts an enclosing PostgreSQL transaction).
+            $run = Str::isUuid($runId) ? AgentRunRecord::query()->with('task:id,context')->find($runId) : null;
             $context = is_array($run?->task?->context) ? $run->task->context : [];
             self::$runCache = array_slice(self::$runCache, -50, preserve_keys: true);
             self::$runCache[$runId] = [

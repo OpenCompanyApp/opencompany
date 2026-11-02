@@ -69,7 +69,7 @@ class VfsHistoryTest extends TestCase
     {
         $folder = Document::factory()->create(['title' => 'Wiki', 'is_folder' => true, 'author_id' => $this->agent->id]);
         $this->permission('folder', $folder->id);
-        app()->instance(ActiveAgentRun::class, new ActiveAgentRun('run-42'));
+        app()->instance(ActiveAgentRun::class, new ActiveAgentRun($runId = (string) Str::uuid()));
 
         $created = $this->vfs->write($this->agent, '/docs/wiki/Policy', 'v-one');
         $updated = $this->vfs->write($this->agent, '/docs/wiki/policy', 'v-two', 'overwrite', $created['version']);
@@ -78,7 +78,7 @@ class VfsHistoryTest extends TestCase
         $versions = DocumentVersion::query()->orderBy('version_number')->get();
         $this->assertSame([1, 2, 3], $versions->pluck('version_number')->all());
         $this->assertSame(['', 'v-one', 'v-two'], $versions->pluck('content')->all());
-        $this->assertSame(['run-42'], $versions->pluck('run_id')->unique()->values()->all());
+        $this->assertSame([$runId], $versions->pluck('run_id')->unique()->values()->all());
         $this->assertSame([(string) $this->agent->id], $versions->pluck('author_id')->unique()->values()->all());
         $this->assertSame([null, $created['version'], $updated['version']], $versions->pluck('before_version')->all());
         $this->assertSame([$created['version'], $updated['version'], $patched['version']], $versions->pluck('after_version')->all());
@@ -86,7 +86,7 @@ class VfsHistoryTest extends TestCase
         $entries = $this->vfs->list($this->agent, '/docs/wiki/policy/.history');
         $this->assertCount(3, $entries);
         $this->assertMatchesRegularExpression('/^v3--atlas--\d{8}T\d{6}Z\.md$/', $entries[0]->name);
-        $this->assertSame('run-42', $entries[0]->metadata['run_id']);
+        $this->assertSame($runId, $entries[0]->metadata['run_id']);
 
         $canonical = $created['canonical_path'];
         $this->assertSame('v-one', $this->vfs->read($this->agent, "{$canonical}/.history/v2"));
@@ -138,13 +138,13 @@ class VfsHistoryTest extends TestCase
         $table = DataTable::create(['workspace_id' => $this->workspace->id, 'name' => 'Deals', 'created_by' => $this->agent->id]);
         $stage = DataTableColumn::create(['table_id' => $table->id, 'name' => 'Stage', 'type' => 'text', 'order' => 0, 'required' => false]);
         $row = DataTableRow::create(['table_id' => $table->id, 'data' => [$stage->id => 'lead'], 'created_by' => $this->agent->id]);
-        app()->instance(ActiveAgentRun::class, new ActiveAgentRun('run-7'));
+        app()->instance(ActiveAgentRun::class, new ActiveAgentRun($runId = (string) Str::uuid()));
 
         $this->vfs->patch($this->agent, "/tables/deals/rows/{$row->id}", json_encode(['data' => ['Stage' => 'won']]));
 
         $snapshot = DataTableRowVersion::query()->sole();
         $this->assertSame([$stage->id => 'lead'], $snapshot->data);
-        $this->assertSame('run-7', $snapshot->run_id);
+        $this->assertSame($runId, $snapshot->run_id);
 
         $entries = $this->vfs->list($this->agent, "/tables/deals/rows/by-id/{$row->id}.json/.history");
         $this->assertMatchesRegularExpression('/^v1--atlas--.*\.json$/', $entries[0]->name);

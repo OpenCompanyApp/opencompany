@@ -5,6 +5,8 @@ namespace App\Agents\Runtime;
 use App\Models\AgentRunRecord;
 use App\Models\Task;
 use App\Models\TaskStep;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Str;
 
 /**
  * Run-local cancellation and heartbeat handle shared with agent tools.
@@ -25,7 +27,26 @@ class ActiveAgentRun
 
     public function record(): AgentRunRecord
     {
-        return AgentRunRecord::query()->findOrFail($this->runId);
+        return $this->recordOrNull() ?? throw (new ModelNotFoundException)->setModel(AgentRunRecord::class, [$this->runId]);
+    }
+
+    /**
+     * The run's ledger row, or null when it does not exist.
+     *
+     * Invariant: never issue a query that can fail for a malformed id.
+     * `agent_runs.id` is a PostgreSQL uuid column, and a lookup with a
+     * non-uuid string raises an error that ABORTS the enclosing transaction
+     * even when the caller catches the exception (every later statement then
+     * fails with "current transaction is aborted"). A malformed id simply
+     * has no row.
+     */
+    public function recordOrNull(): ?AgentRunRecord
+    {
+        if (! Str::isUuid($this->runId)) {
+            return null;
+        }
+
+        return AgentRunRecord::query()->find($this->runId);
     }
 
     public function checkpoint(bool $force = false): void

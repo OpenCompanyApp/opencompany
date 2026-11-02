@@ -49,7 +49,7 @@ trait ResolvesVfsResourceDirectEntries
             return null;
         }
 
-        $task = Task::forWorkspace()->with('agent:id,name')->find($file[2]);
+        $task = $this->vfsUuidOrNull($file[2]) !== null ? Task::forWorkspace()->with('agent:id,name')->find($file[2]) : null;
         if ($task === null) {
             return null;
         }

@@ -235,7 +235,7 @@ trait SearchesVfsContent
             return $file instanceof WorkspaceFile ? '/files'.$file->getVirtualPath() : $candidate;
         }
         if (preg_match('#^/tables/by-id/([^/]+)/(rows/by-id/[^/]+\.json|schema\.json)$#', $candidate, $m) === 1) {
-            $table = DataTable::forWorkspace()->find($m[1]);
+            $table = $this->vfsUuidOrNull($m[1]) !== null ? DataTable::forWorkspace()->find($m[1]) : null;
 
             return $table instanceof DataTable ? '/tables/'.$this->tableToken($table).'/'.$m[2] : $candidate;
         }

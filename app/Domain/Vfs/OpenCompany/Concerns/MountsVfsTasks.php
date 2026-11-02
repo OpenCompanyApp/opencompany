@@ -196,11 +196,11 @@ trait MountsVfsTasks
         ]);
 
         if (Str::isUuid($bare) || preg_match(self::ID_SUFFIX_PATTERN, $bare) !== 1) {
-            return Task::forWorkspace()->with(['agent:id,name', 'steps'])->find($bare) ?? throw $notFound();
+            return ($this->vfsUuidOrNull($bare) !== null ? Task::forWorkspace()->with(['agent:id,name', 'steps'])->find($bare) : null) ?? throw $notFound();
         }
 
         preg_match(self::ID_SUFFIX_PATTERN, $bare, $m);
-        $matches = Task::forWorkspace()->with(['agent:id,name', 'steps'])->where('id', 'like', '%'.$m[2])->limit(2)->get();
+        $matches = $this->whereIdLike(Task::forWorkspace()->with(['agent:id,name', 'steps']), 'id', '%'.$m[2])->limit(2)->get();
 
         return $matches->count() === 1 ? $matches->first() : throw $notFound();
     }
@@ -238,7 +238,7 @@ trait MountsVfsTasks
 
         $file = $this->taskFileSegments($segments, $path);
         if ($file !== null) {
-            $task = Task::forWorkspace()->with(['agent:id,name', 'steps'])->find($file[2]) ?? throw VfsError::notFound($path);
+            $task = ($this->vfsUuidOrNull($file[2]) !== null ? Task::forWorkspace()->with(['agent:id,name', 'steps'])->find($file[2]) : null) ?? throw VfsError::notFound($path);
             $budget->recordCanonicalPath("/tasks/by-id/{$task->id}");
 
             return $this->taskMarkdown($task);

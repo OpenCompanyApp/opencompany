@@ -37,7 +37,7 @@ trait PatchesVfsRecords
         // Any listed task name patches the task it names (MountsVfsTasks naming contract).
         $file = $this->taskFileSegments($segments, $path) ?? throw VfsError::notWritable($path);
 
-        $task = Task::forWorkspace()->find($file[2]) ?? throw VfsError::notFound($path);
+        $task = ($this->vfsUuidOrNull($file[2]) !== null ? Task::forWorkspace()->find($file[2]) : null) ?? throw VfsError::notFound($path);
         if ($task->agent_id !== $agent->id) {
             throw VfsError::permissionDenied($path, 'task is not assigned to this agent');
         }

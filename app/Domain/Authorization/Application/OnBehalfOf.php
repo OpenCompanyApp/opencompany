@@ -89,11 +89,10 @@ class OnBehalfOf
             return null;
         }
 
-        try {
-            $id = app(ActiveAgentRun::class)->record()->on_behalf_of_user_id;
-        } catch (\Throwable) {
-            return null;
-        }
+        // recordOrNull() never runs a query that can abort the caller's
+        // transaction (a caught DB error still poisons a PostgreSQL
+        // transaction), so no exception swallowing is needed here.
+        $id = app(ActiveAgentRun::class)->recordOrNull()?->on_behalf_of_user_id;
 
         return is_string($id) && $id !== '' ? $id : null;
     }

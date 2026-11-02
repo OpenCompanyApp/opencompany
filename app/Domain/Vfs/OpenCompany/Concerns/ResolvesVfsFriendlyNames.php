@@ -153,7 +153,7 @@ trait ResolvesVfsFriendlyNames
         //    slug part must still agree.
         if (preg_match(self::ID_SUFFIX_PATTERN, $token, $m) === 1) {
             $byPrefix = (clone $siblings)
-                ->where($siblings->getModel()->getQualifiedKeyName(), 'like', '%'.$m[2])
+                ->tap(fn ($query) => $this->whereIdLike($query, $siblings->getModel()->getQualifiedKeyName(), '%'.$m[2]))
                 ->limit(5)
                 ->get()
                 ->filter(fn (Model $candidate): bool => $this->slug((string) $candidate->getAttribute($labelColumn)) === $m[1]);

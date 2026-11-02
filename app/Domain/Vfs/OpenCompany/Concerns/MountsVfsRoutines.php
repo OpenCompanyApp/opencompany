@@ -125,7 +125,7 @@ trait MountsVfsRoutines
     {
         if (preg_match('/^(.*)--([a-f0-9]{8})$/i', $token, $parts) === 1) {
             return Routine::forWorkspace()
-                ->where('id', 'like', $parts[2].'%')
+                ->tap(fn ($query) => $this->whereIdLike($query, 'id', $parts[2].'%'))
                 ->get()
                 ->first(fn (Routine $candidate): bool => $this->slug($candidate->name) === $parts[1])
                 ?? throw VfsError::notFound($path);

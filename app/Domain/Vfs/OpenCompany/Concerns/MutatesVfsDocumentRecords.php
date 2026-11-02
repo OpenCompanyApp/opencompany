@@ -757,7 +757,7 @@ trait MutatesVfsDocumentRecords
             $query = $doc !== null ? $query->where('parent_id', $doc->id) : $query;
             $doc = $id !== null
                 ? $query->whereKey($id)->first()
-                : $query->where('id', 'like', '%'.$m[2])->first();
+                : $this->whereIdLike($query, 'id', '%'.$m[2])->first();
             if ($doc === null) {
                 throw new VfsError('not_found', "Path not found: {$path}", ['path' => $path, 'hint' => 'ls /docs/.trash to see trashed documents.']);
             }

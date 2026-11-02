@@ -11,6 +11,7 @@ use App\Domain\Vfs\Spec\VfsOperationSpecRegistry;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request as ToolRequest;
 
@@ -196,9 +197,13 @@ class VfsAtlasCommand extends Command
     {
         $identifier = trim((string) $this->option('workspace'));
         if ($identifier !== '') {
+            // Only compare the uuid primary key with uuid-shaped input: on
+            // PostgreSQL a non-uuid literal against a uuid column is an error
+            // that aborts the surrounding transaction, not a non-match.
             return Workspace::query()
-                ->whereKey($identifier)
-                ->orWhere('slug', $identifier)
+                ->where(fn ($query) => Str::isUuid($identifier)
+                    ? $query->whereKey($identifier)->orWhere('slug', $identifier)
+                    : $query->where('slug', $identifier))
                 ->first();
         }
 

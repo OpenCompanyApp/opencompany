@@ -367,7 +367,7 @@ trait MountsVfsChannels
 
         // Deterministic collision suffix: {slug}--{first 8 chars of the id}.
         if (preg_match('/^(.*)--([0-9a-z]{8})$/i', $token, $suffixed) === 1) {
-            foreach ((clone $query)->where('id', 'like', strtolower($suffixed[2]).'%')->get() as $channel) {
+            foreach ($this->whereIdLike(clone $query, 'id', strtolower($suffixed[2]).'%')->get() as $channel) {
                 if ($this->slug($channel->name) === $suffixed[1]) {
                     return $channel;
                 }

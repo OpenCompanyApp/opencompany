@@ -2,8 +2,6 @@
 
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
-use Illuminate\Support\Str;
-
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
@@ -20,6 +18,7 @@ use App\Models\WorkspaceFile;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\JoinClause;
+use Illuminate\Support\Str;
 
 /**
  * Workspace metadata mount.
@@ -231,10 +230,16 @@ trait MountsVfsWorkspace
             throw $this->invalidVfsPageCursor();
         }
 
-        // Settle boundary: the smallest ULID of (now - settle window). Rows at
-        // or after it are not delivered yet; see the docblock contract.
+        // Settle boundary: the smallest ULID of the millisecond (now - settle
+        // window). Rows at or after it are not delivered yet, and because the
+        // cut is a whole millisecond (ULID time prefix + zero randomness), two
+        // rows of the same millisecond are never split across it. A window of
+        // 0 applies no boundary at all (tests only): the boundary of "now"
+        // would otherwise exclude every event of the current millisecond.
         $settleSeconds = max(0, (int) config('vfs.change_feed_settle_seconds', 5));
-        $boundary = substr((string) Str::ulid(now()->subSeconds($settleSeconds)), 0, 10).str_repeat('0', 16);
+        $boundary = $settleSeconds > 0
+            ? substr((string) Str::ulid(now()->subSeconds($settleSeconds)), 0, 10).str_repeat('0', 16)
+            : null;
 
         $lines = [];
         $usedBytes = 0;
@@ -249,7 +254,7 @@ trait MountsVfsWorkspace
                 ->where('workspace_id', $agent->workspace_id)
                 ->where('committed', true)
                 ->when(is_array($cursor), fn (Builder $query): Builder => $query->where('id', '>', $cursor['id']))
-                ->where('id', '<', $boundary)
+                ->when($boundary !== null, fn (Builder $query): Builder => $query->where('id', '<', $boundary))
                 ->orderBy('id')
                 ->limit(min(200, $budget->maxFiles - $scanned + 1))
                 ->get();
@@ -365,7 +370,7 @@ trait MountsVfsWorkspace
             'list_item' => ($item = ListItem::withTrashed()->where('workspace_id', $agent->workspace_id)->find($backendId)) === null
                 ? null
                 : ($item->parent_id !== null && $this->pathIsReadable($agent, "/lists/by-id/{$item->parent_id}")),
-            'data_table_row' => ($row = DataTableRow::withTrashed()->find($backendId)) === null
+            'data_table_row' => ($row = ($this->vfsUuidOrNull($backendId) !== null ? DataTableRow::withTrashed()->find($backendId) : null)) === null
                 || ($table = DataTable::forWorkspace()->find($row->table_id)) === null
                 ? null
                 : $this->pathIsReadable($agent, "/tables/by-id/{$table->id}"),

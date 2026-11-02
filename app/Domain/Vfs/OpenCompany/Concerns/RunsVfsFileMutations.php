@@ -380,7 +380,7 @@ trait RunsVfsFileMutations
 
         $query = WorkspaceFile::onlyTrashed()->where('workspace_id', $agent->workspace_id);
         $file = preg_match(self::ID_SUFFIX_PATTERN, $token, $m) === 1
-            ? $query->where('id', 'like', '%'.$m[2])->first()
+            ? $this->whereIdLike($query, 'id', '%'.$m[2])->first()
             : $query->whereKey($token)->first();
         if ($file === null || ! $this->canAccessTrashedFile($agent, $file)) {
             throw new VfsError('not_found', "Path not found: {$path}", ['path' => $path, 'hint' => 'ls /files/.trash to see trashed files.']);

@@ -3,7 +3,6 @@
 namespace Tests\Feature\Vfs;
 
 use App\Agents\Tools\Vfs\VfsRead;
-use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsCommandExecutor;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsText;
@@ -222,7 +221,7 @@ class VfsContentIntegrityTest extends TestCase
         $this->assertSame('two', $this->vfs->readContent($this->agent, '/files/strict/a.txt'));
 
         $task = Task::create([
-            'id' => 'task-strict',
+            'id' => (string) Str::uuid(),
             'workspace_id' => $this->workspace->id,
             'title' => 'Strict',
             'type' => Task::TYPE_CUSTOM,

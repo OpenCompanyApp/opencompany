@@ -13,6 +13,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkspaceDisk;
 use App\Models\WorkspaceFile;
+use App\Models\WorkspaceMember;
 use App\Services\ApprovalExecutionService;
 use App\Services\FileSystemService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -335,7 +336,7 @@ class VfsCapabilityTruthTest extends TestCase
             'description' => 'Original list description',
             'is_folder' => false,
             'status' => 'backlog',
-            'priority' => 'normal',
+            'priority' => 'medium',
             'creator_id' => $owner->id,
             'assignee_id' => $owner->id,
         ]);
@@ -395,7 +396,7 @@ class VfsCapabilityTruthTest extends TestCase
     private function workspaceApprover(): User
     {
         $approver = User::factory()->create(['type' => 'human']);
-        \App\Models\WorkspaceMember::query()->firstOrCreate(
+        WorkspaceMember::query()->firstOrCreate(
             ['workspace_id' => $this->workspace->id, 'user_id' => $approver->id],
             ['role' => 'admin'],
         );

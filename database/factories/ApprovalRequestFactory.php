@@ -5,9 +5,10 @@ namespace Database\Factories;
 use App\Models\ApprovalRequest;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ApprovalRequest>
+ * @extends Factory<ApprovalRequest>
  */
 class ApprovalRequestFactory extends Factory
 {
@@ -21,7 +22,7 @@ class ApprovalRequestFactory extends Factory
     public function definition(): array
     {
         return [
-            'id' => 'apr' . fake()->unique()->randomNumber(5),
+            'id' => (string) Str::uuid(),
             'type' => fake()->randomElement(['budget', 'action', 'spawn', 'access']),
             'title' => fake()->sentence(4),
             'description' => fake()->paragraph(),
@@ -72,7 +73,7 @@ class ApprovalRequestFactory extends Factory
     /**
      * Create a budget request.
      */
-    public function budget(float $amount = null): static
+    public function budget(?float $amount = null): static
     {
         return $this->state(fn (array $attributes) => [
             'type' => 'budget',
