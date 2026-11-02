@@ -160,11 +160,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ChannelMember::class);
     }
 
-    /** @return BelongsToMany<Channel, $this> */
+    /** @return BelongsToMany<Channel, $this, ChannelMember> */
     public function channels(): BelongsToMany
     {
         return $this->belongsToMany(Channel::class, 'channel_members')
-            ->withPivot('unread_count', 'joined_at');
+            ->using(ChannelMember::class)
+            ->withPivot('id', 'unread_count', 'joined_at');
     }
 
     /** @return HasMany<Message, $this> */

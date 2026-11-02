@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
 import link from './link'
 /**
-* @see routes/web.php:39
+* @see routes/web.php:28
 * @route '/telegram/mini-app'
 */
 export const miniApp = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -15,7 +15,7 @@ miniApp.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:39
+* @see routes/web.php:28
 * @route '/telegram/mini-app'
 */
 miniApp.url = (options?: RouteQueryOptions) => {
@@ -23,7 +23,7 @@ miniApp.url = (options?: RouteQueryOptions) => {
 }
 
 /**
-* @see routes/web.php:39
+* @see routes/web.php:28
 * @route '/telegram/mini-app'
 */
 miniApp.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -32,7 +32,7 @@ miniApp.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 
 /**
-* @see routes/web.php:39
+* @see routes/web.php:28
 * @route '/telegram/mini-app'
 */
 miniApp.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

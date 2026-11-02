@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
-* @see routes/web.php:188
+* @see routes/web.php:177
 * @route '/w/{workspace_slug}/developer/tools'
 */
 export const tools = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -14,7 +14,7 @@ tools.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:188
+* @see routes/web.php:177
 * @route '/w/{workspace_slug}/developer/tools'
 */
 tools.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -40,7 +40,7 @@ tools.url = (args: { workspace_slug: string | number } | [workspace_slug: string
 }
 
 /**
-* @see routes/web.php:188
+* @see routes/web.php:177
 * @route '/w/{workspace_slug}/developer/tools'
 */
 tools.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -49,7 +49,7 @@ tools.get = (args: { workspace_slug: string | number } | [workspace_slug: string
 })
 
 /**
-* @see routes/web.php:188
+* @see routes/web.php:177
 * @route '/w/{workspace_slug}/developer/tools'
 */
 tools.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -58,7 +58,7 @@ tools.head = (args: { workspace_slug: string | number } | [workspace_slug: strin
 })
 
 /**
-* @see routes/web.php:193
+* @see routes/web.php:182
 * @route '/w/{workspace_slug}/developer/code-console'
 */
 export const codeConsole = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -72,7 +72,7 @@ codeConsole.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:193
+* @see routes/web.php:182
 * @route '/w/{workspace_slug}/developer/code-console'
 */
 codeConsole.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -98,7 +98,7 @@ codeConsole.url = (args: { workspace_slug: string | number } | [workspace_slug: 
 }
 
 /**
-* @see routes/web.php:193
+* @see routes/web.php:182
 * @route '/w/{workspace_slug}/developer/code-console'
 */
 codeConsole.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -107,7 +107,7 @@ codeConsole.get = (args: { workspace_slug: string | number } | [workspace_slug: 
 })
 
 /**
-* @see routes/web.php:193
+* @see routes/web.php:182
 * @route '/w/{workspace_slug}/developer/code-console'
 */
 codeConsole.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({

@@ -2,14 +2,28 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class ChannelMember extends Model
+/**
+ * Channel membership row (channel_members), also the pivot model for
+ * Channel::users() and User::channels() so attach() assigns a UUID too.
+ *
+ * Keyed by UUID for the archive round trip (pillar 11): no app record may
+ * hide meaning in an auto-increment id.
+ */
+class ChannelMember extends Pivot
 {
     /** @use HasFactory<\Database\Factories\ChannelMemberFactory> */
-    use HasFactory;
+    use HasFactory, HasUuids;
+
+    protected $table = 'channel_members';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
     protected $fillable = [
         'channel_id',
         'user_id',

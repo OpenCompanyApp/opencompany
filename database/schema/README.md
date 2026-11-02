@@ -40,3 +40,25 @@ php scripts/dev/larastan-schema.php
 
 Every new table or column still needs a normal migration file. Data
 sovereignty applies: new primitives must also round-trip through exports.
+
+## Archive invariants
+
+Pillar 11 (`docs/planning/data-sovereignty.md`) requires a lossless `.ocarchive` export and import, with
+a round-trip test in CI. The exporter is not built yet. The schema already keeps these rules, and
+`tests/Feature/DataSovereignty/ArchiveFriendlySchemaTest.php` enforces them:
+
+- **Stable global IDs.** Every app table is keyed by a UUID (or ULID) string. No meaning hides in an
+  auto-increment number. The only integer-keyed tables are infrastructure or instance secrets that
+  never enter an archive: `migrations`, `jobs`, `failed_jobs`, `telescope_entries` and
+  `codex_tokens`. Adding to that list needs a reason here.
+- **Relations by ID.** Foreign keys reference those IDs, so an import can preserve them or remap them
+  consistently for a clone.
+- **Append-only history.** `workspace_events`, `document_versions` and `change_records` refuse updates
+  and deletes through their models. The only exception is the revert stamp on a change record.
+  Content leaves only with a purge cascade or a whole workspace.
+- **Content-addressed blobs.** `workspace_files.content_hash` is the sha256 of the bytes and is set on
+  every write. Rows written before 2026-11-02 stay null until the exporter hashes them.
+- **Secrets.** Vault secrets and instance credentials are excluded by default. Only an owner can
+  include them, passphrase-encrypted, and an agent never can.
+
+Every new primitive must keep these rules and be exportable (see `AGENTS.md`).

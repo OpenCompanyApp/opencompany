@@ -71,6 +71,13 @@ Official clients and SDKs live outside this repository under Apache-2.0:
 |---|---|---|
 | `opencompany-cli` | The Rust `oc` CLI: terminal client and connected-host daemon, using only the public versioned API and realtime stream ([plan](docs/planning/oc-cli-and-hosts.md)) | Apache-2.0, by that repository's own notices |
 
+Committed but not yet published:
+
+- **The `.ocarchive` workspace archive format specification** (Product Direction pillar 11,
+  [data sovereignty](docs/planning/data-sovereignty.md)). It will be published under Apache-2.0 so anyone
+  can read, write or migrate archives without OpenCompany code. The exporter and importer that
+  implement it in this repository remain AGPL-3.0-only.
+
 Standalone protocol/schema packages and other SDKs do not exist yet; they will carry their own
 notices when published. The former `integrations` package repository is archived read-only and keeps
 the terms in its own notices; OpenCompany no longer depends on it.

@@ -40,6 +40,20 @@ class ChangeRecord extends Model
         'operation', 'before', 'after', 'reverted_at', 'reverted_by_id',
     ];
 
+    /**
+     * Append-only: the only permitted update is the revert stamp; rows are
+     * never deleted (they leave with the workspace, or by archive retention).
+     */
+    protected static function booted(): void
+    {
+        static::updating(function (self $record): void {
+            if (array_diff(array_keys($record->getDirty()), ['reverted_at', 'reverted_by_id']) !== []) {
+                throw new \LogicException('Change records are append-only.');
+            }
+        });
+        static::deleting(fn () => throw new \LogicException('Change records are append-only.'));
+    }
+
     protected function casts(): array
     {
         return [

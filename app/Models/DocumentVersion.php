@@ -6,8 +6,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * One saved version of a document. Version history is append-only (pillar 11:
+ * history must round-trip losslessly through `.ocarchive`); purging a document
+ * removes its versions through the database cascade, never row by row.
+ */
 class DocumentVersion extends Model
 {
+    protected static function booted(): void
+    {
+        static::updating(fn () => throw new \LogicException('Document versions are append-only.'));
+        static::deleting(fn () => throw new \LogicException('Document versions are append-only.'));
+    }
+
     /** @use HasFactory<\Database\Factories\DocumentVersionFactory> */
     use HasFactory;
     protected $keyType = 'string';

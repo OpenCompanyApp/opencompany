@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
-* @see routes/web.php:158
+* @see routes/web.php:147
 * @route '/w/{workspace_slug}/routines/create'
 */
 export const create = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -14,7 +14,7 @@ create.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:158
+* @see routes/web.php:147
 * @route '/w/{workspace_slug}/routines/create'
 */
 create.url = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -40,7 +40,7 @@ create.url = (args: { workspace_slug: string | number } | [workspace_slug: strin
 }
 
 /**
-* @see routes/web.php:158
+* @see routes/web.php:147
 * @route '/w/{workspace_slug}/routines/create'
 */
 create.get = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -49,7 +49,7 @@ create.get = (args: { workspace_slug: string | number } | [workspace_slug: strin
 })
 
 /**
-* @see routes/web.php:158
+* @see routes/web.php:147
 * @route '/w/{workspace_slug}/routines/create'
 */
 create.head = (args: { workspace_slug: string | number } | [workspace_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -58,7 +58,7 @@ create.head = (args: { workspace_slug: string | number } | [workspace_slug: stri
 })
 
 /**
-* @see routes/web.php:162
+* @see routes/web.php:151
 * @route '/w/{workspace_slug}/routines/{id}/edit'
 */
 export const edit = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -72,7 +72,7 @@ edit.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:162
+* @see routes/web.php:151
 * @route '/w/{workspace_slug}/routines/{id}/edit'
 */
 edit.url = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions) => {
@@ -97,7 +97,7 @@ edit.url = (args: { workspace_slug: string | number, id: string | number } | [wo
 }
 
 /**
-* @see routes/web.php:162
+* @see routes/web.php:151
 * @route '/w/{workspace_slug}/routines/{id}/edit'
 */
 edit.get = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -106,7 +106,7 @@ edit.get = (args: { workspace_slug: string | number, id: string | number } | [wo
 })
 
 /**
-* @see routes/web.php:162
+* @see routes/web.php:151
 * @route '/w/{workspace_slug}/routines/{id}/edit'
 */
 edit.head = (args: { workspace_slug: string | number, id: string | number } | [workspace_slug: string | number, id: string | number ], options?: RouteQueryOptions): RouteDefinition<'head'> => ({

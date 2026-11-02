@@ -161,7 +161,8 @@ class FileSystemService
         $filesystem = $workspaceDisk->buildFilesystem();
         $storagePath = $this->generateStoragePath($workspaceId, $file->getClientOriginalExtension());
 
-        $filesystem->put($storagePath, file_get_contents($file->getRealPath()));
+        $bytes = (string) file_get_contents($file->getRealPath());
+        $filesystem->put($storagePath, $bytes);
 
         return WorkspaceFile::create([
             'id' => Str::uuid()->toString(),
@@ -174,6 +175,7 @@ class FileSystemService
             'storage_path' => $storagePath,
             'mime_type' => $file->getMimeType(),
             'size' => $file->getSize(),
+            'content_hash' => hash('sha256', $bytes),
             'owner_id' => $ownerId,
         ]);
     }
@@ -218,6 +220,7 @@ class FileSystemService
             'storage_path' => $storagePath,
             'mime_type' => $mimeType ?? $this->guessMimeType($extension),
             'size' => strlen($contents),
+            'content_hash' => hash('sha256', $contents),
             'owner_id' => $ownerId,
             'metadata' => $metadata,
         ]);
@@ -253,6 +256,7 @@ class FileSystemService
             $disk->put($existing->storage_path, $content);
             $existing->update([
                 'size' => strlen($content),
+                'content_hash' => hash('sha256', $content),
                 'mime_type' => $mimeType,
             ]);
 
@@ -275,6 +279,7 @@ class FileSystemService
             'storage_path' => $storagePath,
             'mime_type' => $mimeType,
             'size' => strlen($content),
+            'content_hash' => hash('sha256', $content),
             'owner_id' => $ownerId,
         ]);
     }
@@ -410,6 +415,7 @@ class FileSystemService
             'storage_path' => $newStoragePath,
             'mime_type' => $file->mime_type,
             'size' => $file->size,
+            'content_hash' => $file->content_hash,
             'owner_id' => $file->owner_id,
             'metadata' => $file->metadata,
         ]);

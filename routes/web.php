@@ -6,23 +6,12 @@ use App\Http\Controllers\SetupController;
 use App\Http\Controllers\TelegramLinkController;
 use App\Models\User;
 use App\Models\WorkspaceInvitation;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // Broadcast routes for WebSocket authentication
 Broadcast::routes(['middleware' => ['web', 'auth']]);
-
-// Welcome page (public)
-Route::get('/welcome', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-})->name('welcome');
 
 // Public calendar feed (no auth — uses token)
 Route::get('/cal/{token}.ics', [CalendarFeedController::class, 'feed']);

@@ -34,6 +34,7 @@ class WorkspaceFile extends Model
         'storage_path',
         'mime_type',
         'size',
+        'content_hash', // sha256 of the bytes: content-addressed blobs (pillar 11)
         'owner_id',
         'metadata',
     ];

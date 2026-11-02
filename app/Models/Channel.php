@@ -60,11 +60,12 @@ class Channel extends Model
         return $this->hasMany(ChannelMember::class);
     }
 
-    /** @return BelongsToMany<User, $this> */
+    /** @return BelongsToMany<User, $this, ChannelMember> */
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'channel_members')
-            ->withPivot('unread_count', 'joined_at');
+            ->using(ChannelMember::class)
+            ->withPivot('id', 'unread_count', 'joined_at');
     }
 
     /** @return HasMany<Message, $this> */
